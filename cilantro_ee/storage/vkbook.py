@@ -1,8 +1,8 @@
 import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.constants.conf import CilantroConf
 from collections import defaultdict
+from cilantro_ee.constants import conf
 
 log = get_logger("VKBook")
 
@@ -30,7 +30,7 @@ class VKBook:
             # TODO untangle this mess --davis
             from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
-            const_file = CilantroConf.CONSTITUTION_FILE
+            const_file = conf.CONSTITUTION_FILE
             if const_file:
                 log.info("VKBook using constitution file {}".format(const_file))
                 book = read_public_constitution(const_file)

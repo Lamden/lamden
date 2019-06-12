@@ -1,5 +1,6 @@
 from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
-from cilantro_ee.constants.conf import CilantroConf, CIL_CONF_PATH
+from cilantro_ee.constants import conf
+from cilantro_ee.constants.conf import CIL_CONF_PATH
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
 from contracting.logger import overwrite_logger_level as sen_overwrite_log
@@ -17,12 +18,12 @@ def boot(delay):
 
     client = ContractingClient()
 
-    if CilantroConf.RESET_DB:
+    if conf.RESET_DB:
         client.raw_driver.flush()
 
     print("Seeding genesis contract and building VKBook...")
 
-    book = read_public_constitution(CilantroConf.CONSTITUTION_FILE)
+    book = read_public_constitution(conf.CONSTITUTION_FILE)
     mns = [node['vk'] for node in book['masternodes']]
     dels = [node['vk'] for node in book['delegates']]
 
@@ -37,9 +38,9 @@ def boot(delay):
     VKBook.set_delegates(delegates)
 
     print("Configuring your node...")
-    CilantroConf.HOST_IP = requests.get('https://api.ipify.org').text
-    print("Your public IP is: {}".format(CilantroConf.HOST_IP))
-    sk = bytes.fromhex(CilantroConf.SK)
+    conf.HOST_IP = requests.get('https://api.ipify.org').text
+    print("Your public IP is: {}".format(conf.HOST_IP))
+    sk = bytes.fromhex(conf.SK)
     _, vk = wallet.new(seed=sk)
     print("Your VK is: {}.".format(vk))
 
@@ -56,9 +57,9 @@ def boot(delay):
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
 
-    overwrite_logger_level(CilantroConf.LOG_LEVEL)
+    overwrite_logger_level(conf.LOG_LEVEL)
 
-    start_node(signing_key=CilantroConf.SK, node_type=node_type)
+    start_node(signing_key=conf.SK, node_type=node_type)
 
 if __name__ == '__main__':
     _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0

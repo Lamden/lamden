@@ -2,7 +2,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
-from cilantro_ee.constants.conf import CilantroConf
+from cilantro_ee.constants import conf
 
 import time
 from pymongo import MongoClient
@@ -35,7 +35,7 @@ def start_node(signing_key, node_type):
 
         MasterOps.init_master(key=signing_key)
 
-        Masternode(ip=CilantroConf.HOST_IP, name='Masternode', signing_key=signing_key)
+        Masternode(ip=conf.HOST_IP, name='Masternode', signing_key=signing_key)
 
     elif node_type == DELEGATE:
-        Delegate(ip=CilantroConf.HOST_IP, name='Delegate', signing_key=signing_key)
+        Delegate(ip=conf.HOST_IP, name='Delegate', signing_key=signing_key)

@@ -14,7 +14,9 @@ from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from cilantro_ee.nodes.masternode.nonce import NonceManager
 from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
-from cilantro_ee.constants.conf import CilantroConf
+
+from cilantro_ee.constants import conf
+
 from cilantro_ee.utils.hasher import Hasher
 from contracting.config import DELIMITER
 
@@ -35,14 +37,14 @@ log = get_logger("MN-WebServer")
 static_headers = {}
 
 # if os.getenv('NONCE_ENABLED', False):
-if CilantroConf.NONCE_ENABLED:
+if conf.NONCE_ENABLED:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 else:
     log.warning("Nonces are disabled! Nonce checking as well as rate limiting will be disabled!")
     limiter = Limiter(app, key_func=get_remote_address)
 
-if CilantroConf.SSL_ENABLED:
+if conf.SSL_ENABLED:
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
@@ -84,7 +86,7 @@ async def submit_transaction(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
-    if CilantroConf.SSL_ENABLED:
+    if conf.SSL_ENABLED:
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
