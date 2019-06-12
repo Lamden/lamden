@@ -1,11 +1,14 @@
 del_list = Variable()
 mn_list = Variable()
+metering_flag = Variable()
+nonce_flag = Variable()
 
 @construct
-def seed(masternodes, delegates):
+def seed(masternodes, delegates, metering=True, nonces=False):
     mn_list.set(masternodes)
     del_list.set(delegates)
-
+    metering_flag.set(metering)
+    nonce_flag.set(nonces)
 
 @export
 def get_delegates():
@@ -20,3 +23,4 @@ def get_masternodes():
 @export
 def get_witnesses():
     return []
+

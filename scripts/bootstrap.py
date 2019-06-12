@@ -8,7 +8,8 @@ import os, sys, time
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import sync
-
+from cilantro_ee.protocol import wallet
+import requests
 
 def boot(delay):
     assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
@@ -33,8 +34,21 @@ def boot(delay):
     VKBook.set_masternodes(masternodes)
     VKBook.set_delegates(delegates)
 
-    print(delegates)
-    print(VKBook.get_delegates())
+    print("Configuring your node...")
+    CilantroConf.HOST_IP = requests.get('https://api.ipify.org').text
+    print("Your public IP is: {}".format(CilantroConf.HOST_IP))
+    _, vk = wallet.new(seed=CilantroConf.SK)
+    print("Your VK is: {}.".format(vk))
+
+    if vk in mns:
+        CilantroConf.NODE_TYPE = 'masternode'
+    elif vk in dels:
+        CilantroConf.NODE_TYPE = 'delegates'
+    else:
+        CilantroConf.NODE_TYPE = 'none'
+
+    print("Your node type is: {}".format(CilantroConf.NODE_TYPE))
+
 
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
