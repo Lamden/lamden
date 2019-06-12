@@ -3,13 +3,9 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.utils import is_valid_hex
 from cilantro_ee.constants.conf import CilantroConf
 from collections import defaultdict
-from contracting.client import ContractingClient
-from cilantro_ee.contracts import sync
+
 
 log = get_logger("VKBook")
-sync.sync_genesis_contracts()
-client = ContractingClient()
-vk_book_contract = client.get_contract('vkbook')
 
 class VKBookMeta(type):
     vkbooks = {}
@@ -48,6 +44,13 @@ class VKBook(metaclass=VKBookMeta):
     def setup(cls):
         # TODO untangle this mess --davis
         from cilantro_ee.utils.test.testnet_config import read_public_constitution
+
+        from contracting.client import ContractingClient
+        from cilantro_ee.contracts import sync
+
+        sync.sync_genesis_contracts()
+        client = ContractingClient()
+        vk_book_contract = client.get_contract('vkbook')
 
         const_file = CilantroConf.CONSTITUTION_FILE
         if const_file:
