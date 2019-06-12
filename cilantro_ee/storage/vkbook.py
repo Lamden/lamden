@@ -23,7 +23,6 @@ class VKBookMeta(type):
 
         return clsobj
 
-
 class VKBook:
 
     node_types = ('masternode', 'witness', 'delegate')
@@ -197,3 +196,5 @@ class VKBook:
     #     # TODO remove
     #     log.notice("DELEGATE_MN_MAP: {}".format(cls.delegate_mn_map))
     #     log.notice("WITNESS_MN_MAP: {}".format(cls.witness_mn_map))
+
+VKBook.setup()
