@@ -51,32 +51,15 @@ class CilantroConf(metaclass=ConfMeta):
             config.read(CIL_CONF_PATH)
             config = config['DEFAULT']
 
-            cls.HOST_IP = config['ip']
             cls.CONSTITUTION_FILE = config['constitution_file']
             cls.BOOTNODES = config['boot_ips'].split(',')
             cls.RESET_DB = config.getboolean('reset_db')
             cls.SSL_ENABLED = config.getboolean('ssl_enabled')
             cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
             cls.STAMPS_ENABLED = config.getboolean('stamps')
-            cls.NODE_TYPE = config['node_type']
             cls.LOG_LEVEL = int(config['log_lvl'])
             cls.SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
             cls.SK = config['sk']
-
-            # DEBUG -- TODO DELETE
-            if False:
-                log.important("BOOT IP FROM CONFIG FILE: {}".format(config['boot_ips']))
-                log.important("BOOT IP CLASS VAR: {}".format(cls.BOOTNODES))
-                log.important("HOST IP CLASS VAR: {}".format(cls.HOST_IP))
-                log.important("SSL ENABLED CLASS VAR: {}".format(cls.SSL_ENABLED))
-                log.important("NONCE ENABLED CLASS VAR: {}".format(cls.NONCE_ENABLED))
-                log.important("STAMPS ENABLED CLASS VAR: {}".format(cls.STAMPS_ENABLED))
-                log.important("NODE TYPE CLASS VAR: {}".format(cls.NODE_TYPE))
-                log.important("LOG LEVEL CLASS VAR: {}".format(cls.LOG_LEVEL))
-                log.important("SK CLASS VAR: {}".format(cls.SK))
-            # END DEBUG
-
-        # assert os.path.exists(VK_IP_JSON_PATH), "No vk ip json found at path {}".format(VK_IP_JSON_PATH)
 
         if os.path.exists(VK_IP_JSON_PATH):
             with open(VK_IP_JSON_PATH, 'r') as f:

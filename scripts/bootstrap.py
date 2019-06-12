@@ -50,7 +50,6 @@ def boot(delay):
 
     print("Your node type is: {}".format(CilantroConf.NODE_TYPE))
 
-
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
 
