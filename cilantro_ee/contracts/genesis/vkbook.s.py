@@ -1,26 +1,43 @@
-del_list = Variable()
-mn_list = Variable()
-metering_flag = Variable()
-nonce_flag = Variable()
+delegate_list = Variable()
+masternode_list = Variable()
+stamps_enabled = Variable()
+nonces_enabled = Variable()
+fluctuating_quorum_enabled = Variable()
 
 @construct
-def seed(masternodes, delegates, metering=True, nonces=False):
-    mn_list.set(masternodes)
-    del_list.set(delegates)
-    metering_flag.set(metering)
-    nonce_flag.set(nonces)
+def seed(masternodes,
+         delegates,
+         stamps=True,
+         nonces=False,
+         fluctuating_quorums=True):
+
+    masternode_list.set(masternodes)
+    delegate_list.set(delegates)
+
+    stamps_enabled.set(stamps)
+    nonces_enabled.set(nonces)
+    fluctuating_quorum_enabled.set(fluctuating_quorums)
 
 @export
 def get_delegates():
-    return del_list.get()
+    return delegate_list.get()
 
 
 @export
 def get_masternodes():
-    return mn_list.get()
+    return masternode_list.get()
 
 
 @export
-def get_witnesses():
-    return []
+def get_stamps_enabled():
+    return stamps_enabled.get()
 
+
+@export
+def get_nonces_enabled():
+    return nonces_enabled.get()
+
+
+@export
+def get_fluctuating_quorum_enabled():
+    return fluctuating_quorum_enabled.get()
