@@ -2,17 +2,16 @@ from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
-from contracting.logger import overwrite_logger_level as sen_overwrite_log
-import os, sys, time
-
-from cilantro_ee.utils.test.testnet_config import read_public_constitution
+import sys, time
 from contracting.client import ContractingClient
-from cilantro_ee.contracts import sync
 from cilantro_ee.protocol import wallet
 import requests
 
 
 def boot(delay):
+
+    with open(conf.CIL_CONF_PATH, 'r') as f:
+        print(f.read())
 
     # Initialize database
     client = ContractingClient()
@@ -27,6 +26,8 @@ def boot(delay):
     # Determine what type the node is based on VK
     sk = bytes.fromhex(conf.SK)
     _, vk = wallet.new(seed=sk)
+
+    print('Metering enabled: {}'.format(conf.STAMPS_ENABLED))
 
     node_type = None
     if vk in v.get_masternodes():
@@ -43,6 +44,7 @@ def boot(delay):
     overwrite_logger_level(conf.LOG_LEVEL)
 
     start_node(signing_key=conf.SK, node_type=node_type)
+
 
 if __name__ == '__main__':
     _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0
