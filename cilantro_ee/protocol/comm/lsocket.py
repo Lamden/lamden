@@ -4,7 +4,6 @@ from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.constants.conf import CilantroConf
 import zmq.asyncio, asyncio, os
 
 from collections import defaultdict, deque
@@ -12,6 +11,7 @@ from functools import wraps
 from typing import List, Union
 from os.path import join
 
+from cilantro_ee.constants import conf
 
 
 def vk_lookup(func):
@@ -211,7 +211,7 @@ class LSocketBase:
         assert protocol in ('tcp', 'ipc'), "Only tcp/ipc protocol is supported, not {}".format(protocol)
         # TODO validate other args (port is an int within some range, ip address is a valid, ect)
 
-        if ip == CilantroConf.HOST_IP: ip = '0.0.0.0'
+        if ip == conf.HOST_IP: ip = '0.0.0.0'
         url = self._get_url_from_kwargs(port=port, protocol=protocol, ip=ip)
         self.active_conns.add(url)
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))

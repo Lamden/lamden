@@ -1,30 +1,36 @@
 import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.constants.conf import CilantroConf
 from collections import defaultdict
+from cilantro_ee.constants import conf
+
+
 
 log = get_logger("VKBook")
 
-
-class VKBookMeta(type):
-    vkbooks = {}
-
-    def __new__(cls, clsname, bases, clsdict):
-        
-        if clsname in cls.vkbooks:
-            return cls.vkbooks[clsname]
-
-        clsobj = super().__new__(cls, clsname, bases, clsdict)
-        assert hasattr(clsobj, 'setup'), "Class obj {} expected to have method called 'setup'".format(clsobj)
-        clsobj.setup()
-
-        cls.vkbooks[clsname] = clsobj
-
-        return clsobj
+INITIALIZED = False
 
 
-class VKBook(metaclass=VKBookMeta):
+class VKBook:
+    def __init__(self):
+        self.contract = None
+        self.client = None
+
+    def intitialize(self):
+        from cilantro_ee.contracts import sync
+        from cilantro_ee.utils.test.testnet_config import read_public_constitution
+        from contracting.client import ContractingClient
+
+        book = read_public_constitution(conf.CONSTITUTION_FILE)
+        mns = [node['vk'] for node in book['masternodes']]
+        dels = [node['vk'] for node in book['delegates']]
+
+        # Put VKs into VKBook smart contract and submit it to state
+        sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
+
+        self.client = ContractingClient()
+        self.contract = self.client.get_contract('vkbook')
+
 
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
@@ -36,46 +42,50 @@ class VKBook(metaclass=VKBookMeta):
     # witness_mn_map = {}
     # delegate_mn_map = {}
 
+    SETUP = False
+
     BOOT_QUORUM = 0
     BOOT_QUORUM_MASTERNODES = 0
     BOOT_QUORUM_DELEGATES = 0
 
     @classmethod
     def setup(cls):
-        # TODO untangle this mess --davis
-        from cilantro_ee.utils.test.testnet_config import read_public_constitution
+        if not cls.SETUP:
+            # TODO untangle this mess --davis
+            from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
-        const_file = CilantroConf.CONSTITUTION_FILE
-        if const_file:
-            log.info("VKBook using constitution file {}".format(const_file))
-            book = read_public_constitution(const_file)
-            mns = book['masternodes']
-            dels = book['delegates']
-            wits = book['witnesses']
-            scheds = book['schedulers'] if 'schedulers' in book else []
-            notifs = book['notifiers'] if 'notifiers' in book else []
-        else:
-            log.info("No constitution file detected. Using TESTNET VKs")
-            from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES, set_testnet_nodes
-            set_testnet_nodes()
-            mns = TESTNET_MASTERNODES
-            dels = TESTNET_DELEGATES
-            wits = TESTNET_WITNESSES
-            scheds, notifs = [], []
+            const_file = conf.CONSTITUTION_FILE
+            if const_file:
+                log.info("VKBook using constitution file {}".format(const_file))
+                book = read_public_constitution(const_file)
+                mns = book['masternodes']
+                dels = book['delegates']
+                wits = book['witnesses']
+                scheds = book['schedulers'] if 'schedulers' in book else []
+                notifs = book['notifiers'] if 'notifiers' in book else []
+            else:
+                log.info("No constitution file detected. Using TESTNET VKs")
+                from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES, TESTNET_WITNESSES, set_testnet_nodes
+                set_testnet_nodes()
+                mns = TESTNET_MASTERNODES
+                dels = TESTNET_DELEGATES
+                wits = TESTNET_WITNESSES
+                scheds, notifs = [], []
 
-        for node in mns:
-            cls.book['masternodes'].append(node['vk'])
-        for node in wits:
-            cls.book['witnesses'].append(node['vk'])
-        for node in dels:
-            cls.book['delegates'].append(node['vk'])
-        for node in scheds:
-            cls.book['schedulers'].append(node['vk'])
-        for node in notifs:
-            cls.book['notifiers'].append(node['vk'])
+            for node in mns:
+                cls.book['masternodes'].append(node['vk'])
+            for node in wits:
+                cls.book['witnesses'].append(node['vk'])
+            for node in dels:
+                cls.book['delegates'].append(node['vk'])
+            for node in scheds:
+                cls.book['schedulers'].append(node['vk'])
+            for node in notifs:
+                cls.book['notifiers'].append(node['vk'])
 
-        # cls._build_mn_witness_maps()
-        cls._setup_quorums()
+            # cls._build_mn_witness_maps()
+            cls._setup_quorums()
+            cls.SETUP = True
 
     # todo we need to enhance bootnodes to have separate lists of masternodes and delegates. Until then, let's assume equal split
     @classmethod
@@ -132,12 +142,20 @@ class VKBook(metaclass=VKBookMeta):
         return cls.book['masternodes']
 
     @classmethod
+    def set_masternodes(cls, nodes):
+        cls.book['masternodes'] = nodes
+
+    @classmethod
     def get_witnesses(cls) -> list:
         return cls.book['witnesses']
 
     @classmethod
     def get_delegates(cls) -> list:
         return cls.book['delegates']
+
+    @classmethod
+    def set_delegates(cls, nodes):
+        cls.book['delegates'] = nodes
 
     @classmethod
     def get_schedulers(cls) -> list:
@@ -189,3 +207,5 @@ class VKBook(metaclass=VKBookMeta):
     #     # TODO remove
     #     log.notice("DELEGATE_MN_MAP: {}".format(cls.delegate_mn_map))
     #     log.notice("WITNESS_MN_MAP: {}".format(cls.witness_mn_map))
+
+VKBook.setup()

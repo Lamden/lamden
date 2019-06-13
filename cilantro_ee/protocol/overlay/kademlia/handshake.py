@@ -6,12 +6,12 @@ from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
 # from cilantro_ee.protocol.overlay.ip import *
 # from cilantro_ee.protocol.comm.socket_auth import SocketAuth
-from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger import get_logger
 from cilantro_ee.storage.vkbook import VKBook
 from collections import defaultdict
+from cilantro_ee.constants import conf
 
 class Handshake:
 
@@ -20,7 +20,7 @@ class Handshake:
         self.ctx = ctx
 
         self.log = get_logger('OS.Handshake')
-        self.host_ip = CilantroConf.HOST_IP
+        self.host_ip = conf.HOST_IP
         self.port = AUTH_PORT
         self.url = 'tcp://*:{}'.format(self.port)
         self.identity = '{}:{}'.format(self.vk, self.host_ip)

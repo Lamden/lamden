@@ -8,6 +8,7 @@ POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basic
 
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
+
 NUM_MASTERS = len(VKBook.get_masternodes())
 NUM_WITNESSES = len(VKBook.get_witnesses())
 NUM_DELEGATES = len(VKBook.get_delegates())
