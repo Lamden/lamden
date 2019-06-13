@@ -28,7 +28,7 @@ if not SETUP:
         config = config['DEFAULT']
         CONSTITUTION_FILE = config['constitution_file']
         BOOTNODES = config['boot_ips'].split(',')
-        SK = config('sk')
+        SK = config['sk']
         RESET_DB = config.getboolean('reset_db')
         SSL_ENABLED = config.getboolean('ssl_enabled')
         NONCE_ENABLED = config.getboolean('nonce_enabled') or False

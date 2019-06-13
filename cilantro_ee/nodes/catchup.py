@@ -5,7 +5,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.contracts import mint_wallets
@@ -59,8 +59,8 @@ class CatchupManager:
         self.awaited_blknum = self.curr_num
 
         # DEBUG -- TODO DELETE
-        self.log.test("CatchupManager VKBook MN's: {}".format(VKBook.get_masternodes()))
-        self.log.test("CatchupManager VKBook Delegates's: {}".format(VKBook.get_delegates()))
+        self.log.test("CatchupManager VKBook MN's: {}".format(PhoneBook.masternodes))
+        self.log.test("CatchupManager VKBook Delegates's: {}".format(PhoneBook.delegates))
         # END DEBUG
 
     def update_state(self):
@@ -344,7 +344,7 @@ class CatchupManager:
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
-        valid_node = vk in VKBook.get_state_syncs()
+        valid_node = vk in PhoneBook.state_sync
         if valid_node is True:
             given_blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash = sender_bhash)
 
@@ -398,7 +398,7 @@ class CatchupManager:
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3)
+        min_quorum = math.ceil(len(PhoneBook.masternodes) * 2/3)
         if self.store_full_blocks:
             min_quorum -= 1   # -1 so we dont include ourselves if we are a MN
         return len(self.node_idx_reply_set) >= min_quorum

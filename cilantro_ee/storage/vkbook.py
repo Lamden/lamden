@@ -11,6 +11,7 @@ log = get_logger("VKBook")
 
 INITIALIZED = False
 
+
 class ReplacementVKBook:
     def __init__(self):
         self.client = ContractingClient()
@@ -31,14 +32,30 @@ class ReplacementVKBook:
 
     @property
     def stamps_enabled(self):
-        stamps = self.contract.get_stamps_enabled()
-        return stamps
+        return self.contract.get_stamps_enabled()
 
     @property
     def nonces_enabled(self):
-        nonces = self.contract.get_nonces_enabled()
-        return nonces
+        return self.contract.get_nonces_enabled()
 
+    @property
+    def masternodes(self):
+        return self.contract.get_masternodes()
+
+    @property
+    def delegates(self):
+        return self.contract.get_delegates()
+
+    @property
+    def witnesses(self):
+        return self.contract.get_witnesses()
+
+    @property
+    def state_sync(self):
+        return self.masternodes + self.delegates
+
+
+PhoneBook = ReplacementVKBook()
 
 
 class VKBook:
