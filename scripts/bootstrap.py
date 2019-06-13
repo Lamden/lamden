@@ -20,7 +20,7 @@ def boot(delay):
     if conf.RESET_DB:
         client.raw_driver.flush()
 
-    VKBook().intitialize()
+    v = VKBook()
 
     # Pull VKBook smart contract out to verify it has been set properl
     vk_book_contract = client.get_contract('vkbook')
