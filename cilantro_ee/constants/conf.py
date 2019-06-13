@@ -37,6 +37,8 @@ class CilantroConf(metaclass=ConfMeta):
     LOG_LEVEL = None
     SEN_LOG_LEVEL = None
     SK = None
+    BOOT_MASTERNODE_IP_LIST = []
+    BOOT_DELEGATE_IP_LIST = []
 
     @classmethod
     def setup(cls):
@@ -51,17 +53,19 @@ class CilantroConf(metaclass=ConfMeta):
             config.read(CIL_CONF_PATH)
             config = config['DEFAULT']
 
-            cls.HOST_IP = config['ip']
-            cls.CONSTITUTION_FILE = config['constitution_file']
-            cls.BOOTNODES = config['boot_ips'].split(',')
-            cls.RESET_DB = config.getboolean('reset_db')
-            cls.SSL_ENABLED = config.getboolean('ssl_enabled')
+            cls.HOST_IP = config['ip']      # can host ip be detected automatically if not provided?
+            cls.CONSTITUTION_FILE = config['constitution_file']  # assert this entry exists?
+            cls.RESET_DB = config.getboolean('reset_db') or False
+            cls.SSL_ENABLED = config.getboolean('ssl_enabled') or False
             cls.NONCE_ENABLED = config.getboolean('nonce_enabled') or False
-            cls.STAMPS_ENABLED = config.getboolean('stamps')
+            cls.STAMPS_ENABLED = config.getboolean('stamps') or False
             cls.NODE_TYPE = config['node_type']
             cls.LOG_LEVEL = int(config['log_lvl'])
             cls.SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
             cls.SK = config['sk']
+            cls.BOOT_MASTERNODE_IP_LIST = config['boot_masternode_ips'].split(',')
+            cls.BOOT_DELEGATE_IP_LIST = config['boot_delegate_ips'].split(',')
+            cls.BOOTNODES = cls.BOOT_MASTERNODE_IP_LIST + cls.BOOT_DELEGATE_IP_LIST
 
             # DEBUG -- TODO DELETE
             if False:

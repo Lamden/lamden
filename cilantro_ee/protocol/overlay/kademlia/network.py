@@ -150,30 +150,37 @@ class Network(object):
         await asyncio.sleep(5)
 
     async def _wait_for_boot_quorum(self):
-        if (self.routing_table.numContacts() + 1) >= VKBook.get_boot_quorum():
-            return        # met overall quorum
-        vks_connected = set()
         is_masternode = self.vk in VKBook.get_masternodes()
+        vks_to_wait_for = set()
         if is_masternode:
-            quorum_required = VKBook.get_boot_quorum()
+            quorum_required = VKBook.get_min_quorum()
             quorum_required -= 1     # eliminate myself
-            vks_to_wait_for = VKBook.get_all()
-            vks_to_wait_for.remove(self.vk)
+            vk_list = VKBook.get_all()
+            vk_list.remove(self.vk)
         else:
-            quorum_required = VKBook.get_boot_quorum_masternodes()
-            vks_to_wait_for = VKBook.get_masternodes()
-    
+            quorum_required = VKBook.get_min_masternode_quorum()
+            vk_list = VKBook.get_masternodes()
+
+        if len(vk_list) < quorum_required:     # shouldn't happen
+            self.log.fatal("Impossible to meet Quorum requirement as number of "
+                           "nodes available {} is less than the quorum {}"
+                           .format(len(vk_list), quorum_required))
+            sys.exit()
+            
+        vks_to_wait_for.update(vk_list)
+        vks_connected = self.routing_table.getAllConnectedVKs()
+        vks_connected &= vks_to_wait_for
+        # if len(vks_connected) >= quorum_required:     # already met the quorum
+            # return
+        vks_to_wait_for -= vks_connected
         while len(vks_to_wait_for) > 0:
+            for vk in vks_to_wait_for:
+                if await self._find_n_announce(vk):
+                    vks_connected.add(vk)
             if len(vks_connected) >= quorum_required:
                 return
+            vks_to_wait_for -= vks_connected
             await asyncio.sleep(2)
-            for vk in vks_to_wait_for:
-                if vk in vks_connected:
-                    continue
-                event_id = uuid.uuid4().hex
-                ip = await self.find_ip(event_id, vk)
-                if ip:
-                    vks_connected.add(vk)
      
 
     async def bootup(self):
@@ -307,6 +314,8 @@ class Network(object):
         return self.routing_table.findNode(Node(digest(vk_to_find), vk=vk_to_find))
 
     async def rpc_find_ip(self, address, vk_to_find):
+        if self.is_connected and address[0] == vk_to_find:
+            await Event.emit({'event': 'node_online', 'vk': vk_to_find, 'ip': address[1]})
         nodes = self.local_find_ip(vk_to_find)
         return list(map(tuple, nodes))
 
@@ -407,7 +416,7 @@ class Network(object):
                     if nd:
                         if self.is_debug:
                             self.log.debug('Found ip {} for vk {}'.format(nd.ip, nd.vk))
-                        return nd.ip
+                        return nd
                     nodes_to_ask.extend(nodes)
                     num_pending_replies -= 1
 
@@ -449,22 +458,35 @@ class Network(object):
     async def network_find_ip(self, event_id, nodes_to_ask, vk_to_find, is_bootstrap=False):
         req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
-        ip = await self._network_find_ip(req, nodes_to_ask, vk_to_find, is_bootstrap)
+        node = await self._network_find_ip(req, nodes_to_ask, vk_to_find, is_bootstrap)
         req.close()    # clean up socket  # handle the errors on remote properly
-        return ip
+        return node
 
     async def find_ip(self, event_id, vk_to_find):
         if self.is_debug:
             self.log.debug("find_ip called for vk {} with event_id {}".format(vk_to_find, event_id))
         nodes = self.local_find_ip(vk_to_find)
         nd = self.get_node_from_nodes_list(vk_to_find, nodes)
-        if nd:
-            ip = nd.ip
-        else:
-            ip = await self.network_find_ip(event_id, nodes, vk_to_find)
+        if not nd:
+            nd = await self.network_find_ip(event_id, nodes, vk_to_find)
+        ip = nd.ip if nd else None
         status = 'authorized' if ip else 'unknown_vk'
         await Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
         return ip
+
+    async def _find_n_announce(self, vk_to_find):
+        event_id = uuid.uuid4().hex
+        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
+        req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
+        nodes_to_ask = self.local_find_ip(vk_to_find)
+        node = await self._network_find_ip(req, nodes_to_ask, vk_to_find, False)
+        if node:          # found it, now announce myself
+            await self._network_find_ip(req, [node], self.vk, False)
+            status = True
+        else:
+            status = False
+        req.close()    # clean up socket  # handle the errors on remote properly
+        return node
 
     async def _ping_ip(self, req, vk, ip, is_first_time):
         raddr = await self.rpc_connect(req, vk, ip)

@@ -36,9 +36,13 @@ class VKBook(metaclass=VKBookMeta):
     # witness_mn_map = {}
     # delegate_mn_map = {}
 
-    BOOT_QUORUM = 0
-    BOOT_QUORUM_MASTERNODES = 0
-    BOOT_QUORUM_DELEGATES = 0
+    MIN_QUORUM = 1000000
+    MIN_QUORUM_MASTERNODES = 1000000
+    MIN_QUORUM_DELEGATES = 1000000
+
+    MAX_QUORUM = 1000000
+    MAX_QUORUM_MASTERNODES = 1000000
+    MAX_QUORUM_DELEGATES = 1000000
 
     @classmethod
     def setup(cls):
@@ -80,21 +84,24 @@ class VKBook(metaclass=VKBookMeta):
     # todo we need to enhance bootnodes to have separate lists of masternodes and delegates. Until then, let's assume equal split
     @classmethod
     def _setup_quorums(cls):
-        # num_bootnodes = len(CilantroConf.BOOTNODES)
-        # num_masternodes = num_bootnodes // 2
-        # num_delegates = num_bootnodes - num_masternodes
 
+        # VK book provides max network possible and gives us max quorum
         num_masternodes = len(cls.get_masternodes())
         num_delegates = len(cls.get_delegates())
-        num_bootnodes = len(cls.get_all())
+        num_nodes = num_masternodes + num_delegates
+        cls.MAX_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
+        cls.MAX_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
+        cls.MAX_QUORUM = math.ceil(num_nodes * 2 / 3)
 
-        # cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
-        # cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
-        # cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
+        # boot nodes are supposed to come up together and provide min quorum for the system
+        cls.MIN_QUORUM_MASTERNODES = len(CilantroConf.BOOT_MASTERNODE_IP_LIST)
+        if cls.MIN_QUORUM_MASTERNODES > cls.MAX_QUORUM_MASTERNODES:
+            cls.MIN_QUORUM_MASTERNODES = cls.MAX_QUORUM_MASTERNODES
+        cls.MIN_QUORUM_DELEGATES = len(CilantroConf.BOOT_DELEGATE_IP_LIST)
+        if cls.MIN_QUORUM_DELEGATES > cls.MAX_QUORUM_DELEGATES:
+            cls.MIN_QUORUM_DELEGATES = cls.MAX_QUORUM_DELEGATES
+        cls.MIN_QUORUM = cls.MIN_QUORUM_MASTERNODES + cls.MIN_QUORUM_DELEGATES
 
-        cls.BOOT_QUORUM = num_bootnodes
-        cls.BOOT_QUORUM_MASTERNODES = num_masternodes
-        cls.BOOT_QUORUM_DELEGATES = num_delegates
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -110,22 +117,41 @@ class VKBook(metaclass=VKBookMeta):
 
 
     @classmethod
-    def get_boot_quorum(cls) -> int:
-        return cls.BOOT_QUORUM
+    def get_num_boot_masternodes(cls) -> int:
+        return len(CilantroConf.BOOT_MASTERNODE_IP_LIST)
 
     @classmethod
-    def get_boot_quorum_masternodes(cls) -> int:
-        return cls.BOOT_QUORUM_MASTERNODES
+    def get_num_boot_delegates(cls) -> int:
+        return len(CilantroConf.BOOT_DELEGATE_IP_LIST)
 
     @classmethod
-    def get_boot_quorum_delegates(cls) -> int:
-        return cls.BOOT_QUORUM_DELEGATES
+    def get_min_quorum(cls) -> int:
+        return cls.MIN_QUORUM
+
+    @classmethod
+    def get_min_masternode_quorum(cls) -> int:
+        return cls.MIN_QUORUM_MASTERNODES
+
+    @classmethod
+    def get_min_delegate_quorum(cls) -> int:
+        return cls.MIN_QUORUM_DELEGATES
+
+    @classmethod
+    def get_max_quorum(cls) -> int:
+        return cls.MAX_QUORUM
+
+    @classmethod
+    def get_max_masternode_quorum(cls) -> int:
+        return cls.MAX_QUORUM_MASTERNODES
+
+    @classmethod
+    def get_max_delegate_quorum(cls) -> int:
+        return cls.MAX_QUORUM_DELEGATES
 
     @classmethod
     def get_all(cls):
-        # return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
-        #        + cls.get_notifiers()
-        return cls.get_masternodes() + cls.get_delegates()
+        return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
+               + cls.get_notifiers()
 
     @classmethod
     def get_masternodes(cls) -> list:

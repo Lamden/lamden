@@ -162,7 +162,7 @@ class RoutingTable(object):
 
     def addContact(self, node):
         if node.id == self.node.id:
-            return False
+            return True
 
         index = self.getBucketFor(node)
         bucket = self.buckets[index]
@@ -230,6 +230,13 @@ class RoutingTable(object):
             nodes.append(neighbor)
 
         return nodes
+
+    def getAllConnectedVKs(self):
+        connectedVKs = set()
+        for bucket in self.buckets:
+            for vk in bucket.nodes.keys():
+                connectedVKs.add(vk)
+        return connectedVKs
 
     def numContacts(self):
         numNodes = 0
