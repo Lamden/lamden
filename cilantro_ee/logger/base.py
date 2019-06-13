@@ -53,8 +53,9 @@ CUSTOM_LVL = {
     'DEBUG3': 15,
     'DEBUG2': 16,
     'DEBUG1': 17,
-    'DEBUGV': 18,
-    'FATAL': 99,
+    'DEBUGV': 21,
+    'NOTICE': 22,
+    'FATAL': 99
     }
 
 DEPRECATED_LEVELS = {
@@ -64,7 +65,7 @@ DEPRECATED_LEVELS = {
     'SUCCESS2': 27,
     'IMPORTANT': 56,
     'IMPORTANT2': 57,
-    'IMPORTANT3': 58,
+    'IMPORTANT3': 58
 }
 
 CUSTOM_LEVELS = {**CUSTOM_LVL, **DEPRECATED_LEVELS}
