@@ -55,7 +55,6 @@ class TransactionBatcher(Worker):
 
 
     def handle_ipc_msg(self, frames):
-        self.log.spam("Got msg over Dealer IPC from BlockAggregator with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = bytes_to_int(frames[0])
@@ -65,12 +64,10 @@ class TransactionBatcher(Worker):
         self.log.debugv("Batcher received an IPC message {}".format(msg))
 
         if isinstance(msg, EmptyBlockMade):
-            self.log.spam("Got EmptyBlockMade notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
             self.num_empty_blocks_recvd = self.num_empty_blocks_recvd + 1
 
         elif isinstance(msg, NonEmptyBlockMade):
-            self.log.spam("Got NonEmptyBlockMade notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
             self.num_empty_blocks_recvd = 0     # reset
 
@@ -86,7 +83,7 @@ class TransactionBatcher(Worker):
         nap = 120 if os.getenv("VMNET_CLOUD") else 40
         self.log.important("Taking a nap of {}s before starting TransactionBatcher...".format(nap))
         await asyncio.sleep(nap)
-        self.log.important("Starting TransactionBatcher")
+        self.log.info("Starting TransactionBatcher")
         self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
         total_sleep = 0
@@ -100,7 +97,6 @@ class TransactionBatcher(Worker):
                 total_sleep = total_sleep + BATCH_SLEEP_INTERVAL
                 if ((self.num_bags_sent > 0) or (self.num_empty_blocks_recvd >= NUM_BLOCKS)) and \
                    (total_sleep < NO_ACTIVITY_SLEEP):
-                    self.log.spam("Skipping TransactionBatcher {} / {}".format(self.num_bags_sent, NUM_BLOCKS))
                     continue
 
             total_sleep = 0
@@ -116,5 +112,5 @@ class TransactionBatcher(Worker):
             if len(tx_list):
                 self.log.info("Sending {} transactions in batch".format(len(tx_list)))
             else:
-                self.log.spam("Sending an empty transaction batch")
+                self.log.debug3("Sending an empty transaction batch")
 
