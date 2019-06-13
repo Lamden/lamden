@@ -7,6 +7,30 @@ from cilantro_ee.contracts import sync
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
 from contracting.client import ContractingClient
 
+class SexyVKBook:
+    def __init__(self):
+        self.client = ContractingClient()
+
+        self.contract = self.client.get_contract('vkbook')
+        if self.contract is None:
+            book = read_public_constitution(conf.CONSTITUTION_FILE)
+            mns = [node['vk'] for node in book['masternodes']]
+            dels = [node['vk'] for node in book['delegates']]
+
+            # Put VKs into VKBook smart contract and submit it to state
+            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
+
+            self.contract = self.client.get_contract('vkbook')
+
+    def get_masternodes(self):
+        return self.contract.get_masternodes()
+
+    def set_masternodes(self, masternodes):
+        pass
+
+    masternodes = property(get_masternodes, set_masternodes)
+
+
 log = get_logger("VKBook")
 
 INITIALIZED = False
