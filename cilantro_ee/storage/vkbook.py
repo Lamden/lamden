@@ -3,8 +3,9 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.utils import is_valid_hex
 from collections import defaultdict
 from cilantro_ee.constants import conf
-
-
+from cilantro_ee.contracts import sync
+from cilantro_ee.utils.test.testnet_config import read_public_constitution
+from contracting.client import ContractingClient
 
 log = get_logger("VKBook")
 
@@ -17,10 +18,6 @@ class VKBook:
         self.client = None
 
     def intitialize(self):
-        from cilantro_ee.contracts import sync
-        from cilantro_ee.utils.test.testnet_config import read_public_constitution
-        from contracting.client import ContractingClient
-
         book = read_public_constitution(conf.CONSTITUTION_FILE)
         mns = [node['vk'] for node in book['masternodes']]
         dels = [node['vk'] for node in book['delegates']]
