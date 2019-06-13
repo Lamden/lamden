@@ -7,8 +7,11 @@ from cilantro_ee.contracts import sync
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
 from contracting.client import ContractingClient
 
+log = get_logger("VKBook")
 
-class SexyVKBook:
+INITIALIZED = False
+
+class ReplacementVKBook:
     def __init__(self):
         self.client = ContractingClient()
 
@@ -19,22 +22,23 @@ class SexyVKBook:
             dels = [node['vk'] for node in book['delegates']]
 
             # Put VKs into VKBook smart contract and submit it to state
-            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
+            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
+                                                                        'delegates': dels,
+                                                                        'stamps': conf.STAMPS_ENABLED,
+                                                                        'nonces': conf.NONCE_ENABLED})
 
             self.contract = self.client.get_contract('vkbook')
 
-    def get_masternodes(self):
-        return self.contract.get_masternodes()
+    @property
+    def stamps_enabled(self):
+        stamps = self.contract.get_stamps_enabled()
+        return stamps
 
-    def set_masternodes(self, masternodes):
-        pass
+    @property
+    def nonces_enabled(self):
+        nonces = self.contract.get_nonces_enabled()
+        return nonces
 
-    masternodes = property(get_masternodes, set_masternodes)
-
-
-log = get_logger("VKBook")
-
-INITIALIZED = False
 
 
 class VKBook:
@@ -48,21 +52,12 @@ class VKBook:
             dels = [node['vk'] for node in book['delegates']]
 
             # Put VKs into VKBook smart contract and submit it to state
-            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
+            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
+                                                                        'delegates': dels,
+                                                                        'stamps': conf.STAMPS_ENABLED,
+                                                                        'nonces': conf.NONCE_ENABLED})
 
             self.contract = self.client.get_contract('vkbook')
-
-    def intitialize(self):
-        book = read_public_constitution(conf.CONSTITUTION_FILE)
-        mns = [node['vk'] for node in book['masternodes']]
-        dels = [node['vk'] for node in book['delegates']]
-
-        # Put VKs into VKBook smart contract and submit it to state
-        sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
-
-        self.client = ContractingClient()
-        self.contract = self.client.get_contract('vkbook')
-
 
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {

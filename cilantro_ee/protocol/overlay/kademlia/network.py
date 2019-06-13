@@ -160,7 +160,7 @@ class Network(object):
             vks_to_wait_for = VKBook.get_all()
             vks_to_wait_for.remove(self.vk)
         else:
-            quorum_required = VKBook.get_boot_quorum_masternodes()
+            quorum_required = VKBook.BOOT_QUORUM_MASTERNODES
             vks_to_wait_for = VKBook.get_masternodes()
     
         while len(vks_to_wait_for) > 0:

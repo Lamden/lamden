@@ -35,6 +35,10 @@ if not SETUP:
         SSL_ENABLED = config.getboolean('ssl_enabled')
         NONCE_ENABLED = config.getboolean('nonce_enabled') or False
         STAMPS_ENABLED = config.getboolean('stamps')
+
+        print(config)
+
+        FLUCTUATING_QUORUMS = config.getboolean('fluctuating_quorums')
         LOG_LEVEL = int(config['log_lvl'])
         SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
         SK = config['sk']

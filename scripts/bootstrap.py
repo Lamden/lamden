@@ -22,19 +22,6 @@ def boot(delay):
 
     v = VKBook()
 
-    # Pull VKBook smart contract out to verify it has been set properl
-    vk_book_contract = client.get_contract('vkbook')
-
-    # Pull masternode and delegate VKs from state
-    masternodes = vk_book_contract.get_masternodes()
-    delegates = vk_book_contract.get_delegates()
-
-    # Set them to in-memory system wide constants
-    VKBook.set_masternodes(masternodes)
-    VKBook.set_delegates(delegates)
-
-    # Get the node's ip address
-    print("Configuring your node...")
     conf.HOST_IP = requests.get('https://api.ipify.org').text
 
     # Determine what type the node is based on VK
@@ -42,9 +29,9 @@ def boot(delay):
     _, vk = wallet.new(seed=sk)
 
     node_type = None
-    if vk in masternodes:
+    if vk in v.get_masternodes():
         node_type = MASTERNODE
-    elif vk in delegates:
+    elif vk in v.get_delegates():
         node_type = DELEGATE
 
     if node_type is None:
