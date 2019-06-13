@@ -4,6 +4,8 @@ stamps_enabled = Variable()
 nonces_enabled = Variable()
 fluctuating_quorum_enabled = Variable()
 
+
+
 @construct
 def seed(masternodes,
          delegates,
@@ -41,3 +43,9 @@ def get_nonces_enabled():
 @export
 def get_fluctuating_quorum_enabled():
     return fluctuating_quorum_enabled.get()
+
+
+@export
+def get_boot_quorum_masternodes():
+    return len(masternode_list.get())
+

@@ -1,6 +1,5 @@
 from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.constants import conf
-from cilantro_ee.constants.conf import CIL_CONF_PATH
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import overwrite_logger_level
 from contracting.logger import overwrite_logger_level as sen_overwrite_log
@@ -14,41 +13,38 @@ import requests
 
 
 def boot(delay):
-    assert os.path.exists(CIL_CONF_PATH), "No config file found at path {}. Comon man get it together!".format(CIL_CONF_PATH)
 
+    # Initialize database
     client = ContractingClient()
 
     if conf.RESET_DB:
         client.raw_driver.flush()
 
-    print("Seeding genesis contract and building VKBook...")
+    VKBook().intitialize()
 
-    book = read_public_constitution(conf.CONSTITUTION_FILE)
-    mns = [node['vk'] for node in book['masternodes']]
-    dels = [node['vk'] for node in book['delegates']]
-
-    sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns, 'delegates': dels})
-
+    # Pull VKBook smart contract out to verify it has been set properl
     vk_book_contract = client.get_contract('vkbook')
 
+    # Pull masternode and delegate VKs from state
     masternodes = vk_book_contract.get_masternodes()
     delegates = vk_book_contract.get_delegates()
 
+    # Set them to in-memory system wide constants
     VKBook.set_masternodes(masternodes)
     VKBook.set_delegates(delegates)
 
+    # Get the node's ip address
     print("Configuring your node...")
     conf.HOST_IP = requests.get('https://api.ipify.org').text
-    print("Your public IP is: {}".format(conf.HOST_IP))
-    sk = bytes.fromhex(conf.SK)
-    _, vk = wallet.new(seed=sk)
-    print("Your VK is: {}.".format(vk))
 
     # Determine what type the node is based on VK
+    sk = bytes.fromhex(conf.SK)
+    _, vk = wallet.new(seed=sk)
+
     node_type = None
-    if vk in mns:
+    if vk in masternodes:
         node_type = MASTERNODE
-    elif vk in dels:
+    elif vk in delegates:
         node_type = DELEGATE
 
     if node_type is None:
