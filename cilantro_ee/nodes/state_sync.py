@@ -12,7 +12,6 @@ from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.base import NodeBase
 
-from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants.zmq_filters import *
 

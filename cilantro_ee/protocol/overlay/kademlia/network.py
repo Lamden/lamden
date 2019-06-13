@@ -16,7 +16,7 @@ from hashlib import sha1
 import umsgpack
 
 from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery
-from cilantro_ee.constants.conf import CilantroConf
+from cilantro_ee.constants import conf
 from cilantro_ee.protocol.overlay.kademlia.handshake import Handshake
 from cilantro_ee.protocol.overlay.kademlia.node import Node
 from cilantro_ee.protocol.overlay.kademlia.routing import RoutingTable
@@ -81,7 +81,7 @@ class Network(object):
         self.log = get_logger('OS.Network')
 
         self.vk = vk
-        self.host_ip = CilantroConf.HOST_IP
+        self.host_ip = conf.HOST_IP
         self.port = DHT_PORT
 
         self.node = Node(digest(vk), ip=self.host_ip, port=self.port, vk=vk)
@@ -141,8 +141,8 @@ class Network(object):
 
     # enterprise version of booting up
     async def _bootup_ee(self):
-        self.log.info("Loading vk, ip information of {} nodes in this enterprise setup".format(len(CilantroConf.VK_IP_MAP)))
-        for vk, ip in CilantroConf.VK_IP_MAP.items():
+        self.log.info("Loading vk, ip information of {} nodes in this enterprise setup".format(len(conf.VK_IP_MAP)))
+        for vk, ip in conf.VK_IP_MAP.items():
             if vk == self.vk:     # no need to insert myself into the routing table
                 continue
             node = Node(digest(vk), ip=ip, port=self.port, vk=vk)
