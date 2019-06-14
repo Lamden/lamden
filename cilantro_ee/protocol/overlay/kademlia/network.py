@@ -470,8 +470,8 @@ class Network(object):
         if not nd:
             nd = await self.network_find_ip(event_id, nodes, vk_to_find)
         ip = nd.ip if nd else None
-        status = 'authorized' if ip else 'unknown_vk'
-        await Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
+        # status = 'authorized' if ip else 'unknown_vk'
+        # await Event.emit({'event': status, 'vk': vk_to_find, 'ip': ip, 'domain': '*'})
         return ip
 
     async def _find_n_announce(self, vk_to_find):

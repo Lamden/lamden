@@ -63,13 +63,13 @@ class OverlayClient(OverlayInterface):
             self.log.spam("OverlayClient received event {}".format(msg))
             event_handler(msg)
 
-    async def reply_listener(self, event_handler):
+    async def reply_listener(self, reply_handler):
         self.log.debugv("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
-            self.log.spam("OverlayClient received reply {}".format(msg))
             event = json.loads(msg[-1])
-            event_handler(event)
+            self.log.spam("OverlayClient received reply {} and event {}".format(msg, event))
+            reply_handler(event)
 
     def teardown(self):
         self.cmd_sock.close()

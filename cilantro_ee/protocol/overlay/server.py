@@ -9,6 +9,12 @@ from cilantro_ee.protocol.overlay.kademlia.network import Network
 from collections import deque
 
 
+def no_reply(fn):
+    def _no_reply(self, *args, **kwargs):
+        id_frame = args[0]
+        fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
+    return _no_reply
+
 def reply(fn):
     def _reply(self, *args, **kwargs):
         id_frame = args[0]
@@ -77,17 +83,12 @@ class OverlayServer(OverlayInterface):
                 raise Exception("Unsupported API call {}".format(func))
            
 
-    @async_reply
+    @no_reply
     async def ready(self, *args, **kwargs):
         self.log.debugv('Overlay Client # {} ready!'.format(self.quorum))
         self.quorum = self.quorum - 1
         if self.quorum == 0:
             await self.network.bootup()
-        return {
-            'event': 'service_status',
-            'status': 'not_ready'
-        }
-
 
     @reply
     def invalid_api_call(self, api_call):

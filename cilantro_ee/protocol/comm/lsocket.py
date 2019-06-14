@@ -29,6 +29,7 @@ def vk_lookup(func):
 
             self.pending_lookups[cmd_id] = cmd_tuple
             self.manager.pending_lookups[cmd_id] = self
+            self.manager.tracking_vks[kwargs['vk']].append(self)
             self.conn_tracker[kwargs['vk']] = cmd_tuple
 
             # DEBUG -- TODO DELETE
@@ -151,15 +152,22 @@ class LSocketBase:
         msg should be forwarded to the user handlers, and False otherwise. See LSocketRouter for example."""
         return True
 
-    def handle_overlay_event(self, event: dict):
-        self.log.spam("Socket handling overlay event {}".format(event))
+    def handle_overlay_reply(self, event: dict):
+        self.log.spam("Socket handling overlay reply {}".format(event))
         ev_name = event['event']
 
         if ev_name == 'got_ip':
             self._handle_got_ip(event)
         elif ev_name == 'not_found':
             self._handle_not_found(event)
-        elif ev_name == 'node_online':
+        else:
+            raise Exception("LSocket got overlay reply '{}' that it is not configured to handle!".format(ev_name))
+
+    def handle_overlay_event(self, event: dict):
+        self.log.spam("Socket handling overlay event {}".format(event))
+        ev_name = event['event']
+
+        if ev_name == 'node_online':
             self._handle_node_online(event)
         else:
             raise Exception("LSocket got overlay event '{}' that it is not configured to handle!".format(ev_name))
