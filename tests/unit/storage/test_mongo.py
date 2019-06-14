@@ -21,6 +21,7 @@ class TestMasterDatabase(TestCase):
         m = MasterDatabase(signing_key=self.sk)
 
         block = {
+            'blockNum': 0,
             'sender': 'stu',
             'amount': 1000000
         }
@@ -34,3 +35,37 @@ class TestMasterDatabase(TestCase):
         result = m.insert_block()
         self.assertFalse(result)
 
+    def test_get_block_number_returns_data(self):
+        m = MasterDatabase(signing_key=self.sk)
+
+        block = {
+            'blockNum': 0,
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        m.insert_block(block)
+
+        block = m.get_block({'blockNum': 0})
+        self.assertTrue(block)
+
+    def test_drop_db(self):
+        m = MasterDatabase(signing_key=self.sk)
+
+        block = {
+            'blockNum': 0,
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        result = m.insert_block(block)
+        self.assertTrue(result)
+
+        block = m.get_block({'blockNum': 0})
+        self.assertTrue(block)
+
+        m.drop_db()
+        m.setup_db()
+
+        block = m.get_block({'blockNum': 0})
+        self.assertIsNone(block)

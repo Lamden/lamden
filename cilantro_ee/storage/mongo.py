@@ -8,7 +8,6 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.block_data.block_data import BlockData, MessageBase
 from cilantro_ee.protocol import wallet
 
-
 class MasterDatabase:
     def __init__(self, signing_key, config_path=cilantro_ee.__path__[0]):
         # Setup signing and verifying key
@@ -82,6 +81,10 @@ class MasterDatabase:
         if block_id:
             return True
 
+    def get_block(self, block_number=None):
+        block = self.block_collection.find_one(block_number)
+        print(block)
+        return block
 
 class MDB:
     # Config
