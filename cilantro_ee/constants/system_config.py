@@ -10,7 +10,7 @@ POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basic
 # some of these config constants
 
 NUM_MASTERS = len(PhoneBook.masternodes)
-NUM_WITNESSES = len(VKBook.get_witnesses())
+NUM_WITNESSES = len(PhoneBook.witnesses)
 NUM_DELEGATES = len(PhoneBook.delegates)
 NUM_NODES = NUM_MASTERS + NUM_WITNESSES + NUM_DELEGATES
 

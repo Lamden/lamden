@@ -10,14 +10,14 @@ from contracting.client import ContractingClient
 log = get_logger("VKBook")
 
 INITIALIZED = False
-
+DEBUG = True
 
 class ReplacementVKBook:
     def __init__(self):
         self.client = ContractingClient()
 
         self.contract = self.client.get_contract('vkbook')
-        if self.contract is None:
+        if self.contract is None or DEBUG:
             book = read_public_constitution(conf.CONSTITUTION_FILE)
             mns = [node['vk'] for node in book['masternodes']]
             dels = [node['vk'] for node in book['delegates']]
@@ -76,23 +76,6 @@ PhoneBook = ReplacementVKBook()
 
 
 class VKBook:
-    def __init__(self):
-        self.client = ContractingClient()
-
-        self.contract = self.client.get_contract('vkbook')
-        if self.contract is None:
-            book = read_public_constitution(conf.CONSTITUTION_FILE)
-            mns = [node['vk'] for node in book['masternodes']]
-            dels = [node['vk'] for node in book['delegates']]
-
-            # Put VKs into VKBook smart contract and submit it to state
-            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
-                                                                        'delegates': dels,
-                                                                        'stamps': conf.STAMPS_ENABLED,
-                                                                        'nonces': conf.NONCE_ENABLED})
-
-            self.contract = self.client.get_contract('vkbook')
-
     node_types = ('masternode', 'witness', 'delegate')
     node_types_map = {
         'masternode': 'masternodes',
@@ -145,27 +128,7 @@ class VKBook:
                 cls.book['notifiers'].append(node['vk'])
 
             # cls._build_mn_witness_maps()
-            cls._setup_quorums()
             cls.SETUP = True
-
-    # todo we need to enhance bootnodes to have separate lists of masternodes and delegates. Until then, let's assume equal split
-    @classmethod
-    def _setup_quorums(cls):
-        # num_bootnodes = len(CilantroConf.BOOTNODES)
-        # num_masternodes = num_bootnodes // 2
-        # num_delegates = num_bootnodes - num_masternodes
-
-        num_masternodes = len(cls.get_masternodes())
-        num_delegates = len(cls.get_delegates())
-        num_bootnodes = len(cls.get_all())
-
-        # cls.BOOT_QUORUM = math.ceil(num_bootnodes * 2 / 3)
-        # cls.BOOT_QUORUM_MASTERNODES = math.ceil(num_masternodes * 2 / 3)
-        # cls.BOOT_QUORUM_DELEGATES = math.ceil(num_delegates * 2 / 3)
-
-        cls.BOOT_QUORUM = num_bootnodes
-        cls.BOOT_QUORUM_MASTERNODES = num_masternodes
-        cls.BOOT_QUORUM_DELEGATES = num_delegates
 
     @classmethod
     def add_node(cls, vk, node_type, ip=None):
@@ -179,21 +142,6 @@ class VKBook:
             encoded_ip = 1
         cls.book[node_type][vk] = encoded_ip
 
-
-    @classmethod
-    def get_all(cls):
-        # return cls.get_masternodes() + cls.get_delegates() + cls.get_witnesses() + cls.get_schedulers() \
-        #        + cls.get_notifiers()
-        return cls.get_masternodes() + cls.get_delegates()
-
-    @classmethod
-    def get_masternodes(cls) -> list:
-        return cls.book['masternodes']
-
-    @classmethod
-    def set_masternodes(cls, nodes):
-        cls.book['masternodes'] = nodes
-
     @classmethod
     def get_witnesses(cls) -> list:
         return cls.book['witnesses']
@@ -201,10 +149,6 @@ class VKBook:
     @classmethod
     def get_delegates(cls) -> list:
         return cls.book['delegates']
-
-    @classmethod
-    def set_delegates(cls, nodes):
-        cls.book['delegates'] = nodes
 
     @classmethod
     def get_schedulers(cls) -> list:

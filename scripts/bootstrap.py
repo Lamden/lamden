@@ -1,6 +1,6 @@
 from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.constants import conf
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import overwrite_logger_level
 import sys, time
 from contracting.client import ContractingClient
@@ -18,8 +18,6 @@ def boot(delay):
     if conf.RESET_DB:
         client.raw_driver.flush()
 
-    v = VKBook()
-
     conf.HOST_IP = requests.get('https://api.ipify.org').text
 
     # Determine what type the node is based on VK
@@ -29,9 +27,9 @@ def boot(delay):
     print('Metering enabled: {}'.format(conf.STAMPS_ENABLED))
 
     node_type = None
-    if vk in v.get_masternodes():
+    if vk in PhoneBook.masternodes:
         node_type = MASTERNODE
-    elif vk in v.get_delegates():
+    elif vk in PhoneBook.delegates:
         node_type = DELEGATE
 
     if node_type is None:
