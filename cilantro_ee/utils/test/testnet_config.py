@@ -44,7 +44,6 @@ def get_config_filename():
 
 
 def read_public_constitution(filename) -> dict:
-    print('f :{}'.format(PUBLIC_JSON_DIR))
     fpath = PUBLIC_JSON_DIR + '/' + filename
     assert os.path.exists(fpath), "No public constitution file found at path {}".format(fpath)
     with open(fpath) as f:

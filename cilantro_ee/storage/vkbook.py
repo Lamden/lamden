@@ -6,6 +6,7 @@ from contracting.client import ContractingClient
 
 log = get_logger("VKBook")
 
+
 class VKBook:
     def __init__(self, masternodes, delegates, stamps, nonces, debug=True):
         self.client = ContractingClient()
