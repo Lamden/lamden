@@ -5,7 +5,7 @@ from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.constants.ports import DISCOVERY_PORT
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import conf
 
 
@@ -35,7 +35,8 @@ class Discovery:
 
         # raghu TODO - #enh maintain a list of ips serviced with a relative time counter to deny dos attacks ?
         # raghu TODO #enh separate out vkbook - again through genesis script?
-        if VKBook.is_node_type('masternode', self.vk):
+
+        if self.vk in PhoneBook.masternodes:
             self.is_masternode = True
             if (len(PhoneBook.masternodes) == 2):
                 self.min_discovery_nodes = 1

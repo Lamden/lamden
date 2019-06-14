@@ -4,7 +4,7 @@ from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature, bui
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol import wallet
 from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.utils.hasher import Hasher
 from typing import List
 
@@ -23,7 +23,7 @@ class SubBlockContender(MessageBase):
 
     def validate(self):
         self.transactions # Will throw an error if it cannot be deserialized
-        assert VKBook.is_node_type('delegate', self.signature.sender), 'Not a valid delegate'
+        assert self.signature.sender in PhoneBook.delegates, 'Not a valid delegate'
         assert self.signature.verify(bytes.fromhex(self.result_hash)), 'Cannot verify signature'
         assert self._data.resultHash, "result hash field missing from data {}".format(self._data)
         assert self._data.inputHash, "input hash field missing from data {}".format(self._data)

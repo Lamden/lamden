@@ -6,12 +6,9 @@ import sys, time
 from contracting.client import ContractingClient
 from cilantro_ee.protocol import wallet
 import requests
-from cilantro_ee.constants.system_config import NUM_DELEGATES, NUM_MASTERS, NUM_WITNESSES
+
 
 def boot(delay):
-
-    print(NUM_DELEGATES, NUM_MASTERS, NUM_WITNESSES)
-
     # Initialize database
     client = ContractingClient()
 

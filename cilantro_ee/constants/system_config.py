@@ -1,5 +1,4 @@
-from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
-from cilantro_ee.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.storage.vkbook import PhoneBook
 import math
 
 
