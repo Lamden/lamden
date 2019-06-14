@@ -120,7 +120,7 @@ class BlockAggregator(Worker):
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
-        self.log.spam("Sleeping before triggering catchup...")
+        self.log.info("Sleeping before triggering catchup...")
         await asyncio.sleep(8)
         # now start the catchup
         await self._trigger_catchup()
@@ -137,7 +137,6 @@ class BlockAggregator(Worker):
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        self.log.spam("Sending msg to batcher: {}".format(message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
@@ -147,7 +146,6 @@ class BlockAggregator(Worker):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
-        self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
             if not self.catchup_manager.is_catchup_done():
@@ -174,7 +172,6 @@ class BlockAggregator(Worker):
         sender = envelope.sender
 
         assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
-        self.log.spam("Got ROUTER msg from sender {} with id frame {}\nMessage: {}".format(sender, frames[0], msg))
 
         if isinstance(msg, BlockDataRequest):
             self.catchup_manager.recv_block_data_req(sender, msg)
@@ -203,7 +200,7 @@ class BlockAggregator(Worker):
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
         if self.curr_block.is_consensus_reached():
-            self.log.success("Consensus reached for prev hash {} (is_empty={})"
+            self.log.info("Consensus reached for prev hash {} (is_empty={})"
                              .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
             return

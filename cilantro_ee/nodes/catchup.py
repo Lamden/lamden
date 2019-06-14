@@ -92,7 +92,7 @@ class CatchupManager:
 
     # should be called only once per node after bootup is done
     def run_catchup(self, ignore=False):
-        self.log.important3("-----RUN-----")
+        self.log.info("-----RUN CATCHUP-----")
         # check if catch up is already running
         if ignore and self.is_catchup_done():
             self.log.warning("Already caught up. Ignoring to run it again.")
@@ -141,7 +141,6 @@ class CatchupManager:
     async def _check_timeout(self):
         async def _timeout():
             elapsed = 0
-            # self.log.important3("-----CHK-----")
             while elapsed < IDX_REPLY_TIMEOUT:
                 elapsed += TIMEOUT_CHECK_INTERVAL
                 await asyncio.sleep(TIMEOUT_CHECK_INTERVAL)
@@ -167,7 +166,6 @@ class CatchupManager:
         :return:
         """
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
-        # self.log.important3("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))  # TODO remove
         req = BlockIndexRequest.create(block_hash=self.curr_hash)
         self.pub.send_msg(req, header=BLOCK_IDX_REQ_FILTER.encode())
 
@@ -181,7 +179,6 @@ class CatchupManager:
         :param reply:
         :return:
         """
-        # self.log.important("Got blk index reply from sender {}\nreply: {}".format(sender_vk, reply))
         if sender_vk in self.node_idx_reply_set:
             return      # already processed
 
@@ -203,9 +200,7 @@ class CatchupManager:
         if new_blks > 0:
             self.target_blk_num = self.new_target_blk_num
             update_list = tmp_list[-new_blks:]
-            # self.log.important("update list {}".format(update_list))
             self.block_delta_list.extend(update_list)
-            # self.dump_debug_info()
             if self.awaited_blknum == self.curr_num:
                 self.process_recv_idx()
 
@@ -226,25 +221,23 @@ class CatchupManager:
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
-        # self.log.important2("SEND BDRq")
         self.dump_debug_info(lnum = 209)
 
     def _recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
-        self.log.debugv("Got BlockData reply for block hash {}".format(reply.block_hash))
         self.dump_debug_info(lnum = 216)
 
         rcv_blk_num = reply.block_num
         if rcv_blk_num <= self.curr_num:
-            self.log.debug("dropping already processed blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
+            self.log.debug2("dropping already processed blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
             return
 
         self.rcv_block_dict[rcv_blk_num] = reply
         # WHY IS AWAITED BLK NUM NONE HERE ???
         if rcv_blk_num > self.awaited_blknum:
-            self.log.debug("Got block num {}, still awaiting block num {}".format(rcv_blk_num, self.awaited_blknum))
+            self.log.debug2("Got block num {}, still awaiting block num {}".format(rcv_blk_num, self.awaited_blknum))
             return
 
         if (rcv_blk_num == self.awaited_blknum):
@@ -253,9 +246,7 @@ class CatchupManager:
             self.process_recv_idx()
 
     def recv_block_data_reply(self, reply: BlockData):
-        # self.log.important("recv block data reply {}".format(reply))   # TODO remove
         self._recv_block_data_reply(reply)
-        # self.log.important2("RCV BDRp")
         self.dump_debug_info(lnum = 231)
         return self.is_catchup_done()
 
@@ -287,7 +278,6 @@ class CatchupManager:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
                                                                                   " {}" .format(delta_idx)
 
-        # self.log.important2("RCV BIR")
         self.dump_debug_info(lnum = 258)
         self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
 
@@ -425,17 +415,17 @@ class CatchupManager:
     def dump_debug_info(self, lnum = None):
         # TODO change this log to important for debugging
 
-        self.log.debugv("lnum -> {}".format(lnum))
-        self.log.debugv("Time -> {}".format(self.timeout_catchup))
-        self.log.debugv("is_caught_up -> {}".format(self.is_caught_up))
-        self.log.debugv("target blk num -> {}".format(self.target_blk_num))
-        self.log.debugv("awaited blk num -> {}".format(self.awaited_blknum))
-        self.log.debugv("curr_num -> {}".format(self.curr_num))
-        self.log.debugv("curr_hash -> {}".format(self.curr_hash))
+        self.log.debug2("lnum -> {}".format(lnum))
+        self.log.debug2("Time -> {}".format(self.timeout_catchup))
+        self.log.debug2("is_caught_up -> {}".format(self.is_caught_up))
+        self.log.debug2("target blk num -> {}".format(self.target_blk_num))
+        self.log.debug2("awaited blk num -> {}".format(self.awaited_blknum))
+        self.log.debug2("curr_num -> {}".format(self.curr_num))
+        self.log.debug2("curr_hash -> {}".format(self.curr_hash))
 
-        self.log.debugv("Pending blk list -> {}".format(self.block_delta_list))
-        self.log.debugv("Received blk dict -> {}".format(self.rcv_block_dict))
+        self.log.debug2("Pending blk list -> {}".format(self.block_delta_list))
+        self.log.debug2("Received blk dict -> {}".format(self.rcv_block_dict))
 
-        self.log.debugv("quorum nodes -> {}".format(self.node_idx_reply_set))
-        self.log.debugv("self._check_idx_reply_quorum() -> {}".format(self._check_idx_reply_quorum()))
+        self.log.debug2("quorum nodes -> {}".format(self.node_idx_reply_set))
+        self.log.debug2("self._check_idx_reply_quorum() -> {}".format(self._check_idx_reply_quorum()))
 
