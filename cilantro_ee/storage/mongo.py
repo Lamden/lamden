@@ -1,12 +1,85 @@
 import cilantro_ee
 import os, time
 import capnp
-from configparser import SafeConfigParser
+from configparser import SafeConfigParser, ConfigParser
 from pymongo import MongoClient, DESCENDING
 from cilantro_ee.utils.utils import MongoTools
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.messages.block_data.block_data import GenesisBlockData, BlockData, MessageBase
+from cilantro_ee.messages.block_data.block_data import BlockData, MessageBase
 from cilantro_ee.protocol import wallet
+
+class MasterDatabase:
+    def __init__(self, signing_key, config_path=cilantro_ee.__path__[0]):
+        # Setup signing and verifying key
+        self.signing_key = signing_key
+        self.verifying_key = wallet.get_vk(self.signing_key)
+
+        # Setup configuration file to read constants
+        self.config_path = config_path
+
+        self.config = ConfigParser()
+        self.config.read(self.config_path)
+
+        self.block_client = None
+        self.block_db = None
+        self.block_collection = None
+
+        self.index_client = None
+        self.index_db = None
+        self.index_collection = None
+
+        self.tx_client = None
+        self.tx_db = None
+        self.tx_collection = None
+
+        self.setup_db()
+
+    def setup_db(self):
+
+        # Setup the DB
+        user = self.config.get('MN_DB', 'username')
+        password = self.config.get('MN_DB', 'password')
+        port = self.config.get('MN_DB', 'port')
+        block_database = self.config.get('MN_DB', 'mn_blk_database')
+
+        URI = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'
+        block_uri = URI.format(user, password, port, block_database)
+
+        self.block_client = MongoClient(block_uri)
+        self.block_db = self.block_client.get_database()
+        self.block_collection = self.block_db['blocks']
+
+        index_database = self.config.get('MN_DB', 'mn_index_database')
+        index_uri = URI.format(user, password, port, index_database)
+
+        self.index_client = MongoClient(index_uri)
+        self.index_db = self.index_client.get_database()
+        self.index_collection = self.index_db['index']
+
+        tx_database = self.config.get('MN_DB', 'mn_tx_database')
+        tx_uri = URI.format(user, password, port, tx_database)
+
+        self.tx_client = MongoClient(tx_uri)
+        self.tx_db = self.tx_client.get_database()
+        self.tx_collection = self.tx_db['tx']
+
+    def drop_db(self):
+        self.block_client.drop_database(self.block_db)
+        self.index_client.drop_database(self.index_db)
+
+    def reset_db(self):
+        self.drop_db()
+        self.setup_db()
+
+    def insert_block(self, block_dict=None):
+        if block_dict is None:
+            return False
+
+        # insert passed dict block to db
+        block_id = self.block_collection.insert_one(block_dict)
+
+        if block_id:
+            return True
 
 
 class MDB:
@@ -237,7 +310,7 @@ class MDB:
             return None
 
     @classmethod
-    def query_store(cls, blk_num = None):
+    def query_store(cls, blk_num=None):
         """
         Returns locally stored block by blk_num
         :param blk_num:

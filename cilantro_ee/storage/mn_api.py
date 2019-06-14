@@ -7,8 +7,6 @@ from typing import List
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.constants.system_config import *
 
-import time
-
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
