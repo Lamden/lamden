@@ -1,7 +1,7 @@
 import os
 import cilantro_ee
 from configparser import SafeConfigParser
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -54,7 +54,7 @@ class MasterOps:
     @classmethod
     def get_master_set(cls):
         if cls.test_hook is False:
-            cls.active_masters = len(VKBook.get_masternodes())
+            cls.active_masters = len(PhoneBook.masternodes)
             return cls.active_masters
         else:
             return cls.active_masters
@@ -68,7 +68,7 @@ class MasterOps:
         if cls.test_hook is True:
             return cls.mn_id
         # TODO note active masters need to evaluated in future VK book != active masters
-        masternode_vks = VKBook.get_masternodes()
+        masternode_vks = PhoneBook.masternodes
         for i in range(cls.active_masters):
             if masternode_vks[i] == vk:
                 cls.mn_id = i
@@ -107,7 +107,7 @@ class MasterOps:
 
     @classmethod
     def build_wr_list(cls, curr_node_idx = None, jump_idx = 1):
-        all_mn = VKBook.get_masternodes()
+        all_mn = PhoneBook.masternodes
         tot_mn = len(all_mn)
         mn_list = []
 

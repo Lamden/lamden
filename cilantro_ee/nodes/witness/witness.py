@@ -11,7 +11,7 @@ from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.signals.kill_signal import KillSignal
 
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.utils.hasher import Hasher
 
 import zmq, asyncio, time
@@ -41,10 +41,10 @@ class Witness(NodeBase):
         self.pub = self.manager.create_socket(socket_type=zmq.PUB, name='SBB-Publisher', secure=True)
 
         mn_vk = WITNESS_MN_MAP[self.verifying_key]
-        mn_idx = VKBook.get_masternodes().index(mn_vk)
+        mn_idx = PhoneBook.masternodes.index(mn_vk)
         port = SBB_PORT_START + mn_idx
 
-        for delegate_vk in VKBook.get_delegates():
+        for delegate_vk in PhoneBook.delegates:
             self.log.info("Witness connecting PUB socket to vk {} on port {}".format(delegate_vk, port))
             self.pub.connect(vk=delegate_vk, port=port)
 

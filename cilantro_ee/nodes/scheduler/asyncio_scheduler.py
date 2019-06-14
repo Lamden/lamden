@@ -1,7 +1,7 @@
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.constants import conf
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 import asyncio, time, random, aiohttp
 
 WORDS = ("butt", "orange", "trump", "yellow", "ketchup", "chonks", "chungus", "bigbio", "thicc n sicc")
@@ -20,7 +20,7 @@ class AsyncioScheduler:
 
         # Set masternode IPs
         # TODO do away with this jankery and find a proper mechanism to get a set of masternode IPs
-        self.mn_ips = [conf.VK_IP_MAP[vk] for vk in VKBook.get_masternodes()]
+        self.mn_ips = [conf.VK_IP_MAP[vk] for vk in PhoneBook.masternodes]
 
     async def send_tx(self, contract_name, fn_name, kwargs):
         print("sending {}.{} with kwargs {}".format(contract_name, fn_name, kwargs))

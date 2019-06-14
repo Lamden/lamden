@@ -30,6 +30,11 @@ class ReplacementVKBook:
 
             self.contract = self.client.get_contract('vkbook')
 
+        self.boot_quorum_masternodes = len(self.masternodes)
+        self.boot_quorum_delegates = len(self.delegates)
+
+        self.boot_quorum = self.boot_quorum_masternodes + self.boot_quorum_delegates
+
     @property
     def stamps_enabled(self):
         return self.contract.get_stamps_enabled()
@@ -51,8 +56,20 @@ class ReplacementVKBook:
         return self.contract.get_witnesses()
 
     @property
+    def notifiers(self):
+        return self.contract.get_notifiers()
+
+    @property
+    def schedulers(self):
+        return self.contract.get_schedulers()
+
+    @property
     def state_sync(self):
         return self.masternodes + self.delegates
+
+    @property
+    def all(self):
+        return self.masternodes + self.delegates + self.witnesses
 
 
 PhoneBook = ReplacementVKBook()
@@ -162,18 +179,6 @@ class VKBook:
             encoded_ip = 1
         cls.book[node_type][vk] = encoded_ip
 
-
-    @classmethod
-    def get_boot_quorum(cls) -> int:
-        return cls.BOOT_QUORUM
-
-    @classmethod
-    def get_boot_quorum_masternodes(cls) -> int:
-        return cls.BOOT_QUORUM_MASTERNODES
-
-    @classmethod
-    def get_boot_quorum_delegates(cls) -> int:
-        return cls.BOOT_QUORUM_DELEGATES
 
     @classmethod
     def get_all(cls):

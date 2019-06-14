@@ -1,6 +1,9 @@
 delegate_list = Variable()
 masternode_list = Variable()
 witness_list = Variable()
+notifier_list = Variable()
+scheduler_list = Variable()
+
 stamps_enabled = Variable()
 nonces_enabled = Variable()
 fluctuating_quorum_enabled = Variable()
@@ -17,6 +20,8 @@ def seed(masternodes,
     masternode_list.set(masternodes)
     delegate_list.set(delegates)
     witness_list.set([])
+    notifier_list.set([])
+    scheduler_list.set([])
 
     stamps_enabled.set(stamps)
     nonces_enabled.set(nonces)
@@ -35,6 +40,15 @@ def get_masternodes():
 @export
 def get_witnesses():
     return witness_list.get()
+
+@export
+def get_notifiers():
+    return notifier_list.get()
+
+
+@export
+def get_schedulers():
+    return scheduler_list.get()
 
 
 @export
