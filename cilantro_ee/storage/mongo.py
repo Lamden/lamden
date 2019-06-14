@@ -81,10 +81,23 @@ class MasterDatabase:
         if block_id:
             return True
 
-    def get_block(self, block_number=None):
-        block = self.block_collection.find_one(block_number)
-        print(block)
+    def get_block_by_number(self, block_number=None):
+        block = self.block_collection.find_one({
+            'blockNum': block_number
+        })
+
         return block
+
+    def get_block_by_hash(self, block_hash=None):
+        block = self.block_collection.find_one({
+            'blockHash': block_hash
+        })
+
+        return block
+
+    def get_last_n_blocks(self, n=1):
+
+        pass
 
 class MDB:
     # Config

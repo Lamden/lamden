@@ -6,19 +6,19 @@ from cilantro_ee.protocol import wallet
 class TestMasterDatabase(TestCase):
     def setUp(self):
         self.sk, self.vk = wallet.new()
+        self.db = MasterDatabase(signing_key=self.sk)
+
+    def tearDown(self):
+        self.db.drop_db()
 
     def test_init_masterdatabase(self):
-        m = MasterDatabase(signing_key=self.sk)
-        self.assertIsNotNone(m.block_db)
+        self.assertIsNotNone(self.db.block_db)
 
     def test_insert_block_type_error_if_not_dict(self):
-        m = MasterDatabase(signing_key=self.sk)
-
         with self.assertRaises(TypeError):
-            m.insert_block(123)
+            self.db.insert_block(123)
 
     def test_insert_block_returns_true_when_provided_correct_arguments(self):
-        m = MasterDatabase(signing_key=self.sk)
 
         block = {
             'blockNum': 0,
@@ -26,46 +26,100 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = m.insert_block(block)
+        result = self.db.insert_block(block)
         self.assertTrue(result)
 
     def test_insert_block_returns_false_if_none_provided(self):
-        m = MasterDatabase(signing_key=self.sk)
-
-        result = m.insert_block()
+        result = self.db.insert_block()
         self.assertFalse(result)
 
     def test_get_block_number_returns_data(self):
-        m = MasterDatabase(signing_key=self.sk)
-
         block = {
             'blockNum': 0,
             'sender': 'stu',
             'amount': 1000000
         }
 
-        m.insert_block(block)
+        self.db.insert_block(block)
 
-        block = m.get_block({'blockNum': 0})
+        block = self.db.get_block_by_number(0)
         self.assertTrue(block)
 
     def test_drop_db(self):
-        m = MasterDatabase(signing_key=self.sk)
-
         block = {
             'blockNum': 0,
             'sender': 'stu',
             'amount': 1000000
         }
 
-        result = m.insert_block(block)
+        result = self.db.insert_block(block)
         self.assertTrue(result)
 
-        block = m.get_block({'blockNum': 0})
+        block = self.db.get_block_by_number(0)
         self.assertTrue(block)
 
-        m.drop_db()
-        m.setup_db()
+        self.db.drop_db()
 
-        block = m.get_block({'blockNum': 0})
+        block = self.db.get_block_by_number(0)
         self.assertIsNone(block)
+
+    def test_get_block_by_hash(self):
+        block = {
+            'blockNum': 0,
+            'blockHash': 'a',
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        result = self.db.insert_block(block)
+        self.assertTrue(result)
+
+        stored_block = self.db.get_block_by_hash('a')
+
+        self.assertEqual(block, stored_block)
+
+    def test_get_block_by_number(self):
+        block = {
+            'blockNum': 0,
+            'blockHash': 'a',
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        result = self.db.insert_block(block)
+        self.assertTrue(result)
+
+        stored_block = self.db.get_block_by_number(0)
+
+        self.assertEqual(block, stored_block)
+
+    def test_fail_get_block_by_hash(self):
+        block = {
+            'blockNum': 0,
+            'blockHash': 'a',
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        result = self.db.insert_block(block)
+        self.assertTrue(result)
+
+        stored_block = self.db.get_block_by_hash('b')
+
+        self.assertIsNone(stored_block)
+
+    def test_fail_get_block_by_number(self):
+        block = {
+            'blockNum': 0,
+            'blockHash': 'a',
+            'sender': 'stu',
+            'amount': 1000000
+        }
+
+        result = self.db.insert_block(block)
+        self.assertTrue(result)
+
+        stored_block = self.db.get_block_by_number(1)
+
+        self.assertIsNone(stored_block)
+
