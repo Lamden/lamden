@@ -12,7 +12,7 @@ class TestMasterDatabase(TestCase):
         self.db.drop_db()
 
     def test_init_masterdatabase(self):
-        self.assertIsNotNone(self.db.block_db)
+        self.assertIsNotNone(self.db.blocks)
 
     def test_insert_block_type_error_if_not_dict(self):
         with self.assertRaises(TypeError):

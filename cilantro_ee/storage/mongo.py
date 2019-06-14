@@ -8,6 +8,24 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.block_data.block_data import BlockData, MessageBase
 from cilantro_ee.protocol import wallet
 
+
+class StorageSet:
+    def __init__(self, user, password, port, database, collection_name):
+        self.uri = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'.format(
+            user,
+            password,
+            port,
+            database
+        )
+
+        self.client = MongoClient(self.uri)
+        self.db = self.client.get_database()
+        self.collection = self.db[collection_name]
+
+    def flush(self):
+        self.client.drop_database(self.db)
+
+
 class MasterDatabase:
     def __init__(self, signing_key, config_path=cilantro_ee.__path__[0]):
         # Setup signing and verifying key
@@ -20,34 +38,16 @@ class MasterDatabase:
         self.config = ConfigParser()
         self.config.read(self.config_path+'/mn_db_conf.ini')
 
-        self.block_client = None
-        self.block_db = None
-        self.block_collection = None
-
-        self.index_client = None
-        self.index_db = None
-        self.index_collection = None
-
-        self.tx_client = None
-        self.tx_db = None
-        self.tx_collection = None
-
-        self.setup_db()
-
-    def setup_db(self):
-
-        # Setup the DB
+        # Setup database connection objects
         user = self.config.get('MN_DB', 'username')
         password = self.config.get('MN_DB', 'password')
         port = self.config.get('MN_DB', 'port')
-        block_database = self.config.get('MN_DB', 'mn_blk_database')
 
         URI = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'
-        block_uri = URI.format(user, password, port, block_database)
 
-        self.block_client = MongoClient(block_uri)
-        self.block_db = self.block_client.get_database()
-        self.block_collection = self.block_db['blocks']
+        block_database = self.config.get('MN_DB', 'mn_blk_database')
+
+        self.blocks = StorageSet(user, password, port, block_database, 'blocks')
 
         index_database = self.config.get('MN_DB', 'mn_index_database')
         index_uri = URI.format(user, password, port, index_database)
@@ -64,40 +64,47 @@ class MasterDatabase:
         self.tx_collection = self.tx_db['tx']
 
     def drop_db(self):
-        self.block_client.drop_database(self.block_db)
+        self.blocks.flush()
         self.index_client.drop_database(self.index_db)
-
-    def reset_db(self):
-        self.drop_db()
-        self.setup_db()
 
     def insert_block(self, block_dict=None):
         if block_dict is None:
             return False
 
         # insert passed dict block to db
-        block_id = self.block_collection.insert_one(block_dict)
+        block_id = self.blocks.collection.insert_one(block_dict)
 
         if block_id:
             return True
 
     def get_block_by_number(self, block_number=None):
-        block = self.block_collection.find_one({
+        block = self.blocks.collection.find_one({
             'blockNum': block_number
         })
 
         return block
 
     def get_block_by_hash(self, block_hash=None):
-        block = self.block_collection.find_one({
+        block = self.blocks.collection.find_one({
             'blockHash': block_hash
         })
 
         return block
 
-    def get_last_n_blocks(self, n=1):
+    def get_last_n_local_blocks(self, n=1):
+        block_query = self.index_collection.find({}, {'_id': False}).sort(
+            'blockNum', DESCENDING
+        ).limit(n)
 
-        pass
+        blocks = [block for block in block_query]
+
+        if len(blocks) > 1:
+            first_block_num = blocks[0].get('blockNum')
+            last_block_num = blocks[-1].get('blockNum')
+
+            assert first_block_num > last_block_num, "Blocks are not descending."
+
+        return blocks
 
 class MDB:
     # Config

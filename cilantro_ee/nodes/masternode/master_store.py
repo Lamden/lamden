@@ -9,6 +9,12 @@ from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.storage.state import StateDriver
 
 
+class ColdStorage:
+    def __init__(self):
+        pass
+
+
+
 class MasterOps:
     """
         Class for various master operations
