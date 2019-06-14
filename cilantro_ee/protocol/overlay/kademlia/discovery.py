@@ -13,7 +13,7 @@ class Discovery:
 
     def __init__(self, vk, zmq_ctx):
         self.log = get_logger('OS.Discovery')
-        self.vk  = vk
+        self.vk = vk
         self.ctx = zmq_ctx
         self.host_ip = conf.HOST_IP
         # these part of genesis scripts?

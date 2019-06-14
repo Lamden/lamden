@@ -6,24 +6,18 @@ from contracting.client import ContractingClient
 
 log = get_logger("VKBook")
 
-DEBUG = True
-
-
 class VKBook:
-    def __init__(self):
+    def __init__(self, masternodes, delegates, stamps, nonces, debug=True):
         self.client = ContractingClient()
 
         self.contract = self.client.get_contract('vkbook')
-        if self.contract is None or DEBUG:
-            book = read_public_constitution(conf.CONSTITUTION_FILE)
-            mns = [node['vk'] for node in book['masternodes']]
-            dels = [node['vk'] for node in book['delegates']]
 
+        if self.contract is None or debug:
             # Put VKs into VKBook smart contract and submit it to state
-            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': mns,
-                                                                        'delegates': dels,
-                                                                        'stamps': conf.STAMPS_ENABLED,
-                                                                        'nonces': conf.NONCE_ENABLED})
+            sync.submit_contract_with_construction_args('vkbook', args={'masternodes': masternodes,
+                                                                        'delegates': delegates,
+                                                                        'stamps': stamps,
+                                                                        'nonces': nonces})
 
             self.contract = self.client.get_contract('vkbook')
 
@@ -69,4 +63,8 @@ class VKBook:
         return self.masternodes + self.delegates + self.witnesses
 
 
-PhoneBook = VKBook()
+book = read_public_constitution(conf.CONSTITUTION_FILE)
+masternodes = [node['vk'] for node in book['masternodes']]
+delegates = [node['vk'] for node in book['delegates']]
+
+PhoneBook = VKBook(masternodes, delegates, stamps=conf.STAMPS_ENABLED, nonces=conf.NONCE_ENABLED)
