@@ -31,8 +31,6 @@ def sync_genesis_contracts(genesis_path: str='genesis',
 
     genesis_contracts = contracts_for_directory(genesis_path, extension)
 
-    print(client.raw_driver.keys())
-
     for contract in genesis_contracts:
         name = contract_name_from_file_path(contract)
         if name in exclude:

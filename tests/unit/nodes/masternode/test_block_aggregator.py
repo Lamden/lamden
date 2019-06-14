@@ -4,7 +4,7 @@ from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 
 import unittest, asyncio
 from unittest import TestCase, mock
@@ -130,8 +130,8 @@ class TestBlockAggregator(TestCase):
         loop.run_until_complete(ba._connect_and_process())
         loop.close()
 
-        expected_num_mn_subs = len([vk for vk in VKBook.get_masternodes() if TEST_VK != vk])
-        expected_num_delegate_subs = len(VKBook.get_delegates())
+        expected_num_mn_subs = len([vk for vk in PhoneBook.masternodes if TEST_VK != vk])
+        expected_num_delegate_subs = len(PhoneBook.delegates)
         self.assertEqual(mock_sub.connect.call_count, expected_num_mn_subs + expected_num_delegate_subs)
 
         mock_pub.bind.assert_called_with(ip=TEST_IP, port=MN_PUB_PORT)

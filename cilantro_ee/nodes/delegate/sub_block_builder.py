@@ -56,9 +56,9 @@ from typing import List
 
 @unique
 class NextBlockState(Enum):
-    NOT_READY  = 0
-    READY      = 1
-    PROCESSED  = 2
+    NOT_READY = 0
+    READY = 1
+    PROCESSED = 2
 
 
 class NextBlockToMake:

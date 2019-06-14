@@ -4,10 +4,7 @@ from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
-from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.vkbook import PhoneBook
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.base import NodeBase
@@ -51,7 +48,7 @@ class StateSync(Worker):
 
         self.is_caught_up = False
         self.new_blk_notifs = defaultdict(list)  # mapping of block hash to new_block_notif messages
-        self.mn_quorum = math.ceil(len(VKBook.get_masternodes()) * (2/3))
+        self.mn_quorum = math.ceil(len(PhoneBook.masternodes) * (2/3))
 
         self.run()
 
@@ -125,7 +122,7 @@ class StateSync(Worker):
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for cm communication
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 

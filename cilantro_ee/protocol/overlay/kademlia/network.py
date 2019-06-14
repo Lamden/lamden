@@ -26,7 +26,7 @@ from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.constants.ports import DHT_PORT
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 
 class MalformedMessage(Exception):
     """
@@ -150,18 +150,18 @@ class Network(object):
         await asyncio.sleep(5)
 
     async def _wait_for_boot_quorum(self):
-        if (self.routing_table.numContacts() + 1) >= VKBook.get_boot_quorum():
+        if (self.routing_table.numContacts() + 1) >= PhoneBook.boot_quorum:
             return        # met overall quorum
         vks_connected = set()
-        is_masternode = self.vk in VKBook.get_masternodes()
+        is_masternode = self.vk in PhoneBook.masternodes
         if is_masternode:
-            quorum_required = VKBook.get_boot_quorum()
+            quorum_required = PhoneBook.boot_quorum
             quorum_required -= 1     # eliminate myself
-            vks_to_wait_for = VKBook.get_all()
+            vks_to_wait_for = PhoneBook.all
             vks_to_wait_for.remove(self.vk)
         else:
-            quorum_required = VKBook.get_boot_quorum_masternodes()
-            vks_to_wait_for = VKBook.get_masternodes()
+            quorum_required = PhoneBook.boot_quorum_masternodes
+            vks_to_wait_for = PhoneBook.masternodes
     
         while len(vks_to_wait_for) > 0:
             if len(vks_connected) >= quorum_required:

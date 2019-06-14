@@ -1,6 +1,5 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants import conf
 

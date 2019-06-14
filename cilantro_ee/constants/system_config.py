@@ -1,5 +1,4 @@
-from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES, TESTNET_WITNESSES
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 import math
 
 
@@ -9,9 +8,9 @@ POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basic
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
 
-NUM_MASTERS = len(VKBook.get_masternodes())
-NUM_WITNESSES = len(VKBook.get_witnesses())
-NUM_DELEGATES = len(VKBook.get_delegates())
+NUM_MASTERS = len(PhoneBook.masternodes)
+NUM_WITNESSES = len(PhoneBook.witnesses)
+NUM_DELEGATES = len(PhoneBook.delegates)
 NUM_NODES = NUM_MASTERS + NUM_WITNESSES + NUM_DELEGATES
 
 # How long each Node will wait for the rest of the network to come online before an error is raised

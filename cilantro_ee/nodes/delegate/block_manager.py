@@ -18,7 +18,7 @@ from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
@@ -178,7 +178,7 @@ class BlockManager(Worker):
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             self._connect_master_node(vk)
 
         # now start the catchup
@@ -210,11 +210,11 @@ class BlockManager(Worker):
             self.sb_builders[i].start()
 
     def _get_my_index(self):
-        for index, vk in enumerate(VKBook.get_delegates()):
+        for index, vk in enumerate(PhoneBook.delegates):
             if vk == self.verifying_key:
                 return index
 
-        raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, VKBook.get_delegates()))
+        raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, PhoneBook.delegates))
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this

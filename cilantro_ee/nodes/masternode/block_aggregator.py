@@ -2,6 +2,7 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
@@ -98,23 +99,23 @@ class BlockAggregator(Worker):
         await self._wait_until_ready()
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
                 # self.router.connect(vk=vk, port=MN_ROUTER_PORT)  # we don't want 2 simultaneous look ups @ overlay server
 
         # Listen to delegates for sub block contenders and state update requests
-        for vk in VKBook.get_delegates() :
+        for vk in PhoneBook.delegates:
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             # I dont think we to connect to delegates to router here as delegates are already connecting
             # in BlockManager --davis
             # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
-        for vk in VKBook.get_schedulers() + VKBook.get_notifiers():
+        for vk in PhoneBook.schedulers + PhoneBook.notifiers:
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
