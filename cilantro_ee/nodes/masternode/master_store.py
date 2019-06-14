@@ -3,16 +3,13 @@ import cilantro_ee
 from configparser import SafeConfigParser
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.storage.mongo import MDB
+from cilantro_ee.storage.mongo import MDB, MasterDatabase
 from cilantro_ee.messages.block_data.block_data import BlockData
-from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.storage.state import StateDriver
 
 
 class ColdStorage:
     def __init__(self):
         pass
-
 
 
 class MasterOps:

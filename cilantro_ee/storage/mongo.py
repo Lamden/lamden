@@ -5,7 +5,7 @@ from configparser import SafeConfigParser, ConfigParser
 from pymongo import MongoClient, DESCENDING
 from cilantro_ee.utils.utils import MongoTools
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.messages.block_data.block_data import BlockData, MessageBase
+from cilantro_ee.messages.block_data.block_data import BlockData, MessageBase, GenesisBlockData
 from cilantro_ee.protocol import wallet
 
 
@@ -38,34 +38,25 @@ class MasterDatabase:
         self.config = ConfigParser()
         self.config.read(self.config_path+'/mn_db_conf.ini')
 
-        # Setup database connection objects
         user = self.config.get('MN_DB', 'username')
         password = self.config.get('MN_DB', 'password')
         port = self.config.get('MN_DB', 'port')
 
-        URI = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'
-
         block_database = self.config.get('MN_DB', 'mn_blk_database')
-
-        self.blocks = StorageSet(user, password, port, block_database, 'blocks')
-
         index_database = self.config.get('MN_DB', 'mn_index_database')
-        index_uri = URI.format(user, password, port, index_database)
-
-        self.index_client = MongoClient(index_uri)
-        self.index_db = self.index_client.get_database()
-        self.index_collection = self.index_db['index']
-
         tx_database = self.config.get('MN_DB', 'mn_tx_database')
-        tx_uri = URI.format(user, password, port, tx_database)
 
-        self.tx_client = MongoClient(tx_uri)
-        self.tx_db = self.tx_client.get_database()
-        self.tx_collection = self.tx_db['tx']
+        # Setup database connection objects
+        self.blocks = StorageSet(user, password, port, block_database, 'blocks')
+        self.indexes = StorageSet(user, password, port, index_database, 'index')
+        self.txs = StorageSet(user, password, port, tx_database, 'tx')
+
+        if self.get_block_by_number(0) is None:
+            self.create_genesis_block()
 
     def drop_db(self):
         self.blocks.flush()
-        self.index_client.drop_database(self.index_db)
+        self.indexes.flush()
 
     def insert_block(self, block_dict=None):
         if block_dict is None:
@@ -73,6 +64,10 @@ class MasterDatabase:
 
         # insert passed dict block to db
         block_id = self.blocks.collection.insert_one(block_dict)
+
+        # Insert the index for faster lookups
+        index = {k: block_dict.get(k, None) for k in ('blockNum', 'blockHash', 'blockOwners')}
+        self.indexes.collection.insert_one(index)
 
         if block_id:
             return True
@@ -92,7 +87,7 @@ class MasterDatabase:
         return block
 
     def get_last_n_local_blocks(self, n=1):
-        block_query = self.index_collection.find({}, {'_id': False}).sort(
+        block_query = self.indexes.collection.find({}, {'_id': False}).sort(
             'blockNum', DESCENDING
         ).limit(n)
 
@@ -105,6 +100,32 @@ class MasterDatabase:
             assert first_block_num > last_block_num, "Blocks are not descending."
 
         return blocks
+
+    def get_block_owners(self, block_number=None, block_hash=None):
+        if block_number is not None:
+            query = {
+                'blockNum': block_number
+            }
+        elif block_hash is not None:
+            query = {
+                'blockHash': block_hash
+            }
+        else:
+            return None
+
+        block = self.indexes.collection.find_one(query)
+
+        if block is None:
+            return None
+
+        owners = block.get('blockOwners')
+        return owners
+
+    def create_genesis_block(self):
+        block = GenesisBlockData.create(sk=self.signing_key, vk=self.verifying_key)
+        _id = self.insert_block(block.to_dict())
+        assert _id, 'Failed to create Genesis Block'
+
 
 class MDB:
     # Config
@@ -206,7 +227,6 @@ class MDB:
 
     @classmethod
     def create_genesis_blk(cls):
-
         # create insert genesis blk
         block = GenesisBlockData.create(sk = cls.sign_key, vk = cls.verify_key)
         cls.init_mdb = cls.insert_block(block_dict=block._data.to_dict())
