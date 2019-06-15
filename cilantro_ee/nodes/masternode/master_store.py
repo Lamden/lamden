@@ -1,15 +1,52 @@
 import os
 import cilantro_ee
-from configparser import SafeConfigParser
+from configparser import SafeConfigParser, ConfigParser
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage.mongo import MDB, MasterDatabase
 from cilantro_ee.messages.block_data.block_data import BlockData
 
 
+class MasternodeConfig:
+    def __init__(self, config_path=cilantro_ee.__path__[0]):
+        # Setup configuration file to read constants
+        self.config_path = config_path
+
+        self.config = ConfigParser()
+        self.config.read(self.config_path + '/mn_db_conf.ini')
+
+        self.test_hook = self.config.get('MN_DB', 'test_hook')
+        self.mn_id = int(self.config.get('MN_DB', 'mn_id'))
+        self.rep_factor = int(self.config.get('MN_DB', 'replication'))
+        self.active_masters = int(self.config.get('MN_DB', 'total_mn'))
+        self.quorum_needed = int(self.config.get('MN_DB', 'quorum'))
+        self.test_hook = self.config.get('MN_DB', 'test_hook')
+
+
 class ColdStorage:
     def __init__(self):
-        pass
+        self.config = MasternodeConfig()
+
+    def get_master_set(self):
+        if self.config.test_hook is True:
+            return self.config.active_masters
+        else:
+            self.config.active_masters = len(PhoneBook.masternodes)
+            return self.config.active_masters
+
+    def set_mn_id(self, vk):
+        if self.config.test_hook is True:
+            return self.config.mn_id
+
+        # this should be rewritten to just pull from Phonebook because it's dynamic now
+        masternode_vks = PhoneBook.masternodes
+        for i in range(self.config.active_masters):
+            if masternode_vks[i] == vk:
+                self.config.mn_id = i
+                return True
+            else:
+                self.config.mn_id = -1
+                return False
 
 
 class MasterOps:
@@ -31,6 +68,7 @@ class MasterOps:
     test_hook = cfg.get('MN_DB', 'test_hook')
     init_state = False
 
+    MASTER = None
     '''
     Config Related operations
     '''
@@ -45,6 +83,8 @@ class MasterOps:
             # start/setup mongodb
             # MDB.start_db(s_key = key)
             host = bool(MDB(s_key = key))
+
+            cls.MASTER = MasterDatabase(signing_key=key)
             assert host is True, "failed db init - {}".format(host)
 
             cls.log.info("************db initiated*************")
