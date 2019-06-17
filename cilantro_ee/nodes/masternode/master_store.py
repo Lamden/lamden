@@ -74,11 +74,7 @@ class ColdStorage:
 
     def update_idx(self, inserted_blk=None, node_list=None):
 
-        print('block: {}'.format(inserted_blk))
-
         assert node_list is not None, 'Block owner node list not provided.'
-
-        print('node list: {}'.format(node_list))
 
         entry = {'blockNum': inserted_blk.get('blockNum'),
                  'blockHash': inserted_blk.get('blockHash'),
@@ -86,8 +82,6 @@ class ColdStorage:
 
         assert entry['blockNum'] is not None and entry['blockHash'] is not None, 'Provided block does not have a ' \
                                                                                  'number or a hash.'
-
-        print('putting: {}'.format(entry))
 
         self.driver.indexes.collection.insert_one(entry)
 
@@ -105,13 +99,6 @@ class ColdStorage:
         if entry is None:
             return False
 
-        # always write if active master bellow threshold
-
-        if self.config.active_masters < self.config.quorum_needed:
-            self.driver.insert_block(entry)
-            mn_list = self.build_wr_list(curr_node_idx=self.config.mn_id, jump_idx=0)
-            return self.update_idx(inserted_blk=entry, node_list=mn_list)
-
         pool_sz = self.rep_pool_sz()
         mn_idx = self.config.mn_id % pool_sz
         writers = entry.get('blockNum') % pool_sz
@@ -119,10 +106,19 @@ class ColdStorage:
         # TODO
         # need gov here to check if given node is voted out
 
-        if node_id:
+        if node_id is not None:
             mn_idx = node_id % pool_sz  # overwriting mn_idx
             if mn_idx == writers:
                 return True
+            else:
+                return False
+
+        # always write if active master bellow threshold
+
+        if self.config.active_masters < self.config.quorum_needed:
+            self.driver.insert_block(entry)
+            mn_list = self.build_wr_list(curr_node_idx=self.config.mn_id, jump_idx=0)
+            return self.update_idx(inserted_blk=entry, node_list=mn_list)
 
         if mn_idx == writers:
             self.driver.insert_block(entry)

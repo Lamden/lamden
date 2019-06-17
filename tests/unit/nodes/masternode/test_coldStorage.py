@@ -172,3 +172,49 @@ class TestColdStorage(TestCase):
         self.assertEqual(stored_index['blockOwners'], owners)
         self.assertEqual(stored_index['blockHash'], block['blockHash'])
         self.assertEqual(stored_index['blockNum'], block['blockNum'])
+
+    def test_eval_write_node_id_is_in_writers_returns_true(self):
+        self.c.config.rep_factor = 1
+
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        res = self.c.evaluate_wr(block, node_id=0)
+
+        self.assertTrue(res)
+
+    def test_eval_write_node_id_is_not_in_writers_returns_false(self):
+        self.c.config.rep_factor = 1
+
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        res = self.c.evaluate_wr(block, node_id=1)
+
+        self.assertFalse(res)
+
+    def test_eval_write_if_mn_is_writer_then_write_block(self):
+        self.c.config.rep_factor = 1
+
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        self.c.evaluate_wr(block)
+
+        stored_block = self.c.driver.blocks.collection.find_one({'blockNum': 100})
+        stored_index = self.c.driver.indexes.collection.find_one({'blockNum': 100})
+
+        self.assertEqual(block, stored_block)
+
+        self.assertEqual(stored_index['blockHash'], block['blockHash'])
+        self.assertEqual(stored_index['blockNum'], block['blockNum'])
+
