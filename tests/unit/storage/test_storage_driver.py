@@ -4,7 +4,7 @@ from unittest.mock import patch
 #from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.storage.mn_api import StorageDriver
-from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.nodes.masternode.master_store import MasterOps, GlobalColdStorage
 import cilantro_ee.nodes.masternode.webserver as endpt
 
 from cilantro_ee.messages.block_data.block_data import *
@@ -61,10 +61,14 @@ class TestStorageDriver(TestCase):
         verifies genesis block and get_full_blk api
         :return:
         """
-        blk_frm_num = MasterOps.get_full_blk(blk_num = 0)
-        blk_frm_hash = MasterOps.get_full_blk(blk_hash = "0000000000000000000000000000000000000000000000000000000000000000")
-        self.assertEqual(blk_frm_num.get("blockNum"), 0)
-        self.assertEqual(blk_frm_hash.get("blockNum"), 0)
+        block_1 = GlobalColdStorage.driver.blocks.collection.find_one({
+            'blockNum': 0
+        })
+        block_2 = GlobalColdStorage.driver.blocks.collection.find_one({
+            'blockHash':"0000000000000000000000000000000000000000000000000000000000000000"
+        })
+        self.assertEqual(block_1.get("blockNum"), 0)
+        self.assertEqual(block_2.get("blockNum"), 0)
 
     def test_store_blks(self):
         """

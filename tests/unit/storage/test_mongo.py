@@ -9,7 +9,8 @@ class TestMasterDatabase(TestCase):
         self.db = MasterDatabase(signing_key=self.sk)
 
     def tearDown(self):
-        self.db.drop_db()
+        #self.db.drop_db()
+        pass
 
     def test_init_masterdatabase(self):
         self.assertIsNotNone(self.db.blocks)

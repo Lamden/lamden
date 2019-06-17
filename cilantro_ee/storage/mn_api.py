@@ -1,4 +1,4 @@
-from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.nodes.masternode.master_store import MasterOps, GlobalColdStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.block_data.block_data import BlockData
 from bson.objectid import ObjectId
@@ -41,7 +41,7 @@ class StorageDriver:
         block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
                                       block_num=blk_num, sub_blocks=sub_blocks)
 
-        assert (bool(MasterOps.evaluate_wr(entry=block_data._data.to_dict()))) is True, \
+        assert (bool(GlobalColdStorage.evaluate_wr(entry=block_data._data.to_dict()))) is True, \
             "wr to master store failed, dump blk {}".format(block_data)
 
         # Attach the block owners data to the BlockData instance  TODO -- find better solution
@@ -94,23 +94,19 @@ class StorageDriver:
         :return:         None for incorrect, only full blk if block found else assert
         """
 
-        if given_bnum is not None:
-            full_block = MasterOps.get_full_blk(blk_num=given_bnum)
-            if full_block is not None:
-                return full_block
-            else:
-                # TODO anarchy net this wont be used
-                blk_owners = MasterOps.get_blk_owners()
-                return blk_owners
+        assert given_bnum is not None and given_hash is not None, 'Need block number or hash.'
+        q = {'blockNum': given_bnum} if given_bnum is not None else {'blockHash': given_hash}
 
-        if given_hash is not None:
-            full_block = MasterOps.get_full_blk(blk_hash=given_hash)
-            if full_block is not None:
-                return full_block
-            else:
-                # TODO anarchy net this wont be used
-                blk_owners = MasterOps.get_blk_owners()
-                return blk_owners
+        full_block = GlobalColdStorage.driver.blocks.collection.find_one(q)
+
+        if full_block is not None:
+            full_block.pop('_id')
+            return full_block
+        else:
+            # TODO anarchy net this wont be used
+            blk_owners = MasterOps.get_blk_owners()
+            return blk_owners
+
 
     @classmethod
     def get_latest_block_hash(cls):
@@ -145,4 +141,6 @@ class StorageDriver:
         :param block_hash: The block hash to check
         :return: True if the block hash exists in our index table, and False otherwise
         """
-        return MasterOps.get_blk_num_frm_blk_hash(block_hash) is not None
+        return GlobalColdStorage.driver.blocks.collection.find_one({
+            'blockHash': block_hash
+        }) is not None

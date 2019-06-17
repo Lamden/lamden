@@ -218,3 +218,36 @@ class TestColdStorage(TestCase):
         self.assertEqual(stored_index['blockHash'], block['blockHash'])
         self.assertEqual(stored_index['blockNum'], block['blockNum'])
 
+    def test_get_full_block_by_number(self):
+
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        self.c.driver.blocks.collection.insert_one(block)
+
+        block.pop('_id')
+
+        stored_block = self.c.get_full_block(num=100)
+
+        self.assertEqual(block, stored_block)
+
+    def test_get_full_block_by_hash(self):
+        block = {
+            'blockNum': 101,
+            'blockHash': 'abcdef',
+            'data': 'woohoo'
+        }
+
+        self.c.driver.blocks.collection.insert_one(block)
+
+        block.pop('_id')
+
+        stored_block = self.c.get_full_block(block_hash='abcdef')
+
+        self.assertEqual(block, stored_block)
+
+    def test_get_full_block_returns_none_if_nothing_provided(self):
+        self.assertIsNone(self.c.get_full_block())
