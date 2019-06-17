@@ -1,11 +1,13 @@
 from unittest import TestCase
 from cilantro_ee.nodes.masternode.master_store import ColdStorage
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.protocol import wallet
 
 
 class TestColdStorage(TestCase):
     def setUp(self):
-        self.c = ColdStorage()
+        sk, vk = wallet.new()
+        self.c = ColdStorage(key=sk)
 
     def test_initialize(self):
         self.assertIsNotNone(self.c.config.test_hook)
@@ -49,3 +51,69 @@ class TestColdStorage(TestCase):
         self.assertEqual(self.c.config.mn_id, 0)
         self.assertTrue(success)
 
+    def test_rep_pool_size_fails_when_active_masters_less_than_rep_factor(self):
+        self.c.config.rep_factor = 999
+        self.assertEqual(self.c.rep_pool_sz(), -1)
+
+    def test_rep_pool_size_returns_correctly_rounded_pool_size_when_enough_masters_present(self):
+        self.c.config.test_hook = True
+
+        self.c.config.rep_factor = 1
+        pool = round(self.c.config.active_masters / self.c.config.rep_factor)
+        self.assertEqual(self.c.rep_pool_sz(), pool)
+
+    def test_build_write_list_returns_all_mns_when_jump_idx_0(self):
+        mns = PhoneBook.masternodes
+
+        self.assertEqual(mns, self.c.build_wr_list(None, 0))
+
+    def test_build_write_list_curr_node_0_jump_idx_1_returns_all(self):
+        masternodes = list(range(100))
+        delegates = list(range(10))
+        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        self.c.vkbook = big_vkbook
+
+        write_list = self.c.build_wr_list(0, 1)
+        self.assertEqual(masternodes, write_list)
+
+    def test_build_write_list_curr_node_20_jump_idx_1_returns_subset(self):
+        masternodes = list(range(100))
+        delegates = list(range(10))
+        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        self.c.vkbook = big_vkbook
+
+        write_list = self.c.build_wr_list(20, 1)
+        self.assertEqual(masternodes[20:], write_list)
+
+    def test_update_index(self):
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        owners = ['tejas', 'stu']
+
+        res = self.c.update_idx(block, owners)
+
+        stored_index = self.c.driver.indexes.collection.find_one({
+            'blockNum': 100
+        })
+
+        self.assertTrue(res)
+        self.assertEqual(stored_index['blockOwners'], owners)
+
+    def test_build_write_list_jump_idx_2_skips(self):
+        masternodes = list(range(100))
+        delegates = list(range(10))
+        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        self.c.vkbook = big_vkbook
+
+        write_list = self.c.build_wr_list(20, 2)
+        self.assertEqual(masternodes[20::2], write_list)
+
+    def test_evaluate_write_no_entry_returns_false(self):
+        self.assertFalse(self.c.evaluate_wr())

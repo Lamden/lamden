@@ -20,18 +20,19 @@ class MasternodeConfig:
         self.rep_factor = int(self.config.get('MN_DB', 'replication'))
         self.active_masters = int(self.config.get('MN_DB', 'total_mn'))
         self.quorum_needed = int(self.config.get('MN_DB', 'quorum'))
-        self.test_hook = self.config.get('MN_DB', 'test_hook')
 
 
 class ColdStorage:
-    def __init__(self):
+    def __init__(self, key, vkbook=PhoneBook):
         self.config = MasternodeConfig()
+        self.driver = MasterDatabase(signing_key=key)
+        self.vkbook = vkbook
 
     def get_master_set(self):
         if self.config.test_hook is True:
             return self.config.active_masters
         else:
-            self.config.active_masters = len(PhoneBook.masternodes)
+            self.config.active_masters = len(self.vkbook.masternodes)
             return self.config.active_masters
 
     def set_mn_id(self, vk):
@@ -39,14 +40,88 @@ class ColdStorage:
             return self.config.mn_id
 
         # this should be rewritten to just pull from Phonebook because it's dynamic now
-        masternode_vks = PhoneBook.masternodes
+
         for i in range(self.config.active_masters):
-            if masternode_vks[i] == vk:
+            if self.vkbook.masternodes[i] == vk:
                 self.config.mn_id = i
                 return True
             else:
                 self.config.mn_id = -1
                 return False
+
+    def rep_pool_sz(self):
+        if self.config.active_masters < self.config.rep_factor:
+            return -1
+
+        self.config.active_masters = self.get_master_set()
+        pool_sz = round(self.config.active_masters / self.config.rep_factor)
+        return pool_sz
+
+    def build_wr_list(self, curr_node_idx=0, jump_idx=1):
+        # Use slices to make this a one liner
+        tot_mn = len(self.vkbook.masternodes)
+        mn_list = []
+
+        # if quorum req not met jump_idx is 0 wr on all active nodes
+        if jump_idx == 0:
+            return self.vkbook.masternodes
+
+        while curr_node_idx < tot_mn:
+            mn_list.append(self.vkbook.masternodes[curr_node_idx])
+            curr_node_idx += jump_idx
+
+        return mn_list
+
+    def update_idx(self, inserted_blk=None, node_list=None):
+
+        entry = {'blockNum': inserted_blk.get('blockNum'),
+                 'blockHash': inserted_blk.get('blockHash'),
+                 'blockOwners': node_list}
+
+        self.driver.indexes.collection.insert_one(entry)
+
+        return True
+
+    def evaluate_wr(self, entry=None, node_id=None):
+        """
+        Function is used to check if currently node is suppose to write given entry
+
+        :param entry: given block input to be stored
+        :param node_id: master id None is default current master, if specified is for catch up case
+        :return:
+        """
+
+        if entry is None:
+            return False
+
+        # always write if active master bellow threshold
+
+        if self.config.active_masters < self.config.quorum_needed:
+            self.driver.insert_block(entry)
+            mn_list = self.build_wr_list(curr_node_idx=self.config.mn_id, jump_idx=0)
+            return self.update_idx(inserted_blk=entry, node_list=mn_list)
+
+        pool_sz = self.rep_pool_sz()
+        mn_idx = self.config.mn_id % pool_sz
+        writers = entry.get('blockNum') % pool_sz
+
+        # TODO
+        # need gov here to check if given node is voted out
+
+        if node_id:
+            mn_idx = node_id % pool_sz  # overwriting mn_idx
+            if mn_idx == writers:
+                return True
+
+        if mn_idx == writers:
+            self.driver.insert_block(entry)
+
+        # build list of mn_sign of master nodes updating index db
+        mn_list = self.build_wr_list(curr_node_idx=writers, jump_idx=pool_sz)
+        assert len(mn_list) > 0, "block owner list cannot be empty - dumping list -> {}".format(mn_list)
+
+        # create index records and update entry
+        return self.update_idx(inserted_blk=entry, node_list=mn_list)
 
 
 class MasterOps:
