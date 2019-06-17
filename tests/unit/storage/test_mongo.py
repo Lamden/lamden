@@ -127,12 +127,10 @@ class TestMasterDatabase(TestCase):
         block = {
             'blockNum': 1,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.indexes.collection.insert_one(block)
         self.assertTrue(result)
 
         owners = self.db.get_block_owners(1)
@@ -143,12 +141,10 @@ class TestMasterDatabase(TestCase):
         block = {
             'blockNum': 1,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.indexes.collection.insert_one(block)
         self.assertTrue(result)
 
         owners = self.db.get_block_owners(block_hash='a')
@@ -214,48 +210,38 @@ class TestMasterDatabase(TestCase):
         block_1 = {
             'blockNum': 1,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_2 = {
             'blockNum': 2,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_3 = {
             'blockNum': 3,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_4 = {
             'blockNum': 4,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_5 = {
             'blockNum': 5,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
-        self.db.insert_block(block_1)
-        self.db.insert_block(block_2)
-        self.db.insert_block(block_3)
-        self.db.insert_block(block_4)
-        self.db.insert_block(block_5)
+        self.db.indexes.collection.insert_one(block_1)
+        self.db.indexes.collection.insert_one(block_2)
+        self.db.indexes.collection.insert_one(block_3)
+        self.db.indexes.collection.insert_one(block_4)
+        self.db.indexes.collection.insert_one(block_5)
 
         blocks = self.db.get_last_n_local_blocks(3)
 
@@ -267,51 +253,41 @@ class TestMasterDatabase(TestCase):
         block_1 = {
             'blockNum': 1,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_2 = {
             'blockNum': 2,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_3 = {
             'blockNum': 3,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_4 = {
             'blockNum': 4,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
         block_5 = {
             'blockNum': 5,
             'blockHash': 'a',
-            'sender': 'stu',
-            'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
         }
 
-        self.db.insert_block(block_1)
-        self.db.insert_block(block_2)
-        self.db.insert_block(block_3)
-        self.db.insert_block(block_4)
-        self.db.insert_block(block_5)
+        self.db.indexes.collection.insert_one(block_1)
+        self.db.indexes.collection.insert_one(block_2)
+        self.db.indexes.collection.insert_one(block_3)
+        self.db.indexes.collection.insert_one(block_4)
+        self.db.indexes.collection.insert_one(block_5)
 
         blocks = self.db.get_last_n_local_blocks(300)
 
         nums = [block['blockNum'] for block in blocks]
 
-        self.assertEqual(nums, [5, 4, 3, 2, 1, 0])
+        self.assertEqual(nums, [5, 4, 3, 2, 1])

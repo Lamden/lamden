@@ -9,6 +9,9 @@ class TestColdStorage(TestCase):
         sk, vk = wallet.new()
         self.c = ColdStorage(key=sk)
 
+    def tearDown(self):
+        self.c.driver.drop_db()
+
     def test_initialize(self):
         self.assertIsNotNone(self.c.config.test_hook)
 
@@ -105,6 +108,34 @@ class TestColdStorage(TestCase):
         self.assertTrue(res)
         self.assertEqual(stored_index['blockOwners'], owners)
 
+    def test_update_index_no_owners(self):
+        block = {
+            'blockNum': 100,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        with self.assertRaises(AssertionError):
+            self.c.update_idx(block, None)
+
+    def test_update_index_no_block_hash(self):
+        block = {
+            'blockNum': 100,
+            'data': 'woohoo'
+        }
+
+        with self.assertRaises(AssertionError):
+            self.c.update_idx(block, ['tejas', 'stu'])
+
+    def test_update_index_fails_with_no_block_num(self):
+        block = {
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        with self.assertRaises(AssertionError):
+            self.c.update_idx(block, ['tejas', 'stu'])
+
     def test_build_write_list_jump_idx_2_skips(self):
         masternodes = list(range(100))
         delegates = list(range(10))
@@ -117,3 +148,27 @@ class TestColdStorage(TestCase):
 
     def test_evaluate_write_no_entry_returns_false(self):
         self.assertFalse(self.c.evaluate_wr())
+
+    def test_evaluate_write_always_write_if_too_few_masters(self):
+        self.c.config.active_masters = 1
+        self.c.config.quorum_needed = 4
+
+        block = {
+            'blockNum': 103,
+            'blockHash': 'a',
+            'data': 'woohoo'
+        }
+
+        self.c.evaluate_wr(block)
+
+        stored_block = self.c.driver.blocks.collection.find_one(block)
+
+        self.assertEqual(stored_block, block)
+
+        stored_index = self.c.driver.indexes.collection.find_one({'blockNum': 103})
+
+        owners = self.c.build_wr_list(self.c.config.mn_id, 0)
+
+        self.assertEqual(stored_index['blockOwners'], owners)
+        self.assertEqual(stored_index['blockHash'], block['blockHash'])
+        self.assertEqual(stored_index['blockNum'], block['blockNum'])

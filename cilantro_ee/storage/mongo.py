@@ -65,10 +65,6 @@ class MasterDatabase:
         # insert passed dict block to db
         block_id = self.blocks.collection.insert_one(block_dict)
 
-        # Insert the index for faster lookups
-        index = {k: block_dict.get(k, None) for k in ('blockNum', 'blockHash', 'blockOwners')}
-        self.indexes.collection.insert_one(index)
-
         if block_id:
             return True
 
@@ -124,6 +120,7 @@ class MasterDatabase:
     def create_genesis_block(self):
         block = GenesisBlockData.create(sk=self.signing_key, vk=self.verifying_key)
         _id = self.insert_block(block.to_dict())
+
         assert _id, 'Failed to create Genesis Block'
 
 

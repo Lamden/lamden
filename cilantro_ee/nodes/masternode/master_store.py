@@ -41,7 +41,7 @@ class ColdStorage:
 
         # this should be rewritten to just pull from Phonebook because it's dynamic now
 
-        for i in range(self.config.active_masters):
+        for i in range(self.get_master_set()):
             if self.vkbook.masternodes[i] == vk:
                 self.config.mn_id = i
                 return True
@@ -74,9 +74,20 @@ class ColdStorage:
 
     def update_idx(self, inserted_blk=None, node_list=None):
 
+        print('block: {}'.format(inserted_blk))
+
+        assert node_list is not None, 'Block owner node list not provided.'
+
+        print('node list: {}'.format(node_list))
+
         entry = {'blockNum': inserted_blk.get('blockNum'),
                  'blockHash': inserted_blk.get('blockHash'),
                  'blockOwners': node_list}
+
+        assert entry['blockNum'] is not None and entry['blockHash'] is not None, 'Provided block does not have a ' \
+                                                                                 'number or a hash.'
+
+        print('putting: {}'.format(entry))
 
         self.driver.indexes.collection.insert_one(entry)
 
