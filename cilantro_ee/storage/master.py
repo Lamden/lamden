@@ -48,7 +48,10 @@ class MasterStorage:
             return {'blockNum': v}
         return {'blockHash': v}
 
-    def get_block(self, v):
+    def get_block(self, v=None):
+        if v is None:
+            return None
+
         q = self.q(v)
         block = self.blocks.collection.find_one(q)
 
@@ -100,6 +103,15 @@ class MasterStorage:
 
         return owners
 
+    def get_index(self, v):
+        q = self.q(v)
+        block = self.indexes.collection.find_one(q)
+
+        if block is not None:
+            block.pop('_id')
+
+        return block
+
     def drop_collections(self):
         self.blocks.flush()
         self.indexes.flush()
@@ -122,30 +134,30 @@ class DistributedMasterStorage(MasterStorage):
 
     def get_master_set(self):
         if self.test_hook is True:
-            return self.config.active_masters
+            return self.active_masters
         else:
-            self.config.active_masters = len(self.vkbook.masternodes)
-            return self.config.active_masters
+            self.active_masters = len(self.vkbook.masternodes)
+            return self.active_masters
 
     def set_mn_id(self, vk):
         if self.test_hook is True:
-            return self.config.mn_id
+            return self.mn_id
 
         # this should be rewritten to just pull from Phonebook because it's dynamic now
 
         for i in range(self.get_master_set()):
             if self.vkbook.masternodes[i] == vk:
-                self.config.mn_id = i
+                self.mn_id = i
                 return True
             else:
-                self.config.mn_id = -1
+                self.mn_id = -1
                 return False
 
     def rep_pool_sz(self):
         if self.active_masters < self.rep_factor:
             return -1
 
-        self.config.active_masters = self.get_master_set()
+        self.active_masters = self.get_master_set()
         pool_sz = round(self.active_masters / self.rep_factor)
         return pool_sz
 
@@ -221,3 +233,13 @@ class DistributedMasterStorage(MasterStorage):
         # create index records and update entry
         index = self.index_from_block(entry, nodes=mn_list)
         return self.put(index, self.INDEX)
+
+    def update_index(self, block, nodes):
+        index = self.index_from_block(block, nodes=nodes)
+        return self.put(index, MasterStorage.INDEX)
+
+    def put(self, data, collection=MasterStorage.BLOCK):
+        if self.distribute_writes:
+            print('do some other logic here?')
+        else:
+            super().put(data=data, collection=collection)

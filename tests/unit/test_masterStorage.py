@@ -186,3 +186,55 @@ class TestMasterStorage(TestCase):
         owners = self.db.get_owners('b')
 
         self.assertIsNone(owners)
+
+    def test_get_last_n_blocks(self):
+        blocks = []
+
+        blocks.append({'blockHash': 'a', 'blockNum': 1, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 2, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 3, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 4, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 5, 'data': 'woop'})
+
+        for block in blocks:
+            self.db.put(block)
+
+        got_blocks = self.db.get_last_n(3, MasterStorage.BLOCK)
+
+        nums = [b['blockNum'] for b in got_blocks]
+
+        self.assertEqual(nums, [5, 4, 3])
+
+    def test_get_last_n_index(self):
+        blocks = []
+
+        blocks.append({'blockHash': 'a', 'blockNum': 1, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 2, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 3, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 4, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 5, 'data': 'woop'})
+
+        for block in blocks:
+            self.db.put(block, MasterStorage.INDEX)
+
+        got_blocks = self.db.get_last_n(3, MasterStorage.INDEX)
+
+        nums = [b['blockNum'] for b in got_blocks]
+
+        self.assertEqual(nums, [5, 4, 3])
+
+    def test_get_none_from_wrong_n_collection(self):
+        blocks = []
+
+        blocks.append({'blockHash': 'a', 'blockNum': 1, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 2, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 3, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 4, 'data': 'woop'})
+        blocks.append({'blockHash': 'a', 'blockNum': 5, 'data': 'woop'})
+
+        for block in blocks:
+            self.db.put(block, MasterStorage.INDEX)
+
+        got_blocks = self.db.get_last_n(3, 5)
+
+        self.assertIsNone(got_blocks)
