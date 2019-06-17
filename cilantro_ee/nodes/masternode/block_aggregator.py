@@ -23,7 +23,7 @@ from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 from typing import List
 
-import asyncio, zmq, time
+import math, asyncio, zmq, time
 
 
 class BlockAggregator(Worker):
@@ -40,6 +40,10 @@ class BlockAggregator(Worker):
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
+
+        self.min_quorum = VKBook.get_min_delegate_quorum()
+        self.max_quorum = VKBook.get_max_delegate_quorum()
+        self.cur_quorum = 0
 
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
@@ -121,6 +125,15 @@ class BlockAggregator(Worker):
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
         self.log.spam("Sleeping before triggering catchup...")
         await asyncio.sleep(8)
+
+        num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+        # assert num_delegates_joined >= self.min_quorum, "Don't have minimum quorum"
+        if num_delegates_joined >= self.max_quorum:
+            self.cur_quorum = self.max_quorum
+        else:
+            cq = math.ceil(9 * num_delegates_joined / 10)
+            self.cur_quorum = max(cq, self.min_quorum)
+
         # now start the catchup
         await self._trigger_catchup()
 
@@ -201,10 +214,15 @@ class BlockAggregator(Worker):
             self.log.debug("First SBC receiver for prev block hash {}! Scheduling timeout".format(self.curr_block_hash))
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
-        if self.curr_block.is_consensus_reached():
+        if self.curr_block.is_consensus_reached() or \
+           self.curr_block.get_current_quorum_reached() >= self.cur_quorum:
+            self.log.spam("currnt quorum {} actual quorum {} max quorum {}".
+                          format(self.cur_quorum, self.curr_block.get_current_quorum_reached(), self.max_quorum))
             self.log.success("Consensus reached for prev hash {} (is_empty={})"
                              .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
+            num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+            self.cur_quorum = min(self.cur_quorum + num_delegates_joined, self.max_quorum)
             return
 
         if not self.curr_block.is_consensus_possible():
@@ -286,8 +304,17 @@ class BlockAggregator(Worker):
 
             self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
                               "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
-            self.send_fail_block_notif()
+            new_quorum = self.curr_block.get_current_quorum_reached()
+            if new_quorum >= self.min_quorum and new_quorum >= (9 * self.cur_quorum // 10):
+                self.log.warning("Reducing consensus quorum from {} to {}".
+                          format(self.curr_block.get_current_quorum_reached(), new_quorum))
+                self.store_full_block()
+                self.cur_quorum = new_quorum
+            else:
+                self.send_fail_block_notif()
             self.curr_block.reset()
+            num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+            self.cur_quorum = min(self.cur_quorum + num_delegates_joined, self.max_quorum)
         except asyncio.CancelledError:
             pass
 

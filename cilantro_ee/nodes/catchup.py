@@ -58,6 +58,10 @@ class CatchupManager:
         self.target_blk_num = self.curr_num
         self.awaited_blknum = self.curr_num
 
+        self.my_quorum = VKBook.get_min_masternode_quorum()
+        if store_full_blocks and (VKBook.get_num_boot_masternodes() == self.my_quorum):
+            self.my_quorum -= 1
+
         # DEBUG -- TODO DELETE
         self.log.test("CatchupManager VKBook MN's: {}".format(VKBook.get_masternodes()))
         self.log.test("CatchupManager VKBook Delegates's: {}".format(VKBook.get_delegates()))
@@ -98,14 +102,12 @@ class CatchupManager:
             self.log.warning("Already caught up. Ignoring to run it again.")
             return
 
-        # first reset state variables
-        self.node_idx_reply_set.clear()
-
-        if self._check_idx_reply_quorum() is True:
+        if self.my_quorum == 0:    # only one master available
             self.is_caught_up = True
-            self.log.debugv("Quorum reached!")
             return
 
+        # first reset state variables
+        self.node_idx_reply_set.clear()
         self.is_caught_up = False
         # self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
         # self.target_blk_num = self.curr_num
@@ -397,11 +399,7 @@ class CatchupManager:
         self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
 
     def _check_idx_reply_quorum(self):
-        # We have enough BlockIndexReplies if 2/3 of Masternodes replied
-        min_quorum = math.ceil(len(VKBook.get_masternodes()) * 2/3)
-        if self.store_full_blocks:
-            min_quorum -= 1   # -1 so we dont include ourselves if we are a MN
-        return len(self.node_idx_reply_set) >= min_quorum
+        return len(self.node_idx_reply_set) >= self.my_quorum
 
     def is_catchup_done(self):
         if self.is_caught_up:
