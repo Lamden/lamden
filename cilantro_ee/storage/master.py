@@ -1,6 +1,9 @@
 import cilantro_ee
+from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.protocol import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
+
 
 class StorageSet:
     def __init__(self, user, password, port, database, collection_name):
@@ -64,6 +67,28 @@ class MasterStorage:
 
         return _id is not None
 
+    def get_last_n(self, n, collection=INDEX):
+        if collection == MasterStorage.BLOCK:
+            c = self.blocks
+        elif collection == MasterStorage.INDEX:
+            c = self.indexes
+        else:
+            return None
+
+        block_query = c.collection.find({}, {'_id': False}).sort(
+            'blockNum', DESCENDING
+        ).limit(n)
+
+        blocks = [block for block in block_query]
+
+        if len(blocks) > 1:
+            first_block_num = blocks[0].get('blockNum')
+            last_block_num = blocks[-1].get('blockNum')
+
+            assert first_block_num > last_block_num, "Blocks are not descending."
+
+        return blocks
+
     def get_owners(self, v):
         q = self.q(v)
         index = self.indexes.collection.find_one(q)
@@ -80,6 +105,119 @@ class MasterStorage:
         self.indexes.flush()
 
 
-class DistributedMasterStorage:
-    pass
+class DistributedMasterStorage(MasterStorage):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+        super().__init__(config_path=config_path)
 
+        self.distribute_writes = distribute_writes
+        self.vkbook = vkbook
+        self.sk = key
+        self.vk = wallet.get_vk(self.sk)
+
+        self.test_hook = self.config.get('MN_DB', 'test_hook')
+        self.mn_id = int(self.config.get('MN_DB', 'mn_id'))
+        self.rep_factor = int(self.config.get('MN_DB', 'replication'))
+        self.active_masters = int(self.config.get('MN_DB', 'total_mn'))
+        self.quorum_needed = int(self.config.get('MN_DB', 'quorum'))
+
+    def get_master_set(self):
+        if self.test_hook is True:
+            return self.config.active_masters
+        else:
+            self.config.active_masters = len(self.vkbook.masternodes)
+            return self.config.active_masters
+
+    def set_mn_id(self, vk):
+        if self.test_hook is True:
+            return self.config.mn_id
+
+        # this should be rewritten to just pull from Phonebook because it's dynamic now
+
+        for i in range(self.get_master_set()):
+            if self.vkbook.masternodes[i] == vk:
+                self.config.mn_id = i
+                return True
+            else:
+                self.config.mn_id = -1
+                return False
+
+    def rep_pool_sz(self):
+        if self.active_masters < self.rep_factor:
+            return -1
+
+        self.config.active_masters = self.get_master_set()
+        pool_sz = round(self.active_masters / self.rep_factor)
+        return pool_sz
+
+    def build_wr_list(self, curr_node_idx=0, jump_idx=1):
+        # Use slices to make this a one liner
+        tot_mn = len(self.vkbook.masternodes)
+        mn_list = []
+
+        # if quorum req not met jump_idx is 0 wr on all active nodes
+        if jump_idx == 0:
+            return self.vkbook.masternodes
+
+        while curr_node_idx < tot_mn:
+            mn_list.append(self.vkbook.masternodes[curr_node_idx])
+            curr_node_idx += jump_idx
+
+        return mn_list
+
+    @staticmethod
+    def index_from_block(b, nodes=[]):
+        assert len(nodes) > 0, 'Must have at least one block owner!'
+
+        index = {'blockNum': b.get('blockNum'),
+                 'blockHash': b.get('blockHash'),
+                 'blockOwners': nodes}
+
+        assert index['blockHash'] is not None and index['blockNum'] is not None, 'Block hash and number' \
+                                                                                 'must be provided!'
+
+        return index
+
+    def evaluate_wr(self, entry=None, node_id=None):
+        """
+        Function is used to check if currently node is suppose to write given entry
+
+        :param entry: given block input to be stored
+        :param node_id: master id None is default current master, if specified is for catch up case
+        :return:
+        """
+
+        if entry is None:
+            return False
+
+        pool_sz = self.rep_pool_sz()
+        mn_idx = self.mn_id % pool_sz
+        writers = entry.get('blockNum') % pool_sz
+
+        # TODO
+        # need gov here to check if given node is voted out
+
+        if node_id is not None:
+            mn_idx = node_id % pool_sz  # overwriting mn_idx
+            if mn_idx == writers:
+                return True
+            else:
+                return False
+
+        # always write if active master bellow threshold
+
+        if self.active_masters < self.quorum_needed:
+            self.put(entry, self.BLOCK)
+            mn_list = self.build_wr_list(curr_node_idx=self.mn_id, jump_idx=0)
+            index = self.index_from_block(entry, nodes=mn_list)
+            return self.put(index, self.INDEX)
+
+        if mn_idx == writers:
+            self.put(entry, self.BLOCK)
+
+        # build list of mn_sign of master nodes updating index db
+        mn_list = self.build_wr_list(curr_node_idx=writers, jump_idx=pool_sz)
+        assert len(mn_list) > 0, "block owner list cannot be empty - dumping list -> {}".format(mn_list)
+
+        # create index records and update entry
+        index = self.index_from_block(entry, nodes=mn_list)
+        return self.put(index, self.INDEX)
