@@ -1,4 +1,5 @@
-from cilantro_ee.nodes.masternode.master_store import MasterOps, GlobalColdStorage
+from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.storage.master import DistributedMasterStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.block_data.block_data import BlockData
 from bson.objectid import ObjectId
@@ -6,48 +7,48 @@ from collections import defaultdict
 from typing import List
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.constants.system_config import *
+import cilantro_ee
 
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
 
 
-class StorageDriver:
-    """
-    APIs for BlockStorage. This class should only be used by Masternodes, since it interfaces with MongoDB.
-    Note: If a Delegate/Witness needs to get_latest_block_hash, they should use StateDriver instead.
-    """
+class CilantroStorageDriver(DistributedMasterStorage):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+        self.state_id = ObjectId(OID)
+        self.log = get_logger("StorageDriver")
 
-    state_id = ObjectId(OID)
-    log = get_logger("StorageDriver")
+        self.block_index_delta = defaultdict(dict)
+        self.send_req_blk_num = 0
 
-    block_index_delta = defaultdict(dict)
-    send_req_blk_num = 0
+        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, vkbook=vkbook)
 
-    @classmethod
-    def store_block(cls, sub_blocks: List[SubBlock]):
-        """
-        Triggered after 2/3rd consensus we create block and store to permanent storage
-        """
-        prev_block_hash = cls.get_latest_block_hash()
-        blk_num = MasterOps.get_blk_num_frm_blk_hash(blk_hash=prev_block_hash) + 1
-        roots = [sb.merkle_root for sb in sub_blocks]
-        block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
+    def store_block(self, sub_blocks: List[SubBlock]):
+        last_block = self.get_last_n(1, DistributedMasterStorage.INDEX)[0]
 
-        cls.log.debugv("Attempting to store block number {} with hash {} and previous hash {}"
-                       .format(blk_num, block_hash, prev_block_hash))
+        last_hash = last_block.get('blockHash')
+        current_block_num = last_block.get('blockNum') + 1
 
-        # TODO get actual block owners...
-        block_data = BlockData.create(block_hash=block_hash, prev_block_hash=prev_block_hash, block_owners=[],
-                                      block_num=blk_num, sub_blocks=sub_blocks)
+        roots = [subblock.merkle_root for subblock in sub_blocks]
 
-        assert (bool(GlobalColdStorage.evaluate_wr(entry=block_data._data.to_dict()))) is True, \
-            "wr to master store failed, dump blk {}".format(block_data)
+        block_hash = BlockData.compute_block_hash(roots, last_hash)
 
-        # Attach the block owners data to the BlockData instance  TODO -- find better solution
-        block_data._data.blockOwners = MasterOps.get_blk_owners(block_hash)
-        MasterOps.update_tx_map(block_data)
+        if not self.distribute_writes:
+            block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
+
+        successful_storage = self.evaluate_wr(entry=block_data._data.to_dict())
+
+        assert successful_storage is None or successful_storage is True, 'Write failure.'
+
+        block_data._data.blockOwners = self.get_owners(block_hash)
+
         return block_data
+
+    def get_transactions(self, tx_hash):
+        pass
+
+class StorageDriver:
 
     @classmethod
     def get_transactions(cls, raw_tx_hash):

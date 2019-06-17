@@ -22,6 +22,21 @@ class TestMasterStorage(TestCase):
 
         self.assertEqual(q, {'blockHash': '1'})
 
+    def test_genesis_block_created(self):
+        block = self.db.get_block(0)
+
+        expected = {
+                'blockNum': 0,
+                'blockHash': '0' * 64,
+                'blockOwners': ['0' * 64]
+            }
+
+        self.assertEqual(block, expected)
+
+        index = self.db.get_index(0)
+
+        self.assertEqual(index, expected)
+
     def test_put_block(self):
         block = {
             'blockHash': 'a',

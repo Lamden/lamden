@@ -3,7 +3,7 @@ from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.protocol import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
-
+from cilantro_ee.messages.block_data.block_data import BlockData
 
 class StorageSet:
     def __init__(self, user, password, port, database, collection_name):
@@ -25,6 +25,7 @@ class StorageSet:
 class MasterStorage:
     BLOCK = 0
     INDEX = 1
+    TX = 2
 
     def __init__(self, config_path=cilantro_ee.__path__[0]):
         # Setup configuration file to read constants
@@ -39,9 +40,25 @@ class MasterStorage:
 
         block_database = self.config.get('MN_DB', 'mn_blk_database')
         index_database = self.config.get('MN_DB', 'mn_index_database')
+        tx_database = self.config.get('MN_DB', 'mn_tx_database')
 
         self.blocks = StorageSet(user, password, port, block_database, 'blocks')
         self.indexes = StorageSet(user, password, port, index_database, 'index')
+        self.txs = StorageSet(user, password, port, tx_database, 'tx')
+
+        if self.get_block(0) is None:
+            print('minting genesis block')
+            self.put({
+                'blockNum': 0,
+                'blockHash': '0' * 64,
+                'blockOwners': ['0' * 64]
+            }, MasterStorage.BLOCK)
+
+            self.put({
+                'blockNum': 0,
+                'blockHash': '0' * 64,
+                'blockOwners': ['0' * 64]
+            }, MasterStorage.INDEX)
 
     def q(self, v):
         if isinstance(v, int):
@@ -65,6 +82,8 @@ class MasterStorage:
             _id = self.blocks.collection.insert_one(data)
         elif collection == MasterStorage.INDEX:
             _id = self.indexes.collection.insert_one(data)
+        elif collection == MasterStorage.TX:
+            _id = self.txs.collection.insert_one(data)
         else:
             return False
 
@@ -111,6 +130,22 @@ class MasterStorage:
             block.pop('_id')
 
         return block
+
+    def get_tx(self, h):
+        tx = self.txs.collection.find_one({'tx_hash': h})
+
+        if tx is not None:
+            tx.pop('_id')
+
+        return tx
+
+    def put_tx_map(self, block: BlockData):
+        m = block.get_tx_hash_to_merkle_leaf()
+        blk_id = block.block_num
+
+        for entry in m:
+            entry['block'] = blk_id
+            self.txs.collection.insert_one(entry)
 
     def drop_collections(self):
         self.blocks.flush()
@@ -239,7 +274,4 @@ class DistributedMasterStorage(MasterStorage):
         return self.put(index, MasterStorage.INDEX)
 
     def put(self, data, collection=MasterStorage.BLOCK):
-        if self.distribute_writes:
-            print('do some other logic here?')
-        else:
-            super().put(data=data, collection=collection)
+        super().put(data=data, collection=collection)
