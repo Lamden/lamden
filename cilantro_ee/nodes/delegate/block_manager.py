@@ -17,9 +17,10 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
+from cilantro_ee.storage.state import MetaDataStorage
+
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
@@ -58,8 +59,9 @@ class DBState:
 
     """ convenience struct to maintain db snapshot state data in one place """
     def __init__(self):
-        self.cur_block_hash = StateDriver.get_latest_block_hash()
-        self.cur_block_num = StateDriver.get_latest_block_num()
+        self.driver = MetaDataStorage()
+        self.cur_block_hash = self.driver.get_latest_block_hash()
+        self.cur_block_num = self.driver.get_latest_block_num()
         self.my_new_block_hash = None
         self.new_block_hash = None
         self.catchup_mgr = None
@@ -104,7 +106,7 @@ class BlockManager(Worker):
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
-
+        self.driver = MetaDataStorage()
         self.run()
 
     def _thicc_log(self):
@@ -265,7 +267,8 @@ class BlockManager(Worker):
                             .format(type(msg)))
 
     def set_catchup_done(self):
-        self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
+        self.db_state.cur_block_hash = self.driver.latest_block_hash
+        self.db_state.cur_block_num = self.driver.latest_block_num
         if not self.db_state.is_catchup_done:
             self.db_state.is_catchup_done = True
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
@@ -389,7 +392,9 @@ class BlockManager(Worker):
             self.db_state.cur_block_num = block.block_num
             self.log.notice("Setting latest block number to {} and block hash to {}"
                             .format(block.block_num, self.db_state.cur_block_hash))
-            StateDriver.set_latest_block_info(self.db_state.cur_block_hash, block.block_num)
+
+            self.driver.latest_block_hash = self.db_state.cur_block_hash
+            self.driver.latest_block_num = block.block_num
 
         self.send_updated_db_msg()
 
@@ -408,8 +413,8 @@ class BlockManager(Worker):
         self.log.notice("Got {} block notification {}".format("new" if is_new_block else "empty", block_data))
 
         if not self.db_state.cur_block_hash:
-            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-            self.db_state.cur_block_num = StateDriver.get_latest_block_num()
+            self.db_state.cur_block_hash = self.driver.latest_block_hash
+            self.db_state.cur_block_num = self.driver.latest_block_num
 
         if new_block_hash == self.db_state.cur_block_hash:
             self.log.info("New block notification is same as current state. Ignoring.")
@@ -450,8 +455,8 @@ class BlockManager(Worker):
         self.log.info("Got skip block notification with prev block hash {}...".format(prev_block_hash))
 
         if not self.db_state.cur_block_hash:
-            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-            self.db_state.cur_block_num = StateDriver.get_latest_block_num()
+            self.db_state.cur_block_hash = self.driver.latest_block_hash
+            self.db_state.cur_block_num = self.driver.latest_block_num
 
         if skip_block.prev_block_hash != self.db_state.cur_block_hash:
             self.log.warning("Got SkipBlockNotif with prev hash {} that does not match our current hash {}!!!"
@@ -476,7 +481,7 @@ class BlockManager(Worker):
         self.log.info("Got fail block notification with prev block hash {}...".format(prev_block_hash))
 
         if not self.db_state.cur_block_hash:
-            self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
+            self.db_state.cur_block_hash = self.driver.latest_block_hash
 
         if (prev_block_hash != self.db_state.cur_block_hash):
             # self.db_state.cur_block_hash = None

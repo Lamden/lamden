@@ -110,3 +110,19 @@ class MetaDataStorage(DatabaseDriver):
         assert int(v, 16), 'Hash provided is not a hex string.'
 
         self.set(self.block_hash_key, v)
+
+    latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
+
+    def get_latest_block_num(self):
+        num = self.get(self.block_num_key)
+        if num is None:
+            return 0
+
+        return int(num.decode())
+
+    def set_latest_block_num(self, v):
+        v = int(v)
+        assert v > 0, 'Block number must be positive integer.'
+        self.set(self.block_num_key, v)
+
+    latest_block_num = property(get_latest_block_num, set_latest_block_num)
