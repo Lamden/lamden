@@ -7,6 +7,8 @@ from cilantro_ee.constants.system_config import *
 from typing import List
 import json
 
+from contracting.db.driver import DatabaseDriver
+
 class StateDriver:
 
     BLOCK_HASH_KEY = '_current_block_hash'
@@ -67,3 +69,44 @@ class StateDriver:
         """ Sets the latest block num on the Redis database"""
         assert block_num >= 0, "block num must be GTE 0"
         SafeDriver.set(cls.BLOCK_NUM_KEY, block_num)
+
+
+class MetaDataStorage(DatabaseDriver):
+    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num'):
+        self.block_hash_key = block_hash_key
+        self.block_num_key = block_num_key
+        self.log = get_logger('StateDriver')
+        self.interface = None
+
+        super().__init__()
+
+    def update_with_block(self, block: BlockData):
+        for tx in block.transactions:
+            assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
+
+            if tx.state is not None and len(tx.state) > 0:
+                self.log.notice("State changes for tx: {}.".format(tx.state))
+                sets = json.loads(tx.state)
+                for k, v in sets.items():
+                    self.log.notice("Setting {} to {}".format(k, v))
+                    self.set(k, v)
+
+            self.log.notice("No state changes for tx.")
+
+        # Update our block hash and block num
+        self.set_latest_block_info(block.block_hash, block.block_num)
+
+        assert self.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
+                                                                "match block data {}".format(self.get_latest_block_hash(), block)
+
+    def get_latest_block_hash(self):
+        block_hash = self.get(self.block_hash_key)
+        if block_hash is None:
+            return '0' * 64
+        return block_hash.decode()
+
+    def set_latest_block_hash(self, v):
+        assert len(v) == 64, 'Hash provided is not 64 characters.'
+        assert int(v, 16), 'Hash provided is not a hex string.'
+
+        self.set(self.block_hash_key, v)
