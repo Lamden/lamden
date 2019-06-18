@@ -94,8 +94,6 @@ class TestMetaDataStorage(TestCase):
 
         self.assertEqual(num, got)
 
-
-
     def test_store_block_integration(self):
         states = [
             {'a': 1},
@@ -132,3 +130,10 @@ class TestMetaDataStorage(TestCase):
         self.assertEqual(self.db.get('h'), b'8')
         self.assertEqual(self.db.get('i'), b'9')
         self.assertEqual(self.db.get('j'), b'10')
+
+        num = block.block_num
+        h = block.block_hash
+
+        self.assertEqual(self.db.latest_block_hash, h)
+        self.assertEqual(self.db.latest_block_num, num)
+

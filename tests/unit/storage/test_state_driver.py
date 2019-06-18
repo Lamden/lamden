@@ -1,6 +1,5 @@
 from unittest import TestCase
 import unittest
-from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.messages.transaction.data import TransactionDataBuilder, TransactionData
 from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData

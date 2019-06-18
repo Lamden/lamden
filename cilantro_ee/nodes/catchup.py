@@ -5,7 +5,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import StateDriver, MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
@@ -136,7 +136,7 @@ class CatchupManager:
 
     def _reset_state(self):
         # only in a very rare case where mongo db is behind redis, this is called
-        SafeDriver.flushdb()
+        self.state.flush()
         sync_genesis_contracts()
 
     def _reset_timeout_fut(self):

@@ -1,7 +1,7 @@
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
-from cilantro_ee.storage.state import StateDriver, MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
