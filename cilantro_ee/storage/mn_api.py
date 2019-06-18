@@ -1,4 +1,3 @@
-from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.storage.master import DistributedMasterStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -46,102 +45,27 @@ class CilantroStorageDriver(DistributedMasterStorage):
         return block_data
 
     def get_transactions(self, tx_hash):
-        pass
+        txs = self.get_tx(tx_hash)
 
-class StorageDriver:
+        if txs is None:
+            return None
 
-    @classmethod
-    def get_transactions(cls, raw_tx_hash):
+        block_num = txs.get('block')
+        leaf = txs.get('tx_leaf')
 
-        map = MasterOps.get_usr_tx_result(usr_tx_hash = raw_tx_hash)
+        block = self.get_block(block_num)
+        sub_blocks = block.get('subBlocks')
 
-        if not map:
-            return
-
-        # identify Leaf and block num from given hash in map
-        blk_num = map.get('block')
-        leaf = map.get('tx_leaf')
-
-        # get relevant block
-        block = cls.get_nth_full_block(given_bnum = blk_num)
-        sub_blk = block.get('subBlocks')
-
-        # find leaf from sub block
         for i in range(0, NUM_SB_PER_BLOCK):
-            leaves = sub_blk[i].get('merkleLeaves')
+            leaves = sub_blocks[i].get('merkleLeaves')
+
             try:
                 tx_idx = leaves.index(leaf)
             except ValueError:
                 tx_idx = -1
 
             if tx_idx >= 0:
-                tx_dump = sub_blk[i].get('transactions')
-                cls.log.spam("index {} leaves {} tx {}".format(tx_idx, leaves, tx_dump[tx_idx]))
+                tx_dump = sub_blocks[i].get('transactions')
                 return tx_dump[tx_idx]
 
-        return
-
-    '''
-        api returns full block if stored locally else would return list of Master nodes responsible for it
-    '''
-    @classmethod
-    def get_nth_full_block(cls, given_bnum=None, given_hash=None):
-        """
-        API gets request for block num, this api assumes requested block is stored locally
-        else asserts
-
-        :param give_blk: block num on chain
-        :param mn_vk:    requester's vk
-        :return:         None for incorrect, only full blk if block found else assert
-        """
-
-        assert given_bnum is not None and given_hash is not None, 'Need block number or hash.'
-        q = {'blockNum': given_bnum} if given_bnum is not None else {'blockHash': given_hash}
-
-        full_block = GlobalColdStorage.driver.blocks.collection.find_one(q)
-
-        if full_block is not None:
-            full_block.pop('_id')
-            return full_block
-        else:
-            # TODO anarchy net this wont be used
-            blk_owners = MasterOps.get_blk_owners()
-            return blk_owners
-
-
-    @classmethod
-    def get_latest_block_hash(cls):
-        """
-        looks up mn_index returns latest hash
-
-        :return: block hash of last block on block chain
-        """
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)[-1]
-        cls.log.debug("get_latest_block_hash idx_entry -> {}".format(idx_entry))
-        blk_hash = idx_entry.get('blockHash')
-        cls.log.debug("get_latest_block_hash blk_hash ->{}".format(blk_hash))
-        return blk_hash
-
-    @classmethod
-    def get_latest_block_num(cls):
-        """
-        looks up mn_index returns latest num
-
-        :return: block num of last block on block chain
-        """
-        idx_entry = MasterOps.get_blk_idx(n_blks=1)[-1]
-        cls.log.debug("get_latest_block_num idx_entry -> {}".format(idx_entry))
-        blk_num = idx_entry.get('blockNum')
-        cls.log.debug("get_latest_block_num blk_num ->{}".format(blk_num))
-        return blk_num
-
-    @classmethod
-    def check_block_exists(cls, block_hash: str) -> bool:
-        """
-        Checks if the given block hash exists in our index table
-        :param block_hash: The block hash to check
-        :return: True if the block hash exists in our index table, and False otherwise
-        """
-        return GlobalColdStorage.driver.blocks.collection.find_one({
-            'blockHash': block_hash
-        }) is not None
+        return None

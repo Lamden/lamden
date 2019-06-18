@@ -4,7 +4,7 @@ from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
-from cilantro_ee.storage.mn_api import StorageDriver
+from cilantro_ee.storage.mn_api import StorageDriver, CilantroStorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 
 from cilantro_ee.constants.zmq_filters import *
@@ -45,9 +45,15 @@ class BlockAggregator(Worker):
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+
+        self.driver = CilantroStorageDriver(key=self.signing_key)
+
+        latest_hash = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
+        latest_hash = latest_hash.get('blockHash')
+
+        assert latest_hash == StateDriver.get_latest_block_hash(), \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+            .format(latest_hash, StateDriver.get_latest_block_hash())
 
         self.run()
 

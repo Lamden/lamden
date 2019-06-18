@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.storage.mn_api import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.protocol import wallet
 from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
 
