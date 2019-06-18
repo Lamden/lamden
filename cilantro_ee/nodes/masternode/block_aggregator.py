@@ -4,9 +4,8 @@ from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
-from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
-
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
@@ -45,9 +44,15 @@ class BlockAggregator(Worker):
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+
+        self.driver = CilantroStorageDriver(key=self.signing_key)
+
+        latest_hash = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
+        latest_hash = latest_hash.get('blockHash')
+
+        assert latest_hash == StateDriver.get_latest_block_hash(), \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+            .format(latest_hash, StateDriver.get_latest_block_hash())
 
         self.run()
 
@@ -85,7 +90,7 @@ class BlockAggregator(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
+        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, signing_key=self.signing_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
 
         # Create ROUTER socket for communication with batcher over IPC
@@ -97,6 +102,9 @@ class BlockAggregator(Worker):
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
+
+        self.log.info('connecting to masters: {}'.format(PhoneBook.masternodes))
+        self.log.info('connecting to delegates: {}'.format(PhoneBook.delegates))
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
         for vk in PhoneBook.masternodes:
@@ -220,7 +228,13 @@ class BlockAggregator(Worker):
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            block_data = StorageDriver.store_block(sb_data)
+            self.log.debug("Storing a block: {}".format(self.curr_block_hash))
+
+            try:
+                block_data = self.driver.store_block(sb_data)
+                self.log.debug(block_data)
+            except Exception as e:
+                self.log.error(str(e))
 
             assert block_data.prev_block_hash == self.curr_block_hash, \
                 "Current block hash {} does not match StorageDriver previous block hash {}"\

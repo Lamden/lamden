@@ -3,6 +3,7 @@ from cilantro_ee.contracts import sync
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 
+
 class TestContractSync(TestCase):
     def test_directory_to_filename_works(self):
         directory = '~/something/something/hello/this/is/a/path.txt'

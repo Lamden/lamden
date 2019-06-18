@@ -4,7 +4,7 @@ from unittest.mock import patch
 #from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.storage.mn_api import StorageDriver
-from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.nodes.masternode.master_store import MasterOps, GlobalColdStorage
 import cilantro_ee.nodes.masternode.webserver as endpt
 
 from cilantro_ee.messages.block_data.block_data import *
@@ -17,12 +17,41 @@ DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
 
 
+def create_random_block(cls, prev_hash: str=GENESIS_BLOCK_HASH, num: int=1) -> BlockData:
+    from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
+
+    input_hash1 = 'A'*64
+    input_hash2 = 'B'*64
+    sb1 = SubBlockBuilder.create(input_hash=input_hash1, idx=0)
+    sb2 = SubBlockBuilder.create(input_hash=input_hash2, idx=1)
+    sbs = [sb1, sb2]
+
+    block_hash = BlockData.compute_block_hash([sb1.merkle_root, sb2.merkle_root], prev_hash)
+    block_num = num
+    block_owners = [m['vk'] for m in TESTNET_MASTERNODES]  #[cls.MN_VK]
+
+    block = BlockData.create(block_hash=block_hash, prev_block_hash=prev_hash, block_num=block_num,
+                             sub_blocks=sbs, block_owners=block_owners)
+
+    return block
+
+
+def create_conseq_blocks(cls, num_blocks: int, first_hash=GENESIS_BLOCK_HASH, first_num=1):
+    curr_num, curr_hash = first_num, first_hash
+    blocks = []
+    for _ in range(num_blocks):
+        block = cls.create_random_block(curr_hash, curr_num)
+        curr_num += 1
+        curr_hash = block.block_hash
+        blocks.append(block)
+    return blocks
+
+
 class TestStorageDriver(TestCase):
 
     @classmethod
     def setUpClass(cls):
         MasterOps.init_master(key = MN_SK)
-        #cls.driver = StorageDriver()
 
     def setUp(self):
         MDB.reset_db()
@@ -32,10 +61,14 @@ class TestStorageDriver(TestCase):
         verifies genesis block and get_full_blk api
         :return:
         """
-        blk_frm_num = MasterOps.get_full_blk(blk_num = 0)
-        blk_frm_hash = MasterOps.get_full_blk(blk_hash = "0000000000000000000000000000000000000000000000000000000000000000")
-        self.assertEqual(blk_frm_num.get("blockNum"), 0)
-        self.assertEqual(blk_frm_hash.get("blockNum"), 0)
+        block_1 = GlobalColdStorage.driver.blocks.collection.find_one({
+            'blockNum': 0
+        })
+        block_2 = GlobalColdStorage.driver.blocks.collection.find_one({
+            'blockHash':"0000000000000000000000000000000000000000000000000000000000000000"
+        })
+        self.assertEqual(block_1.get("blockNum"), 0)
+        self.assertEqual(block_2.get("blockNum"), 0)
 
     def test_store_blks(self):
         """
@@ -59,50 +92,6 @@ class TestStorageDriver(TestCase):
 
         self.assertEqual(last_blk_num, fifth_block.get('blockNum'))
         self.assertEqual(last_blk_hash, fifth_block.get('blockHash'))
-
-
-    # @patch('cilantro_ee.nodes.masternode.webserver.get')
-    # def test_webserver_api(self):
-    #     blocks = BlockDataBuilder.create_conseq_blocks(5)
-    #     for block in blocks:
-    #         StorageDriver.store_block(block.sub_blocks)
-    #
-    #     json_blk = endpt._respond_to_request(blocks[2])
-    #     print(json_blk)
-
-
-
-
-    # @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
-    # def test_store_block(self):
-    #     sub_blocks = [SubBlockBuilder.create(idx=i) for i in range(2)]
-    #     block = self.driver.store_block(sub_blocks)
-    #     last_stored_hash = self.driver.get_latest_block_hash()
-    #
-    #     tx = sub_blocks[1].transactions[0].transaction
-    #     usr_tx_hash = Hasher.hash(tx)
-    #     result = self.driver.get_transactions(raw_tx_hash = usr_tx_hash)
-    #
-    #     self.assertEqual(block.block_num, 1)
-    #     self.assertEqual(block.block_hash, last_stored_hash)
-    #     self.assertTrue(result)
-
-    # @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
-    # def test_get_latest_blocks(self):
-    #     blocks = []
-    #     for i in range(5):
-    #         if len(blocks) > 0:
-    #             block = BlockDataBuilder.create_block(prev_block_hash=blocks[-1].block_hash, blk_num=len(blocks)+1)
-    #         else:
-    #             block = BlockDataBuilder.create_block()
-    #         blocks.append(block)
-    #         self.driver.store_block(block, validate=False)
-    #     latest_blocks = self.driver.get_latest_blocks(blocks[1].block_hash)
-    #     self.assertEqual(len(latest_blocks), 3)
-    #     self.assertEqual(latest_blocks[0].block_hash, blocks[2].block_hash)
-    #     self.assertEqual(latest_blocks[1].block_hash, blocks[3].block_hash)
-    #     self.assertEqual(latest_blocks[2].block_hash, blocks[4].block_hash)
-
 
 if __name__ == '__main__':
     unittest.main()

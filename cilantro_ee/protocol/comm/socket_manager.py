@@ -6,6 +6,7 @@ from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.protocol.comm.lsocket_router import LSocketRouter
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
+from cilantro_ee.storage.vkbook import PhoneBook
 
 from collections import defaultdict
 import asyncio, zmq.asyncio, time
@@ -86,6 +87,8 @@ class SocketManager:
         # TODO proper error handling / 'bad actor' logic here
         elif e['event'] == 'unauthorized_ip':
             self.log.error("SocketManager got unauthorized_ip event {}".format(e))
+            self.log("Masternodes: {}".format(PhoneBook.masternodes))
+            self.log("Delegates: {}".format(PhoneBook.delegates))
 
         else:
             self.log.debugv("SocketManager got overlay event {} that it does not know how to handle. Ignoring."

@@ -23,7 +23,7 @@ from contracting.config import DELIMITER
 from multiprocessing import Queue
 import os, time
 
-from cilantro_ee.storage.mn_api import StorageDriver
+from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.protocol.webserver.validation import *
 
 import json as _json
@@ -32,7 +32,7 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
-
+driver = MasterStorage()
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
@@ -187,7 +187,8 @@ async def get_state(request, contract, resource, key):
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_latest_block(request):
-    latest_block_hash = StorageDriver.get_latest_block_hash()
+    index = driver.get_last_n(1)
+    latest_block_hash = index.get('blockHash')
     return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
@@ -196,12 +197,12 @@ async def get_latest_block(request):
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
-        block = StorageDriver.get_nth_full_block(given_bnum = num)
+        block = driver.get_block(num)
         if block is None:
             return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     else:
         _hash = request.json['hash']
-        block = StorageDriver.get_nth_full_block(given_hash = _hash)
+        block = driver.get_block(hash)
         if block is None:
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
@@ -211,7 +212,7 @@ async def get_block(request):
 def get_tx(_hash):
     if not _hash:
         return None
-    return StorageDriver.get_transactions(raw_tx_hash=_hash)
+    return driver.get_tx(_hash)
 
 
 """
@@ -252,7 +253,7 @@ async def get_transaction(request):
 @app.route('/transactions', methods=['POST',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
-    txs = StorageDriver.get_transactions(block_hash=_hash)
+    txs = driver.get_tx(_hash)
     if txs is None:
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)
