@@ -9,7 +9,7 @@ from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.contracts import mint_wallets
-from cilantro_ee.storage.mn_api import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
