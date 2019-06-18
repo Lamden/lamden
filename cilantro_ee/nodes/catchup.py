@@ -75,6 +75,8 @@ class CatchupManager:
 
         db_latest_blk_num = last_block.get('blockNum')
 
+
+
         latest_state_num = StateDriver.get_latest_block_num()
         if db_latest_blk_num < latest_state_num:
             # TODO - assert and quit
