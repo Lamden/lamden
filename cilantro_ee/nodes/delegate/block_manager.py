@@ -153,7 +153,11 @@ class BlockManager(Worker):
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
-        self.db_state.catchup_mgr = CatchupManager(self.signing_key, self.pub, self.router, False)
+        self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
+                                                   signing_key=self.signing_key,
+                                                   pub_socket=self.pub,
+                                                   router_socket=self.router,
+                                                   store_full_blocks=False)
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
