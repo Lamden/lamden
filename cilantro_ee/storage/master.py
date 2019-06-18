@@ -14,6 +14,7 @@ REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
 
+
 class StorageSet:
     def __init__(self, user, password, port, database, collection_name):
         self.uri = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'.format(
