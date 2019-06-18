@@ -37,6 +37,8 @@ class CatchupManager:
         self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
+        self.driver = CilantroStorageDriver(key=self.signing_key)
+
         # catchup state
         self.is_caught_up = False
         self.timeout_catchup = time.time()      # 10 sec time we will wait for 2/3rd MN to respond
@@ -59,8 +61,6 @@ class CatchupManager:
         self.target_blk_num = self.curr_num
         self.awaited_blknum = self.curr_num
 
-        self.driver = CilantroStorageDriver(key=self.signing_key)
-
         # DEBUG -- TODO DELETE
         self.log.test("CatchupManager VKBook MN's: {}".format(PhoneBook.masternodes))
         self.log.test("CatchupManager VKBook Delegates's: {}".format(PhoneBook.delegates))
@@ -71,6 +71,7 @@ class CatchupManager:
         Sync block and state DB if either is out of sync.
         :return:
         """
+        self.driver = CilantroStorageDriver(key=self.signing_key)
 
         last_block = self.driver.get_last_n(1, MasterStorage.INDEX)[0]
 

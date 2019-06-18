@@ -225,7 +225,7 @@ class BlockAggregator(Worker):
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            block_data = StorageDriver.store_block(sb_data)
+            block_data = self.driver.store_block(sb_data)
 
             assert block_data.prev_block_hash == self.curr_block_hash, \
                 "Current block hash {} does not match StorageDriver previous block hash {}"\
