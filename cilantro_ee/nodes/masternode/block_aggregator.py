@@ -1,7 +1,7 @@
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.state import StateDriver, MetaDataStorage
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
@@ -35,13 +35,15 @@ class BlockAggregator(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
 
+        self.state = MetaDataStorage()
+
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block_hash = self.state.latest_block_hash
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
 
@@ -50,9 +52,9 @@ class BlockAggregator(Worker):
         latest_hash = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
         latest_hash = latest_hash.get('blockHash')
 
-        assert latest_hash == StateDriver.get_latest_block_hash(), \
+        assert latest_hash == self.state.latest_block_hash, \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(latest_hash, StateDriver.get_latest_block_hash())
+            .format(latest_hash, self.state.latest_block_hash)
 
         self.run()
 
@@ -186,12 +188,12 @@ class BlockAggregator(Worker):
 
         elif isinstance(msg, BlockDataReply):
             if self.catchup_manager.recv_block_data_reply(msg):
-                self.curr_block_hash = StateDriver.get_latest_block_hash()
+                self.curr_block_hash = self.state.latest_block_hash
                 self.curr_block.reset()
 
         elif isinstance(msg, BlockIndexReply):
             if self.catchup_manager.recv_block_idx_reply(sender, msg):
-                self.curr_block_hash = StateDriver.get_latest_block_hash()
+                self.curr_block_hash = self.state.latest_block_hash
                 self.curr_block.reset()
 
         else:
@@ -266,7 +268,7 @@ class BlockAggregator(Worker):
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, StateDriver.get_latest_block_num()+1, sub_blocks)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -278,8 +280,8 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if notif.block_num > StateDriver.get_latest_block_num() + 1:
-            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
+        if notif.block_num > self.state.latest_block_num + 1:
+            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")

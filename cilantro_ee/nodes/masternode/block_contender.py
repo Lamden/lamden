@@ -1,4 +1,4 @@
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
@@ -169,7 +169,8 @@ class BlockContender:
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.state = MetaDataStorage()
+        self.curr_block_hash = self.state.latest_block_hash
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
@@ -186,7 +187,7 @@ class BlockContender:
         # Reset all the data
         self.committed = False
         self.consensus_reached = False
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block_hash = self.state.latest_block_hash
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))

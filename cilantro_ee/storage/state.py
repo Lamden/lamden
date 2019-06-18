@@ -37,39 +37,6 @@ class StateDriver:
         assert cls.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
                                                                 "match block data {}".format(cls.get_latest_block_hash(), block)
 
-    @classmethod
-    def set_latest_block_info(cls, block_hash: str, block_num: int):
-        cls.set_latest_block_hash(block_hash)
-        cls.set_latest_block_num(block_num)
-
-    @classmethod
-    def get_latest_block_info(cls) -> tuple:
-        return cls.get_latest_block_hash(), cls.get_latest_block_num()
-
-    @classmethod
-    def get_latest_block_hash(cls) -> str:
-        """ Returns the latest block hash from the Redis database """
-        b_hash = SafeDriver.get(cls.BLOCK_HASH_KEY)
-        return b_hash.decode() if b_hash else GENESIS_BLOCK_HASH
-
-    @classmethod
-    def set_latest_block_hash(cls, block_hash: str):
-        """ Sets the latest block hash on the Redis database"""
-        assert is_valid_hex(block_hash, 64), "block hash {} not valid 64 char hex".format(block_hash)
-        SafeDriver.set(cls.BLOCK_HASH_KEY, block_hash)
-
-    @classmethod
-    def get_latest_block_num(cls) -> int:
-        """ Returns the latest block num from the Redis database """
-        b_num = SafeDriver.get(cls.BLOCK_NUM_KEY)
-        return int(b_num.decode()) if b_num else 0
-
-    @classmethod
-    def set_latest_block_num(cls, block_num: int):
-        """ Sets the latest block num on the Redis database"""
-        assert block_num >= 0, "block num must be GTE 0"
-        SafeDriver.set(cls.BLOCK_NUM_KEY, block_num)
-
 
 class MetaDataStorage(DatabaseDriver):
     def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num'):
@@ -94,10 +61,11 @@ class MetaDataStorage(DatabaseDriver):
             self.log.notice("No state changes for tx.")
 
         # Update our block hash and block num
-        self.set_latest_block_info(block.block_hash, block.block_num)
+        self.latest_block_hash = block.block_hash
+        self.latest_block_num = block.block_num
 
-        assert self.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
-                                                                "match block data {}".format(self.get_latest_block_hash(), block)
+        assert self.latest_block_hash == block.block_hash, \
+            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
     def get_latest_block_hash(self):
         block_hash = self.get(self.block_hash_key)
