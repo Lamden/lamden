@@ -99,7 +99,7 @@ class CatchupManager:
                 if '_id' in blk_dict:
                     del blk_dict['_id']
                 block = BlockData.from_dict(blk_dict)
-                StateDriver.update_with_block(block = block)
+                self.state.update_with_block(block=block)
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
     # should be called only once per node after bootup is done
@@ -385,16 +385,16 @@ class CatchupManager:
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
 
-    def update_received_block(self, block = None):
+    def update_received_block(self, block=None):
         assert self.curr_num in self.rcv_block_dict, "not found the received block!"
         cur_num = self.curr_num
         while cur_num in self.rcv_block_dict:
             block = self.rcv_block_dict[cur_num]
             if self.store_full_blocks is True:
-                update_blk_result = bool(self.driver.evaluate_wr(entry = block._data.to_dict()))
+                update_blk_result = bool(self.driver.evaluate_wr(entry=block._data.to_dict()))
                 assert update_blk_result is True, "failed to update block"
 
-            StateDriver.update_with_block(block = block)
+            self.state.update_with_block(block)
             self.curr_num = cur_num
             cur_num = cur_num + 1
 

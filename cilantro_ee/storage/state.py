@@ -1,41 +1,9 @@
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
-from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.constants.system_config import *
-from typing import List
+from cilantro_ee.messages.block_data.block_data import BlockData
 import json
 
 from contracting.db.driver import DatabaseDriver
-
-class StateDriver:
-
-    BLOCK_HASH_KEY = '_current_block_hash'
-    BLOCK_NUM_KEY = '_current_block_num'
-    log = get_logger("StateDriver")
-    interface = None
-
-    @classmethod
-    def update_with_block(cls, block: BlockData):
-        # Update state by running Redis outputs from the block's transactions
-        for tx in block.transactions:
-            assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
-
-            if tx.state is not None and len(tx.state) > 0:
-                cls.log.notice("State changes for tx: {}.".format(tx.state))
-                sets = json.loads(tx.state)
-                for k, v in sets.items():
-                    cls.log.notice("Setting {} to {}".format(k, v))
-                    SafeDriver.set(k, v)
-
-            cls.log.notice("No state changes for tx.")
-
-        # Update our block hash and block num
-        cls.set_latest_block_info(block.block_hash, block.block_num)
-
-        assert cls.get_latest_block_hash() == block.block_hash, "StateUpdate failed! Latest block hash {} does not " \
-                                                                "match block data {}".format(cls.get_latest_block_hash(), block)
 
 
 class MetaDataStorage(DatabaseDriver):
@@ -52,13 +20,9 @@ class MetaDataStorage(DatabaseDriver):
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
 
             if tx.state is not None and len(tx.state) > 0:
-                self.log.notice("State changes for tx: {}.".format(tx.state))
                 sets = json.loads(tx.state)
                 for k, v in sets.items():
-                    self.log.notice("Setting {} to {}".format(k, v))
                     self.set(k, v)
-
-            self.log.notice("No state changes for tx.")
 
         # Update our block hash and block num
         self.latest_block_hash = block.block_hash
