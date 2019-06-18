@@ -57,7 +57,6 @@ class MasterStorage:
         self.txs = StorageSet(user, password, port, tx_database, 'tx')
 
         if self.get_block(0) is None:
-            print('minting genesis block')
             self.put({
                 'blockNum': 0,
                 'blockHash': '0' * 64,

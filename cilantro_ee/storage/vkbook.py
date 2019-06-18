@@ -67,7 +67,4 @@ class VKBook:
 book = read_public_constitution(conf.CONSTITUTION_FILE)
 masternodes = [node['vk'] for node in book['masternodes']]
 delegates = [node['vk'] for node in book['delegates']]
-print(book)
 PhoneBook = VKBook(masternodes, delegates, stamps=conf.STAMPS_ENABLED, nonces=conf.NONCE_ENABLED)
-print(PhoneBook.masternodes)
-print(PhoneBook.delegates)

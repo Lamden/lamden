@@ -3,12 +3,10 @@ import asyncio
 import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.constants.system_config import SHOULD_MINT_WALLET
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.contracts import mint_wallets
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -134,9 +132,6 @@ class CatchupManager:
         # only in a very rare case where mongo db is behind redis, this is called
         SafeDriver.flushdb()
         sync_genesis_contracts()
-
-        if SHOULD_MINT_WALLET:
-            mint_wallets()
 
     def _reset_timeout_fut(self):
         if self.timeout_fut:

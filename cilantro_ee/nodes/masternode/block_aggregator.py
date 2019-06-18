@@ -103,6 +103,9 @@ class BlockAggregator(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
+        print('connecting to masters: {}'.format(PhoneBook.masternodes))
+        print('connecting to delegates: {}'.format(PhoneBook.delegates))
+
         # Listen to masters for new block notifs and state update requests from masters/delegates
         for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
