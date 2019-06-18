@@ -1,5 +1,4 @@
 import cilantro_ee
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.protocol import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser

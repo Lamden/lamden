@@ -1,6 +1,5 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.constants import conf
 
 import time
@@ -31,8 +30,6 @@ def start_node(signing_key, node_type):
 
     if node_type == MASTERNODE:
         wait_for_mongo()
-
-        MasterOps.init_master(key=signing_key)
 
         Masternode(ip=conf.HOST_IP, name='Masternode', signing_key=signing_key)
 

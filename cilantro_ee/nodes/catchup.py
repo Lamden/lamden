@@ -9,9 +9,8 @@ from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import StateDriver
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.contracts import mint_wallets
-from cilantro_ee.storage.mn_api import StorageDriver, CilantroStorageDriver
+from cilantro_ee.storage.mn_api import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
-from cilantro_ee.nodes.masternode.master_store import MasterOps
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
 from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
@@ -22,7 +21,7 @@ TIMEOUT_CHECK_INTERVAL = 1
 
 
 class CatchupManager:
-    def __init__(self, verifying_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
+    def __init__(self, verifying_key: str, signing_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
         """
 
         :param verifying_key: host vk
@@ -35,6 +34,7 @@ class CatchupManager:
         # infra input
         self.pub, self.router = pub_socket, router_socket
         self.verifying_key = verifying_key
+        self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
         # catchup state
@@ -59,7 +59,7 @@ class CatchupManager:
         self.target_blk_num = self.curr_num
         self.awaited_blknum = self.curr_num
 
-        self.driver = MasterStorage()
+        self.driver = CilantroStorageDriver(key=self.signing_key)
 
         # DEBUG -- TODO DELETE
         self.log.test("CatchupManager VKBook MN's: {}".format(PhoneBook.masternodes))
@@ -354,7 +354,7 @@ class CatchupManager:
                 self.log.debug('given block is already latest')
                 return None
             else:
-                idx_delta = MasterOps.get_blk_idx(n_blks = (latest_blk_num - given_blk_num))
+                idx_delta = self.driver.get_last_n(latest_blk_num - given_blk_num)
                 return idx_delta
 
         assert valid_node, "invalid vk given key is not of master/delegate/statestync dumping vk {}".format(vk)
@@ -387,7 +387,7 @@ class CatchupManager:
         while cur_num in self.rcv_block_dict:
             block = self.rcv_block_dict[cur_num]
             if self.store_full_blocks is True:
-                update_blk_result = bool(MasterOps.evaluate_wr(entry = block._data.to_dict()))
+                update_blk_result = bool(self.driver.evaluate_wr(entry = block._data.to_dict()))
                 assert update_blk_result is True, "failed to update block"
 
             StateDriver.update_with_block(block = block)

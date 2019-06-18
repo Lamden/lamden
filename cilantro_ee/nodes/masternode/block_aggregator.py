@@ -91,7 +91,7 @@ class BlockAggregator(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
+        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, signing_key=self.signing_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
 
         # Create ROUTER socket for communication with batcher over IPC

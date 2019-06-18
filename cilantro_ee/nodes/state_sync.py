@@ -93,7 +93,7 @@ class StateSync(Worker):
 
         self.tasks.append(self._connect_and_process())
 
-        self.cm = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub, router_socket=self.router,
+        self.cm = CatchupManager(verifying_key=self.verifying_key, signing_key=self.signing_key, pub_socket=self.pub, router_socket=self.router,
                                  store_full_blocks=False)
 
     async def catchup_db_state(self):
