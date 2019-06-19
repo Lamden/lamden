@@ -113,26 +113,3 @@ def get_testnet_nodes():
 
 
 set_testnet_nodes()
-
-# MN_WITNESS_MAP = {}  # Map of masternodes --> responsible witness set
-# WITNESS_MN_MAP = {}
-#
-# if CilantroConf.CONSTITUTION_FILE is None:
-#     log.info("Constitution file not set, using default")
-#     set_testnet_nodes()
-# else:
-#     # UNHACK ALL THIS
-#     # global MN_WITNESS_MAP, WITNESS_MN_MAP
-#     from cilantro_ee.storage.vkbook import VKBook
-#     print("Building WITNESS_MN_MAP manually")
-#     r = 1
-#     # Build MN_WITNESS_MAP/WITNESS_MN_MAP
-#     for i, mn_vk in enumerate(VKBook.get_masternodes()):
-#         witnesses = VKBook.get_witnesses()[i * r:i * r + r]
-#
-#         MN_WITNESS_MAP[mn_vk] = witnesses
-#         for w in witnesses:
-#             WITNESS_MN_MAP[w] = mn_vk
-#
-#     log.notice("MN_WITNESS_MAP: {}".format(MN_WITNESS_MAP))
-#     log.notice("WITNESS_MN_MAP: {}".format(WITNESS_MN_MAP))

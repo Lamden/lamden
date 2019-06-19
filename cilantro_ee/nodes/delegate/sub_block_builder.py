@@ -102,13 +102,6 @@ class SubBlockBuilder(Worker):
         self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
         # END DEBUG
 
-        # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
-        # self.clients = []
-        # for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
-            # client_sb_index = i * NUM_SB_BUILDERS + sbb_index
-            # client = SenecaClient(sbb_idx=client_sb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
-            # self.clients.append(client)
-
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
@@ -171,12 +164,17 @@ class SubBlockBuilder(Worker):
 
     def _connect_new_node(self, vk):
         d = NetworkTopology.get_sbb_publisher(vk)
+
         if d is None:
             return
+
         sbb_idx = d['sb_idx'] % NUM_SB_BUILDERS
+
         if sbb_idx != self.sbb_index:
             return
+
         smi = d['sb_idx'] // NUM_SB_BUILDERS
+
         self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
 
 
