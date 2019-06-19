@@ -243,6 +243,7 @@ class BlockAggregator(Worker):
                 .format(self.curr_block_hash, block_data.prev_block_hash)
 
             self.curr_block_hash = block_data.block_hash
+            self.log.info('New block incoming: {}'.format(block_data.transactions))
             self.state.update_with_block(block_data)
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)

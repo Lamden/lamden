@@ -21,12 +21,16 @@ class MetaDataStorage(DatabaseDriver):
 
             if tx.state is not None and len(tx.state) > 0:
                 sets = json.loads(tx.state)
+
                 for k, v in sets.items():
                     self.set(k, v)
+                    #self.log.info('Set {} to {}'.format(k, v))
 
         # Update our block hash and block num
         self.latest_block_hash = block.block_hash
         self.latest_block_num = block.block_num
+
+        #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
 
         assert self.latest_block_hash == block.block_hash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)

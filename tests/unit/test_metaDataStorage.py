@@ -136,4 +136,3 @@ class TestMetaDataStorage(TestCase):
 
         self.assertEqual(self.db.latest_block_hash, h)
         self.assertEqual(self.db.latest_block_num, num)
-
