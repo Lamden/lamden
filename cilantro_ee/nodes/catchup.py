@@ -5,7 +5,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
@@ -37,6 +37,8 @@ class CatchupManager:
 
         self.driver = CilantroStorageDriver(key=self.signing_key)
 
+        self.state = MetaDataStorage()
+
         # catchup state
         self.is_caught_up = False
         self.timeout_catchup = time.time()      # 10 sec time we will wait for 2/3rd MN to respond
@@ -55,7 +57,9 @@ class CatchupManager:
         if store_full_blocks:
             self.update_state()
 
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+        self.curr_hash = self.state.latest_block_hash
+        self.curr_num = self.state.latest_block_num
+
         self.target_blk_num = self.curr_num
         self.awaited_blknum = self.curr_num
 
@@ -77,7 +81,7 @@ class CatchupManager:
 
 
 
-        latest_state_num = StateDriver.get_latest_block_num()
+        latest_state_num = self.state.latest_block_num
         if db_latest_blk_num < latest_state_num:
             # TODO - assert and quit
             self.log.fatal("Block DB block - {} is behind StateDriver block - {}. Cannot handle"
@@ -95,7 +99,7 @@ class CatchupManager:
                 if '_id' in blk_dict:
                     del blk_dict['_id']
                 block = BlockData.from_dict(blk_dict)
-                StateDriver.update_with_block(block = block)
+                self.state.update_with_block(block=block)
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
     # should be called only once per node after bootup is done
@@ -132,7 +136,7 @@ class CatchupManager:
 
     def _reset_state(self):
         # only in a very rare case where mongo db is behind redis, this is called
-        SafeDriver.flushdb()
+        self.state.flush()
         sync_genesis_contracts()
 
     def _reset_timeout_fut(self):
@@ -272,7 +276,8 @@ class CatchupManager:
             return
 
         if self.is_caught_up:
-            self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+            self.curr_hash = self.state.latest_block_hash
+            self.curr_num = self.state.latest_block_num
 
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
@@ -290,7 +295,8 @@ class CatchupManager:
         # can get any time - hopefully one incremental request, how do you handle it in all cases?
         nw_blk_num = update.block_num
         if self.is_caught_up:
-            self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+            self.curr_hash = self.state.latest_block_hash
+            self.curr_num = self.state.latest_block_num
             self.target_blk_num = self.curr_num
             self.awaited_blknum = self.curr_num
         if (nw_blk_num <= self.curr_num) or (nw_blk_num <= self.target_blk_num):
@@ -379,19 +385,21 @@ class CatchupManager:
             for vk in mn_list:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = self.awaited_blknum)
 
-    def update_received_block(self, block = None):
+    def update_received_block(self, block=None):
         assert self.curr_num in self.rcv_block_dict, "not found the received block!"
         cur_num = self.curr_num
         while cur_num in self.rcv_block_dict:
             block = self.rcv_block_dict[cur_num]
             if self.store_full_blocks is True:
-                update_blk_result = bool(self.driver.evaluate_wr(entry = block._data.to_dict()))
+                update_blk_result = bool(self.driver.evaluate_wr(entry=block._data.to_dict()))
                 assert update_blk_result is True, "failed to update block"
 
-            StateDriver.update_with_block(block = block)
+            self.state.update_with_block(block)
             self.curr_num = cur_num
             cur_num = cur_num + 1
-        self.curr_hash, self.curr_num = StateDriver.get_latest_block_info()
+
+        self.curr_hash = self.state.latest_block_hash
+        self.curr_num = self.state.latest_block_num
 
     def _check_idx_reply_quorum(self):
         # We have enough BlockIndexReplies if 2/3 of Masternodes replied

@@ -1,4 +1,5 @@
 from cilantro_ee.storage.driver import SafeDriver
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.masternode import NONCE_EXPIR
 import secrets
 
@@ -30,3 +31,23 @@ class NonceManager:
     def delete_nonce(cls, nonce: str):
         if cls.check_if_exists(nonce):
             SafeDriver.delete(nonce)
+
+
+class NewNonceManager:
+    def __init__(self):
+        self.state = MetaDataStorage()
+
+    def nonce_exists(self, s):
+        return self.state.exists(s)
+
+    def create_nonce(self, user_vk: str) -> str:
+        nonce = secrets.token_bytes(32).hex()
+        key = '{}:{}'.format(user_vk, nonce)
+
+        # TODO this check if just for dev. remove it in prod.
+        assert not self.check_if_exists(key), "Nonce {} already exists!!!".format(key)
+
+        self.state.set(key, 1)
+        #self.state.expire(key, NONCE_EXPIR)
+
+        return key

@@ -233,6 +233,7 @@ async def get_transaction_payload(request):
 
     return _respond_to_request(tx['transaction'], resptype='text')
 
+
 @app.route('/transaction', methods=['POST',"OPTIONS",])
 async def get_transaction(request):
     if not request.json:
