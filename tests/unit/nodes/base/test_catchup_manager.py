@@ -6,13 +6,15 @@ from unittest.mock import MagicMock, patch
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.mongo import MDB
+from cilantro_ee.storage.master import DistributedMasterStorage
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import *
 import asyncio, time
 from cilantro_ee.protocol import wallet
+
+from cilantro_ee.storage.vkbook import VKBook
 
 SK = 'A' * 64
 VK = wallet.get_vk(SK)
@@ -39,31 +41,28 @@ DELE_VK4 = wallet.get_vk(DELE_SK4)
 
 DELE_VKS = [DELE_VK1, DELE_VK2, DELE_VK3, DELE_VK4]
 
+PhoneBook = VKBook(MN_VKS, DELE_VKS, debug=True)
+
+
 class TestCatchupManager(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        MasterOps.init_master(key=SK)
-        # from cilantro_ee.storage.vkbook import VKBook
-        # VKBook.setup()
-
     def setUp(self):
-        MDB.reset_db()
         self.state = MetaDataStorage()
-        self.state.set_latest_block_info(block_hash=GENESIS_BLOCK_HASH, block_num=0)
+
+        self.state.latest_block_hash = GENESIS_BLOCK_HASH
+        self.state.latest_block_num = 0
         # TODO how to rest Mongo between runs?
         self.manager = None
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
     def tearDown(self):
-        if self.manager.timeout_fut and not self.manager.timeout_fut.done():
-            self.manager.timeout_fut.cancel()
+        #if self.manager.timeout_fut and not self.manager.timeout_fut.done():
+        #    self.manager.timeout_fut.cancel()
         asyncio.get_event_loop().close()
 
     def _build_manager(self, vk=VK, store_blocks=True) -> CatchupManager:
         pub, router = MagicMock(), MagicMock()
-        m = CatchupManager(verifying_key=vk, pub_socket=pub, router_socket=router, store_full_blocks=store_blocks)
+        m = CatchupManager(verifying_key=MN_VK1, signing_key=MN_SK1, pub_socket=pub, router_socket=router, store_full_blocks=store_blocks)
         self.manager = m
         return m
 
@@ -83,13 +82,11 @@ class TestCatchupManager(TestCase):
         self.assertEqual(m.curr_hash, self.state.get_latest_block_hash())
         self.assertEqual(m.curr_num, self.state.get_latest_block_num())
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_with_no_new_blocks(self, *args):
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         reply_data = None
         index_reply = BlockIndexReply.create(block_info = reply_data)
@@ -108,8 +105,6 @@ class TestCatchupManager(TestCase):
 
         self.assertTrue(cm.is_catchup_done())  # Now that we have 2/4 replies, we should be out of Catchup
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_with_new_blocks_requests_proper_data(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
@@ -117,9 +112,9 @@ class TestCatchupManager(TestCase):
 
         b1 = 'A' * 64
         b2 = 'B' * 64
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
 
         reply_data1 = [{'blockNum': 1, 'blockHash': b1, 'blockOwners': [MN_VK1, MN_VK2]}]
         reply_data2 = [{'blockNum': 2, 'blockHash': b2, 'blockOwners': [MN_VK1, MN_VK2]},
@@ -142,22 +137,20 @@ class TestCatchupManager(TestCase):
         self._assert_router_called_with_msg(cm, msg=expected_req_1, possible_headers=(MN_VK1.encode(), MN_VK2.encode()))
         self._assert_router_called_with_msg(cm, msg=expected_req_2, possible_headers=(MN_VK1.encode(), MN_VK2.encode()))
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_recv_block_idx_req_sends_correct_idx_replies_from_block_num(self, *args):
         cm = self._build_manager()
         # cm.run_catchup()
         cm.is_caught_up = True
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         # Store 5 blocks
         blocks = BlockDataBuilder.create_conseq_blocks(5)
         for block in blocks:
-            sblk = StorageDriver.store_block(block.sub_blocks)
+            sblk = self.state.store_block(block.sub_blocks)
             self.state.update_with_block(sblk)
 
         # Send a fake index request from MN_VK1
@@ -175,8 +168,6 @@ class TestCatchupManager(TestCase):
         self._assert_router_called_with_msg(cm, msg=expected_reply, possible_headers=(MN_VK1.encode(),))
         cm.is_caught_up = False
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_with_new_blocks_and_replies(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
@@ -184,10 +175,10 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(5)
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -223,11 +214,9 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
         # Assert Mongo has been updated
-        self.assertEqual(StorageDriver.get_latest_block_num(), blocks[-1].block_num)
-        self.assertEqual(StorageDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already(self, *args):
         blocks = BlockDataBuilder.create_conseq_blocks(5)
 
@@ -242,10 +231,10 @@ class TestCatchupManager(TestCase):
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -291,8 +280,6 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
         self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_get_new_block_notif_many_behind_after_caught_up(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
@@ -300,10 +287,10 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(6)
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -351,8 +338,6 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
         self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_get_new_block_notif_one_behind_after_caught_up(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
@@ -360,10 +345,10 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(6)
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -396,8 +381,6 @@ class TestCatchupManager(TestCase):
         cm.recv_new_blk_notif(new_block_notif)
         self.assertFalse(cm.is_catchup_done())
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_qourum_reached_for_mn(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
@@ -405,10 +388,10 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(6)
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -436,8 +419,6 @@ class TestCatchupManager(TestCase):
         cm.recv_block_idx_reply(MN_VK4, index_reply4)
         self.assertTrue(cm._check_idx_reply_quorum())
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_qourum_reached_for_delegate(self, *args):
         cm = self._build_manager(store_blocks=False)
         cm.run_catchup()
@@ -445,10 +426,10 @@ class TestCatchupManager(TestCase):
 
         blocks = BlockDataBuilder.create_conseq_blocks(6)
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -478,8 +459,6 @@ class TestCatchupManager(TestCase):
         cm.recv_block_idx_reply(MN_VK4, index_reply4)
         self.assertTrue(cm._check_idx_reply_quorum())
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already_and_then_we_catchup_again(self, *args):
         """
         Goal :
@@ -503,10 +482,10 @@ class TestCatchupManager(TestCase):
 
         self.assertFalse(cm.is_catchup_done())
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
-        MN_VK3 = VKBook.get_masternodes()[2]
-        MN_VK4 = VKBook.get_masternodes()[3]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
+        MN_VK3 = PhoneBook.masternodes[2]
+        MN_VK4 = PhoneBook.masternodes[3]
 
         all_idx_replies = ()
         reply_datas = []
@@ -593,8 +572,6 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_num(), second_round_blocks[-1].block_num)
         self.assertEqual(self.state.get_latest_block_hash(), second_round_blocks[-1].block_hash)
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_out_of_seq_idx_bd_processing(self, *args):
 
         blocks = BlockDataBuilder.create_conseq_blocks(4)
@@ -606,8 +583,8 @@ class TestCatchupManager(TestCase):
         cm = self._build_manager()
         cm.run_catchup()
 
-        MN_VK1 = VKBook.get_masternodes()[0]
-        MN_VK2 = VKBook.get_masternodes()[1]
+        MN_VK1 = PhoneBook.masternodes[0]
+        MN_VK2 = PhoneBook.masternodes[1]
 
         all_idx_replies = ()
         reply_datas = []
@@ -636,8 +613,6 @@ class TestCatchupManager(TestCase):
 
         self.assertTrue(cm.is_catchup_done())
 
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
-    @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
     def test_catchup_from_new_block_notifs(self, *args):
         cm = self._build_manager()
         cm.run_catchup()
