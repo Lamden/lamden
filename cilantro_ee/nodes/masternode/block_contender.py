@@ -258,9 +258,10 @@ class BlockContender:
 
         # Build the sub-blocks
         sb_data = []
-        for sb_idx in range(NUM_SB_PER_BLOCK):
-            sb_group = self.sb_groups[sb_idx]
+        for sb_group in self.sb_groups.values():
             sb_data.append(sb_group.get_sb())
+
+        sb_data = sorted(sb_data, key=lambda sb: sb.index)
 
         assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
                                                  .format(len(sb_data), NUM_SB_PER_BLOCK)
@@ -269,7 +270,9 @@ class BlockContender:
 
     def get_failed_block_notif(self) -> FailedBlockNotification:
         input_hashes = self._get_input_hashes()
-        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
+        sb_indices = self._get_sb_indices()
+        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, \
+                                  sb_indices=sb_indices, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """
@@ -291,11 +294,17 @@ class BlockContender:
         return groups_empty
 
     def _get_input_hashes(self) -> List[set]:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         input_hashes = []
-        for i in range(NUM_SUB_BLOCKS):
-            if i not in self.sb_groups:
-                input_hashes.append(set())
-            else:
-                input_hashes.append(self.sb_groups[i].get_input_hashes())
+        for sb_group in sb_groups:
+            input_hashes.append(sb_group.get_input_hashes())
 
         return input_hashes
+
+    def _get_sb_indices(self) -> List:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
+        input_indices = []
+        for sb_group in sb_groups:
+            input_indices.append(sb_group.sb_idx)
+
+        return input_indices

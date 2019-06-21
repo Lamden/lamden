@@ -31,7 +31,7 @@ from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
+from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
 from cilantro_ee.messages.signals.node import Ready
 
 from contracting.config import NUM_CACHES
@@ -63,7 +63,7 @@ class NextBlockState(Enum):
 
 
 class NextBlockToMake:
-    def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.PROCESSED):
+    def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.READY):
         self.next_block_index = block_index
         self.state = state
 
@@ -72,11 +72,11 @@ class NextBlockToMake:
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.sub_block_index = sub_block_index
+        self.empty_input_hash = None
         self.sub_socket = sub_socket
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
         self.to_finalize_txs = LinkedHashTable()
-        self.num_pending_sb = 0
 
 
 class SubBlockBuilder(Worker):
@@ -92,8 +92,11 @@ class SubBlockBuilder(Worker):
             self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
 
         self.ip = ip
-        self.sbb_index = sbb_index
+        self.sb_blder_idx = sbb_index
         self.startup = True
+        self.num_txn_bags = 0
+        self._empty_txn_batch = TransactionBatch.create([])
+
         # self.pending_block_index = -1
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
@@ -101,16 +104,9 @@ class SubBlockBuilder(Worker):
         self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
         # END DEBUG
 
-        # raghu todo may need multiple clients here. NUM_SB_PER_BLOCK needs to be same for all blocks
-        # self.clients = []
-        # for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
-            # client_sb_index = i * NUM_SB_BUILDERS + sbb_index
-            # client = SenecaClient(sbb_idx=client_sb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
-            # self.clients.append(client)
-
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sbb_index).encode())
+        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sb_blder_idx).encode())
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -125,7 +121,7 @@ class SubBlockBuilder(Worker):
         self.run()
 
     def run(self):
-        self.log.notice("SBB {} starting...".format(self.sbb_index))
+        self.log.notice("SBB {} starting...".format(self.sb_blder_idx))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     async def _connect_and_process(self):
@@ -154,7 +150,7 @@ class SubBlockBuilder(Worker):
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
         self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
                       .format(ip, port, identity))
-        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sbb_index), secure=False)
+        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
         self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
         self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
 
@@ -162,76 +158,69 @@ class SubBlockBuilder(Worker):
 
     def _create_sub_sockets(self):
         for idx in range(NUM_SB_PER_BUILDER):
-            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sbb_index, idx),
+            sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sb_blder_idx, idx),
                                              secure=True)
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
-            self.sb_managers.append(SubBlockManager(sub_block_index=idx, sub_socket=sub))
+            sb_index = idx * NUM_SB_BUILDERS + self.sb_blder_idx
+            self.sb_managers.append(SubBlockManager(sub_block_index=sb_index, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
-
-    def _connect_new_node(self, vk):
-        d = NetworkTopology.get_sbb_publisher(vk)
-        if d is None:
-            return
-        sbb_idx = d['sb_idx'] % NUM_SB_BUILDERS
-        if sbb_idx != self.sbb_index:
-            return
-        smi = d['sb_idx'] // NUM_SB_BUILDERS
-        self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
 
 
     async def _connect_sub_sockets(self):
-        # We then BIND a sub socket to a port for each of these masternode indices
-        for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sbb_index), 0):
+        for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sb_blder_idx), 0):
             vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
-            self.sb_managers[smi].sub_block_index = sb_idx
+            assert self.sb_managers[smi].sub_block_index == sb_idx, "something went wrong in connections"
             self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
+            self.sb_managers[smi].empty_input_hash = Hasher.hash(vk)
 
-
-    def _align_to_hash(self, input_hash):
+    def _align_to_hash(self, smi, input_hash):
         num_discards = 0
-        if input_hash in self.sb_managers[0].pending_txs:
+        if input_hash in self.sb_managers[smi].pending_txs:
             # clear entirely to_finalize
-            num_discards = num_discards + len(self.sb_managers[0].to_finalize_txs)
-            self.sb_managers[0].to_finalize_txs.clear()
+            num_discards = num_discards + len(self.sb_managers[smi].to_finalize_txs)
+            self.sb_managers[smi].to_finalize_txs.clear()
             ih2 = None
             while input_hash != ih2:
-                # TODO we may need sb_index if we have more than one sub-block per builder
-                ih2, txs_bag = self.sb_managers[0].pending_txs.pop_front()
+                ih2, txs_bag = self.sb_managers[smi].pending_txs.pop_front()
+                self.adjust_work_load(txs_bag, False)
                 num_discards = num_discards + 1
-        elif input_hash in self.sb_managers[0].to_finalize_txs:
+        elif input_hash in self.sb_managers[smi].to_finalize_txs:
             ih2 = None
             while input_hash != ih2:
-                # TODO we may need sb_index if we have more than one sub-block per builder
-                ih2, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
+                ih2, txs_bag = self.sb_managers[smi].to_finalize_txs.pop_front()
                 num_discards = num_discards + 1
         return num_discards
 
     def align_input_hashes(self, aih: AlignInputHash):
         self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
         self.client.flush_all()
-        num_discards = self._align_to_hash(aih.input_hash)
+        smi = aih.sb_index // NUM_SB_BUILDERS
+        num_discards = self._align_to_hash(smi, aih.input_hash)
         self.log.debug("Discarded {} input bags to get alignment".format(num_discards))
         # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
-        while len(self.sb_managers[0].to_finalize_txs) > 0:
-            ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
-            self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+        while len(self.sb_managers[smi].to_finalize_txs) > 0:
+            ih, txs_bag = self.sb_managers[smi].to_finalize_txs.pop_front()
+            self.adjust_work_load(txs_bag, True)
+            self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
         # self._make_next_sb()
 
     def _fail_block(self, fbn: FailedBlockNotification):
         self.log.notice("FailedBlockNotification - aligning input hashes")
 
         num_discards = 0
-        input_hashes = fbn.input_hashes[self.sbb_index]
+        input_hashes = fbn.input_hashes[self.sb_blder_idx]
+        smi = fbn.sb_indices[self.sb_blder_idx] // NUM_SB_BUILDERS
 
         for input_hash in input_hashes:
-            num_discards = num_discards + self._align_to_hash(input_hash)
+            num_discards = num_discards + self._align_to_hash(smi, input_hash)
 
         self.log.debug("Thrown away {} input bags to get alignment".format(num_discards))
 
         # at this point, any bags in to_finalize_txs should go back to the front of pending_txs
-        while len(self.sb_managers[0].to_finalize_txs) > 0:
-            ih, txs_bag = self.sb_managers[0].to_finalize_txs.pop_front()
-            self.sb_managers[0].pending_txs.insert_front(ih, txs_bag)
+        while len(self.sb_managers[smi].to_finalize_txs) > 0:
+            ih, txs_bag = self.sb_managers[smi].to_finalize_txs.pop_front()
+            self.adjust_work_load(txs_bag, True)
+            self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
 
         self.client.flush_all()
         self._make_next_sb()
@@ -271,8 +260,20 @@ class SubBlockBuilder(Worker):
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
         self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
+    def adjust_work_load(self, input_bag: Envelope, is_add: bool):
+        if input_bag.message.is_empty:
+            return
+        self.num_txn_bags += 1 if is_add else -1
+        message = None
+        if self.num_txn_bags == 0:
+            message = NoTransactions.create()
+        elif self.num_txn_bags == 1:
+            message = PendingTransactions.create()
+        if message:
+            self._send_msg_over_ipc(message)
+
     def handle_sub_msg(self, frames, index):
-        self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
+        # self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
         assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
             index, self.sb_managers)
 
@@ -291,9 +292,8 @@ class SubBlockBuilder(Worker):
             self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
             return
 
-        # TODO properly wrap below in try/except. Leaving it as an assertion just for dev
         if not envelope.verify_seal():
-            self.log.critical("Could not validate seal for envelope {}".format(envelope))
+            self.log.error("Could not validate seal for envelope {}".format(envelope))
             return
 
         # DEBUG -- TODO DELETE
@@ -301,17 +301,9 @@ class SubBlockBuilder(Worker):
         # END DEBUG
 
         self.sb_managers[index].processed_txs_timestamp = timestamp
-        self.log.debug("num_pending_txs {}".format(self.sb_managers[index].num_pending_sb))
-        self.move_next_block_to_make()
-
-        if self.sb_managers[index].num_pending_sb > 0:
-            self.log.debug("Sending transaction batch {} to seneca client".format(index))
-            sbb_idx = self.sb_managers[index].sub_block_index
-            if self._execute_next_sb(input_hash, envelope, sbb_idx):
-                self.sb_managers[index].num_pending_sb -= 1
-                return
 
         self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
+        self.adjust_work_load(envelope, True)
         self.sb_managers[index].pending_txs.append(input_hash, envelope)
 
     def _create_empty_sbc(self, sb_data: SBData):
@@ -325,7 +317,7 @@ class SubBlockBuilder(Worker):
                                             sender=self.verifying_key)
 
         sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
-                                                     sub_block_index=self.sbb_index, signature=merkle_sig,
+                                                     sub_block_index=self.sb_blder_idx, signature=merkle_sig,
                                                      prev_block_hash=StateDriver.get_latest_block_hash())
         # Send to block manager
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
@@ -347,8 +339,8 @@ class SubBlockBuilder(Worker):
 
         # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
         if self.bad_actor:
-            if self.good_sb_count >= self.fail_interval and self.sbb_index in self.fail_idxs:
-                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sbb_index))
+            if self.good_sb_count >= self.fail_interval and self.sb_blder_idx in self.fail_idxs:
+                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sb_blder_idx))
                 txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
                 self.good_sb_count = 0
             else:
@@ -365,7 +357,7 @@ class SubBlockBuilder(Worker):
                                             sender=self.verifying_key)
 
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=self.sbb_index,
+                                       merkle_leaves=merkle.leaves, sub_block_index=self.sb_blder_idx,
                                        signature=merkle_sig, transactions=txs_data,
                                        prev_block_hash=StateDriver.get_latest_block_hash())
 
@@ -375,19 +367,15 @@ class SubBlockBuilder(Worker):
         self._send_msg_over_ipc(sbc)
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
-    def _execute_next_sb(self, input_hash: str, envelope: Envelope, sbb_idx: int):
-        tx_batch = envelope.message
-
-        self.log.debug("SBB {} attempting to build {} block with sub block index {}"
-                       .format(self.sbb_index, "empty sub" if tx_batch.is_empty else "sub", sbb_idx))
+    def _execute_sb(self, input_hash: str, tx_batch: TransactionBatch, \
+                          timestamp: float, sbb_idx: int):
+        self.log.debug("SBB {} attempting to build a sub block with index {}"
+                       .format(self.sb_blder_idx, sbb_idx))
 
         callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
         block_hash, block_num = StateDriver.get_latest_block_info()
-
-        # Get the timestamp and turn it into a Contracting Datetime object which is safe to use in Contracting
-        timestamp = envelope.meta.timestamp
 
         dt = datetime.utcfromtimestamp(timestamp)
         dt_object = Datetime(year=dt.year,
@@ -412,6 +400,9 @@ class SubBlockBuilder(Worker):
         return False
 
 
+    def _execute_input_bag(self, input_hash: str, envelope: Envelope, sbb_idx: int):
+        return self._execute_sb(input_hash, envelope.message, envelope.meta.timestamp, sbb_idx)
+
     def _make_next_sb(self):
         if not self.move_next_block_to_make():
             self.log.debug("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
@@ -419,26 +410,27 @@ class SubBlockBuilder(Worker):
 
         # now start next one
         cur_block_index = self._next_block_to_make.next_block_index
-        sb_index_start = cur_block_index * NUM_SB_PER_BLOCK_PER_BUILDER
+        sm_idx_start = cur_block_index * NUM_SB_PER_BLOCK_PER_BUILDER
         for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
-            sb_idx = sb_index_start + i
-            if sb_idx >= len(self.sb_managers):    # out of range already
+            sm_idx = sm_idx_start + i
+            if sm_idx >= len(self.sb_managers):    # out of range already
                 self.log.debug("Uneven sub-blocks per block. May not work seneca clients properly in current scheme")
-                self.log.debug("i {} num_sb_pb_pb {} num_sb_mgrs {} sb_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sb_idx))
+                self.log.debug("i {} num_sb_pb_pb {} num_sb_mgrs {} sm_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sm_idx))
                 return
 
-            if len(self.sb_managers[sb_idx].to_finalize_txs) > NUM_CACHES:
-                self.sb_managers[sb_idx].to_finalize_txs.pop_front()
-            if len(self.sb_managers[sb_idx].pending_txs) > 0:
-                input_hash, envelope = self.sb_managers[sb_idx].pending_txs.pop_front()
+            if len(self.sb_managers[sm_idx].to_finalize_txs) > NUM_CACHES:
+                self.sb_managers[sm_idx].to_finalize_txs.pop_front()
+            sb_index = self.sb_managers[sm_idx].sub_block_index
+            if len(self.sb_managers[sm_idx].pending_txs) > 0:
+                input_hash, envelope = self.sb_managers[sm_idx].pending_txs.pop_front()
+                self.adjust_work_load(envelope, False)
                 self.log.debug("Make next sub-block with input hash {}".format(input_hash))
-                sbb_idx = self.sb_managers[sb_idx].sub_block_index
-                if self._execute_next_sb(input_hash, envelope, sbb_idx) and self.sb_managers[sb_idx].num_pending_sb > 0:
-                    self.sb_managers[sb_idx].num_pending_sb -= 1
+                self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, envelope)
+                self._execute_input_bag(input_hash, envelope, sb_index)
             else:
-                self.sb_managers[sb_idx].num_pending_sb += 1
-                self.log.debug("No transaction bag available yet. Wait ...")
-                # self.pending_block_index = self.cur_block_index
+                timestamp = float(time.time())
+                input_hash = self.sb_managers[sm_idx].empty_input_hash
+                self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
 
     def _make_next_sub_block(self):
         # The following block is test code
@@ -446,14 +438,12 @@ class SubBlockBuilder(Worker):
             self.log.info("Incrementing good sb count!")
             self.good_sb_count += 1
 
-        self.log.info("Merge pending db to master db")
-        # for i in len(self.clients):
-            # self.clients[i].update_master_db()
-
         # first commit current state only if we have some pending dbs!
         if not self.startup:
+            self.log.info("Merge pending db to master db")
             self.client.update_master_db()
         else:
             self.startup = False
+            time.sleep(2)
 
         self._make_next_sb()

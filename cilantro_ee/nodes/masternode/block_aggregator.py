@@ -18,6 +18,7 @@ from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.messages.signals.node import Ready
 
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 
@@ -61,6 +62,10 @@ class BlockAggregator(Worker):
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
+        # Create ROUTER socket for communication with batcher over IPC
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
+        self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
+
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
             name="BA-Sub",
@@ -90,10 +95,6 @@ class BlockAggregator(Worker):
 
         self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
-
-        # Create ROUTER socket for communication with batcher over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
-        self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
         self.tasks.append(self._connect_and_process())
 
@@ -144,6 +145,9 @@ class BlockAggregator(Worker):
 
         self.catchup_manager.run_catchup()
 
+        message = Ready.create()
+        self._send_msg_over_ipc(message=message)
+
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -180,6 +184,10 @@ class BlockAggregator(Worker):
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
+    def _set_catchup_done(self):
+        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block.reset()
+
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
@@ -193,13 +201,11 @@ class BlockAggregator(Worker):
 
         elif isinstance(msg, BlockDataReply):
             if self.catchup_manager.recv_block_data_reply(msg):
-                self.curr_block_hash = StateDriver.get_latest_block_hash()
-                self.curr_block.reset()
+                self._set_catchup_done()
 
         elif isinstance(msg, BlockIndexReply):
             if self.catchup_manager.recv_block_idx_reply(sender, msg):
-                self.curr_block_hash = StateDriver.get_latest_block_hash()
-                self.curr_block.reset()
+                self._set_catchup_done()
 
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"

@@ -128,9 +128,9 @@ class LSocketBase:
         while True:
             should_forward = False
             try:
-                self.log.spam("Socket waiting for multipart msg...")
+                # self.log.spam("Socket waiting for multipart msg...")
                 msg = await self.socket.recv_multipart()
-                self.log.spam("Socket received multipart msg: {}".format(msg))
+                # self.log.spam("Socket received multipart msg: {}".format(msg))
                 should_forward = self._process_msg(msg)
             except Exception as e:
                 if type(e) is asyncio.CancelledError:
