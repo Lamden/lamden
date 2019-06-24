@@ -6,13 +6,14 @@ import configparser
 from free_port import free_port
 from random_password import random_password
 from cilantro_ee.constants.masternode import *
+import cilantro_ee
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--username', default='lamden')
     parser.add_argument('--database', default='mn')
     parser.add_argument('--hostname', default='127.0.0.1')
-    parser.add_argument('--output-file', default='./mn_db_conf.ini')
+    parser.add_argument('--output-file', default=cilantro_ee.__path__[0]+'/mn_db_conf.ini')
     parser.add_argument('--port', default=27017)
     args = parser.parse_args()
 

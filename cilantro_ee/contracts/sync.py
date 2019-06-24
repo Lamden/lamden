@@ -20,7 +20,8 @@ def contracts_for_directory(path, extension):
 
 
 def sync_genesis_contracts(genesis_path: str='genesis',
-                           extension: str='*.s.py'):
+                           extension: str='*.s.py',
+                           exclude=['vkbook']):
 
     # Direct database writing of all contract files in the 'genesis' folder
     # direct_contracts = contracts_for_directory(direct_path, extension)
@@ -32,9 +33,25 @@ def sync_genesis_contracts(genesis_path: str='genesis',
 
     for contract in genesis_contracts:
         name = contract_name_from_file_path(contract)
+        if name in exclude:
+            continue
 
         if client.raw_driver.get_contract(name) is None:
             with open(contract) as f:
                 code = f.read()
 
             client.submit(code, name=name)
+
+
+def submit_contract_with_construction_args(name, args={}):
+    file = os.path.dirname(__file__) + '/genesis/{}.s.py'.format(name)
+
+    submission_file = os.path.dirname(__file__) + '/submission.s.py'
+    client = ContractingClient(submission_filename=submission_file)
+
+    with open(file) as f:
+        code = f.read()
+
+        client.submit(code, name=name, constructor_args=args)
+
+    client.raw_driver.commit()

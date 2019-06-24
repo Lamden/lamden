@@ -1,6 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.contracts import sync
 from contracting.db.driver import ContractDriver
+from contracting.client import ContractingClient
 
 
 class TestContractSync(TestCase):
@@ -65,3 +66,18 @@ class TestContractSync(TestCase):
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+
+    def test_submit_contract_with_specific_construction_args(self):
+        driver = ContractDriver()
+        driver.flush()
+
+        sync.submit_contract_with_construction_args('vkbook', args={
+            'masternodes': ['stu', 'raghu'],
+            'delegates': ['tejas', 'monica']
+        })
+
+        client = ContractingClient()
+        vkbook = client.get_contract('vkbook')
+
+        self.assertEqual(vkbook.get_masternodes(), ['stu', 'raghu'])
+        self.assertEqual(vkbook.get_delegates(), ['tejas', 'monica'])

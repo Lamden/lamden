@@ -5,7 +5,7 @@ from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.protocol.comm.lsocket_router import LSocketRouter
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 
 from collections import defaultdict
 import asyncio, zmq.asyncio, time
@@ -61,7 +61,7 @@ class SocketManager:
         return socket
 
     def get_and_reset_num_delegates_joined(self):
-        nd = min(self.num_delegates_joined_since_last, len(VKBook.get_delegates()))
+        nd = min(self.num_delegates_joined_since_last, len(PhoneBook.delegates))
         self.num_delegates_joined_since_last = 0
         return nd
 
@@ -75,7 +75,7 @@ class SocketManager:
         if e['event_id'] in self.pending_lookups:
             sock = self.pending_lookups.pop(e['event_id'])
             sock.handle_overlay_reply(e)
-            if (e['event'] == 'got_ip') and (e['vk'] in VKBook.get_delegates()):
+            if (e['event'] == 'got_ip') and (e['vk'] in PhoneBook.delegates):
                 self.num_delegates_joined_since_last += 1
         else:
             self.log.debugv("SocketManager got overlay reply {} that is not a "
@@ -92,7 +92,7 @@ class SocketManager:
         elif (e['event'] == 'node_online') and (e['vk'] in self.tracking_vks):
             for sock in self.tracking_vks[e['vk']]:
                 sock.handle_overlay_event(e)
-            if (e['vk'] in VKBook.get_delegates()):
+            if (e['vk'] in PhoneBook.delegates):
                 self.num_delegates_joined_since_last += 1
 
         else:

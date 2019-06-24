@@ -54,7 +54,6 @@ class TransactionBatcher(Worker):
 
 
     def handle_ipc_msg(self, frames):
-        self.log.spam("Got msg over Dealer IPC from BlockAggregator with frames: {}".format(frames))
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = bytes_to_int(frames[0])
@@ -64,11 +63,9 @@ class TransactionBatcher(Worker):
         self.log.debugv("Batcher received an IPC message {}".format(msg))
 
         if isinstance(msg, EmptyBlockMade):
-            self.log.spam("Got EmptyBlockMade notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
 
         elif isinstance(msg, NonEmptyBlockMade):
-            self.log.spam("Got NonEmptyBlockMade notif from block aggregator!!!")
             self.num_bags_sent = self.num_bags_sent - 1
 
         elif isinstance(msg, Ready):
@@ -120,5 +117,5 @@ class TransactionBatcher(Worker):
             if len(tx_list):
                 self.log.spam("Sending {} transactions in batch".format(len(tx_list)))
             else:
-                self.log.spam("Sending an empty transaction batch")
+                self.log.debug3("Sending an empty transaction batch")
 

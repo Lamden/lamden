@@ -1,5 +1,5 @@
-from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
@@ -22,8 +22,8 @@ class SubBlockGroup:
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
         self.transactions = {}  # tx_hash: TransactionData
         self.sender_to_sbc = {}  # map of sender_vk: SubBlockContender
-        self.min_quorum = VKBook.get_min_delegate_quorum()
-        self.max_quorum = VKBook.get_max_delegate_quorum()
+        self.min_quorum = PhoneBook.delegate_quorum_min
+        self.max_quorum = PhoneBook.delegate_quorum_max
         self.best_rh = None  # The result hash with the most votes so far
 
     def is_consensus_possible(self) -> bool:
@@ -188,7 +188,8 @@ class BlockContender:
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.state = MetaDataStorage()
+        self.curr_block_hash = self.state.latest_block_hash
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
@@ -205,7 +206,7 @@ class BlockContender:
         # Reset all the data
         self.committed = False
         self.consensus_reached = False
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block_hash = self.state.latest_block_hash
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
@@ -237,7 +238,7 @@ class BlockContender:
     def get_current_quorum_reached(self) -> int:
         if len(self.sb_groups) < NUM_SB_PER_BLOCK:
             return 0
-        cur_quorum = VKBook.get_max_delegate_quorum()
+        cur_quorum = PhoneBook.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
 

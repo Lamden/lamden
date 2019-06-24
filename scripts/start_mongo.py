@@ -1,12 +1,12 @@
 import os, shutil, time
 from os import getenv as env
 from cilantro_ee.constants.db_config import MONGO_DIR, MONGO_LOG_PATH, config_mongo_dir
-from cilantro_ee.constants.conf import CilantroConf
+from cilantro_ee.constants import conf
 
 
 def start_mongo():
-    print("val of conf reset_db: {}".format(CilantroConf.RESET_DB))
-    if CilantroConf.RESET_DB:
+    print("val of conf reset_db: {}".format(conf.RESET_DB))
+    if conf.RESET_DB:
         rm_dir = MONGO_DIR + '/'
         print("Removing MongoDB files at directory {}".format(rm_dir))
         shutil.rmtree(MONGO_DIR, ignore_errors=True)

@@ -14,14 +14,16 @@ from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from cilantro_ee.nodes.masternode.nonce import NonceManager
 from cilantro_ee.constants.ports import WEB_SERVER_PORT, SSL_WEB_SERVER_PORT
 from cilantro_ee.constants.masternode import NUM_WORKERS
-from cilantro_ee.constants.conf import CilantroConf
+
+from cilantro_ee.constants import conf
+
 from cilantro_ee.utils.hasher import Hasher
 from contracting.config import DELIMITER
 
 from multiprocessing import Queue
 import os, time
 
-from cilantro_ee.storage.mn_api import StorageDriver
+from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.protocol.webserver.validation import *
 
 import json as _json
@@ -30,19 +32,19 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
-
+driver = MasterStorage()
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
 # if os.getenv('NONCE_ENABLED', False):
-if CilantroConf.NONCE_ENABLED:
+if conf.NONCE_ENABLED:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
 else:
     log.warning("Nonces are disabled! Nonce checking as well as rate limiting will be disabled!")
     limiter = Limiter(app, key_func=get_remote_address)
 
-if CilantroConf.SSL_ENABLED:
+if conf.SSL_ENABLED:
     log.info("SSL enabled")
     with open(os.path.expanduser("~/.sslconf"), "r") as df:
         ssl = _json.load(df)
@@ -84,7 +86,7 @@ async def submit_transaction(request):
     if type(tx) not in (ContractTransaction, PublishTransaction):
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
-    if CilantroConf.SSL_ENABLED:
+    if conf.SSL_ENABLED:
         # Verify the nonce, and remove it from db if its valid so it cannot be used again
         # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
         if not NonceManager.check_if_exists(tx.nonce):
@@ -185,7 +187,8 @@ async def get_state(request, contract, resource, key):
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_latest_block(request):
-    latest_block_hash = StorageDriver.get_latest_block_hash()
+    index = driver.get_last_n(1)
+    latest_block_hash = index.get('blockHash')
     return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
@@ -194,12 +197,12 @@ async def get_latest_block(request):
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
-        block = StorageDriver.get_nth_full_block(given_bnum = num)
+        block = driver.get_block(num)
         if block is None:
             return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     else:
         _hash = request.json['hash']
-        block = StorageDriver.get_nth_full_block(given_hash = _hash)
+        block = driver.get_block(hash)
         if block is None:
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
@@ -209,7 +212,7 @@ async def get_block(request):
 def get_tx(_hash):
     if not _hash:
         return None
-    return StorageDriver.get_transactions(raw_tx_hash=_hash)
+    return driver.get_tx(_hash)
 
 
 """
@@ -229,6 +232,7 @@ async def get_transaction_payload(request):
         return _respond_to_request({'error': 'Transaction with hash {} does not exist.'.format(_hash)}, status=400)
 
     return _respond_to_request(tx['transaction'], resptype='text')
+
 
 @app.route('/transaction', methods=['POST',"OPTIONS",])
 async def get_transaction(request):
@@ -250,7 +254,7 @@ async def get_transaction(request):
 @app.route('/transactions', methods=['POST',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
-    txs = StorageDriver.get_transactions(block_hash=_hash)
+    txs = driver.get_tx(_hash)
     if txs is None:
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)

@@ -1,21 +1,21 @@
 import zmq, zmq.asyncio, asyncio, traceback
 import uuid
-from cilantro_ee.constants.conf import CilantroConf
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.constants.ports import DISCOVERY_PORT
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.constants import conf
 
 
 class Discovery:
 
     def __init__(self, vk, zmq_ctx):
         self.log = get_logger('OS.Discovery')
-        self.vk  = vk
+        self.vk = vk
         self.ctx = zmq_ctx
-        self.host_ip = CilantroConf.HOST_IP
+        self.host_ip = conf.HOST_IP
         # these part of genesis scripts?
         self.port = DISCOVERY_PORT
         self.pepper = PEPPER.encode()
@@ -31,13 +31,14 @@ class Discovery:
 
         self.is_masternode = False
         self.is_listen_ready = False
-        self.min_discovery_nodes = 1 if (len(VKBook.get_masternodes()) == 1) else 2
+        self.min_discovery_nodes = 1 if (len(PhoneBook.masternodes) == 1) else 2
 
         # raghu TODO - #enh maintain a list of ips serviced with a relative time counter to deny dos attacks ?
         # raghu TODO #enh separate out vkbook - again through genesis script?
-        if VKBook.is_node_type('masternode', self.vk):
+
+        if self.vk in PhoneBook.masternodes:
             self.is_masternode = True
-            if (len(VKBook.get_masternodes()) == 2):
+            if (len(PhoneBook.masternodes) == 2):
                 self.min_discovery_nodes = 1
 
 
@@ -204,12 +205,12 @@ class Discovery:
     async def discover_nodes(self):
         await asyncio.sleep(1)      # just to yield so listen can start before this one
         dis_nodes = {}
-        if (self.is_masternode and len(VKBook.get_masternodes()) == 1):
+        if (self.is_masternode and len(PhoneBook.masternodes) == 1):
             self.log.info('Bootstrapping as the only masternode.')
         else:
-            if len(CilantroConf.BOOTNODES) > 0: # TODO refine logic post-anarchy-net
-                self.log.info('Connecting to boot nodes: {}'.format(CilantroConf.BOOTNODES))
-                ip_list = CilantroConf.BOOTNODES
+            if len(conf.BOOTNODES) > 0: # TODO refine logic post-anarchy-net
+                self.log.info('Connecting to boot nodes: {}'.format(conf.BOOTNODES))
+                ip_list = conf.BOOTNODES
             else:
                 start_ip = self.host_ip   # TODO see if we can get a list based on env variable here
                 ip_list = start_ip if type(start_ip) == list else get_ip_range(start_ip)

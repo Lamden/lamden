@@ -2,7 +2,7 @@ import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect, time
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.protocol.overlay.interface import OverlayInterface
 from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.overlay.kademlia.event import Event
 from cilantro_ee.protocol.overlay.kademlia.network import Network
@@ -97,7 +97,7 @@ class OverlayServer(OverlayInterface):
         return "Unsupported API"
 
     def is_valid_vk(self, vk):
-        return vk in VKBook.get_all()
+        return vk in PhoneBook.all
 
     @async_reply
     async def get_ip_from_vk(self, event_id, vk):

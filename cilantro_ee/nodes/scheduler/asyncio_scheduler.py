@@ -1,7 +1,7 @@
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.constants.conf import CilantroConf
+from cilantro_ee.constants import conf
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import PhoneBook
 import asyncio, time, random, aiohttp
 
 WORDS = ("butt", "orange", "trump", "yellow", "ketchup", "chonks", "chungus", "bigbio", "thicc n sicc")
@@ -14,13 +14,13 @@ class AsyncioScheduler:
         self.log = get_logger("AsyncioScheduler")
         self.loop = asyncio.get_event_loop()
 
-        self.sk = CilantroConf.SK
+        self.sk = conf.SK
         self.events = {}
         self.session = aiohttp.ClientSession()
 
         # Set masternode IPs
         # TODO do away with this jankery and find a proper mechanism to get a set of masternode IPs
-        self.mn_ips = [CilantroConf.VK_IP_MAP[vk] for vk in VKBook.get_masternodes()]
+        self.mn_ips = [conf.VK_IP_MAP[vk] for vk in PhoneBook.masternodes]
 
     async def send_tx(self, contract_name, fn_name, kwargs):
         print("sending {}.{} with kwargs {}".format(contract_name, fn_name, kwargs))
@@ -28,7 +28,7 @@ class AsyncioScheduler:
                                         func_name=fn_name, nonce='', kwargs=kwargs)
 
         # TODO refactor this masternode url generation business into an appropriate module (maybe network topology?)
-        if CilantroConf.SSL_ENABLED:
+        if conf.SSL_ENABLED:
             mn_url = "https://{}:80".format(random.choice(self.mn_ips))
         else:
             mn_url = "http://{}:8080".format(random.choice(self.mn_ips))

@@ -8,7 +8,6 @@ from vmnet.testcase import BaseNetworkTestCase
 from cilantro_ee.utils.test.mp_test_case import vmnet_test
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 from cilantro_ee.storage.mongo import MDB
-from cilantro_ee.storage.mn_api import StorageDriver
 
 cilantro_ee_path = dirname(dirname(cilantro_ee.__path__[0]))
 cfg = SafeConfigParser()
@@ -28,7 +27,6 @@ def start_mn(verifing_key):
     from cilantro_ee.logger.base import get_logger, overwrite_logger_level
     from cilantro_ee.nodes.masternode.master_store import MasterOps
     from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
-    from cilantro_ee.storage.state import StateDriver
 
     overwrite_logger_level(12)
 

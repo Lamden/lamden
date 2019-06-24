@@ -1,11 +1,11 @@
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
-from cilantro_ee.storage.mn_api import StorageDriver
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
-
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
@@ -36,22 +36,30 @@ class BlockAggregator(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
 
+        self.state = MetaDataStorage()
+
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
-        self.min_quorum = VKBook.get_min_delegate_quorum()
-        self.max_quorum = VKBook.get_max_delegate_quorum()
+        self.min_quorum = PhoneBook.delegate_quorum_min
+        self.max_quorum = PhoneBook.delegate_quorum_max
         self.cur_quorum = 0
 
         self.curr_block_hash = StateDriver.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
-        assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+
+        self.driver = CilantroStorageDriver(key=self.signing_key)
+
+        latest_hash = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
+        latest_hash = latest_hash.get('blockHash')
+
+        assert latest_hash == self.state.latest_block_hash, \
             "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+            .format(latest_hash, self.state.latest_block_hash)
 
         self.run()
 
@@ -93,7 +101,7 @@ class BlockAggregator(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
-        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, pub_socket=self.pub,
+        self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, signing_key=self.signing_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
 
         self.tasks.append(self._connect_and_process())
@@ -102,29 +110,32 @@ class BlockAggregator(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
+        self.log.info('connecting to masters: {}'.format(PhoneBook.masternodes))
+        self.log.info('connecting to delegates: {}'.format(PhoneBook.delegates))
+
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
                 # self.router.connect(vk=vk, port=MN_ROUTER_PORT)  # we don't want 2 simultaneous look ups @ overlay server
 
         # Listen to delegates for sub block contenders and state update requests
-        for vk in VKBook.get_delegates() :
+        for vk in PhoneBook.delegates:
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             # I dont think we to connect to delegates to router here as delegates are already connecting
             # in BlockManager --davis
             # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
-        for vk in VKBook.get_schedulers() + VKBook.get_notifiers():
+        for vk in PhoneBook.schedulers + PhoneBook.notifiers:
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        for vk in VKBook.get_masternodes():
+        for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
-        self.log.spam("Sleeping before triggering catchup...")
+        self.log.info("Sleeping before triggering catchup...")
         await asyncio.sleep(8)
 
         num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
@@ -153,7 +164,6 @@ class BlockAggregator(Worker):
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        self.log.spam("Sending msg to batcher: {}".format(message))
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(0).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
@@ -163,7 +173,6 @@ class BlockAggregator(Worker):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
-        self.log.spam("Got SUB msg from sender {}\nMessage: {}".format(sender, msg))
 
         if isinstance(msg, SubBlockContender):
             if not self.catchup_manager.is_catchup_done():
@@ -194,7 +203,6 @@ class BlockAggregator(Worker):
         sender = envelope.sender
 
         assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
-        self.log.spam("Got ROUTER msg from sender {} with id frame {}\nMessage: {}".format(sender, frames[0], msg))
 
         if isinstance(msg, BlockDataRequest):
             self.catchup_manager.recv_block_data_req(sender, msg)
@@ -246,14 +254,21 @@ class BlockAggregator(Worker):
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            block_data = StorageDriver.store_block(sb_data)
+            self.log.debug("Storing a block: {}".format(self.curr_block_hash))
+
+            try:
+                block_data = self.driver.store_block(sb_data)
+                self.log.debug(block_data)
+            except Exception as e:
+                self.log.error(str(e))
 
             assert block_data.prev_block_hash == self.curr_block_hash, \
                 "Current block hash {} does not match StorageDriver previous block hash {}"\
                 .format(self.curr_block_hash, block_data.prev_block_hash)
 
             self.curr_block_hash = block_data.block_hash
-            StateDriver.update_with_block(block_data)
+            self.log.info('New block incoming: {}'.format(block_data.transactions))
+            self.state.update_with_block(block_data)
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
 
@@ -278,7 +293,7 @@ class BlockAggregator(Worker):
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, StateDriver.get_latest_block_num()+1, sub_blocks)
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -290,8 +305,8 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if notif.block_num > StateDriver.get_latest_block_num() + 1:
-            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, StateDriver.get_latest_block_num()))
+        if notif.block_num > self.state.latest_block_num + 1:
+            self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")

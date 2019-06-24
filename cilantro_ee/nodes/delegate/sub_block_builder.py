@@ -18,10 +18,9 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.state import StateDriver
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.constants.conf import CilantroConf
 
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
@@ -57,9 +56,9 @@ from typing import List
 
 @unique
 class NextBlockState(Enum):
-    NOT_READY  = 0
-    READY      = 1
-    PROCESSED  = 2
+    NOT_READY = 0
+    READY = 1
+    PROCESSED = 2
 
 
 class NextBlockToMake:
@@ -90,6 +89,8 @@ class SubBlockBuilder(Worker):
             self.good_sb_count = 0
             self.fail_idxs = set([int(i) for i in os.getenv('SB_IDX_FAIL').split(',')])
             self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
+
+        self.state = MetaDataStorage()
 
         self.ip = ip
         self.sb_blder_idx = sbb_index
@@ -359,7 +360,7 @@ class SubBlockBuilder(Worker):
         sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
                                        merkle_leaves=merkle.leaves, sub_block_index=self.sb_blder_idx,
                                        signature=merkle_sig, transactions=txs_data,
-                                       prev_block_hash=StateDriver.get_latest_block_hash())
+                                       prev_block_hash=self.state.latest_block_hash)
 
         # Send sbc to block manager
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
@@ -375,7 +376,8 @@ class SubBlockBuilder(Worker):
         callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
-        block_hash, block_num = StateDriver.get_latest_block_info()
+        block_hash = self.state.latest_block_hash
+        block_num = self.state.latest_block_num
 
         dt = datetime.utcfromtimestamp(timestamp)
         dt_object = Datetime(year=dt.year,

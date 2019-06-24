@@ -5,9 +5,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from cilantro_ee.nodes.catchup import CatchupManager
-from cilantro_ee.storage.state import StateDriver
-from cilantro_ee.storage.mn_api import StorageDriver
-from cilantro_ee.nodes.masternode.master_store import MasterOps
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.mongo import MDB
 
 from cilantro_ee.messages.block_data.block_data import *
@@ -51,7 +49,8 @@ class TestCatchupManager(TestCase):
 
     def setUp(self):
         MDB.reset_db()
-        StateDriver.set_latest_block_info(block_hash=GENESIS_BLOCK_HASH, block_num=0)
+        self.state = MetaDataStorage()
+        self.state.set_latest_block_info(block_hash=GENESIS_BLOCK_HASH, block_num=0)
         # TODO how to rest Mongo between runs?
         self.manager = None
         loop = asyncio.new_event_loop()
@@ -81,8 +80,8 @@ class TestCatchupManager(TestCase):
     def test_init(self):
         m = self._build_manager()
 
-        self.assertEqual(m.curr_hash, StateDriver.get_latest_block_hash())
-        self.assertEqual(m.curr_num, StateDriver.get_latest_block_num())
+        self.assertEqual(m.curr_hash, self.state.get_latest_block_hash())
+        self.assertEqual(m.curr_num, self.state.get_latest_block_num())
 
     @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
     @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
@@ -159,7 +158,7 @@ class TestCatchupManager(TestCase):
         blocks = BlockDataBuilder.create_conseq_blocks(5)
         for block in blocks:
             sblk = StorageDriver.store_block(block.sub_blocks)
-            StateDriver.update_with_block(sblk)
+            self.state.update_with_block(sblk)
 
         # Send a fake index request from MN_VK1
         req = BlockIndexRequest.create(block_num=0, block_hash='0' * 64)
@@ -220,8 +219,8 @@ class TestCatchupManager(TestCase):
         self.assertEqual(cm.curr_num, blocks[-1].block_num)
 
         # Assert Redis has been updated
-        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
-        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
         # Assert Mongo has been updated
         self.assertEqual(StorageDriver.get_latest_block_num(), blocks[-1].block_num)
@@ -234,7 +233,7 @@ class TestCatchupManager(TestCase):
 
         # Store the first 2 blocks
         curr_blk = blocks[1]
-        StateDriver.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
+        self.state.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
 
         cm = self._build_manager(store_blocks=False)
 
@@ -289,8 +288,8 @@ class TestCatchupManager(TestCase):
         self.assertEqual(cm.curr_num, blocks[-1].block_num)
 
         # Assert Redis has been updated
-        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
-        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
     @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
     @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
@@ -349,8 +348,8 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.is_catchup_done())
 
         # # Assert Redis has been updated
-        self.assertEqual(StateDriver.get_latest_block_num(), blocks[-1].block_num)
-        self.assertEqual(StateDriver.get_latest_block_hash(), blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
     @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
     @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
@@ -496,7 +495,7 @@ class TestCatchupManager(TestCase):
 
         # # Store the first 2 blocks
         curr_blk = blocks[1]
-        StateDriver.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
+        self.state.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
 
         cm = self._build_manager(store_blocks=False)
 
@@ -557,8 +556,8 @@ class TestCatchupManager(TestCase):
         self.assertEqual(cm.curr_num, first_round_blocks[-1].block_num)
 
         # # Assert Redis has been updated
-        self.assertEqual(StateDriver.get_latest_block_num(), first_round_blocks[-1].block_num)
-        self.assertEqual(StateDriver.get_latest_block_hash(), first_round_blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), first_round_blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), first_round_blocks[-1].block_hash)
 
         # START OF SECOND ROUND, we catchup to 3 new blocks
         time.sleep(3)
@@ -591,8 +590,8 @@ class TestCatchupManager(TestCase):
         self.assertEqual(cm.curr_num, second_round_blocks[-1].block_num)
         #
         # # Assert Redis has been updated
-        self.assertEqual(StateDriver.get_latest_block_num(), second_round_blocks[-1].block_num)
-        self.assertEqual(StateDriver.get_latest_block_hash(), second_round_blocks[-1].block_hash)
+        self.assertEqual(self.state.get_latest_block_num(), second_round_blocks[-1].block_num)
+        self.assertEqual(self.state.get_latest_block_hash(), second_round_blocks[-1].block_hash)
 
     @patch('cilantro_ee.nodes.catchup.VKBook.get_masternodes', return_value=MN_VKS)
     @patch('cilantro_ee.nodes.catchup.VKBook.get_delegates', return_value=DELE_VKS)
