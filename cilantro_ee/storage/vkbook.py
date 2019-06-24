@@ -77,8 +77,8 @@ book = read_public_constitution(conf.CONSTITUTION_FILE)
 masternodes = [node['vk'] for node in book['masternodes']]
 delegates = [node['vk'] for node in book['delegates']]
 
-print('masternodes before Phonebook init: {}'.format(masternodes))
-print('delegates before Phonebook init: {}'.format(delegates))
+# print('masternodes before Phonebook init: {}'.format(masternodes))
+# print('delegates before Phonebook init: {}'.format(delegates))
 
 PhoneBook = VKBook(masternodes=masternodes,
                    delegates=delegates,

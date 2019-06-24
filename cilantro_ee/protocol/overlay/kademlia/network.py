@@ -159,7 +159,7 @@ class Network(object):
             vk_list.remove(self.vk)
         else:
             quorum_required = PhoneBook.masternode_quorum_min
-            vk_list = VKBook.masternodes
+            vk_list = PhoneBook.masternodes
 
         if len(vk_list) < quorum_required:     # shouldn't happen
             self.log.fatal("Impossible to meet Quorum requirement as number of "

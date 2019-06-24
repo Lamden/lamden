@@ -15,7 +15,7 @@ class NetworkTopology:
 
         port = MN_TX_PUB_PORT
         pubs = []
-        num_sb = len(VKBook.get_masternodes())
+        num_sb = len(PhoneBook.masternodes)
         for i in range(NUM_SB_PER_BUILDER):
             sb_idx = i * NUM_SB_BUILDERS + sbb_idx
             if sb_idx >= num_sb:

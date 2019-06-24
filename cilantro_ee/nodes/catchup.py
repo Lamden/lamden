@@ -35,7 +35,7 @@ class CatchupManager:
         self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
-        self.driver = CilantroStorageDriver(key=self.signing_key)
+        # self.driver = CilantroStorageDriver(key=self.signing_key)
 
         self.state = MetaDataStorage()
 

@@ -48,7 +48,7 @@ class BlockAggregator(Worker):
         self.max_quorum = PhoneBook.delegate_quorum_max
         self.cur_quorum = 0
 
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block_hash = self.state.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
 
@@ -194,7 +194,7 @@ class BlockAggregator(Worker):
                             .format(type(msg)))
 
     def _set_catchup_done(self):
-        self.curr_block_hash = StateDriver.get_latest_block_hash()
+        self.curr_block_hash = self.state.get_latest_block_hash()
         self.curr_block.reset()
 
     def handle_router_msg(self, frames):
@@ -274,9 +274,9 @@ class BlockAggregator(Worker):
 
         # TODO
         # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
-        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+        # assert StorageDriver.get_latest_block_hash() == self.state.get_latest_block_hash(), \
         #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-        #         .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        #         .format(StorageDriver.get_latest_block_hash(), self.state.get_latest_block_hash())
 
         self._reset_curr_block()
 

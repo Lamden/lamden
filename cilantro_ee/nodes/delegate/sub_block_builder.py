@@ -319,7 +319,7 @@ class SubBlockBuilder(Worker):
 
         sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
                                                      sub_block_index=self.sb_blder_idx, signature=merkle_sig,
-                                                     prev_block_hash=StateDriver.get_latest_block_hash())
+                                                     prev_block_hash=self.state.get_latest_block_hash())
         # Send to block manager
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
         self._send_msg_over_ipc(sbc)

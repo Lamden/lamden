@@ -3,7 +3,6 @@ from cilantro_ee.messages.transaction.base import TransactionBase
 from cilantro_ee.messages.transaction.contract import TransactionBase
 from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.publish import PublishTransaction
-from cilantro_ee.storage.vkbook import VKBook
 
 import capnp
 import transaction_capnp
@@ -56,7 +55,6 @@ class OrderingContainer(MessageBase):
 
 
 def build_test_container():
-    from cilantro_ee.storage.vkbook import VKBook
     from cilantro_ee.messages.transaction.base import build_test_transaction
 
     return OrderingContainer.create(tx=build_test_transaction())
