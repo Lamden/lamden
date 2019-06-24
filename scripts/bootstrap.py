@@ -1,19 +1,22 @@
-from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
+from contracting.client import ContractingClient
 from cilantro_ee.constants import conf
+
+client = ContractingClient()
+
+if conf.RESET_DB:
+    client.raw_driver.flush()
+
+from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import overwrite_logger_level
 import sys, time
-from contracting.client import ContractingClient
 from cilantro_ee.protocol import wallet
 import requests
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
 def boot(delay):
     # Initialize database
-    client = ContractingClient()
 
-    if conf.RESET_DB:
-        client.raw_driver.flush()
 
     conf.HOST_IP = requests.get('https://api.ipify.org').text
 
