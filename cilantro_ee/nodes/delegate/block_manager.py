@@ -100,7 +100,7 @@ class BlockManager(Worker):
         self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
-        self.my_quorum = VKBook.get_min_masternode_quorum()
+        self.my_quorum = PhoneBook.masternode_quorum_min
         self._pending_work_at_sbb = 0
         self._sub_blocks_have_data = 0
 
