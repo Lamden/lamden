@@ -6,7 +6,7 @@ import sys, time
 from contracting.client import ContractingClient
 from cilantro_ee.protocol import wallet
 import requests
-
+from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
 def boot(delay):
     # Initialize database
@@ -33,6 +33,7 @@ def boot(delay):
     print("{}".format(conf.BOOT_MASTERNODE_IP_LIST))
     print("{}".format(conf.BOOT_DELEGATE_IP_LIST))
     print("{}".format(conf.BOOTNODES))
+    print('contents of constitution: {}'.format(read_public_constitution(conf.CONSTITUTION_FILE)))
 
     node_type = None
     if vk in PhoneBook.masternodes:
