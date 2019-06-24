@@ -22,6 +22,17 @@ def boot(delay):
     _, vk = wallet.new(seed=sk)
 
     print('Metering enabled: {}'.format(conf.STAMPS_ENABLED))
+    print("{}".format(conf.RESET_DB))
+    print("{}".format(conf.CONSTITUTION_FILE))
+    print("{}".format(conf.SSL_ENABLED))
+    print("{}".format(conf.NONCE_ENABLED))
+    print("{}".format(conf.STAMPS_ENABLED))
+    print("{}".format(conf.LOG_LEVEL))
+    print("{}".format(conf.SEN_LOG_LEVEL))
+    print("{}".format(conf.SK))
+    print("{}".format(conf.BOOT_MASTERNODE_IP_LIST))
+    print("{}".format(conf.BOOT_DELEGATE_IP_LIST))
+    print("{}".format(conf.BOOTNODES))
 
     node_type = None
     if vk in PhoneBook.masternodes:
