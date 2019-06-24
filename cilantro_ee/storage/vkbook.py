@@ -80,5 +80,9 @@ delegates = [node['vk'] for node in book['delegates']]
 print('masternodes before Phonebook init: {}'.format(masternodes))
 print('delegates before Phonebook init: {}'.format(delegates))
 
-PhoneBook = VKBook(masternodes, delegates, len(conf.BOOT_MASTERNODE_IP_LIST), \
-              len(conf.BOOT_DELEGATE_IP_LIST),  stamps=conf.STAMPS_ENABLED, nonces=conf.NONCE_ENABLED)
+PhoneBook = VKBook(masternodes=masternodes,
+                   delegates=delegates,
+                   num_boot_mns=len(conf.BOOT_MASTERNODE_IP_LIST),
+                   num_boot_del=len(conf.BOOT_DELEGATE_IP_LIST),
+                   stamps=conf.STAMPS_ENABLED,
+                   nonces=conf.NONCE_ENABLED)
