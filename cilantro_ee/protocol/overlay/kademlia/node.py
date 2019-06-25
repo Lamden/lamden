@@ -3,17 +3,17 @@ import heapq
 
 
 class Node:
-    def __init__(self, node_id, ip=None, port=None, vk=None):
+    def __init__(self, node_id: bytes, ip=None, port=None, vk=None):
         self.id = node_id
         self.ip = ip
         self.port = port
         self.long_id = int(node_id.hex(), 16)
         self.vk = vk
 
-    def sameHomeAs(self, node):
+    def same_home_as(self, node):
         return self.ip == node.ip and self.port == node.port and self.vk == node.vk
 
-    def distanceTo(self, node):
+    def distance_to(self, node):
         """
         Get the distance between this node and another.
         """
@@ -48,7 +48,7 @@ class NodeHeap(object):
         self.contacted = set()
         self.maxsize = maxsize
 
-    def remove(self, peerIDs):
+    def remove(self, peer_ids):
         """
         Remove a list of peer ids from this heap.  Note that while this
         heap retains a constant visible size (based on the iterator), it's
@@ -56,13 +56,17 @@ class NodeHeap(object):
         removal of nodes may not change the visible size as previously added
         nodes suddenly become visible.
         """
-        peerIDs = set(peerIDs)
-        if len(peerIDs) == 0:
+        peer_ids = set(peer_ids)
+
+        if len(peer_ids) == 0:
             return
+
         nheap = []
+
         for distance, node in self.heap:
-            if node.id not in peerIDs:
+            if node.id not in peer_ids:
                 heapq.heappush(nheap, (distance, node))
+
         self.heap = nheap
 
     def getNodeById(self, node_id):
@@ -96,7 +100,7 @@ class NodeHeap(object):
 
         for node in nodes:
             if node not in self:
-                distance = self.node.distanceTo(node)
+                distance = self.node.distance_to(node)
                 heapq.heappush(self.heap, (distance, node))
 
     def __len__(self):

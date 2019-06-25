@@ -18,7 +18,7 @@ def boot(delay):
     # Initialize database
 
 
-    conf.HOST_IP = requests.get('https://api.ipify.org').text
+
 
     # Determine what type the node is based on VK
     sk = bytes.fromhex(conf.SK)

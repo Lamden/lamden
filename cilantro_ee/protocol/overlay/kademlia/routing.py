@@ -14,9 +14,13 @@ log = logging.getLogger(__name__)
 
 
 class KBucket(object):
-    def __init__(self, rangeLower, rangeUpper, ksize):
-        self.range = (rangeLower, rangeUpper)
+    def __init__(self, range_lower, range_upper, ksize):
+        assert range_lower <= range_upper, 'Lower range cannot be greater than the upper range.'
+
+        self.range = (range_lower, range_upper)
+
         self.nodes = OrderedDict()
+
         self.replacementNodes = OrderedSet()
         self.touchLastUpdated()
         self.ksize = ksize
@@ -218,7 +222,7 @@ class RoutingTable(object):
         for neighbor in TableTraverser(self, node):
             notexcluded = exclude is None or not neighbor.equals(exclude)
             if notexcluded:
-                heapq.heappush(nodes, (node.distanceTo(neighbor), neighbor))
+                heapq.heappush(nodes, (node.distance_to(neighbor), neighbor))
             if len(nodes) == k:
                 break
 
