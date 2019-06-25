@@ -20,10 +20,14 @@ class MetaDataStorage(DatabaseDriver):
             assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
 
             if tx.state is not None and len(tx.state) > 0:
-                sets = json.loads(tx.state)
+                try:
+                    sets = json.loads(tx.state)
 
-                for k, v in sets.items():
-                    self.set(k, v)
+
+                    for k, v in sets.items():
+                        self.set(k, v)
+                except:
+                    pass
                     #self.log.info('Set {} to {}'.format(k, v))
 
         # Update our block hash and block num
@@ -42,8 +46,9 @@ class MetaDataStorage(DatabaseDriver):
         return block_hash.decode()
 
     def set_latest_block_hash(self, v):
+        print(type(v))
         assert len(v) == 64, 'Hash provided is not 64 characters.'
-        assert int(v, 16), 'Hash provided is not a hex string.'
+        int(v, 16)
 
         self.set(self.block_hash_key, v)
 
@@ -58,7 +63,7 @@ class MetaDataStorage(DatabaseDriver):
 
     def set_latest_block_num(self, v):
         v = int(v)
-        assert v > 0, 'Block number must be positive integer.'
+        assert v >= 0, 'Block number must be positive integer.'
         self.set(self.block_num_key, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)

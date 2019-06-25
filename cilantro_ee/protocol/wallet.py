@@ -1,6 +1,8 @@
 import nacl
 import nacl.encoding
 import nacl.signing
+from zmq.utils import z85
+import secrets
 
 
 def generate_keys(seed=None) -> tuple:
@@ -52,3 +54,44 @@ def verify(v: str, msg: bytes, sig: str) -> bool:
     except Exception:
         return False
     return True
+
+
+class Wallet:
+    def __init__(self, seed=None):
+        if seed is None:
+            seed = secrets.token_bytes(32)
+
+        self.sk = nacl.signing.SigningKey(seed=seed)
+        self.vk = self.sk.verify_key
+
+        self.zmq_key = z85.encode(
+            self.vk.to_curve25519_public_key()._public_key
+        )
+
+    @staticmethod
+    def format_key(k, as_hex=False):
+        fk = k.encode()
+        if as_hex:
+            return fk.hex()
+        return fk
+
+    def signing_key(self, as_hex=False):
+        return self.format_key(self.sk, as_hex=as_hex)
+
+    def verifying_key(self, as_hex=False):
+        return self.format_key(self.vk, as_hex=as_hex)
+
+    def sign(self, msg: bytes, as_hex=False):
+        assert isinstance(msg, bytes), 'Message must be byte string.'
+
+        sig = self.sk.sign(msg)
+        if as_hex:
+            return sig.signature.hex()
+        return sig.signature
+
+    def verify(self, msg: bytes, signature: bytes):
+        try:
+            self.vk.verify(msg, signature)
+        except nacl.exceptions.BadSignatureError:
+            return False
+        return True

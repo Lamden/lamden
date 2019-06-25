@@ -1,6 +1,5 @@
 from multiprocessing import Queue
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.storage.vkbook import VKBook
 
 from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher

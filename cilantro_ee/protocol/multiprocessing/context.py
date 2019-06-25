@@ -2,7 +2,7 @@ from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.utils import is_valid_hex
-
+from cilantro_ee.protocol.wallet import Wallet
 import asyncio, zmq, zmq.asyncio
 
 
@@ -17,12 +17,13 @@ class Context:
         asyncio.set_event_loop(self.loop)
         self.zmq_ctx = zmq.asyncio.Context()
 
-        # raghu todo do we need this below ??
+        signing_key = bytes.fromhex(signing_key)
         self.signing_key = signing_key
-        Keys.setup(sk_hex=signing_key)
-        # raghu todo do we need this below ??
         self.verifying_key = wallet.get_vk(self.signing_key)
 
+        self.wallet = Wallet(seed=signing_key)
+
+        Keys.setup(sk_hex=signing_key)
         SocketUtil.setup(Keys.public_key.hex())
 
 

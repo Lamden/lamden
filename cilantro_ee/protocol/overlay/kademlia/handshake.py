@@ -13,8 +13,8 @@ from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 from collections import defaultdict
 from cilantro_ee.constants import conf
 
-class Handshake:
 
+class Handshake:
     def __init__(self, vk, ctx):
         self.vk = vk
         self.ctx = ctx
