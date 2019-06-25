@@ -32,7 +32,9 @@ ssl = None
 app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
-driver = MasterStorage()
+
+def driver():
+    return MasterStorage()
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
@@ -187,7 +189,7 @@ async def get_state(request, contract, resource, key):
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_latest_block(request):
-    index = driver.get_last_n(1)
+    index = driver().get_last_n(1)
     latest_block_hash = index.get('blockHash')
     return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
@@ -197,12 +199,12 @@ async def get_latest_block(request):
 async def get_block(request):
     if 'number' in request.json:
         num = request.json['number']
-        block = driver.get_block(num)
+        block = driver().get_block(num)
         if block is None:
             return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     else:
         _hash = request.json['hash']
-        block = driver.get_block(hash)
+        block = driver().get_block(hash)
         if block is None:
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
@@ -212,7 +214,7 @@ async def get_block(request):
 def get_tx(_hash):
     if not _hash:
         return None
-    return driver.get_tx(_hash)
+    return driver().get_tx(_hash)
 
 
 """
@@ -254,7 +256,7 @@ async def get_transaction(request):
 @app.route('/transactions', methods=['POST',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
-    txs = driver.get_tx(_hash)
+    txs = driver().get_tx(_hash)
     if txs is None:
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)

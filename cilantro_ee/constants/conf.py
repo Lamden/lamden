@@ -2,17 +2,18 @@ import configparser, os
 
 CIL_CONF_PATH = '/etc/cilantro_ee.conf'
 
-HOST_IP = None
-BOOTNODES = []
+# HOST_IP = None
 RESET_DB = False
 CONSTITUTION_FILE = None
 SSL_ENABLED = None
 NONCE_ENABLED = None
-VK_IP_MAP = {}
 STAMPS_ENABLED = False
 LOG_LEVEL = None
 SEN_LOG_LEVEL = None
 SK = None
+BOOT_MASTERNODE_IP_LIST = []
+BOOT_DELEGATE_IP_LIST = []
+BOOTNODES = []
 
 SETUP = False
 
@@ -27,15 +28,15 @@ if not SETUP:
         config.read(CIL_CONF_PATH)
         config = config['DEFAULT']
         CONSTITUTION_FILE = config['constitution_file']
-        BOOTNODES = config['boot_ips'].split(',')
         SK = config['sk']
         RESET_DB = config.getboolean('reset_db')
         SSL_ENABLED = config.getboolean('ssl_enabled')
         NONCE_ENABLED = config.getboolean('nonce_enabled') or False
         STAMPS_ENABLED = config.getboolean('metering')
-        FLUCTUATING_QUORUMS = config.getboolean('fluctuating_quorums')
         LOG_LEVEL = int(config['log_lvl'])
         SEN_LOG_LEVEL = int(config['seneca_log_lvl']) if 'seneca_log_lvl' in config else 0
+        BOOT_MASTERNODE_IP_LIST = config['boot_masternode_ips'].split(',')
+        BOOT_DELEGATE_IP_LIST = config['boot_delegate_ips'].split(',')
+        BOOTNODES = BOOT_MASTERNODE_IP_LIST + BOOT_DELEGATE_IP_LIST
 
     SETUP = True
-

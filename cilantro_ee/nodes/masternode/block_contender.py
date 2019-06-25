@@ -1,3 +1,4 @@
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
@@ -21,22 +22,25 @@ class SubBlockGroup:
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
         self.transactions = {}  # tx_hash: TransactionData
         self.sender_to_sbc = {}  # map of sender_vk: SubBlockContender
-
+        self.min_quorum = PhoneBook.delegate_quorum_min
+        self.max_quorum = PhoneBook.delegate_quorum_max
         self.best_rh = None  # The result hash with the most votes so far
 
     def is_consensus_possible(self) -> bool:
         num_votes = 0
         for rh in self.rh:
             votes_for_rh = len(self.rh[rh])
-            if votes_for_rh >= DELEGATE_MAJORITY:  # Consensus reached on this sub block
+            if votes_for_rh >= self.max_quorum:  # Consensus reached on this sub block
                 return True
             num_votes += votes_for_rh
 
         remaining_votes = NUM_DELEGATES - num_votes
         leading_rh = len(self.rh[self.best_rh])
 
-        if leading_rh + remaining_votes < DELEGATE_MAJORITY:
-            self.log.fatal("Consensus impossible for SB index {}!\nresult hashes: {}".format(self.sb_idx, self.rh))
+        if leading_rh + remaining_votes < self.max_quorum:
+            self.log.fatal("Consensus impossible for SB index {}!\n"
+                           "consensus: {}, dissent: {}, quorum: {}\n"
+                           "result hashes: {}".format(self.sb_idx, leading_rh, dissent, self.cur_quorum, self.rh))
             return False
 
         return True
@@ -61,17 +65,32 @@ class SubBlockGroup:
         return sb
 
     def is_consensus_reached(self) -> bool:
-        cons_reached = len(self.rh[self.best_rh]) >= DELEGATE_MAJORITY
+        cons_reached = len(self.rh[self.best_rh]) >= self.max_quorum
 
         # Also make sure we have all the transactions for the sub block
-        if cons_reached:
-            for leaf in self._get_merkle_leaves():
-                if leaf not in self.transactions:
-                    self.log.warning("Consensus reached for sb idx {}, but still missing tx with hash {}! (and possibly"
-                                     " more)".format(self.sb_idx, leaf))
-                    return False
+        # comment out this for now as we send all transactions with a sub-block
+        # if cons_reached:
+            # for leaf in self._get_merkle_leaves():
+                # if leaf not in self.transactions:
+                    # self.log.warning("Consensus reached for sb idx {}, but still missing tx with hash {}! (and possibly"
+                                     # " more)".format(self.sb_idx, leaf))
+                    # return False
 
         return cons_reached
+
+    def get_current_quorum_reached(self) -> int:
+        if len(self.rh[self.best_rh]) < self.min_quorum:
+            return 0
+        if len(self.rh[self.best_rh]) >= self.max_quorum:
+            return self.max_quorum
+        num_votes = 0
+        for rh in self.rh:
+            votes_for_rh = len(self.rh[rh])
+            num_votes += votes_for_rh
+
+        leading_rh = len(self.rh[self.best_rh])
+        is_reduced_quorum = leading_rh >= (9 * num_votes // 10)
+        return leading_rh if is_reduced_quorum else 0
 
     def get_input_hashes(self) -> set:
         s = set()
@@ -216,6 +235,15 @@ class BlockContender:
 
         return True
 
+    def get_current_quorum_reached(self) -> int:
+        if len(self.sb_groups) < NUM_SB_PER_BLOCK:
+            return 0
+        cur_quorum = PhoneBook.delegate_quorum_max
+        for sb_idx, sb_group in self.sb_groups.items():
+            cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
+
+        return cur_quorum
+
     def is_empty(self):
         assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
 
@@ -231,9 +259,10 @@ class BlockContender:
 
         # Build the sub-blocks
         sb_data = []
-        for sb_idx in range(NUM_SB_PER_BLOCK):
-            sb_group = self.sb_groups[sb_idx]
+        for sb_group in self.sb_groups.values():
             sb_data.append(sb_group.get_sb())
+
+        sb_data = sorted(sb_data, key=lambda sb: sb.index)
 
         assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
                                                  .format(len(sb_data), NUM_SB_PER_BLOCK)
@@ -242,7 +271,9 @@ class BlockContender:
 
     def get_failed_block_notif(self) -> FailedBlockNotification:
         input_hashes = self._get_input_hashes()
-        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, input_hashes=input_hashes)
+        sb_indices = self._get_sb_indices()
+        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, \
+                                  sb_indices=sb_indices, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         """
@@ -264,11 +295,17 @@ class BlockContender:
         return groups_empty
 
     def _get_input_hashes(self) -> List[set]:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         input_hashes = []
-        for i in range(NUM_SUB_BLOCKS):
-            if i not in self.sb_groups:
-                input_hashes.append(set())
-            else:
-                input_hashes.append(self.sb_groups[i].get_input_hashes())
+        for sb_group in sb_groups:
+            input_hashes.append(sb_group.get_input_hashes())
 
         return input_hashes
+
+    def _get_sb_indices(self) -> List:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
+        input_indices = []
+        for sb_group in sb_groups:
+            input_indices.append(sb_group.sb_idx)
+
+        return input_indices

@@ -18,12 +18,13 @@ from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.messages.signals.node import Ready
 
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 from typing import List
 
-import asyncio, zmq, time
+import math, asyncio, zmq, time
 
 
 class BlockAggregator(Worker):
@@ -43,7 +44,11 @@ class BlockAggregator(Worker):
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
-        self.curr_block_hash = self.state.latest_block_hash
+        self.min_quorum = PhoneBook.delegate_quorum_min
+        self.max_quorum = PhoneBook.delegate_quorum_max
+        self.cur_quorum = 0
+
+        self.curr_block_hash = self.state.get_latest_block_hash()
         # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
         # STOP COMMENTING THIS OUT PLEASE --davis
 
@@ -65,6 +70,10 @@ class BlockAggregator(Worker):
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
     def build_task_list(self):
+        # Create ROUTER socket for communication with batcher over IPC
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
+        self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
+
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
             name="BA-Sub",
@@ -94,10 +103,6 @@ class BlockAggregator(Worker):
 
         self.catchup_manager = CatchupManager(verifying_key=self.verifying_key, signing_key=self.signing_key, pub_socket=self.pub,
                                               router_socket=self.router, store_full_blocks=True)
-
-        # Create ROUTER socket for communication with batcher over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
-        self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
         self.tasks.append(self._connect_and_process())
 
@@ -132,6 +137,15 @@ class BlockAggregator(Worker):
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
         self.log.info("Sleeping before triggering catchup...")
         await asyncio.sleep(8)
+
+        num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+        # assert num_delegates_joined >= self.min_quorum, "Don't have minimum quorum"
+        if num_delegates_joined >= self.max_quorum:
+            self.cur_quorum = self.max_quorum
+        else:
+            cq = math.ceil(9 * num_delegates_joined / 10)
+            self.cur_quorum = max(cq, self.min_quorum)
+
         # now start the catchup
         await self._trigger_catchup()
 
@@ -141,6 +155,9 @@ class BlockAggregator(Worker):
         sync_genesis_contracts()
 
         self.catchup_manager.run_catchup()
+
+        message = Ready.create()
+        self._send_msg_over_ipc(message=message)
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
@@ -176,6 +193,10 @@ class BlockAggregator(Worker):
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
+    def _set_catchup_done(self):
+        self.curr_block_hash = self.state.get_latest_block_hash()
+        self.curr_block.reset()
+
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
@@ -188,13 +209,11 @@ class BlockAggregator(Worker):
 
         elif isinstance(msg, BlockDataReply):
             if self.catchup_manager.recv_block_data_reply(msg):
-                self.curr_block_hash = self.state.latest_block_hash
-                self.curr_block.reset()
+                self._set_catchup_done()
 
         elif isinstance(msg, BlockIndexReply):
             if self.catchup_manager.recv_block_idx_reply(sender, msg):
-                self.curr_block_hash = self.state.latest_block_hash
-                self.curr_block.reset()
+                self._set_catchup_done()
 
         else:
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
@@ -209,10 +228,15 @@ class BlockAggregator(Worker):
             self.log.debug("First SBC receiver for prev block hash {}! Scheduling timeout".format(self.curr_block_hash))
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
 
-        if self.curr_block.is_consensus_reached():
-            self.log.info("Consensus reached for prev hash {} (is_empty={})"
+        if self.curr_block.is_consensus_reached() or \
+           self.curr_block.get_current_quorum_reached() >= self.cur_quorum:
+            self.log.spam("currnt quorum {} actual quorum {} max quorum {}".
+                          format(self.cur_quorum, self.curr_block.get_current_quorum_reached(), self.max_quorum))
+            self.log.success("Consensus reached for prev hash {} (is_empty={})"
                              .format(self.curr_block_hash, self.curr_block.is_empty()))
             self.store_full_block()
+            num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+            self.cur_quorum = min(self.cur_quorum + num_delegates_joined, self.max_quorum)
             return
 
         if not self.curr_block.is_consensus_possible():
@@ -250,9 +274,9 @@ class BlockAggregator(Worker):
 
         # TODO
         # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
-        # assert StorageDriver.get_latest_block_hash() == StateDriver.get_latest_block_hash(), \
+        # assert StorageDriver.get_latest_block_hash() == self.state.get_latest_block_hash(), \
         #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-        #         .format(StorageDriver.get_latest_block_hash(), StateDriver.get_latest_block_hash())
+        #         .format(StorageDriver.get_latest_block_hash(), self.state.get_latest_block_hash())
 
         self._reset_curr_block()
 
@@ -301,8 +325,17 @@ class BlockAggregator(Worker):
 
             self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
                               "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
-            self.send_fail_block_notif()
+            new_quorum = self.curr_block.get_current_quorum_reached()
+            if new_quorum >= self.min_quorum and new_quorum >= (9 * self.cur_quorum // 10):
+                self.log.warning("Reducing consensus quorum from {} to {}".
+                          format(self.curr_block.get_current_quorum_reached(), new_quorum))
+                self.store_full_block()
+                self.cur_quorum = new_quorum
+            else:
+                self.send_fail_block_notif()
             self.curr_block.reset()
+            num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
+            self.cur_quorum = min(self.cur_quorum + num_delegates_joined, self.max_quorum)
         except asyncio.CancelledError:
             pass
 

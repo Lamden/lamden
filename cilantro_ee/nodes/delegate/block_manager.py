@@ -38,7 +38,7 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification, BlockMetaData
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages.signals.delegate import MakeNextBlock, DiscardPrevBlock
+from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
@@ -100,6 +100,9 @@ class BlockManager(Worker):
         self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
+        self.my_quorum = PhoneBook.masternode_quorum_min
+        self._pending_work_at_sbb = 0
+        self._sub_blocks_have_data = 0
 
         self._thicc_log()
 
@@ -125,6 +128,19 @@ class BlockManager(Worker):
         self.start_sbb_procs()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+
+    def _set_pending_work(self, sbb_index):
+        self._pending_work_at_sbb |= (1 << sbb_index)
+
+    def _reset_pending_work(self, sbb_index):
+        self._pending_work_at_sbb &= ~(1 << sbb_index)
+
+    def _set_sb_have_data(self, sbb_index):
+        self._sub_blocks_have_data |= (1 << sbb_index)
+
+    def _reset_sb_have_data(self, sbb_index):
+        self._sub_blocks_have_data &= ~(1 << sbb_index)
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
@@ -237,8 +253,16 @@ class BlockManager(Worker):
 
         if isinstance(msg, SubBlockContender):
             self._handle_sbc(msg)
+            if msg.is_empty:
+                self._reset_sb_have_data(sbb_index)
+            else:
+                self._set_sb_have_data(sbb_index)
         elif isinstance(msg, Ready):
             self.set_sbb_ready()
+        elif isinstance(msg, PendingTransactions):
+            self._set_pending_work(sbb_index)
+        elif isinstance(msg, NoTransactions):
+            self._reset_pending_work(sbb_index)
         # elif isinstance(msg, SomeOtherType):
         #     self._handle_some_other_type_of_msg(msg)
         else:
@@ -362,14 +386,14 @@ class BlockManager(Worker):
             #       in that case, it may be beneficial to send in sb_index too
             sbb_idx = sb.index % NUM_SB_BUILDERS
             input_hash = sb.input_hash
-            message = AlignInputHash.create(input_hash)
+            message = AlignInputHash.create(input_hash, sb.index)
             self._send_msg_over_ipc(sb_index=sbb_idx, message=message)
 
     def update_db(self):
         block = self.db_state.next_block[self.db_state.new_block_hash][0]
         if self.db_state.my_new_block_hash != self.db_state.new_block_hash:    # holy cow - mismatch
             self.log.important("Out-of-Consensus - BlockNotification doesn't match my block!")
-            if (self.db_state.num_fail_block >= MIN_NEW_BLOCK_MN_QOURUM):
+            if (self.db_state.num_fail_block >= self.my_quorum):
                 self.fail_block_action(block)
                 return
             # check input hashes and send align / skip messages using input-hash  - don't start next block
@@ -401,6 +425,8 @@ class BlockManager(Worker):
     def update_db_if_ready(self):
         if not self.db_state.my_new_block_hash or not self.db_state.new_block_hash:
             return          # both are not ready
+        if (self._pending_work_at_sbb == 0) and (self._sub_blocks_have_data == 0):
+            time.sleep(40)
         # self.db_state.my_new_block_hash == self.db_state.new_block_hash at this point
         self.update_db()
 
@@ -434,14 +460,14 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(new_block_hash)[1] + 1 if new_block_hash in self.db_state.next_block else 1
         self.db_state.next_block[new_block_hash] = (block_data, count)
-        if count >= MIN_NEW_BLOCK_MN_QOURUM:
+        if count >= self.my_quorum:
             self.log.info("New block quorum met!")
             self.db_state.new_block_hash = new_block_hash
             self.db_state.is_new_block = is_new_block
             self.update_db_if_ready()
 
     def skip_block(self):
-        if (self.db_state.num_skip_block < MIN_NEW_BLOCK_MN_QOURUM) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
+        if (self.db_state.num_skip_block < self.my_quorum) or (self.db_state.num_empty_sbc != NUM_SB_PER_BLOCK):
             return
 
         # reset all the state info
@@ -493,7 +519,7 @@ class BlockManager(Worker):
 
         self.db_state.num_fail_block = self.db_state.num_fail_block + 1
 
-        if (self.db_state.num_fail_block < MIN_NEW_BLOCK_MN_QOURUM):
+        if (self.db_state.num_fail_block < self.my_quorum):
             self.log.important("Don't have quorum yet to handle fail block {}".format(prev_block_hash))
             return
 

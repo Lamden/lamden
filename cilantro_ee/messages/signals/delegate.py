@@ -9,6 +9,8 @@ This file defines signals used inside Delegates for inter-process (IPC) communic
 class MakeNextBlock(SignalBase):
     pass
 
+class PendingTransactions(SignalBase):
+    pass
 
-class DiscardPrevBlock(SignalBase):
+class NoTransactions(SignalBase):
     pass

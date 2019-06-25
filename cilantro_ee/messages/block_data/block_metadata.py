@@ -5,7 +5,6 @@ from cilantro_ee.messages.utils import validate_hex
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.utils import lazy_property
 from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK
-from cilantro_ee.storage.vkbook import VKBook
 import time
 from typing import List
 
