@@ -3,12 +3,14 @@ from cilantro_ee.constants import conf
 from cilantro_ee.contracts import sync
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
 from contracting.client import ContractingClient
+import math
 
 log = get_logger("VKBook")
 
 
 class VKBook:
-    def __init__(self, masternodes, delegates, stamps, nonces, debug=True):
+    def __init__(self, masternodes, delegates, num_boot_mns, \
+                 num_boot_del, stamps, nonces, debug=True):
         self.client = ContractingClient()
 
         self.contract = self.client.get_contract('vkbook')
@@ -17,15 +19,22 @@ class VKBook:
             # Put VKs into VKBook smart contract and submit it to state
             sync.submit_contract_with_construction_args('vkbook', args={'masternodes': masternodes,
                                                                         'delegates': delegates,
+                                                                        'num_boot_mns': num_boot_mns,
+                                                                        'num_boot_del': num_boot_del,
                                                                         'stamps': stamps,
                                                                         'nonces': nonces})
 
             self.contract = self.client.get_contract('vkbook')
 
-        self.boot_quorum_masternodes = len(self.masternodes)
-        self.boot_quorum_delegates = len(self.delegates)
+        self.masternode_quorum_max = math.ceil(len(self.masternodes) * 2 / 3)
+        self.delegate_quorum_max = math.ceil(len(self.delegates) * 2 / 3)
 
-        self.boot_quorum = self.boot_quorum_masternodes + self.boot_quorum_delegates
+        num_boot_mns = self.contract.get_num_boot_masternodes()
+        self.masternode_quorum_min = min(self.masternode_quorum_max, num_boot_mns)
+        num_boot_del = self.contract.get_num_boot_delegates()
+        self.delegate_quorum_min = min(self.delegate_quorum_max, num_boot_del)
+        self.quorum_min = self.masternode_quorum_min + self.delegate_quorum_min
+
 
     @property
     def stamps_enabled(self):
@@ -67,4 +76,14 @@ class VKBook:
 book = read_public_constitution(conf.CONSTITUTION_FILE)
 masternodes = [node['vk'] for node in book['masternodes']]
 delegates = [node['vk'] for node in book['delegates']]
-PhoneBook = VKBook(masternodes, delegates, stamps=conf.STAMPS_ENABLED, nonces=conf.NONCE_ENABLED)
+
+# print('masternodes before Phonebook init: {}'.format(masternodes))
+# print('delegates before Phonebook init: {}'.format(delegates))
+
+PhoneBook = VKBook(masternodes=masternodes,
+                   delegates=delegates,
+                   num_boot_mns=len(conf.BOOT_MASTERNODE_IP_LIST),
+                   num_boot_del=len(conf.BOOT_DELEGATE_IP_LIST),
+                   stamps=conf.STAMPS_ENABLED,
+                   nonces=conf.NONCE_ENABLED)
+

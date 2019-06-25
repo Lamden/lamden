@@ -103,6 +103,7 @@ class SkipBlockNotification2(MessageBaseJson):
 
 class FailedBlockNotification(MessageBaseJson):
     PREV_B_HASH = 'prev_b_hash'
+    INDICES = 'indices'
     SB = 'sb'
 
     def validate(self):
@@ -114,18 +115,22 @@ class FailedBlockNotification(MessageBaseJson):
                 assert is_valid_hex(ih), "Not valid input hash: {}".format(ih)
 
     @classmethod
-    def create(cls, prev_block_hash: str, input_hashes: List[set]):
+    def create(cls, prev_block_hash: str, sb_indices: List, input_hashes: List[set]):
         # JSON cannot handle sets so we must cast them to lists
         new_li = []
         for s in input_hashes:
             new_li.append(list(s))
 
-        data = {cls.PREV_B_HASH: prev_block_hash, cls.SB: new_li}
+        data = {cls.PREV_B_HASH: prev_block_hash, cls.INDICES: sb_indices, cls.SB: new_li}
         return cls.from_data(data)
 
     @property
     def prev_block_hash(self):
         return self._data[self.PREV_B_HASH]
+
+    @property
+    def sb_indices(self) -> List:
+        return self._data[self.INDICES]
 
     @lazy_property
     def input_hashes(self) -> List[set]:

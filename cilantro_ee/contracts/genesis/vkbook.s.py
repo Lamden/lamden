@@ -4,18 +4,21 @@ witness_list = Variable()
 notifier_list = Variable()
 scheduler_list = Variable()
 
+num_boot_masternodes = Variable()
+num_boot_delegates = Variable()
+
 stamps_enabled = Variable()
 nonces_enabled = Variable()
-fluctuating_quorum_enabled = Variable()
 
 
 
 @construct
 def seed(masternodes,
          delegates,
+         num_boot_mns,
+         num_boot_del,
          stamps=True,
-         nonces=False,
-         fluctuating_quorums=True):
+         nonces=False):
 
     masternode_list.set(masternodes)
     delegate_list.set(delegates)
@@ -23,9 +26,11 @@ def seed(masternodes,
     notifier_list.set([])
     scheduler_list.set([])
 
+    num_boot_masternodes.set(num_boot_mns)
+    num_boot_delegates.set(num_boot_del)
+
     stamps_enabled.set(stamps)
     nonces_enabled.set(nonces)
-    fluctuating_quorum_enabled.set(fluctuating_quorums)
 
 @export
 def get_delegates():
@@ -52,6 +57,15 @@ def get_schedulers():
 
 
 @export
+def get_num_boot_masternodes():
+    return num_boot_masternodes.get()
+
+@export
+def get_num_boot_delegates():
+    return num_boot_delegates.get()
+
+
+@export
 def get_stamps_enabled():
     return stamps_enabled.get()
 
@@ -60,13 +74,4 @@ def get_stamps_enabled():
 def get_nonces_enabled():
     return nonces_enabled.get()
 
-
-@export
-def get_fluctuating_quorum_enabled():
-    return fluctuating_quorum_enabled.get()
-
-
-@export
-def get_boot_quorum_masternodes():
-    return len(masternode_list.get())
 

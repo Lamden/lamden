@@ -7,7 +7,6 @@ from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.utils import validate_hex
 from typing import List
 from cilantro_ee.logger import get_logger
-from cilantro_ee.storage.vkbook import VKBook
 
 import blockdata_capnp
 

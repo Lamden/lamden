@@ -7,7 +7,9 @@ Available classes:
 
 import hashlib
 import secrets
-from cilantro_ee.constants.system_config import POW_COMPLEXITY
+# from cilantro_ee.constants.system_config import POW_COMPLEXITY
+
+POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basically disables POW
 
 
 class SHA3POW:

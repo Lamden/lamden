@@ -48,7 +48,7 @@ class StateSync(Worker):
 
         self.is_caught_up = False
         self.new_blk_notifs = defaultdict(list)  # mapping of block hash to new_block_notif messages
-        self.mn_quorum = math.ceil(len(PhoneBook.masternodes) * (2/3))
+        self.mn_quorum = PhoneBook.masternode_quorum_min
 
         self.run()
 

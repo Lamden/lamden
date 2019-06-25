@@ -1,19 +1,22 @@
-from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
+from contracting.client import ContractingClient
 from cilantro_ee.constants import conf
+
+client = ContractingClient()
+
+if conf.RESET_DB:
+    client.raw_driver.flush()
+
+from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import overwrite_logger_level
 import sys, time
-from contracting.client import ContractingClient
 from cilantro_ee.protocol import wallet
 import requests
-
+from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
 def boot(delay):
     # Initialize database
-    client = ContractingClient()
 
-    if conf.RESET_DB:
-        client.raw_driver.flush()
 
     conf.HOST_IP = requests.get('https://api.ipify.org').text
 
@@ -22,6 +25,18 @@ def boot(delay):
     _, vk = wallet.new(seed=sk)
 
     print('Metering enabled: {}'.format(conf.STAMPS_ENABLED))
+    print("{}".format(conf.RESET_DB))
+    print("{}".format(conf.CONSTITUTION_FILE))
+    print("{}".format(conf.SSL_ENABLED))
+    print("{}".format(conf.NONCE_ENABLED))
+    print("{}".format(conf.STAMPS_ENABLED))
+    print("{}".format(conf.LOG_LEVEL))
+    print("{}".format(conf.SEN_LOG_LEVEL))
+    print("{}".format(conf.SK))
+    print("{}".format(conf.BOOT_MASTERNODE_IP_LIST))
+    print("{}".format(conf.BOOT_DELEGATE_IP_LIST))
+    print("{}".format(conf.BOOTNODES))
+    print('contents of constitution: {}'.format(read_public_constitution(conf.CONSTITUTION_FILE)))
 
     node_type = None
     if vk in PhoneBook.masternodes:
