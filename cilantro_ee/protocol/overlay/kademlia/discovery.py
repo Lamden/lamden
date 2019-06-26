@@ -11,23 +11,35 @@ from cilantro_ee.constants import conf
 
 class Discovery:
 
-    def __init__(self, vk, zmq_ctx):
+    def __init__(self, vk, zmq_ctx,
+                 host_ip=conf.HOST_IP,
+                 port=DISCOVERY_PORT,
+                 pepper=PEPPER.encode(),
+                 url=None,
+                 is_debug=False):
+
         self.log = get_logger('OS.Discovery')
+
         self.vk = vk
         self.ctx = zmq_ctx
-        self.host_ip = conf.HOST_IP
-        # these part of genesis scripts?
-        self.port = DISCOVERY_PORT
-        self.pepper = PEPPER.encode()
+        self.host_ip = host_ip
 
-        self.url = 'tcp://*:{}'.format(self.port)
+        self.port = port
+        self.pepper = pepper
+
+        if url is None:
+            self.url = 'tcp://*:{}'.format(self.port)
+        else:
+            self.url = url
+
         self.sock = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         # self.sock.setsockopt(zmq.IDENTITY, '{}:{}'.format(self.host_ip, self.port).encode())
         # raghu make sure this is the only socket with just ip alone as the identity
+
         self.sock.setsockopt(zmq.IDENTITY, self.host_ip.encode())
         self.sock.bind(self.url)
 
-        self.is_debug = False          # turn this on for verbose messages to debug
+        self.is_debug = is_debug          # turn this on for verbose messages to debug
 
         self.is_masternode = False
         self.is_listen_ready = False
@@ -81,16 +93,17 @@ class Discovery:
             self.log.debug("Sending request to {}".format(ip))
 
         try:
-            await req.send_multipart([ip, self.pepper])
+            req.send_multipart([ip, self.pepper])
             return True
 
         except zmq.ZMQError as e:
             if self.is_debug or (e.errno != zmq.EHOSTUNREACH):
                 self.log.warning("ZMQError in sending discovery request to {}: {}".format(ip, e))
+            self.log.error('ZMQ ERROR: {}'.format(e))
+            return False
         except Exception as e:
             self.log.warning("Got exception in sending discovery msg: {}".format(e))
-
-        return False
+            return False
 
     async def reply(self, ip):
         if self.is_listen_ready:
@@ -201,11 +214,11 @@ class Discovery:
 
         req.close()
 
-
     async def discover_nodes(self):
         await asyncio.sleep(1)      # just to yield so listen can start before this one
         dis_nodes = {}
-        if (self.is_masternode and len(PhoneBook.masternodes) == 1):
+
+        if self.is_masternode and len(PhoneBook.masternodes) == 1:
             self.log.info('Bootstrapping as the only masternode.')
         else:
             if len(conf.BOOTNODES) > 0: # TODO refine logic post-anarchy-net
