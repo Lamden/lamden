@@ -1,5 +1,8 @@
 import zmq, zmq.asyncio, asyncio, traceback
 import uuid
+
+from datetime import datetime, timedelta
+
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.protocol.overlay.kademlia.ip import *
@@ -275,36 +278,70 @@ Returns a message of the signed pepper and VK
 '''
 
 class DiscoveryServer:
-    def __init__(self, address, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
+    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
         self.address = address
         self.socket = None
+        self.ctx = ctx
 
         self.wallet = wallet
-
         self.pepper = pepper
-
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
-        self.ctx = ctx
+        self.running = False
 
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
         self.socket.bind(self.address)
 
-        while True:
-            await self.socket.recv()
-            self.socket.send(self.response)
+        self.running = True
 
-    def destroy(self):
+        while self.running:
+            event = await self.socket.poll(timeout=5, flags=zmq.POLLIN)
+            if event:
+                await self.socket.recv()
+                self.socket.send(self.response)
+
         self.ctx.destroy()
+
+    def stop(self):
+        self.running = False
 
 
 def verify_vk_pepper(msg: bytes, pepper: bytes):
     assert len(msg) > 32, 'Message must be longer than 32 bytes.'
-
-    vk = msg[:32]
-    signed_pepper = msg[32:]
+    vk, signed_pepper = unpack_pepper_msg(msg)
     return _verify(vk, pepper, signed_pepper)
 
-def discover_nodes(ip_list, pepper):
-    pass
+
+def unpack_pepper_msg(msg: bytes):
+    return msg[:32], msg[32:]
+
+
+async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=30):
+    await asyncio.sleep(0.1)
+    socket = ctx.socket(zmq.REQ)
+    socket.connect(ip)
+    socket.send(b'')
+
+    delta = timedelta(seconds=timeout)
+
+    start = datetime.now()
+    while True:
+        event = await socket.poll(timeout=5, flags=zmq.POLLIN)
+        if event:
+            msg = await socket.recv()
+            vk, _ = unpack_pepper_msg(msg)
+            if verify_vk_pepper(msg, pepper):
+                return vk, ip
+            return None, ip
+
+        if datetime.now() - start > delta:
+            return None, ip
+
+def discover_nodes(ip_list, pepper:bytes, ctx:zmq.Context, timeout=5, retries=3):
+
+    nodes_found = {}
+
+    tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
+    tasks = asyncio.gather(*tasks)
+
