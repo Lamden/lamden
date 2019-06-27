@@ -53,7 +53,6 @@ class Discovery:
             if (len(PhoneBook.masternodes) == 2):
                 self.min_discovery_nodes = 1
 
-
     def set_ready(self):
         if self.is_masternode:
             self.is_listen_ready = True
@@ -183,10 +182,16 @@ class Discovery:
         return (num_replies >= self.min_discovery_nodes)
 
     async def try_discover_nodes(self, dis_nodes, ip_list):
+        # Minimum Discovery Nodes needed when entire network starts at same time
+        # Can we get rid of it and make it just one?
         assert len(ip_list) >= self.min_discovery_nodes, "Don't have enough discoverable addresses"
-        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
-        req.setsockopt(zmq.ROUTER_MANDATORY, 1)
+
+        req = SocketUtil.create_socket(self.ctx, zmq.ROUTER) # Doesn't do anything besides give us a socket with a global context
+
+        req.setsockopt(zmq.ROUTER_MANDATORY, 1) # If errors, they will be shown
+
         event_id = uuid.uuid4().hex
+
         req.setsockopt(zmq.IDENTITY, '{}:{}'.format(self.host_ip, event_id).encode())
         # raghu TODO set hwm and bunch the requests to make sure they are under hwm
         # raghu TODO better strategy is to use PROBE flag rather than multiple sends
@@ -218,24 +223,28 @@ class Discovery:
         await asyncio.sleep(1)      # just to yield so listen can start before this one
         dis_nodes = {}
 
+        # Bootstraping into a network with a single Masternode skips the discovery process
         if self.is_masternode and len(PhoneBook.masternodes) == 1:
             self.log.info('Bootstrapping as the only masternode.')
+
         else:
-            if len(conf.BOOTNODES) > 0: # TODO refine logic post-anarchy-net
-                self.log.info('Connecting to boot nodes: {}'.format(conf.BOOTNODES))
-                ip_list = conf.BOOTNODES
-            else:
-                start_ip = self.host_ip   # TODO see if we can get a list based on env variable here
-                ip_list = start_ip if type(start_ip) == list else get_ip_range(start_ip)
-                self.log.info('Connecting to this ip-range: {} to {}'.format(ip_list[0], ip_list[-1]))
-            iter = 0
-            while iter < DISCOVERY_ITER:
+            assert len(conf.BOOTNODES) > 0, 'You must provide initial nodes to the network!'
+
+            self.log.info('Connecting to boot nodes: {}'.format(conf.BOOTNODES)) # Change from Bootnode to Something else
+            ip_list = conf.BOOTNODES
+
+            for _ in range(DISCOVERY_ITER):
                 self.log.info('Trying to discover network ..')
+
                 await self.try_discover_nodes(dis_nodes, ip_list)
-                if (len(dis_nodes) >= self.min_discovery_nodes):
+
+                # found_nodes = await self.try_discover_nodes(ip_list)
+                # dis_nodes.update(found_nodes)
+
+                if len(dis_nodes) >= self.min_discovery_nodes:
                     break
+
                 await asyncio.sleep(DISCOVERY_LONG_WAIT)
-                iter += 1
 
             if (len(dis_nodes) < self.min_discovery_nodes) and not self.is_masternode:
                 self.log.critical('''
@@ -250,5 +259,31 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
         if self.host_ip in dis_nodes:
             del dis_nodes[self.host_ip]
+
+        '''
+        DIS_NODES = {
+            '1.1.1.1': 'hex_string'
+        }
+        '''
+
         return dis_nodes
+
+
+class DiscoveryServer:
+    def __init__(self, address, vk, pepper, ctx=zmq.asyncio.Context()):
+        self.address = address
+        self.socket = None
+
+        self.ctx = ctx
+
+    async def serve(self):
+        self.socket = self.ctx.socket(zmq.REP)
+        self.socket.bind(self.address)
+
+        while True:
+            msg = await self.socket.recv()
+            self.socket.send(msg)
+
+    def destroy(self):
+        self.ctx.destroy()
 
