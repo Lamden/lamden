@@ -56,6 +56,15 @@ def verify(v: str, msg: bytes, sig: str) -> bool:
     return True
 
 
+def _verify(vk: bytes, msg: bytes, signature: bytes):
+    vk = nacl.signing.VerifyKey(vk)
+    try:
+        vk.verify(msg, signature)
+    except nacl.exceptions.BadSignatureError:
+        return False
+    return True
+
+
 class Wallet:
     def __init__(self, seed=None):
         if seed is None:
@@ -95,3 +104,5 @@ class Wallet:
         except nacl.exceptions.BadSignatureError:
             return False
         return True
+
+

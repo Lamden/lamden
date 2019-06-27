@@ -8,6 +8,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import conf
 
+from cilantro_ee.protocol.wallet import Wallet, _verify
 
 class Discovery:
 
@@ -268,11 +269,21 @@ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
         return dis_nodes
 
+'''
+DiscoverServer
+Returns a message of the signed pepper and VK
+'''
 
 class DiscoveryServer:
-    def __init__(self, address, vk, pepper, ctx=zmq.asyncio.Context()):
+    def __init__(self, address, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
         self.address = address
         self.socket = None
+
+        self.wallet = wallet
+
+        self.pepper = pepper
+
+        self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
         self.ctx = ctx
 
@@ -281,9 +292,19 @@ class DiscoveryServer:
         self.socket.bind(self.address)
 
         while True:
-            msg = await self.socket.recv()
-            self.socket.send(msg)
+            await self.socket.recv()
+            self.socket.send(self.response)
 
     def destroy(self):
         self.ctx.destroy()
 
+
+def verify_vk_pepper(msg: bytes, pepper: bytes):
+    assert len(msg) > 32, 'Message must be longer than 32 bytes.'
+
+    vk = msg[:32]
+    signed_pepper = msg[32:]
+    return _verify(vk, pepper, signed_pepper)
+
+def discover_nodes(ip_list, pepper):
+    pass
