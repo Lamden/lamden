@@ -187,10 +187,102 @@ class TestDiscoveryServer(TestCase):
 
         vk_ip1, vk_ip2, _, _ = results
 
-        vk1, _ = vk_ip1
-        vk2, _ = vk_ip2
+        _, vk1 = vk_ip1
+        _, vk2 = vk_ip2
 
         self.assertEqual(vk1, wallet.verifying_key())
         self.assertIsNone(vk2)
 
         ctx.destroy()
+
+    def test_discover_nodes_found_one(self):
+        ctx = zmq.asyncio.Context()
+        address = 'inproc://testing'
+        wallet = Wallet()
+        d = DiscoveryServer('inproc://testing', wallet, b'CORRECT_PEPPER', ctx=ctx)
+
+        async def stop_server(timeout):
+            await asyncio.sleep(timeout)
+            d.stop()
+
+        tasks = asyncio.gather(
+            discover_nodes(ip_list=[address], pepper=b'CORRECT_PEPPER', ctx=ctx),
+            d.serve(),
+            stop_server(0.2)
+        )
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(tasks)
+
+        r = results[0]
+
+        self.assertEqual(r[address], wallet.verifying_key())
+
+    def test_discover_nodes_found_three(self):
+        ctx = zmq.asyncio.Context()
+        addresses = ['inproc://a', 'inproc://b', 'inproc://c']
+        wallets = [Wallet(), Wallet(), Wallet()]
+        pepper = b'CORRECT_PEPPER'
+        server_timeout = 0.3
+
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=ctx)]
+
+        async def stop_server(s, timeout):
+            await asyncio.sleep(timeout)
+            s.stop()
+
+        tasks = asyncio.gather(
+            servers[0].serve(),
+            servers[1].serve(),
+            servers[2].serve(),
+            stop_server(servers[0], server_timeout),
+            stop_server(servers[1], server_timeout),
+            stop_server(servers[2], server_timeout),
+            discover_nodes(ip_list=addresses, pepper=pepper, ctx=ctx)
+        )
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(tasks)
+
+        r = results[-1]
+
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
+        self.assertEqual(r[addresses[2]], wallets[2].verifying_key())
+
+    def test_discover_nodes_found_two_out_of_three(self):
+        ctx = zmq.asyncio.Context()
+        addresses = ['inproc://a', 'inproc://b', 'inproc://c']
+        addresses_wrong = ['inproc://a', 'inproc://b', 'inproc://d']
+        wallets = [Wallet(), Wallet(), Wallet()]
+        pepper = b'CORRECT_PEPPER'
+        server_timeout = 1
+
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=ctx)]
+
+        async def stop_server(s, timeout):
+            await asyncio.sleep(timeout)
+            s.stop()
+
+        tasks = asyncio.gather(
+            servers[0].serve(),
+            servers[1].serve(),
+            servers[2].serve(),
+            stop_server(servers[0], server_timeout),
+            stop_server(servers[1], server_timeout),
+            stop_server(servers[2], server_timeout),
+            discover_nodes(ip_list=addresses_wrong, pepper=pepper, ctx=ctx)
+        )
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(tasks)
+
+        r = results[-1]
+
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
+        self.assertIsNone(r.get(addresses[2]))

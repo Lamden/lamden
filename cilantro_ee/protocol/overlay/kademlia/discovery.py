@@ -277,6 +277,7 @@ DiscoverServer
 Returns a message of the signed pepper and VK
 '''
 
+
 class DiscoveryServer:
     def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
         self.address = address
@@ -317,31 +318,55 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=30):
+async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
     await asyncio.sleep(0.1)
     socket = ctx.socket(zmq.REQ)
     socket.connect(ip)
-    socket.send(b'')
+    await socket.send(b'')
 
-    delta = timedelta(seconds=timeout)
+    delta = timedelta(milliseconds=timeout * 1000)
 
     start = datetime.now()
     while True:
-        event = await socket.poll(timeout=5, flags=zmq.POLLIN)
-        if event:
-            msg = await socket.recv()
-            vk, _ = unpack_pepper_msg(msg)
-            if verify_vk_pepper(msg, pepper):
-                return vk, ip
-            return None, ip
+        try:
+            event = await socket.poll(timeout=5, flags=zmq.POLLIN)
 
-        if datetime.now() - start > delta:
-            return None, ip
+            if event:
+                msg = await socket.recv()
+                vk, _ = unpack_pepper_msg(msg)
 
-def discover_nodes(ip_list, pepper:bytes, ctx:zmq.Context, timeout=5, retries=3):
+                if verify_vk_pepper(msg, pepper):
+                    return ip, vk
+                return ip, None
 
+            if datetime.now() - start > delta:
+                return ip, None
+
+        except zmq.ZMQError:
+            return ip, None
+
+
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=0.5, retries=3):
     nodes_found = {}
+    one_found = False
+    retries_left = retries
 
-    tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
-    tasks = asyncio.gather(*tasks)
+    while not one_found and retries_left > 0:
+        tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
+
+        tasks = asyncio.gather(*tasks)
+        loop = asyncio.get_event_loop()
+
+        if loop.is_running():
+            results = await asyncio.ensure_future(tasks)
+        else:
+            results = loop.run_until_complete(tasks)
+
+        for res in results:
+            ip, vk = res
+            nodes_found[ip] = vk
+            if vk is not None:
+                one_found = True
+
+    return nodes_found
 
