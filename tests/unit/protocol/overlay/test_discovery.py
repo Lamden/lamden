@@ -45,6 +45,7 @@ class TestDiscoveryServer(TestCase):
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
             socket = ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, 20)
             socket.connect(address)
             socket.send(msg)
 
@@ -89,6 +90,7 @@ class TestDiscoveryServer(TestCase):
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
             socket = ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, 20)
             socket.connect(address)
             socket.send(msg)
 
@@ -111,6 +113,7 @@ class TestDiscoveryServer(TestCase):
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
             socket = ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, 20)
             socket.connect(address)
             socket.send(msg)
 
@@ -133,6 +136,7 @@ class TestDiscoveryServer(TestCase):
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
             socket = ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, 20)
             socket.connect(address)
             socket.send(msg)
 

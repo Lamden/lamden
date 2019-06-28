@@ -292,7 +292,7 @@ class DiscoveryServer:
 
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 20)
+        self.socket.setsockopt(zmq.LINGER, 200)
         self.socket.bind(self.address)
 
         self.running = True
@@ -322,35 +322,24 @@ def unpack_pepper_msg(msg: bytes):
 async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
     try:
         socket = ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 200)
+        socket.connect(ip)
+        await socket.send(b'')
+
+        event = await socket.poll(timeout=timeout*1000, flags=zmq.POLLIN)
+
+        if event:
+            msg = await socket.recv()
+            vk, _ = unpack_pepper_msg(msg)
+
+            if verify_vk_pepper(msg, pepper):
+                return ip, vk
+            return ip, None
+
+        else:
+            return ip, None
     except:
         return ip, None
-
-    socket.connect(ip)
-    await socket.send(b'')
-
-    delta = timedelta(milliseconds=timeout * 1000)
-
-    start = datetime.now()
-    while True:
-        if socket.closed:
-            return ip, None
-
-        try:
-            event = await socket.poll(timeout=100, flags=zmq.POLLIN)
-
-            if event:
-                msg = await socket.recv()
-                vk, _ = unpack_pepper_msg(msg)
-
-                if verify_vk_pepper(msg, pepper):
-                    return ip, vk
-                return ip, None
-
-            if datetime.now() - start > delta:
-                return ip, None
-
-        except:
-            return ip, None
 
 
 async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=0.5, retries=3):
