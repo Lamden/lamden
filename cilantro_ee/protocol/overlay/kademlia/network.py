@@ -16,7 +16,7 @@ from hashlib import sha1
 import umsgpack
 from cilantro_ee.constants.ports import DISCOVERY_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery, DiscoveryServer
+from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery, DiscoveryServer, discover_nodes
 from cilantro_ee.constants import conf
 from cilantro_ee.protocol.overlay.kademlia.handshake import Handshake
 from cilantro_ee.protocol.overlay.kademlia.node import Node
@@ -29,10 +29,13 @@ from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 
+
 class MalformedMessage(Exception):
     """
     Message does not contain what is expected.
     """
+    pass
+
 
 class Network(object):
     """
@@ -110,7 +113,7 @@ class Network(object):
         self.unheard_nodes = set()
 
         self.routing_table = RoutingTable(self.node)
-        self.discovery = Discovery(vk, self.ctx)
+        self.discovery = Discovery(self.vk, self.ctx)
         # self.handshake = Handshake(self.vk, self.ctx)
 
         discovery_address = 'tcp://*:{}'.format(DISCOVERY_PORT)
@@ -126,7 +129,8 @@ class Network(object):
         ]
         if not self._use_ee_bootup:
             self.tasks += [ self.discovery.listen() ]
-            self.tasks += [self.discovery_server.serve()]
+            if masternode:
+                self.tasks += [self.discovery_server.serve()]
 
     def start(self):
         self.loop.run_until_complete(asyncio.ensure_future(
@@ -144,7 +148,9 @@ class Network(object):
 
     # open source (public) version of booting up
     async def _bootup_os(self):
-        addrs = await self.discovery.discover_nodes()
+        ping_list = conf.BOOTNODES
+
+        addrs = await discover_nodes(ping_list, pepper=PEPPER.encode(), ctx=self.ctx)
 
         if len(addrs):
             nodes = [Node(digest(vk), ip=ip, port=self.port, vk=vk) for ip, vk in addrs.items()]
@@ -153,6 +159,9 @@ class Network(object):
             #               ip=ip,
             #               port=self.port,
             #               vk=addrs[ip]) for ip in addrs]
+
+            if not self.discovery_server.running:
+                await asyncio.ensure_future(self.discovery_server.serve())
 
             await self.bootstrap(nodes)
 
