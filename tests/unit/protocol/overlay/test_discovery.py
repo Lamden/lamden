@@ -53,7 +53,7 @@ class TestDiscoveryServer(TestCase):
 
         tasks = asyncio.gather(ping(b'', TIME_UNIT), d.serve(), timeout_bomb())
         run_silent_loop(tasks)
-        d.ctx.destroy()
+        ctx.destroy()
 
     def test_verify_vk_pepper_correct_vk_pepper_message(self):
         wallet = Wallet()
@@ -97,7 +97,7 @@ class TestDiscoveryServer(TestCase):
 
         tasks = asyncio.gather(ping(b'', TIME_UNIT), d.serve(), timeout_bomb())
         run_silent_loop(tasks)
-        d.ctx.destroy()
+        ctx.destroy()
 
     def test_discovery_server_returns_wrong_vk_and_pepper(self):
         ctx = zmq.asyncio.Context()
@@ -119,7 +119,7 @@ class TestDiscoveryServer(TestCase):
 
         tasks = asyncio.gather(ping(b'', TIME_UNIT), d.serve(), timeout_bomb())
         run_silent_loop(tasks)
-        d.ctx.destroy()
+        ctx.destroy()
 
     def test_discover_server_gets_correct_vk_from_msg_decoding(self):
         ctx = zmq.asyncio.Context()
@@ -144,7 +144,7 @@ class TestDiscoveryServer(TestCase):
 
         tasks = asyncio.gather(ping(b'', TIME_UNIT), d.serve(), timeout_bomb())
         run_silent_loop(tasks)
-        d.ctx.destroy()
+        ctx.destroy()
 
     def test_async_ping_timeout_occurs_if_ip_isnt_online(self):
         ctx = zmq.asyncio.Context()
@@ -214,6 +214,8 @@ class TestDiscoveryServer(TestCase):
         loop = asyncio.get_event_loop()
         results = loop.run_until_complete(tasks)
 
+        ctx.destroy()
+
         r = results[0]
 
         self.assertEqual(r[address], wallet.verifying_key())
@@ -247,6 +249,8 @@ class TestDiscoveryServer(TestCase):
         results = loop.run_until_complete(tasks)
 
         r = results[-1]
+
+        ctx.destroy()
 
         self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
         self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
@@ -283,6 +287,45 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
+        ctx.destroy()
+
         self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
         self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
+        self.assertIsNone(r.get(addresses[2]))
+
+    def test_discover_nodes_none_found(self):
+        ctx = zmq.asyncio.Context()
+        addresses = ['inproc://a', 'inproc://b', 'inproc://c']
+        addresses_wrong = ['inproc://e', 'inproc://f', 'inproc://d']
+        wallets = [Wallet(), Wallet(), Wallet()]
+        pepper = b'CORRECT_PEPPER'
+        server_timeout = 1
+
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=ctx)]
+
+        async def stop_server(s, timeout):
+            await asyncio.sleep(timeout)
+            s.stop()
+
+        tasks = asyncio.gather(
+            servers[0].serve(),
+            servers[1].serve(),
+            servers[2].serve(),
+            stop_server(servers[0], server_timeout),
+            stop_server(servers[1], server_timeout),
+            stop_server(servers[2], server_timeout),
+            discover_nodes(ip_list=addresses_wrong, pepper=pepper, ctx=ctx)
+        )
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(tasks)
+
+        ctx.destroy()
+
+        r = results[-1]
+
+        self.assertIsNone(r.get(addresses[0]))
+        self.assertIsNone(r.get(addresses[1]))
         self.assertIsNone(r.get(addresses[2]))
