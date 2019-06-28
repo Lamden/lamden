@@ -292,13 +292,13 @@ class DiscoveryServer:
 
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 200)
+        self.socket.setsockopt(zmq.LINGER, 2000)
         self.socket.bind(self.address)
 
         self.running = True
 
         while self.running:
-            event = await self.socket.poll(timeout=100, flags=zmq.POLLIN)
+            event = await self.socket.poll(timeout=2000, flags=zmq.POLLIN)
             if event:
                 await self.socket.recv()
                 await self.socket.send(self.response)
@@ -322,7 +322,7 @@ def unpack_pepper_msg(msg: bytes):
 async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
     try:
         socket = ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, 200)
+        socket.setsockopt(zmq.LINGER, 2000)
         socket.connect(ip)
         await socket.send(b'')
 
@@ -338,7 +338,7 @@ async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
 
         else:
             return ip, None
-    except:
+    except Exception as e:
         return ip, None
 
 
@@ -360,11 +360,12 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=0.5, 
 
         for res in results:
             ip, vk = res
-            nodes_found[ip] = vk
             if vk is not None:
+                nodes_found[ip] = vk
                 one_found = True
 
         retries_left -= 1
 
+    # Returns mapping of IP -> VK. VKs that return None are not stored in the dictionary.
     return nodes_found
 

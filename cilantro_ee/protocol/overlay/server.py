@@ -7,7 +7,7 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.overlay.kademlia.event import Event
 from cilantro_ee.protocol.overlay.kademlia.network import Network
 from collections import deque
-
+from cilantro_ee.protocol.wallet import Wallet
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -44,7 +44,10 @@ class OverlayServer(OverlayInterface):
     def __init__(self, sk, ctx, quorum):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
+        self.wallet = Wallet(seed=sk)
+
         Keys.setup(sk_hex=self.sk)
+
         self.loop = asyncio.get_event_loop()
         self.ctx = ctx
         if quorum <= 0:
@@ -58,7 +61,7 @@ class OverlayServer(OverlayInterface):
         self.cmd_sock.bind(CMD_URL)
 
         # pass both evt_sock and cmd_sock ?
-        self.network = Network(Keys.vk, self.ctx)
+        self.network = Network(wallet=self.wallet, ctx=self.ctx)
 
         self.network.tasks.append(self.command_listener())
 

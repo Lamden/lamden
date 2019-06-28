@@ -14,8 +14,9 @@ import zmq, zmq.asyncio
 from base64 import b64encode
 from hashlib import sha1
 import umsgpack
-
-from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery
+from cilantro_ee.constants.ports import DISCOVERY_PORT
+from cilantro_ee.constants.overlay_network import PEPPER
+from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery, DiscoveryServer
 from cilantro_ee.constants import conf
 from cilantro_ee.protocol.overlay.kademlia.handshake import Handshake
 from cilantro_ee.protocol.overlay.kademlia.node import Node
@@ -73,18 +74,20 @@ class Network(object):
 
     """
 
-    def __init__(self, vk, ctx):
+    def __init__(self, wallet, ctx):
 
         self.loop = asyncio.get_event_loop()
         self.ctx = ctx
 
         self.log = get_logger('OS.Network')
 
-        self.vk = vk
+        self.wallet = wallet
+
+        self.vk = self.wallet.verifying_key()
         self.host_ip = conf.HOST_IP
         self.port = DHT_PORT
 
-        self.node = Node(digest(vk), ip=self.host_ip, port=self.port, vk=vk)
+        self.node = Node(digest(self.vk), ip=self.host_ip, port=self.port, vk=self.vk)
 
         self.rep = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         self.identity = '{}:{}:{}'.format(self.vk, self.host_ip, self.port).encode()
@@ -110,6 +113,12 @@ class Network(object):
         self.discovery = Discovery(vk, self.ctx)
         # self.handshake = Handshake(self.vk, self.ctx)
 
+        discovery_address = 'tcp://*:{}'.format(DISCOVERY_PORT)
+        self.discovery_server = DiscoveryServer(address=discovery_address,
+                                                wallet=self.wallet,
+                                                pepper=PEPPER.encode(),
+                                                ctx=self.ctx)
+
         self.tasks = [
             # self.handshake.listen(),
             # self.bootup(),
@@ -117,6 +126,7 @@ class Network(object):
         ]
         if not self._use_ee_bootup:
             self.tasks += [ self.discovery.listen() ]
+            self.tasks += [self.discovery_server.serve()]
 
     def start(self):
         self.loop.run_until_complete(asyncio.ensure_future(
@@ -130,13 +140,20 @@ class Network(object):
         self.tasks.cancel()
         self.evt_sock.close()
         self.rep.close()
+        self.discovery_server.stop()
 
     # open source (public) version of booting up
     async def _bootup_os(self):
         addrs = await self.discovery.discover_nodes()
-        if addrs:
-            nodes = [Node(digest(addrs[ip]), ip=ip, port=self.port, vk=addrs[ip]) \
-                           for ip in addrs ]
+
+        if len(addrs):
+            nodes = [Node(digest(vk), ip=ip, port=self.port, vk=vk) for ip, vk in addrs.items()]
+
+            # nodes = [Node(digest(addrs[ip]),
+            #               ip=ip,
+            #               port=self.port,
+            #               vk=addrs[ip]) for ip in addrs]
+
             await self.bootstrap(nodes)
 
     # enterprise version of booting up
