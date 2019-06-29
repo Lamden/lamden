@@ -3,6 +3,7 @@ import zmq.asyncio
 from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.wallet import Wallet, _verify
+from cilantro_ee.constants.ports import DISCOVERY_PORT
 
 log = get_logger('DiscoveryService')
 
@@ -62,11 +63,14 @@ async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
     try:
         socket = ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 2000)
-        socket.connect(ip)
+
+        discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
+
+        socket.connect(discovery_address)
 
         await socket.send(b'')
 
-        log.info('Sent ping to {}. Waiting for a response.'.format(ip))
+        log.info('Sent ping to {}. Waiting for a response.'.format(discovery_address))
 
         event = await socket.poll(timeout=timeout*1000, flags=zmq.POLLIN)
 
@@ -113,7 +117,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3, re
         for res in results:
             ip, vk = res
             if vk is not None:
-                nodes_found[ip] = vk
+                nodes_found[ip] = vk.hex()
                 one_found = True
 
         if not one_found:

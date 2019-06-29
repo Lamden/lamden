@@ -16,7 +16,7 @@ from hashlib import sha1
 import umsgpack
 from cilantro_ee.constants.ports import DISCOVERY_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.protocol.overlay.kademlia.discovery import Discovery, DiscoveryServer, discover_nodes
+from cilantro_ee.protocol.overlay.kademlia.discovery import DiscoveryServer, discover_nodes
 from cilantro_ee.constants import conf
 from cilantro_ee.protocol.overlay.kademlia.handshake import Handshake
 from cilantro_ee.protocol.overlay.kademlia.node import Node
@@ -85,8 +85,9 @@ class Network(object):
 
         self.wallet = wallet
 
-        self.vk = self.wallet.verifying_key()
+        self.vk = self.wallet.verifying_key().hex()
         print('my vk: '.format(self.vk))
+
         self.host_ip = conf.HOST_IP
         self.port = DHT_PORT
 
@@ -113,7 +114,6 @@ class Network(object):
         self.unheard_nodes = set()
 
         self.routing_table = RoutingTable(self.node)
-        #self.discovery = Discovery(self.vk, self.ctx)
         # self.handshake = Handshake(self.vk, self.ctx)
 
         discovery_address = 'tcp://*:{}'.format(DISCOVERY_PORT)
@@ -131,7 +131,7 @@ class Network(object):
         if not self._use_ee_bootup:
             #self.tasks += [ self.discovery.listen() ]
 
-            if self.vk.hex() in PhoneBook.masternodes:
+            if self.vk in PhoneBook.masternodes:
                 print('I should run a server.')
                 self.tasks += [self.discovery_server.serve()]
 
@@ -157,9 +157,6 @@ class Network(object):
         if conf.HOST_IP in ip_list:
             ip_list.remove(conf.HOST_IP)
 
-        # Add ZMQ TCP address and port information to IPs.
-        ip_list = ['tcp://{}:{}'.format(ip, DISCOVERY_PORT) for ip in ip_list]
-
         self.log.info('Pinging {} for discovery...'.format(ip_list))
 
         addrs = await discover_nodes(ip_list, pepper=PEPPER.encode(), ctx=self.ctx)
@@ -171,11 +168,13 @@ class Network(object):
 
             if not self.discovery_server.running:
                 self.log.info('Discovery server was not running. Starting it now so others can find us.')
-                await asyncio.ensure_future(self.discovery_server.serve())
+                asyncio.ensure_future(self.discovery_server.serve())
 
+            self.log.success('Going into bootstrap!')
             await self.bootstrap(nodes)
 
-        raise Exception('Failed to discover any nodes.')
+        else:
+            raise Exception('Failed to discover any nodes.')
 
     # enterprise version of booting up
     async def _bootup_ee(self):
@@ -189,13 +188,16 @@ class Network(object):
         await asyncio.sleep(5)
 
     async def _wait_for_boot_quorum(self):
+        self.log.info('Time to find the quorum.')
         is_masternode = self.vk in PhoneBook.masternodes
         vks_to_wait_for = set()
+
         if is_masternode:
             quorum_required = PhoneBook.quorum_min
             quorum_required -= 1     # eliminate myself
             vk_list = PhoneBook.state_sync
             vk_list.remove(self.vk)
+            self.log.info('Needs to find {} nodes.'.format(quorum_required))
         else:
             quorum_required = PhoneBook.masternode_quorum_min
             vk_list = PhoneBook.masternodes
@@ -252,9 +254,7 @@ class Network(object):
             nodes: A list of nodes with the info (ip, port).  Note that only IP
                    addresses are acceptable - hostnames will cause an error.
         """
-
-        if self.is_debug:
-            self.log.debug("Attempting to bootstrap node with {} initial contacts: {}".format(len(nodes), nodes))
+        self.log.info("Attempting to bootstrap node with {} initial contacts: {}".format(len(nodes), nodes))
         event_id = uuid.uuid4().hex
         vk_to_find = self.vk         # me
         await self.network_find_ip(event_id, nodes, vk_to_find, True)
@@ -367,13 +367,11 @@ class Network(object):
     async def rpc_connect(self, req, vk, ip):
         raddr = '{}:{}:{}'.format(vk, ip, self.port).encode()
 
-        print(ip)
+        overlay_address = 'tcp://{}:{}'.format(ip, self.port)
 
-        address, _ = ip.split(':')
-        req.connect('{}:{}'.format(address, self.port))
+        req.connect(overlay_address)
 
-        if self.is_debug:
-            self.log.debug("Connected to {}".format(raddr))
+        self.log.debug("Connected to {}".format(raddr))
         return raddr
 
     async def rpc_request(self, req, raddr, func_name, *args):
@@ -444,8 +442,7 @@ class Network(object):
         retry_time = time.time() + 3    # 3 seconds 
         end_time = time.time() + 6      # 6 seconds is max
 
-        if self.is_debug:
-            self.log.debug("Asking {} for the vk {}".format(nodes_to_ask, vk_to_find))
+        self.log.debug("Asking {} for the vk {}".format(nodes_to_ask, vk_to_find))
         while ((time.time() < end_time) and not is_done):
             # first poll and process any replies
             if self.is_debug:
@@ -458,8 +455,7 @@ class Network(object):
                     nd = None if is_bootstrap else \
                          self.get_node_from_nodes_list(vk_to_find, nodes)
                     if nd:
-                        if self.is_debug:
-                            self.log.debug('Found ip {} for vk {}'.format(nd.ip, nd.vk))
+                        self.log.debug('Found ip {} for vk {}'.format(nd.ip, nd.vk))
                         return nd
                     nodes_to_ask.extend(nodes)
                     num_pending_replies -= 1
@@ -468,11 +464,9 @@ class Network(object):
                 node = nodes_to_ask.pop()
                 if node.vk in processed or \
                    (is_bootstrap and not self.routing_table.isNewNode(node)):
-                    if self.is_debug:
-                        self.log.debug('Already processed this vk {}'.format(node.vk))
+                    self.log.debug('Already processed this vk {}'.format(node.vk))
                     continue
-                if self.is_debug:
-                    self.log.debug('Asking {}:{} about vk {}'.format(node.vk, node.ip, vk_to_find))
+                self.log.debug('Asking {}:{} about vk {}'.format(node.vk, node.ip, vk_to_find))
                 processed.add(node.vk)
                 raddr = await self.rpc_connect(req, node.vk, node.ip)
                 is_sent = await self.rpc_request(req, raddr, 'rpc_find_ip', vk_to_find)
@@ -486,8 +480,7 @@ class Network(object):
                     await asyncio.sleep(retry_time - ctime)
                 # If we save failed requests along with original request time, re-request interval can be better controlled
                 for raddr in failed_requests:
-                    if self.is_debug:
-                        self.log.debug('Requesting again {} about vk {}'.format(raddr, vk_to_find))
+                    self.log.debug('Requesting again {} about vk {}'.format(raddr, vk_to_find))
                     is_sent = await self.rpc_request(req, raddr, 'rpc_find_ip', vk_to_find)
                     if is_sent:
                         num_pending_replies += 1
@@ -502,6 +495,8 @@ class Network(object):
     async def network_find_ip(self, event_id, nodes_to_ask, vk_to_find, is_bootstrap=False):
         req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
         req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
+
+
         node = await self._network_find_ip(req, nodes_to_ask, vk_to_find, is_bootstrap)
         req.close()    # clean up socket  # handle the errors on remote properly
         return node
