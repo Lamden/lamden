@@ -17,9 +17,8 @@ class Context:
         asyncio.set_event_loop(self.loop)
         self.zmq_ctx = zmq.asyncio.Context()
 
-        signing_key = bytes.fromhex(signing_key)
         self.signing_key = signing_key
-        self.verifying_key = wallet.get_vk(self.signing_key)
+        self.verifying_key = wallet.get_vk(signing_key)
 
         self.wallet = Wallet(seed=signing_key)
 

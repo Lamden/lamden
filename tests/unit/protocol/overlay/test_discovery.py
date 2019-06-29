@@ -313,3 +313,36 @@ class TestDiscoveryServer(TestCase):
         self.assertIsNone(r.get(addresses[0]))
         self.assertIsNone(r.get(addresses[1]))
         self.assertIsNone(r.get(addresses[2]))
+
+    def test_discover_nodes_found_three_tcp(self):
+        addresses = ['tcp://127.0.0.1:9999', 'tcp://127.0.0.1:9998', 'tcp://127.0.0.1:9997']
+        wallets = [Wallet(), Wallet(), Wallet()]
+        pepper = b'CORRECT_PEPPER'
+        server_timeout = 0.3
+
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=self.ctx)]
+
+        async def stop_server(s, timeout):
+            await asyncio.sleep(timeout)
+            s.stop()
+
+        tasks = asyncio.gather(
+            servers[0].serve(),
+            servers[1].serve(),
+            servers[2].serve(),
+            stop_server(servers[0], server_timeout),
+            stop_server(servers[1], server_timeout),
+            stop_server(servers[2], server_timeout),
+            discover_nodes(ip_list=addresses, pepper=pepper, ctx=self.ctx)
+        )
+
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(tasks)
+
+        r = results[-1]
+
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
+        self.assertEqual(r[addresses[2]], wallets[2].verifying_key())

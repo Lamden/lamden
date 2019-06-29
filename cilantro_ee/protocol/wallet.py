@@ -67,6 +67,9 @@ def _verify(vk: bytes, msg: bytes, signature: bytes):
 
 class Wallet:
     def __init__(self, seed=None):
+        if isinstance(seed, str):
+            seed = bytes.fromhex(seed)
+
         if seed is None:
             seed = secrets.token_bytes(32)
 

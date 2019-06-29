@@ -36,7 +36,6 @@ class MalformedMessage(Exception):
     """
     pass
 
-
 class Network(object):
     """
     Implementation of Overlay Server. This connects to the other nodes on the network
@@ -87,6 +86,7 @@ class Network(object):
         self.wallet = wallet
 
         self.vk = self.wallet.verifying_key()
+        print('my vk: '.format(self.vk))
         self.host_ip = conf.HOST_IP
         self.port = DHT_PORT
 
@@ -113,10 +113,11 @@ class Network(object):
         self.unheard_nodes = set()
 
         self.routing_table = RoutingTable(self.node)
-        self.discovery = Discovery(self.vk, self.ctx)
+        #self.discovery = Discovery(self.vk, self.ctx)
         # self.handshake = Handshake(self.vk, self.ctx)
 
         discovery_address = 'tcp://*:{}'.format(DISCOVERY_PORT)
+        self.log.info('Setting up Discovery Server on {}.'.format(discovery_address))
         self.discovery_server = DiscoveryServer(address=discovery_address,
                                                 wallet=self.wallet,
                                                 pepper=PEPPER.encode(),
@@ -128,8 +129,10 @@ class Network(object):
             self.process_requests()
         ]
         if not self._use_ee_bootup:
-            self.tasks += [ self.discovery.listen() ]
-            if masternode:
+            #self.tasks += [ self.discovery.listen() ]
+
+            if self.vk.hex() in PhoneBook.masternodes:
+                print('I should run a server.')
                 self.tasks += [self.discovery_server.serve()]
 
     def start(self):
@@ -148,26 +151,36 @@ class Network(object):
 
     # open source (public) version of booting up
     async def _bootup_os(self):
-        ping_list = conf.BOOTNODES
+        ip_list = conf.BOOTNODES
 
-        addrs = await discover_nodes(ping_list, pepper=PEPPER.encode(), ctx=self.ctx)
+        # Remove our own IP so that we don't respond to ourselves.
+        if conf.HOST_IP in ip_list:
+            ip_list.remove(conf.HOST_IP)
+
+        # Add ZMQ TCP address and port information to IPs.
+        ip_list = ['tcp://{}:{}'.format(ip, DISCOVERY_PORT) for ip in ip_list]
+
+        self.log.info('Pinging {} for discovery...'.format(ip_list))
+
+        addrs = await discover_nodes(ip_list, pepper=PEPPER.encode(), ctx=self.ctx)
 
         if len(addrs):
+            self.log.success('Found {} node(s). Putting them in the DHT.'.format(len(addrs)))
+
             nodes = [Node(digest(vk), ip=ip, port=self.port, vk=vk) for ip, vk in addrs.items()]
 
-            # nodes = [Node(digest(addrs[ip]),
-            #               ip=ip,
-            #               port=self.port,
-            #               vk=addrs[ip]) for ip in addrs]
-
             if not self.discovery_server.running:
+                self.log.info('Discovery server was not running. Starting it now so others can find us.')
                 await asyncio.ensure_future(self.discovery_server.serve())
 
             await self.bootstrap(nodes)
 
+        raise Exception('Failed to discover any nodes.')
+
     # enterprise version of booting up
     async def _bootup_ee(self):
         self.log.info("Loading vk, ip information of {} nodes in this enterprise setup".format(len(conf.VK_IP_MAP)))
+
         for vk, ip in conf.VK_IP_MAP.items():
             if vk == self.vk:     # no need to insert myself into the routing table
                 continue
@@ -210,7 +223,7 @@ class Network(object):
      
 
     async def bootup(self):
-        self.discovery.set_ready()
+        #self.discovery.set_ready()
         if self._use_ee_bootup:
             await self._bootup_ee()
         else:
@@ -353,7 +366,12 @@ class Network(object):
 
     async def rpc_connect(self, req, vk, ip):
         raddr = '{}:{}:{}'.format(vk, ip, self.port).encode()
-        req.connect('tcp://{}:{}'.format(ip, self.port))
+
+        print(ip)
+
+        address, _ = ip.split(':')
+        req.connect('{}:{}'.format(address, self.port))
+
         if self.is_debug:
             self.log.debug("Connected to {}".format(raddr))
         return raddr
