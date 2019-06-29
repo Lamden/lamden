@@ -13,40 +13,52 @@ Returns a message of the signed pepper and VK
 '''
 
 
-class DiscoveryServer:
-    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
+class RequestReplyService:
+    def __init__(self, address: str, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
         self.address = address
-        self.socket = None
+        self.wallet = wallet
         self.ctx = ctx
 
-        self.wallet = wallet
-        self.pepper = pepper
-        self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
+        self.socket = None
+
+        self.linger = linger
+        self.poll_timeout = poll_timeout
 
         self.running = False
 
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, 2000)
+        self.socket.setsockopt(zmq.LINGER, self.linger)
         self.socket.bind(self.address)
-
-        log.info('Reply sockets set up. Starting listen loop.')
 
         self.running = True
 
         while self.running:
-            event = await self.socket.poll(timeout=2000, flags=zmq.POLLIN)
+            event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
             if event:
-                log.info('Got ping from socket poll.')
-                await self.socket.recv()
-                await self.socket.send(self.response)
-                log.info('Replied.')
+                msg = await self.socket.recv()
 
-        self.ctx.destroy()
+                result = self.handle_msg(msg)
+
+                await self.socket.send(result)
+
+        self.socket.close()
+
+    def handle_msg(self, msg):
+        return msg
 
     def stop(self):
-        log.info('Stopping service.')
         self.running = False
+
+class DiscoveryServer(RequestReplyService):
+    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
+        super().__init__(address=address, wallet=wallet, ctx=ctx)
+
+        self.pepper = pepper
+        self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
+
+    def handle_msg(self, msg):
+        return self.response
 
 
 def verify_vk_pepper(msg: bytes, pepper: bytes):

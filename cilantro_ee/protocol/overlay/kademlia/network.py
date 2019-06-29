@@ -86,7 +86,6 @@ class Network(object):
         self.wallet = wallet
 
         self.vk = self.wallet.verifying_key().hex()
-        print('my vk: '.format(self.vk))
 
         self.host_ip = conf.HOST_IP
         self.port = DHT_PORT
