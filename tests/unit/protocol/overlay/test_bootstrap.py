@@ -37,9 +37,9 @@
 #     async def check_nodes():
 #         await asyncio.sleep(1)
 #         await n.bootstrap(addrs)
-#         while len(n.routing_table.getMyNeighbors()) < MIN_DISCOVERY_NODES:
+#         while len(n.routing_table.get_my_neighbors()) < MIN_DISCOVERY_NODES:
 #             await asyncio.sleep(2)
-#         if len(n.routing_table.getMyNeighbors()) >= MIN_DISCOVERY_NODES:
+#         if len(n.routing_table.get_my_neighbors()) >= MIN_DISCOVERY_NODES:
 #             send_to_file(env('HOST_NAME'))
 #
 #     from cilantro_ee.logger import get_logger

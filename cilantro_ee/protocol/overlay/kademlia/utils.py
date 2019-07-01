@@ -34,13 +34,13 @@ class OrderedSet(list):
         self.append(thing)
 
 
-def sharedPrefix(args):
+def shared_prefix(args):
     """
     Find the shared prefix between the strings.
 
     For instance:
 
-        sharedPrefix(['blahblah', 'blahwhat'])
+        shared_prefix(['blahblah', 'blahwhat'])
 
     returns 'blah'.
     """
@@ -52,6 +52,6 @@ def sharedPrefix(args):
     return args[0][:i]
 
 
-def bytesToBitString(bites):
+def bytes_to_bitstring(bites):
     bits = [bin(bite)[2:].rjust(8, '0') for bite in bites]
     return "".join(bits)

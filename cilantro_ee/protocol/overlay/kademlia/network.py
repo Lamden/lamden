@@ -123,13 +123,9 @@ class Network(object):
                                                 ctx=self.ctx)
 
         self.tasks = [
-            # self.handshake.listen(),
-            # self.bootup(),
             self.process_requests()
         ]
         if not self._use_ee_bootup:
-            #self.tasks += [ self.discovery.listen() ]
-
             if self.vk in PhoneBook.masternodes:
                 print('I should run a server.')
                 self.tasks += [self.discovery_server.serve()]
@@ -183,7 +179,7 @@ class Network(object):
             if vk == self.vk:     # no need to insert myself into the routing table
                 continue
             node = Node(digest(vk), ip=ip, port=self.port, vk=vk)
-            self.routing_table.addContact(node)
+            self.routing_table.add_contact(node)
         await asyncio.sleep(5)
 
     async def _wait_for_boot_quorum(self):
@@ -201,17 +197,11 @@ class Network(object):
             quorum_required = PhoneBook.masternode_quorum_min
             vk_list = PhoneBook.masternodes
 
-        if len(vk_list) < quorum_required:     # shouldn't happen
-            self.log.fatal("Impossible to meet Quorum requirement as number of "
-                           "nodes available {} is less than the quorum {}"
-                           .format(len(vk_list), quorum_required))
-            sys.exit()
             
         vks_to_wait_for.update(vk_list)
-        vks_connected = self.routing_table.getAllConnectedVKs()
+        vks_connected = self.routing_table.get_all_connected_vks()
         vks_connected &= vks_to_wait_for
-        # if len(vks_connected) >= quorum_required:     # already met the quorum
-            # return
+
         vks_to_wait_for -= vks_connected
         while len(vks_to_wait_for) > 0:
             for vk in vks_to_wait_for:
@@ -259,6 +249,7 @@ class Network(object):
         await self.network_find_ip(event_id, nodes, vk_to_find, True)
 
     async def process_requests(self):
+        # Find IP? Is this all?
         """
         Start listening on the given port.
         """
@@ -277,8 +268,11 @@ class Network(object):
         self.log.warning("Exiting listening for overlay requests!!")
 
     async def process_msg_recvd(self, msg):
-        address = msg[0].decode().split(':')
-        datagram = msg[1]
+        # msg is a list
+        address = msg[0].decode().split(':') # Sender's identity
+        datagram = msg[1] # Rest of the message as bytes
+
+
         if len(datagram) < 1:
             self.log.warning("Received datagram too small from {}, ignoring".format(address))
             return
@@ -291,22 +285,20 @@ class Network(object):
         if datagram[:1] == b'\x00':
             # schedule accepting request and returning the result
             await self._acceptRequest(address, data)
-        elif datagram[:1] == b'\x01':
-            return self._acceptResponse(address, data)
         else:
-            # otherwise, don't know the format, don't do anything
             self.log.warning("Received unknown message from {}, ignoring".format(address))
-
-    def _acceptResponse(self, address, data):
-        self.log.error("ERROR *** this shouldn't be entered")
-        return data
 
     # raghu - need more protection against DOS?? like known string encrypted with its vk?
     async def _acceptRequest(self, address, data):
+        # rpc_findip
+        #
         if not isinstance(data, list) or len(data) != 2:
             raise MalformedMessage("Could not read packet: %s" % data)
+
+        # Change this from dynamic deserialization into static function calls.
         funcname, args = data
         func = getattr(self, funcname, None)
+
         if func is None or not callable(func):
             msgargs = (self.__class__.__name__, func)
             self.log.warning("{} has no callable method {}; ignoring request".format(*msgargs))
@@ -314,9 +306,13 @@ class Network(object):
 
         if not asyncio.iscoroutinefunction(func):
             func = asyncio.coroutine(func)
+
         response = await func(address, *args)
         txdata = b'\x01' + umsgpack.packb(response)
+
+        # VK, IP, event IP
         identity = '{}:{}:{}'.format(address[0], address[1], address[2]).encode()
+
         try:
             await self.rep.send_multipart([identity, txdata])
             if self.is_debug:
@@ -340,22 +336,35 @@ class Network(object):
         about).
 
         """
-        if not self.routing_table.isNewNode(node):
+        if not self.routing_table.is_new_node(node):
             return
 
         if self.is_debug:
             self.log.debug("never seen %s before, adding to routing_table", node)
-        self.routing_table.addContact(node)
+        self.routing_table.add_contact(node)
 
 
     def local_find_ip(self, vk_to_find):
-        return self.routing_table.findNode(Node(digest(vk_to_find), vk=vk_to_find))
+        # returns closest node to node requested
+        return self.routing_table.find_node(Node(digest(vk_to_find), vk=vk_to_find))
 
+    # supported command!
+    # address = sender identity 127.0.0.1:ID:BLAH
+    # [VK, IP] = address
+    # vk is 32 bytes / hex string
     async def rpc_find_ip(self, address, vk_to_find):
+        # when new node joins, it send a search request for itself to tell the network it has joined
+        # can be its own command, probably
         if self.is_connected and address[0] == vk_to_find:
             await Event.emit({'event': 'node_online', 'vk': vk_to_find, 'ip': address[1]})
+
+        # find neighbors and return them
+        # reciever can only tell node which neighbors it knows the new node should have based on
+        # its own neighbors
         nodes = self.local_find_ip(vk_to_find)
         return list(map(tuple, nodes))
+
+    # supported command!
 
     async def rpc_ping_ip(self, address, is_first_time):
         if is_first_time:
@@ -363,6 +372,7 @@ class Network(object):
             # publish to the event
         return True
 
+    # INTERNAL. Will not be called by RPC request (so prevent it from happening for sec?)
     async def rpc_connect(self, req, vk, ip):
         raddr = '{}:{}:{}'.format(vk, ip, self.port).encode()
 
@@ -373,6 +383,7 @@ class Network(object):
         self.log.debug("Connected to {}".format(raddr))
         return raddr
 
+    # INTERNAL. Will not be called by RPC request (so prevent it from happening for sec?)
     async def rpc_request(self, req, raddr, func_name, *args):
         self.unheard_nodes.add(raddr)
         data = umsgpack.packb([func_name, args])
@@ -462,7 +473,7 @@ class Network(object):
             if len(nodes_to_ask) > 0:
                 node = nodes_to_ask.pop()
                 if node.vk in processed or \
-                   (is_bootstrap and not self.routing_table.isNewNode(node)):
+                   (is_bootstrap and not self.routing_table.is_new_node(node)):
                     self.log.debug('Already processed this vk {}'.format(node.vk))
                     continue
                 self.log.debug('Asking {}:{} about vk {}'.format(node.vk, node.ip, vk_to_find))

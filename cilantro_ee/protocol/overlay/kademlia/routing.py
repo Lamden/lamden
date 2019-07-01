@@ -1,14 +1,13 @@
 import heapq
 import time
 import operator
-import asyncio
 import logging
 
 from collections import OrderedDict
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.protocol.overlay.kademlia.node import Node
 from cilantro_ee.protocol.overlay.kademlia.utils import digest
-from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, sharedPrefix, bytesToBitString
+from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, shared_prefix, bytes_to_bitstring
 
 log = logging.getLogger(__name__)
 
@@ -22,13 +21,13 @@ class KBucket(object):
         self.nodes = OrderedDict()
 
         self.replacementNodes = OrderedSet()
-        self.touchLastUpdated()
+        self.touch_last_updated()
         self.ksize = ksize
 
-    def touchLastUpdated(self):
-        self.lastUpdated = time.monotonic()
+    def touch_last_updated(self):
+        self.last_updated = time.monotonic()
 
-    def getNodes(self):
+    def get_nodes(self):
         return list(self.nodes.values())
 
     def split(self):
@@ -40,26 +39,26 @@ class KBucket(object):
             bucket.nodes[node.id] = node
         return (one, two)
 
-    def removeNode(self, node):
+    def remove_node(self, node):
         if node.id not in self.nodes:
             return
 
         # delete node, and see if we can add a replacement
         del self.nodes[node.id]
         if len(self.replacementNodes) > 0:
-            newnode = self.replacementNodes.pop()
-            self.nodes[newnode.id] = newnode
+            new_node = self.replacementNodes.pop()
+            self.nodes[new_node.id] = new_node
 
-    def hasInRange(self, node):
+    def has_in_range(self, node):
         return self.range[0] <= node.long_id <= self.range[1]
 
-    def isNewNode(self, node):
+    def is_new_node(self, node):
         return node.id not in self.nodes
 
-    def isFull(self):
+    def is_full(self):
         return len(self) < self.ksize
 
-    def addNode(self, node):
+    def add_node(self, node):
         """
         Add a C{Node} to the C{KBucket}.  Return True if successful,
         False if the bucket is full.
@@ -80,7 +79,7 @@ class KBucket(object):
     # raghu todo - make it simpler with a counter variable in the object and configurable parameter on how deep it can go
     def depth(self):
         vals = self.nodes.values()
-        sp = sharedPrefix([bytesToBitString(n.id) for n in vals])
+        sp = shared_prefix([bytes_to_bitstring(n.id) for n in vals])
         return len(sp)
 
     def head(self):
@@ -95,12 +94,12 @@ class KBucket(object):
 
 # raghu todo - experiment with sending only from the bucket, if bucket is empty, then send self node only
 class TableTraverser(object):
-    def __init__(self, table, startNode):
-        index = table.getBucketFor(startNode)
-        table.buckets[index].touchLastUpdated()
-        self.currentNodes = table.buckets[index].getNodes()
-        self.leftBuckets = table.buckets[:index]
-        self.rightBuckets = table.buckets[(index + 1):]
+    def __init__(self, table, start_node):
+        index = table.get_bucket_for(start_node)
+        table.buckets[index].touch_last_updated()
+        self.current_nodes = table.buckets[index].get_nodes()
+        self.left_buckets = table.buckets[:index]
+        self.right_buckets = table.buckets[(index + 1):]
         self.left = True
 
     def __iter__(self):
@@ -110,16 +109,16 @@ class TableTraverser(object):
         """
         Pop an item from the left subtree, then right, then left, etc.
         """
-        if len(self.currentNodes) > 0:
-            return self.currentNodes.pop()
+        if len(self.current_nodes) > 0:
+            return self.current_nodes.pop()
 
-        if self.left and len(self.leftBuckets) > 0:
-            self.currentNodes = self.leftBuckets.pop().getNodes()
+        if self.left and len(self.left_buckets) > 0:
+            self.current_nodes = self.left_buckets.pop().get_nodes()
             self.left = False
             return next(self)
 
-        if len(self.rightBuckets) > 0:
-            self.currentNodes = self.rightBuckets.pop(0).getNodes()
+        if len(self.right_buckets) > 0:
+            self.current_nodes = self.right_buckets.pop(0).get_nodes()
             self.left = True
             return next(self)
 
@@ -139,52 +138,51 @@ class RoutingTable(object):
         # raghu todo - initial num of buckets can be equal to ln(num of nodes)?
         self.buckets = [KBucket(0, 2 ** 160, self.ksize)]
         # raghu todo - make sure the following line can be commented out
-        # self.addContact(node)
+        # self.add_contact(node)
 
-
-    def splitBucket(self, index):
+    def split_bucket(self, index):
         one, two = self.buckets[index].split()
         self.buckets[index] = one
         self.buckets.insert(index + 1, two)
 
-    def getLonelyBuckets(self):
+    def get_lonely_buckets(self):
         """
         Get all of the buckets that haven't been updated in over
         an hour.
         """
         hrago = time.monotonic() - 3600
-        return [b for b in self.buckets if b.lastUpdated < hrago]
+        return [b for b in self.buckets if b.last_updated < hrago]
 
-    def removeContact(self, node):
-        index = self.getBucketFor(node)
-        self.buckets[index].removeNode(node)
+    def remove_contact(self, node):
+        index = self.get_bucket_for(node)
+        self.buckets[index].remove_node(node)
 
     # raghu todo - this is inefficient serial search. change to binary search
-    def isNewNode(self, node):
-        index = self.getBucketFor(node)
-        return self.buckets[index].isNewNode(node)
+    def is_new_node(self, node):
+        index = self.get_bucket_for(node)
+        return self.buckets[index].is_new_node(node)
 
-    def addContact(self, node):
+    def add_contact(self, node):
         if node.id == self.node.id:
             return True
 
-        index = self.getBucketFor(node)
+        index = self.get_bucket_for(node)
         bucket = self.buckets[index]
 
         # this will succeed unless the bucket is full
-        if bucket.addNode(node):
+        if bucket.add_node(node):
             return True
 
         # Per section 4.2 of paper, split if the bucket has the node
         # in its range or if the depth is not congruent to 0 mod 5
         # raghu todo we need to have a reliable way of splitting as well as its control
-        if bucket.hasInRange(self.node) or bucket.depth() % 5 != 0:
-            self.splitBucket(index)
-            self.addContact(node)
+        if bucket.has_in_range(self.node) or bucket.depth() % 5 != 0:
+            self.split_bucket(index)
+            self.add_contact(node)
             return True
         return False
 
-    def getBucketFor(self, node):
+    def get_bucket_for(self, node):
         """
         Get the index of the bucket that the given node would fall into.
         """
@@ -192,19 +190,18 @@ class RoutingTable(object):
             if node.long_id < bucket.range[1]:
                 return index
 
-    def isVKIn(self, vk):
+    def is_vk_in(self, vk):
         node = Node(digest(vk))
         if node.id == self.node.id:
             return self.node
-        bucket = self.buckets[self.getBucketFor(node)]
+        bucket = self.buckets[self.get_bucket_for(node)]
         return bucket.nodes.get(node.id, None)
-  
 
-    def findNode(self, node):
-        k=self.ksize
+    def find_node(self, node):
+        k = self.ksize
         if node.id == self.node.id:
             return [self.node]
-        bucket = self.buckets[self.getBucketFor(node)]
+        bucket = self.buckets[self.get_bucket_for(node)]
         item = bucket.nodes.get(node.id, None)
         if item and node.id == item.id:
             return [item]
@@ -215,41 +212,41 @@ class RoutingTable(object):
                 break
         return nodes
 
-    def findNeighbors(self, node, exclude=None):
-        bucket = self.buckets[self.getBucketFor(node)]
+    def find_neighbors(self, node, exclude=None):
+        bucket = self.buckets[self.get_bucket_for(node)]
         k = max(len(bucket.nodes), self.alpha)
         nodes = []
         for neighbor in TableTraverser(self, node):
-            notexcluded = exclude is None or not neighbor.equals(exclude)
-            if notexcluded:
+            not_excluded = exclude is None or not neighbor.equals(exclude)
+            if not_excluded:
                 heapq.heappush(nodes, (node.distance_to(neighbor), neighbor))
             if len(nodes) == k:
                 break
 
         return list(map(operator.itemgetter(1), heapq.nsmallest(k, nodes)))
 
-    def getNeighbors(self, node):
+    def get_neighbors(self, node):
         nodes = []
         for neighbor in TableTraverser(self, node):
             nodes.append(neighbor)
 
         return nodes
 
-    def getAllConnectedVKs(self):
-        connectedVKs = set()
+    def get_all_connected_vks(self):
+        connected_vks = set()
         for bucket in self.buckets:
             for vk in bucket.nodes.keys():
-                connectedVKs.add(vk)
-        return connectedVKs
+                connected_vks.add(vk)
+        return connected_vks
 
-    def numContacts(self):
-        numNodes = 0
+    def num_contacts(self):
+        num_nodes = 0
         for bucket in self.buckets:
-            numNodes += len(bucket.nodes)
-        return numNodes
+            num_nodes += len(bucket.nodes)
+        return num_nodes
 
-    def getMyNeighbors(self):
-        return self.getNeighbors(self.node)
+    def get_my_neighbors(self):
+        return self.get_neighbors(self.node)
 
-    def getNumBuckets(self):
+    def get_num_buckets(self):
         return len(self.buckets)

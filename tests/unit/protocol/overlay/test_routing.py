@@ -15,7 +15,7 @@ class TestKBucket(TestCase):
         n = Node(b'1')
         k = KBucket(0, 1, 2)
 
-        k.addNode(n)
+        k.add_node(n)
 
         self.assertEqual(k.nodes[b'1'], n)
 
@@ -25,9 +25,9 @@ class TestKBucket(TestCase):
         p = Node(b'3')
         k = KBucket(0, 1, 2)
 
-        k.addNode(n)
-        k.addNode(o)
-        k.addNode(p)
+        k.add_node(n)
+        k.add_node(o)
+        k.add_node(p)
 
         self.assertEqual(k.nodes[b'1'], n)
         self.assertEqual(k.nodes[b'2'], o)
@@ -39,10 +39,10 @@ class TestKBucket(TestCase):
 
         k = KBucket(0, 1, 2)
 
-        k.addNode(n)
+        k.add_node(n)
 
         self.assertEqual(k.nodes.get(b'1').ip, 'yo')
 
-        k.addNode(o)
+        k.add_node(o)
 
         self.assertEqual(k.nodes.get(b'1').ip, 'no')
