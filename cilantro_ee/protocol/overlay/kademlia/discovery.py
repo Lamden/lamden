@@ -13,10 +13,10 @@ Returns a message of the signed pepper and VK
 '''
 
 
-from cilantro_ee.protocol.comm.services import RequestReplyService
+from cilantro_ee.protocol.comm import services
 
 
-class DiscoveryServer(RequestReplyService):
+class DiscoveryServer(services.RequestReplyService):
     def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
         super().__init__(address=address, wallet=wallet, ctx=ctx)
 
@@ -40,59 +40,8 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-class Request:
-    def __init__(self, address: str, ctx:zmq.Context, timeout=500, linger=2000):
-        self.address = address
-        self.ctx = ctx
-        self.timeout = timeout
-        self.linger = linger
-
-    async def get(self, msg: bytes):
-        try:
-            socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, self.linger)
-
-            socket.connect(self.address)
-
-            await socket.send(msg)
-
-            event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
-            if event:
-                response = await socket.recv()
-
-                socket.close()
-
-                return response
-            else:
-                return None
-        except Exception as e:
-            return None
-
-
-async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
-    try:
-        socket = ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, linger)
-
-        socket.connect(address)
-
-        await socket.send(msg)
-
-        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
-        if event:
-            response = await socket.recv()
-
-            socket.close()
-
-            return response
-        else:
-            return None
-    except Exception as e:
-        return None
-
-
-async def new_ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
-    response = await get(ip, msg=b'', ctx=ctx, timeout=timeout)
+async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
+    response = await services.get(ip, msg=b'', ctx=ctx, timeout=timeout)
 
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
@@ -101,42 +50,6 @@ async def new_ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
 
     return ip, None
 
-async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=500):
-    try:
-        socket = ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, 2000)
-
-        #discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
-        #print(discovery_address)
-        socket.connect(ip)
-
-        await socket.send(b'')
-
-        log.info('Sent ping to {}. Waiting for a response.'.format(ip))
-
-        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
-        if event:
-            msg = await socket.recv()
-
-            log.info('Got response to ping from {}.'.format(ip))
-
-            socket.close()
-
-            vk, _ = unpack_pepper_msg(msg)
-            if verify_vk_pepper(msg, pepper):
-                log.info('Verifying key successfully extracted and message matches network pepper.')
-                return ip, vk
-
-            log.info('Message could not be verified. Either incorrect signature, or wrong network pepper.')
-            return ip, None
-
-        else:
-            log.info('Ping timeout. No response from {}.'.format(ip))
-            return ip, None
-    except Exception as e:
-        log.critical('Exception raised while pinging! {}'.format(str(e)))
-        return ip, None
-
 
 async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000, retries=10):
     nodes_found = {}
@@ -144,7 +57,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000,
     retries_left = retries
 
     while not one_found and retries_left > 0:
-        tasks = [new_ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
+        tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
 
         tasks = asyncio.gather(*tasks)
         loop = asyncio.get_event_loop()
