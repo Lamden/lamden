@@ -1,9 +1,8 @@
-import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.wallet import Wallet, _verify
-from cilantro_ee.constants.ports import DISCOVERY_PORT
+from cilantro_ee.protocol.comm import services
 
 log = get_logger('DiscoveryService')
 
@@ -11,9 +10,6 @@ log = get_logger('DiscoveryService')
 DiscoverServer
 Returns a message of the signed pepper and VK
 '''
-
-
-from cilantro_ee.protocol.comm import services
 
 
 class DiscoveryServer(services.RequestReplyService):
