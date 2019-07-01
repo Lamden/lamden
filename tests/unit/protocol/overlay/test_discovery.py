@@ -153,7 +153,7 @@ class TestDiscoveryServer(TestCase):
         loop.run_until_complete(ping(ip='inproc://dontexist',
                                      pepper=b'DOESNT_MATTER',
                                      ctx=self.ctx,
-                                     timeout=0.05)
+                                     timeout=50,)
                                 )
 
     def test_one_vk_returned_if_one_ip_is_online(self):
@@ -167,12 +167,12 @@ class TestDiscoveryServer(TestCase):
         success_task = ping(ip=real_address,
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
-                            timeout=0.1)
+                            timeout=100)
 
         failure_task = ping(ip=fake_address,
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
-                            timeout=0.1)
+                            timeout=100)
 
         async def stop_server(timeout):
             await asyncio.sleep(timeout)
@@ -188,7 +188,7 @@ class TestDiscoveryServer(TestCase):
         _, vk1 = vk_ip1
         _, vk2 = vk_ip2
 
-        self.assertEqual(vk1, wallet.verifying_key())
+        self.assertEqual(vk1.hex(), wallet.verifying_key().hex())
         self.assertIsNone(vk2)
 
     def test_discover_nodes_found_one(self):
@@ -211,7 +211,7 @@ class TestDiscoveryServer(TestCase):
 
         r = results[0]
 
-        self.assertEqual(r[address], wallet.verifying_key())
+        self.assertEqual(r[address], wallet.verifying_key().hex())
 
     def test_discover_nodes_found_three(self):
         addresses = ['inproc://a', 'inproc://b', 'inproc://c']
@@ -242,9 +242,9 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
-        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
-        self.assertEqual(r[addresses[2]], wallets[2].verifying_key())
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key().hex())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key().hex())
+        self.assertEqual(r[addresses[2]], wallets[2].verifying_key().hex())
 
     def test_discover_nodes_found_two_out_of_three(self):
         addresses = ['inproc://a', 'inproc://b', 'inproc://c']
@@ -276,8 +276,8 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
-        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key().hex())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key().hex())
         self.assertIsNone(r.get(addresses[2]))
 
     def test_discover_nodes_none_found(self):
@@ -302,7 +302,7 @@ class TestDiscoveryServer(TestCase):
             stop_server(servers[0], server_timeout),
             stop_server(servers[1], server_timeout),
             stop_server(servers[2], server_timeout),
-            discover_nodes(ip_list=addresses_wrong, pepper=pepper, ctx=self.ctx)
+            discover_nodes(ip_list=addresses_wrong, pepper=pepper, ctx=self.ctx, timeout=500, retries=3)
         )
 
         loop = asyncio.get_event_loop()
@@ -343,6 +343,6 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertEqual(r[addresses[0]], wallets[0].verifying_key())
-        self.assertEqual(r[addresses[1]], wallets[1].verifying_key())
-        self.assertEqual(r[addresses[2]], wallets[2].verifying_key())
+        self.assertEqual(r[addresses[0]], wallets[0].verifying_key().hex())
+        self.assertEqual(r[addresses[1]], wallets[1].verifying_key().hex())
+        self.assertEqual(r[addresses[2]], wallets[2].verifying_key().hex())

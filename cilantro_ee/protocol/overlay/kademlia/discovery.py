@@ -13,42 +13,8 @@ Returns a message of the signed pepper and VK
 '''
 
 
-class RequestReplyService:
-    def __init__(self, address: str, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.address = address
-        self.wallet = wallet
-        self.ctx = ctx
+from cilantro_ee.protocol.comm.services import RequestReplyService
 
-        self.socket = None
-
-        self.linger = linger
-        self.poll_timeout = poll_timeout
-
-        self.running = False
-
-    async def serve(self):
-        self.socket = self.ctx.socket(zmq.REP)
-        self.socket.setsockopt(zmq.LINGER, self.linger)
-        self.socket.bind(self.address)
-
-        self.running = True
-
-        while self.running:
-            event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
-            if event:
-                msg = await self.socket.recv()
-
-                result = self.handle_msg(msg)
-
-                await self.socket.send(result)
-
-        self.socket.close()
-
-    def handle_msg(self, msg):
-        return msg
-
-    def stop(self):
-        self.running = False
 
 class DiscoveryServer(RequestReplyService):
     def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
@@ -71,28 +37,93 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
+class Request:
+    def __init__(self, address: str, ctx:zmq.Context, timeout=500, linger=2000):
+        self.address = address
+        self.ctx = ctx
+        self.timeout = timeout
+        self.linger = linger
+
+    async def get(self, msg: bytes):
+        try:
+            socket = self.ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, self.linger)
+
+            socket.connect(self.address)
+
+            await socket.send(msg)
+
+            event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
+            if event:
+                response = await socket.recv()
+
+                socket.close()
+
+                return response
+            else:
+                return None
+        except Exception as e:
+            return None
+
+
+async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
+    try:
+        socket = ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, linger)
+
+        socket.connect(address)
+
+        await socket.send(msg)
+
+        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
+        if event:
+            response = await socket.recv()
+
+            socket.close()
+
+            return response
+        else:
+            return None
+    except Exception as e:
+        return None
+
+
+async def new_ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
+    discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
+
+    response = await get(discovery_address, msg=b'', ctx=ctx, timeout=timeout)
+
+    print(response)
+
+    vk, _ = unpack_pepper_msg(response)
+    if verify_vk_pepper(response, pepper):
+        log.info('Verifying key successfully extracted and message matches network pepper.')
+        return ip, vk
+
+    return ip, None
+
+async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=500):
     try:
         socket = ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 2000)
 
-        discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
-
-        socket.connect(discovery_address)
+        #discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
+        #print(discovery_address)
+        socket.connect(ip)
 
         await socket.send(b'')
 
-        log.info('Sent ping to {}. Waiting for a response.'.format(discovery_address))
+        log.info('Sent ping to {}. Waiting for a response.'.format(ip))
 
-        event = await socket.poll(timeout=timeout*1000, flags=zmq.POLLIN)
-
+        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
         if event:
             msg = await socket.recv()
 
             log.info('Got response to ping from {}.'.format(ip))
 
-            vk, _ = unpack_pepper_msg(msg)
+            socket.close()
 
+            vk, _ = unpack_pepper_msg(msg)
             if verify_vk_pepper(msg, pepper):
                 log.info('Verifying key successfully extracted and message matches network pepper.')
                 return ip, vk
@@ -108,7 +139,7 @@ async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout=0.5):
         return ip, None
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3, retries=10):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000, retries=10):
     nodes_found = {}
     one_found = False
     retries_left = retries
