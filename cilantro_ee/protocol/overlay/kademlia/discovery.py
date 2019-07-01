@@ -28,6 +28,9 @@ class DiscoveryServer(RequestReplyService):
 
 
 def verify_vk_pepper(msg: bytes, pepper: bytes):
+    if msg is None:
+        return False
+
     assert len(msg) > 32, 'Message must be longer than 32 bytes.'
     vk, signed_pepper = unpack_pepper_msg(msg)
     return _verify(vk, pepper, signed_pepper)
@@ -89,15 +92,11 @@ async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=200
 
 
 async def new_ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
-    discovery_address = 'tcp://{}:{}'.format(ip, DISCOVERY_PORT)
+    response = await get(ip, msg=b'', ctx=ctx, timeout=timeout)
 
-    response = await get(discovery_address, msg=b'', ctx=ctx, timeout=timeout)
-
-    print(response)
-
-    vk, _ = unpack_pepper_msg(response)
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
+        vk, _ = unpack_pepper_msg(response)
         return ip, vk
 
     return ip, None
@@ -145,7 +144,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000,
     retries_left = retries
 
     while not one_found and retries_left > 0:
-        tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
+        tasks = [new_ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
 
         tasks = asyncio.gather(*tasks)
         loop = asyncio.get_event_loop()
