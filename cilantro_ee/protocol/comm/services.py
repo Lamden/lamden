@@ -69,6 +69,22 @@ class Request:
             return None
 
 
+def generate_router_socket(self, identity, linger=2000, handover=1, mandatory=1):
+    router = self.ctx.socket(zmq.ROUTER)
+
+    router.setsockopt(zmq.LINGER, linger)
+    router.setsockopt(zmq.ROUTER_HANDOVER, handover)
+    router.setsockopt(zmq.ROUTER_MANDATORY, mandatory)
+
+    router.setsockopt(zmq.IDENTITY, self.identity_from_salt(identity))
+
+    return router
+
+
+async def router_fire(address: str, identity: bytes, ctx:zmq.Context):
+    pass
+
+
 async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
     try:
         socket = ctx.socket(zmq.REQ)

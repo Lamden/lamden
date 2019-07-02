@@ -37,7 +37,10 @@ def unpack_pepper_msg(msg: bytes):
 
 
 async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
+    log.info('Timeout: {}'.format(timeout))
     response = await services.get(ip, msg=b'', ctx=ctx, timeout=timeout)
+
+    log.info('Got response: {}'.format(response))
 
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
