@@ -71,7 +71,7 @@ class KBucket(object):
         return node.id not in self.nodes
 
     def is_full(self):
-        return len(self) < self.ksize
+        return len(self.nodes) >= self.ksize
 
     def add_node(self, node: Node) -> bool:
         # Does this need a guard to prevent nodes with ids that are less than min and greater than max?
@@ -95,9 +95,24 @@ class KBucket(object):
 
     # raghu todo - make it simpler with a counter variable in the object and configurable parameter on how deep it can go
     def depth(self):
-        vals = self.nodes.values()
-        sp = commonprefix([bytes_to_bitstring(n.id) for n in vals])
-        return len(sp)
+        # This is fundamentally broken. It relies on a max binary value existing. Until we fix this, a hacked padding
+        # features is added that will work in practice, but will not scale to billions of entries
+
+        nodes = self.nodes.values()
+
+        bin_strings = []
+        max_len = 0
+
+        for n in nodes:
+            s = '{0:08b}'.format(n.long_id)
+            if len(s) > max_len:
+                max_len = len(s)
+            bin_strings.append(s)
+
+        padded_bin_strings = [('0' * (max_len - len(b))) + b for b in bin_strings]
+
+        prefix = commonprefix(padded_bin_strings)
+        return len(prefix)
 
     def head(self):
         return list(self.nodes.values())[0]
@@ -193,6 +208,8 @@ class RoutingTable(object):
         # Per section 4.2 of paper, split if the bucket has the node
         # in its range or if the depth is not congruent to 0 mod 5
         # raghu todo we need to have a reliable way of splitting as well as its control
+        # It seems that this is for when buckets get *really* close together, but with the current depth bug, could
+        # make things more complicated.
         if bucket.has_in_range(self.node) or bucket.depth() % 5 != 0:
             self.split_bucket(index)
             self.add_contact(node)

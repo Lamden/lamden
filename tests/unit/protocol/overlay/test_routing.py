@@ -2,6 +2,7 @@ from unittest import TestCase
 from cilantro_ee.protocol.overlay.kademlia.routing import KBucket
 from cilantro_ee.protocol.overlay.kademlia.node import Node
 
+
 class TestKBucket(TestCase):
     def test_init(self):
         k = KBucket(100, 100, 100)
@@ -173,9 +174,135 @@ class TestKBucket(TestCase):
 
         self.assertEqual(bucket.get_nodes(), [n1, n2, n3, n5, n6])
 
-    def test_shared_prefix_works(self):
-        a = ['bdfkj3y4', 'bdfkjcbmv', 'bdfkjs5hjagdsag', 'bdfkjat', 'bdfkjdsjf', 'bdfkj2f3']
+    def test_depth(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+        n3 = Node(node_id=b'2')  # 50
+        n4 = Node(node_id=b'3')  # 51
+        n5 = Node(node_id=b'4')  # 52
+        n6 = Node(node_id=b'5')
 
-        from os.path import commonprefix
+        bucket = KBucket(48, 54, 5)
 
-        self.assertEqual(commonprefix(a), 'bdfkj')
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+        bucket.add_node(n5)
+        bucket.add_node(n6)
+
+        self.assertEqual(bucket.depth(), 5)
+
+    def test_depth_but_wide(self):
+        n1 = Node(node_id=b'ag')  # 48
+        n2 = Node(node_id=b'gggggggg')  # 49
+        n3 = Node(node_id=b'223')  # 50
+        n4 = Node(node_id=b'3gde')  # 51
+        n5 = Node(node_id=b'400000')  # 52
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+        bucket.add_node(n5)
+
+        self.assertEqual(bucket.depth(), 0)
+
+    def test_bucket_has_in_range_true(self):
+        n = Node(node_id=b'4')  # 52
+
+        bucket = KBucket(48, 52, 5)
+
+        self.assertTrue(bucket.has_in_range(n))
+
+    def test_bucket_has_in_range_false(self):
+        n = Node(node_id=b'4')  # 52
+
+        bucket = KBucket(48, 51, 5)
+
+        self.assertFalse(bucket.has_in_range(n))
+
+    def test_bucket_is_new_node_true(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+
+        self.assertTrue(bucket.is_new_node(n2))
+
+    def test_bucket_is_new_node_false(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+
+        self.assertFalse(bucket.is_new_node(n2))
+
+    def test_bucket_is_full_true(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+        n3 = Node(node_id=b'2')  # 50
+        n4 = Node(node_id=b'3')  # 51
+        n5 = Node(node_id=b'4')  # 52
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+        bucket.add_node(n5)
+
+        self.assertTrue(bucket.is_full())
+
+    def test_bucket_is_full_false(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+        n3 = Node(node_id=b'2')  # 50
+        n4 = Node(node_id=b'3')  # 51
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+
+        self.assertFalse(bucket.is_full())
+
+    def test_bucket_get_item(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+        n3 = Node(node_id=b'2')  # 50
+        n4 = Node(node_id=b'3')  # 51
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+
+        self.assertEqual(bucket[b'3'], n4)
+
+    def test_bucket_get_head(self):
+        n1 = Node(node_id=b'0')  # 48
+        n2 = Node(node_id=b'1')  # 49
+        n3 = Node(node_id=b'2')  # 50
+        n4 = Node(node_id=b'3')  # 51
+
+        bucket = KBucket(48, 54, 5)
+
+        bucket.add_node(n1)
+        bucket.add_node(n2)
+        bucket.add_node(n3)
+        bucket.add_node(n4)
+
+        self.assertEqual(bucket.head(), n1)

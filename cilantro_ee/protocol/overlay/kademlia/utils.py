@@ -2,7 +2,6 @@
 General catchall for functions that don't make sense as methods.
 """
 import hashlib
-import operator
 import asyncio
 
 
