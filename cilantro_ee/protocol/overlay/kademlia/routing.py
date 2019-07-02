@@ -7,21 +7,29 @@ from collections import OrderedDict
 from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.protocol.overlay.kademlia.node import Node
 from cilantro_ee.protocol.overlay.kademlia.utils import digest
-from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, shared_prefix, bytes_to_bitstring
+from cilantro_ee.protocol.overlay.kademlia.utils import OrderedSet, bytes_to_bitstring
+
+from os.path import commonprefix
 
 log = logging.getLogger(__name__)
 
 
 class KBucket(object):
     def __init__(self, range_lower, range_upper, ksize):
-        assert range_lower <= range_upper, 'Lower range cannot be greater than the upper range.'
+        self.minimum = int(range_lower)
+        self.maximum = int(range_upper)
+
+        assert self.minimum <= self.maximum, 'Lower range cannot be greater than the upper range.'
+
+        self.midpoint = (self.minimum + self.maximum) / 2
 
         self.range = (range_lower, range_upper)
 
         self.nodes = OrderedDict()
 
-        self.replacementNodes = OrderedSet()
+        self.replacement_nodes = OrderedSet()
         self.touch_last_updated()
+
         self.ksize = ksize
 
     def touch_last_updated(self):
@@ -31,34 +39,43 @@ class KBucket(object):
         return list(self.nodes.values())
 
     def split(self):
-        midpoint = (self.range[0] + self.range[1]) / 2
-        one = KBucket(self.range[0], midpoint, self.ksize)
-        two = KBucket(midpoint + 1, self.range[1], self.ksize)
-        for node in self.nodes.values():
-            bucket = one if node.long_id <= midpoint else two
-            bucket.nodes[node.id] = node
-        return (one, two)
+        # Create two new buckets that each hold half of the current nodes
+        lesser_bucket = KBucket(self.minimum, self.midpoint, self.ksize)
+        greater_bucket = KBucket(self.minimum + 1, self.maximum, self.ksize)
 
-    def remove_node(self, node):
+        # Filter the nodes into the buckets
+        for node in self.nodes.values():
+            if node.long_id <= self.midpoint:
+                lesser_bucket.add_node(node)
+            else:
+                greater_bucket.add_node(node)
+
+        return lesser_bucket, greater_bucket
+
+    def remove_node(self, node: Node):
+        # If node arg has an id not in range, can we just ignore?
+
         if node.id not in self.nodes:
             return
 
         # delete node, and see if we can add a replacement
         del self.nodes[node.id]
-        if len(self.replacementNodes) > 0:
-            new_node = self.replacementNodes.pop()
+        if len(self.replacement_nodes) > 0:
+            new_node = self.replacement_nodes.pop()
             self.nodes[new_node.id] = new_node
 
-    def has_in_range(self, node):
-        return self.range[0] <= node.long_id <= self.range[1]
+    def has_in_range(self, node: Node):
+        return self.minimum <= node.long_id <= self.maximum
 
-    def is_new_node(self, node):
+    def is_new_node(self, node: Node) -> bool:
         return node.id not in self.nodes
 
     def is_full(self):
         return len(self) < self.ksize
 
-    def add_node(self, node):
+    def add_node(self, node: Node) -> bool:
+        # Does this need a guard to prevent nodes with ids that are less than min and greater than max?
+
         """
         Add a C{Node} to the C{KBucket}.  Return True if successful,
         False if the bucket is full.
@@ -72,14 +89,14 @@ class KBucket(object):
         elif len(self) < self.ksize:
             self.nodes[node.id] = node
         else:
-            self.replacementNodes.push(node)
+            self.replacement_nodes.push(node)
             return False
         return True
 
     # raghu todo - make it simpler with a counter variable in the object and configurable parameter on how deep it can go
     def depth(self):
         vals = self.nodes.values()
-        sp = shared_prefix([bytes_to_bitstring(n.id) for n in vals])
+        sp = commonprefix([bytes_to_bitstring(n.id) for n in vals])
         return len(sp)
 
     def head(self):

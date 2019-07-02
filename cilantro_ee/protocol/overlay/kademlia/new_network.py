@@ -27,13 +27,22 @@ def digest_from_vk(b: bytes):
     h.update(b)
     return h.digest()
 
+# returns node information when asked
+# emits events when new nodes are found?
+# emits events when ready
+# 1 req rep
+# 1 pub sub
+# socket services seperate classes
+# logic controlled by controller?
+
 
 class RPCServer(services.RequestReplyService):
-    def __init__(self, address: str, wallet: Wallet, ctx=zmq.Context):
+    def __init__(self, address: str, event_address: str, wallet: Wallet, ctx=zmq.Context):
         super().__init__(address=address, wallet=wallet, ctx=ctx)
 
         self.is_connected = False
 
+        # Set up routing table state for main service
         digest = digest_from_vk(self.wallet.verifying_key())
         self.dht_id = Node(node_id=digest,
                            ip=self.ip,
@@ -41,6 +50,10 @@ class RPCServer(services.RequestReplyService):
                            vk=self.wallet.verifying_key().hex())
 
         self.routing_table = RoutingTable(self.dht_id)
+
+        # Set up event publishing service for aux services such as nodes joining and leaving?
+        self.event_publisher = self.ctx.socket(zmq.PUB)
+        self.event_publisher.bind(event_address)
 
     def handle_msg(self, msg):
         # Cast to bytearray for easier manipulation
@@ -62,9 +75,11 @@ class RPCServer(services.RequestReplyService):
             # do the other one
             return self.rpc_ping_ip()
 
-    def rpc_find_ip(self, ip, sender_vk, requested_vk):
+    async def rpc_find_ip(self, ip, sender_vk, requested_vk):
         if self.is_connected and sender_vk == requested_vk:
-            pass
+            await self.event_publisher.send_json({'event': 'node_online',
+                                                  'vk': sender_vk,
+                                                  'ip': ip})
 
         requested_digest = digest_from_vk(requested_vk)
         requested_node = Node(node_id=requested_digest,

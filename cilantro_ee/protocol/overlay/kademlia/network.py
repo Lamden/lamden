@@ -386,6 +386,13 @@ class Network(object):
 
         return False
 
+    async def new_rpc_request(self, socket, identity, ip: str, sender_vk: bytes, requested_vk: bytes):
+        ip_ints = [int(i) for i in ip.split('.')]
+        ip_bytes = bytes(ip_ints)
+
+        msg = ip_bytes + sender_vk + requested_vk
+
+
     def rpc_response(self, result):
         nodes = []
         for t in result:
@@ -510,10 +517,8 @@ class Network(object):
     async def network_find_ip(self, event_id, nodes_to_ask, vk_to_find, is_bootstrap=False):
         socket = self.generate_router_socket(event_id)
 
-        #req = SocketUtil.create_socket(self.ctx, zmq.ROUTER)
-        #req.setsockopt(zmq.IDENTITY, '{}:{}:{}'.format(self.vk, self.host_ip, event_id).encode())
-
         node = await self._network_find_ip(socket, nodes_to_ask, vk_to_find, is_bootstrap)
+
         socket.close()
         return node
 
