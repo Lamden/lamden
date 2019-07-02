@@ -297,11 +297,15 @@ class BlockManager(Worker):
             self.db_state.is_catchup_done = True
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
             if self.is_sbb_ready():
+                # temporary fix for race condition. need to hear from masters before sending this message out
+                time.sleep(5)
                 self.send_updated_db_msg()
 
     def set_sbb_ready(self):
         self.sbb_not_ready_count = self.sbb_not_ready_count - 1
         if self.is_sbb_ready() and self.db_state.is_catchup_done:
+            # temporary fix for race condition. need to hear from masters before sending this message out
+            time.sleep(5)
             self.send_updated_db_msg()
         # log error if count is below 0
 
