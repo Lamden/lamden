@@ -280,6 +280,7 @@ class CatchupManager:
             self.curr_hash = self.state.latest_block_hash
             self.curr_num = self.state.latest_block_num
 
+        # tejas, latest_blk_num should correspond to request.block_hash or latest_num ?
         delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
                                       sender_bhash = request.block_hash)
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
@@ -347,10 +348,10 @@ class CatchupManager:
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         valid_node = vk in PhoneBook.state_sync
-        if valid_node is True:
+        if valid_node:
             index = self.driver.get_index(sender_bhash)
 
-            given_blk_num = index.get('blockNum')
+            given_blk_num = index.get('blockNum') if index else 0
 
             self.log.debugv('given block is already latest hash - {} givenblk - {} curr-{}'
                             .format(sender_bhash, given_blk_num, latest_blk_num))
