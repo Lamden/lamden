@@ -39,7 +39,7 @@ class SubBlockGroup:
 
         if leading_rh + remaining_votes < self.max_quorum:
             self.log.fatal("Consensus impossible for SB index {}!\n"
-                           "consensus: {}, quorum: {}\n"
+                           "consensus: {},\n"
                            "result hashes: {}".format(self.sb_idx, leading_rh, self.rh))
             return False
 
