@@ -80,7 +80,8 @@ if not ip_exists:
     sys.exit()
 
 config['DEFAULT']['ip'] = ip
-config['DEFAULT']['boot_ips'] = ','.join(const['bootnodes'])
+config['DEFAULT']['boot_masternode_ips'] = ','.join(const['boot_masternode_ips'])
+config['DEFAULT']['boot_delegate_ips'] = ','.join(const['boot_delegate_ips'])
 config['DEFAULT']['node_type'] = role
 config['DEFAULT']['sk'] = keys[0]
 config['DEFAULT']['vk'] = keys[1]
