@@ -12,31 +12,11 @@ from cilantro_ee.logger.base import overwrite_logger_level
 import sys, time
 from cilantro_ee.protocol import wallet
 import requests
-from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
 def boot(delay):
-    # Initialize database
-
-
-
-
     # Determine what type the node is based on VK
     sk = bytes.fromhex(conf.SK)
     _, vk = wallet.new(seed=sk)
-
-    print('Metering enabled: {}'.format(conf.STAMPS_ENABLED))
-    print("{}".format(conf.RESET_DB))
-    print("{}".format(conf.CONSTITUTION_FILE))
-    print("{}".format(conf.SSL_ENABLED))
-    print("{}".format(conf.NONCE_ENABLED))
-    print("{}".format(conf.STAMPS_ENABLED))
-    print("{}".format(conf.LOG_LEVEL))
-    print("{}".format(conf.SEN_LOG_LEVEL))
-    print("{}".format(conf.SK))
-    print("{}".format(conf.BOOT_MASTERNODE_IP_LIST))
-    print("{}".format(conf.BOOT_DELEGATE_IP_LIST))
-    print("{}".format(conf.BOOTNODES))
-    print('contents of constitution: {}'.format(read_public_constitution(conf.CONSTITUTION_FILE)))
 
     node_type = None
     if vk in PhoneBook.masternodes:
@@ -47,8 +27,6 @@ def boot(delay):
     if node_type is None:
         raise Exception("You are not in the network!")
 
-    print(PhoneBook.masternodes)
-    print(PhoneBook.delegates)
 
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
