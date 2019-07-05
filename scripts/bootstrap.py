@@ -27,7 +27,6 @@ def boot(delay):
     if node_type is None:
         raise Exception("You are not in the network!")
 
-
     print("Bootstrapping node with start delay of {}...".format(delay))
     time.sleep(delay)
 
