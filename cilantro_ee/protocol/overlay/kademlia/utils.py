@@ -31,8 +31,3 @@ class OrderedSet(list):
         if thing in self:
             self.remove(thing)
         self.append(thing)
-
-
-def bytes_to_bitstring(bites):
-    bits = [bin(bite)[2:].rjust(8, '0') for bite in bites]
-    return "".join(bits)

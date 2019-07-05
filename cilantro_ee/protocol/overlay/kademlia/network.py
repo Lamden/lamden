@@ -202,7 +202,7 @@ class Network(object):
 
             
         vks_to_wait_for.update(vk_list)
-        vks_connected = self.routing_table.get_all_connected_vks()
+        vks_connected = self.routing_table.all_nodes()
         vks_connected &= vks_to_wait_for
 
         vks_to_wait_for -= vks_connected
