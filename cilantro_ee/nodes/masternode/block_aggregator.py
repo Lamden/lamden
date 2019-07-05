@@ -44,6 +44,8 @@ class BlockAggregator(Worker):
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+        self._is_catchup_done = False
+
         self.min_quorum = PhoneBook.delegate_quorum_min
         self.max_quorum = PhoneBook.delegate_quorum_max
         self.cur_quorum = 0
@@ -156,9 +158,6 @@ class BlockAggregator(Worker):
 
         self.catchup_manager.run_catchup()
 
-        message = Ready.create()
-        self._send_msg_over_ipc(message=message)
-
     def _send_msg_over_ipc(self, message: MessageBase):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -189,13 +188,19 @@ class BlockAggregator(Worker):
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(sender, msg)
 
-        else:
+        elif not isinstance(msg, Ready):
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
     def _set_catchup_done(self):
-        self.curr_block_hash = self.state.get_latest_block_hash()
-        self.curr_block.reset()
+        if not self._is_catchup_done:
+            self._is_catchup_done = False
+            self.curr_block_hash = self.state.get_latest_block_hash()
+            self.curr_block.reset()
+            message = Ready.create()
+            self._send_msg_over_ipc(message=message)
+            time.sleep(3)
+            self.pub.send_msg(msg=message, header=DEFAULT_FILTER.encode())
 
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
