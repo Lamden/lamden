@@ -8,9 +8,9 @@ POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basic
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
 
-NUM_MASTERS = len(PhoneBook.num_boot_masternodes)
+NUM_MASTERS = PhoneBook.num_boot_masternodes
 NUM_WITNESSES = len(PhoneBook.witnesses)
-NUM_DELEGATES = len(PhoneBook.num_boot_delegates)
+NUM_DELEGATES = PhoneBook.num_boot_delegates
 NUM_NODES = NUM_MASTERS + NUM_WITNESSES + NUM_DELEGATES
 
 # How long each Node will wait for the rest of the network to come online before an error is raised
