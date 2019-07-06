@@ -22,7 +22,8 @@ def ip_string_from_bytes(b: bytes):
 
 def bytes_from_ip_string(ip: str):
     b = ip.split('.')
-    return bytes(b)
+    bb = [int(i) for i in b]
+    return bytes(bb)
 
 
 class KTable:
@@ -90,3 +91,23 @@ class RPCServer(services.RequestReplyService):
             if responded_vk == vk:
                 # Valid response
                 self.table.peers[vk] = ip
+
+
+class Network:
+    def __init__(self, wallet, ctx, bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST):
+        self.wallet = wallet
+        self.ctx = ctx
+
+        # Setup the bootnodes
+        self.bootnodes = bootnodes
+
+        self.table = KTable({
+            self.wallet.verifying_key(): bytes_from_ip_string(conf.HOST_IP)
+        })
+
+    async def discover_bootnodes(self):
+        responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(), ctx=self.ctx, timeout=100)
+
+        for ip, vk in responses.items():
+            self.table.peers[vk] = ip
+
