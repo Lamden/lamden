@@ -98,12 +98,17 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
+async def get(address: str, msg: bytes, ctx:zmq.Context, socket: zmq.Socket=None, timeout=500, linger=2000):
     try:
-        socket = ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, linger)
+        # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
+        using_existing_socket = False
+        if socket is None:
+            socket = ctx.socket(zmq.REQ)
+            socket.setsockopt(zmq.LINGER, linger)
 
-        socket.connect(address)
+            socket.connect(address)
+        else:
+            using_existing_socket = True
 
         await socket.send(msg)
 
@@ -111,7 +116,46 @@ async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=200
         if event:
             response = await socket.recv()
 
-            socket.close()
+            # Socket will not be closed if it was provided.
+            if not using_existing_socket:
+                socket.close()
+
+            return response
+        else:
+            return None
+    except Exception as e:
+        return None
+
+
+class DataFormat:
+    RAW = 0
+    STRING = 1
+    JSON = 2
+    MULTIPART = 3
+    PYOBJ = 4
+    SERIALIZED = 5
+
+
+def send_recv_funcs_for_format(format: int, socket: zmq.Socket):
+    functions = [(socket.send, socket.recv),
+                 (socket.send_string, socket.recv_string),
+                 (socket.send_json, socket.recv_json),
+                 (socket.send_multipart, socket.recv_multipart),
+                 (socket.send_pyobj, socket.recv_pyobj),
+                 (socket.send_serialized, socket.recv_serialized)]
+
+    return functions[format]
+
+
+# Graceful request from ZMQ socket. Should be expanded to support sending types
+async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
+    send, recv = send_recv_funcs_for_format(format, socket)
+    try:
+        await send(msg)
+
+        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
+        if event:
+            response = await recv()
 
             return response
         else:
