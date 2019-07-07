@@ -34,6 +34,7 @@ def strip_protocol_and_port(zmq_str):
     stripped = stripped.split(':')[0]
     return stripped
 
+
 class KTable:
     def __init__(self, data: dict, initial_peers={}, response_size=10):
         self.data = data
@@ -89,33 +90,20 @@ class PeerServer(services.RequestReplyService):
             response = self.table.find(args)
             response = json.dumps(response).encode()
             return response
-        # Ping messages are empty and will eventually replace discovery
-        if len(msg) == 0:
-            return b''
-        elif len(msg) == 32:
-            # Try to find the key value
-            # Result will be a dictionary.
-            return self.table.find(msg)
+        if command == 'join':
+            vk, ip = args # unpack args
+            asyncio.ensure_future(self.handle_join(vk, ip))
 
-        elif len(msg) == 32 + 4:
-            asyncio.ensure_future(self.handle_join(msg))
-
-    async def handle_join(self, msg):
-        vk = msg[:32]
-        ip = msg[32:]
-
+    async def handle_join(self, vk, ip):
         result = self.table.find(vk)
 
         if vk not in result or result[vk] != ip:
             # Ping discovery server
-            ip_string = ip_string_from_bytes(ip)
-            address = 'tcp://{}:{}'.format(ip_string, DISCOVERY_PORT)
-            _, responded_vk = await discovery.ping(address, pepper=PEPPER, timeout=1000)
+            _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
-            if responded_vk == vk:
+            if responded_vk.hex() == vk:
                 # Valid response
                 self.table.peers[vk] = ip
-
 
 class Network:
     def __init__(self, wallet, ip=conf.HOST_IP,

@@ -29,6 +29,9 @@ class RequestReplyService:
 
                 result = self.handle_msg(msg)
 
+                if result is None:
+                    result = b''
+
                 await self.socket.send(result)
 
         self.socket.close()

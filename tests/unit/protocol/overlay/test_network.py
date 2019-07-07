@@ -2,6 +2,7 @@ from unittest import TestCase
 import asyncio
 from cilantro_ee.protocol.overlay.kademlia.discovery import *
 from cilantro_ee.protocol.overlay.kademlia.new_network import Network, PeerServer
+from cilantro_ee.protocol.overlay.kademlia.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.protocol.comm import services
 import zmq
@@ -230,3 +231,88 @@ class TestNetworkService(TestCase):
         response = json.loads(response)
 
         self.assertDictEqual(expected_dict, response)
+
+    def test_peer_server_returns_max_response_keys_many_keys(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx)
+        p1.peer_server.address = 'inproc://testing1'
+        p1.peer_server.table.data = {
+            w1.verifying_key().hex(): 'inproc://testing1'
+        }
+
+        test_dict = {
+            '0': 'value',
+            '1': 'one',
+            '2': 'else',
+            '3': 'value',
+            '4': 'one',
+            '5': 'else',
+            '7': 'one',
+            '8': 'else',
+            '9': 'value',
+            '10': 'one',
+            '11': 'else',
+            '12': 'value',
+            '13': 'one',
+            '14': 'else',
+        }
+
+        expected_dict = {
+            '4': 'one',
+            '5': 'else',
+            '7': 'one',
+            '2': 'else'
+        }
+
+        p1.peer_server.table.peers = test_dict
+        p1.peer_server.table.response_size = 4
+
+        find_message = ['find', '6']
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_server.serve(),
+            stop_server(p1.peer_server, 0.1),
+            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertDictEqual(expected_dict, response)
+
+    def test_peer_table_updated_on_join_command(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx)
+        p1.peer_server.address = 'inproc://testing1'
+        p1.peer_server.table.data = {
+            w1.verifying_key().hex(): 'inproc://testing1'
+        }
+
+        w2 = Wallet()
+        d = DiscoveryServer(wallet=w2, address='inproc://testing2', pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
+
+        # 1. start network
+        # 2. start discovery of other side
+        # 3. send join request
+        # 4. check to see if the data has been added
+
+        join_message = ['join', (w2.verifying_key().hex(), 'inproc://testing2')]
+        join_message = json.dumps(join_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_server.serve(),
+            d.serve(),
+            services.get('inproc://testing1', msg=join_message, ctx=self.ctx, timeout=1000),
+            stop_server(p1.peer_server, 0.1),
+            stop_server(d, 0.1)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(p1.peer_server.table.peers[w2.verifying_key().hex()], 'inproc://testing2')
