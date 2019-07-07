@@ -13,8 +13,10 @@ Returns a message of the signed pepper and VK
 
 
 class DiscoveryServer(services.RequestReplyService):
-    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context()):
-        super().__init__(address=address, wallet=wallet, ctx=ctx)
+    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(),
+                 linger=2000, poll_timeout=500):
+
+        super().__init__(address=address, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
 
         self.pepper = pepper
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
