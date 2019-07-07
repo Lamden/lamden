@@ -22,31 +22,31 @@ class TestSubscriptionService(TestCase):
     def test_add_subscription_modifies_dict(self):
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('inproc://test1')
-        s.add_subscription('inproc://test2')
-        s.add_subscription('inproc://test3')
-        s.add_subscription('inproc://test4')
+        s.add_subscription('tcp://127.0.0.1:10001')
+        s.add_subscription('tcp://127.0.0.1:10002')
+        s.add_subscription('tcp://127.0.0.1:10003')
+        s.add_subscription('tcp://127.0.0.1:10004')
 
-        self.assertTrue(s.subscriptions['inproc://test1'])
-        self.assertTrue(s.subscriptions['inproc://test2'])
-        self.assertTrue(s.subscriptions['inproc://test3'])
-        self.assertTrue(s.subscriptions['inproc://test4'])
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10001'])
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10002'])
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10003'])
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10004'])
 
     def test_remove_subscription_deletes_from_dict(self):
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('inproc://test1')
-        s.add_subscription('inproc://test2')
-        s.add_subscription('inproc://test3')
-        s.add_subscription('inproc://test4')
+        s.add_subscription('tcp://127.0.0.1:10001')
+        s.add_subscription('tcp://127.0.0.1:10002')
+        s.add_subscription('tcp://127.0.0.1:10003')
+        s.add_subscription('tcp://127.0.0.1:10004')
 
-        s.remove_subscription('inproc://test1')
-        s.remove_subscription('inproc://test3')
+        s.remove_subscription('tcp://127.0.0.1:10001')
+        s.remove_subscription('tcp://127.0.0.1:10003')
 
-        self.assertIsNone(s.subscriptions.get('inproc://test1'))
-        self.assertTrue(s.subscriptions['inproc://test2'])
-        self.assertIsNone(s.subscriptions.get('inproc://test3'))
-        self.assertTrue(s.subscriptions['inproc://test4'])
+        self.assertIsNone(s.subscriptions.get('tcp://127.0.0.1:10001'))
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10002'])
+        self.assertIsNone(s.subscriptions.get('tcp://127.0.0.1:10003'))
+        self.assertTrue(s.subscriptions['tcp://127.0.0.1:10004'])
 
     def test_pub_sub_single_socket(self):
         pub = self.ctx.socket(zmq.PUB)

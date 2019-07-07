@@ -69,20 +69,22 @@ class KTable:
 
 
 class PeerServer(services.RequestReplyService):
-    def __init__(self, address: str, event_address: str, wallet: Wallet, ctx=zmq.Context,
+    def __init__(self, address: str, event_publisher_address: str, table: KTable, wallet: Wallet, ctx=zmq.Context,
                  linger=2000, poll_timeout=500):
 
-        super().__init__(address=address, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
+        super().__init__(address=address,
+                         wallet=wallet,
+                         ctx=ctx,
+                         linger=linger,
+                         poll_timeout=poll_timeout)
 
-        self.is_connected = False
-        self.wallet = wallet
+        self.table = table
 
-        self.event_address = event_address
+        self.event_service = services.SubscriptionService(ctx=self.ctx)
+        self.event_publisher = self.ctx.socket(zmq.PUB)
+        self.event_publisher.bind(event_publisher_address)
 
-        data = {
-            self.wallet.verifying_key().hex(): bytes_from_ip_string(conf.HOST_IP)
-        }
-        self.table = KTable(data=data)
+        self.event_queue_loop_running = False
 
     def handle_msg(self, msg):
         msg = msg.decode()
@@ -95,6 +97,7 @@ class PeerServer(services.RequestReplyService):
         if command == 'join':
             vk, ip = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip))
+            return None
 
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)
@@ -107,9 +110,42 @@ class PeerServer(services.RequestReplyService):
                 # Valid response
                 self.table.peers[vk] = ip
 
+                # Publish a message that a new node has joined
+                msg = {'join': (vk, ip)}
+                jmsg = json.dumps(msg)
+                await self.event_publisher.send(jmsg)
+
+    async def process_event_subscription_queue(self):
+        self.event_queue_loop_running = True
+
+        while self.event_queue_loop_running:
+            if len(self.event_service.received) > 0:
+                message, sender = self.event_service.received.pop(0)
+                command, args = message
+                vk, ip = args
+
+                if command == 'join':
+                    asyncio.ensure_future(self.handle_join(vk=vk, ip=ip))
+
+                elif command == 'leave':
+                    # Ping to make sure the node is actually offline
+                    _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(),
+                                                           ctx=self.ctx, timeout=1000)
+
+                    # If so, remove it from our table
+                    if responded_vk is None:
+                        del self.table[vk]
+
+    def start(self):
+        tasks = asyncio.gather(
+            self.serve(),
+            self.event_service.serve(),
+            self.process_event_subscription_queue()
+        )
+        asyncio.ensure_future(tasks)
 
 class Network:
-    def __init__(self, wallet, peer_rep_address: str=None, peer_event_address: str=None,
+    def __init__(self, wallet, peer_service_port: int,
                  ctx=zmq.asyncio.Context(), ip=conf.HOST_IP,
                  bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST):
 
@@ -118,20 +154,21 @@ class Network:
 
         self.bootnodes = bootnodes
 
-        peer_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT) if peer_rep_address is None else peer_rep_address
-        event_address = 'tcp://*:{}'.format(EVENT_PORT) if peer_event_address is None else peer_event_address
-        self.peer_server = PeerServer(wallet=self.wallet, address=peer_address, event_address=event_address,
-                                      ctx=self.ctx)
+        data = {
+            self.wallet.verifying_key().hex(): bytes_from_ip_string(conf.HOST_IP)
+        }
+        self.table = KTable(data=data)
 
-        self.peer_server.table = KTable({
-            self.wallet.verifying_key().hex(): ip
-        })
+        peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
+        self.peer_service = PeerServer(address=peer_service_address, table=self.table,
+                                       wallet=self.wallet, ctx=self.ctx)
 
     async def discover_bootnodes(self):
-        responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(), ctx=self.ctx, timeout=100)
+        responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),
+                                                   ctx=self.ctx, timeout=100)
 
         for ip, vk in responses.items():
-            self.peer_server.table.peers[vk] = ip  # Should be stripped of port and tcp
+            self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
         # Crawl bootnodes 'announcing' yourself
 
@@ -148,44 +185,3 @@ class Network:
         current_peers.update(self.table.peers)
         current_peers.update(self.table.data)
 
-        # Subtract the rest of the nodes that are currently connected in our peers
-        for vk, ip in current_peers.items():
-            if vk in current_masternodes:
-                masternodes_left -= 1
-                current_masternodes.remove(vk)
-            elif vk in current_delegates:
-                delegates_left -= 1
-                current_delegates.remove(vk)
-
-        # Now start crawling...
-        while masternodes_left > 0 and delegates_left > 0:
-            pass
-
-        print('Need to get ')
-        self.log.info('Time to find the quorum.')
-        is_masternode = self.vk in PhoneBook.masternodes
-        vks_to_wait_for = set()
-
-        if is_masternode:
-            quorum_required = PhoneBook.quorum_min
-            quorum_required -= 1  # eliminate myself
-            vk_list = PhoneBook.state_sync
-            vk_list.remove(self.vk)
-            self.log.info('Needs to find {} nodes.'.format(quorum_required))
-        else:
-            quorum_required = PhoneBook.masternode_quorum_min
-            vk_list = PhoneBook.masternodes
-
-        vks_to_wait_for.update(vk_list)
-        vks_connected = self.routing_table.all_nodes()
-        vks_connected &= vks_to_wait_for
-
-        vks_to_wait_for -= vks_connected
-        while len(vks_to_wait_for) > 0:
-            for vk in vks_to_wait_for:
-                if await self._find_n_announce(vk):
-                    vks_connected.add(vk)
-            if len(vks_connected) >= quorum_required:
-                return
-            vks_to_wait_for -= vks_connected
-            await asyncio.sleep(2)
