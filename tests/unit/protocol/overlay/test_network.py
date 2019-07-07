@@ -145,8 +145,6 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        print(res)
-
         response = res[-1]
         response = response.decode()
         response = json.loads(response)
@@ -296,18 +294,67 @@ class TestNetworkService(TestCase):
         self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
 
     def test_event_service_publisher_starts_up_on_init(self):
-        ctx = zmq.Context()
-
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
 
-        test_subscriber = ctx.socket(zmq.SUB)
+        test_subscriber = self.ctx.socket(zmq.SUB)
+        test_subscriber.setsockopt(zmq.SUBSCRIBE, b'')
         test_subscriber.connect('tcp://127.0.0.1:10002')
 
-        p1.peer_service.event_publisher.send(b'waaaa')
+        # TCP takes a bit longer to bind and is prone to dropping messages...
+        sleep(0.1)
 
-        #msg = test_subscriber.recv()
+        async def send():
+            await p1.peer_service.event_publisher.send(b'waaaa')
 
-        event = test_subscriber.poll(timeout=1000, flags=zmq.POLLIN)
+        async def recv():
+            return await test_subscriber.recv()
 
-        print(event)
+        tasks = asyncio.gather(
+            send(),
+            recv(),
+            stop_server(p1.peer_service, 0.1)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[1], b'waaaa')
+
+    def test_event_service_triggered_when_new_node_added(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        w2 = Wallet()
+        d = DiscoveryServer(wallet=w2, address='tcp://127.0.0.1:10999', pepper=PEPPER.encode(), ctx=self.ctx,
+                            poll_timeout=200, linger=200)
+
+        subscriber = self.ctx.socket(zmq.SUB)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'')
+        subscriber.connect('tcp://127.0.0.1:10002')
+
+        # TCP takes a bit longer to bind and is prone to dropping messages...
+        sleep(0.1)
+
+        join_message = ['join', (w2.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
+        join_message = json.dumps(join_message).encode()
+
+        async def recv():
+            return await subscriber.recv()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            d.serve(),
+            services.get('tcp://127.0.0.1:10001', msg=join_message, ctx=self.ctx, timeout=1000),
+            stop_server(p1.peer_service, 0.1),
+            stop_server(d, 0.1),
+            recv()
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        expected_dict = {'join': [w2.verifying_key().hex(), 'tcp://127.0.0.1:10999']}
+        got_dict = json.loads(res[-1].decode())
+
+        self.assertDictEqual(expected_dict, got_dict)

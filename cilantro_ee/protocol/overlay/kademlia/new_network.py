@@ -123,13 +123,19 @@ class PeerServer(services.RequestReplyService):
                     if responded_vk is None:
                         del self.table[vk]
 
-    def start(self):
+    async def start(self):
         tasks = asyncio.gather(
             self.serve(),
             self.event_service.serve(),
             self.process_event_subscription_queue()
         )
         asyncio.ensure_future(tasks)
+
+    def stop(self):
+        self.running = False
+        self.event_queue_loop_running = False
+        self.event_service.running = False
+
 
 class Network:
     def __init__(self, wallet, peer_service_port: int=DHT_PORT, event_publisher_port: int=EVENT_PORT,
