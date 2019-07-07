@@ -3,26 +3,42 @@ import zmq
 
 
 class SubscriptionService:
-    def __init__(self, ctx: zmq.Context, timeout=50):
+    def __init__(self, ctx: zmq.Context, timeout=100, linger=2000):
+        # Socket constants
         self.ctx = ctx
         self.timeout = timeout
+        self.linger = linger
+
+        # State variables
         self.subscriptions = {}
         self.running = False
+
+        # Async queues
+        self.received = []
+        self.to_remove = []
 
     def add_subscription(self, address, filter=b''):
         subscription = self.ctx.socket(zmq.SUB)
         subscription.setsockopt(zmq.SUBSCRIBE, filter)
+        subscription.setsockopt(zmq.LINGER, self.linger)
         subscription.connect(address)
 
         self.subscriptions[address] = subscription
 
+    def _destroy_socket(self, address):
+        socket = self.subscriptions.get(address)
+        if socket is not None:
+            socket.close()
+
+            del self.subscriptions[address]
+
     def remove_subscription(self, address):
-        socket = self.subscriptions[address]
-        socket.close()
+        if self.running:
+            self.to_remove.append(address)
+        else:
+            self._destroy_socket(address)
 
-        del self.subscriptions[address]
-
-    async def poll_subscriptions(self):
+    async def serve(self):
         self.running = True
 
         while self.running:
@@ -30,10 +46,16 @@ class SubscriptionService:
                 event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
                 if event:
                     msg = await socket.recv()
-                    return self.handle_msg(msg, address)
+                    self.received.append((msg, address))
 
-    def handle_msg(self, msg, subscription):
-        return msg
+            # Destory sockets async
+            for address in self.to_remove:
+                self._destroy_socket(address)
+            self.to_remove = []
+
+    def stop(self):
+        self.running = False
+
 
 class RequestReplyService:
     def __init__(self, address: str, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
@@ -74,51 +96,6 @@ class RequestReplyService:
 
     def stop(self):
         self.running = False
-
-
-class Request:
-    def __init__(self, address: str, ctx:zmq.Context, timeout=500, linger=2000):
-        self.address = address
-        self.ctx = ctx
-        self.timeout = timeout
-        self.linger = linger
-
-    async def get(self, msg: bytes):
-        try:
-            socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, self.linger)
-
-            socket.connect(self.address)
-
-            await socket.send(msg)
-
-            event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
-            if event:
-                response = await socket.recv()
-
-                socket.close()
-
-                return response
-            else:
-                return None
-        except Exception as e:
-            return None
-
-
-def generate_router_socket(self, identity, linger=2000, handover=1, mandatory=1):
-    router = self.ctx.socket(zmq.ROUTER)
-
-    router.setsockopt(zmq.LINGER, linger)
-    router.setsockopt(zmq.ROUTER_HANDOVER, handover)
-    router.setsockopt(zmq.ROUTER_MANDATORY, mandatory)
-
-    router.setsockopt(zmq.IDENTITY, self.identity_from_salt(identity))
-
-    return router
-
-
-async def router_fire(address: str, identity: bytes, ctx:zmq.Context):
-    pass
 
 
 async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):

@@ -107,6 +107,7 @@ class PeerServer(services.RequestReplyService):
                 # Valid response
                 self.table.peers[vk] = ip
 
+
 class Network:
     def __init__(self, wallet, peer_rep_address: str=None, peer_event_address: str=None,
                  ctx=zmq.asyncio.Context(), ip=conf.HOST_IP,

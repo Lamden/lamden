@@ -330,12 +330,8 @@ class TestNetworkService(TestCase):
 
         p1.peer_server.start_publisher()
 
-        sleep(1)
-
         test_subscriber = ctx.socket(zmq.SUB)
         test_subscriber.connect('tcp://127.0.0.1:9999')
-
-        sleep(1)
 
         p1.peer_server.event_publisher.send(b'waaaa')
 
