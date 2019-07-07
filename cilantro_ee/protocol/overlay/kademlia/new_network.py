@@ -16,23 +16,10 @@ from cilantro_ee.logger.base import get_logger
 log = get_logger('NetworkService')
 
 
-def ip_string_from_bytes(b: bytes):
-    b = bytearray(b)
-    ip = [str(byte) for byte in b[0:4]]
-    ip = '.'.join(ip)
-    return ip
-
-
 def bytes_from_ip_string(ip: str):
     b = ip.split('.')
     bb = [int(i) for i in b]
     return bytes(bb)
-
-
-def strip_protocol_and_port(zmq_str):
-    stripped = zmq_str.split('//')[1]
-    stripped = stripped.split(':')[0]
-    return stripped
 
 
 class KTable:
@@ -112,7 +99,7 @@ class PeerServer(services.RequestReplyService):
 
                 # Publish a message that a new node has joined
                 msg = {'join': (vk, ip)}
-                jmsg = json.dumps(msg)
+                jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
     async def process_event_subscription_queue(self):
@@ -145,7 +132,7 @@ class PeerServer(services.RequestReplyService):
         asyncio.ensure_future(tasks)
 
 class Network:
-    def __init__(self, wallet, peer_service_port: int,
+    def __init__(self, wallet, peer_service_port: int=DHT_PORT, event_publisher_port: int=EVENT_PORT,
                  ctx=zmq.asyncio.Context(), ip=conf.HOST_IP,
                  bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST):
 
@@ -155,13 +142,14 @@ class Network:
         self.bootnodes = bootnodes
 
         data = {
-            self.wallet.verifying_key().hex(): bytes_from_ip_string(conf.HOST_IP)
+            self.wallet.verifying_key().hex(): ip
         }
         self.table = KTable(data=data)
 
         peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
-        self.peer_service = PeerServer(address=peer_service_address, table=self.table,
-                                       wallet=self.wallet, ctx=self.ctx)
+        event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
+        self.peer_service = PeerServer(address=peer_service_address, event_publisher_address=event_publisher_address,
+                                       table=self.table, wallet=self.wallet, ctx=self.ctx)
 
     async def discover_bootnodes(self):
         responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),

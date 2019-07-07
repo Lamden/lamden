@@ -1,7 +1,7 @@
 from unittest import TestCase
 import asyncio
 from cilantro_ee.protocol.overlay.kademlia.discovery import *
-from cilantro_ee.protocol.overlay.kademlia.new_network import Network, PeerServer
+from cilantro_ee.protocol.overlay.kademlia.new_network import Network, PeerServer, KTable
 from cilantro_ee.protocol.overlay.kademlia.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.protocol.comm import services
@@ -87,13 +87,13 @@ class TestNetworkService(TestCase):
             w4.verifying_key().hex(): 'inproc://testing4'
         }
 
-        self.assertDictEqual(n.peer_server.table.peers, expected_dict)
+        self.assertDictEqual(n.table.peers, expected_dict)
 
     def test_peer_server_init(self):
         w = Wallet()
-
-        p = PeerServer(wallet=w, address='inproc://testing', event_address='inproc://testing2',
-                       ctx=self.ctx, linger=100, poll_timeout=100)
+        t = KTable(data={'woo': 'hoo'})
+        p = PeerServer(wallet=w, address='inproc://testing', event_publisher_address='tcp://*:8888',
+                       table=t, ctx=self.ctx, linger=100, poll_timeout=100)
 
         tasks = asyncio.gather(
             p.serve(),
@@ -105,19 +105,15 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_self_when_asked(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         find_message = ['find', w1.verifying_key().hex()]
         find_message = json.dumps(find_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
-            stop_server(p1.peer_server, 0.1),
-            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.1),
+            services.get('tcp://127.0.0.1:10001', msg=find_message, ctx=self.ctx, timeout=100)
         )
 
         loop = asyncio.get_event_loop()
@@ -127,31 +123,29 @@ class TestNetworkService(TestCase):
         response = response.decode()
         response = json.loads(response)
 
-        self.assertEqual(response.get(w1.verifying_key().hex()), 'inproc://testing1')
+        self.assertEqual(response.get(w1.verifying_key().hex()), '127.0.0.1')
 
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         w2 = Wallet()
 
-        p1.peer_server.table.peers[w2.verifying_key().hex()] = 'inproc://goodtimes'
+        p1.peer_service.table.peers[w2.verifying_key().hex()] = 'inproc://goodtimes'
 
         find_message = ['find', w2.verifying_key().hex()]
         find_message = json.dumps(find_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
-            stop_server(p1.peer_server, 0.1),
-            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.3),
+            services.get('tcp://127.0.0.1:10001', msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
+
+        print(res)
 
         response = res[-1]
         response = response.decode()
@@ -161,11 +155,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_all_peers_if_doesnt_have_it_or_more_than_response_amount(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         test_dict = {
             'test': 'value',
@@ -173,15 +163,15 @@ class TestNetworkService(TestCase):
             'something': 'else'
         }
 
-        p1.peer_server.table.peers = test_dict
+        p1.peer_service.table.peers = test_dict
 
         find_message = ['find', 'baloney']
         find_message = json.dumps(find_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
-            stop_server(p1.peer_server, 0.1),
-            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.3),
+            services.get('tcp://127.0.0.1:10001', msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
@@ -195,11 +185,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_max_response_keys(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         test_dict = {
             'test': 'value',
@@ -211,16 +197,16 @@ class TestNetworkService(TestCase):
             'test': 'value'
         }
 
-        p1.peer_server.table.peers = test_dict
-        p1.peer_server.table.response_size = 1
+        p1.peer_service.table.peers = test_dict
+        p1.peer_service.table.response_size = 1
 
         find_message = ['find', 'tesZ']
         find_message = json.dumps(find_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
-            stop_server(p1.peer_server, 0.1),
-            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.2),
+            services.get('tcp://127.0.0.1:10001', msg=find_message, ctx=self.ctx, timeout=200)
         )
 
         loop = asyncio.get_event_loop()
@@ -234,11 +220,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_max_response_keys_many_keys(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         test_dict = {
             '0': 'value',
@@ -264,16 +246,16 @@ class TestNetworkService(TestCase):
             '2': 'else'
         }
 
-        p1.peer_server.table.peers = test_dict
-        p1.peer_server.table.response_size = 4
+        p1.peer_service.table.peers = test_dict
+        p1.peer_service.table.response_size = 4
 
         find_message = ['find', '6']
         find_message = json.dumps(find_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
-            stop_server(p1.peer_server, 0.1),
-            services.get('inproc://testing1', msg=find_message, ctx=self.ctx, timeout=100)
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.2),
+            services.get('tcp://127.0.0.1:10001', msg=find_message, ctx=self.ctx, timeout=200)
         )
 
         loop = asyncio.get_event_loop()
@@ -287,53 +269,42 @@ class TestNetworkService(TestCase):
 
     def test_peer_table_updated_on_join_command(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
+        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
 
         w2 = Wallet()
-        d = DiscoveryServer(wallet=w2, address='inproc://testing2', pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
+        d = DiscoveryServer(wallet=w2, address='tcp://127.0.0.1:10999', pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
 
         # 1. start network
         # 2. start discovery of other side
         # 3. send join request
         # 4. check to see if the data has been added
 
-        join_message = ['join', (w2.verifying_key().hex(), 'inproc://testing2')]
+        join_message = ['join', (w2.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
         join_message = json.dumps(join_message).encode()
 
         tasks = asyncio.gather(
-            p1.peer_server.serve(),
+            p1.peer_service.serve(),
             d.serve(),
-            services.get('inproc://testing1', msg=join_message, ctx=self.ctx, timeout=1000),
-            stop_server(p1.peer_server, 0.1),
+            services.get('tcp://127.0.0.1:10001', msg=join_message, ctx=self.ctx, timeout=1000),
+            stop_server(p1.peer_service, 0.1),
             stop_server(d, 0.1)
         )
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertEqual(p1.peer_server.table.peers[w2.verifying_key().hex()], 'inproc://testing2')
+        self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
 
     def test_event_service_publisher_starts_up_on_init(self):
         ctx = zmq.Context()
 
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=ctx)
-        p1.peer_server.address = 'inproc://testing1'
-        p1.peer_server.event_address = 'tcp://*:9999'
-        p1.peer_server.table.data = {
-            w1.verifying_key().hex(): 'inproc://testing1'
-        }
-
-        p1.peer_server.start_publisher()
+        p1 = Network(wallet=w1, ctx=ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
 
         test_subscriber = ctx.socket(zmq.SUB)
-        test_subscriber.connect('tcp://127.0.0.1:9999')
+        test_subscriber.connect('tcp://127.0.0.1:10002')
 
-        p1.peer_server.event_publisher.send(b'waaaa')
+        p1.peer_service.event_publisher.send(b'waaaa')
 
         #msg = test_subscriber.recv()
 
