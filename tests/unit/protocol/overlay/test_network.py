@@ -313,6 +313,34 @@ class TestNetworkService(TestCase):
         )
 
         loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
+        loop.run_until_complete(tasks)
 
         self.assertEqual(p1.peer_server.table.peers[w2.verifying_key().hex()], 'inproc://testing2')
+
+    def test_event_service_publisher_starts_up_on_init(self):
+        ctx = zmq.Context()
+
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=ctx)
+        p1.peer_server.address = 'inproc://testing1'
+        p1.peer_server.event_address = 'tcp://*:9999'
+        p1.peer_server.table.data = {
+            w1.verifying_key().hex(): 'inproc://testing1'
+        }
+
+        p1.peer_server.start_publisher()
+
+        sleep(1)
+
+        test_subscriber = ctx.socket(zmq.SUB)
+        test_subscriber.connect('tcp://127.0.0.1:9999')
+
+        sleep(1)
+
+        p1.peer_server.event_publisher.send(b'waaaa')
+
+        #msg = test_subscriber.recv()
+
+        event = test_subscriber.poll(timeout=1000, flags=zmq.POLLIN)
+
+        print(event)

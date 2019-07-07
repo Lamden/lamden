@@ -2,6 +2,39 @@ from cilantro_ee.protocol.wallet import Wallet
 import zmq
 
 
+class SubscriptionService:
+    def __init__(self, ctx: zmq.Context, timeout=50):
+        self.ctx = ctx
+        self.timeout = timeout
+        self.subscriptions = {}
+        self.running = False
+
+    def add_subscription(self, address, filter=b''):
+        subscription = self.ctx.socket(zmq.SUB)
+        subscription.setsockopt(zmq.SUBSCRIBE, filter)
+        subscription.connect(address)
+
+        self.subscriptions[address] = subscription
+
+    def remove_subscription(self, address):
+        socket = self.subscriptions[address]
+        socket.close()
+
+        del self.subscriptions[address]
+
+    async def poll_subscriptions(self):
+        self.running = True
+
+        while self.running:
+            for address, socket in self.subscriptions.items():
+                event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
+                if event:
+                    msg = await socket.recv()
+                    return self.handle_msg(msg, address)
+
+    def handle_msg(self, msg, subscription):
+        return msg
+
 class RequestReplyService:
     def __init__(self, address: str, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
         self.address = address

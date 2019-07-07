@@ -77,6 +77,8 @@ class PeerServer(services.RequestReplyService):
         self.is_connected = False
         self.wallet = wallet
 
+        self.event_address = event_address
+
         data = {
             self.wallet.verifying_key().hex(): bytes_from_ip_string(conf.HOST_IP)
         }
@@ -106,19 +108,17 @@ class PeerServer(services.RequestReplyService):
                 self.table.peers[vk] = ip
 
 class Network:
-    def __init__(self, wallet, ip=conf.HOST_IP,
-                 ctx=zmq.asyncio.Context(),
+    def __init__(self, wallet, peer_rep_address: str=None, peer_event_address: str=None,
+                 ctx=zmq.asyncio.Context(), ip=conf.HOST_IP,
                  bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST):
 
         self.wallet = wallet
         self.ctx = ctx
 
-        self.ip = ip
-
         self.bootnodes = bootnodes
 
-        peer_address = 'tcp://{}:{}'.format(self.ip, DHT_PORT)
-        event_address = 'tcp://{}:{}'.format(self.ip, EVENT_PORT)
+        peer_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT) if peer_rep_address is None else peer_rep_address
+        event_address = 'tcp://*:{}'.format(EVENT_PORT) if peer_event_address is None else peer_event_address
         self.peer_server = PeerServer(wallet=self.wallet, address=peer_address, event_address=event_address,
                                       ctx=self.ctx)
 
