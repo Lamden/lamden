@@ -23,22 +23,25 @@ class SubscriptionService:
         self.received = []
         self.to_remove = []
 
-    def add_subscription(self, address, filter=b''):
+    def add_subscription(self, ip, port, filter=b''):
         subscription = self.ctx.socket(zmq.SUB)
         subscription.setsockopt(zmq.SUBSCRIBE, filter)
         subscription.setsockopt(zmq.LINGER, self.linger)
+        address = 'tcp://{}:{}'.format(ip, port)
         subscription.connect(address)
 
         self.subscriptions[address] = subscription
 
-    def _destroy_socket(self, address):
+    def _destroy_socket(self, ip, port):
+        address = 'tcp://{}:{}'.format(ip, port)
         socket = self.subscriptions.get(address)
         if socket is not None:
             socket.close()
 
             del self.subscriptions[address]
 
-    def remove_subscription(self, address):
+    def remove_subscription(self, ip, port):
+        address = 'tcp://{}:{}'.format(ip, port)
         if self.running:
             self.to_remove.append(address)
         else:

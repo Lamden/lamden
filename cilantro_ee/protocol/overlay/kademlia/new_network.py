@@ -86,23 +86,25 @@ class PeerServer(services.RequestReplyService):
             response = json.dumps(response).encode()
             return response
         if command == 'join':
-            vk, ip = args # unpack args
-            asyncio.ensure_future(self.handle_join(vk, ip))
+            vk, ip, port = args # unpack args
+            asyncio.ensure_future(self.handle_join(vk, ip, port))
             return None
 
-    async def handle_join(self, vk, ip):
+    async def handle_join(self, vk, ip, port):
         result = self.table.find(vk)
+
+        address = 'tcp://{}:{}'.format(ip, port)
 
         if vk not in result or result[vk] != ip:
             # Ping discovery server
-            _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
+            _, responded_vk = await discovery.ping(address, pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
             if responded_vk.hex() == vk:
                 # Valid response
                 self.table.peers[vk] = ip
 
                 # Publish a message that a new node has joined
-                msg = ('join', (vk, ip))
+                msg = ('join', (vk, ip, port))
                 jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
@@ -114,10 +116,10 @@ class PeerServer(services.RequestReplyService):
                 message, sender = self.event_service.received.pop(0)
                 msg = json.loads(message.decode())
                 command, args = msg
-                vk, ip = args
+                vk, ip, port = args
 
                 if command == 'join':
-                    asyncio.ensure_future(self.handle_join(vk=vk, ip=ip))
+                    asyncio.ensure_future(self.handle_join(vk=vk, ip=ip, port=port))
 
                 elif command == 'leave':
                     # Ping to make sure the node is actually offline
