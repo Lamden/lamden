@@ -56,12 +56,12 @@ class TestNetworkService(TestCase):
         w3 = Wallet()
         w4 = Wallet()
 
-        d1 = DiscoveryServer('inproc://testing1', w1, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d2 = DiscoveryServer('inproc://testing2', w2, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d3 = DiscoveryServer('inproc://testing3', w3, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d4 = DiscoveryServer('inproc://testing4', w4, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
+        d1 = DiscoveryServer('127.0.0.1', 10999, w1, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
+        d2 = DiscoveryServer('127.0.0.1', 11999, w2, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
+        d3 = DiscoveryServer('127.0.0.1', 12999, w3, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
+        d4 = DiscoveryServer('127.0.0.1', 13999, w4, PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
 
-        bootnodes = ['inproc://testing1', 'inproc://testing2', 'inproc://testing3', 'inproc://testing4']
+        bootnodes = ['tcp://127.0.0.1:10999', 'tcp://127.0.0.1:11999', 'tcp://127.0.0.1:12999', 'tcp://127.0.0.1:13999']
 
         n = Network(wallet=w, ctx=self.ctx, bootnodes=bootnodes)
 
@@ -70,10 +70,10 @@ class TestNetworkService(TestCase):
             d2.serve(),
             d3.serve(),
             d4.serve(),
-            stop_server(d1, 0.1),
-            stop_server(d2, 0.1),
-            stop_server(d3, 0.1),
-            stop_server(d4, 0.1),
+            stop_server(d1, 0.3),
+            stop_server(d2, 0.3),
+            stop_server(d3, 0.3),
+            stop_server(d4, 0.3),
             n.discover_bootnodes()
         )
 
@@ -81,10 +81,10 @@ class TestNetworkService(TestCase):
         loop.run_until_complete(tasks)
 
         expected_dict = {
-            w1.verifying_key().hex(): 'inproc://testing1',
-            w2.verifying_key().hex(): 'inproc://testing2',
-            w3.verifying_key().hex(): 'inproc://testing3',
-            w4.verifying_key().hex(): 'inproc://testing4'
+            w1.verifying_key().hex(): 'tcp://127.0.0.1:10999',
+            w2.verifying_key().hex(): 'tcp://127.0.0.1:11999',
+            w3.verifying_key().hex(): 'tcp://127.0.0.1:12999',
+            w4.verifying_key().hex(): 'tcp://127.0.0.1:13999'
         }
 
         self.assertDictEqual(n.table.peers, expected_dict)
@@ -92,7 +92,7 @@ class TestNetworkService(TestCase):
     def test_peer_server_init(self):
         w = Wallet()
         t = KTable(data={'woo': 'hoo'})
-        p = PeerServer(wallet=w, address='inproc://testing', event_publisher_address='tcp://*:8888',
+        p = PeerServer(wallet=w, ip='127.0.0.1', event_publisher_address='tcp://*:8888',
                        table=t, ctx=self.ctx, linger=100, poll_timeout=100)
 
         tasks = asyncio.gather(

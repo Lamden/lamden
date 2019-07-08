@@ -58,10 +58,11 @@ class KTable:
 
 
 class PeerServer(services.RequestReplyService):
-    def __init__(self, address: str, event_publisher_address: str, table: KTable, wallet: Wallet, ctx=zmq.Context,
+    def __init__(self, ip: str, port: int, event_port: int, table: KTable, wallet: Wallet, ctx=zmq.Context,
                  linger=2000, poll_timeout=500):
 
-        super().__init__(address=address,
+        super().__init__(ip=ip,
+                         port=port,
                          wallet=wallet,
                          ctx=ctx,
                          linger=linger,
@@ -69,9 +70,10 @@ class PeerServer(services.RequestReplyService):
 
         self.table = table
 
+        self.event_address = 'tcp://*:{}'.format(event_port)
         self.event_service = services.SubscriptionService(ctx=self.ctx)
         self.event_publisher = self.ctx.socket(zmq.PUB)
-        self.event_publisher.bind(event_publisher_address)
+        self.event_publisher.bind(self.event_address)
 
         self.event_queue_loop_running = False
 
@@ -159,8 +161,8 @@ class Network:
         self.table = KTable(data=data)
 
         self.event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
-        self.peer_service = PeerServer(address=self.peer_service_address,
-                                       event_publisher_address=self.event_publisher_address,
+        self.peer_service = PeerServer(ip=ip, port=peer_service_port,
+                                       event_port=event_publisher_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
     async def discover_bootnodes(self):
@@ -169,9 +171,6 @@ class Network:
 
         for ip, vk in responses.items():
             self.table.peers[vk] = ip  # Should be stripped of port and tcp
-
-        # Crawl bootnodes 'announcing' yourself.
-        await self.wait_for_quorum()
 
     async def wait_for_quorum(self):
         # Determine how many more nodes we need to find
