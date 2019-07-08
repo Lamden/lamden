@@ -381,7 +381,7 @@ class TestNetworkService(TestCase):
                             poll_timeout=200, linger=2000)
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
-        sleep(0.1)
+        sleep(0.2)
 
         # Construct the join RPC message
         join_message = ['join', (w3.verifying_key().hex(), '127.0.0.1', 10999)]
@@ -392,9 +392,9 @@ class TestNetworkService(TestCase):
             p2.peer_service.start(),
             d.serve(),
             services.get('tcp://127.0.0.1:10001', msg=join_message, ctx=self.ctx, timeout=1000),
-            stop_server(p1.peer_service, 0.3),
-            stop_server(p2.peer_service, 0.3),
-            stop_server(d, 0.3),
+            stop_server(p1.peer_service, 0.4),
+            stop_server(p2.peer_service, 0.4),
+            stop_server(d, 0.4),
         )
 
         loop = asyncio.get_event_loop()
@@ -484,3 +484,84 @@ class TestNetworkService(TestCase):
         res = loop.run_until_complete(tasks)
 
         self.assertEqual(res[2].get(w2.verifying_key().hex()), p2.peer_service_address)
+
+    def test_find_node_fails_if_cant_find_and_retries_are_up(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        w2 = Wallet()
+        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+
+        w3 = Wallet()
+
+        async def get():
+            return await p1.find_node('tcp://127.0.0.1:10003', w3.verifying_key().hex(), retries=1)
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+
+            p2.peer_service.start(),
+            get(),
+            stop(p1, 0.3),
+            stop(p2, 0.3),
+
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertIsNone(res[2])
+
+    def test_recursive_crawl_works_to_proper_depth(self):
+        # 0 tries
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        # 1 try
+        w2 = Wallet()
+        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+
+        w3 = Wallet()
+        p3 = Network(wallet=w3, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10005, event_publisher_port=10006)
+
+        # 2 tries <- info in this node should be returned
+        w4 = Wallet()
+        p4 = Network(wallet=w4, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10007, event_publisher_port=10008)
+
+        # 2 tries <- info in this node should be returned
+        w5 = Wallet()
+
+        # Add node info in each peer service to 'chain' them together
+        p2.table.peers[w3.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
+        p3.table.peers[w4.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
+        p4.table.peers[w5.verifying_key().hex()] = 'you found me!'
+
+        async def get():
+            return await p1.find_node('tcp://127.0.0.1:10003', w5.verifying_key().hex(), retries=2)
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        timeout = 0.3
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+            p2.peer_service.start(),
+            p3.peer_service.start(),
+            p4.peer_service.start(),
+            get(),
+            stop(p1, timeout),
+            stop(p2, timeout),
+            stop(p3, timeout),
+            stop(p4, timeout),
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[4].get(w5.verifying_key().hex()), 'you found me!')
