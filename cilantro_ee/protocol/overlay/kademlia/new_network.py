@@ -174,34 +174,64 @@ class Network:
         for ip, vk in responses.items():
             self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
-    async def wait_for_quorum(self):
-        # Determine how many more nodes we need to find
-        masternodes_left = PhoneBook.masternode_quorum_min
-        delegates_left = PhoneBook.delegate_quorum_min
+    async def wait_for_quorum(self, masternode_quorum_required: int,
+                                    delegate_quorum_required: int,
+                                    masternodes_to_find: list,
+                                    delegates_to_find: list,
+                                    initial_peers: list):
 
-        # Storing these in local vars saves DB hits
-        current_masternodes = PhoneBook.masternodes
-        current_delegates = PhoneBook.delegates
+        results = None
 
-        current_peers = {}
-        current_peers.update(self.table.peers)
-        current_peers.update(self.table.data)
+        while masternode_quorum_required > 0 or delegate_quorum_required > 0:
+            # Create task lists
+            master_crawl = [self.find_node(client_address=random.choice(initial_peers),
+                            vk_to_find=vk, retries=3) for vk in masternodes_to_find]
 
-        # Try to find all of the nodes that are online
+            delegate_crawl = [self.find_node(client_address=random.choice(initial_peers),
+                              vk_to_find=vk, retries=3) for vk in delegates_to_find]
 
-        #all_nodes = self.
-        while masternodes_left > 0 and delegates_left > 0:
-            total_nodes_online = await asyncio.wait(
-                self.find_node(client_address=random.choice(self.bootnodes),
-                               vk_to_find=vk,
-                               retries=3) for vk in current_masternodes + current_delegates
-            )
+            # Crawl for both node types
+            crawl = asyncio.gather(*master_crawl, *delegate_crawl)
 
-            print(total_nodes_online)
+            results = await crawl
+
+            print(results)
+
+            # Split the result list
+            masters_got = results[:len(masternodes_to_find)]
+            delegates_got = results[len(masternodes_to_find):]
+
+            masternode_quorum_required = self.updated_peers_and_crawl(masters_got,
+                                                                      masternodes_to_find,
+                                                                      masternode_quorum_required)
+
+            delegate_quorum_required = self.updated_peers_and_crawl(delegates_got,
+                                                                    delegates_to_find,
+                                                                    delegate_quorum_required)
+
+        return results
+
+    def updated_peers_and_crawl(self, node_results, all_nodes, current_quorum):
+        nodes = {}
+
+        # Pack successful requests into a dictionary
+        for node in node_results:
+            if node is not None:
+                nodes.update(node)
+
+        # Update the peer table with the new nodes
+        self.table.peers.update(nodes)
+
+        # Remove the nodes from the all_nodes list. Don't need to query them again
+        for vk, _ in nodes.items():
+            all_nodes.remove(vk)
+
+        # Return the number of nodes needed left
+        return current_quorum - len(nodes)
 
     async def find_node(self, client_address, vk_to_find, retries=3):
         # Search locally if this is the case
-        if client_address == self.peer_service_address:
+        if client_address == self.peer_service_address or vk_to_find == self.wallet.verifying_key().hex():
             response = self.table.find(vk_to_find)
 
         # Otherwise, send out a network request
