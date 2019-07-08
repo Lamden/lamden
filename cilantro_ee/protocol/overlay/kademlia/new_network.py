@@ -13,6 +13,8 @@ import json
 import zmq
 from cilantro_ee.logger.base import get_logger
 
+import random
+
 log = get_logger('NetworkService')
 
 
@@ -181,3 +183,28 @@ class Network:
         current_peers.update(self.table.peers)
         current_peers.update(self.table.data)
 
+        # Try to find all of the nodes that are online
+        while masternodes_left > 0 and delegates_left > 0:
+            total_nodes_online = await asyncio.wait(
+                self.find_node(client_address=random.choice(self.bootnodes),
+                               vk_to_find=vk,
+                               retries=3) for vk in current_masternodes + current_delegates
+            )
+
+            print(total_nodes_online)
+
+    async def find_node(self, client_address, vk_to_find, retries=3):
+        find_message = ['find', vk_to_find]
+        find_message = json.dumps(find_message).encode()
+
+        response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+
+        if response.get(vk_to_find) is not None:
+            return response
+
+        if retries <= 1:
+            return None
+
+        # Recursive crawl goes 'retries' levels deep
+        for vk, ip in response.items():
+            return await self.find_node(ip, vk_to_find, retries=retries-1)

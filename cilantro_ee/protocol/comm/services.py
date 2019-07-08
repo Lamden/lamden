@@ -2,6 +2,7 @@ from cilantro_ee.protocol.wallet import Wallet
 import zmq
 import asyncio
 
+
 class SubscriptionService:
     def __init__(self, ctx: zmq.Context, timeout=100, linger=2000):
         # Socket constants
