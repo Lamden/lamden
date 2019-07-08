@@ -98,7 +98,7 @@ class PeerServer(services.RequestReplyService):
                 self.table.peers[vk] = ip
 
                 # Publish a message that a new node has joined
-                msg = {'join': (vk, ip)}
+                msg = ('join', (vk, ip))
                 jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
@@ -108,7 +108,8 @@ class PeerServer(services.RequestReplyService):
         while self.event_queue_loop_running:
             if len(self.event_service.received) > 0:
                 message, sender = self.event_service.received.pop(0)
-                command, args = message
+                msg = json.loads(message.decode())
+                command, args = msg
                 vk, ip = args
 
                 if command == 'join':
@@ -123,13 +124,14 @@ class PeerServer(services.RequestReplyService):
                     if responded_vk is None:
                         del self.table[vk]
 
+            await asyncio.sleep(0)
+
     async def start(self):
-        tasks = asyncio.gather(
+        asyncio.ensure_future(asyncio.gather(
             self.serve(),
             self.event_service.serve(),
             self.process_event_subscription_queue()
-        )
-        asyncio.ensure_future(tasks)
+        ))
 
     def stop(self):
         self.running = False

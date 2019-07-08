@@ -1,6 +1,6 @@
 from cilantro_ee.protocol.wallet import Wallet
 import zmq
-
+import asyncio
 
 class SubscriptionService:
     def __init__(self, ctx: zmq.Context, timeout=100, linger=2000):
@@ -42,6 +42,8 @@ class SubscriptionService:
         self.running = True
 
         while self.running:
+            await asyncio.sleep(0)
+
             for address, socket in self.subscriptions.items():
                 event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
                 if event:
