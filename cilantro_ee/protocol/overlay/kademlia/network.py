@@ -550,6 +550,7 @@ class Network(object):
         req.close()    # clean up socket  # handle the errors on remote properly
         return node
 
+    # Ping on discovery server?
     async def _ping_ip(self, req, vk, ip, is_first_time):
         raddr = '{}:{}:{}'.format(vk, ip, self.port).encode()
         overlay_address = 'tcp://{}:{}'.format(ip, self.port)

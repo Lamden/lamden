@@ -151,14 +151,16 @@ class Network:
 
         self.bootnodes = bootnodes
 
+        self.peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
+
         data = {
-            self.wallet.verifying_key().hex(): ip
+            self.wallet.verifying_key().hex(): self.peer_service_address
         }
         self.table = KTable(data=data)
 
-        peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
-        event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
-        self.peer_service = PeerServer(address=peer_service_address, event_publisher_address=event_publisher_address,
+        self.event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
+        self.peer_service = PeerServer(address=self.peer_service_address,
+                                       event_publisher_address=self.event_publisher_address,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
     async def discover_bootnodes(self):
@@ -168,7 +170,8 @@ class Network:
         for ip, vk in responses.items():
             self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
-        # Crawl bootnodes 'announcing' yourself
+        # Crawl bootnodes 'announcing' yourself.
+        await self.wait_for_quorum()
 
     async def wait_for_quorum(self):
         # Determine how many more nodes we need to find
@@ -184,6 +187,8 @@ class Network:
         current_peers.update(self.table.data)
 
         # Try to find all of the nodes that are online
+
+        #all_nodes = self.
         while masternodes_left > 0 and delegates_left > 0:
             total_nodes_online = await asyncio.wait(
                 self.find_node(client_address=random.choice(self.bootnodes),
@@ -194,10 +199,17 @@ class Network:
             print(total_nodes_online)
 
     async def find_node(self, client_address, vk_to_find, retries=3):
-        find_message = ['find', vk_to_find]
-        find_message = json.dumps(find_message).encode()
+        # Search locally if this is the case
+        if client_address == self.peer_service_address:
+            response = self.table.find(vk_to_find)
 
-        response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+        # Otherwise, send out a network request
+        else:
+            find_message = ['find', vk_to_find]
+            find_message = json.dumps(find_message).encode()
+
+            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+            response = json.loads(response.decode())
 
         if response.get(vk_to_find) is not None:
             return response

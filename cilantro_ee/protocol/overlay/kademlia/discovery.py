@@ -3,6 +3,7 @@ from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.comm import services
+from cilantro_ee.constants.ports import DISCOVERY_PORT
 
 log = get_logger('DiscoveryService')
 
@@ -13,10 +14,10 @@ Returns a message of the signed pepper and VK
 
 
 class DiscoveryServer(services.RequestReplyService):
-    def __init__(self, address: str, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(),
+    def __init__(self, ip: str, port: int, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(),
                  linger=2000, poll_timeout=500):
 
-        super().__init__(address=address, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
+        super().__init__(ip=ip, port=port, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
 
         self.pepper = pepper
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)

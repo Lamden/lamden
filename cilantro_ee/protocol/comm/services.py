@@ -3,6 +3,11 @@ import zmq
 import asyncio
 
 
+# Pushes current task to the back of the event loop
+async def defer():
+    await asyncio.sleep(0)
+
+
 class SubscriptionService:
     def __init__(self, ctx: zmq.Context, timeout=100, linger=2000):
         # Socket constants
@@ -61,8 +66,8 @@ class SubscriptionService:
 
 
 class RequestReplyService:
-    def __init__(self, address: str, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.address = address
+    def __init__(self, ip: str, port: int, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        self.address = 'tcp://{}:{}'.format(ip, port)
         self.wallet = wallet
         self.ctx = ctx
 

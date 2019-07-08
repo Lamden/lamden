@@ -123,7 +123,7 @@ class TestNetworkService(TestCase):
         response = response.decode()
         response = json.loads(response)
 
-        self.assertEqual(response.get(w1.verifying_key().hex()), '127.0.0.1')
+        self.assertEqual(response.get(w1.verifying_key().hex()), p1.peer_service_address)
 
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
@@ -426,3 +426,61 @@ class TestNetworkService(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
+
+    def test_find_node_returns_self_if_asked_on_peer_address_and_self_is_the_value(self):
+        # Create Network service
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        async def get():
+            return await p1.find_node(p1.peer_service_address, w1.verifying_key().hex())
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(get())
+
+        self.assertEqual(res.get(w1.verifying_key().hex()), p1.peer_service_address)
+
+    def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer(self):
+        # Create Network service
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        w2 = Wallet()
+        p1.table.peers[w2.verifying_key().hex()] = '9.9.9.9'
+
+        async def get():
+            return await p1.find_node(p1.peer_service_address, w2.verifying_key().hex())
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(get())
+
+        self.assertEqual(res.get(w2.verifying_key().hex()), '9.9.9.9')
+
+    def test_find_node_requests_from_others_and_returns_key_if_they_have_it(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        w2 = Wallet()
+        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+
+        async def get():
+            return await p1.find_node('tcp://127.0.0.1:10003', w2.verifying_key().hex())
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+
+            p2.peer_service.start(),
+            get(),
+            stop(p1, 0.3),
+            stop(p2, 0.3),
+
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[2].get(w2.verifying_key().hex()), p2.peer_service_address)
