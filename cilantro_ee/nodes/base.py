@@ -43,7 +43,7 @@ class NodeBase(Context):
         quorum = self.start_node()
 
         self.log.info("Starting overlay service")
-        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=quorum)
+        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
         self.start()
 
     def start(self):

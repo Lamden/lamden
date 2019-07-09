@@ -109,15 +109,16 @@ class Network(object):
 
         self.routing_table = RoutingTable(self.node)
 
-        discovery_address = 'tcp://*:{}'.format(DISCOVERY_PORT)
-        self.log.info('Setting up Discovery Server on {}.'.format(discovery_address))
-        self.discovery_server = DiscoveryServer(address=discovery_address,
+        self.log.info('Setting up Discovery Server.')
+        self.discovery_server = DiscoveryServer(ip='*',
+                                                port=DISCOVERY_PORT,
                                                 wallet=self.wallet,
                                                 pepper=PEPPER.encode(),
                                                 ctx=self.ctx)
 
         self.tasks = [
-            self.process_requests()
+            self.process_requests(),
+            self.bootup()
         ]
         if not self._use_ee_bootup:
             if self.vk in PhoneBook.masternodes:
@@ -145,6 +146,7 @@ class Network(object):
 
     # open source (public) version of booting up
     async def _bootup_os(self):
+        self.log.success('BOOTUP TIME OS')
         ip_list = conf.BOOTNODES
 
         # Remove our own IP so that we don't respond to ourselves.

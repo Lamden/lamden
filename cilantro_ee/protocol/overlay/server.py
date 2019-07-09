@@ -8,8 +8,8 @@ from cilantro_ee.protocol.overlay.kademlia.event import Event
 from cilantro_ee.protocol.overlay.kademlia.network import Network
 from collections import deque
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
-from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
+# from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
+# from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -41,15 +41,58 @@ def async_reply(fn):
 
     return _reply
 
+# import json
+# class NewOverlayServer(OverlayInterface):
+#     def __init__(self, sk, ip: str, port: int, ctx: zmq.Context, bootnodes: list, initial_mn_quorum: int, initial_del_quorum: int):
+#         self.wallet = Wallet(seed=bytes.fromhex(sk))
+#         self.ctx = ctx
+#
+#         self.network = NewNetwork(wallet=self.wallet,
+#                                   ctx=self.ctx,
+#                                   peer_service_port=DHT_PORT,
+#                                   event_publisher_port=EVENT_PORT,
+#                                   initial_mn_quorum=initial_mn_quorum,
+#                                   initial_del_quorum=initial_del_quorum,
+#                                   bootnodes=bootnodes)
+#
+#         self.command_address = 'tcp://{}:{}'.format(ip, port)
+#         self.command_socket = self.ctx.socket(zmq.REQ)
+#         self.command_socket.bind(self.command_address)
+#         self.command_listener_running = False
+#
+#     async def start(self):
+#         await self.network.start()
+#
+#     async def command_listener(self):
+#         self.command_listener_running = True
+#         while self.command_listener_running:
+#             msg = await self.command_socket.recv()
+#             msg = json.loads(msg.decode())
+#
+#             response = self.handle_msg(msg)
+#             return response
+#
+#     def handle_msg(self, msg):
+#         command, args = msg
+#         response = {}
+#
+#         if command == 'status':
+#             if self.network.ready:
+#                 response = {
+#                         'event': 'service_status',
+#                         'status': 'ready'
+#                     }
+#             else:
+#                 response = {
+#                     'event': 'service_status',
+#                     'status': 'not_ready'
+#                 }
+#
+#         response = json.dumps(response).encode()
+#         return response
 
-class NewOverlayServer(OverlayInterface):
-    def __init__(self, sk, ctx: zmq.Context, initial_mn_quorum: int, initial_del_quorum: int):
-        self.wallet = Wallet(seed=bytes.fromhex(sk))
-        self.ctx = ctx
 
-        self.network = NewNetwork(wallet=self.wallet, ctx=self.ctx, peer_service_port=DHT_PORT, event_publisher_port=EVENT_PORT)
-
-class OverlayServer(OverlayInterface):
+class OverlayServer():
     def __init__(self, sk, ctx, quorum):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
@@ -76,8 +119,8 @@ class OverlayServer(OverlayInterface):
 
     def start(self):
         self.network.start()
-        if self.quorum == 0:
-            self.network.bootup()
+        self.log.success('BOOTUP TIME')
+        #self.network.bootup()
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
@@ -111,6 +154,7 @@ class OverlayServer(OverlayInterface):
     def is_valid_vk(self, vk):
         return vk in PhoneBook.all
 
+    # seems to be a reimplementation of peer services
     @async_reply
     async def get_ip_from_vk(self, event_id, vk):
         # TODO perhaps return an event instead of throwing an error in production
@@ -135,65 +179,6 @@ class OverlayServer(OverlayInterface):
             'ip': ip,
             'vk': vk
         }
-
-    @async_reply
-    async def get_ip_and_handshake(self, event_id, vk, is_first_time):
-
-        if not self.is_valid_vk(vk):
-            # raghu todo - create event enum / class that does this
-            return {
-                'event': 'invalid_vk',
-                'event_id': event_id,
-                'vk': vk
-            }
-
-        ip, is_auth = await self.network.find_ip_and_authenticate(event_id, vk, is_first_time)
-
-        if is_auth:
-            event = 'authorized_ip'
-        else:
-            event = 'unauthorized_ip' if ip else 'not_found'
-
-        return {
-            'event': event,
-            'event_id': event_id,
-            'ip': ip,
-            'vk': vk
-        }
-
-    @async_reply
-    async def handshake_with_ip(self, event_id, vk, ip, is_first_time):
-        is_auth = await self.network.ping_ip(event_id, vk, ip, is_first_time)
-        return {
-            'event': 'authorized_ip' if is_auth else 'unauthorized_ip',
-            'event_id': event_id,
-            'ip': ip,
-            'vk': vk
-        }
-
-    @async_reply
-    async def ping_ip(self, event_id, vk, ip, is_first_time):
-        status = await self.network.ping_ip(event_id, vk, ip, is_first_time)
-        return {
-            'event': 'node_online' if status else 'node_offline',
-            'event_id': event_id,
-            'ip': ip
-        }
-
-
-    @reply
-    def get_service_status(self, event_id):
-        if self.network.is_connected:
-            return {
-                'event': 'service_status',
-                'status': 'ready'
-            }
-        else:
-            return {
-                'event': 'service_status',
-                'status': 'not_ready'
-            }
-
 
     def teardown(self):
         try:

@@ -6,7 +6,11 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.overlay.kademlia.event import Event
 from collections import deque
 
+from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
 
+# Sends the following multipart message
+# [Function name encoded and event ID encoded], [Args encoded if it can be encoded], [KWards encoded if they can be]
+# Returns event ID.
 def command(fn):
     def _command(self, *args, **kwargs):
         event_id = uuid.uuid4().hex
@@ -19,18 +23,26 @@ def command(fn):
     return _command
 
 
-class OverlayClient(OverlayInterface):
+class NewOverlayClient():
+    def __init__(self):
+        self.network = NewNetwork()
+
+class OverlayClient():
     def __init__(self, reply_handler, event_handler, ctx, name=None):
         self.name = name or str(os.getpid())
+
         self.log = get_logger('Overlay.Client.{}'.format(name))
         self.loop = asyncio.get_event_loop()
         self.ctx = ctx
+
         self.cmd_sock = self.ctx.socket(socket_type=zmq.DEALER)
         self.cmd_sock.setsockopt(zmq.IDENTITY, self.name.encode())
         self.cmd_sock.connect(CMD_URL)
+
         self.evt_sock = self.ctx.socket(socket_type=zmq.SUB)
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
         self.evt_sock.connect(EVENT_URL)
+
         self.tasks = [
             self.reply_listener(reply_handler),
             self.event_listener(event_handler),
@@ -38,22 +50,12 @@ class OverlayClient(OverlayInterface):
 
     @command
     def ready(self, *args, **kwargs):
+        # b'ready'
         pass
 
     @command
     def get_ip_from_vk(self, *args, **kwargs):
-        pass
-
-    @command
-    def get_ip_and_handshake(self, *args, **kwargs):
-        pass
-
-    @command
-    def handshake_with_ip(self, *args, **kwargs):
-        pass
-
-    @command
-    def ping_ip(self, *args, **kwargs):
+        # b'get_ip_from_vk
         pass
 
     async def event_listener(self, event_handler):
@@ -74,3 +76,5 @@ class OverlayClient(OverlayInterface):
     def teardown(self):
         self.cmd_sock.close()
         self.evt_sock.close()
+
+

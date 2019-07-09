@@ -59,7 +59,7 @@ class KTable:
 
 class PeerServer(services.RequestReplyService):
     def __init__(self, ip: str, port: int, event_port: int, table: KTable, wallet: Wallet, ctx=zmq.Context,
-                 linger=2000, poll_timeout=500):
+                 linger=2000, poll_timeout=500, pepper=PEPPER.encode()):
 
         super().__init__(ip=ip,
                          port=port,
@@ -72,10 +72,14 @@ class PeerServer(services.RequestReplyService):
 
         self.event_address = 'tcp://*:{}'.format(event_port)
         self.event_service = services.SubscriptionService(ctx=self.ctx)
+
         self.event_publisher = self.ctx.socket(zmq.PUB)
         self.event_publisher.bind(self.event_address)
 
         self.event_queue_loop_running = False
+
+        self.pepper = pepper
+        self.ping_response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
     def handle_msg(self, msg):
         msg = msg.decode()
@@ -89,6 +93,8 @@ class PeerServer(services.RequestReplyService):
             vk, ip, port = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip, port))
             return None
+        if command == 'ping':
+            return self.ping_response
 
     async def handle_join(self, vk, ip, port):
         result = self.table.find(vk)
@@ -192,6 +198,8 @@ class Network:
             self.bootnodes
         )
 
+        self.ready = True
+
     async def discover_bootnodes(self):
         responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),
                                                    ctx=self.ctx, timeout=100)
@@ -208,7 +216,8 @@ class Network:
 
         results = None
 
-        while (masternode_quorum_required > 0 or delegate_quorum_required > 0) :
+        # Crawl while there are still nodes needed in our quorum
+        while masternode_quorum_required > 0 or delegate_quorum_required > 0 :
             # Create task lists
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]
