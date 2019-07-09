@@ -175,6 +175,12 @@ class Network:
                                        event_port=event_publisher_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
+        self.discovery_server = discovery.DiscoveryServer(ip='*',
+                                                          port=DISCOVERY_PORT,
+                                                          wallet=self.wallet,
+                                                          pepper=PEPPER.encode(),
+                                                          ctx=self.ctx)
+
         # Quorum Constants
         self.initial_mn_quorum = initial_mn_quorum
         self.initial_del_quorum = initial_del_quorum
@@ -182,9 +188,13 @@ class Network:
         self.del_to_find = del_to_find
         self.ready = False
 
+        self.tasks = [self.peer_service.start()]
+        if self.wallet.verifying_key().hex() in self.mn_to_find:
+            self.tasks.append(self.discovery_server.serve())
+
     async def start(self):
-        # Start the Peer Service
-        asyncio.ensure_future(self.peer_service.start())
+        # Start the Peer Service and Discovery service
+        asyncio.ensure_future(asyncio.gather(*self.tasks))
 
         # Discover our bootnodes
         await self.discover_bootnodes()
@@ -241,6 +251,10 @@ class Network:
             delegate_quorum_required = self.updated_peers_and_crawl(delegates_got,
                                                                     delegates_to_find,
                                                                     delegate_quorum_required)
+
+        # At this point, start the discovery server if it's not already running because you are a masternode.
+        if not self.discovery_server.running:
+            asyncio.ensure_future(self.discovery_server.serve())
 
         return results
 
