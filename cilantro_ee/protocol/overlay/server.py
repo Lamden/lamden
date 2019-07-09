@@ -8,6 +8,8 @@ from cilantro_ee.protocol.overlay.kademlia.event import Event
 from cilantro_ee.protocol.overlay.kademlia.network import Network
 from collections import deque
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
+from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -39,6 +41,13 @@ def async_reply(fn):
 
     return _reply
 
+
+class NewOverlayServer(OverlayInterface):
+    def __init__(self, sk, ctx: zmq.Context, initial_mn_quorum: int, initial_del_quorum: int):
+        self.wallet = Wallet(seed=bytes.fromhex(sk))
+        self.ctx = ctx
+
+        self.network = NewNetwork(wallet=self.wallet, ctx=self.ctx, peer_service_port=DHT_PORT, event_publisher_port=EVENT_PORT)
 
 class OverlayServer(OverlayInterface):
     def __init__(self, sk, ctx, quorum):

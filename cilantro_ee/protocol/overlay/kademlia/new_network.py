@@ -147,14 +147,16 @@ class PeerServer(services.RequestReplyService):
 
 class Network:
     def __init__(self, wallet, peer_service_port: int=DHT_PORT, event_publisher_port: int=EVENT_PORT,
-                 ctx=zmq.asyncio.Context(), ip=conf.HOST_IP,
-                 bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST):
+                 ctx=zmq.asyncio.Context(), ip=conf.HOST_IP, bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
+                 initial_mn_quorum=1, initial_del_quorum=1, mn_to_find=[], del_to_find=[]):
 
+        # General Instance Variables
         self.wallet = wallet
         self.ctx = ctx
 
         self.bootnodes = bootnodes
 
+        # Peer Service Constants
         self.peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
 
         data = {
@@ -167,6 +169,29 @@ class Network:
                                        event_port=event_publisher_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
+        # Quorum Constants
+        self.initial_mn_quorum = initial_mn_quorum
+        self.initial_del_quorum = initial_del_quorum
+        self.mn_to_find = mn_to_find
+        self.del_to_find = del_to_find
+        self.ready = False
+
+    async def start(self):
+        # Start the Peer Service
+        asyncio.ensure_future(self.peer_service.start())
+
+        # Discover our bootnodes
+        await self.discover_bootnodes()
+
+        # Wait for the quorum to resolve
+        await self.wait_for_quorum(
+            self.initial_mn_quorum,
+            self.initial_del_quorum,
+            self.mn_to_find,
+            self.del_to_find,
+            self.bootnodes
+        )
+
     async def discover_bootnodes(self):
         responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),
                                                    ctx=self.ctx, timeout=100)
@@ -178,11 +203,12 @@ class Network:
                                     delegate_quorum_required: int,
                                     masternodes_to_find: list,
                                     delegates_to_find: list,
-                                    initial_peers: list):
+                                    initial_peers: list,
+                                    ):
 
         results = None
 
-        while masternode_quorum_required > 0 or delegate_quorum_required > 0:
+        while (masternode_quorum_required > 0 or delegate_quorum_required > 0) :
             # Create task lists
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]
@@ -194,8 +220,6 @@ class Network:
             crawl = asyncio.gather(*master_crawl, *delegate_crawl)
 
             results = await crawl
-
-            print(results)
 
             # Split the result list
             masters_got = results[:len(masternodes_to_find)]
@@ -240,6 +264,8 @@ class Network:
             find_message = json.dumps(find_message).encode()
 
             response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+            if response is None:
+                return None
             response = json.loads(response.decode())
 
         if response.get(vk_to_find) is not None:

@@ -9,7 +9,7 @@ import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
 from time import sleep
-
+import random
 import json
 
 TIME_UNIT = 0.01
@@ -657,3 +657,56 @@ class TestNetworkService(TestCase):
         self.assertIn(mnw2.verifying_key().hex(), mn1.table.peers)
         self.assertIn(dw1.verifying_key().hex(), mn1.table.peers)
         self.assertIn(dw2.verifying_key().hex(), mn1.table.peers)
+
+    def test_wait_for_quorum_resolves_when_late_joiner(self):
+        # Setup nodes
+        mnw1 = Wallet()
+        mn1 = Network(wallet=mnw1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        mnw2 = Wallet()
+        mn2 = Network(wallet=mnw2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+
+        dw1 = Wallet()
+        d1 = Network(wallet=dw1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10005, event_publisher_port=10006)
+
+        dw2 = Wallet()
+        d2 = Network(wallet=dw2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10007, event_publisher_port=10008)
+
+        # Add various info to each so that a crawl is successful
+        mn2.table.peers[dw1.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
+        d1.table.peers[dw2.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
+
+        async def get():
+            return await mn1.wait_for_quorum(2, 2, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+                                             [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+                                             initial_peers=['tcp://127.0.0.1:10003'])
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        async def start_late(n: Network, s):
+            await asyncio.sleep(s)
+            await n.peer_service.start()
+
+        timeout = 0.5
+
+        tasks = asyncio.gather(
+            mn1.peer_service.start(),
+            start_late(mn2, 0.1),
+            start_late(d1, 0.2),
+            start_late(d2, 0.3),
+            get(),
+            stop(mn1, timeout),
+            stop(mn2, timeout),
+            stop(d1, timeout),
+            stop(d1, timeout),
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertIn(mnw2.verifying_key().hex(), mn1.table.peers)
+        self.assertIn(dw1.verifying_key().hex(), mn1.table.peers)
+        self.assertIn(dw2.verifying_key().hex(), mn1.table.peers)
+
