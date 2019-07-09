@@ -5,7 +5,7 @@ from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.overlay.kademlia.event import Event
 from collections import deque
-
+from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
 
 # Sends the following multipart message
@@ -24,8 +24,15 @@ def command(fn):
 
 
 class NewOverlayClient():
-    def __init__(self):
-        self.network = NewNetwork()
+    def __init__(self, ip: str, port: int, event_port: int, ctx):
+        self.ctx = ctx
+        self.request_socket = self.ctx.socket(zmq.REQ)
+
+        # Set up subscriber
+        self.subscriber = services.SubscriptionService(self.ctx)
+        self.subscriber.add_subscription(ip=ip, port=event_port)
+
+
 
 class OverlayClient():
     def __init__(self, reply_handler, event_handler, ctx, name=None):
@@ -56,21 +63,22 @@ class OverlayClient():
     @command
     def get_ip_from_vk(self, *args, **kwargs):
         # b'get_ip_from_vk
+        self.log.success('GET IP FROM VK SHIT: {} {}'.format(args, kwargs))
         pass
 
     async def event_listener(self, event_handler):
-        self.log.info('Listening for overlay events over {}'.format(EVENT_URL))
+        self.log.success('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
             msg = await self.evt_sock.recv_json()
-            self.log.spam("OverlayClient received event {}".format(msg))
+            self.log.success("OverlayClient received event {}".format(msg))
             event_handler(msg)
 
     async def reply_listener(self, reply_handler):
-        self.log.debugv("Listening for overlay replies over {}".format(CMD_URL))
+        self.log.success("Listening for overlay replies over {}".format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
             event = json.loads(msg[-1])
-            self.log.spam("OverlayClient received reply {} and event {}".format(msg, event))
+            self.log.success("OverlayClient received reply {} and event {}".format(msg, event))
             reply_handler(event)
 
     def teardown(self):

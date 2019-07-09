@@ -217,6 +217,9 @@ class Network:
         for ip, vk in responses.items():
             self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
+        if not self.discovery_server.running:
+            asyncio.ensure_future(self.discovery_server.serve())
+
     async def wait_for_quorum(self, masternode_quorum_required: int,
                                     delegate_quorum_required: int,
                                     masternodes_to_find: list,
@@ -253,8 +256,6 @@ class Network:
                                                                     delegate_quorum_required)
 
         # At this point, start the discovery server if it's not already running because you are a masternode.
-        if not self.discovery_server.running:
-            asyncio.ensure_future(self.discovery_server.serve())
 
         return results
 

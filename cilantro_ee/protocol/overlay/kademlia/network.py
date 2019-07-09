@@ -29,7 +29,6 @@ from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 
-
 class MalformedMessage(Exception):
     """
     Message does not contain what is expected.

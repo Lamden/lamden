@@ -8,9 +8,10 @@ from cilantro_ee.protocol.overlay.kademlia.event import Event
 from cilantro_ee.protocol.overlay.kademlia.network import Network
 from collections import deque
 from cilantro_ee.protocol.wallet import Wallet
-# from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
-# from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
-
+from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
+from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
+from cilantro_ee.constants import conf
+from cilantro_ee.storage.vkbook import PhoneBook
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
         id_frame = args[0]
@@ -113,9 +114,20 @@ class OverlayServer():
         self.cmd_sock.bind(CMD_URL)
 
         # pass both evt_sock and cmd_sock ?
-        self.network = Network(wallet=self.wallet, ctx=self.ctx)
+        #self.network = Network(wallet=self.wallet, ctx=self.ctx)
 
-        self.network.tasks.append(self.command_listener())
+        #self.network.tasks.append(self.command_listener())
+
+        self.network = NewNetwork(wallet=self.wallet,
+                                  ctx=self.ctx,
+                                  ip='127.0.0.1',
+                                  peer_service_port=DHT_PORT,
+                                  event_publisher_port=EVENT_PORT,
+                                  bootnodes=conf.BOOTNODES,
+                                  initial_mn_quorum=PhoneBook.masternode_quorum_min,
+                                  initial_del_quorum=PhoneBook.delegate_quorum_min,
+                                  mn_to_find=PhoneBook.masternodes,
+                                  del_to_find=PhoneBook.delegates)
 
     def start(self):
         self.network.start()
@@ -136,7 +148,7 @@ class OverlayServer():
                 # self.network.func(msg[0], *data)
             else:
                 raise Exception("Unsupported API call {}".format(func))
-           
+
 
     @no_reply
     async def ready(self, *args, **kwargs):
@@ -166,7 +178,7 @@ class OverlayServer():
                 'vk': vk
             }
 
-        ip = await self.network.find_ip(event_id, vk)
+        ip = await self.network.find_ip(event_id, vk)  # 0.0.0.0 NO PORT
         if not ip:
             return {
                 'event': 'not_found',
