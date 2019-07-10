@@ -1,7 +1,10 @@
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.logger import get_logger
 import zmq
 import asyncio
 
+
+log = get_logger("BaseServices")
 
 # Pushes current task to the back of the event loop
 async def defer():
@@ -109,17 +112,13 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(address: str, msg: bytes, ctx:zmq.Context, socket: zmq.Socket=None, timeout=500, linger=2000):
+async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
     try:
         # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
-        using_existing_socket = False
-        if socket is None:
-            socket = ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, linger)
+        socket = ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, linger)
 
-            socket.connect(address)
-        else:
-            using_existing_socket = True
+        socket.connect(address)
 
         await socket.send(msg)
 
@@ -127,14 +126,15 @@ async def get(address: str, msg: bytes, ctx:zmq.Context, socket: zmq.Socket=None
         if event:
             response = await socket.recv()
 
-            # Socket will not be closed if it was provided.
-            if not using_existing_socket:
-                socket.close()
+            socket.close()
 
             return response
         else:
+            socket.close()
             return None
     except Exception as e:
+        log.critical('Get exception thrown: {}'.format(str(e)))
+        socket.close()
         return None
 
 

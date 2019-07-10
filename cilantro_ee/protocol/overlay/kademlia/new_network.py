@@ -5,7 +5,7 @@ from cilantro_ee.protocol.overlay.kademlia import discovery
 from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.wallet import Wallet
 
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.logger import get_logger
 
 from functools import partial
 import asyncio
@@ -86,21 +86,24 @@ class PeerServer(services.RequestReplyService):
         command, args = json.loads(msg)
 
         if command == 'find':
+            log.info('find command issued')
             response = self.table.find(args)
             response = json.dumps(response).encode()
             return response
         if command == 'join':
+            log.info('join command issued')
             vk, ip, port = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip, port))
             return None
         if command == 'ping':
+            log.info('ping command issued')
             return self.ping_response
 
     async def handle_join(self, vk, ip, port):
         result = self.table.find(vk)
 
         address = 'tcp://{}:{}'.format(ip, port)
-
+        log.info('a node is trying to join... proving they are online')
         if vk not in result or result[vk] != ip:
             # Ping discovery server
             _, responded_vk = await discovery.ping(address, pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
@@ -211,13 +214,21 @@ class Network:
         self.ready = True
 
     async def discover_bootnodes(self):
-        responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),
-                                                   ctx=self.ctx, timeout=100)
+        log.info('DISCOVERING BOOTNODES')
 
+        addresses = ['tcp://{}:{}'.format(bootnode, DISCOVERY_PORT) for bootnode in self.bootnodes]
+
+        log.info(addresses)
+
+        responses = await discovery.discover_nodes(addresses, pepper=PEPPER.encode(),
+                                                   ctx=self.ctx, timeout=500)
+
+        log.info(responses)
         for ip, vk in responses.items():
             self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
         if not self.discovery_server.running:
+            log.info('DISCOVERY STARTING')
             asyncio.ensure_future(self.discovery_server.serve())
 
     async def wait_for_quorum(self, masternode_quorum_required: int,
@@ -230,7 +241,7 @@ class Network:
         results = None
 
         # Crawl while there are still nodes needed in our quorum
-        while masternode_quorum_required > 0 or delegate_quorum_required > 0 :
+        while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]

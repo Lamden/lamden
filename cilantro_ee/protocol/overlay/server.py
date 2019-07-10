@@ -12,6 +12,8 @@ from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetw
 from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
+
+
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
         id_frame = args[0]
@@ -98,6 +100,7 @@ class OverlayServer():
         self.log = get_logger('Overlay.Server')
         self.sk = sk
         self.wallet = Wallet(seed=sk)
+        self.loop = asyncio.get_event_loop()
 
         Keys.setup(sk_hex=self.sk)
 
@@ -130,7 +133,9 @@ class OverlayServer():
                                   del_to_find=PhoneBook.delegates)
 
     def start(self):
-        self.network.start()
+        self.loop.run_until_complete(asyncio.ensure_future(
+            self.network.start()
+        ))
         self.log.success('BOOTUP TIME')
         #self.network.bootup()
 
