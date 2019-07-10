@@ -171,7 +171,7 @@ class Network:
         self.peer_service_address = 'tcp://{}:{}'.format(ip, peer_service_port)
 
         data = {
-            self.wallet.verifying_key().hex(): self.peer_service_address
+            self.wallet.verifying_key().hex(): ip
         }
         self.table = KTable(data=data)
 
@@ -314,6 +314,7 @@ class Network:
         # Search locally if this is the case
         if client_address == self.peer_service_address or vk_to_find == self.wallet.verifying_key().hex():
             log.info('{} is us. returning from our own table'.format(client_address))
+            log.info(self.table.peers)
             response = self.table.find(vk_to_find)
 
         # Otherwise, send out a network request
@@ -328,10 +329,10 @@ class Network:
                 log.info('no response from {}...'.format(client_address))
                 return None
 
-            log.info('Response : {}'.format(response))
             response = json.loads(response.decode())
 
         if response.get(vk_to_find) is not None:
+            log.info('Response : {}'.format(response))
             return response
 
         if retries <= 1:
@@ -340,4 +341,5 @@ class Network:
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
             address = 'tcp://{}:{}'.format(ip, self.peer_service_port)
+            log.info('Recursion: {}'.format(address))
             return await self.find_node(address, vk_to_find, retries=retries-1)

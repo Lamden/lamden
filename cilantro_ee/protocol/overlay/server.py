@@ -116,6 +116,8 @@ class OverlayServer():
         self.cmd_sock = self.ctx.socket(zmq.ROUTER)
         self.cmd_sock.bind(CMD_URL)
 
+        self.network_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT)
+
         # pass both evt_sock and cmd_sock ?
         #self.network = Network(wallet=self.wallet, ctx=self.ctx)
 
@@ -183,7 +185,8 @@ class OverlayServer():
                 'vk': vk
             }
 
-        ip = await self.network.find_ip(event_id, vk)  # 0.0.0.0 NO PORT
+        response = await self.network.find_node(self.network_address, vk)  # 0.0.0.0 NO PORT
+        ip = response.get(vk)
         if not ip:
             return {
                 'event': 'not_found',
