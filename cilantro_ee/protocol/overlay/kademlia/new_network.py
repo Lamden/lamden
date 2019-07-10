@@ -15,6 +15,27 @@ from cilantro_ee.logger.base import get_logger
 
 import random
 
+TCP = 0
+INPROC = 1
+
+PROTOCOL_STRINGS = ['tcp://', 'inproc://']
+
+
+class SocketStruct:
+    def __init__(self, protocol: int, id: str, port: int):
+        self.protocol = protocol
+        self.id = id
+
+        if protocol == INPROC:
+            port = None
+        self.port = port
+
+    def zmq_url(self):
+        if self.port is None:
+            return '{}{}'.format(PROTOCOL_STRINGS[self.protocol], self.id)
+        else:
+            return '{}{}:{}'.format(PROTOCOL_STRINGS[self.protocol], self.id, self.protocol)
+
 log = get_logger('NetworkService')
 
 
@@ -77,9 +98,6 @@ class PeerServer(services.RequestReplyService):
         self.event_publisher.bind(self.event_address)
 
         self.event_queue_loop_running = False
-
-        self.pepper = pepper
-        self.ping_response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
     def handle_msg(self, msg):
         log.info('got msg on peer service {}'.format(msg))
@@ -194,12 +212,17 @@ class Network:
         self.del_to_find = del_to_find
         self.ready = False
 
-        self.tasks = [self.peer_service.start()]
-        if self.wallet.verifying_key().hex() in self.mn_to_find:
-            self.tasks.append(self.discovery_server.serve())
-
     async def start(self):
         # Start the Peer Service and Discovery service
+        asyncio.ensure_future(
+            self.peer_service.start()
+        )
+
+        if self.wallet.verifying_key().hex() in self.mn_to_find:
+            asyncio.ensure_future(
+                self.discovery_server.serve()
+            )
+
         asyncio.ensure_future(asyncio.gather(*self.tasks))
 
         # Discover our bootnodes
@@ -218,7 +241,18 @@ class Network:
             addresses
         )
 
+        log.success('Network is ready.')
+
         self.ready = True
+
+        ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}).encode()
+
+        await self.peer_service.event_publisher.send(ready_msg)
+
+        log.success('Sent ready signal.')
+
+        while True:
+            await asyncio.sleep(0)
 
     async def discover_bootnodes(self):
         log.info('DISCOVERING BOOTNODES')

@@ -139,7 +139,7 @@ class OverlayServer():
             self.network.start()
         ))
         self.log.success('BOOTUP TIME')
-        #self.network.bootup()
+
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))

@@ -70,10 +70,10 @@ class TestNetworkService(TestCase):
             d2.serve(),
             d3.serve(),
             d4.serve(),
-            stop_server(d1, 0.3),
-            stop_server(d2, 0.3),
-            stop_server(d3, 0.3),
-            stop_server(d4, 0.3),
+            stop_server(d1, 1),
+            stop_server(d2, 1),
+            stop_server(d3, 1),
+            stop_server(d4, 1),
             n.discover_bootnodes()
         )
 
@@ -81,10 +81,10 @@ class TestNetworkService(TestCase):
         loop.run_until_complete(tasks)
 
         expected_dict = {
-            w1.verifying_key().hex(): 'tcp://127.0.0.1:10999',
-            w2.verifying_key().hex(): 'tcp://127.0.0.1:11999',
-            w3.verifying_key().hex(): 'tcp://127.0.0.1:12999',
-            w4.verifying_key().hex(): 'tcp://127.0.0.1:13999'
+            w1.verifying_key().hex(): '127.0.0.1',
+            w2.verifying_key().hex(): '127.0.0.1',
+            w3.verifying_key().hex(): '127.0.0.1',
+            w4.verifying_key().hex(): '127.0.0.1'
         }
 
         self.assertDictEqual(n.table.peers, expected_dict)
@@ -438,7 +438,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(get())
 
-        self.assertEqual(res.get(w1.verifying_key().hex()), p1.peer_service_address)
+        self.assertEqual(res.get(w1.verifying_key().hex()), '127.0.0.1')
 
     def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer(self):
         # Create Network service
@@ -483,7 +483,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        self.assertEqual(res[2].get(w2.verifying_key().hex()), p2.peer_service_address)
+        self.assertEqual(res[2].get(w2.verifying_key().hex()), '127.0.0.1')
 
     def test_find_node_fails_if_cant_find_and_retries_are_up(self):
         w1 = Wallet()
