@@ -13,6 +13,9 @@ class Protocols:
     ICP = 2
     PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
 
+# syntactic sugar yum yum
+def socket(s: str):
+    return SocketStruct.from_string(s)
 
 class SocketStruct:
     def __init__(self, protocol: int, id: str, port: int=0):

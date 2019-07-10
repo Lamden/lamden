@@ -4,6 +4,7 @@ from cilantro_ee.protocol.overlay.kademlia.discovery import *
 import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.protocol.comm.services import socket
 from time import sleep
 
 TIME_UNIT = 0.01
@@ -34,10 +35,10 @@ class TestDiscoveryServer(TestCase):
         self.loop.close()
 
     def test_init(self):
-        DiscoveryServer('127.0.0.1', 10999, Wallet(), b'blah')
+        DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
 
     def test_run_server(self):
-        d = DiscoveryServer('127.0.0.1', 10999, Wallet(), b'blah')
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
 
         tasks = asyncio.gather(timeout_bomb(), d.serve())
         run_silent_loop(tasks)
@@ -47,7 +48,7 @@ class TestDiscoveryServer(TestCase):
     def test_send_message_to_discovery(self):
         address = 'tcp://127.0.0.1:10999'
 
-        d = DiscoveryServer('127.0.0.1', 10999, Wallet(), b'blah', ctx=self.ctx)
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -89,7 +90,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer('127.0.0.1', 10999, wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -110,7 +111,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer('127.0.0.1', 10999, wallet, b'WRONG_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'WRONG_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -130,7 +131,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer('127.0.0.1', 10999, wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -157,19 +158,16 @@ class TestDiscoveryServer(TestCase):
                                 )
 
     def test_one_vk_returned_if_one_ip_is_online(self):
-        real_address = 'tcp://127.0.0.1:10999'
-        fake_address = 'tcp://127.0.0.1:20999'
-
         wallet = Wallet()
 
-        d = DiscoveryServer('127.0.0.1', 10999, wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
-        success_task = ping(ip=real_address,
+        success_task = ping(socket('tcp://127.0.0.1:10999'),
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
                             timeout=300)
 
-        failure_task = ping(ip=fake_address,
+        failure_task = ping(socket('tcp://127.0.0.1:20999'),
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
                             timeout=300)
@@ -192,11 +190,11 @@ class TestDiscoveryServer(TestCase):
         self.assertIsNone(vk2)
 
     def test_discover_nodes_found_one(self):
-        address = 'tcp://127.0.0.1:10999'
+        address = socket('tcp://127.0.0.1:10999')
 
         wallet = Wallet()
 
-        d = DiscoveryServer('127.0.0.1', 10999, wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(address, wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
         async def stop_server(timeout):
             await asyncio.sleep(timeout)
@@ -213,17 +211,17 @@ class TestDiscoveryServer(TestCase):
 
         r = results[0]
 
-        self.assertEqual(r[address], wallet.verifying_key().hex())
+        self.assertEqual(r[str(address)], wallet.verifying_key().hex())
 
     def test_discover_nodes_found_three(self):
-        addresses = ['tcp://127.0.0.1:10999', 'tcp://127.0.0.1:11999', 'tcp://127.0.0.1:12999']
+        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 0.3
 
-        servers = [DiscoveryServer('127.0.0.1', 10999, wallets[0], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 11999, wallets[1], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 12999, wallets[2], pepper, ctx=self.ctx)]
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=self.ctx)]
 
         async def stop_server(s, timeout):
             await asyncio.sleep(timeout)
@@ -244,20 +242,20 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertEqual(r[addresses[0]], wallets[0].verifying_key().hex())
-        self.assertEqual(r[addresses[1]], wallets[1].verifying_key().hex())
-        self.assertEqual(r[addresses[2]], wallets[2].verifying_key().hex())
+        self.assertEqual(r[str(addresses[0])], wallets[0].verifying_key().hex())
+        self.assertEqual(r[str(addresses[1])], wallets[1].verifying_key().hex())
+        self.assertEqual(r[str(addresses[2])], wallets[2].verifying_key().hex())
 
     def test_discover_nodes_found_two_out_of_three(self):
-        addresses = ['tcp://127.0.0.1:10999', 'tcp://127.0.0.1:11999', 'tcp://127.0.0.1:12999']
-        addresses_wrong = ['tcp://127.0.0.1:10999', 'tcp://127.0.0.1:11999', 'tcp://127.0.0.1:13999']
+        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
+        addresses_wrong = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:13999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 1
 
-        servers = [DiscoveryServer('127.0.0.1', 10999, wallets[0], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 11999, wallets[1], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 12999, wallets[2], pepper, ctx=self.ctx)]
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=self.ctx)]
 
         async def stop_server(s, timeout):
             await asyncio.sleep(timeout)
@@ -278,20 +276,22 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertEqual(r[addresses[0]], wallets[0].verifying_key().hex())
-        self.assertEqual(r[addresses[1]], wallets[1].verifying_key().hex())
-        self.assertIsNone(r.get(addresses[2]))
+        print(r)
+
+        self.assertEqual(r[str(addresses[0])], wallets[0].verifying_key().hex())
+        self.assertEqual(r[str(addresses[1])], wallets[1].verifying_key().hex())
+        self.assertIsNone(r.get(str(addresses[2])))
 
     def test_discover_nodes_none_found(self):
-        addresses = ['tcp://127.0.0.1:10999', 'tcp://127.0.0.1:11999', 'tcp://127.0.0.1:12999']
-        addresses_wrong = ['tcp://127.0.0.1:15999', 'tcp://127.0.0.1:14999', 'tcp://127.0.0.1:13999']
+        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
+        addresses_wrong = [socket('tcp://127.0.0.1:15999'), socket('tcp://127.0.0.1:14999'), socket('tcp://127.0.0.1:13999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 1
 
-        servers = [DiscoveryServer('127.0.0.1', 10999, wallets[0], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 11999, wallets[1], pepper, ctx=self.ctx),
-                   DiscoveryServer('127.0.0.1', 12999, wallets[2], pepper, ctx=self.ctx)]
+        servers = [DiscoveryServer(addresses[0], wallets[0], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[1], wallets[1], pepper, ctx=self.ctx),
+                   DiscoveryServer(addresses[2], wallets[2], pepper, ctx=self.ctx)]
 
         async def stop_server(s, timeout):
             await asyncio.sleep(timeout)

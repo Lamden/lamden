@@ -74,7 +74,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000,
         for res in results:
             ip, vk = res
             if vk is not None:
-                nodes_found[ip] = vk.hex()
+                nodes_found[str(ip)] = vk.hex()
                 one_found = True
 
         if not one_found:
