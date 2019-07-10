@@ -15,19 +15,34 @@ class Protocols:
 
 
 class SocketStruct:
-    def __init__(self, protocol: int, id: str, port: int):
+    def __init__(self, protocol: int, id: str, port: int=0):
         self.protocol = protocol
         self.id = id
 
         if protocol == Protocols.INPROC:
-            port = None
+            port = 0
         self.port = port
 
     def zmq_url(self):
-        if self.port is None:
+        if not self.port:
             return '{}{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id)
         else:
             return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
+
+    @classmethod
+    def from_string(cls, str):
+        for protocol_string in Protocols.PROTOCOL_STRINGS:
+            if len(str.split(protocol_string)) > 1:
+                protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
+                str = str.split(protocol_string)[1]
+
+        if protocol != Protocols.INPROC:
+            _id, port = str.split(':')
+            port = int(port)
+
+            return cls(protocol=protocol, id=_id, port=port)
+        else:
+            return cls(protocol=protocol, id=str, port=None)
 
 
 # Pushes current task to the back of the event loop

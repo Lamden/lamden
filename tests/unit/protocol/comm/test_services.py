@@ -132,3 +132,17 @@ class TestSubscriptionService(TestCase):
         s = SocketStruct(Protocols.TCP, '127.0.0.1', 1000)
 
         self.assertEqual(s.zmq_url(), 'tcp://127.0.0.1:1000')
+
+    def test_socket_serialization_properly(self):
+        s = SocketStruct.from_string('tcp://127.0.0.1:1000')
+        self.assertEqual(s.zmq_url(), 'tcp://127.0.0.1:1000')
+
+    def test_inproc_sock_serialization(self):
+        s = SocketStruct(Protocols.INPROC, '127.0.0.1', 1000)
+
+        self.assertEqual(s.zmq_url(), 'inproc://127.0.0.1')
+
+    def test_from_string_in_proc(self):
+        s = SocketStruct.from_string('inproc://blahblahblah')
+
+        self.assertEqual(s.zmq_url(), 'inproc://blahblahblah')
