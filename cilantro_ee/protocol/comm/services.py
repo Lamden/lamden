@@ -14,7 +14,7 @@ class Protocols:
     PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
 
 # syntactic sugar yum yum
-def socket(s: str):
+def _socket(s: str):
     return SocketStruct.from_string(s)
 
 class SocketStruct:
@@ -37,6 +37,8 @@ class SocketStruct:
 
     @classmethod
     def from_string(cls, str):
+        protocol = Protocols.TCP
+
         for protocol_string in Protocols.PROTOCOL_STRINGS:
             if len(str.split(protocol_string)) > 1:
                 protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
@@ -100,10 +102,19 @@ class SubscriptionService:
             await asyncio.sleep(0)
 
             for address, socket in self.subscriptions.items():
-                event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
-                if event:
-                    msg = await socket.recv()
-                    self.received.append((msg, address))
+                try:
+                    event = await socket.poll(timeout=self.timeout, flags=zmq.POLLIN)
+                    if event:
+                        msg = await socket.recv()
+                        self.received.append((msg, address))
+                except zmq.error.ZMQError as e:
+                    socket.close()
+
+                    socket = self.ctx.socket(zmq.SUB)
+                    socket.setsockopt(zmq.SUBSCRIBE, b'')
+                    socket.setsockopt(zmq.LINGER, self.linger)
+
+                    socket.connect(str(address))
 
             # Destory sockets async
             for address in self.to_remove:
@@ -116,7 +127,7 @@ class SubscriptionService:
 
 class RequestReplyService:
     def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.address = socket_id.zmq_url()
+        self.address = str(socket_id)
         self.wallet = wallet
         self.ctx = ctx
 
@@ -135,16 +146,23 @@ class RequestReplyService:
         self.running = True
 
         while self.running:
-            event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
-            if event:
-                msg = await self.socket.recv()
+            try:
+                event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
+                if event:
+                    msg = await self.socket.recv()
 
-                result = self.handle_msg(msg)
+                    result = self.handle_msg(msg)
 
-                if result is None:
-                    result = b''
+                    if result is None:
+                        result = b''
 
-                await self.socket.send(result)
+                    await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLOUT)
+                    await self.socket.send(result)
+            except zmq.error.ZMQError as e:
+                self.socket.close()
+                self.socket = self.ctx.socket(zmq.REP)
+                self.socket.setsockopt(zmq.LINGER, self.linger)
+                self.socket.bind(self.address)
 
         self.socket.close()
 
@@ -163,6 +181,7 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
 
         socket.connect(socket_id.zmq_url())
 
+        await socket.poll(timeout=timeout, flags=zmq.POLLOUT)
         await socket.send(msg)
 
         event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
@@ -177,7 +196,6 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
             return None
     except Exception as e:
         log.critical('Get exception thrown: {}'.format(str(e)))
-        socket.close()
         return None
 
 

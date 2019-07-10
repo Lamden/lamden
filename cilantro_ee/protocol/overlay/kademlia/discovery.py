@@ -39,18 +39,18 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(ip: str, pepper: bytes, ctx: zmq.Context, timeout):
+async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout):
     log.info('Timeout: {}'.format(timeout))
-    response = await services.get(ip, msg=b'', ctx=ctx, timeout=timeout)
+    response = await services.get(socket_id=socket_id, msg=b'', ctx=ctx, timeout=timeout)
 
     log.info('Got response: {}'.format(response))
 
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
         vk, _ = unpack_pepper_msg(response)
-        return ip, vk
+        return str(socket_id), vk
 
-    return ip, None
+    return str(socket_id), None
 
 
 async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000, retries=10):
@@ -59,7 +59,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000,
     retries_left = retries
 
     while not one_found and retries_left > 0:
-        tasks = [ping(ip=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
+        tasks = [ping(socket_id=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
 
         tasks = asyncio.gather(*tasks)
         loop = asyncio.get_event_loop()

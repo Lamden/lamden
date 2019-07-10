@@ -4,7 +4,7 @@ from cilantro_ee.protocol.overlay.kademlia.discovery import *
 import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.comm.services import socket
+from cilantro_ee.protocol.comm.services import _socket
 from time import sleep
 
 TIME_UNIT = 0.01
@@ -35,10 +35,10 @@ class TestDiscoveryServer(TestCase):
         self.loop.close()
 
     def test_init(self):
-        DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
+        DiscoveryServer(_socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
 
     def test_run_server(self):
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), Wallet(), b'blah')
 
         tasks = asyncio.gather(timeout_bomb(), d.serve())
         run_silent_loop(tasks)
@@ -48,7 +48,7 @@ class TestDiscoveryServer(TestCase):
     def test_send_message_to_discovery(self):
         address = 'tcp://127.0.0.1:10999'
 
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), Wallet(), b'blah', ctx=self.ctx)
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), Wallet(), b'blah', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -90,7 +90,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -111,7 +111,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'WRONG_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), wallet, b'WRONG_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -131,7 +131,7 @@ class TestDiscoveryServer(TestCase):
 
         wallet = Wallet()
 
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
         async def ping(msg, sleep):
             await asyncio.sleep(sleep)
@@ -160,14 +160,14 @@ class TestDiscoveryServer(TestCase):
     def test_one_vk_returned_if_one_ip_is_online(self):
         wallet = Wallet()
 
-        d = DiscoveryServer(socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
+        d = DiscoveryServer(_socket('tcp://127.0.0.1:10999'), wallet, b'CORRECT_PEPPER', ctx=self.ctx)
 
-        success_task = ping(socket('tcp://127.0.0.1:10999'),
+        success_task = ping(_socket('tcp://127.0.0.1:10999'),
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
                             timeout=300)
 
-        failure_task = ping(socket('tcp://127.0.0.1:20999'),
+        failure_task = ping(_socket('tcp://127.0.0.1:20999'),
                             pepper=b'CORRECT_PEPPER',
                             ctx=self.ctx,
                             timeout=300)
@@ -190,7 +190,7 @@ class TestDiscoveryServer(TestCase):
         self.assertIsNone(vk2)
 
     def test_discover_nodes_found_one(self):
-        address = socket('tcp://127.0.0.1:10999')
+        address = _socket('tcp://127.0.0.1:10999')
 
         wallet = Wallet()
 
@@ -214,7 +214,7 @@ class TestDiscoveryServer(TestCase):
         self.assertEqual(r[str(address)], wallet.verifying_key().hex())
 
     def test_discover_nodes_found_three(self):
-        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
+        addresses = [_socket('tcp://127.0.0.1:10999'), _socket('tcp://127.0.0.1:11999'), _socket('tcp://127.0.0.1:12999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 0.3
@@ -247,8 +247,8 @@ class TestDiscoveryServer(TestCase):
         self.assertEqual(r[str(addresses[2])], wallets[2].verifying_key().hex())
 
     def test_discover_nodes_found_two_out_of_three(self):
-        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
-        addresses_wrong = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:13999')]
+        addresses = [_socket('tcp://127.0.0.1:10999'), _socket('tcp://127.0.0.1:11999'), _socket('tcp://127.0.0.1:12999')]
+        addresses_wrong = [_socket('tcp://127.0.0.1:10999'), _socket('tcp://127.0.0.1:11999'), _socket('tcp://127.0.0.1:13999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 1
@@ -283,8 +283,8 @@ class TestDiscoveryServer(TestCase):
         self.assertIsNone(r.get(str(addresses[2])))
 
     def test_discover_nodes_none_found(self):
-        addresses = [socket('tcp://127.0.0.1:10999'), socket('tcp://127.0.0.1:11999'), socket('tcp://127.0.0.1:12999')]
-        addresses_wrong = [socket('tcp://127.0.0.1:15999'), socket('tcp://127.0.0.1:14999'), socket('tcp://127.0.0.1:13999')]
+        addresses = [_socket('tcp://127.0.0.1:10999'), _socket('tcp://127.0.0.1:11999'), _socket('tcp://127.0.0.1:12999')]
+        addresses_wrong = [_socket('tcp://127.0.0.1:15999'), _socket('tcp://127.0.0.1:14999'), _socket('tcp://127.0.0.1:13999')]
         wallets = [Wallet(), Wallet(), Wallet()]
         pepper = b'CORRECT_PEPPER'
         server_timeout = 1
