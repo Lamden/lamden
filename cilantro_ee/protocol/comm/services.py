@@ -29,6 +29,9 @@ class SocketStruct:
         else:
             return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
 
+    def __str__(self):
+        return self.zmq_url()
+
     @classmethod
     def from_string(cls, str):
         for protocol_string in Protocols.PROTOCOL_STRINGS:
@@ -70,26 +73,22 @@ class SubscriptionService:
         subscription.setsockopt(zmq.SUBSCRIBE, filter)
         subscription.setsockopt(zmq.LINGER, self.linger)
 
-        address = socket_id.zmq_url()
+        subscription.connect(str(socket_id))
 
-        subscription.connect(address)
+        self.subscriptions[str(socket_id)] = subscription
 
-        self.subscriptions[address] = subscription
-
-    def _destroy_socket(self, socket_struct: SocketStruct):
-        address = socket_struct.zmq_url()
-        socket = self.subscriptions.get(address)
+    def _destroy_socket(self, socket_id: SocketStruct):
+        socket = self.subscriptions.get(str(socket_id))
         if socket is not None:
             socket.close()
 
-            del self.subscriptions[address]
+            del self.subscriptions[str(socket_id)]
 
     def remove_subscription(self, socket_id: SocketStruct):
-        address = socket_id.zmq_url()
         if self.running:
-            self.to_remove.append(address)
+            self.to_remove.append(socket_id)
         else:
-            self._destroy_socket(address)
+            self._destroy_socket(socket_id)
 
     async def serve(self):
         self.running = True

@@ -25,10 +25,10 @@ class TestSubscriptionService(TestCase):
     def test_add_subscription_modifies_dict(self):
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('tcp://127.0.0.1:10001')
-        s.add_subscription('tcp://127.0.0.1:10002')
-        s.add_subscription('tcp://127.0.0.1:10003')
-        s.add_subscription('tcp://127.0.0.1:10004')
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10001'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10002'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10003'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10004'))
 
         self.assertTrue(s.subscriptions['tcp://127.0.0.1:10001'])
         self.assertTrue(s.subscriptions['tcp://127.0.0.1:10002'])
@@ -38,10 +38,10 @@ class TestSubscriptionService(TestCase):
     def test_remove_subscription_deletes_from_dict(self):
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('tcp://127.0.0.1:10001')
-        s.add_subscription('tcp://127.0.0.1:10002')
-        s.add_subscription('tcp://127.0.0.1:10003')
-        s.add_subscription('tcp://127.0.0.1:10004')
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10001'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10002'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10003'))
+        s.add_subscription(SocketStruct.from_string('tcp://127.0.0.1:10004'))
 
         s.remove_subscription('tcp://127.0.0.1:10001')
         s.remove_subscription('tcp://127.0.0.1:10003')
@@ -57,7 +57,7 @@ class TestSubscriptionService(TestCase):
 
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('inproc://test1')
+        s.add_subscription(SocketStruct.from_string('inproc://test1'))
 
         tasks = asyncio.gather(
             s.serve(),
@@ -80,8 +80,8 @@ class TestSubscriptionService(TestCase):
 
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('inproc://test1')
-        s.add_subscription('inproc://test2')
+        s.add_subscription(SocketStruct.from_string('inproc://test1'))
+        s.add_subscription(SocketStruct.from_string('inproc://test2'))
 
         tasks = asyncio.gather(
             s.serve(),
@@ -104,11 +104,11 @@ class TestSubscriptionService(TestCase):
 
         s = SubscriptionService(ctx=self.ctx)
 
-        s.add_subscription('inproc://test1')
-        s.add_subscription('inproc://test2')
+        s.add_subscription(SocketStruct.from_string('inproc://test1'))
+        s.add_subscription(SocketStruct.from_string('inproc://test2'))
 
         async def remove():
-            s.remove_subscription('inproc://test2')
+            s.remove_subscription(SocketStruct.from_string('inproc://test2'))
 
         async def delayed_send():
             await asyncio.sleep(0.2)
@@ -131,18 +131,18 @@ class TestSubscriptionService(TestCase):
     def test_socket_structure_serialization(self):
         s = SocketStruct(Protocols.TCP, '127.0.0.1', 1000)
 
-        self.assertEqual(s.zmq_url(), 'tcp://127.0.0.1:1000')
+        self.assertEqual(str(s), 'tcp://127.0.0.1:1000')
 
     def test_socket_serialization_properly(self):
         s = SocketStruct.from_string('tcp://127.0.0.1:1000')
-        self.assertEqual(s.zmq_url(), 'tcp://127.0.0.1:1000')
+        self.assertEqual(str(s), 'tcp://127.0.0.1:1000')
 
     def test_inproc_sock_serialization(self):
         s = SocketStruct(Protocols.INPROC, '127.0.0.1', 1000)
 
-        self.assertEqual(s.zmq_url(), 'inproc://127.0.0.1')
+        self.assertEqual(str(s), 'inproc://127.0.0.1')
 
     def test_from_string_in_proc(self):
         s = SocketStruct.from_string('inproc://blahblahblah')
 
-        self.assertEqual(s.zmq_url(), 'inproc://blahblahblah')
+        self.assertEqual(str(s), 'inproc://blahblahblah')
