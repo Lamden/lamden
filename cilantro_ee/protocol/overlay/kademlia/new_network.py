@@ -82,6 +82,7 @@ class PeerServer(services.RequestReplyService):
         self.ping_response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
     def handle_msg(self, msg):
+        log.info('got msg on peer service {}'.format(msg))
         msg = msg.decode()
         command, args = json.loads(msg)
 
@@ -147,6 +148,7 @@ class PeerServer(services.RequestReplyService):
             self.event_service.serve(),
             self.process_event_subscription_queue()
         ))
+        log.info('Peer services running on {}'.format(self.address))
 
     def stop(self):
         self.running = False
@@ -174,6 +176,7 @@ class Network:
         self.table = KTable(data=data)
 
         self.event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
+        self.peer_service_port = peer_service_port
         self.peer_service = PeerServer(ip=ip, port=peer_service_port,
                                        event_port=event_publisher_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
@@ -202,13 +205,17 @@ class Network:
         # Discover our bootnodes
         await self.discover_bootnodes()
 
+        addresses = ['tcp://{}:{}'.format(bootnode, self.peer_service_port) for bootnode in self.bootnodes]
+
+        log.info('Peers now: {}'.format(addresses))
+
         # Wait for the quorum to resolve
         await self.wait_for_quorum(
             self.initial_mn_quorum,
             self.initial_del_quorum,
             self.mn_to_find,
             self.del_to_find,
-            self.bootnodes
+            addresses
         )
 
         self.ready = True
@@ -224,8 +231,12 @@ class Network:
                                                    ctx=self.ctx, timeout=500)
 
         log.info(responses)
+
         for ip, vk in responses.items():
-            self.table.peers[vk] = ip  # Should be stripped of port and tcp
+            stripped_ip = ip.strip('tcp://')  # remove tcp protocol
+            stripped_ip = stripped_ip.split(':')[0]  # split by port delimiter and toss
+            log.info('Storing {} for ip {}'.format(vk, stripped_ip))
+            self.table.peers[vk] = stripped_ip  # Should be stripped of port and tcp
 
         if not self.discovery_server.running:
             log.info('DISCOVERY STARTING')
@@ -240,9 +251,16 @@ class Network:
 
         results = None
 
+        log.info('initial peers: {}'.format(initial_peers))
+
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
+            log.info('Need {} MNs and {} DELs to begin...'.format(
+                masternode_quorum_required,
+                delegate_quorum_required
+            ))
+
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]
 
@@ -253,6 +271,8 @@ class Network:
             crawl = asyncio.gather(*master_crawl, *delegate_crawl)
 
             results = await crawl
+
+            log.info('Got back results from the crawl.')
 
             # Split the result list
             masters_got = results[:len(masternodes_to_find)]
@@ -267,6 +287,8 @@ class Network:
                                                                     delegate_quorum_required)
 
         # At this point, start the discovery server if it's not already running because you are a masternode.
+
+        log.success('Quorum reached! Begin protocol services...')
 
         return results
 
@@ -291,6 +313,7 @@ class Network:
     async def find_node(self, client_address, vk_to_find, retries=3):
         # Search locally if this is the case
         if client_address == self.peer_service_address or vk_to_find == self.wallet.verifying_key().hex():
+            log.info('{} is us. returning from our own table'.format(client_address))
             response = self.table.find(vk_to_find)
 
         # Otherwise, send out a network request
@@ -298,9 +321,14 @@ class Network:
             find_message = ['find', vk_to_find]
             find_message = json.dumps(find_message).encode()
 
+            log.info('sending {} to {}'.format(find_message, client_address))
             response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+
             if response is None:
+                log.info('no response from {}...'.format(client_address))
                 return None
+
+            log.info('Response : {}'.format(response))
             response = json.loads(response.decode())
 
         if response.get(vk_to_find) is not None:
@@ -311,4 +339,5 @@ class Network:
 
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
-            return await self.find_node(ip, vk_to_find, retries=retries-1)
+            address = 'tcp://{}:{}'.format(ip, self.peer_service_port)
+            return await self.find_node(address, vk_to_find, retries=retries-1)

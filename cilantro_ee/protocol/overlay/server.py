@@ -123,7 +123,7 @@ class OverlayServer():
 
         self.network = NewNetwork(wallet=self.wallet,
                                   ctx=self.ctx,
-                                  ip='127.0.0.1',
+                                  ip=conf.HOST_IP,
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
                                   bootnodes=conf.BOOTNODES,
