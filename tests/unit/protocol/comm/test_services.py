@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.protocol.comm.services import SubscriptionService
+from cilantro_ee.protocol.comm.services import SubscriptionService, SocketStruct, Protocols
 import zmq.asyncio
 import asyncio
 
@@ -127,3 +127,8 @@ class TestSubscriptionService(TestCase):
 
         self.assertListEqual(s.received, [(b'howdy', 'inproc://test1')])
         self.assertListEqual(s.to_remove, [])
+
+    def test_socket_structure_serialization(self):
+        s = SocketStruct(Protocols.TCP, '127.0.0.1', 1000)
+
+        self.assertEqual(s.zmq_url(), 'tcp://127.0.0.1:1000')

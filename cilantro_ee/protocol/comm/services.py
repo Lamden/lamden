@@ -6,6 +6,30 @@ import asyncio
 
 log = get_logger("BaseServices")
 
+
+class Protocols:
+    TCP = 0
+    INPROC = 1
+    ICP = 2
+    PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
+
+
+class SocketStruct:
+    def __init__(self, protocol: int, id: str, port: int):
+        self.protocol = protocol
+        self.id = id
+
+        if protocol == Protocols.INPROC:
+            port = None
+        self.port = port
+
+    def zmq_url(self):
+        if self.port is None:
+            return '{}{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id)
+        else:
+            return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
+
+
 # Pushes current task to the back of the event loop
 async def defer():
     await asyncio.sleep(0)
@@ -26,25 +50,27 @@ class SubscriptionService:
         self.received = []
         self.to_remove = []
 
-    def add_subscription(self, ip, port, filter=b''):
+    def add_subscription(self, socket_id: SocketStruct, filter=b''):
         subscription = self.ctx.socket(zmq.SUB)
         subscription.setsockopt(zmq.SUBSCRIBE, filter)
         subscription.setsockopt(zmq.LINGER, self.linger)
-        address = 'tcp://{}:{}'.format(ip, port)
+
+        address = socket_id.zmq_url()
+
         subscription.connect(address)
 
         self.subscriptions[address] = subscription
 
-    def _destroy_socket(self, ip, port):
-        address = 'tcp://{}:{}'.format(ip, port)
+    def _destroy_socket(self, socket_struct: SocketStruct):
+        address = socket_struct.zmq_url()
         socket = self.subscriptions.get(address)
         if socket is not None:
             socket.close()
 
             del self.subscriptions[address]
 
-    def remove_subscription(self, ip, port):
-        address = 'tcp://{}:{}'.format(ip, port)
+    def remove_subscription(self, socket_id: SocketStruct):
+        address = socket_id.zmq_url()
         if self.running:
             self.to_remove.append(address)
         else:
@@ -72,8 +98,8 @@ class SubscriptionService:
 
 
 class RequestReplyService:
-    def __init__(self, ip: str, port: int, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.address = 'tcp://{}:{}'.format(ip, port)
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        self.address = socket_id.zmq_url()
         self.wallet = wallet
         self.ctx = ctx
 
@@ -112,13 +138,13 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(address: str, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
     try:
         # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
         socket = ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, linger)
 
-        socket.connect(address)
+        socket.connect(socket_id.zmq_url())
 
         await socket.send(msg)
 

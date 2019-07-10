@@ -15,27 +15,6 @@ from cilantro_ee.logger.base import get_logger
 
 import random
 
-TCP = 0
-INPROC = 1
-
-PROTOCOL_STRINGS = ['tcp://', 'inproc://']
-
-
-class SocketStruct:
-    def __init__(self, protocol: int, id: str, port: int):
-        self.protocol = protocol
-        self.id = id
-
-        if protocol == INPROC:
-            port = None
-        self.port = port
-
-    def zmq_url(self):
-        if self.port is None:
-            return '{}{}'.format(PROTOCOL_STRINGS[self.protocol], self.id)
-        else:
-            return '{}{}:{}'.format(PROTOCOL_STRINGS[self.protocol], self.id, self.protocol)
-
 log = get_logger('NetworkService')
 
 
