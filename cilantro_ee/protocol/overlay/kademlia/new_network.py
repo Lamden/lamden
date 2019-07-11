@@ -59,7 +59,7 @@ class KTable:
 
 class PeerServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct, event_port: int, table: KTable, wallet: Wallet, ctx=zmq.Context,
-                 linger=2000, poll_timeout=500, pepper=PEPPER.encode()):
+                 linger=2000, poll_timeout=3000, pepper=PEPPER.encode()):
 
         super().__init__(socket_id=socket_id,
                          wallet=wallet,
@@ -101,8 +101,10 @@ class PeerServer(services.RequestReplyService):
         log.info('a node is trying to join... proving they are online')
         if vk not in result or result[vk] != ip:
             # Ping discovery server
-            _, responded_vk = await discovery.ping(services._socket(ip), pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
+            _, responded_vk = await discovery.ping(services.SocketStruct(services.Protocols.TCP, ip, DISCOVERY_PORT),
+                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
+            await asyncio.sleep(0)
             if responded_vk is None:
                 return
 
@@ -111,7 +113,7 @@ class PeerServer(services.RequestReplyService):
                 self.table.peers[vk] = ip
 
                 # Publish a message that a new node has joined
-                msg = ('join', (vk, ip))
+                msg = ['join', (vk, ip)]
                 jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
@@ -124,8 +126,6 @@ class PeerServer(services.RequestReplyService):
                 msg = json.loads(message.decode())
                 command, args = msg
                 vk, ip = args
-
-                log.info('Subscription message {} {}'.format(command, args))
 
                 if command == 'join':
                     asyncio.ensure_future(self.handle_join(vk=vk, ip=ip))
@@ -165,13 +165,13 @@ class Network:
         self.ctx = ctx
 
         self.bootnodes = bootnodes
-
+        self.ip = ip
 
         # Peer Service Constants
-        self.peer_service_address = services.SocketStruct(services.Protocols.TCP, ip, peer_service_port)
+        self.peer_service_address = services.SocketStruct(services.Protocols.TCP, '*', peer_service_port)
 
         data = {
-            self.wallet.verifying_key().hex(): str(self.peer_service_address)
+            self.wallet.verifying_key().hex(): ip
         }
         self.table = KTable(data=data)
 
@@ -205,14 +205,13 @@ class Network:
                 self.discovery_server.serve()
             )
 
-        asyncio.ensure_future(asyncio.gather(*self.tasks))
-
         # Discover our bootnodes
         await self.discover_bootnodes()
 
-        addresses = ['tcp://{}:{}'.format(bootnode, self.peer_service_port) for bootnode in self.bootnodes]
+        peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
+                                     for ip in self.bootnodes]
 
-        log.info('Peers now: {}'.format(addresses))
+        log.info('Peers now: {}'.format(self.bootnodes))
 
         # Wait for the quorum to resolve
         await self.wait_for_quorum(
@@ -220,7 +219,7 @@ class Network:
             self.initial_del_quorum,
             self.mn_to_find,
             self.del_to_find,
-            self.bootnodes
+            peer_service_bootnode_ids
         )
 
         log.success('Network is ready.')
@@ -234,19 +233,28 @@ class Network:
         log.success('Sent ready signal.')
 
     async def discover_bootnodes(self):
-        log.info('DISCOVERING BOOTNODES')
 
-        responses = await discovery.discover_nodes(self.bootnodes, pepper=PEPPER.encode(),
-                                                   ctx=self.ctx, timeout=500)
+        discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, DISCOVERY_PORT)
+                                  for ip in self.bootnodes]
+
+        responses = await discovery.discover_nodes(discovery_bootnode_ids, pepper=PEPPER.encode(),
+                                                   ctx=self.ctx, timeout=3000)
 
         log.info(responses)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = ip  # Should be stripped of port and tcp
+            self.table.peers[vk] = services._socket(ip).id  # Should be stripped of port and tcp
 
         if not self.discovery_server.running:
-            log.info('DISCOVERY STARTING')
             asyncio.ensure_future(self.discovery_server.serve())
+
+        # Ping everyone discovered that you've joined
+        for vk, ip in self.table.peers.items():
+            join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
+            join_message = json.dumps(join_message).encode()
+
+            peer = services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
+            await services.get(peer, msg=join_message, ctx=self.ctx, timeout=3000)
 
     async def wait_for_quorum(self, masternode_quorum_required: int,
                                     delegate_quorum_required: int,
@@ -257,7 +265,6 @@ class Network:
 
         results = None
 
-        log.info('initial peers: {}'.format(initial_peers))
 
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
@@ -318,27 +325,21 @@ class Network:
 
     async def find_node(self, client_address: services.SocketStruct, vk_to_find, retries=3):
         # Search locally if this is the case
-        if client_address == self.peer_service_address or vk_to_find == self.wallet.verifying_key().hex():
-            log.info('{} is us. returning from our own table'.format(client_address))
-            log.info(self.table.peers)
+        if str(client_address) == str(self.peer_service_address) or vk_to_find == self.wallet.verifying_key().hex():
             response = self.table.find(vk_to_find)
 
         # Otherwise, send out a network request
         else:
             find_message = ['find', vk_to_find]
             find_message = json.dumps(find_message).encode()
-
-            log.info('sending {} to {}'.format(find_message, client_address))
-            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=3000)
 
             if response is None:
-                log.info('no response from {}...'.format(client_address))
                 return None
 
             response = json.loads(response.decode())
 
         if response.get(vk_to_find) is not None:
-            log.info('Response : {}'.format(response))
             return response
 
         if retries <= 1:
@@ -346,6 +347,4 @@ class Network:
 
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
-            log.info('yoohoo')
-            print(vk, ip)
-            return await self.find_node(services._socket(ip), vk_to_find, retries=retries-1)
+            return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries-1)

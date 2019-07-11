@@ -58,6 +58,8 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000,
     one_found = False
     retries_left = retries
 
+    log.info([str(ip) for ip in ip_list])
+
     while not one_found and retries_left > 0:
         tasks = [ping(socket_id=ip, pepper=pepper, ctx=ctx, timeout=timeout) for ip in ip_list]
 

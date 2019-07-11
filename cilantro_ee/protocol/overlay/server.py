@@ -12,7 +12,7 @@ from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetw
 from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
-
+from cilantro_ee.protocol.comm.services import SocketStruct, Protocols
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):

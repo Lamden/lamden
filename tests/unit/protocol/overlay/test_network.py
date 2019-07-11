@@ -127,7 +127,7 @@ class TestNetworkService(TestCase):
         response = response.decode()
         response = json.loads(response)
 
-        self.assertEqual(response.get(w1.verifying_key().hex()), str(p1.peer_service_address))
+        self.assertEqual(response.get(w1.verifying_key().hex()), '127.0.0.1')
 
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
@@ -442,7 +442,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(get())
 
-        self.assertEqual(res.get(w1.verifying_key().hex()), 'tcp://127.0.0.1:10001')
+        self.assertEqual(res.get(w1.verifying_key().hex()), '127.0.0.1')
 
     def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer(self):
         # Create Network service
@@ -487,7 +487,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        self.assertEqual(res[2].get(w2.verifying_key().hex()), 'tcp://127.0.0.1:10003')
+        self.assertEqual(res[2].get(w2.verifying_key().hex()), '127.0.0.1')
 
     def test_find_node_fails_if_cant_find_and_retries_are_up(self):
         w1 = Wallet()
