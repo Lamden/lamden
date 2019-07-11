@@ -23,18 +23,7 @@ def command(fn):
     return _command
 
 
-class NewOverlayClient():
-    def __init__(self, ip: str, port: int, event_port: int, ctx):
-        self.ctx = ctx
-        self.request_socket = self.ctx.socket(zmq.REQ)
-
-        # Set up subscriber
-        self.subscriber = services.SubscriptionService(self.ctx)
-        self.subscriber.add_subscription(ip=ip, port=event_port)
-
-
-
-class OverlayClient():
+class OverlayClient:
     def __init__(self, reply_handler, event_handler, ctx, name=None):
         self.name = name or str(os.getpid())
 
@@ -48,7 +37,7 @@ class OverlayClient():
 
         self.evt_sock = self.ctx.socket(socket_type=zmq.SUB)
         self.evt_sock.setsockopt(zmq.SUBSCRIBE, b"")
-        self.evt_sock.connect(EVENT_URL)
+        self.evt_sock.connect('tcp://127.0.0.1:10003')
 
         self.tasks = [
             self.reply_listener(reply_handler),
@@ -69,9 +58,12 @@ class OverlayClient():
     async def event_listener(self, event_handler):
         self.log.success('Listening for overlay events over {}'.format(EVENT_URL))
         while True:
-            msg = await self.evt_sock.recv_json()
+            msg = await self.evt_sock.recv()
             self.log.success("OverlayClient received event {}".format(msg))
-            event_handler(msg)
+            response = json.loads(msg.decode())
+
+            if isinstance(response, dict):
+                event_handler(response)
 
     async def reply_listener(self, reply_handler):
         self.log.success("Listening for overlay replies over {}".format(CMD_URL))

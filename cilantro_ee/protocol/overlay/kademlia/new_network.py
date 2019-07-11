@@ -6,7 +6,7 @@ from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.wallet import Wallet
 
 from cilantro_ee.logger import get_logger
-
+from copy import deepcopy
 from functools import partial
 import asyncio
 import json
@@ -249,7 +249,9 @@ class Network:
             asyncio.ensure_future(self.discovery_server.serve())
 
         # Ping everyone discovered that you've joined
-        for vk, ip in self.table.peers.items():
+
+        current_nodes = deepcopy(self.table.peers)
+        for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
             join_message = json.dumps(join_message).encode()
 

@@ -108,7 +108,6 @@ class SubscriptionService:
                         msg = await socket.recv()
                         self.received.append((msg, address))
                 except zmq.error.ZMQError as e:
-                    log.info(str(e))
                     socket.close()
 
                     socket = self.ctx.socket(zmq.SUB)
@@ -151,9 +150,6 @@ class RequestReplyService:
                 event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
                 if event:
                     msg = await self.socket.recv()
-
-                    log.info(msg)
-
                     result = self.handle_msg(msg)
 
                     if result is None:
@@ -162,7 +158,6 @@ class RequestReplyService:
                     await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLOUT)
                     await self.socket.send(result)
             except zmq.error.ZMQError as e:
-                log.info(str(e))
                 self.socket.close()
                 self.socket = self.ctx.socket(zmq.REP)
                 self.socket.setsockopt(zmq.LINGER, self.linger)
@@ -182,8 +177,6 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
         # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
         socket = ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, linger)
-
-        log.info('GET TO: {} {}'.format(socket_id, msg))
 
         socket.connect(str(socket_id))
 
