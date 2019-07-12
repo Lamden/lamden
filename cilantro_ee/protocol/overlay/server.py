@@ -11,7 +11,7 @@ from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
-
+from cilantro_ee.protocol.comm.services import _socket, SocketStruct
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -144,6 +144,10 @@ class OverlayServer:
                 'event_id': event_id,
                 'vk': vk
             }
+
+        if SocketStruct.is_valid(ip):
+            ip = SocketStruct.from_string(ip)
+
         return {
             'event': 'got_ip',
             'event_id': event_id,

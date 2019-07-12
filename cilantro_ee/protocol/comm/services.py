@@ -52,6 +52,20 @@ class SocketStruct:
         else:
             return cls(protocol=protocol, id=str, port=None)
 
+    @classmethod
+    def is_valid(cls, s):
+        protocol = None
+
+        for protocol_string in Protocols.PROTOCOL_STRINGS:
+            if len(s.split(protocol_string)) > 1:
+                protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
+                s = str.split(protocol_string)[1]
+
+        if protocol is None:
+            return False
+
+        return True
+
 
 # Pushes current task to the back of the event loop
 async def defer():
@@ -157,8 +171,8 @@ class RequestReplyService:
 
                     await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLOUT)
                     await self.socket.send(result)
+
             except zmq.error.ZMQError as e:
-                self.socket.close()
                 self.socket = self.ctx.socket(zmq.REP)
                 self.socket.setsockopt(zmq.LINGER, self.linger)
                 self.socket.bind(self.address)
@@ -172,15 +186,16 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10):
+    if retries <= 0:
+        return None
+
+    socket = ctx.socket(zmq.REQ)
+    socket.setsockopt(zmq.LINGER, linger)
     try:
         # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
-        socket = ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, linger)
-
         socket.connect(str(socket_id))
 
-        #await socket.poll(timeout=timeout, flags=zmq.POLLOUT)
         await socket.send(msg)
 
         event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
@@ -194,8 +209,8 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
             socket.close()
             return None
     except Exception as e:
-        log.critical('Get exception thrown: {}'.format(str(e)))
-        return None
+        socket.close()
+        return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
 class DataFormat:

@@ -23,7 +23,6 @@ class MetaDataStorage(DatabaseDriver):
                 try:
                     sets = json.loads(tx.state)
 
-
                     for k, v in sets.items():
                         self.set(k, v)
                 except:

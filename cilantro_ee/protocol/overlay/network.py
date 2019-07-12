@@ -57,7 +57,10 @@ class KTable:
 
 
 class PeerServer(services.RequestReplyService):
-    def __init__(self, socket_id: services.SocketStruct, event_port: int, table: KTable, wallet: Wallet, ctx=zmq.Context,
+    def __init__(self, socket_id: services.SocketStruct,
+                 event_port: int,
+                 discovery_port: int,
+                 table: KTable, wallet: Wallet, ctx=zmq.Context,
                  linger=2000, poll_timeout=3000, pepper=PEPPER.encode()):
 
         super().__init__(socket_id=socket_id,
@@ -75,6 +78,8 @@ class PeerServer(services.RequestReplyService):
         self.event_publisher.bind(self.event_address)
 
         self.event_queue_loop_running = False
+
+        self.discovery_port = discovery_port
 
     def handle_msg(self, msg):
         msg = msg.decode()
@@ -96,8 +101,8 @@ class PeerServer(services.RequestReplyService):
 
         if vk not in result or result[vk] != ip:
             # Ping discovery server
-            _, responded_vk = await discovery.ping(services.SocketStruct(services.Protocols.TCP, ip, DISCOVERY_PORT),
-                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
+            _, responded_vk = await discovery.ping(services._socket(ip),
+                                    pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
             await asyncio.sleep(0)
             if responded_vk is None:
@@ -112,9 +117,8 @@ class PeerServer(services.RequestReplyService):
                 jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
-                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': ip}).encode()
+                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': services._socket(ip).id}).encode()
                 await self.event_publisher.send(second_msg)
-
 
     async def process_event_subscription_queue(self):
         self.event_queue_loop_running = True
@@ -123,6 +127,11 @@ class PeerServer(services.RequestReplyService):
             if len(self.event_service.received) > 0:
                 message, sender = self.event_service.received.pop(0)
                 msg = json.loads(message.decode())
+
+                # Ignore event dictionaries
+                if isinstance(msg, dict):
+                    continue
+
                 command, args = msg
                 vk, ip = args
 
@@ -155,9 +164,17 @@ class PeerServer(services.RequestReplyService):
 
 
 class Network:
-    def __init__(self, wallet, peer_service_port: int=DHT_PORT, event_publisher_port: int=EVENT_PORT,
-                 ctx=zmq.asyncio.Context(), ip=conf.HOST_IP, bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
-                 initial_mn_quorum=1, initial_del_quorum=1, mn_to_find=[], del_to_find=[]):
+    def __init__(self, wallet,
+                 peer_service_port: int=DHT_PORT,
+                 event_publisher_port: int=EVENT_PORT,
+                 discovery_port: int=DISCOVERY_PORT,
+                 ctx=zmq.asyncio.Context(),
+                 ip=conf.HOST_IP,
+                 bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
+                 initial_mn_quorum=1,
+                 initial_del_quorum=1,
+                 mn_to_find=[],
+                 del_to_find=[]):
 
         # General Instance Variables
         self.wallet = wallet
@@ -178,9 +195,11 @@ class Network:
         self.peer_service_port = peer_service_port
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_port=event_publisher_port,
+                                       discovery_port=discovery_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
-        self.discovery_server_address = services.SocketStruct(services.Protocols.TCP, '*', DISCOVERY_PORT)
+        self.discovery_port = discovery_port
+        self.discovery_server_address = services.SocketStruct(services.Protocols.TCP, '*', self.discovery_port)
         self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
                                                           wallet=self.wallet,
                                                           pepper=PEPPER.encode(),
@@ -204,10 +223,13 @@ class Network:
                 self.discovery_server.serve()
             )
 
-        # Discover our bootnodes
-        await self.discover_bootnodes()
+        discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.discovery_port)
+                                     for ip in self.bootnodes]
 
-        peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
+        # Discover our bootnodes
+        await self.discover_bootnodes(discovery_bootnode_ids)
+
+        peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.peer_service_port)
                                      for ip in self.bootnodes]
 
         log.info('Peers now: {}'.format(self.bootnodes))
@@ -231,18 +253,14 @@ class Network:
 
         log.success('Sent ready signal.')
 
-    async def discover_bootnodes(self):
-
-        discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, DISCOVERY_PORT)
-                                  for ip in self.bootnodes]
-
-        responses = await discovery.discover_nodes(discovery_bootnode_ids, pepper=PEPPER.encode(),
+    async def discover_bootnodes(self, nodes):
+        responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
                                                    ctx=self.ctx, timeout=3000)
 
         log.info(responses)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = services._socket(ip).id  # Should be stripped of port and tcp
+            self.table.peers[vk] = ip  # Should be stripped of port and tcp
 
         if not self.discovery_server.running:
             asyncio.ensure_future(self.discovery_server.serve())

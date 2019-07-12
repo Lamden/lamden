@@ -60,10 +60,10 @@ class TestNetworkService(TestCase):
                      _socket('tcp://127.0.0.1:12999'),
                      _socket('tcp://127.0.0.1:13999')]
 
-        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d3 = DiscoveryServer(bootnodes[2], w3, pepper=PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
-        d4 = DiscoveryServer(bootnodes[3], w4, pepper=PEPPER.encode(), ctx=self.ctx, linger=100, poll_timeout=100)
+        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d3 = DiscoveryServer(bootnodes[2], w3, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d4 = DiscoveryServer(bootnodes[3], w4, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
 
         n = Network(wallet=w, ctx=self.ctx, bootnodes=bootnodes)
 
@@ -76,7 +76,7 @@ class TestNetworkService(TestCase):
             stop_server(d2, 1),
             stop_server(d3, 1),
             stop_server(d4, 1),
-            n.discover_bootnodes()
+            n.discover_bootnodes(bootnodes)
         )
 
         loop = asyncio.get_event_loop()
@@ -95,7 +95,7 @@ class TestNetworkService(TestCase):
         w = Wallet()
         t = KTable(data={'woo': 'hoo'})
         p = PeerServer(socket_id=_socket('tcp://127.0.0.1:10999'), wallet=w, event_port=8888,
-                       table=t, ctx=self.ctx, linger=100, poll_timeout=100)
+                       table=t, ctx=self.ctx, linger=100, poll_timeout=100, discovery_port=9999)
 
         tasks = asyncio.gather(
             p.serve(),
@@ -369,7 +369,7 @@ class TestNetworkService(TestCase):
     def test_other_peers_add_new_nodes_when_join_event_occurs(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002, discovery_port=10999)
 
         # Create Network service
         w2 = Wallet()
