@@ -61,7 +61,11 @@ class OverlayClient:
         while True:
             msg = await self.evt_sock.recv()
             self.log.success("OverlayClient received event {}".format(msg))
-            event_handler(msg)
+
+            response = json.loads(msg.decode())
+
+            if isinstance(response, dict):
+                event_handler(response)
 
     async def reply_listener(self, reply_handler):
         self.log.success("Listening for overlay replies over {}".format(CMD_URL))

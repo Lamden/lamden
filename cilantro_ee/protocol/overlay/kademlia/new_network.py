@@ -117,6 +117,10 @@ class PeerServer(services.RequestReplyService):
                 jmsg = json.dumps(msg).encode()
                 await self.event_publisher.send(jmsg)
 
+                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': ip}).encode()
+                await self.event_publisher.send(second_msg)
+
+
     async def process_event_subscription_queue(self):
         self.event_queue_loop_running = True
 
