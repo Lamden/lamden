@@ -61,18 +61,6 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
-def _get_all_contract_obj():
-    contract_list = ContractingClient.get_contracts()
-    return contract_list
-
-
-def _get_contract_obj(contract):
-    contract_obj = ContractingClient.get_contract(contract)
-    if contract_obj.get('code_obj'):
-        del contract_obj['code_obj']
-    return contract_obj
-
-
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
@@ -110,6 +98,8 @@ async def submit_transaction(request):
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 
+#TODO Tejas : this needs to be evaluated, do we even need webserver to return nonce or should it be internal function
+
 @app.route("/nonce", methods=['GET',"OPTIONS",])
 async def request_nonce(request):
     user_vk = request.json.get('verifyingKey')
@@ -124,6 +114,9 @@ async def request_nonce(request):
         return _respond_to_request({'Nonce_Disabled': True}, status=204)
 
 
+# Contracts
+
+
 # This is just a test endpoint we use to detect when a web server has come online
 @app.route("/ohai", methods=["GET","OPTIONS",])
 async def ohai(request):
@@ -132,13 +125,16 @@ async def ohai(request):
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
-    list_all = _get_all_contract_obj()
-    return _respond_to_request(list_all)
+    contract_list = ContractingClient.get_contracts()
+    return _respond_to_request(contract_list)
 
 
 @app.route("/contracts/<contract>", methods=["GET","OPTIONS",])
 async def get_contract(request, contract):
-    return _respond_to_request(_get_contract_obj(contract))
+    contract_obj = ContractingClient.get_contract(contract)
+    if contract_obj.get('code_obj'):
+        del contract_obj['code_obj']
+      return _respond_to_request(contract_obj)
 
 
 @app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
@@ -190,6 +186,10 @@ async def get_state(request, contract, resource, key):
     return _respond_to_request(r)
 
 
+
+# Block Requests
+
+
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 @limiter.limit("10/minute")
 async def get_latest_block(request):
@@ -219,7 +219,6 @@ def get_tx(_hash):
     if not _hash:
         return None
     return driver().get_tx(_hash)
-
 
 """
 Colin McGrath
@@ -257,6 +256,7 @@ async def get_transaction(request):
     tx.pop('transaction', None)
     return _respond_to_request(tx)
 
+
 @app.route('/transactions', methods=['POST',"OPTIONS",])
 async def get_transactions(request):
     _hash = request.json['hash']
@@ -265,11 +265,11 @@ async def get_transactions(request):
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)
 
-@app.route("/teardown-network", methods=["POST","OPTIONS",])
-async def teardown_network(request):
-    # raise NotImplementedError()
-    # tx = KillSignal.create()
-    return _respond_to_request({ 'message': 'tearing down network' })
+# @app.route("/teardown-network", methods=["POST","OPTIONS",])
+# async def teardown_network(request):
+#     # raise NotImplementedError()
+#     # tx = KillSignal.create()
+#     return _respond_to_request({ 'message': 'tearing down network' })
 
 def start_webserver(q):
     time.sleep(30)   # wait for 30 secs before starting web server
