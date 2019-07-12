@@ -31,7 +31,11 @@ def reply(fn):
     return _reply
 
 
+log = get_logger('Overlay.Server')
+
+
 def async_reply(fn):
+    log.info('ASYNC REPLY')
     def _reply(self, *args, **kwargs):
         def _done(fut):
             self.cmd_sock.send_multipart([
@@ -135,9 +139,12 @@ class OverlayServer():
                                   del_to_find=PhoneBook.delegates)
 
     def start(self):
-        asyncio.ensure_future(self.command_listener())
+
         self.loop.run_until_complete(asyncio.ensure_future(
-            self.network.start()
+            asyncio.gather(
+                self.network.start(),
+                self.command_listener()
+            )
         ))
         self.log.success('BOOTUP TIME')
 
