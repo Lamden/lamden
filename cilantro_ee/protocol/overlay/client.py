@@ -50,11 +50,17 @@ class OverlayClient:
         # b'ready'
         pass
 
-    @command
     def get_ip_from_vk(self, *args, **kwargs):
         # b'get_ip_from_vk
+        log.info('COMMAND RUN: get_ip_from_vk')
+        event_id = uuid.uuid4().hex
+        self.cmd_sock.send_multipart(
+            [b'get_ip_from_vk', event_id.encode()] + \
+            [arg.encode() if hasattr(arg, 'encode') else str(arg).encode() for arg in args] + \
+            [kwargs[k].encode() if hasattr(kwargs[k], 'encode') else str(kwargs[k]).encode() for k in kwargs]
+        )
         self.log.success('GET IP FROM VK SHIT: {} {}'.format(args, kwargs))
-        pass
+        return event_id
 
     async def event_listener(self, event_handler):
         self.log.success('Listening for overlay events over {}'.format(EVENT_URL))

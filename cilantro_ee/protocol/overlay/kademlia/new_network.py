@@ -78,7 +78,6 @@ class PeerServer(services.RequestReplyService):
         self.event_queue_loop_running = False
 
     def handle_msg(self, msg):
-        log.info('got msg on peer service {}'.format(msg))
         msg = msg.decode()
         command, args = json.loads(msg)
 
@@ -87,18 +86,15 @@ class PeerServer(services.RequestReplyService):
             response = json.dumps(response).encode()
             return response
         if command == 'join':
-            log.info('join command issued {}'.format(args))
             vk, ip = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
         if command == 'ping':
-            log.info('ping command issued')
             return self.ping_response
 
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)
 
-        log.info('a node is trying to join... proving they are online')
         if vk not in result or result[vk] != ip:
             # Ping discovery server
             _, responded_vk = await discovery.ping(services.SocketStruct(services.Protocols.TCP, ip, DISCOVERY_PORT),
@@ -290,8 +286,6 @@ class Network:
             crawl = asyncio.gather(*master_crawl, *delegate_crawl)
 
             results = await crawl
-
-            log.info('Got back results from the crawl.')
 
             # Split the result list
             masters_got = results[:len(masternodes_to_find)]

@@ -135,6 +135,7 @@ class OverlayServer():
                                   del_to_find=PhoneBook.delegates)
 
     def start(self):
+        asyncio.ensure_future(self.command_listener())
         self.loop.run_until_complete(asyncio.ensure_future(
             self.network.start()
         ))
