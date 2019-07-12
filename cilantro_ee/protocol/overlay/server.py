@@ -2,17 +2,12 @@ import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect, time
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.protocol.overlay.interface import OverlayInterface
 from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.overlay.kademlia.event import Event
-from cilantro_ee.protocol.overlay.kademlia.network import Network
-from collections import deque
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
 from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.protocol.comm.services import SocketStruct, Protocols
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -139,7 +134,6 @@ class OverlayServer():
                                   del_to_find=PhoneBook.delegates)
 
     def start(self):
-
         self.loop.run_until_complete(asyncio.ensure_future(
             asyncio.gather(
                 self.network.start(),

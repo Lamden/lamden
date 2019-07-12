@@ -35,7 +35,7 @@ class MalformedMessage(Exception):
     """
     pass
 
-class Network(object):
+class Netxwork(object):
     """
     Implementation of Overlay Server. This connects to the other nodes on the network
     and services the client requests

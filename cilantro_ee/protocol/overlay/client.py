@@ -1,16 +1,18 @@
-import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect
-from cilantro_ee.protocol.overlay.interface import OverlayInterface
-from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
-from cilantro_ee.storage.vkbook import VKBook
+import zmq
+import zmq.asyncio
+import asyncio
+import os
+import uuid
+import json
+from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.overlay.kademlia.event import Event
-from collections import deque
-from cilantro_ee.protocol.comm import services
-from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
+
 log = get_logger('Overlay.Client')
 # Sends the following multipart message
 # [Function name encoded and event ID encoded], [Args encoded if it can be encoded], [KWards encoded if they can be]
 # Returns event ID.
+
+
 def command(fn):
     def _command(self, *args, **kwargs):
         log.info('COMMAND RUN: {}'.format(fn.__name__.encode()))
