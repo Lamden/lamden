@@ -39,7 +39,6 @@ def driver():
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
 
-# if os.getenv('NONCE_ENABLED', False):
 if conf.NONCE_ENABLED:
     log.info("Nonces enabled.")
     limiter = Limiter(app, global_limits=['60/minute'], key_func=get_remote_address)
@@ -113,9 +112,12 @@ async def request_nonce(request):
     if not user_vk:
         return _respond_to_request({'error': "you must supply the key 'verifyingKey' in the json payload"}, status=400)
 
-    nonce = NonceManager.create_nonce(user_vk)
-    log.spam("Creating nonce {}".format(nonce))
-    return _respond_to_request({'success': True, 'nonce': nonce})
+    if conf.NONCE_ENABLED:
+        nonce = NonceManager.create_nonce(user_vk)
+        log.debug2("Creating nonce {}".format(nonce))
+        return _respond_to_request({'success': True, 'nonce': nonce}, status=200)
+    else:
+        return _respond_to_request({'Nonce_Disabled': True}, status=204)
 
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
