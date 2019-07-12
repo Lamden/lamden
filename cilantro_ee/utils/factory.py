@@ -11,7 +11,7 @@ WITNESS = 2
 
 
 def wait_for_redis():
-    time.sleep(20)
+    time.sleep(2)
 
 
 def wait_for_mongo():

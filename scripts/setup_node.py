@@ -65,22 +65,9 @@ print('Fetching public IP from https://api.ipify.org...')
 ip = requests.get('https://api.ipify.org').text
 print('Your public IP is {}.'.format(ip))
 
-vk_ip_map = const['vk_ip_map']
-
-ip_exists = False
-for k, v in const['vk_ip_map'].items():
-    if k == ip:
-        ip_exists = True
-        if not v == keys[1]:
-            print('Public IP and provided VK do not map. You cannot join the network!')
-            sys.exit()
-
-if not ip_exists:
-    print('Public IP not in constitution. You cannot join the network!')
-    sys.exit()
-
 config['DEFAULT']['ip'] = ip
-config['DEFAULT']['boot_ips'] = ','.join(const['bootnodes'])
+config['DEFAULT']['boot_masternode_ips'] = ','.join(const['boot_masternode_ips'])
+config['DEFAULT']['boot_delegate_ips'] = ','.join(const['boot_delegate_ips'])
 config['DEFAULT']['node_type'] = role
 config['DEFAULT']['sk'] = keys[0]
 config['DEFAULT']['vk'] = keys[1]
@@ -90,11 +77,6 @@ config['DEFAULT']['ssl_enabled'] = 'False'
 config['DEFAULT']['metering'] = 'True'
 config['DEFAULT']['log_lvl'] = '13'
 config['DEFAULT']['seneca_log_lvl'] = '13'
-
-print('\n')
-print('Writing VK IP map file to /etc/vk_ip_map.json')
-
-json.dump(const['vk_ip_map'], open('/etc/vk_ip_map.json', 'w'))
 
 print('Writing node config file to /etc/cilantro_ee.conf\n')
 

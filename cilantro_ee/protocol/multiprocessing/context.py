@@ -20,9 +20,10 @@ class Context:
         self.signing_key = signing_key
         self.verifying_key = wallet.get_vk(signing_key)
 
+        signing_key = bytes.fromhex(signing_key)
         self.wallet = Wallet(seed=signing_key)
 
-        Keys.setup(sk_hex=signing_key)
+        Keys.setup(sk_hex=self.signing_key)
         SocketUtil.setup(Keys.public_key.hex())
 
 

@@ -103,6 +103,8 @@ class BlockManager(Worker):
         self.my_quorum = PhoneBook.masternode_quorum_min
         self._pending_work_at_sbb = 0
         self._sub_blocks_have_data = 0
+        self._masternodes_ready = set()
+        self.start_sub_blocks = 0
 
         self._thicc_log()
 
@@ -129,6 +131,16 @@ class BlockManager(Worker):
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
+
+    def _add_masternode_ready(self, mn_vk):
+        if mn_vk in self._masternodes_ready:
+            return
+        self._masternodes_ready.add(mn_vk)
+        if self._are_masternodes_ready():
+            self.send_start_to_sbb()
+
+    def _are_masternodes_ready(self):
+        return len(self._masternodes_ready) == self.my_quorum
 
     def _set_pending_work(self, sbb_index):
         self._pending_work_at_sbb |= (1 << sbb_index)
@@ -217,11 +229,6 @@ class BlockManager(Worker):
 
         self.db_state.catchup_mgr.run_catchup()
 
-        # TODO needs to be deleted after catchup is working. for now, assume that it is caught up
-        # self.db_state.cur_block_hash = StateDriver.get_latest_block_hash()
-        # await asyncio.sleep(5)
-        # self.send_updated_db_msg()
-
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
             self.sb_builders[i] = LProcess(target=SubBlockBuilder, name="SBB_Proc-{}".format(i),
@@ -286,9 +293,20 @@ class BlockManager(Worker):
         elif isinstance(msg, FailedBlockNotification):
             self.log.important3("BM got FailedBlockNotification from sender {} with hash {}".format(envelope.sender, msg.prev_block_hash))
             self.handle_fail_block(msg)
+        elif isinstance(msg, Ready):
+            self._add_masternode_ready(envelope.sender)
         else:
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
+
+    def is_ready_to_start_sub_blocks(self):
+        self.start_sub_blocks += 1
+        return self.start_sub_blocks == 3
+        
+    def send_start_to_sbb(self):
+        if self.is_ready_to_start_sub_blocks():
+            self.send_updated_db_msg()
+
 
     def set_catchup_done(self):
         self.db_state.cur_block_hash = self.driver.latest_block_hash
@@ -296,13 +314,12 @@ class BlockManager(Worker):
         if not self.db_state.is_catchup_done:
             self.db_state.is_catchup_done = True
             # self.db_state.cur_block_hash, self.db_state.cur_block_num = StateDriver.get_latest_block_info()
-            if self.is_sbb_ready():
-                self.send_updated_db_msg()
+            self.send_start_to_sbb()
 
     def set_sbb_ready(self):
         self.sbb_not_ready_count = self.sbb_not_ready_count - 1
-        if self.is_sbb_ready() and self.db_state.is_catchup_done:
-            self.send_updated_db_msg()
+        if self.is_sbb_ready():
+            self.send_start_to_sbb()
         # log error if count is below 0
 
     def is_sbb_ready(self):
@@ -460,7 +477,7 @@ class BlockManager(Worker):
 
         count = self.db_state.next_block.get(new_block_hash)[1] + 1 if new_block_hash in self.db_state.next_block else 1
         self.db_state.next_block[new_block_hash] = (block_data, count)
-        if count >= self.my_quorum:
+        if count == self.my_quorum:
             self.log.info("New block quorum met!")
             self.db_state.new_block_hash = new_block_hash
             self.db_state.is_new_block = is_new_block

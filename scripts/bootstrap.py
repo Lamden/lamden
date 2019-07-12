@@ -12,7 +12,6 @@ from cilantro_ee.logger.base import overwrite_logger_level
 import sys, time
 from cilantro_ee.protocol import wallet
 import requests
-from cilantro_ee.utils.test.testnet_config import read_public_constitution
 
 def boot(delay):
     # Determine what type the node is based on VK
@@ -27,11 +26,6 @@ def boot(delay):
 
     if node_type is None:
         raise Exception("You are not in the network!")
-
-    print(PhoneBook.masternodes)
-    print(PhoneBook.delegates)
-
-    delay = 1
 
     print("Bootstrapping node with start delay of {}...".format(delay))
 
