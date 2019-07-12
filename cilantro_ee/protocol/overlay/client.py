@@ -7,12 +7,13 @@ from cilantro_ee.protocol.overlay.kademlia.event import Event
 from collections import deque
 from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
-
+log = get_logger('Overlay.Client')
 # Sends the following multipart message
 # [Function name encoded and event ID encoded], [Args encoded if it can be encoded], [KWards encoded if they can be]
 # Returns event ID.
 def command(fn):
     def _command(self, *args, **kwargs):
+        log.info('COMMAND RUN: {}'.format(fn.__name__.encode()))
         event_id = uuid.uuid4().hex
         self.cmd_sock.send_multipart(
             [fn.__name__.encode(), event_id.encode()] + \
@@ -60,10 +61,7 @@ class OverlayClient:
         while True:
             msg = await self.evt_sock.recv()
             self.log.success("OverlayClient received event {}".format(msg))
-            response = json.loads(msg.decode())
-
-            if isinstance(response, dict):
-                event_handler(response)
+            event_handler(msg)
 
     async def reply_listener(self, reply_handler):
         self.log.success("Listening for overlay replies over {}".format(CMD_URL))

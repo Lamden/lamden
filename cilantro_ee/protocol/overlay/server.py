@@ -140,11 +140,11 @@ class OverlayServer():
         ))
         self.log.success('BOOTUP TIME')
 
-
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
         while True:
             msg = await self.cmd_sock.recv_multipart()
+            self.log.success('GOT SOMETHING: {}'.format(msg))
             self.log.debug('[Overlay] Received cmd (Proc={}): {}'.format(msg[0], msg[1:]))
             data = [b.decode() for b in msg[2:]]
 
@@ -177,6 +177,7 @@ class OverlayServer():
     @async_reply
     async def get_ip_from_vk(self, event_id, vk):
         # TODO perhaps return an event instead of throwing an error in production
+        self.log.info('Time to give them a vk :'.format(vk))
         if not self.is_valid_vk(vk):
             # raghu todo - create event enum / class that does this
             return {
