@@ -62,8 +62,7 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
 
 
 def _get_contract_obj(contract):
-    contract_name = validate_contract_name(contract)
-    contract_obj = ContractingClient.get_contract(contract_name)
+    contract_obj = ContractingClient.get_contract(contract)
     if contract_obj.get('code_obj'):
         del contract_obj['code_obj']
     return contract_obj
