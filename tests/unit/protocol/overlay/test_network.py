@@ -1,16 +1,14 @@
 from unittest import TestCase
-import asyncio
 from cilantro_ee.protocol.comm.services import _socket
-from cilantro_ee.protocol.overlay.kademlia.discovery import *
-from cilantro_ee.protocol.overlay.kademlia.new_network import Network, PeerServer, KTable
-from cilantro_ee.protocol.overlay.kademlia.discovery import DiscoveryServer
+from cilantro_ee.protocol.overlay.discovery import *
+from cilantro_ee.protocol.overlay.network import Network, PeerServer, KTable
+from cilantro_ee.protocol.overlay.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.protocol.comm import services
 import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
 from time import sleep
-import random
 import json
 
 TIME_UNIT = 0.01

@@ -1,6 +1,5 @@
 from unittest import TestCase
-import asyncio
-from cilantro_ee.protocol.overlay.kademlia.discovery import *
+from cilantro_ee.protocol.overlay.discovery import *
 import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet

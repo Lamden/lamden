@@ -1,10 +1,9 @@
 import zmq.asyncio
-from cilantro_ee.protocol.overlay.kademlia.ip import *
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.comm import services
 from cilantro_ee.constants.ports import DISCOVERY_PORT
-
+import asyncio
 log = get_logger('DiscoveryService')
 
 '''

@@ -1,11 +1,10 @@
 from cilantro_ee.constants import conf
 from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.protocol.overlay.kademlia import discovery
+from cilantro_ee.protocol.overlay import discovery
 from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.wallet import Wallet
 
-from cilantro_ee.logger import get_logger
 from copy import deepcopy
 from functools import partial
 import asyncio

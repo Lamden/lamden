@@ -1,19 +1,24 @@
-import zmq, zmq.asyncio, asyncio, ujson, os, uuid, json, inspect, time
+import zmq
+import zmq.asyncio
+import asyncio
+import json
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.protocol.overlay.interface import OverlayInterface
-from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL, CLIENT_SETUP_TIMEOUT
+from cilantro_ee.constants.overlay_network import CMD_URL
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.overlay.kademlia.new_network import Network as NewNetwork
-from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
+from cilantro_ee.protocol.overlay.network import Network
+from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
+
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
         id_frame = args[0]
         fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
     return _no_reply
+
 
 def reply(fn):
     def _reply(self, *args, **kwargs):
@@ -30,7 +35,6 @@ log = get_logger('Overlay.Server')
 
 
 def async_reply(fn):
-    log.info('ASYNC REPLY')
     def _reply(self, *args, **kwargs):
         def _done(fut):
             self.cmd_sock.send_multipart([
@@ -43,58 +47,8 @@ def async_reply(fn):
 
     return _reply
 
-# import json
-# class NewOverlayServer(OverlayInterface):
-#     def __init__(self, sk, ip: str, port: int, ctx: zmq.Context, bootnodes: list, initial_mn_quorum: int, initial_del_quorum: int):
-#         self.wallet = Wallet(seed=bytes.fromhex(sk))
-#         self.ctx = ctx
-#
-#         self.network = NewNetwork(wallet=self.wallet,
-#                                   ctx=self.ctx,
-#                                   peer_service_port=DHT_PORT,
-#                                   event_publisher_port=EVENT_PORT,
-#                                   initial_mn_quorum=initial_mn_quorum,
-#                                   initial_del_quorum=initial_del_quorum,
-#                                   bootnodes=bootnodes)
-#
-#         self.command_address = 'tcp://{}:{}'.format(ip, port)
-#         self.command_socket = self.ctx.socket(zmq.REQ)
-#         self.command_socket.bind(self.command_address)
-#         self.command_listener_running = False
-#
-#     async def start(self):
-#         await self.network.start()
-#
-#     async def command_listener(self):
-#         self.command_listener_running = True
-#         while self.command_listener_running:
-#             msg = await self.command_socket.recv()
-#             msg = json.loads(msg.decode())
-#
-#             response = self.handle_msg(msg)
-#             return response
-#
-#     def handle_msg(self, msg):
-#         command, args = msg
-#         response = {}
-#
-#         if command == 'status':
-#             if self.network.ready:
-#                 response = {
-#                         'event': 'service_status',
-#                         'status': 'ready'
-#                     }
-#             else:
-#                 response = {
-#                     'event': 'service_status',
-#                     'status': 'not_ready'
-#                 }
-#
-#         response = json.dumps(response).encode()
-#         return response
 
-
-class OverlayServer():
+class OverlayServer:
     def __init__(self, sk, ctx, quorum):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
@@ -117,12 +71,7 @@ class OverlayServer():
 
         self.network_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT)
 
-        # pass both evt_sock and cmd_sock ?
-        #self.network = Network(wallet=self.wallet, ctx=self.ctx)
-
-        #self.network.tasks.append(self.command_listener())
-
-        self.network = NewNetwork(wallet=self.wallet,
+        self.network = Network(wallet=self.wallet,
                                   ctx=self.ctx,
                                   ip=conf.HOST_IP,
                                   peer_service_port=DHT_PORT,
@@ -140,7 +89,6 @@ class OverlayServer():
                 self.command_listener()
             )
         ))
-        self.log.success('BOOTUP TIME')
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
