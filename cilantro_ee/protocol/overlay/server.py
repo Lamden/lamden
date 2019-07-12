@@ -11,7 +11,7 @@ from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.protocol.comm.services import _socket, SocketStruct
+from cilantro_ee.protocol.comm.services import _socket, SocketStruct, SocketEncoder
 
 def no_reply(fn):
     def _no_reply(self, *args, **kwargs):
@@ -26,7 +26,7 @@ def reply(fn):
         res = fn(self, *args[1:], **kwargs)
         self.cmd_sock.send_multipart([
             id_frame,
-            json.dumps(res).encode()
+            json.dumps(res, cls=SocketEncoder).encode()
         ])
     return _reply
 
@@ -39,7 +39,7 @@ def async_reply(fn):
         def _done(fut):
             self.cmd_sock.send_multipart([
                 id_frame,
-                json.dumps(fut.result()).encode()
+                json.dumps(fut.result(), cls=SocketEncoder).encode()
             ])
         id_frame = args[0]
         fut = asyncio.ensure_future(fn(self, *args[1:], **kwargs))
@@ -146,7 +146,7 @@ class OverlayServer:
             }
 
         if SocketStruct.is_valid(ip):
-            ip = SocketStruct.from_string(ip)
+            ip = SocketStruct.from_string(ip).id
 
         return {
             'event': 'got_ip',

@@ -383,7 +383,7 @@ class TestNetworkService(TestCase):
                             poll_timeout=2000, linger=2000)
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
-        sleep(0.5)
+        sleep(1)
 
         # Construct the join RPC message
         join_message = ['join', (w3.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
@@ -394,9 +394,9 @@ class TestNetworkService(TestCase):
             p2.peer_service.start(),
             d.serve(),
             services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),
-            stop_server(p1.peer_service, 1),
-            stop_server(p2.peer_service, 1),
-            stop_server(d, 1),
+            stop_server(p1.peer_service, 2),
+            stop_server(p2.peer_service, 2),
+            stop_server(d, 2),
         )
 
         loop = asyncio.get_event_loop()

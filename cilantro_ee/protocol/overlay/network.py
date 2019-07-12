@@ -87,7 +87,7 @@ class PeerServer(services.RequestReplyService):
 
         if command == 'find':
             response = self.table.find(args)
-            response = json.dumps(response).encode()
+            response = json.dumps(response, cls=services.SocketEncoder).encode()
             return response
         if command == 'join':
             vk, ip = args # unpack args
@@ -114,10 +114,10 @@ class PeerServer(services.RequestReplyService):
 
                 # Publish a message that a new node has joined
                 msg = ['join', (vk, ip)]
-                jmsg = json.dumps(msg).encode()
+                jmsg = json.dumps(msg, cls=services.SocketEncoder).encode()
                 await self.event_publisher.send(jmsg)
 
-                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': services._socket(ip).id}).encode()
+                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': services._socket(ip).id}, cls=services.SocketEncoder).encode()
                 await self.event_publisher.send(second_msg)
 
     async def process_event_subscription_queue(self):
@@ -247,7 +247,7 @@ class Network:
 
         self.ready = True
 
-        ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}).encode()
+        ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
 
         await self.peer_service.event_publisher.send(ready_msg)
 
@@ -270,7 +270,7 @@ class Network:
         current_nodes = deepcopy(self.table.peers)
         for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
-            join_message = json.dumps(join_message).encode()
+            join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
 
             peer = services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
             await services.get(peer, msg=join_message, ctx=self.ctx, timeout=3000)
@@ -348,7 +348,7 @@ class Network:
         # Otherwise, send out a network request
         else:
             find_message = ['find', vk_to_find]
-            find_message = json.dumps(find_message).encode()
+            find_message = json.dumps(find_message, cls=services.SocketEncoder).encode()
             response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=3000)
 
             if response is None:

@@ -2,7 +2,14 @@ from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.logger import get_logger
 import zmq
 import asyncio
+import json
 
+
+class SocketEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, SocketStruct):
+            return str(o)
+        return json.JSONEncoder.default(self, o)
 
 log = get_logger("BaseServices")
 
@@ -54,17 +61,7 @@ class SocketStruct:
 
     @classmethod
     def is_valid(cls, s):
-        protocol = None
-
-        for protocol_string in Protocols.PROTOCOL_STRINGS:
-            if len(s.split(protocol_string)) > 1:
-                protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
-                s = str.split(protocol_string)[1]
-
-        if protocol is None:
-            return False
-
-        return True
+        return ':' in s
 
 
 # Pushes current task to the back of the event loop
