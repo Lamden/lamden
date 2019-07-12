@@ -19,6 +19,7 @@ from cilantro_ee.constants import conf
 
 from cilantro_ee.utils.hasher import Hasher
 from contracting.config import DELIMITER
+from contracting.client import ContractingClient
 
 from multiprocessing import Queue
 import os, time
@@ -63,7 +64,7 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
 
 def _get_contract_obj(contract):
     contract_name = validate_contract_name(contract)
-    contract_obj = ex.get_contract(contract_name)
+    contract_obj = ContractingClient.get_contract(contract_name)
     if contract_obj.get('code_obj'):
         del contract_obj['code_obj']
     return contract_obj
