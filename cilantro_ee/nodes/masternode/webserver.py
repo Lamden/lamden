@@ -134,7 +134,7 @@ async def get_contract(request, contract):
     contract_obj = ContractingClient.get_contract(contract)
     if contract_obj.get('code_obj'):
         del contract_obj['code_obj']
-      return _respond_to_request(contract_obj)
+    return _respond_to_request(contract_obj)
 
 
 @app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
