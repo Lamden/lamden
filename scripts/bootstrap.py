@@ -28,6 +28,7 @@ def boot(delay):
         raise Exception("You are not in the network!")
 
     print("Bootstrapping node with start delay of {}...".format(delay))
+
     time.sleep(delay)
 
     overwrite_logger_level(conf.LOG_LEVEL)

@@ -56,8 +56,20 @@ def verify(v: str, msg: bytes, sig: str) -> bool:
     return True
 
 
+def _verify(vk: bytes, msg: bytes, signature: bytes):
+    vk = nacl.signing.VerifyKey(vk)
+    try:
+        vk.verify(msg, signature)
+    except nacl.exceptions.BadSignatureError:
+        return False
+    return True
+
+
 class Wallet:
     def __init__(self, seed=None):
+        if isinstance(seed, str):
+            seed = bytes.fromhex(seed)
+
         if seed is None:
             seed = secrets.token_bytes(32)
 
@@ -95,3 +107,5 @@ class Wallet:
         except nacl.exceptions.BadSignatureError:
             return False
         return True
+
+
