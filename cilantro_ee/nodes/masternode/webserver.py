@@ -136,18 +136,18 @@ async def get_contract(request, contract):
         del contract_obj['code_obj']
     return _respond_to_request(contract_obj)
 
-
-@app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
-async def get_contract_resources(request, contract):
-    contract_obj = _get_contract_obj(contract)
-    r = list(contract_obj['resources'].keys())
-    return _respond_to_request({'resources': r})
-
-
-@app.route("/contracts/<contract>/methods", methods=["GET","OPTIONS",])
-async def get_contract_meta(request, contract):
-    contract_obj = _get_contract_obj(contract)
-    return _respond_to_request({'methods': contract_obj['methods']})
+#
+# @app.route("/contracts/<contract>/resources", methods=["GET","OPTIONS",])
+# async def get_contract_resources(request, contract):
+#     contract_obj = _get_contract_obj(contract)
+#     r = list(contract_obj['resources'].keys())
+#     return _respond_to_request({'resources': r})
+#
+#
+# @app.route("/contracts/<contract>/methods", methods=["GET","OPTIONS",])
+# async def get_contract_meta(request, contract):
+#     contract_obj = _get_contract_obj(contract)
+#     return _respond_to_request({'methods': contract_obj['methods']})
 
 
 def get_keys(contract, resource, cursor=0):
