@@ -61,6 +61,11 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
+def _get_all_contract_obj():
+    contract_list = ContractingClient.get_contracts()
+    return contract_list
+
+
 def _get_contract_obj(contract):
     contract_obj = ContractingClient.get_contract(contract)
     if contract_obj.get('code_obj'):
@@ -119,19 +124,16 @@ async def request_nonce(request):
         return _respond_to_request({'Nonce_Disabled': True}, status=204)
 
 
-@app.route("/contracts", methods=["GET","OPTIONS",])
-async def get_contracts(request):
-    r = SafeDriver.xscan('kv', 'contracts:*')[1]
-    result = {}
-    r_str = [_r.decode().split(DELIMITER)[1] for _r in r]
-    result['contracts'] = sorted(r_str)
-    return _respond_to_request(result)
-
-
 # This is just a test endpoint we use to detect when a web server has come online
 @app.route("/ohai", methods=["GET","OPTIONS",])
 async def ohai(request):
     return _respond_to_request({'status':'online'})
+
+
+@app.route("/contracts", methods=["GET","OPTIONS",])
+async def get_contracts(request):
+    list_all = _get_all_contract_obj()
+    return _respond_to_request(list_all)
 
 
 @app.route("/contracts/<contract>", methods=["GET","OPTIONS",])
