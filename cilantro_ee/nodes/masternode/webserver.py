@@ -18,14 +18,13 @@ from cilantro_ee.constants.masternode import NUM_WORKERS
 from cilantro_ee.constants import conf
 
 from cilantro_ee.utils.hasher import Hasher
-from contracting.config import DELIMITER
+# from contracting.config import DELIMITER
 from contracting.client import ContractingClient
 
 from multiprocessing import Queue
 import os, time
 
 from cilantro_ee.storage.master import MasterStorage
-from cilantro_ee.protocol.webserver.validation import *
 
 import json as _json
 
@@ -34,10 +33,14 @@ app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 
+
 def driver():
     return MasterStorage()
+
+
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
 static_headers = {}
+
 
 if conf.NONCE_ENABLED:
     log.info("Nonces enabled.")
@@ -172,18 +175,18 @@ async def get_contract_resource_keys_cursor(request, contract, resource, cursor)
     return _respond_to_request(r)
 
 
-@app.route("/contracts/<contract>/<resource>/<key>", methods=["GET","OPTIONS",])
-async def get_state(request, contract, resource, key):
-    contract_obj = _get_contract_obj(contract)
-    resource_type = contract_obj['resources'].get(resource)
-    value = SafeDriver.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
-    r = {}
-    if value is None:
-        r['value'] = 'null'
-    else:
-        r['value'] = value
-
-    return _respond_to_request(r)
+# @app.route("/contracts/<contract>/<resource>/<key>", methods=["GET","OPTIONS",])
+# async def get_state(request, contract, resource, key):
+#     contract_obj = _get_contract_obj(contract)
+#     resource_type = contract_obj['resources'].get(resource)
+#     value = SafeDriver.get('{}:{}:{}:{}'.format(resource_type, contract, resource, key))
+#     r = {}
+#     if value is None:
+#         r['value'] = 'null'
+#     else:
+#         r['value'] = value
+#
+#     return _respond_to_request(r)
 
 
 
