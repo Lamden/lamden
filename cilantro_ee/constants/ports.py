@@ -8,6 +8,7 @@ SSL_WEB_SERVER_PORT = 443 # Used to serve HTTPS traffic
 DISCOVERY_PORT = 10000
 AUTH_PORT = 10001
 DHT_PORT = 10002
+EVENT_PORT = 10003
 
 # ---------------------------------------------------------------
 # Masternode Ports :10010-10019
