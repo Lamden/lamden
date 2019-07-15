@@ -1,12 +1,12 @@
 from unittest import TestCase
-from cilantro_ee.storage.mongo import MasterDatabase
+from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.protocol import wallet
 
 
 class TestMasterDatabase(TestCase):
     def setUp(self):
         self.sk, self.vk = wallet.new()
-        self.db = MasterDatabase(signing_key=self.sk)
+        self.db = MasterStorage()
 
     def tearDown(self):
         #self.db.drop_db()
