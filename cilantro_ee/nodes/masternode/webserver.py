@@ -33,6 +33,7 @@ app = Sanic("MN-WebServer")
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 
+
 def driver():
     return MasterStorage()
 # Define Access-Control header(s) to enable CORS for webserver. This should be included in every response
