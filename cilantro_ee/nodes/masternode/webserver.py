@@ -64,6 +64,12 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
+# This is just a test endpoint we use to detect when a web server has come online
+@app.route("/ohai", methods=["GET","OPTIONS",])
+async def ohai(request):
+    return _respond_to_request({'status':'online'})
+
+
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
@@ -118,13 +124,6 @@ async def request_nonce(request):
 
 
 # Contracts
-
-
-# This is just a test endpoint we use to detect when a web server has come online
-@app.route("/ohai", methods=["GET","OPTIONS",])
-async def ohai(request):
-    return _respond_to_request({'status':'online'})
-
 
 @app.route("/contracts", methods=["GET","OPTIONS",])
 async def get_contracts(request):
