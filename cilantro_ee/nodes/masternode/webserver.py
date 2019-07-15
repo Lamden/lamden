@@ -268,23 +268,23 @@ async def get_transactions(request):
     return _respond_to_request(txs)
 
 
-def start_webserver(q):
-    time.sleep(30)   # wait for 30 secs before starting web server
-    app.queue = q
-    log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
-    if ssl:
-        log.notice("Starting web server with SSL")
-        app.run(host='0.0.0.0', port=SSL_WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
-    else:
-        log.notice("Starting web server without SSL")
-        app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
-
-
-if __name__ == '__main__':
-    import pyximport; pyximport.install()
-    if not app.config.REQUEST_MAX_SIZE:
-        app.config.update({
-            'REQUEST_MAX_SIZE': 5,
-            'REQUEST_TIMEOUT': 5
-        })
-    start_webserver(Queue())
+# def start_webserver(q):
+#     time.sleep(30)   # wait for 30 secs before starting web server
+#     app.queue = q
+#     log.info("Creating REST server on port {}".format(WEB_SERVER_PORT))
+#     if ssl:
+#         log.notice("Starting web server with SSL")
+#         app.run(host='0.0.0.0', port=SSL_WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False, ssl=ssl)
+#     else:
+#         log.notice("Starting web server without SSL")
+#         app.run(host='0.0.0.0', port=WEB_SERVER_PORT, workers=NUM_WORKERS, debug=False, access_log=False)
+#
+#
+# if __name__ == '__main__':
+#     import pyximport; pyximport.install()
+#     if not app.config.REQUEST_MAX_SIZE:
+#         app.config.update({
+#             'REQUEST_MAX_SIZE': 5,
+#             'REQUEST_TIMEOUT': 5
+#         })
+#     start_webserver(Queue())
