@@ -4,6 +4,7 @@ from cilantro_ee.messages.transaction.data import TransactionDataBuilder
 from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 from cilantro_ee.storage.state import MetaDataStorage
+import json
 
 
 class TestStateDriver(TestCase):
@@ -13,27 +14,31 @@ class TestStateDriver(TestCase):
 
     def test_state_updated(self):
         states = {
-            'hello world': 'goodbye world',
-            'entropy':'regression',
+            'hello': 'world',
+            'goodbye': 'world',
+            'entropy': 'regression',
             'land': 'sea',
             'xxx': 'holic',
             'beyonce': 'sings',
             'cow': 'poo',
-            'anthropologist': 'discovers;',
+            'anthropologist': 'discovers',
             'cranberry': 'juice',
             'optic': 'fiber',
             'before': 'after'
         }
+
+        states = json.dumps(states)
+
         txs = []
         for i in range(len(states) // 2):
-            txs.append(TransactionDataBuilder.create_random_tx(status='SUCC', state=states[i*2] + states[i*2+1]))
+            txs.append(TransactionDataBuilder.create_random_tx(status='SUCC', state=states))
 
         sb = SubBlockBuilder.create(transactions=txs)
         block = BlockData.create(block_hash=BlockData.compute_block_hash([sb.merkle_root], GENESIS_BLOCK_HASH),
                                  prev_block_hash=GENESIS_BLOCK_HASH, block_owners=['AB'*32], block_num=1, sub_blocks=[sb])
 
         self.r.update_with_block(block)
-        self.assertEqual(self.r.get('hello'), b'world')
+        self.assertEqual(self.r.get(b'hello'), b'world')
         self.assertEqual(self.r.get('goodbye'), b'world')
         self.assertEqual(self.r.get('entropy'), b'regression')
         self.assertEqual(self.r.get('land'), b'sea')
