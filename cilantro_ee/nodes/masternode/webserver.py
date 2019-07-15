@@ -267,11 +267,6 @@ async def get_transactions(request):
         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
     return _respond_to_request(txs)
 
-# @app.route("/teardown-network", methods=["POST","OPTIONS",])
-# async def teardown_network(request):
-#     # raise NotImplementedError()
-#     # tx = KillSignal.create()
-#     return _respond_to_request({ 'message': 'tearing down network' })
 
 def start_webserver(q):
     time.sleep(30)   # wait for 30 secs before starting web server
