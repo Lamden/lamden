@@ -13,7 +13,7 @@ from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro_ee.protocol import wallet
 
 from cilantro_ee.constants.testnet import *
-
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 class TestEnvelopefromObjects(TestCase):
     """Envelope unit tests using Envelope.create_from_objects() directly to create envelopes"""
@@ -182,6 +182,8 @@ class TestEnvelopefromObjects(TestCase):
         message = self._default_msg()
         sk, vk = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
 
+        PhoneBook = VKBook(masternodes=[TESTNET_MASTERNODES[0]['vk']], delegates=[TESTNET_DELEGATES[0]['vk']])
+
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)
         env = Envelope._create_from_objects(seal=seal, meta=meta, message=message.serialize())
@@ -191,7 +193,9 @@ class TestEnvelopefromObjects(TestCase):
     def test_is_from_group_with_two_group(self):
         meta = self._default_meta()
         message = self._default_msg()
-        sk, vk = TESTNET_WITNESSES[0]['sk'], TESTNET_WITNESSES[0]['vk']
+        sk, vk = TESTNET_MASTERNODES[0]['sk'], TESTNET_MASTERNODES[0]['vk']
+
+        PhoneBook = VKBook(masternodes=[TESTNET_MASTERNODES[0]['vk']], delegates=[TESTNET_DELEGATES[0]['vk']])
 
         signature = EnvelopeAuth.seal(signing_key=sk, meta=meta, message=message)
         seal = Seal.create(signature=signature, verifying_key=vk)

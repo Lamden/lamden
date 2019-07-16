@@ -9,12 +9,8 @@ from cilantro_ee.messages.transaction.data import TransactionDataBuilder
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
-
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 import unittest
-from unittest.mock import MagicMock
-
-import secrets
-from unittest.mock import patch
 
 
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
@@ -24,6 +20,9 @@ DEL_VK = TESTNET_DELEGATES[0]['vk']
 
 
 class TestSubBlockContender(TestCase):
+
+    def setUp(self):
+        PhoneBook = VKBook(delegates=[DEL_VK], masternodes=[TEST_VK])
 
     def test_builder(self):
         sbc = SubBlockContenderBuilder.create()

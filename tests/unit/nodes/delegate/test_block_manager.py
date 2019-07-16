@@ -14,12 +14,10 @@ from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification
-
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 _log = get_logger("TestBlockManager")
 
-from cilantro_ee.storage.vkbook import VKBook
-VKBook.setup()
-from cilantro_ee.constants.testnet import TESTNET_DELEGATES
+from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_DELEGATES[0]['sk']
 
@@ -33,7 +31,8 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
     def test_build_task_list_creates_ipc_router(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
-        bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+        PhoneBook = VKBook(delegates=[TESTNET_DELEGATES[0]['vk']], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+        bm = BlockManager(ip=TEST_IP, signing_key=TESTNET_DELEGATES[0]['sk'])
 
         # Need to set this manually to an empty list for tests only as overlay_client is mocked out
         bm.tasks = []
@@ -73,7 +72,8 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
     def test_handle_ready_msg(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
-        bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+        PhoneBook = VKBook(delegates=[TESTNET_DELEGATES[0]['vk']], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+        bm = BlockManager(ip=TEST_IP, signing_key=TESTNET_DELEGATES[0]['sk'])
         bm.tasks = []
         bm.manager = MagicMock()
         bm.ipc_router = MagicMock()
