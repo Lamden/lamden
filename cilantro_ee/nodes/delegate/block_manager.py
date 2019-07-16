@@ -19,22 +19,16 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.storage.state import MetaDataStorage
 
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 
-from cilantro_ee.messages.block_data.block_data import BlockData
-from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification, BlockMetaData
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
@@ -45,8 +39,6 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 import asyncio, zmq, os, time, random
-from collections import defaultdict
-from typing import List
 
 
 IPC_IP = 'block-manager-ipc-sock'
@@ -130,7 +122,6 @@ class BlockManager(Worker):
         self.start_sbb_procs()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
 
     def _add_masternode_ready(self, mn_vk):
         if mn_vk in self._masternodes_ready:
@@ -306,7 +297,6 @@ class BlockManager(Worker):
     def send_start_to_sbb(self):
         if self.is_ready_to_start_sub_blocks():
             self.send_updated_db_msg()
-
 
     def set_catchup_done(self):
         self.db_state.cur_block_hash = self.driver.latest_block_hash

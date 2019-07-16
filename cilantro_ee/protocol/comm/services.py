@@ -246,3 +246,70 @@ async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
     except Exception as e:
         log.info(str(e))
         return None
+
+
+class Mailbox:
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        self.backend_address = str(socket_id)
+
+        socket_id.id = '*'
+
+        self.frontend_address = str(socket_id)
+
+        self.wallet = wallet
+        self.ctx = ctx
+
+        self.frontend = None
+        self.backend = None
+
+        self.linger = linger
+        self.poll_timeout = poll_timeout
+
+        self.running = False
+
+    async def serve(self):
+        self.setup_frontend()
+        self.setup_backend()
+
+        self.running = True
+
+        while self.running:
+            try:
+                event = await self.frontend.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
+                if event:
+                    _id, msg = await self.frontend.recv_multipart()
+                    result = asyncio.ensure_future(self.handle_msg(msg))
+                    result.add_callback(self.return_msg)
+
+            except zmq.error.ZMQError:
+                self.setup_frontend()
+
+        self.frontend.close()
+        self.backend.close()
+
+    async def handle_msg(self, _id, msg):
+        return msg
+
+    async def return_msg(self, future: asyncio.Future):
+        _id, msg = future.result()
+
+        sent = False
+        while not sent:
+            try:
+                await self.backend.send_multipart([_id, msg])
+                sent = True
+            except zmq.error.ZMQError:
+                self.setup_backend()
+
+    def setup_backend(self):
+        self.backend = self.ctx.socket(zmq.DEALER)
+        self.backend.setsockopt(zmq.LINGER, self.linger)
+        self.backend.bind(self.backend_address)
+
+    def setup_frontend(self):
+        self.frontend = self.ctx.socket(zmq.ROUTER)
+        self.frontend.setsockopt(zmq.LINGER, self.linger)
+        self.frontend.bind(self.frontend_address)
+
+    def stop(self):
+        self.running = False
