@@ -4,6 +4,15 @@ from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.publish import PublishTransaction
+from cilantro_ee.messages.transaction.container import TransactionContainer
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.nodes.masternode.nonce import NonceManager
+
+from cilantro_ee.constants import conf
+from cilantro_ee.utils.hasher import Hasher
+
 from multiprocessing import Queue
 import ast
 import ssl
@@ -23,11 +32,51 @@ CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 client = ContractingClient()
 
+static_headers = {}
 
-@app.route("/", methods=["GET",])
+
+def _respond_to_request(payload, headers={}, status=200, resptype='json'):
+    if resptype == 'json':
+        return json(payload, headers=dict(headers, **static_headers), status=status)
+    elif resptype == 'text':
+        return text(payload, headers=dict(headers, **static_headers), status=status)
+
+
+@app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
-    return text('indeed')
+    if app.queue.full():
+        return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
 
+    try:
+        tx_bytes = request.body
+        container = TransactionContainer.from_bytes(tx_bytes)
+        tx = container.open()  # Deserializing the tx automatically validates the signature and POW
+    except Exception as e:
+        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)}, status=400)
+
+    # TODO do we need to do any other validation? tx size? check sufficient stamps?
+    # TODO -- check that timestamp on tx meta is within reasonable bound
+
+    # Check the transaction type and make sure we can handle it
+    if type(tx) not in (ContractTransaction, PublishTransaction):
+        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
+
+    if conf.SSL_ENABLED:
+        # Verify the nonce, and remove it from db if its valid so it cannot be used again
+        # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
+        if not NonceManager.check_if_exists(tx.nonce):
+            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)}, status=400)
+        log.spam("Removing nonce {}".format(tx.nonce))
+        NonceManager.delete_nonce(tx.nonce)
+
+    # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
+    ord_container = OrderingContainer.create(tx)
+    try: app.queue.put_nowait(ord_container.serialize())
+    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
+
+    # Return transaction hash and nonce to users (not sure which they will need) --davis
+    return _respond_to_request({'success': 'Transaction successfully submitted to the network.',
+                 'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
 # Returns {'contracts': JSON List of strings}
 @app.route('/contracts', methods=['GET'])
@@ -147,6 +196,13 @@ async def contract_exists(request):
         return json({'exists': False}, status=404)
     else:
         return json({'exists': True}, status=200)
+
+
+#blocks
+
+
+
+
 
 
 def start_webserver(q):
