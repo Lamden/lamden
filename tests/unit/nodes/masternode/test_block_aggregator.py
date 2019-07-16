@@ -58,8 +58,6 @@ DEL_VK = TESTNET_DELEGATES[0]['vk']
 TEST_DELEGATES = [TESTNET_DELEGATES[i]['vk'] for i in range(len(TESTNET_DELEGATES))]
 TEST_MASTERS = [TESTNET_MASTERNODES[i]['vk'] for i in range(len(TESTNET_MASTERNODES))]
 
-PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
-
 INPUT_HASH1 = '1' * 64
 INPUT_HASH2 = '2' * 64
 RAWTXS1 = [
@@ -234,6 +232,9 @@ class TestBlockAggregator(TestCase):
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+
+        PhoneBook = VKBook(delegates=[DEL_VK, TESTNET_DELEGATES[1]['vk']], masternodes=[TESTNET_MASTERNODES[0]])
+
         sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0, GENESIS_BLOCK_HASH)
 
         ba.recv_sub_block_contender(DEL_VK, sbc)
@@ -249,6 +250,9 @@ class TestBlockAggregator(TestCase):
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
+
+        PhoneBook = VKBook(delegates=[DEL_VK, TESTNET_DELEGATES[1]['vk']], masternodes=[TESTNET_MASTERNODES[0]])
+
         sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature,
                                                      prev_block_hash=GENESIS_BLOCK_HASH)
 
@@ -265,6 +269,8 @@ class TestBlockAggregator(TestCase):
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
@@ -285,6 +291,8 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
         old_b_hash = ba.curr_block_hash
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
@@ -313,6 +321,8 @@ class TestBlockAggregator(TestCase):
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(NUM_DELEGATES):
@@ -406,6 +416,8 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         for i in range(DELEGATE_MAJORITY):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
