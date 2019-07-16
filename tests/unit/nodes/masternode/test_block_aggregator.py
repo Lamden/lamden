@@ -4,34 +4,27 @@ from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro_ee.storage.vkbook import PhoneBook
 
 import unittest, asyncio
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
 
-from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_PUB_PORT
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
-from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
 
 from cilantro_ee.messages.block_data.block_data import *
-from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import *
 from cilantro_ee.messages.consensus.merkle_signature import *
 
-from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.protocol import wallet
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
-import time
 from cilantro_ee.logger.base import get_logger
 
 
