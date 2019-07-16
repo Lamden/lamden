@@ -29,7 +29,8 @@ from unittest.mock import MagicMock
 from cilantro_ee.messages.envelope.envelope import Envelope
 import asyncio
 import time
-#
+from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
+
 #
 _log = get_logger("TestSubBlockBuilder")
 #
@@ -38,6 +39,7 @@ DELEGATE_SK = TESTNET_DELEGATES[0]['sk']
 #
 MN_SK1 = TESTNET_MASTERNODES[0]['sk']
 MN_SK2 = TESTNET_MASTERNODES[1]['sk']
+
 #
 #
 class SBBTester:

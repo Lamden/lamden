@@ -27,8 +27,8 @@ from cilantro_ee.messages.consensus.merkle_signature import *
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol import wallet
-from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.storage.driver import SafeDriver
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
 import time
@@ -54,6 +54,12 @@ TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
+
+TEST_DELEGATES = [TESTNET_DELEGATES[i]['vk'] for i in range(len(TESTNET_DELEGATES))]
+TEST_MASTERS = [TESTNET_MASTERNODES[i]['vk'] for i in range(len(TESTNET_MASTERNODES))]
+
+PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
+
 INPUT_HASH1 = '1' * 64
 INPUT_HASH2 = '2' * 64
 RAWTXS1 = [
@@ -90,14 +96,7 @@ log = get_logger('BlockAggregatorTester')
 
 
 class TestBlockAggregator(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        MDB(s_key = TEST_SK)
-
     def setUp(self):
-        MDB.init_mdb = True
-        MDB.reset_db()
         SafeDriver.flush()
 
     @BlockAggTester.test
