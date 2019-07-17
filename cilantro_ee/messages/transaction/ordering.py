@@ -19,7 +19,7 @@ class OrderingContainer(MessageBase):
     """
 
     def validate(self):
-        assert self._data.type in MessageBase.registry, "Type {} not in message base registry".format()
+        pass
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
@@ -27,11 +27,9 @@ class OrderingContainer(MessageBase):
 
     @classmethod
     def create(cls, tx: TransactionBase):
-        assert type(tx) in MessageBase.registry, "tx_type {} not in message base registry {}"\
-                                                 .format(type(tx), MessageBase.registry)
 
         container = transaction_capnp.OrderingContainer.new_message()
-        container.type = MessageBase.registry[type(tx)]
+        container.type = 0
         container.transaction = tx.serialize()
         container.utcTimeMs = int(time.time()*1000)
 
@@ -48,10 +46,9 @@ class OrderingContainer(MessageBase):
 
     @property
     def transaction(self):
-        assert self._data.type in MessageBase.registry, "Type {} not found in registry {}"\
-            .format(self._data.type, MessageBase.registry)
 
-        return MessageBase.registry[self._data.type].from_bytes(self._data.transaction)
+
+        return ContractTransaction.from_bytes(self._data.transaction)
 
 
 def build_test_container():
