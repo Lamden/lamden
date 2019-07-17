@@ -24,6 +24,7 @@ class Protocols:
 def _socket(s: str):
     return SocketStruct.from_string(s)
 
+
 class SocketStruct:
     def __init__(self, protocol: int, id: str, port: int=0):
         self.protocol = protocol
@@ -248,7 +249,7 @@ async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
         return None
 
 
-class Mailbox:
+class AsyncServer:
     def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
         socket_id.id = '*'
 
@@ -277,7 +278,7 @@ class Mailbox:
                     msg = await self.socket.recv()
                     asyncio.ensure_future(self.handle_msg(_id, msg))
 
-            except zmq.error.ZMQError as e:
+            except zmq.error.ZMQError:
                 self.socket.close()
                 self.setup_socket()
 

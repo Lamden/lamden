@@ -10,7 +10,7 @@ async def stop_server(s, timeout):
     s.stop()
 
 
-class TestMailbox(TestCase):
+class TestAsyncServer(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
 
@@ -19,23 +19,23 @@ class TestMailbox(TestCase):
 
     def test_init(self):
         w = Wallet()
-        services.Mailbox(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
+        services.AsyncServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
 
     def test_addresses_correct(self):
         w = Wallet()
-        m = services.Mailbox(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
+        m = services.AsyncServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
 
         self.assertEqual(m.address, 'tcp://*:10000')
 
     def test_sockets_are_initially_none(self):
         w = Wallet()
-        m = services.Mailbox(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
+        m = services.AsyncServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
 
         self.assertIsNone(m.socket)
 
     def test_setup_frontend_creates_socket(self):
         w = Wallet()
-        m = services.Mailbox(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
+        m = services.AsyncServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx)
         m.setup_socket()
 
         self.assertEqual(m.socket.type, zmq.ROUTER)
@@ -43,7 +43,7 @@ class TestMailbox(TestCase):
 
     def test_sending_message_returns_it(self):
         w = Wallet()
-        m = services.Mailbox(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+        m = services.AsyncServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
