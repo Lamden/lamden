@@ -77,6 +77,7 @@ class LSocketBase:
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
+
         self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
 
     @vk_lookup

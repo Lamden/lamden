@@ -26,7 +26,8 @@ class MessageBaseMeta(type):
         return clsobj
 
 
-class MessageBase(metaclass=MessageBaseMeta):
+#class MessageBase(metaclass=MessageBaseMeta):
+class MessageBase:
     """
     MessageBase is the abstract class which defines required methods for any data model that is passed between nodes.
     All messages which are transmitted between nodes (i.e. transaction, blocks, routing tables, ect) must subclass this.
@@ -38,6 +39,8 @@ class MessageBase(metaclass=MessageBaseMeta):
 
     Messages can also provide an interface for executing RPC on the data between nodes.
     """
+
+    registry = {}
 
     def __init__(self, data):
         self._data = data
