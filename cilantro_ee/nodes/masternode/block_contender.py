@@ -101,8 +101,10 @@ class SubBlockGroup:
 
     def get_input_hashes(self) -> set:
         s = set()
+
         for sbc in self.sender_to_sbc.values():
             s.add(sbc.input_hash)
+
         return s
 
     def is_empty(self):

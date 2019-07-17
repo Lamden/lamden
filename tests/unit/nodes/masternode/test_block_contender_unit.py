@@ -85,3 +85,55 @@ class TestSubBlockGroup(TestCase):
 
         self.assertEqual(s.get_current_quorum_reached(), 59)
 
+    def test_consensus_is_possible_returns_false_when_no_result_has_quorum(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64}
+        s.rh[2] = {'B' * 64}
+        s.rh[3] = {'B' * 64}
+        s.rh[4] = {'B' * 64}
+        s.rh[5] = {'B' * 64}
+        s.rh[6] = {'B' * 64}
+        s.rh[7] = {'B' * 64}
+        s.rh[8] = {'B' * 64}
+        s.rh[9] = {'B' * 64}
+        s.rh[0] = {'B' * 64}
+
+        self.assertFalse(s.is_consensus_possible())
+
+    def test_consensus_is_possible_returns_true_when_a_single_result_has_max_quorum(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+        s.rh[2] = {'B' * 64}
+
+        self.assertTrue(s.is_consensus_possible())
+
+    def test_consensus_is_possible_if_there_are_still_enough_votes_left_to_make_quorum(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64}
+        s.rh[2] = {'B' * 64, 'C' * 64, 'D' * 64}
+
+        self.assertTrue(s.is_consensus_possible())
