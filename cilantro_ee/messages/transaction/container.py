@@ -1,5 +1,6 @@
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.transaction.base import TransactionBase
+from cilantro_ee.messages.transaction.contract import ContractTransaction
 import capnp
 import transaction_capnp
 
@@ -19,12 +20,12 @@ class TransactionContainer(MessageBase):
 
     @classmethod
     def create(cls, tx: TransactionBase):
-        assert issubclass(type(tx), TransactionBase), "TransactionContainer data must be a TransactionBase subclass"
-        assert type(tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
-            .format(type(tx), MessageBase.registry)
+        # assert issubclass(type(tx), TransactionBase), "TransactionContainer data must be a TransactionBase subclass"
+        # assert type(tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
+        #     .format(type(tx), MessageBase.registry)
 
         container = transaction_capnp.TransactionContainer.new_message()
-        container.type = MessageBase.registry[type(tx)]
+        container.type = 0
         container.payload = tx.serialize()
 
         return cls(container)
@@ -35,6 +36,5 @@ class TransactionContainer(MessageBase):
         :param validate: If we should call .validate() after deserializing the message
         :return: The deserialized TransactionBase instance
         """
-        assert self._data.type in MessageBase.registry, "MessageBase type {} not found in registry {}"\
-                                                        .format(self._data.type, MessageBase.registry)
-        return MessageBase.registry[self._data.type].from_bytes(self._data.payload, validate=validate)
+
+        return ContractTransaction.from_bytes(self._data.payload, validate=validate)
