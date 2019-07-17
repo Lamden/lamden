@@ -3,6 +3,7 @@ from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 import hashlib
 
+
 class Keys:
     is_setup = False
 

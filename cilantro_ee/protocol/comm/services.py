@@ -250,17 +250,14 @@ async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
 
 class Mailbox:
     def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.backend_address = str(socket_id)
-
         socket_id.id = '*'
 
-        self.frontend_address = str(socket_id)
+        self.address = str(socket_id)
 
         self.wallet = wallet
         self.ctx = ctx
 
-        self.frontend = None
-        self.backend = None
+        self.socket = None
 
         self.linger = linger
         self.poll_timeout = poll_timeout
@@ -268,48 +265,41 @@ class Mailbox:
         self.running = False
 
     async def serve(self):
-        self.setup_frontend()
-        self.setup_backend()
+        self.setup_socket()
 
         self.running = True
 
         while self.running:
             try:
-                event = await self.frontend.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
+                event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
                 if event:
-                    _id, msg = await self.frontend.recv_multipart()
-                    result = asyncio.ensure_future(self.handle_msg(msg))
-                    result.add_callback(self.return_msg)
+                    _id = await self.socket.recv()
+                    msg = await self.socket.recv()
+                    asyncio.ensure_future(self.handle_msg(_id, msg))
 
-            except zmq.error.ZMQError:
-                self.setup_frontend()
+            except zmq.error.ZMQError as e:
+                self.socket.close()
+                self.setup_socket()
 
-        self.frontend.close()
-        self.backend.close()
+        self.socket.close()
 
     async def handle_msg(self, _id, msg):
-        return msg
+        await self.return_msg(_id, msg)
 
-    async def return_msg(self, future: asyncio.Future):
-        _id, msg = future.result()
-
+    async def return_msg(self, _id, msg):
         sent = False
         while not sent:
             try:
-                await self.backend.send_multipart([_id, msg])
+                await self.socket.send_multipart([_id, msg])
                 sent = True
             except zmq.error.ZMQError:
-                self.setup_backend()
+                self.socket.close()
+                self.setup_socket()
 
-    def setup_backend(self):
-        self.backend = self.ctx.socket(zmq.DEALER)
-        self.backend.setsockopt(zmq.LINGER, self.linger)
-        self.backend.bind(self.backend_address)
-
-    def setup_frontend(self):
-        self.frontend = self.ctx.socket(zmq.ROUTER)
-        self.frontend.setsockopt(zmq.LINGER, self.linger)
-        self.frontend.bind(self.frontend_address)
+    def setup_socket(self):
+        self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket.setsockopt(zmq.LINGER, self.linger)
+        self.socket.bind(self.address)
 
     def stop(self):
         self.running = False
