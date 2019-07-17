@@ -48,6 +48,7 @@ class SubBlock(MessageBase):
         struct.subBlockIdx = sub_block_idx
         struct.inputHash = input_hash
         struct.transactions = [tx._data for tx in transactions]
+
         return cls.from_data(struct)
 
     def remove_tx_data(self):

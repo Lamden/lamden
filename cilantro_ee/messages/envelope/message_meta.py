@@ -28,7 +28,7 @@ class MessageMeta(MessageBase):
         pass
 
     @classmethod
-    def create(cls, type: int, timestamp: str, uuid: int=-1):
+    def create(cls, type: int=0, timestamp: str='', uuid: int=-1):
         """
         Creates a MessageMeta. If no uuid is specified, or if uuid=-1, a random UUID is generated.
         :param type: The enum representing a MessageBase class. Must exist in MessageBase.registry
@@ -36,14 +36,14 @@ class MessageMeta(MessageBase):
         :param uuid:
         :return:
         """
-        assert type in MessageBase.registry, "Type enum {} not found in MessageBase.registry {}"\
-                                             .format(type, MessageBase.registry)
+        # assert type in MessageBase.registry, "Type enum {} not found in MessageBase.registry {}"\
+        #                                      .format(type, MessageBase.registry)
 
         if uuid == -1:
             uuid = random.randint(0, MAX_UUID)
 
         data = envelope_capnp.MessageMeta.new_message()
-        data.type = type
+        data.type = 0
         data.timestamp = timestamp
         data.uuid = uuid
 

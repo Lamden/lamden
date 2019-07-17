@@ -6,18 +6,18 @@ from cilantro_ee.messages.transaction.contract import ContractTransaction
 class TestMessageMeta(TestCase):
 
     def _standard_type(self) -> int:
-        return MessageBase.registry[ContractTransaction]
+        return ContractTransaction
 
     def test_create(self):
         """
         Tests that create(...) returns a MessageMeta object with the expected properties
         """
-        type = self._standard_type()
+        type = 0
         timestamp = '1337.126'
         sender = 'me'
         uuid = 1260
 
-        mm = MessageMeta.create(type=type, timestamp=timestamp, uuid=uuid)
+        mm = MessageMeta.create(type=0, timestamp=timestamp, uuid=uuid)
 
         self.assertEqual(mm.type, type)
         self.assertEqual(mm.timestamp, float(timestamp))

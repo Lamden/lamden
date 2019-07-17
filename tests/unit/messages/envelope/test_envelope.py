@@ -24,7 +24,7 @@ class TestEnvelopefromObjects(TestCase):
         Helper method to build message_meta
         :return: a MessageMeta instance
         """
-        t = MessageBase.registry[type(self._default_msg())]
+        t = 0
         timestamp = 'now'
         uuid = 1260
 
@@ -222,7 +222,7 @@ class TestEnvelopeFromMessage(TestCase):
         Helper method to build message_meta
         :return: a MessageMeta instance
         """
-        t = MessageBase.registry[type(self._default_msg())]
+        t = 0
         timestamp = 'now'
         uuid = 1260
 

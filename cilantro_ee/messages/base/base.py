@@ -119,7 +119,7 @@ class MessageBase:
         return self._data.to_dict()
 
     def __eq__(self, other):
-        assert type(self) is type(other), "Cannot compare messages of seperate classes {} and {}. " \
+        assert self.__class__ == other.__class__, "Cannot compare messages of seperate classes {} and {}. " \
                                           "Override __eq__ to support this behavior".format(type(self), type(other))
         assert self._data is not None, "._data is None set for LHS"
         assert other._data is not None, "._data is None for RHS"
