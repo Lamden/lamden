@@ -9,7 +9,7 @@ log = get_logger("VKBook")
 
 
 class VKBook:
-    def __init__(self, masternodes, delegates, num_boot_mns=1, \
+    def __init__(self, masternodes, delegates, num_boot_mns=1,
                  num_boot_del=1, stamps=True, nonces=False, debug=True):
         self.client = ContractingClient()
 

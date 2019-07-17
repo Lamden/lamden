@@ -1,4 +1,4 @@
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
@@ -15,15 +15,20 @@ import time
 
 class SubBlockGroup:
 
-    def __init__(self, sb_idx: int, curr_block_hash: str):
+    def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
 
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
+
         self.transactions = {}  # tx_hash: TransactionData
         self.sender_to_sbc = {}  # map of sender_vk: SubBlockContender
-        self.min_quorum = PhoneBook.delegate_quorum_min
-        self.max_quorum = PhoneBook.delegate_quorum_max
+
+        self.contacts = contacts
+
+        self.min_quorum = self.contacts.delegate_quorum_min
+        self.max_quorum = self.contacts.delegate_quorum_max
+
         self.best_rh = None  # The result hash with the most votes so far
 
     def is_consensus_possible(self) -> bool:
@@ -34,7 +39,7 @@ class SubBlockGroup:
                 return True
             num_votes += votes_for_rh
 
-        remaining_votes = NUM_DELEGATES - num_votes
+        remaining_votes = len(self.contacts.delegates) - num_votes
         leading_rh = len(self.rh[self.best_rh])
 
         if leading_rh + remaining_votes < self.max_quorum:
@@ -67,29 +72,31 @@ class SubBlockGroup:
     def is_consensus_reached(self) -> bool:
         cons_reached = len(self.rh[self.best_rh]) >= self.max_quorum
 
-        # Also make sure we have all the transactions for the sub block
-        # comment out this for now as we send all transactions with a sub-block
-        # if cons_reached:
-            # for leaf in self._get_merkle_leaves():
-                # if leaf not in self.transactions:
-                    # self.log.warning("Consensus reached for sb idx {}, but still missing tx with hash {}! (and possibly"
-                                     # " more)".format(self.sb_idx, leaf))
-                    # return False
-
         return cons_reached
 
     def get_current_quorum_reached(self) -> int:
+        # If the best result is still less than the minimum required quorum, return zero
         if len(self.rh[self.best_rh]) < self.min_quorum:
             return 0
+
+        # If the best result is more than the max quorum, return the max quorum
         if len(self.rh[self.best_rh]) >= self.max_quorum:
             return self.max_quorum
+
+        # Otherwise, calculate the total number of votes recieved at this point in time
         num_votes = 0
+
         for rh in self.rh:
             votes_for_rh = len(self.rh[rh])
             num_votes += votes_for_rh
 
+        # Get the number of votes of the most popular result
         leading_rh = len(self.rh[self.best_rh])
+
+        # The quorum is reduced if the most popular result is 90% of the current votes
         is_reduced_quorum = leading_rh >= (9 * num_votes // 10)
+
+        # If this is the case, return the number for the most popular votes
         return leading_rh if is_reduced_quorum else 0
 
     def get_input_hashes(self) -> set:
