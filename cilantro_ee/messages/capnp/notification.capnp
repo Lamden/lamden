@@ -13,5 +13,8 @@ struct ConsensusBlockNotification {
 
 struct FailedBlockNotification {
     prevBlockHash @0 :Text;
-    inputHashes @1 :List(List(Text));
+    blockHash @1 :Text;
+    blockNum @2 :UInt32;
+    firstSbIdx @3 :UInt32;
+    inputHashes @4 :List(List(Text));
 }

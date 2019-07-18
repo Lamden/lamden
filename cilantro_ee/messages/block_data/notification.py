@@ -61,11 +61,11 @@ class ConsensusBlockNotification(BlockNotification):
 
         input_hashes, root_hashes = cls.get_data_from_sub_blocks(sub_blocks)
 
-        first_sb_idx = sub_blocks[0].raghu
+        first_sb_idx = sub_blocks[0].index
         roots = root_hashes if root_hashes else input_hashes
         block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
-        return cls.create(prev_block_hash, block_hash, block_num, block_owners, input_hashes)
+        return cls.create(prev_block_hash, block_hash, block_num, first_sb_idx, block_owners, input_hashes)
 
     @property
     def prev_block_hash(self) -> str:
@@ -129,10 +129,14 @@ class FailedBlockNotification(BlockNotification):
         return cls.from_data(struct)
 
     @classmethod
-    def create(cls, prev_block_hash: str, input_hashes: List[List]):
+    def create(cls, prev_block_hash: str, block_hash: str, block_num: int,
+               first_sb_idx: int, input_hashes: List[List]):
 
         struct = notification_capnp.FailedBlockNotification.new_message()
         struct.prevBlockHash = prev_block_hash
+        struct.blockHash = block_hash
+        struct.blockNum = block_num
+        struct.firstSbIdx = first_sb_idx
         struct.inputHashes = input_hashes
 
         return cls.from_data(struct, False)    # no validation
@@ -141,6 +145,18 @@ class FailedBlockNotification(BlockNotification):
     @property
     def prev_block_hash(self):
         return self._data.prevBlockHash
+
+    @property
+    def block_hash(self) -> str:
+        return self._data.blockHash
+
+    @property
+    def block_num(self) -> int:
+        return self._data.blockNum
+
+    @property
+    def first_sb_index(self) -> int:
+        return self._data.firstSbIdx
 
     @lazy_property
     def input_hashes(self) -> List[List]:
