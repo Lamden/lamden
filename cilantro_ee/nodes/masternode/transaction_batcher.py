@@ -59,7 +59,7 @@ class TransactionBatcher(Worker):
         msg_type = bytes_to_int(frames[0])
         msg_blob = frames[1]
 
-        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        msg = MessageBase.registry[msg_type].from_bytes(msg_blob) # How messages get deserialized.
         self.log.debugv("Batcher received an IPC message {}".format(msg))
 
         if isinstance(msg, EmptyBlockMade):

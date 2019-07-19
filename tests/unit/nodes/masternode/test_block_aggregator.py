@@ -135,10 +135,10 @@ class TestBlockAggregator(TestCase):
     #     ba.build_task_list()
     #     ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
     #
-    #     sk1, vk1 = wallet.new()
-    #     sk2, vk2 = wallet.new()
-    #     sk3, vk3 = wallet.new()
-    #     sk4, vk4 = wallet.new()
+    #     sk1, vk1 = wallet._new()
+    #     sk2, vk2 = wallet._new()
+    #     sk3, vk3 = wallet._new()
+    #     sk4, vk4 = wallet._new()
     #
     #     sb1_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
     #     sb2_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
@@ -358,7 +358,7 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(block_data.merkle_roots, [RESULT_HASH1])
         self.assertEqual(block_data.transactions, TXS1)
 
-    # TODO fix this test once we care about getting consensus on new block notifications --davis
+    # TODO fix this test once we care about getting consensus on _new block notifications --davis
     # @BlockAggTester.test
     # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
     # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)

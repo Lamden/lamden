@@ -115,7 +115,7 @@ class BlockAggregator(Worker):
         self.log.info('connecting to masters: {}'.format(PhoneBook.masternodes))
         self.log.info('connecting to delegates: {}'.format(PhoneBook.delegates))
 
-        # Listen to masters for new block notifs and state update requests from masters/delegates
+        # Listen to masters for _new block notifs and state update requests from masters/delegates
         for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
@@ -131,7 +131,7 @@ class BlockAggregator(Worker):
         for vk in PhoneBook.schedulers + PhoneBook.notifiers:
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
-        # Listen to masters for new block notifs and state update requests from masters/delegates
+        # Listen to masters for _new block notifs and state update requests from masters/delegates
         for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
@@ -292,13 +292,14 @@ class BlockAggregator(Worker):
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
         self.pub.send_msg(msg=new_block_notif, header=NEW_BLK_NOTIF_FILTER.encode())
-        self.log.info('Published new block notif with hash "{}" and prev hash {}'
+        self.log.info('Published _new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
         skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, sub_blocks)
+
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
@@ -308,7 +309,7 @@ class BlockAggregator(Worker):
         self.log.debug("Uh oh! Sending failed block notif {}".format(msg))
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
-        self.log.debugv("MN got new block notification: {}".format(notif))
+        self.log.debugv("MN got _new block notification: {}".format(notif))
 
         if notif.block_num > self.state.latest_block_num + 1:
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))

@@ -24,6 +24,7 @@ class AsyncioScheduler:
 
     async def send_tx(self, contract_name, fn_name, kwargs):
         print("sending {}.{} with kwargs {}".format(contract_name, fn_name, kwargs))
+
         tx = ContractTransaction.create(sender_sk=self.sk, stamps_supplied=0, contract_name=contract_name,
                                         func_name=fn_name, nonce='', kwargs=kwargs)
 

@@ -45,7 +45,7 @@ class SubBlockContender(MessageBase):
     def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes], signature: MerkleSignature,
                transactions: List[TransactionData], sub_block_index: int, prev_block_hash: str):
         """
-        Delegages create a new sub-block contender and propose to master nodes
+        Delegages create a _new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
         :param input_hash: The hash of input bag containing raw txns in order
         :param merkle_leaves: A list merkle leaves contained within this proposed block. Each leaf is a byte string

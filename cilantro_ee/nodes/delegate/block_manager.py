@@ -2,12 +2,12 @@
     BlockManager  (main process of delegate)
 
     This is the main workhorse for managing inter node communication as well as
-    coordinating the interpreting and creation of sub-block contenders that form part of new block.
+    coordinating the interpreting and creation of sub-block contenders that form part of _new block.
     It creates sub-block builder processes to manage the parallel execution of different sub-blocks.
     It will also participate in conflict resolution of sub-blocks
-    It publishes those sub-blocks to masters so they can assemble the new block contender
+    It publishes those sub-blocks to masters so they can assemble the _new block contender
 
-    It manages the new block notifications from master and update the db snapshot state
+    It manages the _new block notifications from master and update the db snapshot state
     so sub-block builders can proceed to next block
 
 """
@@ -164,7 +164,7 @@ class BlockManager(Worker):
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
 
-        # Create PUB socket to publish new sub_block_contenders to all masters
+        # Create PUB socket to publish _new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
         self.pub = self.manager.create_socket(
@@ -370,7 +370,7 @@ class BlockManager(Worker):
                 # return
         num_sb = len(self.db_state.sub_block_hash_map)
         if num_sb == NUM_SB_PER_BLOCK:  # got all sub_block
-            # compute my new block hash
+            # compute my _new block hash
             self.db_state.my_new_block_hash = self._compute_new_block_hash()
             self.update_db_if_ready()
 
@@ -413,7 +413,7 @@ class BlockManager(Worker):
             return
 
         assert self.db_state.new_block_hash == self.db_state.my_new_block_hash, \
-            "update_db called but my new block hash {} does not match the new block notification's hash " \
+            "update_db called but my _new block hash {} does not match the _new block notification's hash " \
             "hash {}".format(self.db_state.my_new_block_hash, self.db_state.new_block_hash)
 
         self.log.success2("BlockManager has consensus with BlockNotification!")
@@ -440,10 +440,10 @@ class BlockManager(Worker):
         # reset all the state info
         self.db_state.reset()
 
-    # update current db state to the new block
+    # update current db state to the _new block
     def handle_block_notification(self, block_data: BlockMetaData, is_new_block: bool):
         new_block_hash = block_data.block_hash
-        self.log.notice("Got {} block notification {}".format("new" if is_new_block else "empty", block_data))
+        self.log.notice("Got {} block notification {}".format("_new" if is_new_block else "empty", block_data))
 
         if not self.db_state.cur_block_hash:
             self.db_state.cur_block_hash = self.driver.latest_block_hash

@@ -7,6 +7,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import FailedBlockNotification
+from cilantro_ee.protocol.wallet import _verify
 
 from collections import defaultdict
 from typing import List
@@ -128,7 +129,7 @@ class SubBlockGroup:
 
         if sender_vk in self.sender_to_sbc:
             self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
-                           "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
+                           "old contender before adding a _new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
             self.rh[existing_sbc.result_hash].remove(existing_sbc)
 
@@ -150,14 +151,19 @@ class SubBlockGroup:
 
     def _verify_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         # Dev sanity checks
-        assert sbc.signature.sender == sender_vk, "Merkle sig {} on SBC does not match sender {}\nSBC: {}" \
-                                                  .format(sbc.signature, sender_vk, sbc)
-        assert sbc.sb_index == self.sb_idx, "Tried to add sb to wrong group! Group index: {}\nSBC: {}"\
-                                            .format(self.sb_idx, sbc)
+        if not sbc.signature.sender == sender_vk:
+            return False
 
+        if sbc.sb_index != self.sb_idx:
+            return False
+        
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
-        if not sbc.signature.verify(bytes.fromhex(sbc.result_hash)):
+        valid_sig = _verify(vk=bytes.fromhex(sbc.signature.sender),
+                            msg=bytes.fromhex(sbc.result_hash),
+                            signature=bytes.fromhex(sbc.signature))
+
+        if not valid_sig:
             self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
 

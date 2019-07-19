@@ -320,7 +320,7 @@ class TestCatchupManager(TestCase):
 
         self.assertFalse(cm.is_catchup_done())
 
-        # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
+        # Now, send a NewBlockNotification from a _new hash/num, and make sure things worked propperly
         new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
         cm.recv_new_blk_notif(new_block_notif)
 
@@ -375,7 +375,7 @@ class TestCatchupManager(TestCase):
 
         self.assertTrue(cm.is_catchup_done())
 
-        # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
+        # Now, send a NewBlockNotification from a _new hash/num, and make sure things worked propperly
         new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
 
         cm.recv_new_blk_notif(new_block_notif)
@@ -538,7 +538,7 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_num(), first_round_blocks[-1].block_num)
         self.assertEqual(self.state.get_latest_block_hash(), first_round_blocks[-1].block_hash)
 
-        # START OF SECOND ROUND, we catchup to 3 new blocks
+        # START OF SECOND ROUND, we catchup to 3 _new blocks
         time.sleep(3)
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())

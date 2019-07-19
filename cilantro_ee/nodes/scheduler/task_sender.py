@@ -61,7 +61,7 @@ class TaskSender(Worker):
             self._update_schedules()
 
     def _update_schedules(self):
-        # TODO optimize this....this brute force schedules ALL events every new block LOL
+        # TODO optimize this....this brute force schedules ALL events every _new block LOL
 
         self.sched.flush_schedules()
         # TODO get this data for real from the DB...

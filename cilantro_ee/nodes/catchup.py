@@ -216,7 +216,7 @@ class CatchupManager:
 
 
         self.node_idx_reply_set.add(sender_vk)
-        self.log.debugv("new target block num {}\ntarget block num {}\ntemp list {}"
+        self.log.debugv("_new target block num {}\ntarget block num {}\ntemp list {}"
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
         self.dump_debug_info(lnum = 195)
 

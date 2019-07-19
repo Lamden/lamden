@@ -137,3 +137,6 @@ class TestSubBlockGroup(TestCase):
         s.rh[2] = {'B' * 64, 'C' * 64, 'D' * 64}
 
         self.assertTrue(s.is_consensus_possible())
+
+    def test_add_sbc(self):
+        pass

@@ -38,7 +38,7 @@ class TestBlockManager(TestCase):
         bm.tasks = []
 
         # Attach a mock SockManager so create_socket calls return mock objects. Whenever a method is called on a mock
-        # object, a new mock object is automatically returned
+        # object, a _new mock object is automatically returned
         mock_manager = MagicMock()
         bm.manager = mock_manager
 

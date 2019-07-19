@@ -234,7 +234,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
 
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 0 and assert its input_hash is same as the one above
+        # should receive a _new subblock for input 0 and assert its input_hash is same as the one above
         # SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         sbb._create_sbc_from_batch.assert_called_once()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
@@ -245,7 +245,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, message)
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 4
+        # should receive a _new subblock for input 4
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[3])
@@ -568,7 +568,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
 
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 0 and assert its input_hash is same as the one above
+        # should receive a _new subblock for input 0 and assert its input_hash is same as the one above
         # SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         sbb._create_sbc_from_batch.assert_called_once()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
@@ -576,7 +576,7 @@ class TestSubBlockBuilder(TestCase):
 
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 1
+        # should receive a _new subblock for input 1
         sbb._create_empty_sbc.assert_called()
         sb = sbb._create_empty_sbc.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[1])
@@ -586,7 +586,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, message)
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 4
+        # should receive a _new subblock for input 4
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[4])
@@ -600,7 +600,7 @@ class TestSubBlockBuilder(TestCase):
         message = FailedBlockNotification.create(ib_hashes[4], ffih)
         SBBTester.send_ipc_to_sbb(sbb, message)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 5
+        # should receive a _new subblock for input 5
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[5])

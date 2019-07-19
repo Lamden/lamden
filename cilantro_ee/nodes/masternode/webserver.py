@@ -86,7 +86,7 @@ async def submit_transaction(request):
     # TODO -- check that timestamp on tx meta is within reasonable bound
 
     # Check the transaction type and make sure we can handle it
-    if type(tx) not in (ContractTransaction, PublishTransaction):
+    if type(tx) != ContractTransaction:
         return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
 
     if conf.SSL_ENABLED:

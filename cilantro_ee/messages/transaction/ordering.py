@@ -2,7 +2,6 @@ from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.transaction.base import TransactionBase
 from cilantro_ee.messages.transaction.contract import TransactionBase
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.publish import PublishTransaction
 
 import capnp
 import transaction_capnp

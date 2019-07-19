@@ -15,7 +15,7 @@ class SmartContractTester(Dumpatron):
     ASSERT_TX_TIMEOUT = 40
     ASSERT_SUBMITTED_TIMEOUT = 40
     ASSERT_SEEDED_TIMEOUT = 40
-    SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting new balances
+    SLEEP_BEFORE_ASSERTING = 10  # How long we should wait between sending transactions and asserting _new balances
     POLL_INTERVAL = 2
 
     TEST = 10

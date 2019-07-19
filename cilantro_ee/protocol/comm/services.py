@@ -191,7 +191,7 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
     socket = ctx.socket(zmq.REQ)
     socket.setsockopt(zmq.LINGER, linger)
     try:
-        # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
+        # Allow passing an existing socket to save time on initializing a _new one and waiting for connection.
         socket.connect(str(socket_id))
 
         await socket.send(msg)

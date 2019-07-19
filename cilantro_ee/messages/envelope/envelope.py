@@ -12,8 +12,6 @@ import envelope_capnp
 from cilantro_ee.protocol import wallet
 from cilantro_ee.utils import Hasher  # Just for debugging (used in __repr__)
 
-
-
 class Envelope(MessageBase):
     """
     An Envelope is a structure that packages all messages passed between nodes on the Cilantro network. It surrounds an
