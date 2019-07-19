@@ -1,5 +1,5 @@
 from cilantro_ee.messages.transaction.batch import TransactionBatch, build_test_transaction_batch
-from cilantro_ee.messages.transaction.ordering import build_test_container
+from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
 from unittest import TestCase
 
 
@@ -23,14 +23,14 @@ class TestTransactionBatch(TestCase):
         self.assertTrue(batch.is_empty)
 
     def test_with_ordering_container(self):
-        containers = [build_test_container() for _ in range(4)]
+        containers = [ContractTransactionBuilder.random_currency_tx() for _ in range(4)]
         batch = TransactionBatch.create(containers)
 
         self.assertEqual(batch.ordered_transactions, containers)
         self.assertFalse(batch.is_empty)
 
     def test_serialize_deserialize(self):
-        containers = [build_test_container() for _ in range(4)]
+        containers = [ContractTransactionBuilder.random_currency_tx() for _ in range(4)]
         batch = TransactionBatch.create(containers)
         clone = TransactionBatch.from_bytes(batch.serialize())
 

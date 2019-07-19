@@ -82,7 +82,6 @@ class TransactionBatcher(Worker):
         while not self._ready:
             await asyncio.sleep(1)
 
-
     async def compose_transactions(self):
         await self._wait_until_ready()
 
@@ -104,7 +103,7 @@ class TransactionBatcher(Worker):
                 continue
 
             tx_list = []
-            bag_size =  min(normal_bag if self.num_bags_sent <  max_num_bags else double_bag, num_txns)
+            bag_size = min(normal_bag if self.num_bags_sent < max_num_bags else double_bag, num_txns)
             for _ in range(bag_size):
                 tx = ContractTransaction.from_bytes(self.queue.get())
                 # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))

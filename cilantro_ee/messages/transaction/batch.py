@@ -1,9 +1,6 @@
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.transaction.base import TransactionBase
-from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.publish import PublishTransaction
-from cilantro_ee.messages.transaction.ordering import OrderingContainer
-from cilantro_ee.messages.transaction.ordering import build_test_container
+from cilantro_ee.messages.transaction.contract import ContractTransaction, ContractTransactionBuilder
 from cilantro_ee.utils import lazy_property
 
 from typing import List
@@ -27,7 +24,7 @@ class TransactionBatch(MessageBase):
         # Validate input
         transactions = transactions or []
         for oc in transactions:
-            assert isinstance(oc, ContractTransaction), "expected transactions must be a list of OrderingContains, " \
+            assert isinstance(oc, ContractTransaction), "expected transactions must be a list of ContractTransactions, " \
                                                       "but got element {}".format(oc)
 
         batch = transaction_capnp.TransactionBatch.new_message()
@@ -43,7 +40,7 @@ class TransactionBatch(MessageBase):
 
     @lazy_property
     def transactions(self) -> List[TransactionBase]:
-        return [ordered_tx.transaction for ordered_tx in self.ordered_transactions]
+        return self.ordered_transactions
 
     @property
     def is_empty(self):
@@ -52,7 +49,7 @@ class TransactionBatch(MessageBase):
 
 def build_test_transaction_batch(num_tx=4):
     assert num_tx >= 0
-    ordering_containers = [build_test_container() for _ in range(num_tx)]
+    ordering_containers = [ContractTransactionBuilder.random_currency_tx() for _ in range(num_tx)]
     return TransactionBatch.create(ordering_containers)
 
 

@@ -7,7 +7,6 @@ from cilantro_ee.protocol.comm.socket_manager import SocketManager
 
 from cilantro_ee.messages.transaction.base import TransactionBase
 from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.signals.kill_signal import KillSignal
 

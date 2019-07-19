@@ -65,4 +65,3 @@ class TestContractTransaction(TestCase):
         clone = ContractTransaction.from_bytes(contract_tx.serialize())
         self.assertEqual(contract_tx, clone)
 
-
