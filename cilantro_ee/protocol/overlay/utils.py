@@ -2,7 +2,6 @@
 General catchall for functions that don't make sense as methods.
 """
 import hashlib
-import operator
 import asyncio
 
 
@@ -32,26 +31,3 @@ class OrderedSet(list):
         if thing in self:
             self.remove(thing)
         self.append(thing)
-
-
-def sharedPrefix(args):
-    """
-    Find the shared prefix between the strings.
-
-    For instance:
-
-        sharedPrefix(['blahblah', 'blahwhat'])
-
-    returns 'blah'.
-    """
-    i = 0
-    while i < min(map(len, args)):
-        if len(set(map(operator.itemgetter(i), args))) != 1:
-            break
-        i += 1
-    return args[0][:i]
-
-
-def bytesToBitString(bites):
-    bits = [bin(bite)[2:].rjust(8, '0') for bite in bites]
-    return "".join(bits)

@@ -72,6 +72,14 @@ class VKBook:
     def all(self):
         return self.masternodes + self.delegates + self.witnesses
 
+    @property
+    def num_boot_masternodes(self):
+        return self.contract.get_num_boot_masternodes()
+
+    @property
+    def num_boot_delegates(self):
+        return self.contract.get_num_boot_delegates()
+
 
 book = read_public_constitution(conf.CONSTITUTION_FILE)
 masternodes = [node['vk'] for node in book['masternodes']]
