@@ -13,6 +13,8 @@ from cilantro_ee.nodes.masternode.nonce import NonceManager
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
 
+from cilantro_ee.storage.master import MasterStorage
+
 from multiprocessing import Queue
 import ast
 import ssl
@@ -25,7 +27,7 @@ NUM_WORKERS = 2
 app = Sanic(__name__)
 
 ssl_enabled = False
-ssl_cert = '~/.ssh/server.csr'
+ssl_cert = '~/.ssh/server.cs,mr'
 ssl_key = '~/.ssh/server.key'
 
 CORS(app, automatic_options=True)
@@ -153,22 +155,6 @@ async def lint_contract(request):
     return json({'violations': violations}, status=200)
 
 
-@app.route('/compile', methods=['POST'])
-async def compile_contract(request):
-    code = request.json.get('code')
-
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-
-    if violations is None:
-        compiled_code = client.compiler.parse_to_code(code)
-        return json({'code': compiled_code}, status=200)
-
-    return json({'violations': violations}, status=500)
-
-
 @app.route('/submit', methods=['POST'])
 async def submit_contract(request):
     code = request.json.get('code')
@@ -200,7 +186,27 @@ async def contract_exists(request):
 
 #blocks
 
+@app.route("/latest_block", methods=["GET","OPTIONS",])
+async def get_latest_block(request):
+    index = MasterStorage.get_last_n(1)
+    latest_block_hash = index.get('blockHash')
+    return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
+
+@app.route('/blocks', methods=["GET","OPTIONS",])
+async def get_block(request):
+    if 'number' in request.json:
+        num = request.json['number']
+        block = MasterStorage.get_block(num)
+        if block is None:
+            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
+    else:
+        _hash = request.json['hash']
+        block = driver().get_block(hash)
+        if block is None:
+            return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
+
+    return _respond_to_request(_json.dumps(block))
 
 
 
