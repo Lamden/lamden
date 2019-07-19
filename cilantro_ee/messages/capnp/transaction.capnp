@@ -2,7 +2,6 @@
 
 using V = import "values.capnp";
 
-
 struct MetaData {
     proof @0 :Data;
     signature @1 :Data;
@@ -23,12 +22,6 @@ struct ContractTransaction {
     metadata @0: MetaData;
     payload @1: Data;
 }
-
-struct PublishTransaction {
-    metadata @0: MetaData;
-    payload @1: Data;
-}
-
 struct TransactionData {
     transaction @0 :Data;
     status @1: Text;
@@ -42,15 +35,4 @@ struct Transactions {
 
 struct TransactionBatch {
     transactions @0 :List(ContractTransaction);
-}
-
-struct StandardTransaction {
-    metadata @0 :MetaData;
-    payload @1 :Payload;
-
-    struct Payload {
-        sender @0 :Data;
-        receiver @1 :Data;
-        amount @2 :UInt64;
-    }
 }

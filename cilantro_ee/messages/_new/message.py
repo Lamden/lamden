@@ -19,11 +19,7 @@ CLASS_TO_TYPE_MAP = {
     transaction_capnp.ContractPayload: 10,
     transaction_capnp.ContractTransaction: 11,
     transaction_capnp.MetaData: 12,
-    transaction_capnp.OrderingContainer: 13,
-    transaction_capnp.PublishTransaction: 14,
-    transaction_capnp.StandardTransaction: 15,
     transaction_capnp.TransactionBatch: 16,
-    transaction_capnp.TransactionContainer: 17,
     transaction_capnp.TransactionData: 18,
     transaction_capnp.Transactions: 19
 }
@@ -42,11 +38,7 @@ TYPE_TO_CLASS_MAP = {
     10: transaction_capnp.ContractPayload,
     11: transaction_capnp.ContractTransaction,
     12: transaction_capnp.MetaData,
-    13: transaction_capnp.OrderingContainer,
-    14: transaction_capnp.PublishTransaction,
-    15: transaction_capnp.StandardTransaction,
     16: transaction_capnp.TransactionBatch,
-    17: transaction_capnp.TransactionContainer,
     18: transaction_capnp.TransactionData,
     19: transaction_capnp.Transactions
 }
