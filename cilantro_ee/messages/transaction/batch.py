@@ -23,11 +23,11 @@ class TransactionBatch(MessageBase):
         return transaction_capnp.TransactionBatch.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, transactions: List[OrderingContainer] or None):
+    def create(cls, transactions: List[ContractTransaction] or None):
         # Validate input
         transactions = transactions or []
         for oc in transactions:
-            assert isinstance(oc, OrderingContainer), "expected transactions must be a list of OrderingContains, " \
+            assert isinstance(oc, ContractTransaction), "expected transactions must be a list of OrderingContains, " \
                                                       "but got element {}".format(oc)
 
         batch = transaction_capnp.TransactionBatch.new_message()
@@ -38,8 +38,8 @@ class TransactionBatch(MessageBase):
         return cls.from_data(batch)
 
     @lazy_property
-    def ordered_transactions(self) -> List[OrderingContainer]:
-        return [OrderingContainer.from_data(oc) for oc in self._data.transactions]
+    def ordered_transactions(self) -> List[ContractTransaction]:
+        return [ContractTransaction.from_data(oc) for oc in self._data.transactions]
 
     @lazy_property
     def transactions(self) -> List[TransactionBase]:

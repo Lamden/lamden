@@ -45,22 +45,8 @@ struct Transactions {
     transactions @0 :List(Data);
 }
 
-
-struct TransactionContainer {
-    type @0 :UInt16;
-    payload @1 :Data;
-}
-
-
-struct OrderingContainer {
-    type @0 :UInt16;
-    transaction @1 :Data;
-    utcTimeMs @2 :UInt64;
-}
-
-
 struct TransactionBatch {
-    transactions @0 :List(OrderingContainer);
+    transactions @0 :List(ContractTransaction);
 }
 
 
