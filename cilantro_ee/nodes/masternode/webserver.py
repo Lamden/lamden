@@ -6,7 +6,6 @@ from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.publish import PublishTransaction
 from cilantro_ee.messages.transaction.container import TransactionContainer
 from cilantro_ee.messages.transaction.ordering import OrderingContainer
 from cilantro_ee.nodes.masternode.nonce import NonceManager
@@ -59,41 +58,25 @@ async def ping(request):
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
-        return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     try:
-        # TODO waiting or stu's changes
-        # tx_bytes = request.body
-        # tx = ContractTransaction.from_bytes(tx_bytes)
-        # container = ContractTransaction.from_bytes(tx_bytes)
-        container = TransactionContainer.from_bytes(tx_bytes)
-        tx = container.open()  # Deserializing the tx automatically validates the signature and POW
+        tx_bytes = request.body
+        tx = ContractTransaction.from_bytes(tx_bytes)
     except Exception as e:
-        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)}, status=400)
-
-    # TODO do we need to do any other validation? tx size? check sufficient stamps?
-    # TODO -- check that timestamp on tx meta is within reasonable bound
-
-    # Check the transaction type and make sure we can handle it
-    if type(tx) not in (ContractTransaction, PublishTransaction):
-        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
-
-    if conf.SSL_ENABLED:
-        # Verify the nonce, and remove it from db if its valid so it cannot be used again
-        # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
-        if not NonceManager.check_if_exists(tx.nonce):
-            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)}, status=400)
-        log.spam("Removing nonce {}".format(tx.nonce))
-        NonceManager.delete_nonce(tx.nonce)
+        return json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
     # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
     ord_container = OrderingContainer.create(tx)
-    try: app.queue.put_nowait(ord_container.serialize())
-    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
+    try:
+        app.queue.put_nowait(ord_container.serialize())
+    except:
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     # Return transaction hash and nonce to users (not sure which they will need) --davis
-    return _respond_to_request({'success': 'Transaction successfully submitted to the network.',
+    return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
+
 
 # Returns {'contracts': JSON List of strings}
 @app.route('/contracts', methods=['GET'])
