@@ -37,35 +37,25 @@ static_headers = {}
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
-        return json({'error': "Queue full! Cannot process any more requests"}, status=503)
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     try:
         tx_bytes = request.body
         tx = ContractTransaction.from_bytes(tx_bytes)
     except Exception as e:
-        return json({'error': 'Error opening transaction: {}'.format(e)}, status=400)
-
-    # TODO do we need to do any other validation? tx size? check sufficient stamps?
-    # TODO -- check that timestamp on tx meta is within reasonable bound
-
-    if conf.SSL_ENABLED:
-        # Verify the nonce, and remove it from db if its valid so it cannot be used again
-        # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
-        if not NonceManager.check_if_exists(tx.nonce):
-            return json({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)}, status=400)
-        log.spam("Removing nonce {}".format(tx.nonce))
-        NonceManager.delete_nonce(tx.nonce)
+        return json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
     # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
     ord_container = OrderingContainer.create(tx)
     try:
         app.queue.put_nowait(ord_container.serialize())
     except:
-        return json({'error': "Queue full! Cannot process any more requests"}, status=503)
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     # Return transaction hash and nonce to users (not sure which they will need) --davis
     return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
+
 
 # Returns {'contracts': JSON List of strings}
 @app.route('/contracts', methods=['GET'])
