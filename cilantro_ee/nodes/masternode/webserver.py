@@ -6,9 +6,7 @@ from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.container import TransactionContainer
 from cilantro_ee.messages.transaction.ordering import OrderingContainer
-from cilantro_ee.nodes.masternode.nonce import NonceManager
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
@@ -27,7 +25,7 @@ NUM_WORKERS = 2
 app = Sanic(__name__)
 
 ssl_enabled = False
-ssl_cert = '~/.ssh/server.cs,mr'
+ssl_cert = '~/.ssh/server.csr'
 ssl_key = '~/.ssh/server.key'
 
 CORS(app, automatic_options=True)
@@ -60,20 +58,19 @@ async def submit_transaction(request):
     if app.queue.full():
         return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
+    # Try to deserialize transaction.
     try:
         tx_bytes = request.body
         tx = ContractTransaction.from_bytes(tx_bytes)
     except Exception as e:
         return json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
-    # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
-    ord_container = OrderingContainer.create(tx)
+    # Try to put it in the request queue.
     try:
-        app.queue.put_nowait(ord_container.serialize())
+        app.queue.put_nowait(tx_bytes)
     except:
         return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
-    # Return transaction hash and nonce to users (not sure which they will need) --davis
     return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
 
