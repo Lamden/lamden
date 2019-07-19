@@ -24,7 +24,8 @@ from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.block_data.state_update import *
+# from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
@@ -61,6 +62,14 @@ class NextBlockState(Enum):
     PROCESSED = 2
 
 
+# raghu
+class SBClientManager:
+    def __init__(self, sbb_idx, loop):
+        # self.client = SubBlockClient(sbb_idx=sbb_idx, num_sbb=NUM_SB_PER_BLOCK, loop=loop)
+        self.next_sm_index = 0
+        self.max_caches = 2
+        self.sb_caches = []
+
 class NextBlockToMake:
     def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.READY):
         self.next_block_index = block_index
@@ -71,11 +80,16 @@ class NextBlockToMake:
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.sub_block_index = sub_block_index
-        self.empty_input_hash = None
+        self.connected_vk = None
+        self.empty_input_iter = 0
         self.sub_socket = sub_socket
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
         self.to_finalize_txs = LinkedHashTable()
+
+    def get_empty_input_hash(self):
+        self.empty_input_iter += 1
+        return Hasher.hash(self.connected_vk + str(self.empty_input_iter))
 
 
 class SubBlockBuilder(Worker):
@@ -98,7 +112,6 @@ class SubBlockBuilder(Worker):
         self.num_txn_bags = 0
         self._empty_txn_batch = TransactionBatch.create([])
 
-        # self.pending_block_index = -1
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
         # DEBUG -- TODO DELETE
@@ -140,8 +153,6 @@ class SubBlockBuilder(Worker):
     def initialize_next_block_to_make(self, next_block_index: int):
         self._next_block_to_make.next_block_index = next_block_index % NUM_BLOCKS
         self._next_block_to_make.state = NextBlockState.READY
-        # self._next_block_to_make.state = NextBlockState.READY if self.client.can_start_next_sb \
-                                             # else NextBlockState.NOT_READY
 
     def move_next_block_to_make(self):
         if self._next_block_to_make.state == NextBlockState.PROCESSED:
@@ -187,7 +198,7 @@ class SubBlockBuilder(Worker):
             vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
             assert self.sb_managers[smi].sub_block_index == sb_idx, "something went wrong in connections"
             self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
-            self.sb_managers[smi].empty_input_hash = Hasher.hash(vk)
+            self.sb_managers[smi].connected_vk = vk
 
     def _align_to_hash(self, smi, input_hash):
         num_discards = 0
@@ -210,6 +221,8 @@ class SubBlockBuilder(Worker):
     def align_input_hashes(self, aih: AlignInputHash):
         self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
         self.client.flush_all()
+        self.startup = True
+        # is this remainder or division here ??
         smi = aih.sb_index // NUM_SB_BUILDERS
         num_discards = self._align_to_hash(smi, aih.input_hash)
         self.log.debug("Discarded {} input bags to get alignment".format(num_discards))
@@ -225,7 +238,7 @@ class SubBlockBuilder(Worker):
 
         num_discards = 0
         input_hashes = fbn.input_hashes[self.sb_blder_idx]
-        smi = fbn.sb_indices[self.sb_blder_idx] // NUM_SB_BUILDERS
+        smi = (fbn.first_sb_index + self.sb_blder_idx) // NUM_SB_BUILDERS
 
         for input_hash in input_hashes:
             num_discards = num_discards + self._align_to_hash(smi, input_hash)
@@ -239,7 +252,8 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
 
         self.client.flush_all()
-        self._make_next_sb()
+        self.startup = True
+        # self._make_next_sb()
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
@@ -382,13 +396,21 @@ class SubBlockBuilder(Worker):
                             .format(len(txs), sb_data.input_hash))
         self._send_msg_over_ipc(sbc)
 
+
+    def create_sb_contender(self, sb_data: SBData):
+        if len(sb_data.tx_data) > 0:
+            self._create_sbc_from_batch(sb_data)
+        else:
+            self._create_empty_sbc(sb_data)
+
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self, input_hash: str, tx_batch: TransactionBatch, \
                           timestamp: float, sbb_idx: int):
         self.log.debug("SBB {} attempting to build a sub block with index {}"
                        .format(self.sb_blder_idx, sbb_idx))
 
-        callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
+        # callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
+        callback = self.create_sb_contender
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
         block_hash = self.state.latest_block_hash
@@ -446,7 +468,7 @@ class SubBlockBuilder(Worker):
                 self._execute_input_bag(input_hash, envelope, sb_index)
             else:
                 timestamp = float(time.time())
-                input_hash = self.sb_managers[sm_idx].empty_input_hash
+                input_hash = self.sb_managers[sm_idx].get_empty_input_hash()
                 self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
 
     def _make_next_sub_block(self):

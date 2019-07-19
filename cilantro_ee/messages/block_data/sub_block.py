@@ -78,6 +78,10 @@ class SubBlock(MessageBase):
         return self._data.merkleRoot
 
     @property
+    def is_empty(self) -> bool:
+        return len(self.merkle_leaves) == 0
+
+    @property
     def input_hash(self) -> str:
         return self._data.inputHash
 

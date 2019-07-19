@@ -16,7 +16,7 @@ from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.block_data.block_metadata import NewBlockNotification, SkipBlockNotification
+from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
 
@@ -131,7 +131,7 @@ class BlockAggregator(Worker):
         for vk in PhoneBook.schedulers + PhoneBook.notifiers:
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
-        # Listen to masters for _new block notifs and state update requests from masters/delegates
+        # Listen to masters for new block notifs and state update requests from masters/delegates
         for vk in PhoneBook.masternodes:
             if vk != self.verifying_key:
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
@@ -194,7 +194,7 @@ class BlockAggregator(Worker):
 
     def _set_catchup_done(self):
         if not self._is_catchup_done:
-            self._is_catchup_done = False
+            self._is_catchup_done = True
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
             message = Ready.create()
@@ -288,28 +288,33 @@ class BlockAggregator(Worker):
     def send_new_block_notif(self, block_data: BlockData):
         message = NonEmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        new_block_notif = NewBlockNotification.create_from_block_data(block_data)
+        new_block_notif = NewBlockNotification.create(block_data.prev_block_hash,
+                               block_data.block_hash, block_data.block_num,
+                               block_data.sub_blocks[0].index,
+                               block_data.block_owners, block_data.input_hashes)
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
         self.pub.send_msg(msg=new_block_notif, header=NEW_BLK_NOTIF_FILTER.encode())
-        self.log.info('Published _new block notif with hash "{}" and prev hash {}'
+        self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.block_hash, block_data.prev_block_hash))
 
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
+        # until we have proper async way to control the speed of network, we use this crude method to control the speed
+        time.sleep(30)
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, sub_blocks)
-
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash,
+                                  self.state.latest_block_num+1, [], sub_blocks)
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
     def send_fail_block_notif(self):
         msg = self.curr_block.get_failed_block_notif()
+        self.log.debugv("Sending failed block notif {}".format(msg))
         self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
-        self.log.debug("Uh oh! Sending failed block notif {}".format(msg))
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
-        self.log.debugv("MN got _new block notification: {}".format(notif))
+        self.log.debugv("MN got new block notification: {}".format(notif))
 
         if notif.block_num > self.state.latest_block_num + 1:
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
@@ -329,8 +334,8 @@ class BlockAggregator(Worker):
                 await asyncio.sleep(BLOCK_TIMEOUT_POLL)
                 elapsed += BLOCK_TIMEOUT_POLL
 
-            self.log.critical("Block timeout of {}s reached for block hash {}! Resetting sub block contenders and sending "
-                              "skip block notification.".format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
+            self.log.critical("Block timeout of {}s reached for block hash {}!"
+                              .format(BLOCK_PRODUCTION_TIMEOUT, self.curr_block_hash))
             new_quorum = self.curr_block.get_current_quorum_reached()
             if new_quorum >= self.min_quorum and new_quorum >= (9 * self.cur_quorum // 10):
                 self.log.warning("Reducing consensus quorum from {} to {}".
@@ -338,6 +343,7 @@ class BlockAggregator(Worker):
                 self.store_full_block()
                 self.cur_quorum = new_quorum
             else:
+                self.log.debugv("sending fail block notif")
                 self.send_fail_block_notif()
             self.curr_block.reset()
             num_delegates_joined = self.manager.get_and_reset_num_delegates_joined()
