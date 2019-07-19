@@ -53,18 +53,19 @@ class ContractTransaction:
                                             "types {}".format(t, self.kwargs[key], list(VALUE_TYPE_MAP.keys()))
                 setattr(self.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
 
-        self.struct.payload = self.payload.to_bytes()
+        self.signature = None
+        self.proof = None
 
         self.proof_generated = False
         self.tx_signed = False
 
     def sign(self, signing_key):
         # signs the payload binary
-        self.struct.metadata.signature = wallet.sign(signing_key, self.payload.to_bytes())
+        self.signature = wallet.sign(signing_key, self.payload.to_bytes())
         self.tx_signed = True
 
     def generate_proof(self):
-        self.struct.metadata.proof = SHA3POW.find(self.payload.to_bytes())[0]
+        self.proof = SHA3POW.find(self.payload.to_bytes())[0]
         self.tx_signed = True
 
     def serialize(self):
@@ -73,5 +74,9 @@ class ContractTransaction:
 
         if not self.proof_generated:
             self.generate_proof()
+
+        self.struct.payload = self.payload.to_bytes()
+        self.struct.metadata.proof = self.proof
+        self.struct.metadata.signature = self.signature
 
         return self.struct.to_bytes()
