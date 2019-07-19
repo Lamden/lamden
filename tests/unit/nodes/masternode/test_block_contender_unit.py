@@ -2,7 +2,7 @@ from unittest import TestCase
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup
 from cilantro_ee.storage.vkbook import VKBook
 import secrets
-
+from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContenderBuilder
 
 def random_wallets(n=10):
     return [secrets.token_hex(32) for _ in range(n)]
@@ -138,5 +138,14 @@ class TestSubBlockGroup(TestCase):
 
         self.assertTrue(s.is_consensus_possible())
 
-    def test_add_sbc(self):
-        pass
+    def test_add_sbc_returns_nothing_if_sbc_cannot_be_verified(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        sbc = SubBlockContenderBuilder.create()
+        print(sbc)

@@ -120,29 +120,35 @@ class SubBlockGroup:
 
     def _get_ordered_transactions(self):
         assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
+
+        # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
         return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
 
     def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
+        # Verify that the SubBlockContender message is validly constructured
         if not self._verify_sbc(sender_vk, sbc):
             self.log.error("Could not verify SBC from sender {}".format(sender_vk))
             return
 
+        # If a sender 'resubmits' a SubBlockContender, it overwrites the previous. Seems like a potential attack vector?
         if sender_vk in self.sender_to_sbc:
             self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
                            "old contender before adding a _new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
             self.rh[existing_sbc.result_hash].remove(existing_sbc)
 
+        # Add the SBC to the mapping of entries between SBCs and senders. This can be a set instead
         self.sender_to_sbc[sender_vk] = sbc
+
+        # Add the SBC to the result hash. Shouldn't we hash it ourselves and just keep a hashmap?
+        # Also, wouldn't it be easier to have a counter?
         self.rh[sbc.result_hash].add(sbc)
+
+        # If the new subblock is now the 'best result', set it so in the instance.
         if (self.best_rh is None) or (len(self.rh[sbc.result_hash]) > len(self.rh[self.best_rh])):
             self.best_rh = sbc.result_hash
 
-        # Just a warning to help debugging
-        # if len(self.rh) > 1:
-        #     self.log.warning("More than {} unique result hashes for prev block hash {}!!! Result hashes: {}"
-        #                      .format(1, self.curr_block_hash, list(self.rh.keys())))
-
+        # Not sure what this is doing
         for tx in sbc.transactions:
             if tx.hash not in self.transactions:
                 self.transactions[tx.hash] = tx

@@ -78,10 +78,11 @@ class TestSubBlockContender(TestCase):
         sbc1 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
                                        signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         self.assertFalse(sbc1.is_empty)
-        msg_type = MessageBase.registry[type(sbc1)]
-        sbc2 = MessageBase.registry[msg_type].from_bytes(sbc1.serialize())
+        #msg_type = MessageBase.registry[type(sbc1)]
+        sbc2 = SubBlockContender.from_bytes(sbc1.serialize())
         self.assertEqual(sbc1, sbc2)
-        msg2 = Envelope.create_from_message(message=sbc2, signing_key=DEL_SK, verifying_key=DEL_VK)
+
+        msg2 = Envelope.create_from_message(message=sbc2.serialize(), signing_key=DEL_SK, verifying_key=DEL_VK)
         es = msg2.serialize()
         env = Envelope.from_bytes(es)
         sbc = env.message

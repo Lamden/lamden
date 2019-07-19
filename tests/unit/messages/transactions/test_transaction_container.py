@@ -57,13 +57,6 @@ class TestTransactionContainer(TestCase):
         open_container_data.validate_metadata()
         open_container_data.validate_payload()
 
-    def test_open_container_bad_type(self):
-        """Tests to see opening transaction container with invalid registry key fails"""
-        tx = self._convenience_build_standard_transaction()
-        tc = TransactionContainer.create(tx)
-        tc._data.type = 9000  # set registry type to invalid entry
-        self.assertRaises(Exception, tc.open)
-
     def test_open_container_bad_payload(self):
         """Tests to see opening transaction container with invalid registry key fails"""
         tx = self._convenience_build_standard_transaction()
