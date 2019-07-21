@@ -6,6 +6,7 @@ from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
+from cilantro_ee.messages.base import base
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.protocol.multiprocessing.worker import Worker
@@ -59,22 +60,45 @@ class TransactionBatcher(Worker):
         msg_type = bytes_to_int(frames[0])
         msg_blob = frames[1]
 
-        msg = MessageBase.registry[msg_type].from_bytes(msg_blob) # How messages get deserialized.
-        self.log.debugv("Batcher received an IPC message {}".format(msg))
+        if MessageBase.registry.get(msg_type) is not None:
+            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
-        if isinstance(msg, EmptyBlockMade):
-            self.num_bags_sent = self.num_bags_sent - 1
+        elif base.SIGNALS.get(msg_type):
+            msg = base.SIGNALS.get(msg_type)
 
-        elif isinstance(msg, NonEmptyBlockMade):
-            self.num_bags_sent = self.num_bags_sent - 1
+        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob) # How messages get deserialized.
+        #self.log.debugv("Batcher received an IPC message {}".format(msg))
 
-        elif isinstance(msg, Ready):
-            self.log.spam("Got Ready notif from block aggregator!!!")
-            self._ready = True
+        if isinstance(msg, MessageBase):
+            # SIGNAL
+            if isinstance(msg, EmptyBlockMade):
+                self.num_bags_sent = self.num_bags_sent - 1
 
-        else:
-            raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
-                            .format(type(msg)))
+            # SIGNAL
+            elif isinstance(msg, NonEmptyBlockMade):
+                self.num_bags_sent = self.num_bags_sent - 1
+
+            # SIGNAL
+            elif isinstance(msg, Ready):
+                self.log.spam("Got Ready notif from block aggregator!!!")
+                self._ready = True
+
+            else:
+                raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
+                                .format(type(msg)))
+        elif isinstance(msg, base.Signal):
+            # SIGNAL
+            if isinstance(msg, base.EmptyBlockMade):
+                self.num_bags_sent = self.num_bags_sent - 1
+
+            # SIGNAL
+            elif isinstance(msg, base.NonEmptyBlockMade):
+                self.num_bags_sent = self.num_bags_sent - 1
+
+            # SIGNAL
+            elif isinstance(msg, base.Ready):
+                self.log.spam("Got Ready notif from block aggregator!!!")
+                self._ready = True
 
     async def _wait_until_ready(self):
         await asyncio.sleep(1)

@@ -163,10 +163,12 @@ class BlockAggregator(Worker):
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        id_frame = str(0).encode()
-        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-        self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+        if isinstance(message, MessageBase):
+            id_frame = str(0).encode()
+            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+
+            self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -179,15 +181,19 @@ class BlockAggregator(Worker):
             else:
                 self.recv_sub_block_contender(sender, msg)
 
+        # SIGNAL
         elif isinstance(msg, NewBlockNotification) or isinstance(msg, SkipBlockNotification):
             self.recv_new_block_notif(sender, msg)
 
+        # SIGNAL
         elif isinstance(msg, FailedBlockNotification):
             self.recv_fail_block_notif(sender, msg)
+
 
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(sender, msg)
 
+        # SIGNAL
         elif not isinstance(msg, Ready):
             raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))

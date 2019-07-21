@@ -32,12 +32,14 @@ from cilantro_ee.constants.ports import *
 
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.messages.base import base
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import BlockNotification, NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
+
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
@@ -331,25 +333,52 @@ class BlockManager(Worker):
 
         msg_type = bytes_to_int(frames[1])
         msg_blob = frames[2]
-        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+
+        if MessageBase.registry.get(msg_type) is not None:
+            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+
+        elif base.SIGNALS.get(msg_type):
+            msg = base.SIGNALS.get(msg_type)
+
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
-        if isinstance(msg, SubBlockContender):
-            self._handle_sbc(sbb_index, msg)
-            if msg.is_empty:
-                self._reset_sb_have_data(sbb_index)
-            else:
-                self._set_sb_have_data(sbb_index)
-        elif isinstance(msg, Ready):
-            self.set_sbb_ready()
-        elif isinstance(msg, PendingTransactions):
-            self._set_pending_work(sbb_index)
-        elif isinstance(msg, NoTransactions):
-            self._reset_pending_work(sbb_index)
-        else:
-            raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
-                            .format(type(msg)))
+        if isinstance(msg, MessageBase):
+            # DATA
+            if isinstance(msg, SubBlockContender):
+                self._handle_sbc(sbb_index, msg)
+                if msg.is_empty:
+                    self._reset_sb_have_data(sbb_index)
+                else:
+                    self._set_sb_have_data(sbb_index)
 
+            # SIGNAL
+            elif isinstance(msg, Ready):
+                self.set_sbb_ready()
+
+            # SIGNAL
+            elif isinstance(msg, PendingTransactions):
+                self._set_pending_work(sbb_index)
+
+            # SIGNAL
+            elif isinstance(msg, NoTransactions):
+                self._reset_pending_work(sbb_index)
+
+            else:
+                raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
+                                .format(type(msg)))
+
+        elif isinstance(msg, base.Signal):
+            # SIGNAL
+            if isinstance(msg, base.Ready):
+                self.set_sbb_ready()
+
+            # SIGNAL
+            elif isinstance(msg, base.PendingTransactions):
+                self._set_pending_work(sbb_index)
+
+            # SIGNAL
+            elif isinstance(msg, base.NoTransactions):
+                self._reset_pending_work(sbb_index)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -505,6 +534,8 @@ class BlockManager(Worker):
         # first reset my state
         self.db_state.reset()
         self.log.info("Sending MakeNextBlock message to SBBs")
+
         message = MakeNextBlock.create()
+
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)

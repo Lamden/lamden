@@ -6,6 +6,44 @@ import hashlib
 Messages encapsulate data that is sent between nodes.
 """
 
+class Signal:
+    pass
+
+class MakeNextBlock(Signal):
+    pass
+
+class PendingTransactions(Signal):
+    pass
+
+class NoTransactions(Signal):
+    pass
+
+class EmptyBlockMade(Signal):
+    pass
+
+class NonEmptyBlockMade(Signal):
+    pass
+
+class Ready(Signal):
+    pass
+
+class Poke(Signal):
+    pass
+
+class UpdatedStateSignal(Signal):
+    pass
+
+
+SIGNALS = {
+    30000: MakeNextBlock,
+    30001: PendingTransactions,
+    30002: NoTransactions,
+    30004: EmptyBlockMade,
+    30005: NonEmptyBlockMade,
+    30006: Ready,
+    30007: Poke,
+    30008: UpdatedStateSignal
+}
 
 class MessageBaseMeta(type):
     def __new__(cls, clsname, bases, clsdict):

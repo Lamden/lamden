@@ -33,7 +33,7 @@ from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
 from cilantro_ee.messages.signals.node import Ready
-
+from cilantro_ee.messages.base import base
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -262,24 +262,42 @@ class SubBlockBuilder(Worker):
         msg_type = bytes_to_int(frames[0])
         msg_blob = frames[1]
 
-        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
-        self.log.debugv("SBB received an IPC message {}".format(msg))
+        if MessageBase.registry.get(msg_type) is not None:
+            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
-        if isinstance(msg, MakeNextBlock):
-            self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
-            self._make_next_sub_block()
+        elif base.SIGNALS.get(msg_type):
+            msg = base.SIGNALS.get(msg_type)
 
-        # if not matched consensus, then discard current state and use catchup flow
-        elif isinstance(msg, AlignInputHash):
-            self.align_input_hashes(msg)
+        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        #self.log.debugv("SBB received an IPC message {}".format(msg))
 
-        # if not matched consensus, then discard current state and use catchup flow
-        elif isinstance(msg, FailedBlockNotification):
-            self._fail_block(msg)
+        if isinstance(msg, MessageBase):
+            # SIGNAL
+            if isinstance(msg, MakeNextBlock):
+                self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
+                self._make_next_sub_block()
 
-        else:
-            raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
-                            .format(type(msg)))
+            # DATA
+            # if not matched consensus, then discard current state and use catchup flow
+            elif isinstance(msg, AlignInputHash):
+                self.align_input_hashes(msg)
+
+            # SIGNAL
+            elif isinstance(msg, FailedBlockNotification):
+                self._fail_block(msg)
+
+            else:
+                raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
+                                .format(type(msg)))
+
+        elif isinstance(msg, base.Signal):
+            # SIGNAL
+            if isinstance(msg, base.MakeNextBlock):
+                self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
+                self._make_next_sub_block()
+            # SIGNAL
+            elif isinstance(msg, base.FailedBlockNotification):
+                self._fail_block(msg)
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """
@@ -298,6 +316,7 @@ class SubBlockBuilder(Worker):
         if self.num_txn_bags == 0:
             message = NoTransactions.create()
         elif self.num_txn_bags == 1:
+            # SIGNAL CREATION
             message = PendingTransactions.create()
         if message:
             self._send_msg_over_ipc(message)
