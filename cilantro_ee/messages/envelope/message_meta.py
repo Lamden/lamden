@@ -36,18 +36,16 @@ class MessageMeta(MessageBase):
         :param uuid:
         :return:
         """
-        assert type in MessageBase.registry, "Type enum {} not found in MessageBase.registry {}"\
-                                             .format(type, MessageBase.registry)
+        if type in MessageBase.registry:
+            if uuid == -1:
+                uuid = random.randint(0, MAX_UUID)
 
-        if uuid == -1:
-            uuid = random.randint(0, MAX_UUID)
+            data = envelope_capnp.MessageMeta.new_message()
+            data.type = type
+            data.timestamp = timestamp
+            data.uuid = uuid
 
-        data = envelope_capnp.MessageMeta.new_message()
-        data.type = type
-        data.timestamp = timestamp
-        data.uuid = uuid
-
-        return cls.from_data(data)
+            return cls.from_data(data)
 
     @property
     def type(self) -> int:
