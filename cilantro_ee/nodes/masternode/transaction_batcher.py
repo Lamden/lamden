@@ -67,9 +67,10 @@ class TransactionBatcher(Worker):
             msg = base.SIGNALS.get(msg_type)
 
         #msg = MessageBase.registry[msg_type].from_bytes(msg_blob) # How messages get deserialized.
-        #self.log.debugv("Batcher received an IPC message {}".format(msg))
+
 
         if isinstance(msg, MessageBase):
+            self.log.info("Batcher received an IPC message {}".format(msg))
             # SIGNAL
             if isinstance(msg, EmptyBlockMade):
                 self.num_bags_sent = self.num_bags_sent - 1
@@ -87,6 +88,7 @@ class TransactionBatcher(Worker):
                 raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
         elif isinstance(msg, base.Signal):
+            self.log.success("Batcher received an IPC SIGNAL {}".format(msg))
             # SIGNAL
             if isinstance(msg, base.EmptyBlockMade):
                 self.num_bags_sent = self.num_bags_sent - 1

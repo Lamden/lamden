@@ -19,7 +19,7 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
-
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 from typing import List
@@ -137,6 +137,8 @@ class BlockAggregator(Worker):
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # we just connected to other nodes, let's chill a bit to give time for those connections form !!!
+
+        # Do a dealer / router socket pair here instead.
         self.log.info("Sleeping before triggering catchup...")
         await asyncio.sleep(8)
 
@@ -169,11 +171,14 @@ class BlockAggregator(Worker):
 
             self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
+
+        #msg_type = bytes_to_int(frames[0])
+        #msg_blob = frames[1]
+        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         if isinstance(msg, SubBlockContender):
             if not self.catchup_manager.is_catchup_done():
@@ -189,7 +194,7 @@ class BlockAggregator(Worker):
         elif isinstance(msg, FailedBlockNotification):
             self.recv_fail_block_notif(sender, msg)
 
-
+        # DATA
         elif isinstance(msg, BlockIndexRequest):
             self.catchup_manager.recv_block_idx_req(sender, msg)
 
@@ -307,10 +312,16 @@ class BlockAggregator(Worker):
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
         time.sleep(30)
+
+        # SIGNAL
         message = EmptyBlockMade.create()
         self._send_msg_over_ipc(message=message)
+
+
         skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash,
                                   self.state.latest_block_num+1, [], sub_blocks)
+
+
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 

@@ -177,6 +177,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_index, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
+    # TODO Delete this.
     def _connect_new_node(self, vk):
         d = NetworkTopology.get_sbb_publisher(vk)
 
@@ -256,25 +257,23 @@ class SubBlockBuilder(Worker):
         # self._make_next_sb()
 
     def handle_ipc_msg(self, frames):
-        self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
-        assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
+        self.log.info("SBB received an IPC message {}".format(frames))
+        assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = bytes_to_int(frames[0])
         msg_blob = frames[1]
+        msg = None
 
         if MessageBase.registry.get(msg_type) is not None:
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)
-
-        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
-        #self.log.debugv("SBB received an IPC message {}".format(msg))
+            msg = base.SIGNALS.get(msg_type)()
 
         if isinstance(msg, MessageBase):
             # SIGNAL
+            self.log.success("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
             if isinstance(msg, MakeNextBlock):
-                self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
                 self._make_next_sub_block()
 
             # DATA
@@ -292,12 +291,10 @@ class SubBlockBuilder(Worker):
 
         elif isinstance(msg, base.Signal):
             # SIGNAL
+            self.log.success("SIGNAL RECIEVED!!!".format(msg))  # TODO REMOOOVE
             if isinstance(msg, base.MakeNextBlock):
                 self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
                 self._make_next_sub_block()
-            # SIGNAL
-            elif isinstance(msg, base.FailedBlockNotification):
-                self._fail_block(msg)
 
     def _send_msg_over_ipc(self, message: MessageBase):
         """

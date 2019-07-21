@@ -45,6 +45,17 @@ SIGNALS = {
     30008: UpdatedStateSignal
 }
 
+SIGNAL_VALUES = {
+    MakeNextBlock: 30000,
+    PendingTransactions: 30001,
+    NoTransactions: 30002,
+    EmptyBlockMade: 30004,
+    NonEmptyBlockMade: 30005,
+    Ready: 30006,
+    Poke: 30007,
+    UpdatedStateSignal: 30008
+}
+
 class MessageBaseMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)

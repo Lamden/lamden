@@ -185,7 +185,9 @@ class BlockManager(Worker):
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
+
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
+
         self.driver = MetaDataStorage()
         self.run()
 
@@ -440,8 +442,11 @@ class BlockManager(Worker):
         msg = envelope.message
         msg_hash = envelope.message_hash
 
+        # DATA
         if isinstance(msg, BlockIndexReply):
             self.recv_block_idx_reply(sender, msg)
+
+        # DATA
         elif isinstance(msg, BlockDataReply):
             self.recv_block_data_reply(msg)
         else:
@@ -464,27 +469,36 @@ class BlockManager(Worker):
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY
-    def _send_msg_over_ipc(self, sb_index: int, message: MessageBase):
+    def _send_msg_over_ipc(self, sb_index: int, message):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
         self.log.spam("Sending msg to sb_index {} with payload {}".format(sb_index, message))
-        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        id_frame = str(sb_index).encode()
-        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-        self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+
+        if isinstance(message, MessageBase):
+            id_frame = str(sb_index).encode()
+            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+            self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+
+        elif isinstance(message, base.Signal):
+            id_frame = str(sb_index).encode()
+            signal_type = base.SIGNAL_VALUES[type(message)]
+            self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
+            self.ipc_router.send_multipart([id_frame, int_to_bytes(signal_type), b''])
 
     def _send_input_align_msg(self, block: BlockNotification):
         self.log.info("Sending AlignInputHash message to SBBs")
         first_sb_index = block.first_sb_index
         for i, input_hash in enumerate(block.input_hashes):
+            # DATA
             message = AlignInputHash.create(input_hash, first_sb_index + i)
             sb_idx = i % NUM_SB_BUILDERS
             self._send_msg_over_ipc(sb_index=sb_idx, message=message)
 
     def _send_fail_block_msg(self, block_data: FailedBlockNotification):
         for idx in range(NUM_SB_BUILDERS):
+            # SIGNAL
             self._send_msg_over_ipc(sb_index=idx, message=block_data)
 
 
@@ -535,7 +549,8 @@ class BlockManager(Worker):
         self.db_state.reset()
         self.log.info("Sending MakeNextBlock message to SBBs")
 
-        message = MakeNextBlock.create()
-
+        # SIGNAL
+        #message = MakeNextBlock.create()
+        message = base.MakeNextBlock()
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
