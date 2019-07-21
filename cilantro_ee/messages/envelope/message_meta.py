@@ -7,6 +7,41 @@ import envelope_capnp
 
 import random
 
+class MakeNextBlock:
+    pass
+
+class PendingTransactions:
+    pass
+
+class NoTransactions:
+    pass
+
+class EmptyBlockMade:
+    pass
+
+class NonEmptyBlockMade:
+    pass
+
+class Ready:
+    pass
+
+class Poke:
+    pass
+
+class UpdatedStateSignal:
+    pass
+
+
+SIGNALS = {
+    30000: MakeNextBlock,
+    30001: PendingTransactions,
+    30002: NoTransactions,
+    30004: EmptyBlockMade,
+    30005: NonEmptyBlockMade,
+    30006: Ready,
+    30007: Poke,
+    30008: UpdatedStateSignal
+}
 
 class MessageMeta(MessageBase):
     """
@@ -46,6 +81,9 @@ class MessageMeta(MessageBase):
             data.uuid = uuid
 
             return cls.from_data(data)
+
+        if type in SIGNALS:
+            return SIGNALS[type]
 
     @property
     def type(self) -> int:
