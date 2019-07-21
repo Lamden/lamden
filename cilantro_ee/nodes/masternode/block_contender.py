@@ -167,7 +167,7 @@ class SubBlockGroup:
         # Validate signature
         valid_sig = _verify(vk=bytes.fromhex(sbc.signature.sender),
                             msg=bytes.fromhex(sbc.result_hash),
-                            signature=bytes.fromhex(sbc.signature))
+                            signature=bytes.fromhex(sbc.signature.signature))
 
         if not valid_sig:
             self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))

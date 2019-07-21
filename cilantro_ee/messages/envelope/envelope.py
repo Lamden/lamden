@@ -37,7 +37,7 @@ class Envelope(MessageBase):
 
     @classmethod
     def from_bytes(cls, data: bytes, validate=True, cache_binary=True):
-        env = cls.from_bytes(data=data, validate=validate)
+        env = super().from_bytes(data=data, validate=validate)
 
         if cache_binary:
             set_lazy_property(env, 'serialize', data)
@@ -57,12 +57,12 @@ class Envelope(MessageBase):
         :return: An Envelope instance
         """
         assert issubclass(type(message), MessageBase), "message arg must be a MessageBase subclass"
-        # assert type(message) in MessageBase.registry, "Message type {} not found in registry {}"\
-        #     .format(type(message), MessageBase.registry)
+        assert type(message) in MessageBase.registry, "Message type {} not found in registry {}"\
+            .format(type(message), MessageBase.registry)
         # TODO -- verify sk (valid hex, 128 char)
 
         # Create MessageMeta
-        t = 0
+        t = MessageBase.registry[type(message)]
         timestamp = str(time.time())
         meta = MessageMeta.create(type=t, timestamp=timestamp, uuid=uuid)
 
@@ -128,10 +128,10 @@ class Envelope(MessageBase):
 
     @lazy_property
     def message(self) -> MessageBase:
-        # assert self.meta.type in MessageBase.registry, "Type {} not found in registry {}"\
-        #     .format(self.meta.type, MessageBase.registry)
+        assert self.meta.type in MessageBase.registry, "Type {} not found in registry {}"\
+            .format(self.meta.type, MessageBase.registry)
 
-        return self.meta.from_bytes(self.message_binary)
+        return MessageBase.registry[self.meta.type].from_bytes(self.message_binary)
 
     @lazy_property
     def message_hash(self) -> str:

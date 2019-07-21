@@ -5,6 +5,27 @@ subblock_capnp = capnp.load('../capnp/subblock.capnp')
 envelope_capnp = capnp.load('../capnp/envelope.capnp')
 transaction_capnp = capnp.load('../capnp/transaction.capnp')
 
+# Message type registration
+# Each type is a uint32 number (0 - 4294967295)
+#     0 -  9999 = block data
+# 10000 - 19999 = envelope
+# 20000 - 29999 = transaction
+# 30000 - 39999 = signals
+# 40000 - 49999 = consensus
+
+
+class Signals:
+    MAKE_NEXT_BLOCK = 30000
+    PENDING_TRANSACTIONS = 30001
+    NO_TRANSACTIONS = 30002
+    HALT = 30003
+    EMPTY_BLOCK_MADE = 30004
+    NON_EMPTY_BLOCK_MADE = 30005
+    READY = 30006
+    POKE = 30007
+    UPDATED_STATE_SIGNAL = 30008
+
+
 CLASS_TO_TYPE_MAP = {
     blockdata_capnp.BlockData: 0,
     blockdata_capnp.BlockMetaData: 1,
