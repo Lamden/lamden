@@ -4,7 +4,6 @@ from cilantro_ee.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
-from cilantro_ee.messages.signals.master import NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.base import base
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
@@ -66,13 +65,8 @@ class TransactionBatcher(Worker):
             msg = base.SIGNALS.get(msg_type)()
 
         if isinstance(msg, MessageBase):
-            self.log.info("Batcher received an IPC message {}".format(msg))
             # SIGNAL
-            if isinstance(msg, NonEmptyBlockMade):
-                self.num_bags_sent = self.num_bags_sent - 1
-
-            # SIGNAL
-            elif isinstance(msg, Ready):
+            if isinstance(msg, Ready):
                 self.log.spam("Got Ready notif from block aggregator!!!")
                 self._ready = True
 
@@ -83,11 +77,11 @@ class TransactionBatcher(Worker):
             self.log.success("Batcher received an IPC SIGNAL {}".format(msg))
             # SIGNAL
             if isinstance(msg, base.EmptyBlockMade):
-                self.log.success('EMPTY BLOCK MADE')
                 self.num_bags_sent = self.num_bags_sent - 1
 
             # SIGNAL
             elif isinstance(msg, base.NonEmptyBlockMade):
+                self.log.success('NON EMPTY BLOCK MADE')
                 self.num_bags_sent = self.num_bags_sent - 1
 
             # SIGNAL

@@ -17,7 +17,6 @@ from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
-from cilantro_ee.messages.signals.master import NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
@@ -308,7 +307,7 @@ class BlockAggregator(Worker):
         self._reset_curr_block()
 
     def send_new_block_notif(self, block_data: BlockData):
-        message = NonEmptyBlockMade.create()
+        message = base.NonEmptyBlockMade()
         self._send_msg_over_ipc(message=message)
         new_block_notif = NewBlockNotification.create(block_data.prev_block_hash,
                                block_data.block_hash, block_data.block_num,
