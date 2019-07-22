@@ -18,44 +18,37 @@ transaction_capnp = capnp.load('../capnp/transaction.capnp')
 # Type -> (envelope, capnp_deserializer)
 
 
-class Unpacker:
-    @staticmethod
-    def unpack(msg, deserializer):
+class Serializer:
+    def __init__(self, capnp_type, sign=True, prove=True):
+        self.capnp_type = capnp_type
+        self.sign = sign
+        self.prove = prove
+
+    def unpack(self, msg):
         message = envelope_capnp.Message.from_bytes_packed(msg)
-        final_message = deserializer.from_bytes_packed(message.payload)
+        if (self.sign and not _verify(msg.verifying_key, msg.payload, msg.signature)) or \
+                (self.prove and not SHA3POW.check(msg.payload, msg.proof)):
+                return None
+
+        final_message = self.capnp_type.from_bytes_packed(message.payload)
         return final_message
 
+    def pack(self, msg, wallet=None):
+        message = envelope_capnp.Message.new_message(payload=msg)
 
-class VerifiedUnpacker:
-    @staticmethod
-    def unpack(msg, deserializer):
-        message = envelope_capnp.VerifiedMessage.from_bytes_packed(msg)
-        if _verify(message.verifying_key, message.payload, message.signature):
-            final_message = deserializer.from_bytes_packed(message.payload)
-            return final_message
-        return None
+        if self.sign:
+            if wallet is None:
+                return None
+            message.verifying_key = wallet.verifying_key()
+            message.signature = wallet.sign(message.payload)
 
+        if self.prove:
+            message.proof = SHA3POW.find(message.payload)
 
-class ProvenVerifiedUnpacker:
-    @staticmethod
-    def unpack(msg, deserializer):
-        message = envelope_capnp.VerifiedMessage.from_bytes_packed(msg)
-        if _verify(message.verifying_key, message.payload, message.signature) and \
-                SHA3POW.check(message.payload, message.proof):
-
-            final_message = deserializer.from_bytes_packed(message.payload)
-            return final_message
-        return None
-
+        return message
 
 TYPE_MAP = {
-    30000: (Unpacker, None)
+    20000: Serializer(capnp_type=transaction_capnp.ContractTransaction, sign=True, prove=True),
+    30000: Serializer(capnp_type=transaction_capnp.ContractTransaction, sign=True, prove=True)
 }
 
-
-def deserialize(msg_type, msg):
-    unpacker, deserializer = TYPE_MAP.get(msg_type)
-    if deserializer is None:
-        return None
-
-    return unpacker.unpack(msg, deserializer)

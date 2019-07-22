@@ -40,6 +40,10 @@ class BlockAggregator(Worker):
         self.curr_block = BlockContender()
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
+
+
+
+
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
@@ -77,9 +81,11 @@ class BlockAggregator(Worker):
 
     def build_task_list(self):
         # Create ROUTER socket for communication with batcher over IPC
+        # DEALER SOCKET...
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
         self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
+        # SubscriptionService
         self.sub = self.manager.create_socket(
             socket_type=zmq.SUB,
             name="BA-Sub",
@@ -89,6 +95,7 @@ class BlockAggregator(Worker):
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
 
+        # Regular Publish socket
         self.pub = self.manager.create_socket(
             socket_type=zmq.PUB,
             name="BA-Pub",
@@ -96,6 +103,7 @@ class BlockAggregator(Worker):
         )
         self.pub.bind(ip=self.ip, port=MN_PUB_PORT)
 
+        ### AsyncServer?
         self.router = self.manager.create_socket(
             socket_type=zmq.ROUTER,
             name="BA-Router",
@@ -164,6 +172,7 @@ class BlockAggregator(Worker):
 
         self.catchup_manager.run_catchup()
 
+### SEND MESSAGE IPC
     def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
@@ -181,14 +190,11 @@ class BlockAggregator(Worker):
             self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
             self.ipc_router.send_multipart([id_frame, int_to_bytes(signal_type), b''])
 
+### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
-
-        #msg_type = bytes_to_int(frames[0])
-        #msg_blob = frames[1]
-        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         if isinstance(msg, SubBlockContender):
             if not self.catchup_manager.is_catchup_done():
@@ -223,6 +229,7 @@ class BlockAggregator(Worker):
             time.sleep(3)
             self.pub.send_msg(msg=message, header=DEFAULT_FILTER.encode())
 
+### HM.
     def handle_router_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message

@@ -21,16 +21,6 @@ struct Envelope {
 
 struct Message {
     payload @0: Data;
-}
-
-struct VerifiedMessage {
-    payload @0: Data;
-    signature @1: Data;
-    verifying_key @2: Data;
-}
-
-struct VerifiedAndProvenMessage {
-    payload @0: Data;
     signature @1: Data;
     verifying_key @2: Data;
     proof @3: Data;

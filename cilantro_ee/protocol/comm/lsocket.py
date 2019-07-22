@@ -267,16 +267,18 @@ class LSocketBase:
 
         return _capture_args
 
-    def _package_msg(self, msg: MessageBase) -> Envelope:
+    def _package_msg(self, msg: MessageBase):
         """ Convenience method to package a message into an envelope
         :param msg: The MessageBase instance to package
         :return: An Envelope instance
         """
-        assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
-        assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
+        if type(msg) is not Envelope and issubclass(type(msg), MessageBase):
+            return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
+                                                verifying_key=Keys.vk)
 
-        return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
-                                            verifying_key=Keys.vk)
+        # tuple of msg_type and msg_payload
+        elif type(msg) == tuple:
+            return None
 
     def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
         """ Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
