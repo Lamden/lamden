@@ -15,7 +15,6 @@ transaction_capnp = capnp.load('../capnp/transaction.capnp')
 # 30000 - 39999 = signals
 # 40000 - 49999 = consensus
 
-# Type -> (envelope, capnp_deserializer)
 
 
 class Serializer:
@@ -39,7 +38,7 @@ class Serializer:
         if self.sign:
             if wallet is None:
                 return None
-            message.verifying_key = wallet.verifying_key()
+            message.verifyingKey = wallet.verifying_key()
             message.signature = wallet.sign(message.payload)
 
         if self.prove:

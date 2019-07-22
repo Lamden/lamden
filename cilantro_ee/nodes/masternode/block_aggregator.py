@@ -178,13 +178,7 @@ class BlockAggregator(Worker):
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
-        if isinstance(message, MessageBase):
-            id_frame = str(0).encode()
-            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-
-            self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
-
-        elif isinstance(message, base.Signal):
+        if isinstance(message, base.Signal):
             id_frame = str(0).encode()
             signal_type = base.SIGNAL_VALUES[type(message)]
             self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
@@ -224,9 +218,12 @@ class BlockAggregator(Worker):
             self._is_catchup_done = True
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
-            message = Ready.create()
-            self._send_msg_over_ipc(message=message)
+            msg = base.Ready()
+            self._send_msg_over_ipc(message=msg)
+
             time.sleep(3)
+
+            message = Ready.create()
             self.pub.send_msg(msg=message, header=DEFAULT_FILTER.encode())
 
 ### HM.
