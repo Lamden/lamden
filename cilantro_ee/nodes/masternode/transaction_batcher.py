@@ -4,11 +4,10 @@ from cilantro_ee.constants.system_config import TRANSACTIONS_PER_SUB_BLOCK
 from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
-from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.messages.signals.master import NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.base import base
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
-
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.batch import TransactionBatch
@@ -64,19 +63,12 @@ class TransactionBatcher(Worker):
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)
-
-        #msg = MessageBase.registry[msg_type].from_bytes(msg_blob) # How messages get deserialized.
-
+            msg = base.SIGNALS.get(msg_type)()
 
         if isinstance(msg, MessageBase):
             self.log.info("Batcher received an IPC message {}".format(msg))
             # SIGNAL
-            if isinstance(msg, EmptyBlockMade):
-                self.num_bags_sent = self.num_bags_sent - 1
-
-            # SIGNAL
-            elif isinstance(msg, NonEmptyBlockMade):
+            if isinstance(msg, NonEmptyBlockMade):
                 self.num_bags_sent = self.num_bags_sent - 1
 
             # SIGNAL
@@ -91,6 +83,7 @@ class TransactionBatcher(Worker):
             self.log.success("Batcher received an IPC SIGNAL {}".format(msg))
             # SIGNAL
             if isinstance(msg, base.EmptyBlockMade):
+                self.log.success('EMPTY BLOCK MADE')
                 self.num_bags_sent = self.num_bags_sent - 1
 
             # SIGNAL

@@ -10,14 +10,14 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-
+from cilantro_ee.messages.base import base
 from cilantro_ee.utils.utils import int_to_bytes
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
-from cilantro_ee.messages.signals.master import EmptyBlockMade, NonEmptyBlockMade
+from cilantro_ee.messages.signals.master import NonEmptyBlockMade
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
@@ -56,12 +56,17 @@ class BlockAggregator(Worker):
 
         self.driver = CilantroStorageDriver(key=self.signing_key)
 
-        latest_hash = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
-        latest_hash = latest_hash.get('blockHash')
+        last_block = self.driver.get_last_n(1, CilantroStorageDriver.INDEX)[0]
+        latest_hash = last_block.get('blockHash')
+        latest_num = last_block.get('blockNum')
 
-        assert latest_hash == self.state.latest_block_hash, \
-            "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-            .format(latest_hash, self.state.latest_block_hash)
+        # This assertion is pointless. Redis is not consistent.
+        # assert latest_hash == self.state.latest_block_hash, \
+        #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
+        #     .format(latest_hash, self.state.latest_block_hash)
+
+        self.state.latest_block_num = latest_num
+        self.state.latest_block_hash = latest_hash
 
         self.run()
 
@@ -160,7 +165,7 @@ class BlockAggregator(Worker):
 
         self.catchup_manager.run_catchup()
 
-    def _send_msg_over_ipc(self, message: MessageBase):
+    def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
@@ -170,6 +175,12 @@ class BlockAggregator(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
 
             self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+
+        elif isinstance(message, base.Signal):
+            id_frame = str(0).encode()
+            signal_type = base.SIGNAL_VALUES[type(message)]
+            self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
+            self.ipc_router.send_multipart([id_frame, int_to_bytes(signal_type), b''])
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -314,7 +325,8 @@ class BlockAggregator(Worker):
         time.sleep(30)
 
         # SIGNAL
-        message = EmptyBlockMade.create()
+        #message = EmptyBlockMade.create()
+        message = base.EmptyBlockMade()
         self._send_msg_over_ipc(message=message)
 
 

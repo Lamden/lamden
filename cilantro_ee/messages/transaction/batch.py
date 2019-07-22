@@ -39,7 +39,7 @@ class TransactionBatch(MessageBase):
         return [ContractTransaction.from_data(oc) for oc in self._data.transactions]
 
     @lazy_property
-    def transactions(self) -> List[TransactionBase]:
+    def transactions(self) -> List[ContractTransaction]:
         return self.ordered_transactions
 
     @property

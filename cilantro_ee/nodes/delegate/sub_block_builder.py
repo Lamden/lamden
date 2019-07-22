@@ -31,7 +31,6 @@ from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.base import base
 from contracting.config import NUM_CACHES
@@ -271,14 +270,9 @@ class SubBlockBuilder(Worker):
             msg = base.SIGNALS.get(msg_type)()
 
         if isinstance(msg, MessageBase):
-            # SIGNAL
-            self.log.success("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
-            if isinstance(msg, MakeNextBlock):
-                self._make_next_sub_block()
-
             # DATA
             # if not matched consensus, then discard current state and use catchup flow
-            elif isinstance(msg, AlignInputHash):
+            if isinstance(msg, AlignInputHash):
                 self.align_input_hashes(msg)
 
             # SIGNAL
@@ -296,25 +290,34 @@ class SubBlockBuilder(Worker):
                 self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
                 self._make_next_sub_block()
 
-    def _send_msg_over_ipc(self, message: MessageBase):
+    def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
         type of message
         """
-        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-        self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+        if isinstance(message, MessageBase):
+            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+            self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+
+        elif isinstance(message, base.Signal):
+            signal_type = base.SIGNAL_VALUES[type(message)]
+            self.log.spam("Message being sent via signal {}".format([int_to_bytes(signal_type), b'']))
+            self.ipc_dealer.send_multipart([int_to_bytes(signal_type), b''])
 
     def adjust_work_load(self, input_bag: Envelope, is_add: bool):
         if input_bag.message.is_empty:
+            self.log.info('Empty bag. Tossing.')
             return
         self.num_txn_bags += 1 if is_add else -1
         message = None
+
+        # Create Signal
         if self.num_txn_bags == 0:
-            message = NoTransactions.create()
+            message = base.NoTransactions()
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
-            message = PendingTransactions.create()
+            message = base.PendingTransactions()
+
         if message:
             self._send_msg_over_ipc(message)
 
@@ -344,6 +347,7 @@ class SubBlockBuilder(Worker):
 
         # DEBUG -- TODO DELETE
         self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
+        self.log.notice("{}".format(envelope.message.ordered_transactions))
         # END DEBUG
 
         self.sb_managers[index].processed_txs_timestamp = timestamp

@@ -38,7 +38,6 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import BlockNotification, NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
 
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
@@ -340,7 +339,7 @@ class BlockManager(Worker):
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)
+            msg = base.SIGNALS.get(msg_type)()
 
         self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
 
@@ -356,14 +355,6 @@ class BlockManager(Worker):
             # SIGNAL
             elif isinstance(msg, Ready):
                 self.set_sbb_ready()
-
-            # SIGNAL
-            elif isinstance(msg, PendingTransactions):
-                self._set_pending_work(sbb_index)
-
-            # SIGNAL
-            elif isinstance(msg, NoTransactions):
-                self._reset_pending_work(sbb_index)
 
             else:
                 raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
@@ -550,7 +541,6 @@ class BlockManager(Worker):
         self.log.info("Sending MakeNextBlock message to SBBs")
 
         # SIGNAL
-        #message = MakeNextBlock.create()
         message = base.MakeNextBlock()
         for idx in range(NUM_SB_BUILDERS):
             self._send_msg_over_ipc(sb_index=idx, message=message)
