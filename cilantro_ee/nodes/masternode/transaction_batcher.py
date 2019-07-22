@@ -73,6 +73,7 @@ class TransactionBatcher(Worker):
             else:
                 raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
+
         elif isinstance(msg, base.Signal):
             self.log.success("Batcher received an IPC SIGNAL {}".format(msg))
             # SIGNAL

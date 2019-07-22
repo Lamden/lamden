@@ -1,4 +1,6 @@
 import capnp
+from cilantro_ee.protocol.wallet import Wallet, _verify
+from cilantro_ee.protocol.pow import SHA3POW
 
 blockdata_capnp = capnp.load('../capnp/blockdata.capnp')
 subblock_capnp = capnp.load('../capnp/subblock.capnp')
@@ -13,63 +15,47 @@ transaction_capnp = capnp.load('../capnp/transaction.capnp')
 # 30000 - 39999 = signals
 # 40000 - 49999 = consensus
 
-
-class Signals:
-    MAKE_NEXT_BLOCK = 30000
-    PENDING_TRANSACTIONS = 30001
-    NO_TRANSACTIONS = 30002
-    HALT = 30003
-    EMPTY_BLOCK_MADE = 30004
-    NON_EMPTY_BLOCK_MADE = 30005
-    READY = 30006
-    POKE = 30007
-    UPDATED_STATE_SIGNAL = 30008
+# Type -> (envelope, capnp_deserializer)
 
 
-CLASS_TO_TYPE_MAP = {
-    blockdata_capnp.BlockData: 0,
-    blockdata_capnp.BlockMetaData: 1,
-    blockdata_capnp.StateUpdateReply: 2,
-    blockdata_capnp.StateUpdateRequest: 3,
-    envelope_capnp.Envelope: 4,
-    envelope_capnp.MessageMeta: 5,
-    envelope_capnp.Seal: 6,
-    subblock_capnp.AlignInputHash: 7,
-    subblock_capnp.SubBlock: 8,
-    subblock_capnp.SubBlockContender: 9,
-    transaction_capnp.ContractPayload: 10,
-    transaction_capnp.ContractTransaction: 11,
-    transaction_capnp.MetaData: 12,
-    transaction_capnp.TransactionBatch: 16,
-    transaction_capnp.TransactionData: 18,
-    transaction_capnp.Transactions: 19
-}
+class Unpacker:
+    @staticmethod
+    def unpack(msg, deserializer):
+        message = envelope_capnp.Message.from_bytes_packed(msg)
+        final_message = deserializer.from_bytes_packed(message.payload)
+        return final_message
 
-TYPE_TO_CLASS_MAP = {
-    0: blockdata_capnp.BlockData,
-    1: blockdata_capnp.BlockMetaData,
-    2: blockdata_capnp.StateUpdateReply,
-    3: blockdata_capnp.StateUpdateRequest,
-    4: envelope_capnp.Envelope,
-    5: envelope_capnp.MessageMeta,
-    6: envelope_capnp.Seal,
-    7: subblock_capnp.AlignInputHash,
-    8: subblock_capnp.SubBlock,
-    9: subblock_capnp.SubBlockContender,
-    10: transaction_capnp.ContractPayload,
-    11: transaction_capnp.ContractTransaction,
-    12: transaction_capnp.MetaData,
-    16: transaction_capnp.TransactionBatch,
-    18: transaction_capnp.TransactionData,
-    19: transaction_capnp.Transactions
+
+class VerifiedUnpacker:
+    @staticmethod
+    def unpack(msg, deserializer):
+        message = envelope_capnp.VerifiedMessage.from_bytes_packed(msg)
+        if _verify(message.verifying_key, message.payload, message.signature):
+            final_message = deserializer.from_bytes_packed(message.payload)
+            return final_message
+        return None
+
+
+class ProvenVerifiedUnpacker:
+    @staticmethod
+    def unpack(msg, deserializer):
+        message = envelope_capnp.VerifiedMessage.from_bytes_packed(msg)
+        if _verify(message.verifying_key, message.payload, message.signature) and \
+                SHA3POW.check(message.payload, message.proof):
+
+            final_message = deserializer.from_bytes_packed(message.payload)
+            return final_message
+        return None
+
+
+TYPE_MAP = {
+    30000: (Unpacker, None)
 }
 
 
-def deserialize_msg(frames):
-    msg_type = frames[0]
-    msg_blob = frames[1]
+def deserialize(msg_type, msg):
+    unpacker, deserializer = TYPE_MAP.get(msg_type)
+    if deserializer is None:
+        return None
 
-    builder = TYPE_TO_CLASS_MAP[msg_type]
-    obj = builder.from_bytes_packed(msg_blob)
-
-    return obj
+    return unpacker.unpack(msg, deserializer)
