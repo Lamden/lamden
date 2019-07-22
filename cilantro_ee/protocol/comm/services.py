@@ -4,7 +4,6 @@ import zmq
 import asyncio
 import json
 
-
 class SocketEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, SocketStruct):
@@ -211,45 +210,7 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
         return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
-class DataFormat:
-    RAW = 0
-    STRING = 1
-    JSON = 2
-    MULTIPART = 3
-    PYOBJ = 4
-    SERIALIZED = 5
-
-
-def send_recv_funcs_for_format(format: int, socket: zmq.Socket):
-    functions = [(socket.send, socket.recv),
-                 (socket.send_string, socket.recv_string),
-                 (socket.send_json, socket.recv_json),
-                 (socket.send_multipart, socket.recv_multipart),
-                 (socket.send_pyobj, socket.recv_pyobj),
-                 (socket.send_serialized, socket.recv_serialized)]
-
-    return functions[format]
-
-
-# Graceful request from ZMQ socket. Should be expanded to support sending types
-async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
-    send, recv = send_recv_funcs_for_format(format, socket)
-    try:
-        await send(msg)
-
-        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
-        if event:
-            response = await recv()
-
-            return response
-        else:
-            return None
-    except Exception as e:
-        log.info(str(e))
-        return None
-
-
-class AsyncServer:
+class AsyncInbox:
     def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
         socket_id.id = '*'
 
@@ -304,3 +265,19 @@ class AsyncServer:
 
     def stop(self):
         self.running = False
+
+
+class AsyncOutbox:
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        self.ctx = ctx
+        self.wallet = wallet
+        self.address = str(socket_id)
+
+        self.linger = linger
+        self.poll_timeout = poll_timeout
+
+        self.socket = self.ctx.socket(zmq.DEALER)
+        self.socket.setsockopt(zmq.LINGER, self.linger)
+
+    def send(self, _id, msg_type, msg_payload):
+        pass
