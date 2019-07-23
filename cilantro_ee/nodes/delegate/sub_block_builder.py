@@ -53,6 +53,15 @@ import asyncio, zmq.asyncio, time, os
 from datetime import datetime
 from typing import List
 
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 @unique
 class NextBlockState(Enum):
@@ -69,10 +78,12 @@ class SBClientManager:
         self.max_caches = 2
         self.sb_caches = []
 
+
 class NextBlockToMake:
     def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.READY):
         self.next_block_index = block_index
         self.state = state
+
 
 # This is a convenience struct to hold all data related to a sub-block in one place.
 # Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
@@ -155,6 +166,7 @@ class SubBlockBuilder(Worker):
     def move_next_block_to_make(self):
         if self._next_block_to_make.state == NextBlockState.PROCESSED:
             self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
+
         return self._next_block_to_make.state == NextBlockState.READY
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
@@ -170,27 +182,12 @@ class SubBlockBuilder(Worker):
         for idx in range(NUM_SB_PER_BUILDER):
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sb_blder_idx, idx),
                                              secure=True)
+
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sb_index = idx * NUM_SB_BUILDERS + self.sb_blder_idx
+
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_index, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
-
-    # TODO Delete this.
-    def _connect_new_node(self, vk):
-        d = NetworkTopology.get_sbb_publisher(vk)
-
-        if d is None:
-            return
-
-        sbb_idx = d['sb_idx'] % NUM_SB_BUILDERS
-
-        if sbb_idx != self.sbb_index:
-            return
-
-        smi = d['sb_idx'] // NUM_SB_BUILDERS
-
-        self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
-
 
     async def _connect_sub_sockets(self):
         for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sb_blder_idx), 0):
@@ -355,12 +352,17 @@ class SubBlockBuilder(Worker):
         """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
         signature = wallet.sign(self.signing_key, bytes.fromhex(sb_data.input_hash))
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(int(time.time())),
-                                            sender=self.verifying_key)
+
+        merkle_proof = subblock_capnp.MerkleProof.new_message(**{
+            'hash': bytes.fromhex(sb_data.input_hash),
+            'signer': self.wallet.verifying_key(),
+            'signature': signature
+        }).to_bytes_packed()
+
 
         sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
-                                                     sub_block_index=self.sb_blder_idx, signature=merkle_sig,
+                                                     sub_block_index=self.sb_blder_idx,
+                                                     signature=merkle_proof,
                                                      prev_block_hash=self.state.get_latest_block_hash())
         # Send to block manager
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
@@ -378,30 +380,40 @@ class SubBlockBuilder(Worker):
         exec_data = sb_data.tx_data
         # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-        txs_data = [TransactionData.create(contract_tx=d.contract, status=str(d.status), state=d.state) for d in exec_data]
+        txs_data = [transaction_capnp.TransactionData.new_message(**{
+            'transaction': d.contract.serialize(),
+            'status': str(d.status),
+            'state': d.state,
+            'contractType': 0 # To be deprecated
+        }).to_bytes_packed() for d in exec_data]
 
-        # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
-        if self.bad_actor:
-            if self.good_sb_count >= self.fail_interval and self.sb_blder_idx in self.fail_idxs:
-                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sb_blder_idx))
-                txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
-                self.good_sb_count = 0
-            else:
-                self.log.info("Not producing an evil sub-block.....for now....")
+        # txs_data = [TransactionData.create(contract_tx=d.contract,
+        #                                    status=str(d.status),
+        #                                    state=d.state) for d in exec_data]
 
-        txs_data_serialized = [t.serialize() for t in txs_data]
         txs = [d.contract for d in exec_data]
 
         # build sbc
-        merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
-        signature = wallet.sign(self.signing_key, merkle.root)
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(time.time()),
-                                            sender=self.verifying_key)
+        merkle = MerkleTree.from_raw_transactions(txs_data)
 
-        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=self.sb_blder_idx,
-                                       signature=merkle_sig, transactions=txs_data,
+        merkle_proof = subblock_capnp.MerkleProof.new_message(**{
+            'hash': merkle.root,
+            'signer': self.wallet.verifying_key(),
+            'signature': self.wallet.sign(merkle.root)
+        }).to_bytes_packed()
+
+        # signature = wallet.sign(self.signing_key, merkle.root)
+        #
+        # merkle_sig = MerkleSignature.create(sig_hex=signature,
+        #                                     timestamp=str(time.time()),
+        #                                     sender=self.verifying_key)
+
+        sbc = SubBlockContender.create(result_hash=merkle.root,
+                                       input_hash=sb_data.input_hash,
+                                       merkle_leaves=merkle.leaves,
+                                       sub_block_index=self.sb_blder_idx,
+                                       signature=merkle_proof,
+                                       transactions=txs_data,
                                        prev_block_hash=self.state.latest_block_hash)
 
         # Send sbc to block manager
@@ -415,6 +427,7 @@ class SubBlockBuilder(Worker):
             self._create_sbc_from_batch(sb_data)
         else:
             self._create_empty_sbc(sb_data)
+
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self, input_hash: str, tx_batch: TransactionBatch, \

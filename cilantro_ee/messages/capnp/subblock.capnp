@@ -13,6 +13,11 @@ struct SubBlock {
     transactions @5 :List(T.TransactionData);
 }
 
+struct MerkleProof {
+    hash @0 :Data;
+    signer @1: Data;
+    signature @2: Data;
+}
 
 struct SubBlockContender {
     resultHash @0 :Data;

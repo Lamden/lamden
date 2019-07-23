@@ -339,17 +339,14 @@ class BlockManager(Worker):
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         if msg_type == MessageTypes.READY_INTERNAL:
-            self.log.success("READY INTERNAL")
             self.set_sbb_ready()
             return
 
         elif msg_type == MessageTypes.PENDING_TRANSACTIONS:
-            self.log.success("PENDING TRANSACTIONS")
             self._set_pending_work(sbb_index)
             return
 
         elif msg_type == MessageTypes.NO_TRANSACTIONS:
-            self.log.success("NO TRANSACTIONS")
             self._reset_pending_work(sbb_index)
             return
 

@@ -69,17 +69,28 @@ class MessageTypes:
     READY_EXTERNAL = 6
     UPDATED_STATE_SYNC = 7
 
+    TRANSACTION_DATA = 40000
+    MERKLE_PROOF = 40001
+
+
+# Default Serializers
+INTERNAL_MESSAGE_SERIALIZER = Serializer(capnp_type=signal_capnp.Signal)
 
 TYPE_MAP = {
-    # SIGNALS
-    MessageTypes.MAKE_NEXT_BLOCK: Serializer(capnp_type=signal_capnp.Signal),
-    MessageTypes.PENDING_TRANSACTIONS: Serializer(capnp_type=signal_capnp.Signal),
-    MessageTypes.NO_TRANSACTIONS: Serializer(capnp_type=signal_capnp.Signal),
-    MessageTypes.EMPTY_BLOCK_MADE: Serializer(capnp_type=signal_capnp.Signal),
-    MessageTypes.NON_EMPTY_BLOCK_MADE: Serializer(capnp_type=signal_capnp.Signal),
-    MessageTypes.READY_INTERNAL: Serializer(capnp_type=signal_capnp.Signal),
+    # Internal signals
+    MessageTypes.MAKE_NEXT_BLOCK: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.PENDING_TRANSACTIONS: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.NO_TRANSACTIONS: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.EMPTY_BLOCK_MADE: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.NON_EMPTY_BLOCK_MADE: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.READY_INTERNAL: INTERNAL_MESSAGE_SERIALIZER,
+    MessageTypes.UPDATED_STATE_SYNC: INTERNAL_MESSAGE_SERIALIZER,
+
+    # External Signals
     MessageTypes.READY_EXTERNAL: Serializer(capnp_type=signal_capnp.Signal, sign=True),
-    MessageTypes.UPDATED_STATE_SYNC: Serializer(capnp_type=signal_capnp.Signal)
+
+    MessageTypes.TRANSACTION_DATA: Serializer(capnp_type=transaction_capnp.TransactionData),
+    MessageTypes.MERKLE_PROOF: Serializer(capnp_type=subblock_capnp.MerkleProof, sign=True)
 }
 
 
