@@ -14,6 +14,16 @@ from collections import defaultdict
 from typing import List
 import time
 
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
 
 class SubBlockGroup:
 
@@ -61,14 +71,27 @@ class SubBlockGroup:
 
         merkle_root = self.best_rh
         contenders = self.rh[merkle_root]
-        c = next(iter(contenders))
+        self.log.success('CONTENDERS: {}'.format(contenders))
+
         sigs = [c.signature for c in contenders]
-        leaves = c.merkle_leaves
-        input_hash = c.input_hash
+
+        self.log.success('SIGS :{}'.format(sigs))
+
+        # Get a contender from the set. This presumes that the contenders have identical data, which they should.
+        contender = contenders.pop()
+        contenders.add(contender)
+
+        leaves = contender.merkle_leaves
+        input_hash = contender.input_hash
+
         txs = self._get_ordered_transactions()
 
-        sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=leaves, sub_block_idx=self.sb_idx,
-                             input_hash=input_hash, transactions=txs)
+        sb = SubBlock.create(merkle_root=merkle_root,
+                             signatures=sigs,
+                             merkle_leaves=leaves,
+                             sub_block_idx=self.sb_idx,
+                             input_hash=input_hash,
+                             transactions=txs)
         return sb
 
     def is_consensus_reached(self) -> bool:
@@ -157,17 +180,24 @@ class SubBlockGroup:
 
     def _verify_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
         # Dev sanity checks
-        if not sbc.signature.sender == sender_vk:
+        vk = bytes.fromhex(sender_vk)
+        merkle_proof = subblock_capnp.MerkleProof.from_bytes_packed(sbc.signature)
+
+        if not merkle_proof.signer == vk:
             return False
 
         if sbc.sb_index != self.sb_idx:
             return False
 
+        self.log.success(merkle_proof.signer)
+        self.log.success(merkle_proof.hash)
+        self.log.success(merkle_proof.signature)
+
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
-        valid_sig = _verify(vk=bytes.fromhex(sbc.signature.sender),
-                            msg=bytes.fromhex(sbc.result_hash),
-                            signature=bytes.fromhex(sbc.signature.signature))
+        valid_sig = _verify(vk=merkle_proof.signer,
+                            msg=merkle_proof.hash,
+                            signature=merkle_proof.signature)
 
         if not valid_sig:
             self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
@@ -175,7 +205,7 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sbc prev block hash matches our current block hash
-        if sbc.prev_block_hash != self.curr_block_hash:
+        if sbc.prev_block_hash.hex() != self.curr_block_hash:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
             return False

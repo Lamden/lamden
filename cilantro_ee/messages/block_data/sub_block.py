@@ -33,16 +33,14 @@ class SubBlock(MessageBase):
         return subblock_capnp.SubBlock.from_bytes_packed(data)
 
     @classmethod
-    def create(cls, merkle_root: str, signatures: List[MerkleSignature], merkle_leaves: List[str], sub_block_idx: int,
+    def create(cls, merkle_root: str, signatures, merkle_leaves: List[str], sub_block_idx: int,
                input_hash: str, transactions: List[TransactionData]=None):
         # Validate input (for dev)
-        for s in signatures:
-            assert isinstance(s, MerkleSignature), "'signatures' arg must be a list of signatures, not {}".format(s)
         for t in transactions:
             assert isinstance(t, TransactionData), "'transactions' must be a list of TransactionData instances, not {}".format(t)
 
         struct = subblock_capnp.SubBlock.new_message()
-        struct.signatures = [sig.serialize() for sig in signatures]
+        struct.signatures = signatures
         struct.merkleLeaves = merkle_leaves
         struct.merkleRoot = merkle_root
         struct.subBlockIdx = sub_block_idx

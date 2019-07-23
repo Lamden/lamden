@@ -351,7 +351,7 @@ class SubBlockBuilder(Worker):
         Creates an Empty Sub Block Contender
         """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
-        signature = wallet.sign(self.signing_key, bytes.fromhex(sb_data.input_hash))
+        signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
 
         merkle_proof = subblock_capnp.MerkleProof.new_message(**{
             'hash': bytes.fromhex(sb_data.input_hash),
@@ -359,11 +359,10 @@ class SubBlockBuilder(Worker):
             'signature': signature
         }).to_bytes_packed()
 
-
-        sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
+        sbc = SubBlockContender.create_empty_sublock(input_hash=bytes.fromhex(sb_data.input_hash),
                                                      sub_block_index=self.sb_blder_idx,
                                                      signature=merkle_proof,
-                                                     prev_block_hash=self.state.get_latest_block_hash())
+                                                     prev_block_hash=bytes.fromhex(self.state.get_latest_block_hash()))
         # Send to block manager
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
         self._send_msg_over_ipc(sbc)
@@ -409,12 +408,12 @@ class SubBlockBuilder(Worker):
         #                                     sender=self.verifying_key)
 
         sbc = SubBlockContender.create(result_hash=merkle.root,
-                                       input_hash=sb_data.input_hash,
+                                       input_hash=bytes.fromhex(sb_data.input_hash),
                                        merkle_leaves=merkle.leaves,
                                        sub_block_index=self.sb_blder_idx,
                                        signature=merkle_proof,
                                        transactions=txs_data,
-                                       prev_block_hash=self.state.latest_block_hash)
+                                       prev_block_hash=bytes.fromhex(self.state.latest_block_hash))
 
         # Send sbc to block manager
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"

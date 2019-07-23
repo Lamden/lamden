@@ -43,8 +43,8 @@ class SubBlockContender(MessageBase):
         pass
 
     @classmethod
-    def create(cls, result_hash: str, input_hash: str, merkle_leaves: List[bytes], signature: bytes,
-               transactions: List[TransactionData], sub_block_index: int, prev_block_hash: str):
+    def create(cls, result_hash: bytes, input_hash: bytes, merkle_leaves: List[bytes], signature: bytes,
+               transactions: List[TransactionData], sub_block_index: int, prev_block_hash: bytes):
         """
         Delegages create a _new sub-block contender and propose to master nodes
         :param result_hash: The hash of the root of this sub-block
@@ -70,7 +70,7 @@ class SubBlockContender(MessageBase):
         return cls.from_data(struct)
 
     @classmethod
-    def create_empty_sublock(cls, input_hash: str, signature: bytes, sub_block_index: int, prev_block_hash: str):
+    def create_empty_sublock(cls, input_hash: bytes, signature: bytes, sub_block_index: int, prev_block_hash: bytes):
         return cls.create(result_hash=input_hash,
                           input_hash=input_hash,
                           signature=signature,
@@ -90,19 +90,19 @@ class SubBlockContender(MessageBase):
 
     # NOTE -- result_hash is the same as the merkle root
     @lazy_property
-    def result_hash(self) -> str:
-        return self._data.resultHash.decode()
+    def result_hash(self):
+        return self._data.resultHash
 
     @lazy_property
-    def input_hash(self) -> str:
-        return self._data.inputHash.decode()
+    def input_hash(self):
+        return self._data.inputHash
 
     @property
     def sb_index(self) -> int:
         return self._data.subBlockIdx
 
     @property
-    def prev_block_hash(self) -> str:
+    def prev_block_hash(self) -> bytes:
         return self._data.prevBlockHash
 
     @lazy_property
