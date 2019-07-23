@@ -1,6 +1,8 @@
 from unittest import TestCase
 from cilantro_ee.messages._new.message import Serializer, signal_capnp, envelope_capnp
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.protocol.pow import SHA3POWBytes
+
 
 class TestSerializer(TestCase):
     def test_init(self):
@@ -82,3 +84,58 @@ class TestSerializer(TestCase):
         unpacked = serializer.unpack(packed_message)
 
         self.assertIsNone(unpacked)
+
+    def test_unpack_proof_correct(self):
+        some_signal = signal_capnp.Signal.new_message(messageType=123)
+        packed = some_signal.to_bytes_packed()
+
+        message = envelope_capnp.Message.new_message(payload=packed)
+        message.proof = SHA3POWBytes.find(packed)
+
+        packed_message = message.to_bytes_packed()
+
+        serializer = Serializer(capnp_type=signal_capnp.Signal, prove=True)
+
+        unpacked = serializer.unpack(packed_message)
+
+        self.assertEqual(unpacked.messageType, some_signal.messageType)
+
+    def test_pack_signs_properly(self):
+        w1 = Wallet()
+
+        some_signal = signal_capnp.Signal.new_message(messageType=123)
+        packed = some_signal.to_bytes_packed()
+
+        message = envelope_capnp.Message.new_message(payload=packed)
+        message.verifyingKey = w1.verifying_key()
+        message.signature = w1.sign(message.payload)
+
+        packed_message = message.to_bytes_packed()
+
+        serializer = Serializer(capnp_type=signal_capnp.Signal, sign=True)
+
+        packed_and_signed = serializer.pack(packed, w1)
+
+        self.assertEqual(packed_message, packed_and_signed)
+
+    def test_pack_signs_returns_none_if_no_wallet_provided(self):
+        some_signal = signal_capnp.Signal.new_message(messageType=123)
+        packed = some_signal.to_bytes_packed()
+
+        serializer = Serializer(capnp_type=signal_capnp.Signal, sign=True)
+
+        packed_and_signed = serializer.pack(packed)
+
+        self.assertIsNone(packed_and_signed)
+
+    def test_pack_proves_properly(self):
+        some_signal = signal_capnp.Signal.new_message(messageType=123)
+        packed = some_signal.to_bytes_packed()
+
+        serializer = Serializer(capnp_type=signal_capnp.Signal, prove=True)
+
+        packed_and_proven = serializer.pack(packed)
+
+        message = envelope_capnp.Message.from_bytes_packed(packed_and_proven)
+
+        self.assertTrue(SHA3POWBytes.check(message.payload, message.proof))

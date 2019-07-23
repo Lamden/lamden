@@ -36,7 +36,6 @@ class Serializer:
 
         if self.prove:
             proven = SHA3POWBytes.check(message.payload, message.proof)
-            print(proven)
             if not proven:
                 return None
 
