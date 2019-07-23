@@ -38,7 +38,7 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import BlockNotification, NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-
+from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
@@ -338,6 +338,21 @@ class BlockManager(Worker):
         if MessageBase.registry.get(msg_type) is not None:
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
+        if msg_type == MessageTypes.READY_INTERNAL:
+            self.log.success("READY INTERNAL")
+            self.set_sbb_ready()
+            return
+
+        elif msg_type == MessageTypes.PENDING_TRANSACTIONS:
+            self.log.success("PENDING TRANSACTIONS")
+            self._set_pending_work(sbb_index)
+            return
+
+        elif msg_type == MessageTypes.NO_TRANSACTIONS:
+            self.log.success("NO TRANSACTIONS")
+            self._reset_pending_work(sbb_index)
+            return
+
         elif base.SIGNALS.get(msg_type):
             msg = base.SIGNALS.get(msg_type)()
 
@@ -352,26 +367,9 @@ class BlockManager(Worker):
                 else:
                     self._set_sb_have_data(sbb_index)
 
-            # SIGNAL
-            elif isinstance(msg, Ready):
-                self.set_sbb_ready()
-
             else:
                 raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
                                 .format(type(msg)))
-
-        elif isinstance(msg, base.Signal):
-            # SIGNAL
-            if isinstance(msg, base.Ready):
-                self.set_sbb_ready()
-
-            # SIGNAL
-            elif isinstance(msg, base.PendingTransactions):
-                self._set_pending_work(sbb_index)
-
-            # SIGNAL
-            elif isinstance(msg, base.NoTransactions):
-                self._reset_pending_work(sbb_index)
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -472,12 +470,6 @@ class BlockManager(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
             self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-        elif isinstance(message, base.Signal):
-            id_frame = str(sb_index).encode()
-            signal_type = base.SIGNAL_VALUES[type(message)]
-            self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
-            self.ipc_router.send_multipart([id_frame, int_to_bytes(signal_type), b''])
-
     def _send_input_align_msg(self, block: BlockNotification):
         self.log.info("Sending AlignInputHash message to SBBs")
         first_sb_index = block.first_sb_index
@@ -540,7 +532,8 @@ class BlockManager(Worker):
         self.db_state.reset()
         self.log.info("Sending MakeNextBlock message to SBBs")
 
-        # SIGNAL
-        message = base.MakeNextBlock()
+        make_next_block = MessageManager.pack_dict(MessageTypes.MAKE_NEXT_BLOCK,
+                                                   arg_dict={'messageType': MessageTypes.MAKE_NEXT_BLOCK})
+
         for idx in range(NUM_SB_BUILDERS):
-            self._send_msg_over_ipc(sb_index=idx, message=message)
+            self.ipc_router.send_multipart([str(idx).encode(), int_to_bytes(MessageTypes.MAKE_NEXT_BLOCK), make_next_block])

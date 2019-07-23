@@ -32,7 +32,7 @@ from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
 from cilantro_ee.messages.signals.node import Ready
-from cilantro_ee.messages.base import base
+from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -263,11 +263,13 @@ class SubBlockBuilder(Worker):
         msg_blob = frames[1]
         msg = None
 
+        if msg_type == MessageTypes.MAKE_NEXT_BLOCK:
+            self.log.success("MAKE NEXT BLOCK SIGNAL")
+            self._make_next_sub_block()
+            return
+
         if MessageBase.registry.get(msg_type) is not None:
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
-
-        elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)()
 
         if isinstance(msg, MessageBase):
             # DATA
@@ -283,13 +285,6 @@ class SubBlockBuilder(Worker):
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
 
-        elif isinstance(msg, base.Signal):
-            # SIGNAL
-            self.log.success("SIGNAL RECIEVED!!!".format(msg))  # TODO REMOOOVE
-            if isinstance(msg, base.MakeNextBlock):
-                self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
-                self._make_next_sub_block()
-
     def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
@@ -299,27 +294,26 @@ class SubBlockBuilder(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
             self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-        elif isinstance(message, base.Signal):
-            signal_type = base.SIGNAL_VALUES[type(message)]
-            self.log.spam("Message being sent via signal {}".format([int_to_bytes(signal_type), b'']))
-            self.ipc_dealer.send_multipart([int_to_bytes(signal_type), b''])
-
     def adjust_work_load(self, input_bag: Envelope, is_add: bool):
         if input_bag.message.is_empty:
             self.log.info('Empty bag. Tossing.')
             return
         self.num_txn_bags += 1 if is_add else -1
-        message = None
 
         # Create Signal
         if self.num_txn_bags == 0:
-            message = base.NoTransactions()
+            no_transactions = MessageManager.pack_dict(MessageTypes.NO_TRANSACTIONS,
+                                                       arg_dict={'messageType': MessageTypes.NO_TRANSACTIONS})
+
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), no_transactions])
+
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
-            message = base.PendingTransactions()
+            pending_transactions = MessageManager.pack_dict(MessageTypes.PENDING_TRANSACTIONS,
+                                                            arg_dict={'messageType': MessageTypes.PENDING_TRANSACTIONS})
 
-        if message:
-            self._send_msg_over_ipc(message)
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
+
 
     def handle_sub_msg(self, frames, index):
         # self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
