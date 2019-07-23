@@ -22,7 +22,6 @@ class Worker(Context):
         self.manager = SocketManager(context=self.zmq_ctx)
         self.tasks = self.manager.overlay_client.tasks
 
-
     async def _wait_until_ready(self):
         self.log.debugv("Started waiting for overlay server to be ready!!")
         while not self.manager.is_ready():

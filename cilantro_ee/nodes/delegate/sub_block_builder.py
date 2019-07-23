@@ -144,9 +144,8 @@ class SubBlockBuilder(Worker):
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
-        # await asyncio.sleep(1)
-        message = Ready.create()
-        self._send_msg_over_ipc(message)
+        message = MessageManager.pack_dict(MessageTypes.READY_INTERNAL, arg_dict={'messageType': MessageTypes.READY_INTERNAL})
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), message])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def initialize_next_block_to_make(self, next_block_index: int):
