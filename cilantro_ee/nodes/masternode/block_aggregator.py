@@ -20,7 +20,7 @@ from cilantro_ee.messages.block_data.notification import NewBlockNotification, S
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-
+from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from typing import List
 
 import math, asyncio, zmq, time
@@ -218,8 +218,11 @@ class BlockAggregator(Worker):
             self._is_catchup_done = True
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
-            msg = base.Ready()
-            self._send_msg_over_ipc(message=msg)
+
+            internal_ready_signal = MessageManager.pack_dict(MessageTypes.READY_INTERNAL,
+                                                             arg_dict={'messageType': MessageTypes.READY_INTERNAL})
+
+            self._send_msg_over_ipc(message=internal_ready_signal)
 
             time.sleep(3)
 
@@ -311,8 +314,12 @@ class BlockAggregator(Worker):
         self._reset_curr_block()
 
     def send_new_block_notif(self, block_data: BlockData):
-        message = base.NonEmptyBlockMade()
-        self._send_msg_over_ipc(message=message)
+
+        non_empty_block_made = MessageManager.pack_dict(MessageTypes.NON_EMPTY_BLOCK_MADE,
+                                                        arg_dict={'messageType': MessageTypes.NON_EMPTY_BLOCK_MADE})
+
+        self._send_msg_over_ipc(message=non_empty_block_made)
+
         new_block_notif = NewBlockNotification.create(block_data.prev_block_hash,
                                block_data.block_hash, block_data.block_num,
                                block_data.sub_blocks[0].index,
@@ -327,10 +334,10 @@ class BlockAggregator(Worker):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
         time.sleep(30)
 
-        # SIGNAL
-        #message = EmptyBlockMade.create()
-        message = base.EmptyBlockMade()
-        self._send_msg_over_ipc(message=message)
+        empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE,
+                                                    arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
+
+        self._send_msg_over_ipc(message=empty_block_made)
 
 
         skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash,

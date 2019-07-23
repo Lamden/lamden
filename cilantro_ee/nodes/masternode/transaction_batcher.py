@@ -10,7 +10,7 @@ from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.batch import TransactionBatch
-
+from cilantro_ee.messages._new.message import MessageTypes
 import zmq.asyncio
 import asyncio, time, os
 
@@ -56,39 +56,13 @@ class TransactionBatcher(Worker):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = bytes_to_int(frames[0])
-        msg_blob = frames[1]
+        #msg_blob = frames[1]
 
-        if MessageBase.registry.get(msg_type) is not None:
-            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        if msg_type == MessageTypes.EMPTY_BLOCK_MADE or msg_type == MessageTypes.NON_EMPTY_BLOCK_MADE:
+            self.num_bags_sent = self.num_bags_sent - 1
 
-        elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)()
-
-        if isinstance(msg, MessageBase):
-            # SIGNAL
-            if isinstance(msg, Ready):
-                self.log.spam("Got Ready notif from block aggregator!!!")
-                self._ready = True
-
-            else:
-                raise Exception("Batcher got message type {} from IPC dealer socket that it does not know how to handle"
-                                .format(type(msg)))
-
-        elif isinstance(msg, base.Signal):
-            self.log.success("Batcher received an IPC SIGNAL {}".format(msg))
-            # SIGNAL
-            if isinstance(msg, base.EmptyBlockMade):
-                self.num_bags_sent = self.num_bags_sent - 1
-
-            # SIGNAL
-            elif isinstance(msg, base.NonEmptyBlockMade):
-                self.log.success('NON EMPTY BLOCK MADE')
-                self.num_bags_sent = self.num_bags_sent - 1
-
-            # SIGNAL
-            elif isinstance(msg, base.Ready):
-                self.log.spam("Got Ready notif from block aggregator!!!")
-                self._ready = True
+        elif msg_type == MessageTypes.READY_INTERNAL:
+            self._ready = True
 
     async def _wait_until_ready(self):
         await asyncio.sleep(1)

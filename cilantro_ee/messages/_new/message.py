@@ -1,13 +1,16 @@
 import capnp
 import enum
 from cilantro_ee.protocol.wallet import Wallet, _verify
-from cilantro_ee.protocol.pow import SHA3POW
+from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
 
-blockdata_capnp = capnp.load('../capnp/blockdata.capnp')
-subblock_capnp = capnp.load('../capnp/subblock.capnp')
-envelope_capnp = capnp.load('../capnp/envelope.capnp')
-transaction_capnp = capnp.load('../capnp/transaction.capnp')
-signal_capnp = capnp.load('../capnp/signals.capnp')
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 # Message type registration
 # Each type is a uint32 number (0 - 4294967295)
@@ -25,8 +28,16 @@ class Serializer:
 
     def unpack(self, msg):
         message = envelope_capnp.Message.from_bytes_packed(msg)
-        if (self.sign and not _verify(msg.verifying_key, msg.payload, msg.signature)) or \
-                (self.prove and not SHA3POW.check(msg.payload, msg.proof)):
+
+        if self.sign:
+            valid = _verify(message.verifyingKey, message.payload, message.signature)
+            if not valid:
+                return None
+
+        if self.prove:
+            proven = SHA3POWBytes.check(message.payload, message.proof)
+            print(proven)
+            if not proven:
                 return None
 
         final_message = self.capnp_type.from_bytes_packed(message.payload)
@@ -42,12 +53,14 @@ class Serializer:
             message.signature = wallet.sign(message.payload)
 
         if self.prove:
-            message.proof = SHA3POW.find(message.payload)
+            message.proof = SHA3POWBytes.find(message.payload)
 
-        return message
+        packed_message = message.to_bytes_packed()
+
+        return packed_message
 
 
-class MessageTypes(enum.Enum):
+class MessageTypes:
     MAKE_NEXT_BLOCK = 0
     PENDING_TRANSACTIONS = 1
     NO_TRANSACTIONS = 2
