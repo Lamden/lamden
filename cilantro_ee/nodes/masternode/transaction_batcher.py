@@ -58,10 +58,13 @@ class TransactionBatcher(Worker):
         msg_type = bytes_to_int(frames[0])
         #msg_blob = frames[1]
 
+        self.log.info('Got message on IPC {}'.format(msg_type))
+
         if msg_type == MessageTypes.EMPTY_BLOCK_MADE or msg_type == MessageTypes.NON_EMPTY_BLOCK_MADE:
             self.num_bags_sent = self.num_bags_sent - 1
 
         elif msg_type == MessageTypes.READY_INTERNAL:
+            self.log.success('READY.')
             self._ready = True
 
     async def _wait_until_ready(self):

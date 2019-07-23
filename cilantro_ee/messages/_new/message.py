@@ -91,8 +91,9 @@ class MessageManager:
             return None
 
         msg_payload = serializer.capnp_type.new_message(**arg_dict)
+        msg = msg_payload.to_bytes_packed()
 
-        return serializer.pack(msg=msg_payload, wallet=wallet)
+        return serializer.pack(msg=msg, wallet=wallet)
 
     @staticmethod
     def pack(msg_type, msg_payload, wallet=None):

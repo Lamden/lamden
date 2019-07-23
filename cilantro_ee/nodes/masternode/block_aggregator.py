@@ -172,18 +172,6 @@ class BlockAggregator(Worker):
 
         self.catchup_manager.run_catchup()
 
-### SEND MESSAGE IPC
-    def _send_msg_over_ipc(self, message):
-        """
-        Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
-        frame to identify the type of message
-        """
-        if isinstance(message, base.Signal):
-            id_frame = str(0).encode()
-            signal_type = base.SIGNAL_VALUES[type(message)]
-            self.log.spam("Message being sent via signal {}".format([id_frame, int_to_bytes(signal_type), b'']))
-            self.ipc_router.send_multipart([id_frame, int_to_bytes(signal_type), b''])
-
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -222,7 +210,7 @@ class BlockAggregator(Worker):
             internal_ready_signal = MessageManager.pack_dict(MessageTypes.READY_INTERNAL,
                                                              arg_dict={'messageType': MessageTypes.READY_INTERNAL})
 
-            self._send_msg_over_ipc(message=internal_ready_signal)
+            self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.READY_INTERNAL), internal_ready_signal])
 
             time.sleep(3)
 
@@ -318,7 +306,7 @@ class BlockAggregator(Worker):
         non_empty_block_made = MessageManager.pack_dict(MessageTypes.NON_EMPTY_BLOCK_MADE,
                                                         arg_dict={'messageType': MessageTypes.NON_EMPTY_BLOCK_MADE})
 
-        self._send_msg_over_ipc(message=non_empty_block_made)
+        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.NON_EMPTY_BLOCK_MADE), non_empty_block_made])
 
         new_block_notif = NewBlockNotification.create(block_data.prev_block_hash,
                                block_data.block_hash, block_data.block_num,
@@ -337,14 +325,14 @@ class BlockAggregator(Worker):
         empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE,
                                                     arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
 
-        self._send_msg_over_ipc(message=empty_block_made)
-
+        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), empty_block_made])
 
         skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash,
                                   self.state.latest_block_num+1, [], sub_blocks)
 
 
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
+
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
     def send_fail_block_notif(self):
