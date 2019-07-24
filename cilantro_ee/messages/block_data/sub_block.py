@@ -15,8 +15,8 @@ log = get_logger(__name__)
 
 class SubBlock(MessageBase):
     def validate(self):
-        validate_hex(self.merkle_root, length=64, field_name='merkle_root')
-        validate_hex(self.input_hash, length=64, field_name='input_hash')
+        #validate_hex(self.merkle_root, length=64, field_name='merkle_root')
+        #validate_hex(self.input_hash, length=64, field_name='input_hash')
         assert self._data.signatures
         assert type(self._data.subBlockIdx) == int
 
