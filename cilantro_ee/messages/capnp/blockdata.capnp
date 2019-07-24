@@ -22,6 +22,10 @@ struct BlockData {
     subBlocks @4 :List(SB.SubBlock);
 }
 
+struct BlockIndexRequest {
+    blockHash @0: Data;
+    sender @1: Data;
+}
 
 struct StateUpdateRequest {
     blockHash @0 :Data;

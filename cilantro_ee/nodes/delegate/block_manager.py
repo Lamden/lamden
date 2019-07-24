@@ -263,12 +263,15 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        self.pub = self.manager.create_socket(
-            socket_type=zmq.PUB,
-            name="BM-Pub-{}".format(self.verifying_key[-4:]),
-            secure=True,
-        )
-        self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
+        # self.pub = self.manager.create_socket(
+        #     socket_type=zmq.PUB,
+        #     name="BM-Pub-{}".format(self.verifying_key[-4:]),
+        #     secure=True,
+        # )
+        # port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip
+
+        self.pub = self.zmq_ctx.socket(zmq.PUB)
+        self.pub.bind('{}://*:{}'.format('tcp', DELEGATE_PUB_PORT))
 
         self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
                                                    signing_key=self.signing_key,
@@ -469,7 +472,7 @@ class BlockManager(Worker):
     def _handle_sbc(self, sbb_index: int, sbc: SubBlockContender):
         #self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx, sbc.result_hash))
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
-        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
+        self.pub.send_multipart([DEFAULT_FILTER.encode(), sbc])
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY

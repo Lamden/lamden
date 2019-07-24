@@ -367,13 +367,13 @@ class SubBlockBuilder(Worker):
         # Send to block manager
 
         sbc = subblock_capnp.SubBlockContender.new_message(**{
-            'resultHash': bytes.fromhex(sb_data.input_hash),
-            'inputHash': bytes.fromhex(sb_data.input_hash),
-            'merkleLeaves': [],
-            'signature': merkle_proof,
-            'transactions': [],
-            'subBlockIdx': self.sb_blder_idx,
-            'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
+              'resultHash': bytes.fromhex(sb_data.input_hash),
+              'inputHash': bytes.fromhex(sb_data.input_hash),
+              'merkleLeaves': [],
+              'signature': merkle_proof,
+              'transactions': [],
+              'subBlockIdx': self.sb_blder_idx,
+              'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
         }).to_bytes_packed()
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
@@ -408,18 +408,30 @@ class SubBlockBuilder(Worker):
             'signature': self.wallet.sign(merkle.root)
         }).to_bytes_packed()
 
-        sbc = SubBlockContender.create(result_hash=merkle.root,
-                                       input_hash=bytes.fromhex(sb_data.input_hash),
-                                       merkle_leaves=merkle.leaves,
-                                       sub_block_index=self.sb_blder_idx,
-                                       signature=merkle_proof,
-                                       transactions=txs_data,
-                                       prev_block_hash=bytes.fromhex(self.state.latest_block_hash))
+        # sbc = SubBlockContender.create(result_hash=merkle.root,
+        #                                input_hash=bytes.fromhex(sb_data.input_hash),
+        #                                merkle_leaves=merkle.leaves,
+        #                                sub_block_index=self.sb_blder_idx,
+        #                                signature=merkle_proof,
+        #                                transactions=txs_data,
+        #                                prev_block_hash=bytes.fromhex(self.state.latest_block_hash))
+
+        sbc = subblock_capnp.SubBlockContender.new_message(**{
+            'resultHash': merkle.root,
+            'inputHash': bytes.fromhex(sb_data.input_hash),
+            'merkleLeaves': merkle.leaves,
+            'signature': merkle_proof,
+            'transactions': txs_data,
+            'subBlockIdx': self.sb_blder_idx,
+            'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
+        })
 
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
                             .format(len(txs), sb_data.input_hash))
 
-        self._send_msg_over_ipc(sbc)
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+
+        # self._send_msg_over_ipc(sbc)
 
 
     def create_sb_contender(self, sb_data: SBData):

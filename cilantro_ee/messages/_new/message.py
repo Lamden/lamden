@@ -72,6 +72,7 @@ class MessageTypes:
     TRANSACTION_DATA = 40000
     MERKLE_PROOF = 40001
     SUBBLOCK_CONTENDER = 40002
+    BLOCK_INDEX_REQUEST = 40003
 
 # Default Serializers
 INTERNAL_MESSAGE_SERIALIZER = Serializer(capnp_type=signal_capnp.Signal)
@@ -91,7 +92,8 @@ TYPE_MAP = {
 
     MessageTypes.TRANSACTION_DATA: Serializer(capnp_type=transaction_capnp.TransactionData),
     MessageTypes.MERKLE_PROOF: Serializer(capnp_type=subblock_capnp.MerkleProof, sign=True),
-    MessageTypes.SUBBLOCK_CONTENDER: Serializer(capnp_type=subblock_capnp.SubBlockContender)
+    MessageTypes.SUBBLOCK_CONTENDER: Serializer(capnp_type=subblock_capnp.SubBlockContender),
+    MessageTypes.BLOCK_INDEX_REQUEST: Serializer(capnp_type=blockdata_capnp.BlockIndexRequest, sign=True)
 }
 
 

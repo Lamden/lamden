@@ -24,6 +24,15 @@ from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from typing import List
 
 import math, asyncio, zmq, time
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 class BlockAggregator(Worker):
@@ -174,6 +183,14 @@ class BlockAggregator(Worker):
 
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
+        self.log.info(frames)
+        filter = frames[0]
+
+        if filter == b'blk_idx_req':
+            req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(frames[-1])
+            self.catchup_manager.recv_block_idx_req(req)
+            return
+
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
@@ -192,9 +209,9 @@ class BlockAggregator(Worker):
         elif isinstance(msg, FailedBlockNotification):
             self.recv_fail_block_notif(sender, msg)
 
-        # DATA
-        elif isinstance(msg, BlockIndexRequest):
-            self.catchup_manager.recv_block_idx_req(sender, msg)
+        # # DATA
+        # elif isinstance(msg, BlockIndexRequest):
+        #     self.catchup_manager.recv_block_idx_req(sender, msg)
 
         # SIGNAL
         elif not isinstance(msg, Ready):

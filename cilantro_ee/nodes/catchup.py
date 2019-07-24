@@ -13,13 +13,22 @@ from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
 from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
 from cilantro_ee.contracts.sync import sync_genesis_contracts
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
 
 
 class CatchupManager:
-    def __init__(self, verifying_key: str, signing_key: str, pub_socket: LSocketBase, router_socket: LSocketBase, store_full_blocks=True):
+    def __init__(self, verifying_key: str, signing_key: str, pub_socket, router_socket: LSocketBase, store_full_blocks=True):
         """
 
         :param verifying_key: host vk
@@ -176,8 +185,13 @@ class CatchupManager:
         :return:
         """
         self.log.info("Multi cast BlockIndexRequests to all MN with current block hash {}".format(self.curr_hash))
-        req = BlockIndexRequest.create(block_hash=self.curr_hash)
-        self.pub.send_msg(req, header=BLOCK_IDX_REQ_FILTER.encode())
+
+        req = blockdata_capnp.BlockIndexRequest.new_message(**{
+            'blockHash': self.curr_hash,
+            'sender': self.verifying_key
+        }).to_bytes_packed()
+
+        self.pub.send_multipart([BLOCK_IDX_REQ_FILTER.encode(), req])
 
         # self.log.important2("SEND BIR")
         self.dump_debug_info(lnum = 155)
@@ -261,16 +275,18 @@ class CatchupManager:
         return self.is_catchup_done()
 
     # MASTER ONLY CALL
-    def recv_block_idx_req(self, requester_vk: str, request: BlockIndexRequest):
+    def recv_block_idx_req(self, request: blockdata_capnp.BlockIndexRequest):
         """
         Receive BlockIndexRequests calls storage driver to process req and build response
         :param requester_vk:
         :param request:
         :return:
         """
+        requester_vk = request.sender.decode()
+
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         self.log.debugv("Got block index request from sender {} requesting block hash {} my_vk {}"
-                        .format(requester_vk, request.block_hash, self.verifying_key))
+                        .format(requester_vk, request.blockHash.decode(), self.verifying_key))
 
         if requester_vk == self.verifying_key:
             self.log.debugv("received request from myself dropping the req")
@@ -281,17 +297,20 @@ class CatchupManager:
             self.curr_num = self.state.latest_block_num
 
         # tejas, latest_blk_num should correspond to request.block_hash or latest_num ?
-        delta_idx = self.get_idx_list(vk = requester_vk, latest_blk_num = self.curr_num,
-                                      sender_bhash = request.block_hash)
+        delta_idx = self.get_idx_list(vk=requester_vk,
+                                      latest_blk_num=self.curr_num,
+                                      sender_bhash=request.blockHash.decode())
+
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
-                                                                          request.block_hash))
+                                                                          request.blockHash.decode()))
 
         if delta_idx and len(delta_idx) > 1:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
                                                                                   " {}" .format(delta_idx)
 
-        self.dump_debug_info(lnum = 258)
-        self._send_block_idx_reply(reply_to_vk = requester_vk, catchup_list = delta_idx)
+        self.dump_debug_info(lnum=258)
+        self._send_block_idx_reply(reply_to_vk=requester_vk,
+                                   catchup_list=delta_idx)
 
     def _recv_blk_notif(self, update: BlockMetaData):
         # can get any time - hopefully one incremental request, how do you handle it in all cases?
