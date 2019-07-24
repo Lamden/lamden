@@ -47,7 +47,15 @@ from cilantro_ee.contracts.sync import sync_genesis_contracts
 import asyncio, zmq, os, time, random
 from collections import defaultdict
 from typing import List
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
 
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
@@ -334,6 +342,7 @@ class BlockManager(Worker):
 
         msg_type = bytes_to_int(frames[1])
         msg_blob = frames[2]
+        msg = None
 
         if MessageBase.registry.get(msg_type) is not None:
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
@@ -349,6 +358,15 @@ class BlockManager(Worker):
         elif msg_type == MessageTypes.NO_TRANSACTIONS:
             self._reset_pending_work(sbb_index)
             return
+
+        elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
+            msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+
+            self._handle_sbc(sbb_index, msg)
+            if msg.is_empty:
+                self._reset_sb_have_data(sbb_index)
+            else:
+                self._set_sb_have_data(sbb_index)
 
         elif base.SIGNALS.get(msg_type):
             msg = base.SIGNALS.get(msg_type)()
@@ -449,7 +467,7 @@ class BlockManager(Worker):
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.driver.latest_block_hash)
 
     def _handle_sbc(self, sbb_index: int, sbc: SubBlockContender):
-        self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.sb_index, sbc.result_hash))
+        #self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx, sbc.result_hash))
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
         self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)

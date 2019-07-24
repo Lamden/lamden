@@ -288,6 +288,7 @@ class SubBlockBuilder(Worker):
         """
         if isinstance(message, MessageBase):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+
             self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def adjust_work_load(self, input_bag: Envelope, is_add: bool):
@@ -359,25 +360,35 @@ class SubBlockBuilder(Worker):
             'signature': signature
         }).to_bytes_packed()
 
-        sbc = SubBlockContender.create_empty_sublock(input_hash=bytes.fromhex(sb_data.input_hash),
-                                                     sub_block_index=self.sb_blder_idx,
-                                                     signature=merkle_proof,
-                                                     prev_block_hash=bytes.fromhex(self.state.get_latest_block_hash()))
+        # sbc = SubBlockContender.create_empty_sublock(input_hash=bytes.fromhex(sb_data.input_hash),
+        #                                              sub_block_index=self.sb_blder_idx,
+        #                                              signature=merkle_proof,
+        #                                              prev_block_hash=bytes.fromhex(self.state.get_latest_block_hash()))
         # Send to block manager
+
+        sbc = subblock_capnp.SubBlockContender.new_message(**{
+            'resultHash': bytes.fromhex(sb_data.input_hash),
+            'inputHash': bytes.fromhex(sb_data.input_hash),
+            'merkleLeaves': [],
+            'signature': merkle_proof,
+            'transactions': [],
+            'subBlockIdx': self.sb_blder_idx,
+            'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
+        }).to_bytes_packed()
+
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
-        self._send_msg_over_ipc(sbc)
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+
+        #self._send_msg_over_ipc(sbc)
 
     def _create_sbc_from_batch(self, sb_data: SBData):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
 
-        # TODO somehow get the input hash from CR!
-
         self.log.info("Building sub block contender for input hash {}".format(sb_data.input_hash))
 
         exec_data = sb_data.tx_data
-        # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
         txs_data = [transaction_capnp.TransactionData.new_message(**{
             'transaction': d.contract.serialize(),
@@ -385,10 +396,6 @@ class SubBlockBuilder(Worker):
             'state': d.state,
             'contractType': 0 # To be deprecated
         }).to_bytes_packed() for d in exec_data]
-
-        # txs_data = [TransactionData.create(contract_tx=d.contract,
-        #                                    status=str(d.status),
-        #                                    state=d.state) for d in exec_data]
 
         txs = [d.contract for d in exec_data]
 
@@ -401,12 +408,6 @@ class SubBlockBuilder(Worker):
             'signature': self.wallet.sign(merkle.root)
         }).to_bytes_packed()
 
-        # signature = wallet.sign(self.signing_key, merkle.root)
-        #
-        # merkle_sig = MerkleSignature.create(sig_hex=signature,
-        #                                     timestamp=str(time.time()),
-        #                                     sender=self.verifying_key)
-
         sbc = SubBlockContender.create(result_hash=merkle.root,
                                        input_hash=bytes.fromhex(sb_data.input_hash),
                                        merkle_leaves=merkle.leaves,
@@ -415,9 +416,9 @@ class SubBlockBuilder(Worker):
                                        transactions=txs_data,
                                        prev_block_hash=bytes.fromhex(self.state.latest_block_hash))
 
-        # Send sbc to block manager
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
                             .format(len(txs), sb_data.input_hash))
+
         self._send_msg_over_ipc(sbc)
 
 
@@ -429,8 +430,12 @@ class SubBlockBuilder(Worker):
 
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
-    def _execute_sb(self, input_hash: str, tx_batch: TransactionBatch, \
-                          timestamp: float, sbb_idx: int):
+    def _execute_sb(self,
+                    input_hash: str,
+                    tx_batch: TransactionBatch,
+                    timestamp: float,
+                    sbb_idx: int):
+
         self.log.debug("SBB {} attempting to build a sub block with index {}"
                        .format(self.sb_blder_idx, sbb_idx))
 
@@ -456,7 +461,10 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
-        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback, environment=environment)
+        result = self.client.execute_sb(input_hash,
+                                        tx_batch.transactions,
+                                        callback,
+                                        environment=environment)
 
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
