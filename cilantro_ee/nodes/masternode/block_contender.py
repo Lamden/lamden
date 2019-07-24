@@ -184,14 +184,15 @@ class SubBlockGroup:
         merkle_proof = subblock_capnp.MerkleProof.from_bytes_packed(sbc.signature)
 
         if not merkle_proof.signer == vk:
+            self.log.error('{} != {}'.format(merkle_proof.signer, vk))
             return False
 
         if sbc.sb_index != self.sb_idx:
+            self.log.error('{} != {}'.format(sbc.sb_index, self.sb_idx))
             return False
 
-        self.log.success(merkle_proof.signer)
-        self.log.success(merkle_proof.hash)
-        self.log.success(merkle_proof.signature)
+        self.log.success(sbc.merkle_leaves)
+        self.log.success(sbc.result_hash)
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
@@ -213,7 +214,7 @@ class SubBlockGroup:
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
         if len(sbc.merkle_leaves) > 0:
-            if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash):
+            if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash.hex()):
                 self.log.error("Could not verify MerkleTree for SBC {}!".format(sbc))
                 return False
 
