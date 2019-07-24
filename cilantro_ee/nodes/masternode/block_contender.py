@@ -71,11 +71,8 @@ class SubBlockGroup:
 
         merkle_root = self.best_rh
         contenders = self.rh[merkle_root]
-        self.log.success('CONTENDERS: {}'.format(contenders))
 
         sigs = [c.signature for c in contenders]
-
-        self.log.success('SIGS :{}'.format(sigs))
 
         # Get a contender from the set. This presumes that the contenders have identical data, which they should.
         contender = contenders.pop()
@@ -190,9 +187,6 @@ class SubBlockGroup:
         if sbc.sb_index != self.sb_idx:
             self.log.error('{} != {}'.format(sbc.sb_index, self.sb_idx))
             return False
-
-        self.log.success(sbc.merkle_leaves)
-        self.log.success(sbc.result_hash)
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
