@@ -288,6 +288,7 @@ class SubBlockBuilder(Worker):
         if input_bag.message.is_empty:
             self.log.info('Empty bag. Tossing.')
             return
+
         self.num_txn_bags += 1 if is_add else -1
 
         # Create Signal
@@ -323,6 +324,7 @@ class SubBlockBuilder(Worker):
             return
 
         input_hash = Hasher.hash(envelope)
+        self.log.info(input_hash)
         # if the sb_manager already has this bag, ignore it
         if input_hash in self.sb_managers[index].pending_txs:
             self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
@@ -340,7 +342,7 @@ class SubBlockBuilder(Worker):
         self.log.info(timestamp)
         self.sb_managers[index].processed_txs_timestamp = timestamp
 
-        self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
+        self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
         self.adjust_work_load(envelope, True)
 
         self.sb_managers[index].pending_txs.append(input_hash, envelope)
@@ -401,12 +403,12 @@ class SubBlockBuilder(Worker):
         sbc = subblock_capnp.SubBlockContender.new_message(**{
             'resultHash': merkle.root,
             'inputHash': bytes.fromhex(sb_data.input_hash),
-            'merkleLeaves': merkle.leaves,
+            'merkleLeaves': [leaf for leaf in merkle.leaves],
             'signature': merkle_proof,
-            'transactions': txs_data,
+            'transactions': [tx for tx in txs_data],
             'subBlockIdx': self.sb_blder_idx,
             'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
-        })
+        }).to_bytes_packed()
 
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
                             .format(len(txs), sb_data.input_hash))
@@ -415,6 +417,7 @@ class SubBlockBuilder(Worker):
 
 
     def create_sb_contender(self, sb_data: SBData):
+        self.log.info('SBData returned: {}'.format(sb_data.tx_data))
         if len(sb_data.tx_data) > 0:
             self._create_sbc_from_batch(sb_data)
         else:
@@ -428,7 +431,7 @@ class SubBlockBuilder(Worker):
                     timestamp: float,
                     sbb_idx: int):
 
-        self.log.debug("SBB {} attempting to build a sub block with index {}"
+        self.log.info("SBB {} attempting to build a sub block with index {}"
                        .format(self.sb_blder_idx, sbb_idx))
 
         # callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
@@ -453,10 +456,14 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
+        self.log.info('Transactions to execute: {}'.format(tx_batch.ordered_transactions))
+
         result = self.client.execute_sb(input_hash,
-                                        tx_batch.transactions,
+                                        tx_batch.ordered_transactions,
                                         callback,
                                         environment=environment)
+
+        self.log.success('RESULT FOR TX BATCH: {}'.format(result))
 
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
@@ -468,32 +475,41 @@ class SubBlockBuilder(Worker):
 
     def _make_next_sb(self):
         if not self.move_next_block_to_make():
-            self.log.debug("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
+            self.log.info("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
             return
 
         # now start next one
         cur_block_index = self._next_block_to_make.next_block_index
+        self.log.info('Working on {}'.format(cur_block_index))
+
         sm_idx_start = cur_block_index * NUM_SB_PER_BLOCK_PER_BUILDER
+
         for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
             sm_idx = sm_idx_start + i
+
             if sm_idx >= len(self.sb_managers):    # out of range already
-                self.log.debug("Uneven sub-blocks per block. May not work seneca clients properly in current scheme")
-                self.log.debug("i {} num_sb_pb_pb {} num_sb_mgrs {} sm_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sm_idx))
+                self.log.info("Uneven sub-blocks per block. May not work seneca clients properly in current scheme")
+                self.log.info("i {} num_sb_pb_pb {} num_sb_mgrs {} sm_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sm_idx))
                 return
 
             if len(self.sb_managers[sm_idx].to_finalize_txs) > NUM_CACHES:
                 self.sb_managers[sm_idx].to_finalize_txs.pop_front()
+
             sb_index = self.sb_managers[sm_idx].sub_block_index
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
+
                 input_hash, envelope = self.sb_managers[sm_idx].pending_txs.pop_front()
                 self.adjust_work_load(envelope, False)
-                self.log.debug("Make next sub-block with input hash {}".format(input_hash))
+                self.log.info("Make next sub-block with input hash {}".format(input_hash))
                 self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, envelope)
                 self._execute_input_bag(input_hash, envelope, sb_index)
+                self.log.success('EXEC')
+
             else:
                 timestamp = float(time.time())
                 input_hash = self.sb_managers[sm_idx].get_empty_input_hash()
                 self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
+                self.log.success('EXEC')
 
     def _make_next_sub_block(self):
         if not self.startup:

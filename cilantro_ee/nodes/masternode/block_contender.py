@@ -13,7 +13,7 @@ from cilantro_ee.protocol.wallet import _verify
 from collections import defaultdict
 from typing import List
 import time
-
+import hashlib
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -83,12 +83,15 @@ class SubBlockGroup:
 
         txs = self._get_ordered_transactions()
 
-        sb = SubBlock.create(merkle_root=merkle_root,
-                             signatures=sigs,
-                             merkle_leaves=leaves,
-                             sub_block_idx=self.sb_idx,
-                             input_hash=input_hash,
-                             transactions=txs)
+        sb = subblock_capnp.SubBlock.new_message(
+            merkleRoot=merkle_root,
+            signatures=sigs,
+            merkleLeaves=[leaf for leaf in leaves],
+            subBlockIdx=self.sb_idx,
+            inputHash=input_hash,
+            transactions=[transaction_capnp.TransactionData.from_bytes_packed(tx) for tx in txs]
+        )
+
         return sb
 
     def is_consensus_reached(self) -> bool:
@@ -170,8 +173,13 @@ class SubBlockGroup:
 
         # Not sure what this is doing
         for tx in sbc.transactions:
-            if tx.hash not in self.transactions:
-                self.transactions[tx.hash] = tx
+
+            h = hashlib.sha3_256()
+            h.update(tx)
+            _hash = h.digest()
+
+            if _hash not in self.transactions:
+                self.transactions[_hash] = tx
 
         self.log.info("Added SBC: {}".format(sbc))
 
@@ -207,14 +215,19 @@ class SubBlockGroup:
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
         if len(sbc.merkleLeaves) > 0:
-            if not MerkleTree.verify_tree_from_str(sbc.merkleLeaves, root=sbc.resultHash.hex()):
+            if not MerkleTree.verify_tree_from_bytes(leaves=sbc.merkleLeaves, root=sbc.resultHash):
                 self.log.error("Could not verify MerkleTree for SBC {}!".format(sbc))
                 return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate transactions
         for tx in sbc.transactions:
-            if tx.hash not in sbc.merkleLeaves:
+
+            h = hashlib.sha3_256()
+            h.update(tx)
+            _hash = h.digest()
+
+            if _hash not in sbc.merkleLeaves:
                 self.log.error('Received malicious txs that does not match merkle leaves!\nSBC: {}'.format(sbc))
                 return False
 
@@ -307,7 +320,7 @@ class BlockContender:
         for sb_group in self.sb_groups.values():
             sb_data.append(sb_group.get_sb())
 
-        sb_data = sorted(sb_data, key=lambda sb: sb.index)
+        sb_data = sorted(sb_data, key=lambda sb: sb.subBlockIdx)
 
         assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
                                                  .format(len(sb_data), NUM_SB_PER_BLOCK)

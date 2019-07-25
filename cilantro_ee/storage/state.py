@@ -41,14 +41,13 @@ class MetaDataStorage(DatabaseDriver):
     def get_latest_block_hash(self):
         block_hash = self.get(self.block_hash_key)
         if block_hash is None:
-            return '0' * 64
-        return block_hash.decode()
+            return b'\x00' * 32
+        return block_hash
 
-    def set_latest_block_hash(self, v):
-        print(type(v))
-        assert len(v) == 64, 'Hash provided is not 64 characters.'
-        int(v, 16)
-
+    def set_latest_block_hash(self, v: bytes):
+        if type(v) == str:
+            v = bytes.fromhex(v)
+        assert len(v) == 32, 'Hash provided is not 32 bytes.'
         self.set(self.block_hash_key, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)

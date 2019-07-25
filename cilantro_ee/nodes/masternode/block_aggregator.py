@@ -189,20 +189,18 @@ class BlockAggregator(Worker):
             self.catchup_manager.recv_block_idx_req(req)
             return
 
-        if filter == b'0':
-            self.log.success('MMHMM')
-            if len(frames) == 3:
-                self.log.success('YUP')
-
-                msg_type = bytes_to_int(frames[1])
-                msg_blob = frames[2]
-                if msg_type == MessageTypes.SUBBLOCK_CONTENDER:
-                    msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
-                    if not self.catchup_manager.is_catchup_done():
-                        self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
-                    else:
-                        signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
-                        self.recv_sub_block_contender(signature.signer, msg)
+        if filter == b'0' and len(frames) == 3:
+            self.log.success('IT HAS 3 FRAMES')
+            msg_type = bytes_to_int(frames[1])
+            msg_blob = frames[2]
+            if msg_type == MessageTypes.SUBBLOCK_CONTENDER:
+                self.log.success('ITS A SBC')
+                msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+                if not self.catchup_manager.is_catchup_done():
+                    self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
+                else:
+                    signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
+                    self.recv_sub_block_contender(signature.signer, msg)
             return
 
         envelope = Envelope.from_bytes(frames[-1])
@@ -217,10 +215,12 @@ class BlockAggregator(Worker):
 
         # SIGNAL
         elif isinstance(msg, NewBlockNotification) or isinstance(msg, SkipBlockNotification):
+            self.log.info('NewBlockNotification or SkipBlockNotification received.')
             self.recv_new_block_notif(sender, msg)
 
         # SIGNAL
         elif isinstance(msg, FailedBlockNotification):
+            self.log.info('FailedBlockNotification received.')
             self.recv_fail_block_notif(sender, msg)
 
         # # DATA
@@ -276,6 +276,7 @@ class BlockAggregator(Worker):
                         .format(sender_vk, sbc.resultHash, sbc.inputHash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
+
         if added_first_sbc:
             self.log.debug("First SBC receiver for prev block hash {}! Scheduling timeout".format(self.curr_block_hash))
             self.timeout_fut = asyncio.ensure_future(self.schedule_block_timeout())
@@ -300,21 +301,22 @@ class BlockAggregator(Worker):
 
     def store_full_block(self):
         sb_data = self.curr_block.get_sb_data()
+
+        self.log.info(sb_data)
+
         if self.curr_block.is_empty():
-            self.log.debug("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
+            self.log.info("Got consensus on empty block with prev hash {}! Sending skip block notification".format(self.curr_block_hash))
             self.send_skip_block_notif(sb_data)
 
         else:
             # TODO wrap storage in try/catch. Add logic for storage failure
-            self.log.debug("Storing a block: {}".format(self.curr_block_hash))
+            self.log.info("Storing a block: {}".format(self.curr_block_hash))
 
-            try:
-                block_data = self.driver.store_block(sb_data)
-                self.log.debug(block_data)
-            except Exception as e:
-                self.log.error(str(e))
+            #try:
+            block_data = self.driver.store_block(sb_data)
+            self.log.debug(block_data)
 
-            assert block_data.prev_block_hash == self.curr_block_hash, \
+            assert block_data.prevBlockHash == self.curr_block_hash, \
                 "Current block hash {} does not match StorageDriver previous block hash {}"\
                 .format(self.curr_block_hash, block_data.prev_block_hash)
 
@@ -323,6 +325,9 @@ class BlockAggregator(Worker):
             self.state.update_with_block(block_data)
             self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.block_hash))
             self.send_new_block_notif(block_data)
+
+            #except Exception as e:
+            #    self.log.error(str(e))
 
         # TODO
         # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
@@ -351,16 +356,14 @@ class BlockAggregator(Worker):
 
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
-        time.sleep(30)
+        time.sleep(20)
 
         empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE,
                                                     arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
 
         self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), empty_block_made])
 
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash,
-                                  self.state.latest_block_num+1, [], sub_blocks)
-
+        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
         self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
 

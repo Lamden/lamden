@@ -48,20 +48,20 @@ class ConsensusBlockNotification(BlockNotification):
         input_hashes = []
         root_hashes = []
         for sb in sub_blocks:
-            input_hashes.append(sb.input_hash)
-            if not sb.is_empty:
-                root_hashes.append(sb.result_hash)
+            input_hashes.append(sb.inputHash)
+            if not len(sb.merkleLeaves) == 0:
+                root_hashes.append(sb.resultHash)
         return input_hashes, root_hashes
 
 
     @classmethod
-    def create_from_sub_blocks(cls, prev_block_hash: str, block_num: int, block_owners: List[str], sub_blocks: List[SubBlock]):
+    def create_from_sub_blocks(cls, prev_block_hash: str, block_num: int, block_owners: List[str], sub_blocks):
         # Sort sub-blocks by index if they are not done so already  - TODO eliminate it by ensuring they come in sorted
-        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.index)
+        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.subBlockIdx)
 
         input_hashes, root_hashes = cls.get_data_from_sub_blocks(sub_blocks)
 
-        first_sb_idx = sub_blocks[0].index
+        first_sb_idx = sub_blocks[0].subBlockIdx
         roots = root_hashes if root_hashes else input_hashes
         block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 

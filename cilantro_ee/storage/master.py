@@ -10,6 +10,17 @@ from typing import List
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.constants.system_config import *
 
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+import hashlib
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
 OID = '5bef52cca4259d4ca5607661'
@@ -296,26 +307,48 @@ class CilantroStorageDriver(DistributedMasterStorage):
 
         super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, vkbook=vkbook)
 
-    def store_block(self, sub_blocks: List[SubBlock]):
+    def store_block(self, sub_blocks):
         last_block = self.get_last_n(1, DistributedMasterStorage.INDEX)[0]
 
         last_hash = last_block.get('blockHash')
         current_block_num = last_block.get('blockNum') + 1
 
-        roots = [subblock.merkle_root for subblock in sub_blocks]
+        roots = [subblock.merkleRoot for subblock in sub_blocks]
 
-        block_hash = BlockData.compute_block_hash(roots, last_hash)
+        for s in sub_blocks:
+            self.log.success(type(s))
 
-        if not self.distribute_writes:
-            block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
+        if type(last_hash) == str:
+            last_hash = bytes.fromhex(last_hash)
 
-        successful_storage = self.evaluate_wr(entry=block_data._data.to_dict())
+        h = hashlib.sha3_256()
+        h.update(last_hash)
+        for root in roots:
+            h.update(root)
+        block_hash = h.digest()
+
+        block_dict = {
+            'blockHash': block_hash,
+            'blockNum': current_block_num,
+            'blockOwners': [m for m in PhoneBook.masternodes],
+            'prevBlockHash': last_hash,
+            'subBlocks': [s for s in sub_blocks]
+        }
+
+        # Get a blob for the protocol
+        block = blockdata_capnp.BlockData.new_message(**block_dict)
+
+        # Serialize the sub block for mongo
+        block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
+
+        #if not self.distribute_writes:
+        #    block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
+
+        successful_storage = self.evaluate_wr(entry=block_dict)
 
         assert successful_storage is None or successful_storage is True, 'Write failure.'
 
-        block_data._data.blockOwners = self.get_owners(block_hash)
-
-        return block_data
+        return block
 
     def get_transactions(self, tx_hash):
         txs = self.get_tx(tx_hash)

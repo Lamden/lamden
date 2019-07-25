@@ -82,7 +82,7 @@ class SubBlocks:
         sb_hashes = []
         for i in range(NUM_SB_BUILDERS):
             sb = self.sbs[i]
-            sb_hashes.append(sb.result_hash)
+            sb_hashes.append(sb.resultHash)
         return sb_hashes
 
 
@@ -338,6 +338,7 @@ class BlockManager(Worker):
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
         sbb_index = int(frames[0].decode())
+        self.log.info('SBBINDEX {}'.format(sbb_index))
         assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
             .format(sbb_index, self.sb_builders)
 
