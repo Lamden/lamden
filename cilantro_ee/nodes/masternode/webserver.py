@@ -50,7 +50,10 @@ async def submit_transaction(request):
         return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
 
     try:
-        tx_bytes = request.body
+        # TODO waiting or stu's changes
+        # tx_bytes = request.body
+        # tx = ContractTransaction.from_bytes(tx_bytes)
+        # container = ContractTransaction.from_bytes(tx_bytes)
         container = TransactionContainer.from_bytes(tx_bytes)
         tx = container.open()  # Deserializing the tx automatically validates the signature and POW
     except Exception as e:
@@ -184,8 +187,6 @@ async def contract_exists(request):
         return json({'exists': True}, status=200)
 
 
-#blocks
-
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 async def get_latest_block(request):
     index = MasterStorage.get_last_n(1)
@@ -207,8 +208,6 @@ async def get_block(request):
             return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
     return _respond_to_request(_json.dumps(block))
-
-
 
 
 def start_webserver(q):
