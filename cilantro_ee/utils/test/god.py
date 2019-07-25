@@ -283,7 +283,7 @@ class God:
         while True:
             try:
                 cls.log.info("Checking if masternodes are online")
-                val = God.get_from_mn_api('ohai')
+                val = God.get_from_mn_api('ping')
                 if val is not None:
                     cls.log.notice("All masternodes online.")
                     return
