@@ -263,15 +263,12 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        # self.pub = self.manager.create_socket(
-        #     socket_type=zmq.PUB,
-        #     name="BM-Pub-{}".format(self.verifying_key[-4:]),
-        #     secure=True,
-        # )
-        # port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip
-
-        self.pub = self.zmq_ctx.socket(zmq.PUB)
-        self.pub.bind('{}://*:{}'.format('tcp', DELEGATE_PUB_PORT))
+        self.pub = self.manager.create_socket(
+            socket_type=zmq.PUB,
+            name="BM-Pub-{}".format(self.verifying_key[-4:]),
+            secure=True,
+        )
+        self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
         self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
                                                    signing_key=self.signing_key,
@@ -325,6 +322,7 @@ class BlockManager(Worker):
                                            kwargs={"ipc_ip": self.ipc_ip, "ipc_port": IPC_PORT,
                                                    "signing_key": self.signing_key, "ip": self.ip,
                                                    "sbb_index": i})
+
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
@@ -344,50 +342,33 @@ class BlockManager(Worker):
             .format(sbb_index, self.sb_builders)
 
         msg_type = bytes_to_int(frames[1])
+        self.log.info('MSG TYPE: {}'.format(msg_type))
         msg_blob = frames[2]
-        msg = None
-
-        if MessageBase.registry.get(msg_type) is not None:
-            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
         if msg_type == MessageTypes.READY_INTERNAL:
+            self.log.info('Ready signal received.')
             self.set_sbb_ready()
-            return
 
         elif msg_type == MessageTypes.PENDING_TRANSACTIONS:
             self._set_pending_work(sbb_index)
-            return
+            self.log.info('Pending transactions.')
 
         elif msg_type == MessageTypes.NO_TRANSACTIONS:
             self._reset_pending_work(sbb_index)
-            return
+            self.log.info('No transactions. Resetting work.')
 
         elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
             msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+            self.log.info('SBC payload: {}'.format(msg))
 
             self._handle_sbc(sbb_index, msg)
-            if msg.is_empty:
+            if len(msg.merkleLeaves) == 0:
                 self._reset_sb_have_data(sbb_index)
+                self.log.info('Message empty, resetting SB.')
             else:
                 self._set_sb_have_data(sbb_index)
+                self.log.info('Setting SB {} has data.'.format(sbb_index))
 
-        elif base.SIGNALS.get(msg_type):
-            msg = base.SIGNALS.get(msg_type)()
-
-        self.log.debugv("BlockManager received an IPC message from sbb_index {} with message {}".format(sbb_index, msg))
-
-        if isinstance(msg, MessageBase):
-            # DATA
-            if isinstance(msg, SubBlockContender):
-                self._handle_sbc(sbb_index, msg)
-                if msg.is_empty:
-                    self._reset_sb_have_data(sbb_index)
-                else:
-                    self._set_sb_have_data(sbb_index)
-
-            else:
-                raise Exception("BlockManager got unexpected Message type {} over IPC that it does not know how to handle!"
-                                .format(type(msg)))
 
     def handle_sub_msg(self, frames):
         envelope = Envelope.from_bytes(frames[-1])
@@ -469,10 +450,11 @@ class BlockManager(Worker):
         # append prev block hash
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.driver.latest_block_hash)
 
-    def _handle_sbc(self, sbb_index: int, sbc: SubBlockContender):
-        #self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx, sbc.result_hash))
+    def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
+        self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
+                                                                                                     sbc.resultHash))
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
-        self.pub.send_multipart([DEFAULT_FILTER.encode(), sbc])
+        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY

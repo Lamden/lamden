@@ -50,9 +50,6 @@ class BlockAggregator(Worker):
 
         self.pub, self.sub, self.router, self.ipc_router = None, None, None, None  # Set in build_task_list
 
-
-
-
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
@@ -183,12 +180,29 @@ class BlockAggregator(Worker):
 
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
-        self.log.info(frames)
+        self.log.info('BLOCK AGG: {}'.format(frames))
         filter = frames[0]
+        self.log.success(len(frames))
 
         if filter == b'blk_idx_req':
             req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(frames[-1])
             self.catchup_manager.recv_block_idx_req(req)
+            return
+
+        if filter == b'0':
+            self.log.success('MMHMM')
+            if len(frames) == 3:
+                self.log.success('YUP')
+
+                msg_type = bytes_to_int(frames[1])
+                msg_blob = frames[2]
+                if msg_type == MessageTypes.SUBBLOCK_CONTENDER:
+                    msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+                    if not self.catchup_manager.is_catchup_done():
+                        self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
+                    else:
+                        signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
+                        self.recv_sub_block_contender(signature.signer, msg)
             return
 
         envelope = Envelope.from_bytes(frames[-1])
@@ -257,9 +271,9 @@ class BlockAggregator(Worker):
             raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
                             .format(type(msg)))
 
-    def recv_sub_block_contender(self, sender_vk: str, sbc: SubBlockContender):
+    def recv_sub_block_contender(self, sender_vk: str, sbc):
         self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
-                        .format(sender_vk, sbc.result_hash, sbc.input_hash))
+                        .format(sender_vk, sbc.resultHash, sbc.inputHash))
 
         added_first_sbc = self.curr_block.add_sbc(sender_vk, sbc)
         if added_first_sbc:

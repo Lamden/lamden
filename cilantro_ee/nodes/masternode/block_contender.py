@@ -78,8 +78,8 @@ class SubBlockGroup:
         contender = contenders.pop()
         contenders.add(contender)
 
-        leaves = contender.merkle_leaves
-        input_hash = contender.input_hash
+        leaves = contender.merkleLeaves
+        input_hash = contender.inputHash
 
         txs = self._get_ordered_transactions()
 
@@ -125,7 +125,7 @@ class SubBlockGroup:
         s = set()
 
         for sbc in self.sender_to_sbc.values():
-            s.add(sbc.input_hash)
+            s.add(sbc.inputHash)
         return list(s)
 
     def is_empty(self):
@@ -136,7 +136,7 @@ class SubBlockGroup:
             return []
 
         # All merkle leaves should be the same, so just chose any contender from the set
-        return next(iter(self.rh[self.best_rh])).merkle_leaves
+        return next(iter(self.rh[self.best_rh])).merkleLeaves
 
     def _get_ordered_transactions(self):
         assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
@@ -144,7 +144,7 @@ class SubBlockGroup:
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
         return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
 
-    def add_sbc(self, sender_vk: str, sbc: SubBlockContender):
+    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender):
         # Verify that the SubBlockContender message is validly constructured
         if not self._verify_sbc(sender_vk, sbc):
             self.log.error("Could not verify SBC from sender {}".format(sender_vk))
@@ -155,18 +155,18 @@ class SubBlockGroup:
             self.log.debug("Sender {} has already submitted a contender for sb idx {} with prev hash {}! Removing his "
                            "old contender before adding a new one".format(sender_vk, self.sb_idx, self.curr_block_hash))
             existing_sbc = self.sender_to_sbc[sender_vk]
-            self.rh[existing_sbc.result_hash].remove(existing_sbc)
+            self.rh[existing_sbc.resultHash].remove(existing_sbc)
 
         # Add the SBC to the mapping of entries between SBCs and senders. This can be a set instead
         self.sender_to_sbc[sender_vk] = sbc
 
         # Add the SBC to the result hash. Shouldn't we hash it ourselves and just keep a hashmap?
         # Also, wouldn't it be easier to have a counter?
-        self.rh[sbc.result_hash].add(sbc)
+        self.rh[sbc.resultHash].add(sbc)
 
         # If the new subblock is now the 'best result', set it so in the instance.
-        if (self.best_rh is None) or (len(self.rh[sbc.result_hash]) > len(self.rh[self.best_rh])):
-            self.best_rh = sbc.result_hash
+        if (self.best_rh is None) or (len(self.rh[sbc.resultHash]) > len(self.rh[self.best_rh])):
+            self.best_rh = sbc.resultHash
 
         # Not sure what this is doing
         for tx in sbc.transactions:
@@ -175,17 +175,16 @@ class SubBlockGroup:
 
         self.log.info("Added SBC: {}".format(sbc))
 
-    def _verify_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
+    def _verify_sbc(self, sender_vk: bytes, sbc: subblock_capnp.SubBlockContender) -> bool:
         # Dev sanity checks
-        vk = bytes.fromhex(sender_vk)
         merkle_proof = subblock_capnp.MerkleProof.from_bytes_packed(sbc.signature)
 
-        if not merkle_proof.signer == vk:
-            self.log.error('{} != {}'.format(merkle_proof.signer, vk))
+        if not merkle_proof.signer == sender_vk:
+            self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
             return False
 
-        if sbc.sb_index != self.sb_idx:
-            self.log.error('{} != {}'.format(sbc.sb_index, self.sb_idx))
+        if sbc.subBlockIdx != self.sb_idx:
+            self.log.error('{} != {}'.format(sbc.subBlockIdx, self.sb_idx))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
@@ -200,29 +199,29 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sbc prev block hash matches our current block hash
-        if sbc.prev_block_hash.hex() != self.curr_block_hash:
+        if sbc.prevBlockHash.hex() != self.curr_block_hash:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
-                           .format(sbc.prev_block_hash, self.curr_block_hash, sbc))
+                           .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
-        if len(sbc.merkle_leaves) > 0:
-            if not MerkleTree.verify_tree_from_str(sbc.merkle_leaves, root=sbc.result_hash.hex()):
+        if len(sbc.merkleLeaves) > 0:
+            if not MerkleTree.verify_tree_from_str(sbc.merkleLeaves, root=sbc.resultHash.hex()):
                 self.log.error("Could not verify MerkleTree for SBC {}!".format(sbc))
                 return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate transactions
         for tx in sbc.transactions:
-            if tx.hash not in sbc.merkle_leaves:
+            if tx.hash not in sbc.merkleLeaves:
                 self.log.error('Received malicious txs that does not match merkle leaves!\nSBC: {}'.format(sbc))
                 return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
-        if sbc.sb_index >= NUM_SB_PER_BLOCK:
-            self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.sb_index, sbc))
+        if sbc.subBlockIdx >= NUM_SB_PER_BLOCK:
+            self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.subBlockIdx, sbc))
             return False
 
         return True
@@ -330,7 +329,7 @@ class BlockContender:
                                               block_hash=block_hash, block_num=block_num, \
                                               first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
-    def add_sbc(self, sender_vk: str, sbc: SubBlockContender) -> bool:
+    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender) -> bool:
         """
         Adds a SubBlockContender to this BlockContender's data.
         :param sender_vk: The VK of the sender of the SubBlockContender
@@ -338,15 +337,15 @@ class BlockContender:
         :return: True if this is the first SBC added to this BlockContender, and false otherwise
         """
         # Make sure this SBC does not refer to the last block created by checking the input hash
-        if sbc.input_hash in self.old_input_hashes:
+        if sbc.inputHash in self.old_input_hashes:
             self.log.info("Got SBC from prev block from sender {}! Ignoring.".format(sender_vk))  # TODO change log lvl?
             return False
 
         groups_empty = len(self.sb_groups) == 0
-        if sbc.sb_index not in self.sb_groups:
-            self.sb_groups[sbc.sb_index] = SubBlockGroup(sb_idx=sbc.sb_index, curr_block_hash=self.curr_block_hash)
+        if sbc.subBlockIdx not in self.sb_groups:
+            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash)
 
-        self.sb_groups[sbc.sb_index].add_sbc(sender_vk, sbc)
+        self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty
 
     def __get_first_sb_idx(self, sb_groups) -> int:

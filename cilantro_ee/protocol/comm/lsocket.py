@@ -10,8 +10,19 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
 from os.path import join
+from cilantro_ee.utils.utils import int_to_bytes
 
 from cilantro_ee.constants import conf
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+from cilantro_ee.messages._new.message import MessageTypes
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 def vk_lookup(func):
@@ -84,13 +95,23 @@ class LSocketBase:
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
 
-    def send_msg(self, msg: MessageBase, header: bytes=None):
+    def send_msg(self, msg, header: bytes=None):
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
         :param msg: The MessageBase instance to wrap in an envelope and send
         :param header: The header frame to use. If None, no header frame will be sent. """
-        self.send_envelope(env=self._package_msg(msg), header=header)
+        if isinstance(msg, MessageBase):
+            self.send_envelope(env=self._package_msg(msg), header=header)
+
+        else:
+            _msg = msg.as_builder()
+            message_parts = []
+            if header is not None:
+                message_parts.append(header)
+            message_parts.extend([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), _msg.to_bytes_packed()])
+            self.log.success(message_parts)
+            self.send_multipart(message_parts)
 
     def send_envelope(self, env: Envelope, header: bytes=None):
         """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """

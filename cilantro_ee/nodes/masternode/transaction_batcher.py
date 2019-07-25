@@ -101,7 +101,9 @@ class TransactionBatcher(Worker):
                 tx_list.append(tx)
 
             batch = TransactionBatch.create(transactions=tx_list)
+
             self.pub_sock.send_msg(msg=batch, header=TRANSACTION_FILTER.encode())
+
             self.num_bags_sent = self.num_bags_sent + NUM_BLOCKS
             if len(tx_list):
                 self.log.spam("Sending {} transactions in batch".format(len(tx_list)))

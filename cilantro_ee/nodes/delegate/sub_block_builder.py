@@ -106,14 +106,6 @@ class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
 
-        # These variables are used only for testing
-        self.bad_actor = bool(os.getenv('BAD_ACTOR'))
-        if self.bad_actor:
-            self.log.critical("Warning!!! Bad actor mode enabled for delegate with vk {}".format(self.verifying_key))
-            self.good_sb_count = 0
-            self.fail_idxs = set([int(i) for i in os.getenv('SB_IDX_FAIL').split(',')])
-            self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
-
         self.state = MetaDataStorage()
 
         self.ip = ip
@@ -198,6 +190,7 @@ class SubBlockBuilder(Worker):
 
     def _align_to_hash(self, smi, input_hash):
         num_discards = 0
+
         if input_hash in self.sb_managers[smi].pending_txs:
             # clear entirely to_finalize
             num_discards = num_discards + len(self.sb_managers[smi].to_finalize_txs)
@@ -311,15 +304,18 @@ class SubBlockBuilder(Worker):
 
             self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
 
-
     def handle_sub_msg(self, frames, index):
         # self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
         assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
             index, self.sb_managers)
 
+        self.log.info('Got index {} with frames {}'.format(index, frames))
+
         envelope = Envelope.from_bytes(frames[-1])
         timestamp = envelope.meta.timestamp
-        assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
+
+        assert isinstance(envelope.message, TransactionBatch),\
+            "Handler expected TransactionBatch but got {}".format(envelope.messages)
 
         if timestamp <= self.sb_managers[index].processed_txs_timestamp:
             self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
@@ -338,20 +334,21 @@ class SubBlockBuilder(Worker):
 
         # DEBUG -- TODO DELETE
         self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
-        self.log.notice("{}".format(envelope.message.ordered_transactions))
-        # END DEBUG
 
+
+        # END DEBUG
+        self.log.info(timestamp)
         self.sb_managers[index].processed_txs_timestamp = timestamp
 
         self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
         self.adjust_work_load(envelope, True)
+
         self.sb_managers[index].pending_txs.append(input_hash, envelope)
 
     def _create_empty_sbc(self, sb_data: SBData):
-        """
-        Creates an Empty Sub Block Contender
-        """
+
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
+
         signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
 
         merkle_proof = subblock_capnp.MerkleProof.new_message(**{
@@ -359,12 +356,6 @@ class SubBlockBuilder(Worker):
             'signer': self.wallet.verifying_key(),
             'signature': signature
         }).to_bytes_packed()
-
-        # sbc = SubBlockContender.create_empty_sublock(input_hash=bytes.fromhex(sb_data.input_hash),
-        #                                              sub_block_index=self.sb_blder_idx,
-        #                                              signature=merkle_proof,
-        #                                              prev_block_hash=bytes.fromhex(self.state.get_latest_block_hash()))
-        # Send to block manager
 
         sbc = subblock_capnp.SubBlockContender.new_message(**{
               'resultHash': bytes.fromhex(sb_data.input_hash),
@@ -377,9 +368,8 @@ class SubBlockBuilder(Worker):
         }).to_bytes_packed()
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
 
-        #self._send_msg_over_ipc(sbc)
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
 
     def _create_sbc_from_batch(self, sb_data: SBData):
         """
@@ -408,14 +398,6 @@ class SubBlockBuilder(Worker):
             'signature': self.wallet.sign(merkle.root)
         }).to_bytes_packed()
 
-        # sbc = SubBlockContender.create(result_hash=merkle.root,
-        #                                input_hash=bytes.fromhex(sb_data.input_hash),
-        #                                merkle_leaves=merkle.leaves,
-        #                                sub_block_index=self.sb_blder_idx,
-        #                                signature=merkle_proof,
-        #                                transactions=txs_data,
-        #                                prev_block_hash=bytes.fromhex(self.state.latest_block_hash))
-
         sbc = subblock_capnp.SubBlockContender.new_message(**{
             'resultHash': merkle.root,
             'inputHash': bytes.fromhex(sb_data.input_hash),
@@ -430,8 +412,6 @@ class SubBlockBuilder(Worker):
                             .format(len(txs), sb_data.input_hash))
 
         self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
-
-        # self._send_msg_over_ipc(sbc)
 
 
     def create_sb_contender(self, sb_data: SBData):
@@ -483,7 +463,6 @@ class SubBlockBuilder(Worker):
             return True
         return False
 
-
     def _execute_input_bag(self, input_hash: str, envelope: Envelope, sbb_idx: int):
         return self._execute_sb(input_hash, envelope.message, envelope.meta.timestamp, sbb_idx)
 
@@ -517,12 +496,6 @@ class SubBlockBuilder(Worker):
                 self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
 
     def _make_next_sub_block(self):
-        # The following block is test code
-        if self.bad_actor:
-            self.log.info("Incrementing good sb count!")
-            self.good_sb_count += 1
-
-        # first commit current state only if we have some pending dbs!
         if not self.startup:
             self.log.info("Merge pending db to master db")
             self.client.update_master_db()

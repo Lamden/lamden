@@ -41,7 +41,8 @@ class SubBlock(MessageBase):
 
         struct = subblock_capnp.SubBlock.new_message()
         struct.signatures = signatures
-        struct.merkleLeaves = merkle_leaves
+
+        struct.merkleLeaves = [mk for mk in merkle_leaves]
         struct.merkleRoot = merkle_root
         struct.subBlockIdx = sub_block_idx
         struct.inputHash = input_hash
