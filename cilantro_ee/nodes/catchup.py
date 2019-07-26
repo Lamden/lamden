@@ -282,11 +282,11 @@ class CatchupManager:
         :param request:
         :return:
         """
-        requester_vk = request.sender.decode()
+        requester_vk = request.sender
 
         assert self.store_full_blocks, "Must be able to store full blocks to reply to state update requests"
         self.log.debugv("Got block index request from sender {} requesting block hash {} my_vk {}"
-                        .format(requester_vk, request.blockHash.decode(), self.verifying_key))
+                        .format(requester_vk, request.blockHash, self.verifying_key))
 
         if requester_vk == self.verifying_key:
             self.log.debugv("received request from myself dropping the req")
@@ -299,10 +299,10 @@ class CatchupManager:
         # tejas, latest_blk_num should correspond to request.block_hash or latest_num ?
         delta_idx = self.get_idx_list(vk=requester_vk,
                                       latest_blk_num=self.curr_num,
-                                      sender_bhash=request.blockHash.decode())
+                                      sender_bhash=request.blockHash)
 
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
-                                                                          request.blockHash.decode()))
+                                                                          request.blockHash))
 
         if delta_idx and len(delta_idx) > 1:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
