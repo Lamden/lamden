@@ -350,16 +350,18 @@ class CatchupManager:
     def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
         blk_dict = self.driver.get_block(req.block_num)
 
-        self.log.info(req)
+        self.log.info(blk_dict)
 
         if '_id' in blk_dict:
             del blk_dict['_id']
-        block = BlockData.from_dict(blk_dict)
+
+        block = blockdata_capnp.BlockData.new_message(**blk_dict)
         reply = BlockDataReply.create_from_block(block)
         self.router.send_msg(reply, header=sender_vk.encode())
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
+        self.log.info(sender_bhash)
         valid_node = vk.decode() in PhoneBook.state_sync
         if valid_node:
             index = self.driver.get_index(sender_bhash)
