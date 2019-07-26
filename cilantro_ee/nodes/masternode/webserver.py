@@ -50,6 +50,12 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
         return text(payload, headers=dict(headers, **static_headers), status=status)
 
 
+# ping to check whether server is online or not
+@app.route("/ping", methods=["GET","OPTIONS",])
+async def ping(request):
+    return _respond_to_request({'status':'online'})
+
+
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
