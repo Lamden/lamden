@@ -23,9 +23,10 @@ class MetaDataStorage(DatabaseDriver):
                         sets = json.loads(tx.state)
 
                         for k, v in sets.items():
+                            self.log.info('SETTING "{}" to "{}"'.format(k, v))
                             self.set(k, v)
-                    except:
-                        pass
+                    except Exception as e:
+                        self.log.critical(str(e))
 
         # Update our block hash and block num
         self.latest_block_hash = block.blockHash
@@ -33,7 +34,7 @@ class MetaDataStorage(DatabaseDriver):
 
         #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
 
-        assert self.latest_block_hash == block.block_hash, \
+        assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
     def get_latest_block_hash(self):
