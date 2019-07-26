@@ -101,6 +101,7 @@ class LSocketBase:
         it is a Router socket.
         :param msg: The MessageBase instance to wrap in an envelope and send
         :param header: The header frame to use. If None, no header frame will be sent. """
+        self.log.info('sending a message {} with header {}'.format(msg, header))
         if isinstance(msg, MessageBase):
             self.send_envelope(env=self._package_msg(msg), header=header)
 

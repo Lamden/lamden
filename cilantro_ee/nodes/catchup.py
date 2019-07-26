@@ -195,6 +195,7 @@ class CatchupManager:
         # self.log.important2("SEND BIR")
 
     def _recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
+        self.log.info('Got REPLY from {} as {}'.format(sender_vk, reply))
         """
         We expect to receive this message from all mn/dn
         :param sender_vk:
@@ -226,7 +227,6 @@ class CatchupManager:
             if self.awaited_blknum == self.curr_num:
                 self.process_recv_idx()
 
-
         self.node_idx_reply_set.add(sender_vk)
         self.log.debugv("_new target block num {}\ntarget block num {}\ntemp list {}"
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
@@ -246,6 +246,8 @@ class CatchupManager:
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
+        self.log.info('Recieved {}:'.format(reply))
+
 
         rcv_blk_num = reply.block_num
         if rcv_blk_num <= self.curr_num:
@@ -259,6 +261,7 @@ class CatchupManager:
             return
 
         if (rcv_blk_num == self.awaited_blknum):
+            self.log.info('Got the block I needed!')
             self.curr_num = self.awaited_blknum
             self.update_received_block(block = reply)
             self.process_recv_idx()
