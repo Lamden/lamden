@@ -455,7 +455,7 @@ class BlockManager(Worker):
         self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
                                                                                                      sbc.resultHash))
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
-        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode(), is_sbc=True)
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY
