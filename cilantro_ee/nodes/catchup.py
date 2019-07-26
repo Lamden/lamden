@@ -142,7 +142,6 @@ class CatchupManager:
         time.sleep(3 * TIMEOUT_CHECK_INTERVAL)
         self.timeout_fut = asyncio.ensure_future(self._check_timeout())
         self.log.important2("Running catchup!")
-        self.dump_debug_info(lnum = 111)
 
     def _reset_state(self):
         # only in a very rare case where mongo db is behind redis, this is called
@@ -194,7 +193,6 @@ class CatchupManager:
         self.pub.send_multipart([BLOCK_IDX_REQ_FILTER.encode(), req])
 
         # self.log.important2("SEND BIR")
-        self.dump_debug_info(lnum = 155)
 
     def _recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         """
@@ -232,12 +230,10 @@ class CatchupManager:
         self.node_idx_reply_set.add(sender_vk)
         self.log.debugv("_new target block num {}\ntarget block num {}\ntemp list {}"
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
-        self.dump_debug_info(lnum = 195)
 
     def recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
-        self.dump_debug_info(lnum = 200)
         return self.is_catchup_done()
 
     def _send_block_data_req(self, mn_vk, req_blk_num):
@@ -245,13 +241,11 @@ class CatchupManager:
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
         self.router.send_msg(req, header=mn_vk.encode())
-        self.dump_debug_info(lnum = 209)
 
     def _recv_block_data_reply(self, reply: BlockData):
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
-        self.dump_debug_info(lnum = 216)
 
         rcv_blk_num = reply.block_num
         if rcv_blk_num <= self.curr_num:
@@ -271,7 +265,6 @@ class CatchupManager:
 
     def recv_block_data_reply(self, reply: BlockData):
         self._recv_block_data_reply(reply)
-        self.dump_debug_info(lnum = 231)
         return self.is_catchup_done()
 
     # MASTER ONLY CALL
@@ -308,7 +301,6 @@ class CatchupManager:
             assert delta_idx[0].get('blockNum') > delta_idx[-1].get('blockNum'), "ensure reply are in ascending order" \
                                                                                   " {}" .format(delta_idx)
 
-        self.dump_debug_info(lnum=258)
         self._send_block_idx_reply(reply_to_vk=requester_vk,
                                    catchup_list=delta_idx)
 
@@ -353,7 +345,6 @@ class CatchupManager:
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(reply, header=reply_to_vk)
         # self.log.important2("SEND BIRp")
-        self.dump_debug_info(lnum = 296)
 
     # MASTER ONLY CALL
     def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
@@ -392,7 +383,6 @@ class CatchupManager:
     def process_recv_idx(self):
         if (self.awaited_blknum <= self.curr_num) and (self.awaited_blknum < self.target_blk_num):
             self.awaited_blknum = self.curr_num + 1
-            self.dump_debug_info(lnum = 337)
             # don't request if it is in stashed list. move to next one
             while self.awaited_blknum in self.rcv_block_dict:
                 self.awaited_blknum = self.awaited_blknum + 1
@@ -434,33 +424,6 @@ class CatchupManager:
         self.is_caught_up = (self.target_blk_num == self.curr_num) and \
                             self._check_idx_reply_quorum()
 
-        # DEBUG
-        # self.log.debugv("target blk num {}".format(self.target_blk_num))
-        # self.log.debugv("awaited blk num {}".format(self.awaited_blknum))
-        # self.log.debugv("curr_num {}".format(self.curr_num))
-        # self.log.debugv("self._check_idx_reply_quorum() {}".format(self._check_idx_reply_quorum()))
-        # self.log.debugv("self.is_caught_up {}".format(self.is_caught_up))
-        # END DEBUG
-        # if self.is_caught_up:       # reset here
-            # self.node_idx_reply_set.clear()
-        self.dump_debug_info(lnum = 380)
-
         return self.is_caught_up
 
-    def dump_debug_info(self, lnum = None):
-        # TODO change this log to important for debugging
-
-        self.log.debug2("lnum -> {}".format(lnum))
-        self.log.debug2("Time -> {}".format(self.timeout_catchup))
-        self.log.debug2("is_caught_up -> {}".format(self.is_caught_up))
-        self.log.debug2("target blk num -> {}".format(self.target_blk_num))
-        self.log.debug2("awaited blk num -> {}".format(self.awaited_blknum))
-        self.log.debug2("curr_num -> {}".format(self.curr_num))
-        self.log.debug2("curr_hash -> {}".format(self.curr_hash))
-
-        self.log.debug2("Pending blk list -> {}".format(self.block_delta_list))
-        self.log.debug2("Received blk dict -> {}".format(self.rcv_block_dict))
-
-        self.log.debug2("quorum nodes -> {}".format(self.node_idx_reply_set))
-        self.log.debug2("self._check_idx_reply_quorum() -> {}".format(self._check_idx_reply_quorum()))
 
