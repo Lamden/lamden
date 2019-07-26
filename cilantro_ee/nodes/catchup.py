@@ -351,7 +351,7 @@ class CatchupManager:
         self.log.debug("catchup list -> {}".format(catchup_list))
         reply = BlockIndexReply.create(block_info = catchup_list)
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
-        self.router.send_msg(reply, header=reply_to_vk.encode())
+        self.router.send_msg(reply, header=reply_to_vk.decode())
         # self.log.important2("SEND BIRp")
         self.dump_debug_info(lnum = 296)
 
@@ -366,7 +366,7 @@ class CatchupManager:
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
-        valid_node = vk in PhoneBook.state_sync
+        valid_node = vk.decode() in PhoneBook.state_sync
         if valid_node:
             index = self.driver.get_index(sender_bhash)
 
