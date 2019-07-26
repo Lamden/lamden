@@ -15,23 +15,21 @@ class MetaDataStorage(DatabaseDriver):
 
         super().__init__()
 
-    def update_with_block(self, block: BlockData):
-        for tx in block.transactions:
-            assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
+    def update_with_block(self, block):
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                if tx.state is not None and len(tx.state) > 0:
+                    try:
+                        sets = json.loads(tx.state)
 
-            if tx.state is not None and len(tx.state) > 0:
-                try:
-                    sets = json.loads(tx.state)
-
-                    for k, v in sets.items():
-                        self.set(k, v)
-                except:
-                    pass
-                    #self.log.info('Set {} to {}'.format(k, v))
+                        for k, v in sets.items():
+                            self.set(k, v)
+                    except:
+                        pass
 
         # Update our block hash and block num
-        self.latest_block_hash = block.block_hash
-        self.latest_block_num = block.block_num
+        self.latest_block_hash = block.blockHash
+        self.latest_block_num = block.blockNum
 
         #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
 
