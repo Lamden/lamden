@@ -104,7 +104,7 @@ class LSocketBase:
         if isinstance(msg, MessageBase):
             self.send_envelope(env=self._package_msg(msg), header=header)
 
-        elif not is_sbc:
+        elif is_sbc:
             _msg = msg.as_builder()
             message_parts = []
             if header is not None:
