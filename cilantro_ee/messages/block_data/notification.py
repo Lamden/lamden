@@ -14,11 +14,7 @@ class BlockNotification(MessageBase):
 class ConsensusBlockNotification(BlockNotification):
 
     def validate(self):
-        # TODO clean this up, do we really need validations in our notification system?
-        # 
-        assert validate_hex(self.block_hash, 64), 'Invalid block hash {}'.format(self.block_hash)
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        assert self.block_num > 0, "Block num must be greater than or equal to 0"
+        pass
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -109,15 +105,7 @@ class SkipBlockNotification(ConsensusBlockNotification):
 class FailedBlockNotification(BlockNotification):
 
     def validate(self):
-        # TODO clean this up, do we really need validations in our notification system?
-        # 
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        # assert len(self.input_hashes) == NUM_SUB_BLOCKS, "Length of input hashes list {} does not match number of " \
-                                                         # "sub-blocks {}".format(len(self.input_hashes), NUM_SUB_BLOCKS)
-        # for s in self.input_hashes:
-            # for ih in s:
-                # assert is_valid_hex(ih), "Not valid input hash: {}".format(ih)
-
+        pass
 
     @classmethod
     def _deserialize_data(cls, data):

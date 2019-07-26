@@ -366,7 +366,7 @@ class SubBlockBuilder(Worker):
               'signature': merkle_proof,
               'transactions': [],
               'subBlockIdx': self.sb_blder_idx,
-              'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
+              'prevBlockHash': self.state.get_latest_block_hash()
         }).to_bytes_packed()
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
@@ -407,7 +407,7 @@ class SubBlockBuilder(Worker):
             'signature': merkle_proof,
             'transactions': [tx for tx in txs_data],
             'subBlockIdx': self.sb_blder_idx,
-            'prevBlockHash': bytes.fromhex(self.state.get_latest_block_hash())
+            'prevBlockHash': self.state.get_latest_block_hash()
         }).to_bytes_packed()
 
         self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
