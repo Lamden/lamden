@@ -207,7 +207,7 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sbc prev block hash matches our current block hash
-        if sbc.prevBlockHash.hex() != self.curr_block_hash:
+        if sbc.prevBlockHash != self.curr_block_hash:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
             return False
