@@ -349,15 +349,18 @@ class CatchupManager:
     def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
         self.log.debug("catchup list -> {}".format(catchup_list))
-        reply = BlockIndexReply.create(block_info = catchup_list)
+        reply = BlockIndexReply.create(block_info=catchup_list)
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
-        self.router.send_msg(reply, header=reply_to_vk.decode())
+        self.router.send_msg(reply, header=reply_to_vk)
         # self.log.important2("SEND BIRp")
         self.dump_debug_info(lnum = 296)
 
     # MASTER ONLY CALL
     def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
         blk_dict = self.driver.get_block(req.block_num)
+
+        self.log.info(req)
+
         if '_id' in blk_dict:
             del blk_dict['_id']
         block = BlockData.from_dict(blk_dict)
