@@ -1,5 +1,6 @@
 from sanic import Sanic
 from sanic.response import json, text
+from secure import SecureHeaders
 from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS, cross_origin
 import json as _json
@@ -35,6 +36,11 @@ log = get_logger("MN-WebServer")
 client = ContractingClient()
 
 static_headers = {}
+
+
+@app.middleware('response')
+async def set_secure_headers(request, response):
+    SecureHeaders.sanic(response)
 
 
 def _respond_to_request(payload, headers={}, status=200, resptype='json'):
@@ -147,45 +153,6 @@ async def get_variable(request, contract, variable):
     'code': 'string'
 }
 '''
-@app.route('/lint', methods=['POST'])
-async def lint_contract(request):
-    code = request.json.get('code')
-
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-    return json({'violations': violations}, status=200)
-
-
-@app.route('/submit', methods=['POST'])
-async def submit_contract(request):
-    code = request.json.get('code')
-    name = request.json.get('name')
-
-    if code is None or name is None:
-        return json({'error': 'malformed payload'}, status=500)
-
-    violations = client.lint(code)
-
-    if violations is None:
-        client.submit(code, name=name)
-
-    else:
-        return json({'violations': violations}, status=500)
-
-    return json({'success': True}, status=200)
-
-
-@app.route('/exists', methods=['GET'])
-async def contract_exists(request):
-    contract_code = client.get_contract(request.json.get('name'))
-
-    if contract_code is None:
-        return json({'exists': False}, status=404)
-    else:
-        return json({'exists': True}, status=200)
-
 
 @app.route("/latest_block", methods=["GET","OPTIONS",])
 async def get_latest_block(request):
