@@ -355,7 +355,22 @@ class CatchupManager:
         if '_id' in blk_dict:
             del blk_dict['_id']
 
-        block = blockdata_capnp.BlockData.new_message(**blk_dict)
+        '''
+        struct BlockData {
+            blockHash @0 :Data;
+            blockNum @1 :UInt32;
+            blockOwners @2 :List(Text);
+            prevBlockHash @3 :Data;
+            subBlocks @4 :List(SB.SubBlock);
+        }
+        '''
+
+        block = blockdata_capnp.BlockData.new_message()
+
+        block.blockHash = blk_dict['blockHash']
+        block.blockNum = blk_dict['blockNum']
+        block.blockOwners = blk_dict['blockOwners']
+
         reply = BlockDataReply.create_from_block(block)
         self.router.send_msg(reply, header=sender_vk.encode())
 
