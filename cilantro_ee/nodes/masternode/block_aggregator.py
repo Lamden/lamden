@@ -338,22 +338,25 @@ class BlockAggregator(Worker):
 
         self._reset_curr_block()
 
-    def send_new_block_notif(self, block_data: BlockData):
+    def send_new_block_notif(self, block_data):
 
         non_empty_block_made = MessageManager.pack_dict(MessageTypes.NON_EMPTY_BLOCK_MADE,
                                                         arg_dict={'messageType': MessageTypes.NON_EMPTY_BLOCK_MADE})
 
         self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.NON_EMPTY_BLOCK_MADE), non_empty_block_made])
 
-        new_block_notif = NewBlockNotification.create(block_data.prev_block_hash,
-                               block_data.block_hash, block_data.block_num,
-                               block_data.sub_blocks[0].index,
-                               block_data.block_owners, block_data.input_hashes)
+        # new_block_notif = NewBlockNotification.create(block_data.prevBlockHash,
+        #                                               block_data.blockHash,
+        #                                               block_data.blockNum,
+        #                                               block_data.subBlocks[0].subBlockIdx,
+        #                                               block_data.blockOwners,
+        #                                               [sb.inputHash for sb in block_data.subBlocks])
+
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
-        self.pub.send_msg(msg=new_block_notif, header=NEW_BLK_NOTIF_FILTER.encode())
+        self.pub.send_msg(msg=block_data, header=NEW_BLK_NOTIF_FILTER.encode())
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
-                      .format(block_data.block_hash, block_data.prev_block_hash))
+                      .format(block_data.blockHash, block_data.prevBlockHash))
 
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed

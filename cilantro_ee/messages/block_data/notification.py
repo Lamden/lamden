@@ -34,7 +34,7 @@ class ConsensusBlockNotification(BlockNotification):
         struct.blockHash = block_hash
         struct.blockNum = block_num
         struct.firstSbIdx = first_sb_idx
-        struct.blockOwners = block_owners
+        struct.blockOwners = [block_owner for block_owner in block_owners]
         struct.inputHashes = input_hashes
 
         return cls.from_data(struct, False)    # no validation
