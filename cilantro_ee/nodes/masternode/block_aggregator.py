@@ -184,6 +184,11 @@ class BlockAggregator(Worker):
         filter = frames[0]
         self.log.success(len(frames))
 
+        if filter == b'new_blk_notif':
+            block = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
+            self.recv_new_block_notif(self.verifying_key, block)
+            return
+
         if filter == b'blk_idx_req':
             req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(frames[-1])
             self.catchup_manager.recv_block_idx_req(req)
@@ -354,7 +359,7 @@ class BlockAggregator(Worker):
 
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
-        self.pub.send_msg(msg=block_data, header=NEW_BLK_NOTIF_FILTER.encode())
+        self.pub.send_msg(msg=block_data.to_bytes_packed(), header=NEW_BLK_NOTIF_FILTER.encode())
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.blockHash, block_data.prevBlockHash))
 

@@ -191,7 +191,7 @@ class BlockManager(Worker):
         self._thicc_log()
 
         # Define Sockets (these get set in build_task_list)
-        self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
+        self.router, self.ipc_router, self.pub, self.sub, self.nbn_sub = None, None, None, None, None
 
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
@@ -285,13 +285,22 @@ class BlockManager(Worker):
             secure=True,
         )
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-        self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
-        self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
 
+        self.nbn_sub = self.manager.create_socket(
+            socket_type=zmq.SUB,
+            name="BM-Sub-{}".format(self.verifying_key[-8:-4]),
+            secure=True,
+        )
+
+        self.nbn_sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
+
+        self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
+        self.tasks.append(self.nbn_sub.add_handler(self.handle_nbn_sub_msg))
         self.tasks.append(self._connect_and_process())
 
     def _connect_master_node(self, vk):
         self.sub.connect(vk=vk, port=MN_PUB_PORT)
+        self.nbn_sub.connect(vk=vk,port=MN_PUB_PORT)
         self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
     async def _connect_and_process(self):
@@ -360,7 +369,6 @@ class BlockManager(Worker):
 
         elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
             msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
-            self.log.info('SBC payload: {}'.format(msg))
 
             self._handle_sbc(sbb_index, msg)
             if len(msg.merkleLeaves) == 0:
@@ -376,7 +384,7 @@ class BlockManager(Worker):
         msg = envelope.message
         sender = envelope.sender
 
-        if isinstance(msg, BlockNotification):
+        if isinstance(msg, SkipBlockNotification) or isinstance(msg, BlockNotification):
             self.log.important3("BM got BlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
             self.handle_block_notification(msg, sender)
         elif isinstance(msg, Ready):
@@ -385,6 +393,8 @@ class BlockManager(Worker):
             raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
                             .format(type(msg)))
 
+    def handle_nbn_sub_msg(self, frames):
+        self.log.critical('FRAMES FROM SUB {}'.format(frames))
 
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
