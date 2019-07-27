@@ -132,18 +132,16 @@ class NextBlock:
     def get_quorum_block(self):
         return self.quorum_block
 
-    def add_notification(self, block_notif, sender):
-        bn = block_notif.block_num
-        if self.quorum_block and (self.quorum_block.block_num == bn):
+    def add_notification(self, block_notif, sender, block_num, block_hash):
+        if self.quorum_block and (self.quorum_block.block_num == block_num):
             # todo - if it is not matching blockhash, may need to audit it
             return False
-        if bn not in self.next_block_data:
-            self.next_block_data[bn] = {}
+        if block_num not in self.next_block_data:
+            self.next_block_data[block_num] = {}
             # todo add time info to implement timeout
-        bh = block_notif.block_hash
-        if bh not in self.next_block_data[bn]:
-            self.next_block_data[bn][bh] = NextBlockData(block_notif)
-        if self.next_block_data[bn][bh].add_sender(sender):
+        if block_hash not in self.next_block_data[block_num]:
+            self.next_block_data[block_num][block_hash] = NextBlockData(block_notif)
+        if self.next_block_data[block_num][block_hash].add_sender(sender):
             self.quorum_block = block_notif
             return True
         return False
@@ -525,7 +523,17 @@ class BlockManager(Worker):
 
     # make sure block aggregator adds block_num for all notifications?
     def handle_block_notification(self, block_notif: BlockNotification, sender: str):
-        new_block_num = block_notif.block_num if isinstance(block_notif, SkipBlockNotification) else block_notif.blockNum
+
+        self.log.notice('BM with sender {} being handled'.format(sender))
+
+        if isinstance(block_notif, SkipBlockNotification):
+            block = block_notif
+        elif isinstance(block_notif, bytes):
+            block = blockdata_capnp.BlockData.from_bytes_packed(block_notif)
+
+        new_block_num = block.block_num if isinstance(block, SkipBlockNotification) else block.blockNum
+        new_block_hash = block.block_hash if isinstance(block, SkipBlockNotification) else block.blockHash
+
         self.log.notice("Got block notification for block num {}".format(new_block_num))
 
         next_block_num = self.db_state.driver.latest_block_num + 1
@@ -538,13 +546,13 @@ class BlockManager(Worker):
         if (new_block_num > next_block_num):
             self.log.warning("Current block num {} is behind the block num {} received. Need to run catchup!"
                              .format(self.db_state.driver.latest_block_num, new_block_num))
-            self.recv_block_notif(block_notif)     # raghu todo
+            self.recv_block_notif(block)     # raghu todo
             return
 
-        is_quorum_met = self.db_state.next_block.add_notification(block_notif, sender)
+        is_quorum_met = self.db_state.next_block.add_notification(block, sender, new_block_num, new_block_hash)
         if is_quorum_met:
             self.log.info("New block quorum met!")
-            self.update_db_state(block_notif)
+            self.update_db_state(block)
 
     def send_updated_db_msg(self):
         # first reset my state
