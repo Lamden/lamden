@@ -95,7 +95,7 @@ class LSocketBase:
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
 
-    def send_msg(self, msg, header: bytes=None, is_sbc=False):
+    def send_msg(self, msg, header: bytes=None, is_sbc=False, **kwargs):
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
@@ -111,13 +111,22 @@ class LSocketBase:
             if header is not None:
                 message_parts.append(header)
             message_parts.extend([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), _msg.to_bytes_packed()])
-            self.log.success(message_parts)
+            self.log.success('SENDING SBC')
             self.send_multipart(message_parts)
         else:
+            self.log.info('your problem might be here')
+            message_parts = []
+
             if header is not None:
-                self.send_multipart([msg, header])
-            else:
-                self.send_multipart([msg])
+                message_parts.append(header)
+
+            for k, v in kwargs.items():
+                message_parts.append(v)
+
+            message_parts.append(msg)
+
+            self.log.info(message_parts)
+            self.send_multipart(message_parts)
 
     def send_envelope(self, env: Envelope, header: bytes=None):
         """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """

@@ -16,6 +16,7 @@ class MetaDataStorage(DatabaseDriver):
         super().__init__()
 
     def update_with_block(self, block):
+        self.log.success('UPDATING STATE')
         for sb in block.subBlocks:
             for tx in sb.transactions:
                 if tx.state is not None and len(tx.state) > 0:

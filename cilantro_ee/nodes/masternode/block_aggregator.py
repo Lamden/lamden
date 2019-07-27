@@ -185,8 +185,9 @@ class BlockAggregator(Worker):
         self.log.success(len(frames))
 
         if filter == b'new_blk_notif':
-            block = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
-            self.recv_new_block_notif(self.verifying_key, block)
+            block = blockdata_capnp.BlockData.from_bytes_packed(frames[2])
+            sender = frames[1]
+            self.recv_new_block_notif(sender, block)
             return
 
         if filter == b'blk_idx_req':
@@ -359,7 +360,10 @@ class BlockAggregator(Worker):
 
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
-        self.pub.send_msg(msg=block_data.to_bytes_packed(), header=NEW_BLK_NOTIF_FILTER.encode())
+        self.pub.send_msg(msg=block_data.to_bytes_packed(),
+                          header=NEW_BLK_NOTIF_FILTER.encode(),
+                          sender=bytes.fromhex(self.verifying_key))
+
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.blockHash, block_data.prevBlockHash))
 
@@ -386,7 +390,12 @@ class BlockAggregator(Worker):
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if notif.block_num > self.state.latest_block_num + 1:
+        if isinstance(notif, SkipBlockNotification):
+            blocknum = notif.block_num
+        else:
+            blocknum = notif.blockNum
+
+        if blocknum > self.state.latest_block_num + 1:
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:

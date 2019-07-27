@@ -62,6 +62,7 @@ class TransactionBatcher(Worker):
 
         if msg_type == MessageTypes.EMPTY_BLOCK_MADE or msg_type == MessageTypes.NON_EMPTY_BLOCK_MADE:
             self.num_bags_sent = self.num_bags_sent - 1
+            self.log.info('An empty or non-empty block was made.')
 
         elif msg_type == MessageTypes.READY_INTERNAL:
             self.log.success('READY.')

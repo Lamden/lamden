@@ -43,7 +43,7 @@ from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-
+import hashlib
 import asyncio, zmq, os, time, random
 from collections import defaultdict
 from typing import List
@@ -380,6 +380,7 @@ class BlockManager(Worker):
 
 
     def handle_sub_msg(self, frames):
+        self.log.info('GOT A SUB MESSAGE ON BLOCK MGR')
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
@@ -395,6 +396,9 @@ class BlockManager(Worker):
 
     def handle_nbn_sub_msg(self, frames):
         self.log.critical('FRAMES FROM SUB {}'.format(frames))
+        sender = frames[1]
+        msg = frames[-1]
+        self.handle_block_notification(msg, sender)
 
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
@@ -459,6 +463,9 @@ class BlockManager(Worker):
         sorted_sb_hashes = self.db_state.my_sub_blocks.get_sb_hashes_sorted()
 
         # append prev block hash
+
+
+
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.driver.latest_block_hash)
 
     def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
@@ -505,6 +512,7 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
             # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
         else:
+            self.log.critical('BlockNotification hash received is not the same as the one we have!!!')
             if isinstance(block_notif, FailedBlockNotification):
                 self._send_fail_block_msg(block_notif)
             else:
@@ -517,8 +525,8 @@ class BlockManager(Worker):
 
     # make sure block aggregator adds block_num for all notifications?
     def handle_block_notification(self, block_notif: BlockNotification, sender: str):
-        new_block_num = block_notif.block_num
-        self.log.notice("Got block notification for block num {} hash {}".format(new_block_num, block_notif.block_hash))
+        new_block_num = block_notif.block_num if isinstance(block_notif, SkipBlockNotification) else block_notif.blockNum
+        self.log.notice("Got block notification for block num {}".format(new_block_num))
 
         next_block_num = self.db_state.driver.latest_block_num + 1
 
