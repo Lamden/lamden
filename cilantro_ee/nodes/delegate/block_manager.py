@@ -462,8 +462,6 @@ class BlockManager(Worker):
 
         # append prev block hash
 
-
-
         return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.driver.latest_block_hash)
 
     def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
@@ -500,12 +498,11 @@ class BlockManager(Worker):
             # SIGNAL
             self._send_msg_over_ipc(sb_index=idx, message=block_data)
 
-
-    def update_db_state(self, block_notif: BlockNotification):
+    def update_db_state(self, block_notif: BlockNotification, block_num, block_hash):
         my_new_block_hash = self._get_new_block_hash()
-        if my_new_block_hash == block_notif.block_hash:
+        if my_new_block_hash == block_hash:
             if isinstance(block_notif, NewBlockNotification):
-                self.db_state.driver.latest_block_num = block_notif.block_num
+                self.db_state.driver.latest_block_num = block_num
                 self.db_state.driver.latest_block_hash = my_new_block_hash
             self.send_updated_db_msg()
             # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
@@ -519,7 +516,6 @@ class BlockManager(Worker):
                 self.recv_block_notif(block_notif)
             else:
                 self.send_updated_db_msg()
-
 
     # make sure block aggregator adds block_num for all notifications?
     def handle_block_notification(self, block_notif: BlockNotification, sender: str):
@@ -552,7 +548,7 @@ class BlockManager(Worker):
         is_quorum_met = self.db_state.next_block.add_notification(block, sender, new_block_num, new_block_hash)
         if is_quorum_met:
             self.log.info("New block quorum met!")
-            self.update_db_state(block)
+            self.update_db_state(block, new_block_num, new_block_hash)
 
     def send_updated_db_msg(self):
         # first reset my state
