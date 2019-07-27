@@ -462,7 +462,12 @@ class BlockManager(Worker):
 
         # append prev block hash
 
-        return BlockData.compute_block_hash(sbc_roots=sorted_sb_hashes, prev_block_hash=self.db_state.driver.latest_block_hash)
+        h = hashlib.sha3_256()
+        for sb_hash in sorted_sb_hashes:
+            h.update(sb_hash)
+
+        return h.digest()
+
 
     def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
         self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
