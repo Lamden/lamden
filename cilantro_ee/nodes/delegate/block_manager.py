@@ -468,7 +468,6 @@ class BlockManager(Worker):
 
         return h.digest()
 
-
     def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
         self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
                                                                                                      sbc.resultHash))
@@ -512,7 +511,7 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
             # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
         else:
-            self.log.critical('BlockNotification hash received is not the same as the one we have!!!')
+            self.log.critical('BlockNotification hash received is not the same as the one we have!!!\n{}\n'.format(my_new_block_hash, block_hash))
             if isinstance(block_notif, FailedBlockNotification):
                 self._send_fail_block_msg(block_notif)
             else:
@@ -535,7 +534,7 @@ class BlockManager(Worker):
         new_block_num = block.block_num if isinstance(block, SkipBlockNotification) else block.blockNum
         new_block_hash = block.block_hash if isinstance(block, SkipBlockNotification) else block.blockHash
 
-        self.log.notice("Got block notification for block num {}".format(new_block_num))
+        self.log.notice("Got block notification for block num {} with hash {}".format(new_block_num, new_block_hash))
 
         next_block_num = self.db_state.driver.latest_block_num + 1
 
