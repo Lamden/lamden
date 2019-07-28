@@ -439,22 +439,13 @@ class BlockManager(Worker):
             self.set_catchup_done()
 
     def handle_router_msg(self, frames):
-        envelope = Envelope.from_bytes(frames[-1])
-        sender = envelope.sender
-        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
-        msg = envelope.message
-        msg_hash = envelope.message_hash
+        sender, msg_type, msg_blob = frames
 
-        # DATA
-        if isinstance(msg, BlockIndexReply):
-            self.recv_block_idx_reply(sender, msg)
+        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REPLY:
+            self.recv_block_idx_reply(sender, msg_blob)
 
-        # DATA
-        elif isinstance(msg, BlockDataReply):
-            self.recv_block_data_reply(msg)
-        else:
-            raise Exception("BlockManager got message type {} from ROUTER socket that it does not know how to handle"
-                            .format(type(msg)))
+        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REPLY:
+            self.recv_block_data_reply(msg_blob)
 
     def _get_new_block_hash(self):
         if not self.db_state.my_sub_blocks.is_quorum():

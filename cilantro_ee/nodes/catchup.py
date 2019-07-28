@@ -208,7 +208,7 @@ class CatchupManager:
         if sender_vk in self.node_idx_reply_set:
             return      # already processed
 
-        if not reply.indices:
+        if reply == b'':
             self.node_idx_reply_set.add(sender_vk)
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             return
@@ -344,13 +344,17 @@ class CatchupManager:
 
     # todo handle mismatch between redis and monodb
     # MASTER ONLY CALL
-    def _send_block_idx_reply(self, reply_to_vk = None, catchup_list=None):
+    def _send_block_idx_reply(self, reply_to_vk=None, catchup_list=None):
         # this func doesnt care abt catchup_state we respond irrespective
-        self.log.debug("catchup list -> {}".format(catchup_list))
+        self.log.info("catchup list -> {}".format(catchup_list))
+
         reply = BlockIndexReply.create(block_info=catchup_list)
+        self.log.info(reply._data)
+
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
-        self.router.send_msg(reply, header=reply_to_vk)
-        # self.log.important2("SEND BIRp")
+        self.router.send_msg(filter=reply_to_vk,
+                             msg_type=int_to_bytes(MessageTypes.BLOCK_INDEX_REPLY),
+                             msg=reply._data if reply._data is not None else b'')
 
     # MASTER ONLY CALL
     def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):

@@ -269,26 +269,21 @@ class BlockAggregator(Worker):
 
 ### HM.
     def handle_router_msg(self, frames):
-        envelope = Envelope.from_bytes(frames[-1])
-        msg = envelope.message
-        sender = envelope.sender
+        self.log.info('got message on block agg with frames {}'.format(frames))
 
-        assert sender.encode() == frames[0], "Sender vk {} does not match id frame {}".format(sender.encode(), frames[0])
+        sender, msg_type, msg_blob = frames
 
-        if isinstance(msg, BlockDataRequest):
-            self.catchup_manager.recv_block_data_req(sender, msg)
-
-        elif isinstance(msg, BlockDataReply):
-            if self.catchup_manager.recv_block_data_reply(msg):
+        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REPLY:
+            if self.catchup_manager.recv_block_idx_reply(sender, msg_blob):
                 self._set_catchup_done()
 
-        elif isinstance(msg, BlockIndexReply):
-            if self.catchup_manager.recv_block_idx_reply(sender, msg):
+        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REQUEST:
+            self.catchup_manager.recv_block_data_req(sender, msg_blob)
+
+        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REPLY:
+            if self.catchup_manager.recv_block_data_reply(msg_blob):
                 self._set_catchup_done()
 
-        else:
-            raise Exception("BlockAggregator got message type {} from ROUTER socket that it does not know how to handle"
-                            .format(type(msg)))
 
     def recv_sub_block_contender(self, sender_vk: str, sbc):
         self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
