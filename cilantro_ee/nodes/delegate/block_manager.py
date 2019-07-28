@@ -268,6 +268,8 @@ class BlockManager(Worker):
         )
         self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
 
+        self.pub_replacement = self.zmq_ctx.socket(zmq.PUB)
+
         self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
                                                    signing_key=self.signing_key,
                                                    pub_socket=self.pub,
@@ -378,6 +380,7 @@ class BlockManager(Worker):
 
     def handle_sub_msg(self, frames):
         self.log.info('GOT A SUB MESSAGE ON BLOCK MGR')
+        self.log.info(frames)
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender

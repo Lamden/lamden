@@ -259,7 +259,12 @@ class BlockAggregator(Worker):
 
             time.sleep(3)
 
+            external_ready_signal = MessageManager.pack_dict(MessageTypes.READY_EXTERNAL,
+                                                             arg_dict={'messageType': MessageTypes.READY_INTERNAL})
+
             message = Ready.create()
+
+### Send signed READY signal on pub
             self.pub.send_msg(msg=message, header=DEFAULT_FILTER.encode())
 
 ### HM.
@@ -368,6 +373,8 @@ class BlockAggregator(Worker):
 
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
+
+# SEND NEW BLOCK NOTIFICATION on pub
         self.pub.send_msg(msg=block_data.to_bytes_packed(),
                           header=NEW_BLK_NOTIF_FILTER.encode(),
                           sender=bytes.fromhex(self.verifying_key))
@@ -396,6 +403,7 @@ class BlockAggregator(Worker):
             subBlocks=[sub_block for sub_block in sub_blocks]
         ).to_bytes_packed()
 
+# SEND EMPTY BLOCK ON DEFAULT(?)
         self.pub.send_msg(msg=empty_block, header=DEFAULT_FILTER.encode())
 
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
@@ -403,6 +411,8 @@ class BlockAggregator(Worker):
     def send_fail_block_notif(self):
         msg = self.curr_block.get_failed_block_notif()
         self.log.debugv("Sending failed block notif {}".format(msg))
+
+# SEND FAILED BLOCK ON DEFAULT(?)
         self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
 
     def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
