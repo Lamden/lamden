@@ -47,12 +47,12 @@ from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
-
+from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time, os
 from datetime import datetime
 from typing import List
-
+import hashlib
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -284,8 +284,8 @@ class SubBlockBuilder(Worker):
 
             self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
-    def adjust_work_load(self, input_bag: Envelope, is_add: bool):
-        if input_bag.message.is_empty:
+    def adjust_work_load(self, input_bag, is_add: bool):
+        if len(input_bag.transactions) == 0:
             self.log.info('Empty bag. Tossing.')
             return
 
@@ -305,47 +305,54 @@ class SubBlockBuilder(Worker):
 
             self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
 
+# ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
-        # self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
-        assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
-            index, self.sb_managers)
+        msg_filter, msg_type, msg_blob = frames
 
-        self.log.info('Got index {} with frames {}'.format(index, frames))
+        if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
+                0 <= index < len(self.sb_managers):
+            self.log.info('Got index {} with frames {}'.format(index, frames))
 
-        envelope = Envelope.from_bytes(frames[-1])
-        timestamp = envelope.meta.timestamp
+            batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
 
-        assert isinstance(envelope.message, TransactionBatch),\
-            "Handler expected TransactionBatch but got {}".format(envelope.messages)
+            if batch.sender.hex() not in PhoneBook.masternodes:
+                self.log.critical('RECEIVED TX BATCH FROM NON DELEGATE')
+                return
 
-        if timestamp <= self.sb_managers[index].processed_txs_timestamp:
-            self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
-                           .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
-            return
+            timestamp = batch.timestamp
 
-        input_hash = Hasher.hash(envelope)
-        self.log.info(input_hash)
-        # if the sb_manager already has this bag, ignore it
-        if input_hash in self.sb_managers[index].pending_txs:
-            self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
-            return
+            if timestamp <= self.sb_managers[index].processed_txs_timestamp:
+                self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
+                               .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
+                return
 
-        if not envelope.verify_seal():
-            self.log.error("Could not validate seal for envelope {}".format(envelope))
-            return
+            # Get the hash of all transactions
+            h = hashlib.sha3_256()
+
+            for tx in batch.transactions:
+                h.update(tx)
+
+            input_hash = h.digest()
+
+            if not _verify(batch.sender, input_hash, batch.signature):
+                self.log.critical('INCORRECT SIGNATURE.')
+                return
+
+            self.log.info(input_hash)
+            # if the sb_manager already has this bag, ignore it
+            if input_hash in self.sb_managers[index].pending_txs:
+                self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
+                return
 
         # DEBUG -- TODO DELETE
-        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
+        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
 
-
-        # END DEBUG
-        self.log.info(timestamp)
         self.sb_managers[index].processed_txs_timestamp = timestamp
 
         self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
-        self.adjust_work_load(envelope, True)
+        self.adjust_work_load(batch, True)
 
-        self.sb_managers[index].pending_txs.append(input_hash, envelope)
+        self.sb_managers[index].pending_txs.append(input_hash, batch)
 
     def _create_empty_sbc(self, sb_data: SBData):
 

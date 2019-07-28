@@ -35,4 +35,7 @@ struct Transactions {
 
 struct TransactionBatch {
     transactions @0 :List(ContractTransaction);
+    timestamp @1: Float32;
+    signature @2: Data;
+    sender @3: Data;
 }

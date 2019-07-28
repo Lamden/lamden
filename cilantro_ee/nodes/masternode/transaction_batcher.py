@@ -13,7 +13,19 @@ from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages._new.message import MessageTypes
 import zmq.asyncio
 import asyncio, time, os
+import os
+import capnp
+from cilantro_ee.messages import capnp as schemas
+import hashlib
+from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.protocol.wallet import Wallet
 
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 class TransactionBatcher(Worker):
 
@@ -87,7 +99,7 @@ class TransactionBatcher(Worker):
         double_bag = 2 * normal_bag
 
         while True:
-            num_txns = self.queue.qsize() 
+            num_txns = self.queue.qsize()
             if (self.num_bags_sent > max_num_bags) or \
                ((num_txns < half_bag) and (self.num_bags_sent > 2)) or \
                ((num_txns < quarter_bag) and (self.num_bags_sent > 1)):
@@ -95,15 +107,38 @@ class TransactionBatcher(Worker):
                 continue
 
             tx_list = []
+
             bag_size = min(normal_bag if self.num_bags_sent < max_num_bags else double_bag, num_txns)
+
+            h = hashlib.sha3_256()
+
             for _ in range(bag_size):
-                tx = ContractTransaction.from_bytes(self.queue.get())
-                # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
+                # Get a transaction from the queue
+                t = self.queue.get()
+
+                # Hash it
+                h.update(t)
+
+                # Deserialize it and put it in the list
+                tx = ContractTransaction.from_bytes(t)
                 tx_list.append(tx)
 
-            batch = TransactionBatch.create(transactions=tx_list)
+            batch = transaction_capnp.TransactionBatch.new_message()
+            batch.init('transactions', len(tx_list))
+            for i, tx in enumerate(tx_list):
+                batch.transactions[i] = tx
 
-            self.pub_sock.send_msg(msg=batch, header=TRANSACTION_FILTER.encode())
+            # Sign the message for verification
+            w = Wallet(seed=self.signing_key)
+            batch.signature = w.sign(h.digest())
+            batch.sender = w.verifying_key()
+
+            # Add a timestamp
+            batch.timestamp = time.time()
+
+            self.pub_sock.send_msg(msg=batch.to_bytes_packed(),
+                                   msg_type=int_to_bytes(MessageTypes.TRANSACTION_BATCH),
+                                   filter=TRANSACTION_FILTER.encode())
 
             self.num_bags_sent = self.num_bags_sent + NUM_BLOCKS
             if len(tx_list):

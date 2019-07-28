@@ -262,10 +262,10 @@ class BlockAggregator(Worker):
             external_ready_signal = MessageManager.pack_dict(MessageTypes.READY_EXTERNAL,
                                                              arg_dict={'messageType': MessageTypes.READY_INTERNAL})
 
-            message = Ready.create()
-
 ### Send signed READY signal on pub
-            self.pub.send_msg(msg=message, header=DEFAULT_FILTER.encode())
+            self.pub.send_msg(msg=external_ready_signal,
+                              msg_type= MessageTypes.READY_EXTERNAL,
+                              filter=DEFAULT_FILTER.encode())
 
 ### HM.
     def handle_router_msg(self, frames):

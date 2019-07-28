@@ -78,6 +78,8 @@ class MessageTypes:
     BLOCK_DATA_REQUEST = 40006
     BLOCK_DATA_REPLY = 40007
 
+    TRANSACTION_BATCH = 10000
+
 # Default Serializers
 INTERNAL_MESSAGE_SERIALIZER = Serializer(capnp_type=signal_capnp.Signal)
 
