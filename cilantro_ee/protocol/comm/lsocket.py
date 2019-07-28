@@ -102,10 +102,8 @@ class LSocketBase:
         :param msg: The MessageBase instance to wrap in an envelope and send
         :param header: The header frame to use. If None, no header frame will be sent. """
         self.log.info('sending a message {} with header {}'.format(msg, header))
-        if isinstance(msg, MessageBase):
-            self.send_envelope(env=self._package_msg(msg), header=header)
 
-        elif is_sbc:
+        if is_sbc:
             _msg = msg.as_builder()
             message_parts = []
             if header is not None:
@@ -113,8 +111,8 @@ class LSocketBase:
             message_parts.extend([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), _msg.to_bytes_packed()])
             self.log.success('SENDING SBC')
             self.send_multipart(message_parts)
+
         else:
-            self.log.info('your problem might be here')
             message_parts = []
 
             if header is not None:

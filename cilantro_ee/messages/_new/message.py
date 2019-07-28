@@ -73,6 +73,7 @@ class MessageTypes:
     MERKLE_PROOF = 40001
     SUBBLOCK_CONTENDER = 40002
     BLOCK_INDEX_REQUEST = 40003
+    NEW_BLOCK_NOTIFICATION = 40004
 
 # Default Serializers
 INTERNAL_MESSAGE_SERIALIZER = Serializer(capnp_type=signal_capnp.Signal)
