@@ -114,13 +114,13 @@ class TransactionBatcher(Worker):
 
             for _ in range(bag_size):
                 # Get a transaction from the queue
-                t = self.queue.get()
+                tx = self.queue.get()
 
                 # Hash it
-                h.update(t)
+                h.update(tx)
 
                 # Deserialize it and put it in the list
-                tx = ContractTransaction.from_bytes(t)
+                #tx = transaction_capnp.ContractTransaction.from_bytes_packed(t)
                 tx_list.append(tx)
 
             batch = transaction_capnp.TransactionBatch.new_message()

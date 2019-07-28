@@ -285,10 +285,6 @@ class SubBlockBuilder(Worker):
             self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
 
     def adjust_work_load(self, input_bag, is_add: bool):
-        if len(input_bag.transactions) == 0:
-            self.log.info('Empty bag. Tossing.')
-            return
-
         self.num_txn_bags += 1 if is_add else -1
 
         # Create Signal
@@ -308,18 +304,25 @@ class SubBlockBuilder(Worker):
 # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
-
         if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
                 0 <= index < len(self.sb_managers):
-            self.log.info('Got index {} with frames {}'.format(index, frames))
 
             batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
+
+            if len(batch.transactions) < 1:
+                self.log.info('Empty bag. Tossing.')
+                return
+
+            self.log.info('Got tx batch with {} txs for sbb {}'.format(len(batch.transactions), index))
 
             if batch.sender.hex() not in PhoneBook.masternodes:
                 self.log.critical('RECEIVED TX BATCH FROM NON DELEGATE')
                 return
+            else:
+                self.log.success('{} is a masternode!'.format(batch.sender.hex()))
 
             timestamp = batch.timestamp
+            self.log.info(timestamp, time.time())
 
             if timestamp <= self.sb_managers[index].processed_txs_timestamp:
                 self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
@@ -337,6 +340,8 @@ class SubBlockBuilder(Worker):
             if not _verify(batch.sender, input_hash, batch.signature):
                 self.log.critical('INCORRECT SIGNATURE.')
                 return
+            else:
+                self.log.success('Input has verifies!')
 
             self.log.info(input_hash)
             # if the sb_manager already has this bag, ignore it
@@ -360,21 +365,21 @@ class SubBlockBuilder(Worker):
 
         signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
 
-        merkle_proof = subblock_capnp.MerkleProof.new_message(**{
-            'hash': bytes.fromhex(sb_data.input_hash),
-            'signer': self.wallet.verifying_key(),
-            'signature': signature
-        }).to_bytes_packed()
+        merkle_proof = subblock_capnp.MerkleProof.new_message(
+            hash=bytes.fromhex(sb_data.input_hash),
+            signer=self.wallet.verifying_key(),
+            signature=signature
+        ).to_bytes_packed()
 
-        sbc = subblock_capnp.SubBlockContender.new_message(**{
-              'resultHash': bytes.fromhex(sb_data.input_hash),
-              'inputHash': bytes.fromhex(sb_data.input_hash),
-              'merkleLeaves': [],
-              'signature': merkle_proof,
-              'transactions': [],
-              'subBlockIdx': self.sb_blder_idx,
-              'prevBlockHash': self.state.get_latest_block_hash()
-        }).to_bytes_packed()
+        sbc = subblock_capnp.SubBlockContender.new_message(
+              resultHash=bytes.fromhex(sb_data.input_hash),
+              inputHash=bytes.fromhex(sb_data.input_hash),
+              merkleLeaves=[],
+              signature=merkle_proof,
+              transactions=[],
+              subBlockIdx=self.sb_blder_idx,
+              prevBlockHash=self.state.get_latest_block_hash()
+        ).to_bytes_packed()
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
 
