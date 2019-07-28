@@ -209,6 +209,14 @@ class BlockAggregator(Worker):
                     self.recv_sub_block_contender(signature.signer, msg)
             return
 
+        self.log.success(frames[-1][-5:])
+
+        if filter == b'0' and len(frames) == 2 and frames[-1][-5:] != b'Ready':
+            self.log.info('Skippy skip')
+            msg = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
+            self.recv_new_block_notif(None, msg)
+            return
+
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender
