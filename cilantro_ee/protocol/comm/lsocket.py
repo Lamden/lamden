@@ -10,7 +10,7 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
 from os.path import join
-from cilantro_ee.utils.utils import int_to_bytes
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants import conf
 from cilantro_ee.messages import capnp as schemas
@@ -95,36 +95,15 @@ class LSocketBase:
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
 
-    def send_msg(self, msg, header: bytes=None, is_sbc=False, **kwargs):
+    def send_msg(self, filter, msg_type, msg):
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
         :param msg: The MessageBase instance to wrap in an envelope and send
         :param header: The header frame to use. If None, no header frame will be sent. """
-        self.log.info('sending a message {} with header {}'.format(msg, header))
+        self.log.info('sending a message {} with header {}'.format(msg, filter))
 
-        if is_sbc:
-            _msg = msg.as_builder()
-            message_parts = []
-            if header is not None:
-                message_parts.append(header)
-            message_parts.extend([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), _msg.to_bytes_packed()])
-            self.log.success('SENDING SBC')
-            self.send_multipart(message_parts)
-
-        else:
-            message_parts = []
-
-            if header is not None:
-                message_parts.append(header)
-
-            for k, v in kwargs.items():
-                message_parts.append(v)
-
-            message_parts.append(msg)
-
-            self.log.info(message_parts)
-            self.send_multipart(message_parts)
+        self.send_multipart([filter, msg_type, msg])
 
     def send_envelope(self, env: Envelope, header: bytes=None):
         """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """

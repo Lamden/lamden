@@ -17,6 +17,9 @@ from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 
+from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
@@ -90,8 +93,6 @@ class CatchupManager:
         last_block = self.driver.get_last_n(1, MasterStorage.INDEX)[0]
 
         db_latest_blk_num = last_block.get('blockNum')
-
-
 
         latest_state_num = self.state.latest_block_num
         if db_latest_blk_num < latest_state_num:
@@ -190,7 +191,9 @@ class CatchupManager:
             'sender': self.verifying_key
         }).to_bytes_packed()
 
-        self.pub.send_multipart([BLOCK_IDX_REQ_FILTER.encode(), req])
+        self.pub.send_msg(BLOCK_IDX_REQ_FILTER.encode(),
+                          int_to_bytes(MessageTypes.BLOCK_INDEX_REQUEST),
+                          req)
 
         # self.log.important2("SEND BIR")
 
