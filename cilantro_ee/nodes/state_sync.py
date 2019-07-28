@@ -13,7 +13,7 @@ from cilantro_ee.constants.ports import *
 from cilantro_ee.constants.zmq_filters import *
 
 from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification
+from cilantro_ee.messages.block_data.notification import NewBlockNotification
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.signals.state_sync import UpdatedStateSignal
 

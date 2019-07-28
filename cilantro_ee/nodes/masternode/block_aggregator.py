@@ -371,14 +371,24 @@ class BlockAggregator(Worker):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
         time.sleep(20)
 
-        empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE,
-                                                    arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
+        empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE, arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
 
         self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), empty_block_made])
 
-        skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
+        #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
-        self.pub.send_msg(msg=skip_notif, header=DEFAULT_FILTER.encode())
+        block_hash = self.state.latest_block_hash
+        block_num = self.state.latest_block_num + 1
+
+        empty_block = blockdata_capnp.BlockData.new_message(
+            blockHash=block_hash,
+            blockNum=block_num,
+            blockOwners=[],
+            prevBlockHash=block_hash,
+            subBlocks=[sub_block for sub_block in sub_blocks]
+        ).to_bytes_packed()
+
+        self.pub.send_msg(msg=empty_block, header=DEFAULT_FILTER.encode())
 
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 

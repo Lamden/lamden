@@ -376,7 +376,6 @@ class BlockManager(Worker):
                 self._set_sb_have_data(sbb_index)
                 self.log.info('Setting SB {} has data.'.format(sbb_index))
 
-
     def handle_sub_msg(self, frames):
         self.log.info('GOT A SUB MESSAGE ON BLOCK MGR')
         envelope = Envelope.from_bytes(frames[-1])
@@ -462,7 +461,12 @@ class BlockManager(Worker):
 
         # append prev block hash
 
+        driver = MetaDataStorage()
+
         h = hashlib.sha3_256()
+
+        h.update(driver.latest_block_hash)
+
         for sb_hash in sorted_sb_hashes:
             h.update(sb_hash)
 
@@ -504,14 +508,17 @@ class BlockManager(Worker):
 
     def update_db_state(self, block_notif: BlockNotification, block_num, block_hash):
         my_new_block_hash = self._get_new_block_hash()
-        if my_new_block_hash == block_hash:
+
+        self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, bytes.fromhex(block_hash)))
+
+        if my_new_block_hash == bytes.fromhex(block_hash):
             if isinstance(block_notif, NewBlockNotification):
                 self.db_state.driver.latest_block_num = block_num
                 self.db_state.driver.latest_block_hash = my_new_block_hash
             self.send_updated_db_msg()
             # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
         else:
-            self.log.critical('BlockNotification hash received is not the same as the one we have!!!\n{}\n'.format(my_new_block_hash, block_hash))
+            self.log.critical('BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(my_new_block_hash, block_hash))
             if isinstance(block_notif, FailedBlockNotification):
                 self._send_fail_block_msg(block_notif)
             else:
