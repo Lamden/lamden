@@ -22,7 +22,7 @@ from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from typing import List
-
+from cilantro_ee.protocol.wallet import _verify
 import math, asyncio, zmq, time
 from cilantro_ee.messages import capnp as schemas
 import os
@@ -184,11 +184,7 @@ class BlockAggregator(Worker):
         msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
-        if bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION:
-            block = blockdata_capnp.BlockData.from_bytes_packed(msg_blob)
-            self.recv_new_block_notif(None, block)
-
-        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REQUEST:
+        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REQUEST:
             req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(msg_blob)
             self.catchup_manager.recv_block_idx_req(req)
 
@@ -200,9 +196,23 @@ class BlockAggregator(Worker):
                 signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
                 self.recv_sub_block_contender(signature.signer, msg)
 
-        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION:
-            msg = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
-            self.recv_new_block_notif(None, msg)
+        # Process block notification messages
+        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
+             bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION:
+
+            # Unpack the message
+            external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
+
+            # If the sender has signed the payload, continue
+            if _verify(external_message.sender, external_message.data, external_message.signature):
+                # Unpack the block
+                block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+                self.log.important3(
+                    "BlockAGG got BlockNotification from sender {} with hash {}".format(external_message.sender,
+                                                                                  block.blockHash))
+
+                # Process accordingly
+                self.recv_new_block_notif(external_message.sender, block)
 
     def _set_catchup_done(self):
         if not self._is_catchup_done:
@@ -366,8 +376,14 @@ class BlockAggregator(Worker):
             subBlocks=[sub_block for sub_block in sub_blocks]
         ).to_bytes_packed()
 
+        skip_block_notification = signal_capnp.ExternalMessage.new_message(
+            data=empty_block,
+            sender=self.wallet.verifying_key(),
+            signature=self.wallet.sign(empty_block)
+        ).to_bytes_packed()
+
 # SEND EMPTY BLOCK ON DEFAULT(?)
-        self.pub.send_msg(msg=empty_block, header=DEFAULT_FILTER.encode())
+        self.pub.send_msg(msg=skip_block_notification, filter=DEFAULT_FILTER.encode(), msg_type=int_to_bytes(MessageTypes.SKIP_BLOCK_NOTIFICATION))
 
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 

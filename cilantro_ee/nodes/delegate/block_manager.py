@@ -136,14 +136,18 @@ class NextBlock:
         if self.quorum_block and (self.quorum_block.block_num == block_num):
             # todo - if it is not matching blockhash, may need to audit it
             return False
+
         if block_num not in self.next_block_data:
             self.next_block_data[block_num] = {}
             # todo add time info to implement timeout
+
         if block_hash not in self.next_block_data[block_num]:
             self.next_block_data[block_num][block_hash] = NextBlockData(block_notif)
+
         if self.next_block_data[block_num][block_hash].add_sender(sender):
             self.quorum_block = block_notif
             return True
+
         return False
 
 
@@ -372,7 +376,7 @@ class BlockManager(Worker):
         elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
             msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
 
-            self._handle_sbc(sbb_index, msg)
+            self._handle_sbc(sbb_index, msg, msg_blob)
             if len(msg.merkleLeaves) == 0:
                 self._reset_sb_have_data(sbb_index)
                 self.log.info('Message empty, resetting SB.')
@@ -384,37 +388,38 @@ class BlockManager(Worker):
         self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
         self.log.success(frames)
 
+        # Unpack the frames
         msg_filter, msg_type, msg_blob = frames
 
+        # Process external ready signals
         if bytes_to_int(msg_type) == MessageTypes.READY_EXTERNAL:
             external_ready_signal = signal_capnp.ExternalSignal.from_bytes_packed(msg_blob)
-
-            self.log.info(external_ready_signal.timestamp)
-            self.log.info(external_ready_signal.sender)
-            self.log.info(external_ready_signal.signature)
 
             # Only allow signals that are sent within 2000 milliseconds to be validated
             if time.time() - external_ready_signal.timestamp < 2000:
                 encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
-                self.log.info(encoded_timestamp)
 
+                # Make sure that the signal has been signed properly
                 if _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
-                    self.log.info('External Ready signal received from {}'.format(external_ready_signal.sender.hex()))
                     self._add_masternode_ready(external_ready_signal.sender)
 
-                else:
-                    self.log.info('Couldnt verify!!!')
+        # Process block notification messages
+        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
+             bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION or \
+             bytes_to_int(msg_type) == MessageTypes.FAIL_BLOCK_NOTIFICATION:
 
-            return
+            # Unpack the message
+            external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
 
-        else:
-            envelope = Envelope.from_bytes(frames[-1])
-            msg = envelope.message
-            sender = envelope.sender
+            # If the sender has signed the payload, continue
+            if _verify(external_message.sender, external_message.data, external_message.signature):
 
-            if isinstance(msg, SkipBlockNotification) or isinstance(msg, BlockNotification):
-                self.log.important3("BM got BlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
-                self.handle_block_notification(msg, sender)
+                # Unpack the block
+                block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+                self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
+
+                # Process accordingly
+                self.handle_block_notification(block, external_message.sender, bytes_to_int(msg_type))
 
     def handle_nbn_sub_msg(self, frames):
         self.log.critical('FRAMES FROM SUB {}'.format(frames))
@@ -488,12 +493,15 @@ class BlockManager(Worker):
 
         return h.digest()
 
-    def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
+    def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender, msg_blob: bytes):
         self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
                                                                                                      sbc.resultHash))
 
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
-        self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=MessageTypes.SUBBLOCK_CONTENDER, msg=sbc)
+        self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
+                          msg_type=int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER),
+                          msg=msg_blob)
+
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY
@@ -509,10 +517,11 @@ class BlockManager(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
             self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
 
-    def _send_input_align_msg(self, block: BlockNotification):
+    def _send_input_align_msg(self, block: blockdata_capnp.BlockData):
         self.log.info("Sending AlignInputHash message to SBBs")
-        first_sb_index = block.first_sb_index
-        for i, input_hash in enumerate(block.input_hashes):
+        first_sb_index = block.subBlocks[0].subBlockIdx
+        input_hashes = [sb.inputHash for sb in block.subBlocks]
+        for i, input_hash in enumerate(input_hashes):
             # DATA
             message = AlignInputHash.create(input_hash, first_sb_index + i)
             sb_idx = i % NUM_SB_BUILDERS
@@ -523,60 +532,52 @@ class BlockManager(Worker):
             # SIGNAL
             self._send_msg_over_ipc(sb_index=idx, message=block_data)
 
-    def update_db_state(self, block_notif: BlockNotification, block_num, block_hash):
-        my_new_block_hash = self._get_new_block_hash()
-
-        self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, bytes.fromhex(block_hash)))
-
-        if my_new_block_hash == bytes.fromhex(block_hash):
-            if isinstance(block_notif, NewBlockNotification):
-                self.db_state.driver.latest_block_num = block_num
-                self.db_state.driver.latest_block_hash = my_new_block_hash
-            self.send_updated_db_msg()
-            # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
-        else:
-            self.log.critical('BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(my_new_block_hash, block_hash))
-            if isinstance(block_notif, FailedBlockNotification):
-                self._send_fail_block_msg(block_notif)
-            else:
-                self._send_input_align_msg(block_notif)
-            if isinstance(block_notif, NewBlockNotification):
-                self.recv_block_notif(block_notif)
-            else:
-                self.send_updated_db_msg()
-
     # make sure block aggregator adds block_num for all notifications?
-    def handle_block_notification(self, block_notif: BlockNotification, sender: str):
+    def handle_block_notification(self, block: blockdata_capnp.BlockData, sender: bytes, notification_type: int):
 
         self.log.notice('BM with sender {} being handled'.format(sender))
-
-        if isinstance(block_notif, SkipBlockNotification):
-            block = block_notif
-        elif isinstance(block_notif, bytes):
-            block = blockdata_capnp.BlockData.from_bytes_packed(block_notif)
-
-        new_block_num = block.block_num if isinstance(block, SkipBlockNotification) else block.blockNum
-        new_block_hash = block.block_hash if isinstance(block, SkipBlockNotification) else block.blockHash
-
-        self.log.notice("Got block notification for block num {} with hash {}".format(new_block_num, new_block_hash))
+        self.log.notice("Got block notification for block num {} with hash {}".format(block.blockNum, block.blockHash))
 
         next_block_num = self.db_state.driver.latest_block_num + 1
 
-        if new_block_num < next_block_num:
+        if block.blockNum < next_block_num:
             self.log.info("New block notification with block num {} that is less than or equal to our curr block num {}. "
-                          "Ignoring.".format(new_block_num, self.db_state.driver.latest_block_num))
+                          "Ignoring.".format(block.blockNum, self.db_state.driver.latest_block_num))
             return
 
-        if (new_block_num > next_block_num):
+        if block.blockNum > next_block_num:
             self.log.warning("Current block num {} is behind the block num {} received. Need to run catchup!"
-                             .format(self.db_state.driver.latest_block_num, new_block_num))
+                             .format(self.db_state.driver.latest_block_num, block.blockNum))
             self.recv_block_notif(block)     # raghu todo
             return
 
-        is_quorum_met = self.db_state.next_block.add_notification(block, sender, new_block_num, new_block_hash)
+        is_quorum_met = self.db_state.next_block.add_notification(block, sender, block.blockNum, block.blockHash)
+
         if is_quorum_met:
             self.log.info("New block quorum met!")
-            self.update_db_state(block, new_block_num, new_block_hash)
+            my_new_block_hash = self._get_new_block_hash()
+
+            self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash))
+
+            if my_new_block_hash == block.blockHash:
+                if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
+                    self.db_state.driver.latest_block_num = block.blockNum
+                    self.db_state.driver.latest_block_hash = my_new_block_hash
+
+                self.send_updated_db_msg()
+                # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
+            else:
+                self.log.critical(
+                    'BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(
+                        my_new_block_hash, block.blockHash))
+                if notification_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
+                    self._send_fail_block_msg(block)
+                else:
+                    self._send_input_align_msg(block)
+                if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
+                    self.recv_block_notif(block)
+                else:
+                    self.send_updated_db_msg()
 
     def send_updated_db_msg(self):
         # first reset my state

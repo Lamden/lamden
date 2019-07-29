@@ -11,3 +11,9 @@ struct ExternalSignal {
     sender @2: Data;
     signature @3: Data;
 }
+
+struct ExternalMessage {
+    data @0 :Data;
+    sender @1: Data;
+    signature @2: Data;
+}
