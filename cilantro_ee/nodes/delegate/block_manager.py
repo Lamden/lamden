@@ -41,7 +41,7 @@ from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
-
+from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
 import asyncio, zmq, os, time, random
@@ -383,18 +383,38 @@ class BlockManager(Worker):
     def handle_sub_msg(self, frames):
         self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
         self.log.success(frames)
-        envelope = Envelope.from_bytes(frames[-1])
-        msg = envelope.message
-        sender = envelope.sender
 
-        if isinstance(msg, SkipBlockNotification) or isinstance(msg, BlockNotification):
-            self.log.important3("BM got BlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
-            self.handle_block_notification(msg, sender)
-        elif isinstance(msg, Ready):
-            self._add_masternode_ready(envelope.sender)
+        msg_filter, msg_type, msg_blob = frames
+
+        if bytes_to_int(msg_type) == MessageTypes.READY_EXTERNAL:
+            external_ready_signal = signal_capnp.ExternalSignal.from_bytes_packed(msg_blob)
+
+            self.log.info(external_ready_signal.timestamp)
+            self.log.info(external_ready_signal.sender)
+            self.log.info(external_ready_signal.signature)
+
+            # Only allow signals that are sent within 2000 milliseconds to be validated
+            if time.time() - external_ready_signal.timestamp < 2000:
+                encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
+                self.log.info(encoded_timestamp)
+
+                if _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
+                    self.log.info('External Ready signal received from {}'.format(external_ready_signal.sender.hex()))
+                    self._add_masternode_ready(external_ready_signal.sender)
+
+                else:
+                    self.log.info('Couldnt verify!!!')
+
+            return
+
         else:
-            raise Exception("BlockManager got message type {} from SUB socket that it does not know how to handle"
-                            .format(type(msg)))
+            envelope = Envelope.from_bytes(frames[-1])
+            msg = envelope.message
+            sender = envelope.sender
+
+            if isinstance(msg, SkipBlockNotification) or isinstance(msg, BlockNotification):
+                self.log.important3("BM got BlockNotification from sender {} with hash {}".format(envelope.sender, msg.block_hash))
+                self.handle_block_notification(msg, sender)
 
     def handle_nbn_sub_msg(self, frames):
         self.log.critical('FRAMES FROM SUB {}'.format(frames))

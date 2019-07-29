@@ -218,11 +218,11 @@ class BlockAggregator(Worker):
             time.sleep(3)
 
             # Construct a cryptographically signed message of the current time such that the receiver can verify it
-            timestamp = time.time()
+            timestamp = int(time.time())
             timestamp_as_bytes = '{}'.format(timestamp).encode()
             signature = self.wallet.sign(timestamp_as_bytes)
 
-            external_ready_signal = signal_capnp.SignalExternal.new_message(
+            external_ready_signal = signal_capnp.ExternalSignal.new_message(
                 id=MessageTypes.READY_EXTERNAL,
                 timestamp=timestamp,
                 sender=self.wallet.verifying_key(),
