@@ -1,17 +1,17 @@
 from sanic import Sanic
 from sanic.response import json, text
+from secure import SecureHeaders
 from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.publish import PublishTransaction
-from cilantro_ee.messages.transaction.container import TransactionContainer
 from cilantro_ee.messages.transaction.ordering import OrderingContainer
-from cilantro_ee.nodes.masternode.nonce import NonceManager
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
+
+from cilantro_ee.storage.master import MasterStorage
 
 from multiprocessing import Queue
 import ast
@@ -35,6 +35,11 @@ client = ContractingClient()
 static_headers = {}
 
 
+@app.middleware('response')
+async def set_secure_headers(request, response):
+    SecureHeaders.sanic(response)
+
+
 def _respond_to_request(payload, headers={}, status=200, resptype='json'):
     if resptype == 'json':
         return json(payload, headers=dict(headers, **static_headers), status=status)
@@ -51,38 +56,24 @@ async def ping(request):
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
-        return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
+    # Try to deserialize transaction.
     try:
         tx_bytes = request.body
-        container = TransactionContainer.from_bytes(tx_bytes)
-        tx = container.open()  # Deserializing the tx automatically validates the signature and POW
+        tx = ContractTransaction.from_bytes(tx_bytes)
     except Exception as e:
-        return _respond_to_request({'error': 'Error opening transaction: {}'.format(e)}, status=400)
+        return json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
-    # TODO do we need to do any other validation? tx size? check sufficient stamps?
-    # TODO -- check that timestamp on tx meta is within reasonable bound
+    # Try to put it in the request queue.
+    try:
+        app.queue.put_nowait(tx_bytes)
+    except:
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
-    # Check the transaction type and make sure we can handle it
-    if type(tx) not in (ContractTransaction, PublishTransaction):
-        return _respond_to_request({'error': 'Cannot process transaction of type {}'.format(type(tx))}, status=400)
-
-    if conf.SSL_ENABLED:
-        # Verify the nonce, and remove it from db if its valid so it cannot be used again
-        # TODO do i need to make this 'check and delete' atomic? What if two procs request at the same time?
-        if not NonceManager.check_if_exists(tx.nonce):
-            return _respond_to_request({'error': 'Nonce {} has expired or was never created'.format(tx.nonce)}, status=400)
-        log.spam("Removing nonce {}".format(tx.nonce))
-        NonceManager.delete_nonce(tx.nonce)
-
-    # TODO @faclon why do we need this if we check the queue at the start of this func? --davis
-    ord_container = OrderingContainer.create(tx)
-    try: app.queue.put_nowait(ord_container.serialize())
-    except: return _respond_to_request({'error': "Queue full! Cannot process any more requests"}, status=503)
-
-    # Return transaction hash and nonce to users (not sure which they will need) --davis
-    return _respond_to_request({'success': 'Transaction successfully submitted to the network.',
+    return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
+
 
 # Returns {'contracts': JSON List of strings}
 @app.route('/contracts', methods=['GET'])
@@ -148,67 +139,29 @@ async def get_variable(request, contract, variable):
     'code': 'string'
 }
 '''
-@app.route('/lint', methods=['POST'])
-async def lint_contract(request):
-    code = request.json.get('code')
 
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-    return json({'violations': violations}, status=200)
+@app.route("/latest_block", methods=["GET","OPTIONS",])
+async def get_latest_block(request):
+    index = MasterStorage.get_last_n(1)
+    latest_block_hash = index.get('blockHash')
+    return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
-@app.route('/compile', methods=['POST'])
-async def compile_contract(request):
-    code = request.json.get('code')
+@app.route('/blocks', methods=["GET","OPTIONS",])
+async def get_block(request):
+    if 'number' in request.json:
+        num = request.json['number']
+        block = MasterStorage.get_block(num)
+        if block is None:
+            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
+    # TODO check block by hash isn't implemented
+    # else:
+    #     _hash = request.json['hash']
+    #     block = MasterStorage.get_block(hash)
+    #     if block is None:
+    #         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-
-    if violations is None:
-        compiled_code = client.compiler.parse_to_code(code)
-        return json({'code': compiled_code}, status=200)
-
-    return json({'violations': violations}, status=500)
-
-
-@app.route('/submit', methods=['POST'])
-async def submit_contract(request):
-    code = request.json.get('code')
-    name = request.json.get('name')
-
-    if code is None or name is None:
-        return json({'error': 'malformed payload'}, status=500)
-
-    violations = client.lint(code)
-
-    if violations is None:
-        client.submit(code, name=name)
-
-    else:
-        return json({'violations': violations}, status=500)
-
-    return json({'success': True}, status=200)
-
-
-@app.route('/exists', methods=['GET'])
-async def contract_exists(request):
-    contract_code = client.get_contract(request.json.get('name'))
-
-    if contract_code is None:
-        return json({'exists': False}, status=404)
-    else:
-        return json({'exists': True}, status=200)
-
-
-#blocks
-
-
-
-
+    return _respond_to_request(_json.dumps(block))
 
 
 def start_webserver(q):

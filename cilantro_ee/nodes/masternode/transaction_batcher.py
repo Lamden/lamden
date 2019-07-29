@@ -9,7 +9,7 @@ from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.protocol.multiprocessing.worker import Worker
-from cilantro_ee.messages.transaction.ordering import OrderingContainer
+from cilantro_ee.messages.transaction.contract import ContractTransaction
 from cilantro_ee.messages.transaction.batch import TransactionBatch
 
 import zmq.asyncio
@@ -84,7 +84,6 @@ class TransactionBatcher(Worker):
 
 
     async def compose_transactions(self):
-
         await self._wait_until_ready()
 
         self.log.important("Starting TransactionBatcher")
@@ -107,7 +106,7 @@ class TransactionBatcher(Worker):
             tx_list = []
             bag_size =  min(normal_bag if self.num_bags_sent <  max_num_bags else double_bag, num_txns)
             for _ in range(bag_size):
-                tx = OrderingContainer.from_bytes(self.queue.get())
+                tx = ContractTransaction.from_bytes(self.queue.get())
                 # self.log.spam("masternode bagging transaction from sender {}".format(tx.transaction.sender))
                 tx_list.append(tx)
 
