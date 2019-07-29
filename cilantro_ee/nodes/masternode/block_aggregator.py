@@ -181,70 +181,28 @@ class BlockAggregator(Worker):
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
         self.log.info('BLOCK AGG: {}'.format(frames))
-        filter = frames[0]
+        msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
-        if filter == b'new_blk_notif':
-            block = blockdata_capnp.BlockData.from_bytes_packed(frames[2])
-            sender = frames[1]
-            self.recv_new_block_notif(sender, block)
-            return
+        if bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION:
+            block = blockdata_capnp.BlockData.from_bytes_packed(msg_blob)
+            self.recv_new_block_notif(None, block)
 
-        if filter == b'blk_idx_req':
-            req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(frames[-1])
+        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REQUEST:
+            req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(msg_blob)
             self.catchup_manager.recv_block_idx_req(req)
-            return
 
-        if filter == b'0' and len(frames) == 3:
-            self.log.success('IT HAS 3 FRAMES')
-            msg_type = bytes_to_int(frames[1])
-            msg_blob = frames[2]
-            if msg_type == MessageTypes.SUBBLOCK_CONTENDER:
-                self.log.success('ITS A SBC')
-                msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
-                if not self.catchup_manager.is_catchup_done():
-                    self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
-                else:
-                    signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
-                    self.recv_sub_block_contender(signature.signer, msg)
-            return
-
-        self.log.success(frames[-1][-5:])
-
-        if filter == b'0' and len(frames) == 2 and frames[-1][-5:] != b'Ready':
-            self.log.info('Skippy skip')
-            msg = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
-            self.recv_new_block_notif(None, msg)
-            return
-
-        envelope = Envelope.from_bytes(frames[-1])
-        msg = envelope.message
-        sender = envelope.sender
-
-        if isinstance(msg, SubBlockContender):
+        elif bytes_to_int(msg_type) == MessageTypes.SUBBLOCK_CONTENDER:
+            msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
             if not self.catchup_manager.is_catchup_done():
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
-                self.recv_sub_block_contender(sender, msg)
+                signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
+                self.recv_sub_block_contender(signature.signer, msg)
 
-        # SIGNAL
-        elif isinstance(msg, NewBlockNotification) or isinstance(msg, SkipBlockNotification):
-            self.log.info('NewBlockNotification or SkipBlockNotification received.')
-            self.recv_new_block_notif(sender, msg)
-
-        # SIGNAL
-        elif isinstance(msg, FailedBlockNotification):
-            self.log.info('FailedBlockNotification received.')
-            self.recv_fail_block_notif(sender, msg)
-
-        # # DATA
-        # elif isinstance(msg, BlockIndexRequest):
-        #     self.catchup_manager.recv_block_idx_req(sender, msg)
-
-        # SIGNAL
-        elif not isinstance(msg, Ready):
-            raise Exception("BlockAggregator got message type {} from SUB socket that it does not know how to handle"
-                            .format(type(msg)))
+        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION:
+            msg = blockdata_capnp.BlockData.from_bytes_packed(frames[-1])
+            self.recv_new_block_notif(None, msg)
 
     def _set_catchup_done(self):
         if not self._is_catchup_done:
@@ -259,12 +217,22 @@ class BlockAggregator(Worker):
 
             time.sleep(3)
 
-            external_ready_signal = MessageManager.pack_dict(MessageTypes.READY_EXTERNAL,
-                                                             arg_dict={'messageType': MessageTypes.READY_INTERNAL})
+            # Construct a cryptographically signed message of the current time such that the receiver can verify it
+            timestamp = time.time()
+            timestamp_as_bytes = '{}'.format(timestamp).encode()
+            signature = self.wallet.sign(timestamp_as_bytes)
+
+            external_ready_signal = signal_capnp.SignalExternal.new_message(
+                id=MessageTypes.READY_EXTERNAL,
+                timestamp=timestamp,
+                sender=self.wallet.verifying_key(),
+                signature=signature
+            ).to_bytes_packed()
 
 ### Send signed READY signal on pub
+            self.log.success('READY SIGNAL SENT TO SUBS')
             self.pub.send_msg(msg=external_ready_signal,
-                              msg_type= MessageTypes.READY_EXTERNAL,
+                              msg_type=int_to_bytes(MessageTypes.READY_EXTERNAL),
                               filter=DEFAULT_FILTER.encode())
 
 ### HM.

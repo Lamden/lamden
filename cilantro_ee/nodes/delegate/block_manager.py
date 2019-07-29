@@ -217,6 +217,8 @@ class BlockManager(Worker):
         if mn_vk in self._masternodes_ready:
             return
         self._masternodes_ready.add(mn_vk)
+
+        # NOT GETTING READY FROM MASTERNODES
         if self._are_masternodes_ready():
             self.send_start_to_sbb()
 
@@ -379,8 +381,8 @@ class BlockManager(Worker):
                 self.log.info('Setting SB {} has data.'.format(sbb_index))
 
     def handle_sub_msg(self, frames):
-        self.log.info('GOT A SUB MESSAGE ON BLOCK MGR')
-        self.log.info(frames)
+        self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
+        self.log.success(frames)
         envelope = Envelope.from_bytes(frames[-1])
         msg = envelope.message
         sender = envelope.sender

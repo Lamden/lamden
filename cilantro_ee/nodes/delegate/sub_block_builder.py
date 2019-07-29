@@ -304,6 +304,7 @@ class SubBlockBuilder(Worker):
 # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
+
         if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
                 0 <= index < len(self.sb_managers):
 
@@ -480,12 +481,14 @@ class SubBlockBuilder(Worker):
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
             return True
+
         return False
 
     def _execute_input_bag(self, input_hash: str, envelope: Envelope, sbb_idx: int):
         return self._execute_sb(input_hash, envelope.message, envelope.meta.timestamp, sbb_idx)
 
     def _make_next_sb(self):
+        self.log.info('making next sb')
         if not self.move_next_block_to_make():
             self.log.info("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
             return
