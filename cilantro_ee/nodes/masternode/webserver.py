@@ -154,11 +154,12 @@ async def get_block(request):
         block = MasterStorage.get_block(num)
         if block is None:
             return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
-    else:
-        _hash = request.json['hash']
-        block = driver().get_block(hash)
-        if block is None:
-            return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
+    # TODO check block by hash isn't implemented
+    # else:
+    #     _hash = request.json['hash']
+    #     block = MasterStorage.get_block(hash)
+    #     if block is None:
+    #         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
     return _respond_to_request(_json.dumps(block))
 
