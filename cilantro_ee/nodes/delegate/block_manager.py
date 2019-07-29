@@ -302,7 +302,7 @@ class BlockManager(Worker):
 
     def _connect_master_node(self, vk):
         self.sub.connect(vk=vk, port=MN_PUB_PORT)
-        self.nbn_sub.connect(vk=vk,port=MN_PUB_PORT)
+        self.nbn_sub.connect(vk=vk, port=MN_PUB_PORT)
         self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
     async def _connect_and_process(self):
@@ -491,8 +491,9 @@ class BlockManager(Worker):
     def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender):
         self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
                                                                                                      sbc.resultHash))
+
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
-        self.pub.send_msg(sbc, header=DEFAULT_FILTER.encode(), is_sbc=True)
+        self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=MessageTypes.SUBBLOCK_CONTENDER, msg=sbc)
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
 
     # TODO make this DRY
