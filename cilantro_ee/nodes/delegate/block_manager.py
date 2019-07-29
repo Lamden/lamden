@@ -117,7 +117,7 @@ class NextBlock:
 
     def reset(self, block_num):
         if self.quorum_block:
-            bn = self.quorum_block.block_num
+            bn = self.quorum_block.blockNum
             if bn < block_num and bn in self.next_block_data:
                 try:
                     del self.next_block_data[bn]
@@ -133,7 +133,7 @@ class NextBlock:
         return self.quorum_block
 
     def add_notification(self, block_notif, sender, block_num, block_hash):
-        if self.quorum_block and (self.quorum_block.block_num == block_num):
+        if self.quorum_block and (self.quorum_block.blockNum == block_num):
             # todo - if it is not matching blockhash, may need to audit it
             return False
 
@@ -522,10 +522,14 @@ class BlockManager(Worker):
         first_sb_index = block.subBlocks[0].subBlockIdx
         input_hashes = [sb.inputHash for sb in block.subBlocks]
         for i, input_hash in enumerate(input_hashes):
-            # DATA
-            message = AlignInputHash.create(input_hash, first_sb_index + i)
+            align_input_hash = subblock_capnp.AlignInputHash.new_message(inputHash=input_hash,
+                                                                         sbIndex=first_sb_index + i).to_bytes_packed()
+
             sb_idx = i % NUM_SB_BUILDERS
-            self._send_msg_over_ipc(sb_index=sb_idx, message=message)
+
+            self.ipc_router.send_multipart(['{}'.format(sb_idx).encode(),
+                                            int_to_bytes(MessageTypes.ALIGN_INPUT_HASH),
+                                            align_input_hash])
 
     def _send_fail_block_msg(self, block_data: FailedBlockNotification):
         for idx in range(NUM_SB_BUILDERS):
