@@ -336,7 +336,7 @@ class SubBlockBuilder(Worker):
             #h.update('{}'.format(timestamp).encode())
 
             for tx in batch.transactions:
-                h.update(tx)
+                h.update(tx.as_builder().to_bytes_packed())
 
             input_hash = h.digest()
 
@@ -473,14 +473,8 @@ class SubBlockBuilder(Worker):
 
         self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
 
-        txs = [transaction_capnp.ContractTransaction.from_bytes_packed(tx) for tx in tx_batch.transactions]
-
-        # Unpack payload
-        for tx in txs:
-            self.log.info(tx)
-
         result = self.client.execute_sb(input_hash,
-                                        txs,
+                                        tx_batch.transactions,
                                         callback,
                                         environment=environment)
 
@@ -492,7 +486,7 @@ class SubBlockBuilder(Worker):
 
         return False
 
-    def _execute_input_bag(self, input_hash: bytes, tx_batch: bytes, sbb_idx: int):
+    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sbb_idx: int):
         #txs = transaction_capnp.TransactionBatch.from_bytes_packed(tx_batch)
         return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sbb_idx)
 
