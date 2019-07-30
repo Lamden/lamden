@@ -79,7 +79,7 @@ class ContractTransaction:
         if not self.proof_generated:
             self.generate_proof()
 
-        self.struct.payload = self.payload_bytes
+        self.struct.payload = self.payload
         self.struct.metadata.proof = self.proof
         self.struct.metadata.signature = self.signature
         self.struct.metadata.timestamp = int(time.time())

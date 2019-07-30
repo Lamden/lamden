@@ -122,7 +122,8 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 # Hash it
-                h.update(tx)
+                tx_bytes = tx.as_builder().to_bytes_packed()
+                h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
                 #tx = transaction_capnp.ContractTransaction.from_bytes_packed(t)

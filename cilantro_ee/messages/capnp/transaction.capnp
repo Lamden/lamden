@@ -9,8 +9,8 @@ struct MetaData {
 }
 
 struct ContractPayload {
-    sender @0 :Text;
-    nonce @1 :Text;
+    sender @0 :Data;
+    nonce @1 :Data;
     stampsSupplied @2 :UInt64;
 
     contractName @3 :Text;
@@ -23,18 +23,18 @@ struct ContractTransaction {
     payload @1: ContractPayload;
 }
 struct TransactionData {
-    transaction @0 :Transaction;
+    transaction @0 :ContractTransaction;
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;
 }
 
 struct Transactions {
-    transactions @0 :List(Transaction);
+    transactions @0 :List(ContractTransaction);
 }
 
 struct TransactionBatch {
-    transactions @0 :List(Transaction);
+    transactions @0 :List(ContractTransaction);
     timestamp @1: Float32;
     signature @2: Data;
     sender @3: Data;
