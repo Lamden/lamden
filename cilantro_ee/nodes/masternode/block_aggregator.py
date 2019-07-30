@@ -366,10 +366,20 @@ class BlockAggregator(Worker):
         #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
         block_hash = self.state.latest_block_hash
+
+        import hashlib
+
+        h = hashlib.sha3_256()
+
+        h.update(block_hash)
+
+        for sb in sub_blocks:
+            h.update(sb.inputHash)
+
         block_num = self.state.latest_block_num + 1
 
         empty_block = blockdata_capnp.BlockData.new_message(
-            blockHash=block_hash,
+            blockHash=h.digest(),
             blockNum=block_num,
             blockOwners=[],
             prevBlockHash=block_hash,

@@ -333,6 +333,8 @@ class SubBlockBuilder(Worker):
             # Get the hash of all transactions
             h = hashlib.sha3_256()
 
+            h.update('{}'.format(timestamp).encode())
+
             for tx in batch.transactions:
                 h.update(tx)
 
