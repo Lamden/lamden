@@ -110,7 +110,12 @@ class TransactionBatcher(Worker):
 
             bag_size = min(normal_bag if self.num_bags_sent < max_num_bags else double_bag, num_txns)
 
+            timestamp = time.time()
+
             h = hashlib.sha3_256()
+
+            # Timestamp is used for input hash
+            #h.update('{}'.format(timestamp).encode())
 
             for _ in range(bag_size):
                 # Get a transaction from the queue
@@ -134,7 +139,7 @@ class TransactionBatcher(Worker):
             batch.sender = w.verifying_key()
 
             # Add a timestamp
-            batch.timestamp = time.time()
+            batch.timestamp = timestamp
 
             self.pub_sock.send_msg(msg=batch.to_bytes_packed(),
                                    msg_type=int_to_bytes(MessageTypes.TRANSACTION_BATCH),

@@ -333,7 +333,7 @@ class SubBlockBuilder(Worker):
             # Get the hash of all transactions
             h = hashlib.sha3_256()
 
-            h.update('{}'.format(timestamp).encode())
+            #h.update('{}'.format(timestamp).encode())
 
             for tx in batch.transactions:
                 h.update(tx)
@@ -441,8 +441,8 @@ class SubBlockBuilder(Worker):
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self,
-                    input_hash: str,
-                    tx_batch: TransactionBatch,
+                    input_hash,
+                    tx_batch: transaction_capnp.TransactionBatch,
                     timestamp: float,
                     sbb_idx: int):
 
@@ -471,10 +471,16 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
-        self.log.info('Transactions to execute: {}'.format(tx_batch.ordered_transactions))
+        self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
+
+        txs = [transaction_capnp.ContractTransaction.from_bytes_packed(tx) for tx in tx_batch.transactions]
+
+        # Unpack payload
+        for tx in txs:
+            self.log.info(tx)
 
         result = self.client.execute_sb(input_hash,
-                                        tx_batch.ordered_transactions,
+                                        txs,
                                         callback,
                                         environment=environment)
 
@@ -486,8 +492,9 @@ class SubBlockBuilder(Worker):
 
         return False
 
-    def _execute_input_bag(self, input_hash: str, envelope: Envelope, sbb_idx: int):
-        return self._execute_sb(input_hash, envelope.message, envelope.meta.timestamp, sbb_idx)
+    def _execute_input_bag(self, input_hash: bytes, tx_batch: bytes, sbb_idx: int):
+        #txs = transaction_capnp.TransactionBatch.from_bytes_packed(tx_batch)
+        return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sbb_idx)
 
     def _make_next_sb(self):
         self.log.info('making next sb')
@@ -515,11 +522,15 @@ class SubBlockBuilder(Worker):
             sb_index = self.sb_managers[sm_idx].sub_block_index
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
 
-                input_hash, envelope = self.sb_managers[sm_idx].pending_txs.pop_front()
-                self.adjust_work_load(envelope, False)
+                input_hash, tx_batch = self.sb_managers[sm_idx].pending_txs.pop_front()
+
+                self.adjust_work_load(tx_batch, False)
+
                 self.log.info("Make next sub-block with input hash {}".format(input_hash))
-                self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, envelope)
-                self._execute_input_bag(input_hash, envelope, sb_index)
+
+                self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, tx_batch)
+
+                self._execute_input_bag(input_hash, tx_batch, sb_index)
                 self.log.success('EXEC')
 
             else:

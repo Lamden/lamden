@@ -20,21 +20,21 @@ struct ContractPayload {
 
 struct ContractTransaction {
     metadata @0: MetaData;
-    payload @1: Data;
+    payload @1: ContractPayload;
 }
 struct TransactionData {
-    transaction @0 :Data;
+    transaction @0 :Transaction;
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;
 }
 
 struct Transactions {
-    transactions @0 :List(Data);
+    transactions @0 :List(Transaction);
 }
 
 struct TransactionBatch {
-    transactions @0 :List(Data);
+    transactions @0 :List(Transaction);
     timestamp @1: Float32;
     signature @2: Data;
     sender @3: Data;
