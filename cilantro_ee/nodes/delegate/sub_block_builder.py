@@ -23,22 +23,15 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.envelope.envelope import Envelope
-# from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
-from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
-from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.transaction.batch import TransactionBatch
-from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
-from contracting.db.cr.callback_data import ExecutionData, SBData
+from contracting.db.cr.callback_data import SBData
 
-from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 
@@ -49,9 +42,8 @@ from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
-import asyncio, zmq.asyncio, time, os
+import asyncio, zmq.asyncio, time
 from datetime import datetime
-from typing import List
 import hashlib
 from cilantro_ee.messages import capnp as schemas
 import os
@@ -152,7 +144,12 @@ class SubBlockBuilder(Worker):
         self.sb_blder_idx = sbb_index
         self.startup = True
         self.num_txn_bags = 0
-        self._empty_txn_batch = TransactionBatch.create([])
+        self._empty_txn_batch = transaction_capnp.TransactionBatch.new_message(
+            transactions=[],
+            timestamp=time.time(),
+            signature=b'',
+            sender=b''
+        )
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
