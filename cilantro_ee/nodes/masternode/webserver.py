@@ -34,10 +34,10 @@ client = ContractingClient()
 
 static_headers = {}
 
-
-@app.middleware('response')
-async def set_secure_headers(request, response):
-    SecureHeaders.sanic(response)
+#
+# @app.middleware('response')
+# async def set_secure_headers(request, response):
+#     SecureHeaders.sanic(response)
 
 
 def _respond_to_request(payload, headers={}, status=200, resptype='json'):
