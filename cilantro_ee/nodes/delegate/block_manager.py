@@ -291,22 +291,13 @@ class BlockManager(Worker):
             secure=True,
         )
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
-
-        self.nbn_sub = self.manager.create_socket(
-            socket_type=zmq.SUB,
-            name="BM-Sub-{}".format(self.verifying_key[-8:-4]),
-            secure=True,
-        )
-
-        self.nbn_sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
+        self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
 
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
-        self.tasks.append(self.nbn_sub.add_handler(self.handle_nbn_sub_msg))
         self.tasks.append(self._connect_and_process())
 
     def _connect_master_node(self, vk):
         self.sub.connect(vk=vk, port=MN_PUB_PORT)
-        self.nbn_sub.connect(vk=vk, port=MN_PUB_PORT)
         self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
     async def _connect_and_process(self):
@@ -407,7 +398,7 @@ class BlockManager(Worker):
         elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
              bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION or \
              bytes_to_int(msg_type) == MessageTypes.FAIL_BLOCK_NOTIFICATION:
-
+            self.log.info('Block notification!!')
             # Unpack the message
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
 

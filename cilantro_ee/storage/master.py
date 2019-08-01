@@ -313,7 +313,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         last_hash = last_block.get('blockHash')
         current_block_num = last_block.get('blockNum') + 1
 
-        hashes = [subblock.resultHash for subblock in sub_blocks]
+        hashes = [subblock.merkleRoot for subblock in sub_blocks]
 
         for s in sub_blocks:
             self.log.success(type(s))

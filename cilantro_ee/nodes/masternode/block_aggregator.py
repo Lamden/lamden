@@ -27,6 +27,7 @@ import math, asyncio, zmq, time
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
+import hashlib
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -180,7 +181,6 @@ class BlockAggregator(Worker):
 
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
-        self.log.info('BLOCK AGG: {}'.format(frames))
         msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
@@ -348,9 +348,19 @@ class BlockAggregator(Worker):
         time.sleep(0.1)
 
 # SEND NEW BLOCK NOTIFICATION on pub
-        self.pub.send_msg(msg=block_data.to_bytes_packed(),
-                          header=NEW_BLK_NOTIF_FILTER.encode(),
-                          sender=bytes.fromhex(self.verifying_key))
+        block = block_data.to_bytes_packed()
+
+        sig = self.wallet.sign(block)
+
+        msg = signal_capnp.ExternalMessage.new_message(
+            data=block,
+            sender=self.wallet.verifying_key(),
+            signature=sig
+        ).to_bytes_packed()
+
+        self.pub.send_msg(filter=NEW_BLK_NOTIF_FILTER.encode(),
+                          msg_type=int_to_bytes(MessageTypes.NEW_BLOCK_NOTIFICATION),
+                          msg=msg)
 
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
                       .format(block_data.blockHash, block_data.prevBlockHash))
@@ -366,8 +376,6 @@ class BlockAggregator(Worker):
         #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
         block_hash = self.state.latest_block_hash
-
-        import hashlib
 
         h = hashlib.sha3_256()
 

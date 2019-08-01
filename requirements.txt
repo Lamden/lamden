@@ -1,5 +1,12 @@
 pyzmq
 requests
--e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
+-e git+https://github.com/Lamden/contracting.git@rel_colored_pants_capnp#egg=contracting
 # contracting==0.1.1
+# henlo
+# henlo
+# henlo
+# henlo
+# henlo
+# henlo
+# henlo
 # henlo

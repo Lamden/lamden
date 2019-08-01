@@ -56,12 +56,52 @@ import hashlib
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
+from decimal import Decimal
+
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
+
+class Metadata:
+    def __init__(self, proof, signature, timestamp):
+        self.proof = proof
+        self.signature = signature
+        self.timestamp = timestamp
+
+
+class Payload:
+    def __init__(self, sender, nonce, stamps_supplied, contract_name, function_name, kwargs):
+        self.sender = sender
+        self.nonce = nonce
+        self.stampsSupplied = stamps_supplied
+        self.contractName = contract_name
+        self.functionName = function_name
+        self.kwargs = kwargs
+
+
+class UnpackedContractTransaction:
+    def __init__(self, capnp_struct: transaction_capnp.ContractTransaction):
+        self.metadata = Metadata(proof=capnp_struct.metadata.proof,
+                                 signature=capnp_struct.metadata.signature,
+                                 timestamp=capnp_struct.metadata.timestamp)
+
+        kwargs = {}
+        for entry in capnp_struct.payload.kwargs.entries:
+            if entry.value.which() == 'fixedPoint':
+                kwargs[entry.key] = Decimal(entry.value.fixedPoint)
+            else:
+                kwargs[entry.key] = getattr(entry.value, entry.value.which())
+
+        self.payload = Payload(sender=capnp_struct.payload.sender,
+                               nonce=capnp_struct.payload.nonce,
+                               stamps_supplied=capnp_struct.payload.stampsSupplied,
+                               contract_name=capnp_struct.payload.contractName,
+                               function_name=capnp_struct.payload.functionName,
+                               kwargs=kwargs)
 
 @unique
 class NextBlockState(Enum):
@@ -133,6 +173,8 @@ class SubBlockBuilder(Worker):
 
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_blders {} num_sb_per_block {} num_sb_per_builder {} sbs_per_blk_per_blder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER, NUM_SB_PER_BLOCK_PER_BUILDER))
+
+        self.pending_transactions = []
 
         self.run()
 
@@ -394,45 +436,50 @@ class SubBlockBuilder(Worker):
         """
 
         self.log.info("Building sub block contender for input hash {}".format(sb_data.input_hash))
-
         exec_data = sb_data.tx_data
 
-        txs_data = [transaction_capnp.TransactionData.new_message(**{
-            'transaction': d.contract.serialize(),
-            'status': str(d.status),
-            'state': d.state,
-            'contractType': 0 # To be deprecated
-        }).to_bytes_packed() for d in exec_data]
+        txs_data = []
 
-        txs = [d.contract for d in exec_data]
+        for i in range(len(exec_data)):
+            d = exec_data[i]
+            tx = self.pending_transactions[i]
+            txs_data.append(transaction_capnp.TransactionData.new_message(
+                transaction=tx,
+                status=str(d.status),
+                state=d.state,
+                contractType=0
+            ).to_bytes_packed())
 
         # build sbc
         merkle = MerkleTree.from_raw_transactions(txs_data)
 
-        merkle_proof = subblock_capnp.MerkleProof.new_message(**{
-            'hash': merkle.root,
-            'signer': self.wallet.verifying_key(),
-            'signature': self.wallet.sign(merkle.root)
-        }).to_bytes_packed()
+        merkle_proof = subblock_capnp.MerkleProof.new_message(
+            hash=merkle.root,
+            signer=self.wallet.verifying_key(),
+            signature=self.wallet.sign(merkle.root)
+        ).to_bytes_packed()
 
-        sbc = subblock_capnp.SubBlockContender.new_message(**{
-            'resultHash': merkle.root,
-            'inputHash': bytes.fromhex(sb_data.input_hash),
-            'merkleLeaves': [leaf for leaf in merkle.leaves],
-            'signature': merkle_proof,
-            'transactions': [tx for tx in txs_data],
-            'subBlockIdx': self.sb_blder_idx,
-            'prevBlockHash': self.state.get_latest_block_hash()
-        }).to_bytes_packed()
+        sbc = subblock_capnp.SubBlockContender.new_message(
+            resultHash=merkle.root,
+            inputHash=sb_data.input_hash,
+            merkleLeaves=[leaf for leaf in merkle.leaves],
+            signature=merkle_proof,
+            transactions=[tx for tx in txs_data],
+            subBlockIdx=self.sb_blder_idx,
+            prevBlockHash=self.state.get_latest_block_hash()
+        ).to_bytes_packed()
 
-        self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
-                            .format(len(txs), sb_data.input_hash))
+        self.pending_transactions = []
 
         self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
 
 
     def create_sb_contender(self, sb_data: SBData):
         self.log.info('SBData returned: {}'.format(sb_data.tx_data))
+        for e in sb_data.tx_data:
+            self.log.info(e.contract)
+            self.log.info(e.state)
+
         if len(sb_data.tx_data) > 0:
             self._create_sbc_from_batch(sb_data)
         else:
@@ -473,8 +520,13 @@ class SubBlockBuilder(Worker):
 
         self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
 
+        transactions = []
+        for transaction in tx_batch.transactions:
+            transactions.append(UnpackedContractTransaction(transaction))
+            self.pending_transactions.append(transaction)
+
         result = self.client.execute_sb(input_hash,
-                                        tx_batch.transactions,
+                                        transactions,
                                         callback,
                                         environment=environment)
 
@@ -487,7 +539,6 @@ class SubBlockBuilder(Worker):
         return False
 
     def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sbb_idx: int):
-        #txs = transaction_capnp.TransactionBatch.from_bytes_packed(tx_batch)
         return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sbb_idx)
 
     def _make_next_sb(self):
@@ -525,13 +576,11 @@ class SubBlockBuilder(Worker):
                 self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, tx_batch)
 
                 self._execute_input_bag(input_hash, tx_batch, sb_index)
-                self.log.success('EXEC')
 
             else:
                 timestamp = float(time.time())
                 input_hash = self.sb_managers[sm_idx].get_empty_input_hash()
                 self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
-                self.log.success('EXEC')
 
     def _make_next_sub_block(self):
         if not self.startup:

@@ -181,7 +181,7 @@ class SubBlockGroup:
             if _hash not in self.transactions:
                 self.transactions[_hash] = tx
 
-        self.log.info("Added SBC: {}".format(sbc))
+        self.log.info("Added SBC")
 
     def _verify_sbc(self, sender_vk: bytes, sbc: subblock_capnp.SubBlockContender) -> bool:
         # Dev sanity checks
