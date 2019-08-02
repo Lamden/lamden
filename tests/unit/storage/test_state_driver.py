@@ -5,6 +5,19 @@ from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
 from cilantro_ee.storage.state import MetaDataStorage
 import json
+from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.messages._new.transactions.messages import ContractTransaction
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+import secrets
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 class TestStateDriver(TestCase):
@@ -13,42 +26,71 @@ class TestStateDriver(TestCase):
         self.r.flush()
 
     def test_state_updated(self):
-        states = {
-            'hello': 'world',
-            'goodbye': 'world',
-            'entropy': 'regression',
-            'land': 'sea',
-            'xxx': 'holic',
-            'beyonce': 'sings',
-            'cow': 'poo',
-            'anthropologist': 'discovers',
-            'cranberry': 'juice',
-            'optic': 'fiber',
-            'before': 'after'
-        }
+        # Generate some random transactions
+        transactions = []
+        get_sets = []
+        for i in range(50):
+            w = Wallet()
+            tx = ContractTransaction(w.verifying_key(), contract='currency',
+                                     function='transfer',
+                                     kwargs={'amount': 10, 'to': 'jeff'},
+                                     stamps=500000,
+                                     nonce=w.verifying_key() + secrets.token_bytes(32))
 
-        states = json.dumps(states)
+            tx.sign(w.signing_key())
+            packed_tx = tx.as_struct()
 
-        txs = []
-        for i in range(len(states) // 2):
-            txs.append(TransactionDataBuilder.create_random_tx(status='SUCC', state=states))
+            # Create a hashmap between a key and the value it should be set to randomly
+            get_set = {secrets.token_hex(8): secrets.token_hex(8)}
+            get_sets.append(get_set)
 
-        sb = SubBlockBuilder.create(transactions=txs)
-        block = BlockData.create(block_hash=BlockData.compute_block_hash([sb.merkle_root], GENESIS_BLOCK_HASH),
-                                 prev_block_hash=GENESIS_BLOCK_HASH, block_owners=['AB'*32], block_num=1, sub_blocks=[sb])
+            # Put this hashmap as the state of the contract execution and contruct it into a capnp struct
+            tx_data = transaction_capnp.TransactionData.new_message(
+                transaction=packed_tx,
+                status='SUCC',
+                state=json.dumps(get_set),
+                contractType=0
+            )
+
+            # Append it to our list
+            transactions.append(tx_data)
+
+        # Build a subblock. One will do
+        tree = MerkleTree.from_raw_transactions([tx.to_bytes_packed() for tx in transactions])
+
+        w = Wallet()
+
+        sig = w.sign(tree.root)
+
+        sb = subblock_capnp.SubBlock.new_message(
+            merkleRoot=tree.root,
+            signatures=[sig],
+            merkleLeaves=tree.leaves,
+            subBlockIdx=0,
+            inputHash=b'a' * 32,
+            transactions=[tx for tx in transactions]
+        )
+
+        import hashlib
+
+        h = hashlib.sha3_256()
+        h.update(b'\00' * 32)
+        h.update(tree.root)
+
+        block = blockdata_capnp.BlockData.new_message(
+            blockHash=h.digest(),
+            blockNum=1,
+            blockOwners=[b'\00' * 32],
+            prevBlockHash=b'\00' * 32,
+            subBlocks=[sb]
+        )
 
         self.r.update_with_block(block)
-        self.assertEqual(self.r.get(b'hello'), b'world')
-        self.assertEqual(self.r.get('goodbye'), b'world')
-        self.assertEqual(self.r.get('entropy'), b'regression')
-        self.assertEqual(self.r.get('land'), b'sea')
-        self.assertEqual(self.r.get('xxx'), b'holic')
-        self.assertEqual(self.r.get('beyonce'), b'sings')
-        self.assertEqual(self.r.get('cow'), b'poo')
-        self.assertEqual(self.r.get('anthropologist'), b'discovers')
-        self.assertEqual(self.r.get('cranberry'), b'juice')
-        self.assertEqual(self.r.get('optic'), b'fiber')
-        self.assertEqual(self.r.get('before'), b'after')
+
+        for kv in get_sets:
+            k, v = list(kv.items())[0]
+            got = self.r.get(k.encode())
+            self.assertEqual(v.encode(), got)
 
     # TODO test this with publish transactions
 
@@ -61,7 +103,7 @@ class TestStateDriver(TestCase):
         self.assertEqual(0, b_num)
 
     def test_set_get_latest_block_hash(self):
-        b_hash = 'ABCD' * 16
+        b_hash = b'A' * 32
         self.r.set_latest_block_hash(b_hash)
 
         self.assertEqual(self.r.get_latest_block_hash(), b_hash)

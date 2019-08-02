@@ -63,9 +63,9 @@ class ContractTransaction:
         self.proof_generated = False
         self.tx_signed = False
 
-    def sign(self, signing_key):
+    def sign(self, signing_key: bytes):
         # signs the payload binary
-        self.signature = wallet.sign(signing_key, self.payload_bytes)
+        self.signature = wallet._sign(signing_key, self.payload_bytes)
         self.tx_signed = True
 
     def generate_proof(self):
@@ -85,6 +85,18 @@ class ContractTransaction:
         self.struct.metadata.timestamp = int(time.time())
 
         return self.struct.to_bytes_packed()
+
+    def as_struct(self):
+        if not self.tx_signed:
+            return None
+
+        if not self.proof_generated:
+            self.generate_proof()
+
+        return transaction_capnp.ContractTransaction.new_message(
+            metadata=self.struct.metadata,
+            payload=self.struct.payload
+        )
 
 
 def verify_packed_tx(sender, tx):
