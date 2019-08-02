@@ -10,8 +10,19 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
 from os.path import join
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants import conf
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+from cilantro_ee.messages._new.message import MessageTypes
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 def vk_lookup(func):
@@ -77,19 +88,22 @@ class LSocketBase:
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
+
         self._connect_or_bind(should_connect=True, port=port, protocol=protocol, ip=ip, vk=vk)
 
     @vk_lookup
     def bind(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         self._connect_or_bind(should_connect=False, port=port, protocol=protocol, ip=ip, vk=vk)
 
-    def send_msg(self, msg: MessageBase, header: bytes=None):
+    def send_msg(self, filter, msg_type: bytes, msg: bytes):
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
         :param msg: The MessageBase instance to wrap in an envelope and send
         :param header: The header frame to use. If None, no header frame will be sent. """
-        self.send_envelope(env=self._package_msg(msg), header=header)
+        self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
+
+        self.send_multipart([filter, msg_type, msg])
 
     def send_envelope(self, env: Envelope, header: bytes=None):
         """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """
@@ -266,16 +280,18 @@ class LSocketBase:
 
         return _capture_args
 
-    def _package_msg(self, msg: MessageBase) -> Envelope:
+    def _package_msg(self, msg: MessageBase):
         """ Convenience method to package a message into an envelope
         :param msg: The MessageBase instance to package
         :return: An Envelope instance
         """
-        assert type(msg) is not Envelope, "Attempted to package a 'message' that is already an envelope"
-        assert issubclass(type(msg), MessageBase), "Attempted to package a message that is not a MessageBase subclass"
+        if type(msg) is not Envelope and issubclass(type(msg), MessageBase):
+            return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
+                                                verifying_key=Keys.vk)
 
-        return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
-                                            verifying_key=Keys.vk)
+        # tuple of msg_type and msg_payload
+        elif type(msg) == tuple:
+            return None
 
     def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
         """ Convenience method to create a reply envelope. The difference between this func and _package_msg, is that

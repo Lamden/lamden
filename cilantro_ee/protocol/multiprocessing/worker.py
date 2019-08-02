@@ -1,9 +1,7 @@
 from cilantro_ee.protocol.multiprocessing.context import Context
 from cilantro_ee.logger import get_logger
-from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.comm.socket_manager import SocketManager
 from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.constants.overlay_network import CLIENT_SETUP_TIMEOUT
 
 from typing import Callable, Union
 import zmq.asyncio, asyncio
@@ -23,7 +21,6 @@ class Worker(Context):
 
         self.manager = SocketManager(context=self.zmq_ctx)
         self.tasks = self.manager.overlay_client.tasks
-
 
     async def _wait_until_ready(self):
         self.log.debugv("Started waiting for overlay server to be ready!!")

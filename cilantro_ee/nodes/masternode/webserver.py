@@ -18,6 +18,17 @@ import ast
 import ssl
 import time
 
+import hashlib
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
 WEB_SERVER_PORT = 8080
 SSL_WEB_SERVER_PORT = 443
 NUM_WORKERS = 2
@@ -62,17 +73,29 @@ async def submit_transaction(request):
     try:
         tx_bytes = request.body
         tx = ContractTransaction.from_bytes(tx_bytes)
+        tx = transaction_capnp.ContractTransaction.from_bytes_packed(tx_bytes)
+
     except Exception as e:
         return json({'error': 'Malformed transaction.'.format(e)}, status=400)
+
+    # Try to put it in the request queue.
+    try:
+        app.queue.put_nowait(tx)
+    except:
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     # Try to put it in the request queue.
     try:
         app.queue.put_nowait(tx_bytes)
     except:
         return json({'error': "Queue full. Resubmit shortly."}, status=503)
+    h = hashlib.sha3_256()
+    h.update(tx_bytes)
+    tx_hash = h.digest()
 
     return json({'success': 'Transaction successfully submitted to the network.',
-                 'nonce': tx.nonce, 'hash': Hasher.hash(tx)})
+                 'nonce': tx.payload.nonce.hex(), 'hash': tx_hash.hex()})
+
 
 
 # Returns {'contracts': JSON List of strings}

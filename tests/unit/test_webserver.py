@@ -2,7 +2,7 @@ from unittest import TestCase
 from contracting.webserver import app, client
 import json
 import aiohttp
-
+import cilantro_ee
 
 class TestWebserver(TestCase):
     def tearDown(self):
@@ -18,7 +18,7 @@ class TestWebserver(TestCase):
         self.assertListEqual(['submission'], contracts)
 
     def test_get_submission_code(self):
-        with open('../../cilantro_ee/contracts/submission.s.py') as f:
+        with open(cilantro_ee.__path__[0] + '/contracts/submission.s.py') as f:
             contract = f.read()
 
         _, response = app.test_client.get('/contracts/submission')

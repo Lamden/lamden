@@ -112,7 +112,7 @@ class PeerServer(services.RequestReplyService):
                 # Valid response
                 self.table.peers[vk] = ip
 
-                # Publish a message that a new node has joined
+                # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]
                 jmsg = json.dumps(msg, cls=services.SocketEncoder).encode()
                 await self.event_publisher.send(jmsg)
@@ -330,7 +330,7 @@ class Network:
             if node is not None:
                 nodes.update(node)
 
-        # Update the peer table with the new nodes
+        # Update the peer table with the _new nodes
         self.table.peers.update(nodes)
 
         # Remove the nodes from the all_nodes list. Don't need to query them again

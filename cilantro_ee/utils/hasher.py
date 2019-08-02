@@ -31,7 +31,6 @@ class Hasher:
         """
         # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
         from cilantro_ee.messages.base.base import MessageBase
-        from cilantro_ee.messages.transaction.data import TransactionData
         from cilantro_ee.utils import int_to_bytes
 
         assert data is not None, "Cannot hash a None type!"

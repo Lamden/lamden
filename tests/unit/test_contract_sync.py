@@ -30,7 +30,7 @@ class TestContractSync(TestCase):
         driver = ContractDriver()
         driver.flush()
 
-        sync.sync_genesis_contracts(driver)
+        sync.sync_genesis_contracts()
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
@@ -42,11 +42,11 @@ class TestContractSync(TestCase):
         driver = ContractDriver()
         driver.flush()
 
-        sync.sync_genesis_contracts(driver)
+        sync.sync_genesis_contracts()
 
         driver.delete_contract('submission')
 
-        sync.sync_genesis_contracts(driver)
+        sync.sync_genesis_contracts()
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
@@ -58,8 +58,8 @@ class TestContractSync(TestCase):
         driver = ContractDriver()
         driver.flush()
 
-        sync.sync_genesis_contracts(driver)
-        sync.sync_genesis_contracts(driver)
+        sync.sync_genesis_contracts()
+        sync.sync_genesis_contracts()
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
@@ -73,7 +73,9 @@ class TestContractSync(TestCase):
 
         sync.submit_contract_with_construction_args('vkbook', args={
             'masternodes': ['stu', 'raghu'],
-            'delegates': ['tejas', 'monica']
+            'delegates': ['tejas', 'monica'],
+            'num_boot_mns': 1,
+            'num_boot_del': 1
         })
 
         client = ContractingClient()

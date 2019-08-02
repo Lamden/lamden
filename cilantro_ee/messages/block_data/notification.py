@@ -14,11 +14,7 @@ class BlockNotification(MessageBase):
 class ConsensusBlockNotification(BlockNotification):
 
     def validate(self):
-        # TODO clean this up, do we really need validations in our notification system?
-        # 
-        assert validate_hex(self.block_hash, 64), 'Invalid block hash {}'.format(self.block_hash)
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        assert self.block_num > 0, "Block num must be greater than or equal to 0"
+        pass
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -38,7 +34,7 @@ class ConsensusBlockNotification(BlockNotification):
         struct.blockHash = block_hash
         struct.blockNum = block_num
         struct.firstSbIdx = first_sb_idx
-        struct.blockOwners = block_owners
+        struct.blockOwners = [block_owner for block_owner in block_owners]
         struct.inputHashes = input_hashes
 
         return cls.from_data(struct, False)    # no validation
@@ -48,20 +44,20 @@ class ConsensusBlockNotification(BlockNotification):
         input_hashes = []
         root_hashes = []
         for sb in sub_blocks:
-            input_hashes.append(sb.input_hash)
-            if not sb.is_empty:
-                root_hashes.append(sb.result_hash)
+            input_hashes.append(sb.inputHash)
+            if not len(sb.merkleLeaves) == 0:
+                root_hashes.append(sb.resultHash)
         return input_hashes, root_hashes
 
 
     @classmethod
-    def create_from_sub_blocks(cls, prev_block_hash: str, block_num: int, block_owners: List[str], sub_blocks: List[SubBlock]):
+    def create_from_sub_blocks(cls, prev_block_hash: str, block_num: int, block_owners: List[str], sub_blocks):
         # Sort sub-blocks by index if they are not done so already  - TODO eliminate it by ensuring they come in sorted
-        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.index)
+        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.subBlockIdx)
 
         input_hashes, root_hashes = cls.get_data_from_sub_blocks(sub_blocks)
 
-        first_sb_idx = sub_blocks[0].index
+        first_sb_idx = sub_blocks[0].subBlockIdx
         roots = root_hashes if root_hashes else input_hashes
         block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
 
@@ -109,15 +105,7 @@ class SkipBlockNotification(ConsensusBlockNotification):
 class FailedBlockNotification(BlockNotification):
 
     def validate(self):
-        # TODO clean this up, do we really need validations in our notification system?
-        # 
-        assert validate_hex(self._data.prevBlockHash, 64), 'Invalid previous block hash'
-        # assert len(self.input_hashes) == NUM_SUB_BLOCKS, "Length of input hashes list {} does not match number of " \
-                                                         # "sub-blocks {}".format(len(self.input_hashes), NUM_SUB_BLOCKS)
-        # for s in self.input_hashes:
-            # for ih in s:
-                # assert is_valid_hex(ih), "Not valid input hash: {}".format(ih)
-
+        pass
 
     @classmethod
     def _deserialize_data(cls, data):
@@ -162,16 +150,3 @@ class FailedBlockNotification(BlockNotification):
     def input_hashes(self) -> List[List]:
         # Necessary to cast capnp list builder to Python list
         return [[x for x in sl] for sl in self._data.inputHashes]
-
-
-class TimeoutBlockNotification(FailedBlockNotification):
-    pass
-
-
-class PartialBlockNotification(ConsensusBlockNotification, FailedBlockNotification):
-    # Todo need to add failed_input_hashes as list[list]
-    # Consensus and Failed
-    # could be an empty list for consensus inputs, but need to be present as empty list in the failed_input_hashes
-    pass
-
-

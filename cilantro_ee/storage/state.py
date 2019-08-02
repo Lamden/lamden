@@ -15,40 +15,39 @@ class MetaDataStorage(DatabaseDriver):
 
         super().__init__()
 
-    def update_with_block(self, block: BlockData):
-        for tx in block.transactions:
-            assert tx.contract_type is ContractTransaction, "Expected contract tx but got {}".format(tx.contract_type)
+    def update_with_block(self, block):
+        self.log.success('UPDATING STATE')
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                if tx.state is not None and len(tx.state) > 0:
+                    try:
+                        sets = json.loads(tx.state)
 
-            if tx.state is not None and len(tx.state) > 0:
-                try:
-                    sets = json.loads(tx.state)
-
-                    for k, v in sets.items():
-                        self.set(k, v)
-                except:
-                    pass
-                    #self.log.info('Set {} to {}'.format(k, v))
+                        for k, v in sets.items():
+                            self.log.info('SETTING "{}" to "{}"'.format(k, v))
+                            self.set(k, v)
+                    except Exception as e:
+                        self.log.critical(str(e))
 
         # Update our block hash and block num
-        self.latest_block_hash = block.block_hash
-        self.latest_block_num = block.block_num
+        self.latest_block_hash = block.blockHash
+        self.latest_block_num = block.blockNum
 
         #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
 
-        assert self.latest_block_hash == block.block_hash, \
+        assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
     def get_latest_block_hash(self):
         block_hash = self.get(self.block_hash_key)
         if block_hash is None:
-            return '0' * 64
-        return block_hash.decode()
+            return b'\x00' * 32
+        return block_hash
 
-    def set_latest_block_hash(self, v):
-        print(type(v))
-        assert len(v) == 64, 'Hash provided is not 64 characters.'
-        int(v, 16)
-
+    def set_latest_block_hash(self, v: bytes):
+        if type(v) == str:
+            v = bytes.fromhex(v)
+        assert len(v) == 32, 'Hash provided is not 32 bytes.'
         self.set(self.block_hash_key, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)

@@ -6,7 +6,6 @@ import hashlib
 Messages encapsulate data that is sent between nodes.
 """
 
-
 class MessageBaseMeta(type):
     def __new__(cls, clsname, bases, clsdict):
         clsobj = super().__new__(cls, clsname, bases, clsdict)

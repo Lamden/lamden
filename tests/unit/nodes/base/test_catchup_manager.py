@@ -87,7 +87,7 @@ class TestCatchupManager(TestCase):
         MN_VK2 = PhoneBook.masternodes[1]
         MN_VK3 = PhoneBook.masternodes[2]
         MN_VK4 = PhoneBook.masternodes[3]
-      
+
         vks = [MN_VK1, MN_VK2, MN_VK3, MN_VK4]
 
         reply_data = None

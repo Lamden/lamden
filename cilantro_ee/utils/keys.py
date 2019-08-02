@@ -3,6 +3,7 @@ from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 import hashlib
 
+
 class Keys:
     is_setup = False
 
@@ -23,10 +24,12 @@ class Keys:
             cls.private_key = crypto_sign_ed25519_sk_to_curve25519(nacl_sk._signing_key)
             cls.is_setup = True
 
+    #TODO replace with Wallet class that has the same functionality
     @staticmethod
     def vk2pk(vk):
         return encode(VerifyKey(bytes.fromhex(vk)).to_curve25519_public_key()._public_key)
 
+    #TODO Deprecate
     @staticmethod
     def digest(s):
         if not isinstance(s, bytes):

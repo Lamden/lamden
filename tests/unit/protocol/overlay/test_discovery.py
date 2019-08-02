@@ -150,7 +150,7 @@ class TestDiscoveryServer(TestCase):
 
     def test_async_ping_timeout_occurs_if_ip_isnt_online(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(ping(ip='inproc://dontexist',
+        loop.run_until_complete(ping(_socket('inproc://dontexist'),
                                      pepper=b'DOESNT_MATTER',
                                      ctx=self.ctx,
                                      timeout=50,)

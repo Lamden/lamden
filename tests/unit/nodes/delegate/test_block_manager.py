@@ -11,12 +11,11 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.signals.node import Ready
-from cilantro_ee.messages.block_data.notification import NewBlockNotification
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 _log = get_logger("TestBlockManager")
 
+from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES
 TEST_IP = '127.0.0.1'
@@ -32,13 +31,14 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
     def test_build_task_list_creates_ipc_router(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
-        bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+        PhoneBook = VKBook(delegates=[TESTNET_DELEGATES[0]['vk']], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+        bm = BlockManager(ip=TEST_IP, signing_key=TESTNET_DELEGATES[0]['sk'])
 
         # Need to set this manually to an empty list for tests only as overlay_client is mocked out
         bm.tasks = []
 
         # Attach a mock SockManager so create_socket calls return mock objects. Whenever a method is called on a mock
-        # object, a new mock object is automatically returned
+        # object, a _new mock object is automatically returned
         mock_manager = MagicMock()
         bm.manager = mock_manager
 
@@ -72,7 +72,8 @@ class TestBlockManager(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
     def test_handle_ready_msg(self, mock_run_method, mock_bm_asyncio, mock_sbb, mock_manager, mock_worker_asyncio):
-        bm = BlockManager(ip=TEST_IP, signing_key=TEST_SK)
+        PhoneBook = VKBook(delegates=[TESTNET_DELEGATES[0]['vk']], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+        bm = BlockManager(ip=TEST_IP, signing_key=TESTNET_DELEGATES[0]['sk'])
         bm.tasks = []
         bm.manager = MagicMock()
         bm.ipc_router = MagicMock()

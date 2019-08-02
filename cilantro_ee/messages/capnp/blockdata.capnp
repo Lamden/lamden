@@ -15,13 +15,17 @@ struct BlockMetaData {
 
 
 struct BlockData {
-    blockHash @0 :Text;
+    blockHash @0 :Data;
     blockNum @1 :UInt32;
     blockOwners @2 :List(Text);
-    prevBlockHash @3 :Text;
+    prevBlockHash @3 :Data;
     subBlocks @4 :List(SB.SubBlock);
 }
 
+struct BlockIndexRequest {
+    blockHash @0: Data;
+    sender @1: Data;
+}
 
 struct StateUpdateRequest {
     blockHash @0 :Data;

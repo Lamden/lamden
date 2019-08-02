@@ -7,7 +7,7 @@ struct ConsensusBlockNotification {
     blockNum @2 :UInt32;
     firstSbIdx @3 :UInt32;
     blockOwners @4 :List(Text);
-    inputHashes @5 :List(Text);
+    inputHashes @5 :List(Data);
 }
 
 

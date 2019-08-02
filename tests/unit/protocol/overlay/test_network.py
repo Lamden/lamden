@@ -331,7 +331,7 @@ class TestNetworkService(TestCase):
         # Create Discovery Server
         w2 = Wallet()
         d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10999'), pepper=PEPPER.encode(), ctx=self.ctx,
-                            poll_timeout=200, linger=200)
+                            poll_timeout=2000, linger=200)
 
         # Create raw subscriber
         subscriber = self.ctx.socket(zmq.SUB)
@@ -339,7 +339,7 @@ class TestNetworkService(TestCase):
         subscriber.connect('tcp://127.0.0.1:10002')
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
-        sleep(0.1)
+        sleep(0.3)
 
         # Construct the join RPC message
         join_message = ['join', (w2.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
@@ -347,14 +347,15 @@ class TestNetworkService(TestCase):
 
         # Wrap recv() in an async
         async def recv():
-            return await subscriber.recv()
+            msg = await subscriber.recv()
+            return msg
 
         tasks = asyncio.gather(
-            p1.peer_service.serve(),  # Start the PeerService which will process RPC and emit events
+            p1.peer_service.start(),  # Start the PeerService which will process RPC and emit events
             d.serve(),  # Start Discovery so PeerService can verify they are online
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),  # Push out a join request
-            stop_server(p1.peer_service, 0.1),
-            stop_server(d, 0.1),
+            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=3000),  # Push out a join request
+            stop_server(p1.peer_service, 1),
+            stop_server(d, 1),
             recv()  # Collect the subscription result
         )
 

@@ -25,13 +25,14 @@ from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-#
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.constants.testnet import *
 from cilantro_ee.storage.vkbook import PhoneBook
 import asyncio
 import time
-#
+from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
+from cilantro_ee.protocol import wallet
 #
 _log = get_logger("TestSubBlockBuilder")
 #
@@ -46,6 +47,9 @@ IPC_PORT = 6967
 # MN_SK2 = TESTNET_MASTERNODES[1]['sk']
 MN_SK1 = PhoneBook.masternodes[0]
 MN_SK2 = PhoneBook.masternodes[1]
+MN_SK1 = TESTNET_MASTERNODES[0]['sk']
+MN_SK2 = TESTNET_MASTERNODES[1]['sk']
+
 #
 #
 class SBBTester:
@@ -100,7 +104,7 @@ class TestSubBlockBuilder(TestCase):
 
         loop.run_until_complete(asyncio_sucks())
 
-    def run_loops(self, *loops, pediod=1.0):
+    def run_loops(self, *loops, period=1.0):
         async def asyncio_sucks():
             await asyncio.sleep(period)
 
@@ -117,6 +121,9 @@ class TestSubBlockBuilder(TestCase):
     @SBBTester.test
     def test_create_empty_sbc(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+        PhoneBook = VKBook(delegates=[sbb.verifying_key], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+
         input_hash = 'A' * 64
         sbb_idx = 0
         sb_data = SBData(input_hash, [])
@@ -165,6 +172,9 @@ class TestSubBlockBuilder(TestCase):
         """
 
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+        PhoneBook = VKBook(delegates=[sbb.verifying_key], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+
         sbb._send_msg_over_ipc = MagicMock()
 
         self.assertTrue(len(sbb.sb_managers) == 1)
@@ -215,6 +225,9 @@ class TestSubBlockBuilder(TestCase):
     def test_align_input_hash_signal(self, *args):
         TRANSACTIONS_PER_SUB_BLOCK = 4
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+
+
         self.assertEqual(len(sbb.sb_managers), 1)
         sbb._send_msg_over_ipc = MagicMock()
         sbb._create_empty_sbc = MagicMock()
@@ -234,7 +247,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
 
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 0 and assert its input_hash is same as the one above
+        # should receive a _new subblock for input 0 and assert its input_hash is same as the one above
         # SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         sbb._create_sbc_from_batch.assert_called_once()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
@@ -245,7 +258,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, message)
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 4
+        # should receive a _new subblock for input 4
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[3])
@@ -318,6 +331,9 @@ class TestSubBlockBuilder(TestCase):
         sb_rep = [(c, status, state) for c, state, status, in zip(contract_txs, states, statuses)]
 
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+        PhoneBook = VKBook(delegates=[sbb.verifying_key], masternodes=[TESTNET_MASTERNODES[0]['vk']])
+
         sbb._send_msg_over_ipc = MagicMock()
 
         exec_data = []
@@ -342,6 +358,10 @@ class TestSubBlockBuilder(TestCase):
     @mock.patch("cilantro_ee.nodes.delegate.sub_block_builder.TRANSACTIONS_PER_SUB_BLOCK", 4)
     def test_execute_two_bags_one_builder(self, *args):
         sbb = SubBlockBuilder(ip=TEST_IP, signing_key=DELEGATE_SK, sbb_index=0, ipc_ip=IPC_IP, ipc_port=IPC_PORT)
+
+        _, vk_1 = wallet.new(bytes.fromhex(MN_SK1))
+        PhoneBook = VKBook(delegates=[sbb.verifying_key], masternodes=[vk_1])
+
         sbb._create_sbc_from_batch = MagicMock()
 
         # send intital make next blk notif
@@ -560,7 +580,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
 
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 0 and assert its input_hash is same as the one above
+        # should receive a _new subblock for input 0 and assert its input_hash is same as the one above
         # SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         sbb._create_sbc_from_batch.assert_called_once()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
@@ -568,17 +588,18 @@ class TestSubBlockBuilder(TestCase):
 
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 1
+        # should receive a _new subblock for input 1
         sbb._create_empty_sbc.assert_called()
         sb = sbb._create_empty_sbc.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[1])
 
         # send align notification for input hash # 3
         message = AlignInputHash.create(ib_hashes[3], 0)
+        message = AlignInputHash.create(ib_hashes[3], sb_index=0)
         SBBTester.send_ipc_to_sbb(sbb, message)
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 4
+        # should receive a _new subblock for input 4
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[4])
@@ -593,7 +614,7 @@ class TestSubBlockBuilder(TestCase):
         SBBTester.send_ipc_to_sbb(sbb, message)
         SBBTester.send_ipc_to_sbb(sbb, make_next_block)
         self.run_async(sbb.loop, 2)
-        # should receive a new subblock for input 5
+        # should receive a _new subblock for input 5
         sbb._create_sbc_from_batch.assert_called()
         sb = sbb._create_sbc_from_batch.call_args[0][0]
         self.assertEqual(sb.input_hash, ib_hashes[5])

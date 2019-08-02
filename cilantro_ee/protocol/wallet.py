@@ -56,6 +56,12 @@ def verify(v: str, msg: bytes, sig: str) -> bool:
     return True
 
 
+def _sign(sk: bytes, msg: bytes):
+    key = nacl.signing.SigningKey(seed=sk)
+    sig = key.sign(msg)
+    return sig.signature
+
+
 def _verify(vk: bytes, msg: bytes, signature: bytes):
     vk = nacl.signing.VerifyKey(vk)
     try:
