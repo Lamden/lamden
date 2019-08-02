@@ -52,7 +52,7 @@ class God:
         return cls.send_tx(tx)
 
     @classmethod
-    def send_tx(cls, tx: TransactionBase):
+    def send_tx(cls, tx):
         assert len(cls.mn_urls) > 0, "mn_urls must be set to send_tx! "
         mn_url = cls._get_mn_url()
         data = TransactionContainer.create(tx).serialize()
