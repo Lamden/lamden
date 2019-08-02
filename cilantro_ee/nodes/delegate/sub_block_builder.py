@@ -400,8 +400,10 @@ class SubBlockBuilder(Worker):
 
         self.sb_managers[index].pending_txs.append(input_hash, batch)
 
-    def _create_empty_sbc(self, sb_data: SBData):
-
+    def _create_empty_sbc(self, sb_idx: int, sb_data: SBData):
+        """
+        Creates an Empty Sub Block Contender
+        """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
 
         signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
@@ -418,7 +420,7 @@ class SubBlockBuilder(Worker):
               merkleLeaves=[],
               signature=merkle_proof,
               transactions=[],
-              subBlockIdx=self.sb_blder_idx,
+              subBlockIdx=sb_idx,
               prevBlockHash=self.state.get_latest_block_hash()
         ).to_bytes_packed()
 
@@ -426,7 +428,7 @@ class SubBlockBuilder(Worker):
 
         self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
 
-    def _create_sbc_from_batch(self, sb_data: SBData):
+    def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
@@ -461,7 +463,7 @@ class SubBlockBuilder(Worker):
             merkleLeaves=[leaf for leaf in merkle.leaves],
             signature=merkle_proof,
             transactions=[tx for tx in txs_data],
-            subBlockIdx=self.sb_blder_idx,
+            subBlockIdx=sb_idx,
             prevBlockHash=self.state.get_latest_block_hash()
         ).to_bytes_packed()
 
@@ -470,29 +472,23 @@ class SubBlockBuilder(Worker):
         self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
 
 
-    def create_sb_contender(self, sb_data: SBData):
-        self.log.info('SBData returned: {}'.format(sb_data.tx_data))
-        for e in sb_data.tx_data:
-            self.log.info(e.contract)
-            self.log.info(e.state)
-
+    def create_sb_contender(self, sb_idx: int, sb_data: SBData):
         if len(sb_data.tx_data) > 0:
-            self._create_sbc_from_batch(sb_data)
+            self._create_sbc_from_batch(sb_idx, sb_data)
         else:
-            self._create_empty_sbc(sb_data)
+            self._create_empty_sbc(sb_idx, sb_data)
 
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self,
-                    input_hash,
+                    input_hash: str,
                     tx_batch: transaction_capnp.TransactionBatch,
                     timestamp: float,
-                    sbb_idx: int):
+                    sb_idx: int):
 
-        self.log.info("SBB {} attempting to build a sub block with index {}"
-                       .format(self.sb_blder_idx, sbb_idx))
+        self.log.debug("SBB {} attempting to build a sub block with index {}"
+                       .format(self.sb_blder_idx, sb_idx))
 
-        # callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
         callback = self.create_sb_contender
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
@@ -523,6 +519,7 @@ class SubBlockBuilder(Worker):
 
         result = self.client.execute_sb(input_hash,
                                         transactions,
+                                        sb_idx,
                                         callback,
                                         environment=environment)
 
@@ -534,8 +531,9 @@ class SubBlockBuilder(Worker):
 
         return False
 
-    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sbb_idx: int):
-        return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sbb_idx)
+
+    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sb_idx: int):
+        return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sb_idx)
 
     def _make_next_sb(self):
         self.log.info('making next sb')

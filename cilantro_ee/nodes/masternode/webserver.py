@@ -1,11 +1,17 @@
 from sanic import Sanic
-from sanic.response import json
+from sanic.response import json, text
+from secure import SecureHeaders
 from cilantro_ee.logger.base import get_logger
-from sanic_cors import CORS
+from sanic_cors import CORS, cross_origin
+import json as _json
 from contracting.client import ContractingClient
+from cilantro_ee.messages.transaction.contract import ContractTransaction
+from cilantro_ee.messages.transaction.ordering import OrderingContainer
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
+
+from cilantro_ee.storage.master import MasterStorage
 
 from multiprocessing import Queue
 import ast
@@ -39,6 +45,24 @@ client = ContractingClient()
 
 static_headers = {}
 
+#
+# @app.middleware('response')
+# async def set_secure_headers(request, response):
+#     SecureHeaders.sanic(response)
+
+
+def _respond_to_request(payload, headers={}, status=200, resptype='json'):
+    if resptype == 'json':
+        return json(payload, headers=dict(headers, **static_headers), status=status)
+    elif resptype == 'text':
+        return text(payload, headers=dict(headers, **static_headers), status=status)
+
+
+# ping to check whether server is online or not
+@app.route("/ping", methods=["GET","OPTIONS",])
+async def ping(request):
+    return _respond_to_request({'status':'online'})
+
 
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
@@ -48,6 +72,7 @@ async def submit_transaction(request):
     # Try to deserialize transaction.
     try:
         tx_bytes = request.body
+        tx = ContractTransaction.from_bytes(tx_bytes)
         tx = transaction_capnp.ContractTransaction.from_bytes_packed(tx_bytes)
 
     except Exception as e:
@@ -59,12 +84,18 @@ async def submit_transaction(request):
     except:
         return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
+    # Try to put it in the request queue.
+    try:
+        app.queue.put_nowait(tx_bytes)
+    except:
+        return json({'error': "Queue full. Resubmit shortly."}, status=503)
     h = hashlib.sha3_256()
     h.update(tx_bytes)
     tx_hash = h.digest()
 
     return json({'success': 'Transaction successfully submitted to the network.',
                  'nonce': tx.payload.nonce.hex(), 'hash': tx_hash.hex()})
+
 
 
 # Returns {'contracts': JSON List of strings}
@@ -131,60 +162,29 @@ async def get_variable(request, contract, variable):
     'code': 'string'
 }
 '''
-@app.route('/lint', methods=['POST'])
-async def lint_contract(request):
-    code = request.json.get('code')
 
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-    return json({'violations': violations}, status=200)
+@app.route("/latest_block", methods=["GET","OPTIONS",])
+async def get_latest_block(request):
+    index = MasterStorage.get_last_n(1)
+    latest_block_hash = index.get('blockHash')
+    return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
 
 
-@app.route('/compile', methods=['POST'])
-async def compile_contract(request):
-    code = request.json.get('code')
+@app.route('/blocks', methods=["GET","OPTIONS",])
+async def get_block(request):
+    if 'number' in request.json:
+        num = request.json['number']
+        block = MasterStorage.get_block(num)
+        if block is None:
+            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
+    # TODO check block by hash isn't implemented
+    # else:
+    #     _hash = request.json['hash']
+    #     block = MasterStorage.get_block(hash)
+    #     if block is None:
+    #         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    if code is None:
-        return json({'error': 'no code provided'}, status=500)
-
-    violations = client.lint(request.json.get('code'))
-
-    if violations is None:
-        compiled_code = client.compiler.parse_to_code(code)
-        return json({'code': compiled_code}, status=200)
-
-    return json({'violations': violations}, status=500)
-
-
-@app.route('/submit', methods=['POST'])
-async def submit_contract(request):
-    code = request.json.get('code')
-    name = request.json.get('name')
-
-    if code is None or name is None:
-        return json({'error': 'malformed payload'}, status=500)
-
-    violations = client.lint(code)
-
-    if violations is None:
-        client.submit(code, name=name)
-
-    else:
-        return json({'violations': violations}, status=500)
-
-    return json({'success': True}, status=200)
-
-
-@app.route('/exists', methods=['GET'])
-async def contract_exists(request):
-    contract_code = client.get_contract(request.json.get('name'))
-
-    if contract_code is None:
-        return json({'exists': False}, status=404)
-    else:
-        return json({'exists': True}, status=200)
+    return _respond_to_request(_json.dumps(block))
 
 
 def start_webserver(q):
