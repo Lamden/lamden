@@ -10,14 +10,8 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-from cilantro_ee.messages.base import base
-from cilantro_ee.utils.utils import int_to_bytes
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
-from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager

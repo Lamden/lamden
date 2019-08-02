@@ -1,6 +1,5 @@
 from cilantro_ee.logger.base import get_logger
 from multiprocessing import Process
-from cilantro_ee.messages.signals.node import Ready
 import traceback, os, cProfile, pkg_resources, json
 from vprof import runner
 

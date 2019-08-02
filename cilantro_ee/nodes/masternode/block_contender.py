@@ -5,7 +5,6 @@ from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
-from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.protocol.wallet import _verify

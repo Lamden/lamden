@@ -30,23 +30,13 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 
-from cilantro_ee.messages.block_data.block_data import BlockData
-from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.base import base
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.block_data.notification import BlockNotification, NewBlockNotification, SkipBlockNotification, FailedBlockNotification
-from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
-from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
+from cilantro_ee.messages.block_data.notification import BlockNotification, FailedBlockNotification
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
-from cilantro_ee.messages.signals.node import Ready
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
 import asyncio, zmq, os, time, random
-from collections import defaultdict
-from typing import List
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -450,7 +440,7 @@ class BlockManager(Worker):
         if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
             self.set_catchup_done()
 
-    def recv_block_notif(self, block: BlockNotification):
+    def recv_block_notif(self, block):
         self.db_state.is_catchup_done = False
         # TODO call run_catchup() if catchup_manager is not already catching up
         if self.db_state.catchup_mgr.recv_new_blk_notif(block):

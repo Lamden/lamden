@@ -111,9 +111,7 @@ class CatchupManager:
                 blk_dict = self.driver.get_block(latest_state_num)
                 if '_id' in blk_dict:
                     del blk_dict['_id']
-
                 block = BlockData.from_dict(blk_dict)
-
                 self.state.update_with_block(block=block)
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 

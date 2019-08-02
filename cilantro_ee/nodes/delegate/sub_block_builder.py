@@ -25,7 +25,6 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages.transaction.batch import TransactionBatch
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
