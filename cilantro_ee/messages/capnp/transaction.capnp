@@ -18,6 +18,18 @@ struct ContractPayload {
     kwargs @5 :V.Map(Text, V.Value);
 }
 
+struct TransactionPayload {
+    sender @0 :Data;
+    processor @1: Data;
+    nonce @2 :UInt64;
+
+    stamps @3 :UInt64;
+
+    contract @4 :Text;
+    function @5 :Text;
+    arguments @6 :V.Map(Text, V.Value);
+}
+
 struct ContractTransaction {
     metadata @0: MetaData;
     payload @1: ContractPayload;
