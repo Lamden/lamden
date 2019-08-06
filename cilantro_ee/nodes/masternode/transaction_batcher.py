@@ -129,6 +129,7 @@ class TransactionBatcher(Worker):
 
             batch = transaction_capnp.TransactionBatch.new_message()
             batch.init('transactions', len(tx_list))
+
             for i, tx in enumerate(tx_list):
                 batch.transactions[i] = tx
 

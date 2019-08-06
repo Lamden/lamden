@@ -17,7 +17,7 @@ VALUE_TYPE_MAP = {
 
 
 class TransactionWrapper:
-    def __init__(self, struct: transaction_capnp.ContractTransaction):
+    def __init__(self, struct: transaction_capnp.Transaction):
         self.struct = struct
 
     def is_signed(self) -> bool:
@@ -56,7 +56,7 @@ class TransactionBuilder:
         self.kwargs = kwargs
 
         # Serializes all that it can on init
-        self.struct = transaction_capnp.ContractTransaction.new_message()
+        self.struct = transaction_capnp.Transaction.new_message()
         self.payload = transaction_capnp.TransactionPayload.new_message()
 
         self.payload.sender = self.sender
@@ -123,7 +123,7 @@ class TransactionBuilder:
         if not self.proof_generated:
             self.generate_proof()
 
-        return transaction_capnp.ContractTransaction.new_message(
+        return transaction_capnp.Transaction.new_message(
             metadata=self.struct.metadata,
             payload=self.struct.payload
         )
@@ -131,7 +131,7 @@ class TransactionBuilder:
 
 def verify_packed_tx(sender, tx):
     try:
-        unpacked = transaction_capnp.ContractTransaction.from_bytes_packed(tx)
+        unpacked = transaction_capnp.Transaction.from_bytes_packed(tx)
         msg = unpacked.payload
 
         proof = SHA3POW.check(msg, unpacked.metadata.proof.decode())

@@ -8,16 +8,6 @@ struct MetaData {
     timestamp @2 :Float32;
 }
 
-struct ContractPayload {
-    sender @0 :Data;
-    nonce @1 :Data;
-    stampsSupplied @2 :UInt64;
-
-    contractName @3 :Text;
-    functionName @4 :Text;
-    kwargs @5 :V.Map(Text, V.Value);
-}
-
 struct TransactionPayload {
     sender @0 :Data;
     processor @1: Data;
@@ -30,23 +20,23 @@ struct TransactionPayload {
     kwargs @6 :V.Map(Text, V.Value);
 }
 
-struct ContractTransaction {
+struct Transaction {
     metadata @0: MetaData;
     payload @1: TransactionPayload;
 }
 struct TransactionData {
-    transaction @0 :ContractTransaction;
+    transaction @0 :Transaction;
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;
 }
 
 struct Transactions {
-    transactions @0 :List(ContractTransaction);
+    transactions @0 :List(Transaction);
 }
 
 struct TransactionBatch {
-    transactions @0 :List(ContractTransaction);
+    transactions @0 :List(Transaction);
     timestamp @1: Float32;
     signature @2: Data;
     sender @3: Data;

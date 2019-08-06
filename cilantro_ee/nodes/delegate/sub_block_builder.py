@@ -74,7 +74,7 @@ class Payload:
 
 
 class UnpackedContractTransaction:
-    def __init__(self, capnp_struct: transaction_capnp.ContractTransaction):
+    def __init__(self, capnp_struct: transaction_capnp.Transaction):
         self.metadata = Metadata(proof=capnp_struct.metadata.proof,
                                  signature=capnp_struct.metadata.signature,
                                  timestamp=capnp_struct.metadata.timestamp)

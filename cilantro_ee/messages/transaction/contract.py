@@ -28,7 +28,7 @@ class ContractTransaction(TransactionBase):
 
     @classmethod
     def _deserialize_data(cls, data: bytes):
-        return transaction_capnp.ContractTransaction.from_bytes_packed(data)
+        return transaction_capnp.Transaction.from_bytes_packed(data)
 
     @classmethod
     def _deserialize_payload(cls, data: bytes):
@@ -41,7 +41,7 @@ class ContractTransaction(TransactionBase):
         if not nonce:
             nonce = wallet.get_vk(sender_sk) + ":" + secrets.token_bytes(32).hex()
 
-        struct = transaction_capnp.ContractTransaction.new_message()
+        struct = transaction_capnp.Transaction.new_message()
         payload = transaction_capnp.TransactionPayload.new_message()
 
         payload.sender = wallet.get_vk(sender_sk)
