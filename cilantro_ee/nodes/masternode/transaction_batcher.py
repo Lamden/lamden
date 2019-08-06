@@ -11,7 +11,6 @@ import capnp
 from cilantro_ee.messages import capnp as schemas
 import hashlib
 from cilantro_ee.messages._new.message import MessageTypes
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.protocol.wallet import Wallet
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -60,7 +59,7 @@ class TransactionBatcher(Worker):
     def handle_ipc_msg(self, frames):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
-        msg_type = bytes_to_int(frames[0])
+        msg_type = frames[0]
         #msg_blob = frames[1]
 
         self.log.info('Got message on IPC {}'.format(msg_type))
@@ -142,7 +141,7 @@ class TransactionBatcher(Worker):
             batch.timestamp = timestamp
 
             self.pub_sock.send_msg(msg=batch.to_bytes_packed(),
-                                   msg_type=int_to_bytes(MessageTypes.TRANSACTION_BATCH),
+                                   msg_type=MessageTypes.TRANSACTION_BATCH,
                                    filter=TRANSACTION_FILTER.encode())
 
             self.num_bags_sent = self.num_bags_sent + NUM_BLOCKS

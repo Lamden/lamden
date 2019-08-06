@@ -1,6 +1,4 @@
-from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
+
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
@@ -10,13 +8,11 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
 from os.path import join
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants import conf
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
-from cilantro_ee.messages._new.message import MessageTypes
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')

@@ -18,7 +18,6 @@ import os
 import capnp
 
 from cilantro_ee.messages._new.message import MessageTypes
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -192,7 +191,7 @@ class CatchupManager:
         }).to_bytes_packed()
 
         self.pub.send_msg(BLOCK_IDX_REQ_FILTER.encode(),
-                          int_to_bytes(MessageTypes.BLOCK_INDEX_REQUEST),
+                          MessageTypes.BLOCK_INDEX_REQUEST,
                           req)
 
         # self.log.important2("SEND BIR")
@@ -353,7 +352,7 @@ class CatchupManager:
 
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(filter=reply_to_vk,
-                             msg_type=int_to_bytes(MessageTypes.BLOCK_INDEX_REPLY),
+                             msg_type=MessageTypes.BLOCK_INDEX_REPLY,
                              msg=reply._data if reply._data is not None else b'')
 
     # MASTER ONLY CALL

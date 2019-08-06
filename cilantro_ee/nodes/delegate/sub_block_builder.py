@@ -25,7 +25,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages._new.message import MessageTypes, MessageManager
+from cilantro_ee.messages._new.message import MessageTypes
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -38,7 +38,6 @@ from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
 from cilantro_ee.utils.hasher import Hasher
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time
@@ -185,7 +184,7 @@ class SubBlockBuilder(Worker):
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), b''])
+        self.ipc_dealer.send_multipart([MessageTypes.READY_INTERNAL, b''])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def initialize_next_block_to_make(self, next_block_index: int):
@@ -285,7 +284,7 @@ class SubBlockBuilder(Worker):
         self.log.info("SBB received an IPC message {}".format(frames))
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
-        msg_type = bytes_to_int(frames[0])
+        msg_type = frames[0]
         msg_blob = frames[1]
         msg = None
 
@@ -320,7 +319,7 @@ class SubBlockBuilder(Worker):
         if isinstance(message, MessageBase):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
 
-            self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+            self.ipc_dealer.send_multipart([message_type, message.serialize()])
 ###
 
     def adjust_work_load(self, input_bag, is_add: bool):
@@ -328,17 +327,17 @@ class SubBlockBuilder(Worker):
 
         # Create Signal
         if self.num_txn_bags == 0:
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), b''])
+            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
 
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), b''])
+            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
 
 # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
 
-        if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
+        if msg_type == MessageTypes.TRANSACTION_BATCH and \
                 0 <= index < len(self.sb_managers):
 
             batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
@@ -421,7 +420,7 @@ class SubBlockBuilder(Worker):
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
 
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
 
     def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
         """
@@ -464,7 +463,7 @@ class SubBlockBuilder(Worker):
 
         self.pending_transactions = []
 
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
 
 
     def create_sb_contender(self, sb_idx: int, sb_data: SBData):

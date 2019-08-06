@@ -12,9 +12,8 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-from cilantro_ee.messages._new.message import MessageTypes, MessageManager
+from cilantro_ee.messages._new.message import MessageTypes
 from typing import List
 from cilantro_ee.protocol.wallet import _verify
 import math, asyncio, zmq, time
@@ -178,11 +177,11 @@ class BlockAggregator(Worker):
         msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
-        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REQUEST:
+        if msg_type == MessageTypes.BLOCK_INDEX_REQUEST:
             req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(msg_blob)
             self.catchup_manager.recv_block_idx_req(req)
 
-        elif bytes_to_int(msg_type) == MessageTypes.SUBBLOCK_CONTENDER:
+        elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
             msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
             if not self.catchup_manager.is_catchup_done():
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
@@ -191,8 +190,8 @@ class BlockAggregator(Worker):
                 self.recv_sub_block_contender(signature.signer, msg)
 
         # Process block notification messages
-        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
-             bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION:
+        elif msg_type == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
+             msg_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
 
             # Unpack the message
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
@@ -214,7 +213,7 @@ class BlockAggregator(Worker):
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
 
-            self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.READY_INTERNAL), b''])
+            self.ipc_router.send_multipart([b'0', MessageTypes.READY_INTERNAL, b''])
 
             time.sleep(3)
 
@@ -224,7 +223,7 @@ class BlockAggregator(Worker):
             signature = self.wallet.sign(timestamp_as_bytes)
 
             external_ready_signal = signal_capnp.ExternalSignal.new_message(
-                id=MessageTypes.READY_EXTERNAL,
+                id=0, # Probably can deprecate this
                 timestamp=timestamp,
                 sender=self.wallet.verifying_key(),
                 signature=signature
@@ -233,7 +232,7 @@ class BlockAggregator(Worker):
 ### Send signed READY signal on pub
             self.log.success('READY SIGNAL SENT TO SUBS')
             self.pub.send_msg(msg=external_ready_signal,
-                              msg_type=int_to_bytes(MessageTypes.READY_EXTERNAL),
+                              msg_type=MessageTypes.READY_EXTERNAL,
                               filter=DEFAULT_FILTER.encode())
 
 ### HM.
@@ -242,14 +241,14 @@ class BlockAggregator(Worker):
 
         sender, msg_type, msg_blob = frames
 
-        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REPLY:
+        if msg_type == MessageTypes.BLOCK_INDEX_REPLY:
             if self.catchup_manager.recv_block_idx_reply(sender, msg_blob):
                 self._set_catchup_done()
 
-        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REQUEST:
+        elif msg_type == MessageTypes.BLOCK_DATA_REQUEST:
             self.catchup_manager.recv_block_data_req(sender, msg_blob)
 
-        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REPLY:
+        elif msg_type == MessageTypes.BLOCK_DATA_REPLY:
             if self.catchup_manager.recv_block_data_reply(msg_blob):
                 self._set_catchup_done()
 
@@ -323,7 +322,7 @@ class BlockAggregator(Worker):
 
     def send_new_block_notif(self, block_data):
 
-        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.NON_EMPTY_BLOCK_MADE), b''])
+        self.ipc_router.send_multipart([b'0', MessageTypes.NON_EMPTY_BLOCK_MADE, b''])
 
         # new_block_notif = NewBlockNotification.create(block_data.prevBlockHash,
         #                                               block_data.blockHash,
@@ -347,7 +346,7 @@ class BlockAggregator(Worker):
         ).to_bytes_packed()
 
         self.pub.send_msg(filter=NEW_BLK_NOTIF_FILTER.encode(),
-                          msg_type=int_to_bytes(MessageTypes.NEW_BLOCK_NOTIFICATION),
+                          msg_type=MessageTypes.NEW_BLOCK_NOTIFICATION,
                           msg=msg)
 
         self.log.info('Published new block notif with hash "{}" and prev hash {}'
@@ -357,7 +356,7 @@ class BlockAggregator(Worker):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
         time.sleep(20)
 
-        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), b''])
+        self.ipc_router.send_multipart([b'0', MessageTypes.EMPTY_BLOCK_MADE, b''])
 
         #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
@@ -387,7 +386,7 @@ class BlockAggregator(Worker):
         ).to_bytes_packed()
 
 # SEND EMPTY BLOCK ON DEFAULT(?)
-        self.pub.send_msg(msg=skip_block_notification, filter=DEFAULT_FILTER.encode(), msg_type=int_to_bytes(MessageTypes.SKIP_BLOCK_NOTIFICATION))
+        self.pub.send_msg(msg=skip_block_notification, filter=DEFAULT_FILTER.encode(), msg_type=MessageTypes.SKIP_BLOCK_NOTIFICATION)
 
         self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
 
