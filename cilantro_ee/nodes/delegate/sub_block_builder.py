@@ -330,14 +330,14 @@ class SubBlockBuilder(Worker):
             no_transactions = MessageManager.pack_dict(MessageTypes.NO_TRANSACTIONS,
                                                        arg_dict={'messageType': MessageTypes.NO_TRANSACTIONS})
 
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), no_transactions])
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), b''])
 
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
             pending_transactions = MessageManager.pack_dict(MessageTypes.PENDING_TRANSACTIONS,
                                                             arg_dict={'messageType': MessageTypes.PENDING_TRANSACTIONS})
 
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), b''])
 
 # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
@@ -514,6 +514,11 @@ class SubBlockBuilder(Worker):
 
         transactions = []
         for transaction in tx_batch.transactions:
+
+            # Verify sig
+            # Make sure there are enough stamps
+            # Make sure the nonce is valid
+
             transactions.append(UnpackedContractTransaction(transaction))
             self.pending_transactions.append(transaction)
 

@@ -573,4 +573,4 @@ class BlockManager(Worker):
                                                    arg_dict={'messageType': MessageTypes.MAKE_NEXT_BLOCK})
 
         for idx in range(NUM_SB_BUILDERS):
-            self.ipc_router.send_multipart([str(idx).encode(), int_to_bytes(MessageTypes.MAKE_NEXT_BLOCK), make_next_block])
+            self.ipc_router.send_multipart([str(idx).encode(), int_to_bytes(MessageTypes.MAKE_NEXT_BLOCK), b''])

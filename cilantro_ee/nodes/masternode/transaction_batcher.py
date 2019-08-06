@@ -114,6 +114,12 @@ class TransactionBatcher(Worker):
                 # Get a transaction from the queue
                 tx = self.queue.get()
 
+                # Check nonce
+                # if processor != self.verifying_key, continue
+                # current_nonce = self.driver.get('__nonces__:processor:sender')
+                # if currenct_nonce == None and nonce != 0, continue
+                # if nonce != current_nonce + 1, contine
+
                 # Hash it
                 tx_bytes = tx.as_builder().to_bytes_packed()
                 h.update(tx_bytes)

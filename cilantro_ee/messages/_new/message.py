@@ -1,7 +1,5 @@
-import capnp
-import enum
-from cilantro_ee.protocol.wallet import Wallet, _verify
-from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
+from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.protocol.pow import SHA3POWBytes
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -12,13 +10,6 @@ envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
-# Message type registration
-# Each type is a uint32 number (0 - 4294967295)
-#     0 -  9999 = block data
-# 10000 - 19999 = envelope
-# 20000 - 29999 = transaction
-# 30000 - 39999 = signals
-# 40000 - 49999 = consensus
 
 class Serializer:
     def __init__(self, capnp_type, sign=False, prove=False):

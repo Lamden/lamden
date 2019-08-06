@@ -6,7 +6,6 @@ from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.ordering import OrderingContainer
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
@@ -45,11 +44,6 @@ client = ContractingClient()
 
 static_headers = {}
 
-#
-# @app.middleware('response')
-# async def set_secure_headers(request, response):
-#     SecureHeaders.sanic(response)
-
 
 def _respond_to_request(payload, headers={}, status=200, resptype='json'):
     if resptype == 'json':
@@ -72,7 +66,6 @@ async def submit_transaction(request):
     # Try to deserialize transaction.
     try:
         tx_bytes = request.body
-        tx = ContractTransaction.from_bytes(tx_bytes)
         tx = transaction_capnp.ContractTransaction.from_bytes_packed(tx_bytes)
 
     except Exception as e:

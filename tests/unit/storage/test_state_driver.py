@@ -1,12 +1,10 @@
 from unittest import TestCase
 import unittest
-from cilantro_ee.messages.transaction.data import TransactionDataBuilder
-from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
-from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
+from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
 from cilantro_ee.storage.state import MetaDataStorage
 import json
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.messages._new.transactions.messages import ContractTransaction
+from cilantro_ee.protocol.transaction import TransactionBuilder
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -31,11 +29,11 @@ class TestStateDriver(TestCase):
         get_sets = []
         for i in range(50):
             w = Wallet()
-            tx = ContractTransaction(w.verifying_key(), contract='currency',
-                                     function='transfer',
-                                     kwargs={'amount': 10, 'to': 'jeff'},
-                                     stamps=500000,
-                                     nonce=w.verifying_key() + secrets.token_bytes(32))
+            tx = TransactionBuilder(w.verifying_key(), contract='currency',
+                                    function='transfer',
+                                    kwargs={'amount': 10, 'to': 'jeff'},
+                                    stamps=500000,
+                                    nonce=w.verifying_key() + secrets.token_bytes(32))
 
             tx.sign(w.signing_key())
             packed_tx = tx.as_struct()
