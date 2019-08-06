@@ -1,23 +1,21 @@
 import time
 import asyncio
-import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
-from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
+from cilantro_ee.messages.block_data.state_update import BlockIndexReply, BlockDataRequest
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 
-from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.messages.message import MessageTypes
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')

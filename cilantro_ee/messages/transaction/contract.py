@@ -32,20 +32,21 @@ class ContractTransaction(TransactionBase):
 
     @classmethod
     def _deserialize_payload(cls, data: bytes):
-        return transaction_capnp.ContractPayload.from_bytes(data)
+        return transaction_capnp.TransactionPayload.from_bytes(data)
 
     @classmethod
-    def create(cls, sender_sk: str, stamps_supplied: int, contract_name: str, func_name: str, nonce: str, kwargs: dict):
+    def create(cls, sender_sk: str, stamps_supplied: int, processor: bytes, contract_name: str, func_name: str, nonce: str, kwargs: dict):
         # assert stamps_supplied > 0, "Must supply positive stamps amount"
 
         if not nonce:
             nonce = wallet.get_vk(sender_sk) + ":" + secrets.token_bytes(32).hex()
 
         struct = transaction_capnp.ContractTransaction.new_message()
-        payload = transaction_capnp.ContractPayload.new_message()
+        payload = transaction_capnp.TransactionPayload.new_message()
 
         payload.sender = wallet.get_vk(sender_sk)
         payload.stampsSupplied = stamps_supplied
+        payload.processor = processor
         payload.contractName = contract_name
         payload.functionName = func_name
         payload.nonce = nonce

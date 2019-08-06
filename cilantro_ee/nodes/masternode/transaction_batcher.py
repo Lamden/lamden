@@ -5,12 +5,12 @@ from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 import zmq.asyncio
-import asyncio, time, os
+import asyncio, time
 import os
 import capnp
 from cilantro_ee.messages import capnp as schemas
 import hashlib
-from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.protocol.wallet import Wallet
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')

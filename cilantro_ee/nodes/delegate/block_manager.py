@@ -19,8 +19,6 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.storage.state import MetaDataStorage
 
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
@@ -29,13 +27,13 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 
-from cilantro_ee.messages.block_data.notification import BlockNotification, FailedBlockNotification
-from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
-import asyncio, zmq, os, time, random
+import asyncio, zmq, time, random
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp

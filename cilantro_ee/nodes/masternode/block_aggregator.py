@@ -2,7 +2,6 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 from cilantro_ee.storage.master import CilantroStorageDriver
@@ -13,7 +12,7 @@ from cilantro_ee.constants.masternode import *
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.messages.message import MessageTypes
 from typing import List
 from cilantro_ee.protocol.wallet import _verify
 import math, asyncio, zmq, time

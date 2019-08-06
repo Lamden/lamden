@@ -17,7 +17,6 @@
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
-from cilantro_ee.logger import get_logger
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
@@ -25,7 +24,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages._new.message import MessageTypes
+from cilantro_ee.messages.message import MessageTypes
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -64,9 +63,10 @@ class Metadata:
 
 
 class Payload:
-    def __init__(self, sender, nonce, stamps_supplied, contract_name, function_name, kwargs):
+    def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
         self.sender = sender
         self.nonce = nonce
+        self.processor = processor
         self.stampsSupplied = stamps_supplied
         self.contractName = contract_name
         self.functionName = function_name
@@ -88,6 +88,7 @@ class UnpackedContractTransaction:
 
         self.payload = Payload(sender=capnp_struct.payload.sender,
                                nonce=capnp_struct.payload.nonce,
+                               processor=capnp_struct.payload.processor,
                                stamps_supplied=capnp_struct.payload.stampsSupplied,
                                contract_name=capnp_struct.payload.contractName,
                                function_name=capnp_struct.payload.functionName,

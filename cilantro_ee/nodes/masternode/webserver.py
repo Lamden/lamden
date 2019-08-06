@@ -82,8 +82,7 @@ async def submit_transaction(request):
     tx_hash = h.digest()
 
     return json({'success': 'Transaction successfully submitted to the network.',
-                 'nonce': tx.payload.nonce.hex(), 'hash': tx_hash.hex()})
-
+                 'hash': tx_hash.hex()})
 
 
 # Returns {'contracts': JSON List of strings}

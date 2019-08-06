@@ -23,16 +23,16 @@ struct TransactionPayload {
     processor @1: Data;
     nonce @2 :UInt64;
 
-    stamps @3 :UInt64;
+    stampsSupplied @3 :UInt64;
 
-    contract @4 :Text;
-    function @5 :Text;
-    arguments @6 :V.Map(Text, V.Value);
+    contractName @4 :Text;
+    functionName @5 :Text;
+    kwargs @6 :V.Map(Text, V.Value);
 }
 
 struct ContractTransaction {
     metadata @0: MetaData;
-    payload @1: ContractPayload;
+    payload @1: TransactionPayload;
 }
 struct TransactionData {
     transaction @0 :ContractTransaction;

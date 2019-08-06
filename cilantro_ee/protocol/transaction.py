@@ -45,10 +45,11 @@ class TransactionWrapper:
 
 
 class TransactionBuilder:
-    def __init__(self, sender, stamps: int, contract: str, function: str, nonce: str, kwargs: dict):
+    def __init__(self, sender, stamps: int, processor: bytes, contract: str, function: str, nonce: bytes, kwargs: dict):
         # Stores variables in self for convenience
         self.sender = sender
         self.stamps = stamps
+        self.processor = processor
         self.contract = contract
         self.function = function
         self.nonce = nonce
@@ -56,9 +57,10 @@ class TransactionBuilder:
 
         # Serializes all that it can on init
         self.struct = transaction_capnp.ContractTransaction.new_message()
-        self.payload = transaction_capnp.ContractPayload.new_message()
+        self.payload = transaction_capnp.TransactionPayload.new_message()
 
         self.payload.sender = self.sender
+        self.payload.processor = self.processor
         self.payload.stampsSupplied = self.stamps
         self.payload.contractName = self.contract
         self.payload.functionName = self.function
