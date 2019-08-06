@@ -383,7 +383,7 @@ class CatchupManager:
         block.prevBlockHash = blk_dict['prevBlockHash']
         block.subBlocks = [subblock_capnp.SubBlock.from_bytes_packed(s).as_builder() for s in blk_dict['subBlocks']]
 
-        self.router.send_msg(block.to_bytes_packed(), header=sender_vk.encode())
+        self.router.send_msg(sender_vk.encode(), msg=block.to_bytes_packed(), msg_type=MessageTypes.BLOCK_DATA_REPLY)
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del

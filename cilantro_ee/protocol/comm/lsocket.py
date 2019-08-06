@@ -105,16 +105,6 @@ class LSocketBase:
 
         self.send_multipart([filter, msg_type, msg])
 
-    def send_envelope(self, env: Envelope, header: bytes=None):
-        """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """
-        data = env.serialize()
-
-        if header is not None:
-            assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
-            self.send_multipart([header, data])
-        else:
-            self.send_multipart([data])
-
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         """ Registered a handler function for data received on this socket.
         :param handler_func: The handler function, which is invoked with the raw frames received over the wire (as a
@@ -145,7 +135,7 @@ class LSocketBase:
                 # self.log.spam("Socket waiting for multipart msg...")
                 msg = await self.socket.recv_multipart()
                 # self.log.spam("Socket received multipart msg: {}".format(msg))
-                should_forward = self._process_msg(msg)
+                should_forward = True
             except Exception as e:
                 if type(e) is asyncio.CancelledError:
                     self.log.warning("Socket got asyncio.CancelledError. Breaking from lister loop.")
@@ -160,11 +150,6 @@ class LSocketBase:
                 func(msg, key)
             else:
                 func(msg)
-
-    def _process_msg(self, msg: List[bytes]) -> bool:
-        """ Custom messages processing to be implemented by subclasses. This method should return True if the
-        msg should be forwarded to the user handlers, and False otherwise. See LSocketRouter for example."""
-        return True
 
     def handle_overlay_reply(self, event: dict):
         self.log.spam("Socket handling overlay reply {}".format(event))
@@ -279,32 +264,6 @@ class LSocketBase:
             self.pending_commands.append((cmd_name, args, kwargs))
 
         return _capture_args
-
-    def _package_msg(self, msg: MessageBase):
-        """ Convenience method to package a message into an envelope
-        :param msg: The MessageBase instance to package
-        :return: An Envelope instance
-        """
-        if type(msg) is not Envelope and issubclass(type(msg), MessageBase):
-            return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
-                                                verifying_key=Keys.vk)
-
-        # tuple of msg_type and msg_payload
-        elif type(msg) == tuple:
-            return None
-
-    def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
-        """ Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
-        in the reply envelope the UUID must be the hash of the original request's uuid (not some randomly generated int)
-        :param reply: The reply message (an instance of MessageBase)
-        :param req_env: The original request envelope (an instance of Envelope)
-        :return: An Envelope instance """
-        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
-        request_uuid = req_env.meta.uuid
-        reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
-
-        return Envelope.create_from_message(message=reply, signing_key=Keys.sk,
-                                            verifying_key=Keys.vk, uuid=reply_uuid)
 
     def _flush_pending_commands(self):
         self.log.debug("Flushing {} pending commands from queue".format(len(self.pending_commands)))

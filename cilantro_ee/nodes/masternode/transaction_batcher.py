@@ -125,7 +125,7 @@ class TransactionBatcher(Worker):
                 h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
-                #tx = transaction_capnp.ContractTransaction.from_bytes_packed(t)
+                # tx_struct = transaction_capnp.ContractTransaction.from_bytes_packed(tx)
                 tx_list.append(tx)
 
             batch = transaction_capnp.TransactionBatch.new_message()

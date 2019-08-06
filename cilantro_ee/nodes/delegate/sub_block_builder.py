@@ -312,6 +312,7 @@ class SubBlockBuilder(Worker):
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
 
+### DEPRECATE
     def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
@@ -321,6 +322,7 @@ class SubBlockBuilder(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
 
             self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+###
 
     def adjust_work_load(self, input_bag, is_add: bool):
         self.num_txn_bags += 1 if is_add else -1
