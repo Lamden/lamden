@@ -185,8 +185,7 @@ class SubBlockBuilder(Worker):
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
-        message = MessageManager.pack_dict(MessageTypes.READY_INTERNAL, arg_dict={'messageType': MessageTypes.READY_INTERNAL})
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), message])
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), b''])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def initialize_next_block_to_make(self, next_block_index: int):
@@ -329,16 +328,10 @@ class SubBlockBuilder(Worker):
 
         # Create Signal
         if self.num_txn_bags == 0:
-            no_transactions = MessageManager.pack_dict(MessageTypes.NO_TRANSACTIONS,
-                                                       arg_dict={'messageType': MessageTypes.NO_TRANSACTIONS})
-
             self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), b''])
 
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
-            pending_transactions = MessageManager.pack_dict(MessageTypes.PENDING_TRANSACTIONS,
-                                                            arg_dict={'messageType': MessageTypes.PENDING_TRANSACTIONS})
-
             self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), b''])
 
 # ONLY FOR TX BATCHES

@@ -569,8 +569,5 @@ class BlockManager(Worker):
         self.db_state.reset()
         self.log.info("Sending MakeNextBlock message to SBBs")
 
-        make_next_block = MessageManager.pack_dict(MessageTypes.MAKE_NEXT_BLOCK,
-                                                   arg_dict={'messageType': MessageTypes.MAKE_NEXT_BLOCK})
-
         for idx in range(NUM_SB_BUILDERS):
             self.ipc_router.send_multipart([str(idx).encode(), int_to_bytes(MessageTypes.MAKE_NEXT_BLOCK), b''])

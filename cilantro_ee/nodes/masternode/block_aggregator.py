@@ -214,10 +214,7 @@ class BlockAggregator(Worker):
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
 
-            internal_ready_signal = MessageManager.pack_dict(MessageTypes.READY_INTERNAL,
-                                                             arg_dict={'messageType': MessageTypes.READY_INTERNAL})
-
-            self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.READY_INTERNAL), internal_ready_signal])
+            self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.READY_INTERNAL), b''])
 
             time.sleep(3)
 
@@ -326,10 +323,7 @@ class BlockAggregator(Worker):
 
     def send_new_block_notif(self, block_data):
 
-        non_empty_block_made = MessageManager.pack_dict(MessageTypes.NON_EMPTY_BLOCK_MADE,
-                                                        arg_dict={'messageType': MessageTypes.NON_EMPTY_BLOCK_MADE})
-
-        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.NON_EMPTY_BLOCK_MADE), non_empty_block_made])
+        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.NON_EMPTY_BLOCK_MADE), b''])
 
         # new_block_notif = NewBlockNotification.create(block_data.prevBlockHash,
         #                                               block_data.blockHash,
@@ -363,9 +357,7 @@ class BlockAggregator(Worker):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
         time.sleep(20)
 
-        empty_block_made = MessageManager.pack_dict(MessageTypes.EMPTY_BLOCK_MADE, arg_dict={'messageType': MessageTypes.EMPTY_BLOCK_MADE})
-
-        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), empty_block_made])
+        self.ipc_router.send_multipart([b'0', int_to_bytes(MessageTypes.EMPTY_BLOCK_MADE), b''])
 
         #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
