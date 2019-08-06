@@ -6,7 +6,6 @@ from sanic_cors import CORS, cross_origin
 import json as _json
 from contracting.client import ContractingClient
 from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.transaction.ordering import OrderingContainer
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
