@@ -85,50 +85,6 @@ class TransactionBatcher(Worker):
         while not self._ready:
             await asyncio.sleep(1)
 
-    @staticmethod
-    def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: bytes,
-                             driver: MetaDataStorage):
-        # Check nonce processor is correct
-        if tx.payload.processor != expected_processor:
-            return False
-
-        pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
-        if pending_nonce is None:
-            pending_nonce = 0
-
-        if tx.payload.nonce != pending_nonce:
-            return False
-
-        pending_nonce += 1
-        driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
-
-        if not _verify(tx.payload.sender,
-                       tx.payload.as_builder().to_bytes_packed(),
-                       tx.metadata.signature):
-            return False
-
-        if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
-                                  tx.metadata.proof):
-            return False
-
-        if tx.payload.stampsSupplied > 0:
-            currency_contract = 'currency'
-            balances_hash = 'balances'
-
-            balances_key = '{}{}{}{}{}'.format(currency_contract,
-                                               config.INDEX_SEPARATOR,
-                                               balances_hash,
-                                               config.DELIMITER,
-                                               tx.payload.sender.hex())
-
-            balance = driver.get(balances_key) or 0
-
-            if balance < tx.payload.stampsSupplied:
-                return False
-
-        return True
-
-
     async def compose_transactions(self):
         await self._wait_until_ready()
 

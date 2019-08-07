@@ -1,6 +1,8 @@
 from decimal import Decimal
 from cilantro_ee.protocol import wallet
-from cilantro_ee.protocol.pow import SHA3POW
+from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
+from contracting import config
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.messages import capnp as schemas
 import time
 import os
@@ -45,7 +47,7 @@ class TransactionWrapper:
 
 
 class TransactionBuilder:
-    def __init__(self, sender, stamps: int, processor: bytes, contract: str, function: str, nonce: bytes, kwargs: dict):
+    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, nonce: int):
         # Stores variables in self for convenience
         self.sender = sender
         self.stamps = stamps
@@ -141,3 +143,51 @@ def verify_packed_tx(sender, tx):
         return verified and proof
     except:
         return False
+
+
+def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: bytes,
+                         driver: MetaDataStorage):
+    # Check nonce processor is correct
+    if tx.payload.processor != expected_processor:
+        return False
+
+    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
+    if pending_nonce is None:
+        pending_nonce = 0
+
+    print(pending_nonce)
+
+    if tx.payload.nonce != pending_nonce:
+        return False
+
+    print('ok')
+
+    pending_nonce += 1
+    print(pending_nonce)
+    driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
+
+    if not wallet._verify(tx.payload.sender,
+                          tx.payload.as_builder().to_bytes_packed(),
+                          tx.metadata.signature):
+        return False
+
+    if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
+                              tx.metadata.proof):
+        return False
+
+    if tx.payload.stampsSupplied > 0:
+        currency_contract = 'currency'
+        balances_hash = 'balances'
+
+        balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                           config.INDEX_SEPARATOR,
+                                           balances_hash,
+                                           config.DELIMITER,
+                                           tx.payload.sender.hex())
+
+        balance = driver.get(balances_key) or 0
+
+        if balance < tx.payload.stampsSupplied:
+            return False
+
+    return True

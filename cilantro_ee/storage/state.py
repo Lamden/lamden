@@ -73,13 +73,25 @@ class MetaDataStorage(DatabaseDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        self.get(b':'.join([self.pending_nonce_key, processor, sender]))
+        n = self.get(b':'.join([self.pending_nonce_key, processor, sender]))
+
+        if n is not None:
+            nonce = int(n.decode())
+            return nonce
+        return n
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        self.get(b':'.join([self.nonce_key, processor, sender]))
+        n = self.get(b':'.join([self.nonce_key, processor, sender]))
+
+        if n is not None:
+            nonce = int(n.decode())
+            return nonce
+        return n
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(b':'.join([self.pending_nonce_key, processor, sender]), nonce)
+        n = '{}'.format(nonce).encode()
+        self.set(b':'.join([self.pending_nonce_key, processor, sender]), n)
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(b':'.join([self.nonce_key, processor, sender]), nonce)
+        n = '{}'.format(nonce).encode()
+        self.set(b':'.join([self.nonce_key, processor, sender]), n)
