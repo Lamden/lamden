@@ -4,7 +4,6 @@ from cilantro_ee.protocol.transaction import TransactionBuilder, transaction_is_
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.messages import capnp as schemas
 from contracting import config
-from contracting.db import encoder
 import secrets
 import os
 import capnp
@@ -181,8 +180,10 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            tx.payload.sender.hex())
 
+        self.driver.set(balances_key, 500000)
+
         is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
         balance = self.driver.get(balances_key) or 0
 
         self.assertEqual(balance, 500000)
-        self.assertFalse(is_valid)
+        self.assertTrue(is_valid)
