@@ -3,7 +3,7 @@ from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.protocol.transaction import TransactionBuilder, transaction_is_valid
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.messages import capnp as schemas
-
+from contracting import config
 import secrets
 import os
 import capnp
@@ -101,4 +101,13 @@ class TestTXValidity(TestCase):
 
         is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
 
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           tx.payload.sender.hex())
+
+        balance = self.driver.get(balances_key) or 0
+
+        self.assertEqual(balance, 0)
         self.assertFalse(is_valid)

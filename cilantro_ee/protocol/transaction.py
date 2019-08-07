@@ -101,7 +101,7 @@ class TransactionBuilder:
         self.tx_signed = True
 
     def generate_proof(self):
-        self.proof = SHA3POW.find(self.payload_bytes)[0]
+        self.proof = SHA3POWBytes.find(self.payload_bytes)
         self.proof_generated = True
 
     def serialize(self):
