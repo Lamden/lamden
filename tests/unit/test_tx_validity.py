@@ -10,15 +10,14 @@ import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
+
 class TestTXValidity(TestCase):
     def setUp(self):
         self.driver = MetaDataStorage()
-        #self.driver.flush()
-        pass
+        self.driver.flush()
 
     def tearDown(self):
-        #self.driver.flush()
-        pass
+        self.driver.flush()
 
     def test_processor_incorrect_returns_false(self):
         w = Wallet()

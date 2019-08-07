@@ -155,15 +155,10 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
     if pending_nonce is None:
         pending_nonce = 0
 
-    print(pending_nonce)
-
     if tx.payload.nonce != pending_nonce:
         return False
 
-    print('ok')
-
     pending_nonce += 1
-    print(pending_nonce)
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
 
     if not wallet._verify(tx.payload.sender,
