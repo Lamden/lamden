@@ -55,7 +55,12 @@ def _respond_to_request(payload, headers={}, status=200, resptype='json'):
 # ping to check whether server is online or not
 @app.route("/ping", methods=["GET","OPTIONS",])
 async def ping(request):
-    return _respond_to_request({'status':'online'})
+    return _respond_to_request({'status': 'online'})
+
+
+@app.route('/id', methods=['GET'])
+async def get_id(request):
+    return json({'verifying_key': conf.HOST_VK.hex()})
 
 
 @app.route("/", methods=["POST","OPTIONS",])

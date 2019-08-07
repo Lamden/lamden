@@ -5,7 +5,7 @@ from cilantro_ee.protocol.overlay.server import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 from cilantro_ee.protocol.wallet import Wallet
-
+from cilantro_ee.constants import conf
 import asyncio
 import time
 
@@ -38,6 +38,8 @@ class NodeBase(Context):
         self.log = get_logger(name)
         self.ip = ip
         self.wallet = Wallet(seed=signing_key)
+
+        conf.HOST_VK = self.wallet.verifying_key()
 
         self.log.info("Starting node components")
         quorum = self.start_node()

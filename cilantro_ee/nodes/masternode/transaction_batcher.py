@@ -11,7 +11,7 @@ import capnp
 from cilantro_ee.messages import capnp as schemas
 import hashlib
 from cilantro_ee.messages.message import MessageTypes
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.protocol.wallet import Wallet, _verify
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -114,7 +114,23 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 # Check nonce
-                # if processor != self.verifying_key, continue
+                if tx.payload.processor != self.wallet.verifying_key():
+                    self.log.critical('Processor not us!')
+                    continue
+
+                # Validate signature
+                if not _verify(tx.payload.sender,
+                               tx.payload.as_builder().to_bytes_packed(),
+                               tx.metadata.signature):
+
+                    self.log.critical('TX not signed properly!')
+                    continue
+
+                # Validate proof
+
+                #
+
+
                 # current_nonce = self.driver.get('__nonces__:processor:sender')
                 # if currenct_nonce == None and nonce != 0, continue
                 # if nonce != current_nonce + 1, contine
