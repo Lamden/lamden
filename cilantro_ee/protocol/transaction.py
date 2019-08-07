@@ -146,7 +146,7 @@ def verify_packed_tx(sender, tx):
 
 
 def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: bytes,
-                         driver: MetaDataStorage):
+                         driver: MetaDataStorage, strict=True):
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
@@ -157,10 +157,18 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
     if pending_nonce is None:
         pending_nonce = 0
 
-    if tx.payload.nonce != pending_nonce:
-        return False
+    # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
+    if strict:
+        if tx.payload.nonce != pending_nonce:
+            return False
+        pending_nonce += 1
 
-    pending_nonce += 1
+    # However, some of those tx's might fail verification and never make it to delegates. Thus,
+    # delegates shouldn't be as concerned. (1, 2, 4) should be valid as well.
+    else:
+        if tx.payload.nonce < pending_nonce:
+            return False
+        pending_nonce = tx.payload.nonce + 1
 
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),

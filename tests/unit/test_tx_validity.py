@@ -187,3 +187,322 @@ class TestTXValidity(TestCase):
 
         self.assertEqual(balance, 500000)
         self.assertTrue(is_valid)
+
+    def test_multiple_nonces_in_sequence_all_verify(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=1)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=2)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=3)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+    def test_non_sequence_fails_in_strict_mode(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=1)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=2)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=5)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertFalse(is_valid)
+
+    def test_greater_than_passes_in_no_strict_mode(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=1)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=2)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=5)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver,
+                                        strict=False)
+
+        self.assertTrue(is_valid)
+
+    def test_non_strict_fails_if_same_nonce(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver,
+                                        strict=False)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver,
+                                        strict=False)
+
+        self.assertFalse(is_valid)
+
+    def test_strict_fails_if_same_nonce(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertFalse(is_valid)

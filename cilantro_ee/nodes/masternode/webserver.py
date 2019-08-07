@@ -11,6 +11,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.storage.master import MasterStorage
+from cilantro_ee.storage.state import MetaDataStorage
 
 from multiprocessing import Queue
 import ast
@@ -41,6 +42,7 @@ ssl_key = '~/.ssh/server.key'
 CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 client = ContractingClient()
+metadata_driver = MetaDataStorage()
 
 static_headers = {}
 
@@ -61,6 +63,10 @@ async def ping(request):
 @app.route('/id', methods=['GET'])
 async def get_id(request):
     return json({'verifying_key': conf.HOST_VK.hex()})
+
+@app.route('/nonce/<vk>', methods=['GET'])
+async def get_nonce(request, vk):
+    metadata_driver.get_pending_nonce(processor=conf.HOST_VK.hex())
 
 
 @app.route("/", methods=["POST","OPTIONS",])

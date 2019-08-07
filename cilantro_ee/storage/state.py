@@ -7,8 +7,8 @@ from contracting.db.driver import DatabaseDriver
 from contracting.db import encoder
 
 class MetaDataStorage(DatabaseDriver):
-    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key=b'__n',
-                 pending_nonce_key=b'__pn'):
+    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key='__n',
+                 pending_nonce_key='__pn'):
 
         self.block_hash_key = block_hash_key
         self.block_num_key = block_num_key
@@ -81,15 +81,15 @@ class MetaDataStorage(DatabaseDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(b':'.join([self.pending_nonce_key, processor, sender]))
+        nonce = self.get(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]))
         return encoder.decode(nonce)
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(b':'.join([self.nonce_key, processor, sender]))
+        nonce = self.get(':'.join([self.nonce_key, processor.hex(), sender.hex()]))
         return encoder.decode(nonce)
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(b':'.join([self.pending_nonce_key, processor, sender]), encoder.encode(nonce))
+        self.set(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]), encoder.encode(nonce))
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(b':'.join([self.nonce_key, processor, sender]), encoder.encode(nonce))
+        self.set(':'.join([self.nonce_key, processor.hex(), sender.hex()]), encoder.encode(nonce))
