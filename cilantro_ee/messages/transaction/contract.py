@@ -1,8 +1,6 @@
 from cilantro_ee.utils.lazy_property import lazy_property
 from cilantro_ee.messages.transaction.base import TransactionBase
-from cilantro_ee.messages.utils import validate_hex
 from cilantro_ee.protocol import wallet
-from cilantro_ee.utils import is_valid_hex
 from cilantro_ee.protocol.pow import SHA3POW
 from decimal import *
 import random, secrets

@@ -36,6 +36,8 @@ from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
+from cilantro_ee.protocol.transaction import transaction_is_valid
+
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
@@ -143,12 +145,7 @@ class SubBlockBuilder(Worker):
         self.sb_blder_idx = sbb_index
         self.startup = True
         self.num_txn_bags = 0
-        self._empty_txn_batch = transaction_capnp.TransactionBatch.new_message(
-            transactions=[],
-            timestamp=time.time(),
-            signature=b'',
-            sender=b''
-        )
+        self._empty_txn_batch = []
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
@@ -363,12 +360,22 @@ class SubBlockBuilder(Worker):
                                .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
                 return
 
-            # Get the hash of all transactions
+            # Set up a hasher for input hash and a list for valid txs
             h = hashlib.sha3_256()
-
-            #h.update('{}'.format(timestamp).encode())
+            valid_transactions = []
 
             for tx in batch.transactions:
+                # Double check to make sure all transactions are valid
+                if transaction_is_valid(tx=tx,
+                                        expected_processor=batch.sender,
+                                        driver=self.state,
+                                        strict=False):
+
+                    valid_transactions.append(tx)
+                else:
+                    self.log.critical('TX NOT VALID FOR SOME REASON.')
+
+                # Hash all transactions regardless because the proof from masternodes is derived from all hashes
                 h.update(tx.as_builder().to_bytes_packed())
 
             input_hash = h.digest()
@@ -376,24 +383,22 @@ class SubBlockBuilder(Worker):
             if not _verify(batch.sender, input_hash, batch.signature):
                 self.log.critical('INCORRECT SIGNATURE.')
                 return
-            else:
-                self.log.success('Input has verifies!')
 
-            self.log.info(input_hash)
             # if the sb_manager already has this bag, ignore it
             if input_hash in self.sb_managers[index].pending_txs:
                 self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
                 return
 
-        # DEBUG -- TODO DELETE
-        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
+            # DEBUG -- TODO DELETE
+            self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
 
-        self.sb_managers[index].processed_txs_timestamp = timestamp
+            self.sb_managers[index].processed_txs_timestamp = timestamp
 
-        self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
-        self.adjust_work_load(batch, True)
+            self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
+            self.adjust_work_load(valid_transactions, True)
 
-        self.sb_managers[index].pending_txs.append(input_hash, batch)
+            # Add the valid transactions to
+            self.sb_managers[index].pending_txs.append(input_hash, valid_transactions)
 
     def _create_empty_sbc(self, sb_idx: int, sb_data: SBData):
         """
@@ -477,7 +482,7 @@ class SubBlockBuilder(Worker):
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self,
                     input_hash: str,
-                    tx_batch: transaction_capnp.TransactionBatch,
+                    tx_batch: list,
                     timestamp: float,
                     sb_idx: int):
 
@@ -505,15 +510,12 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
-        self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
+        self.log.info('Transactions to execute: {}'.format(tx_batch))
 
         transactions = []
-        for transaction in tx_batch.transactions:
-
-            # Verify sig
-            # Make sure there are enough stamps
-            # Make sure the nonce is valid
-
+        for transaction in tx_batch:
+            # This should be streamlined so that we can just pass the tx_batch forward because it's already ready to be processed at this point
+            # The reason why it isn't like this already is because Contracting uses a weird pseudo wrapper for the capnp struct
             transactions.append(UnpackedContractTransaction(transaction))
             self.pending_transactions.append(transaction)
 
@@ -531,8 +533,7 @@ class SubBlockBuilder(Worker):
 
         return False
 
-
-    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sb_idx: int):
+    def _execute_input_bag(self, input_hash: bytes, tx_batch, sb_idx: int):
         return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sb_idx)
 
     def _make_next_sb(self):
@@ -559,6 +560,7 @@ class SubBlockBuilder(Worker):
                 self.sb_managers[sm_idx].to_finalize_txs.pop_front()
 
             sb_index = self.sb_managers[sm_idx].sub_block_index
+            timestamp = self.sb_managers[sm_idx].processed_txs_timestamp
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
 
                 input_hash, tx_batch = self.sb_managers[sm_idx].pending_txs.pop_front()
@@ -569,7 +571,7 @@ class SubBlockBuilder(Worker):
 
                 self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, tx_batch)
 
-                self._execute_input_bag(input_hash, tx_batch, sb_index)
+                self._execute_sb(input_hash, tx_batch, timestamp, sb_index)
 
             else:
                 timestamp = float(time.time())

@@ -1,10 +1,9 @@
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.messages.transaction.contract import ContractTransaction
-from cilantro_ee.messages.block_data.block_data import BlockData
 import json
 
 from contracting.db.driver import DatabaseDriver
 from contracting.db import encoder
+
 
 class MetaDataStorage(DatabaseDriver):
     def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key='__n',
