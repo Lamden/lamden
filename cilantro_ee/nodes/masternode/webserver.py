@@ -71,7 +71,6 @@ async def submit_transaction(request):
     # Try to deserialize transaction.
     try:
         tx_bytes = request.body
-        tx = ContractTransaction.from_bytes(tx_bytes)
         tx = transaction_capnp.ContractTransaction.from_bytes_packed(tx_bytes)
 
     except Exception as e:
@@ -83,11 +82,6 @@ async def submit_transaction(request):
     except:
         return json({'error': "Queue full. Resubmit shortly."}, status=503)
 
-    # Try to put it in the request queue.
-    try:
-        app.queue.put_nowait(tx_bytes)
-    except:
-        return json({'error': "Queue full. Resubmit shortly."}, status=503)
     h = hashlib.sha3_256()
     h.update(tx_bytes)
     tx_hash = h.digest()
