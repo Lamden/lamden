@@ -4,7 +4,7 @@ from cilantro_ee.messages.block_data.block_data import BlockData
 import json
 
 from contracting.db.driver import DatabaseDriver
-
+from contracting.db import encoder
 
 class MetaDataStorage(DatabaseDriver):
     def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key=b'__n',
@@ -19,6 +19,14 @@ class MetaDataStorage(DatabaseDriver):
         self.pending_nonce_key = pending_nonce_key
 
         super().__init__()
+
+    def get(self, key):
+        value = super().get(key)
+        return encoder.decode(value)
+
+    def set(self, key, value):
+        v = encoder.encode(value)
+        super().set(key, v)
 
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
@@ -47,7 +55,7 @@ class MetaDataStorage(DatabaseDriver):
         block_hash = self.get(self.block_hash_key)
         if block_hash is None:
             return b'\x00' * 32
-        return block_hash
+        return bytes.fromhex(block_hash)
 
     def set_latest_block_hash(self, v: bytes):
         if type(v) == str:
@@ -62,7 +70,7 @@ class MetaDataStorage(DatabaseDriver):
         if num is None:
             return 0
 
-        return int(num.decode())
+        return num
 
     def set_latest_block_num(self, v):
         v = int(v)
@@ -73,25 +81,15 @@ class MetaDataStorage(DatabaseDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        n = self.get(b':'.join([self.pending_nonce_key, processor, sender]))
-
-        if n is not None:
-            nonce = int(n.decode())
-            return nonce
-        return n
+        nonce = self.get(b':'.join([self.pending_nonce_key, processor, sender]))
+        return encoder.decode(nonce)
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        n = self.get(b':'.join([self.nonce_key, processor, sender]))
-
-        if n is not None:
-            nonce = int(n.decode())
-            return nonce
-        return n
+        nonce = self.get(b':'.join([self.nonce_key, processor, sender]))
+        return encoder.decode(nonce)
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        n = '{}'.format(nonce).encode()
-        self.set(b':'.join([self.pending_nonce_key, processor, sender]), n)
+        self.set(b':'.join([self.pending_nonce_key, processor, sender]), encoder.encode(nonce))
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        n = '{}'.format(nonce).encode()
-        self.set(b':'.join([self.nonce_key, processor, sender]), n)
+        self.set(b':'.join([self.nonce_key, processor, sender]), encoder.encode(nonce))

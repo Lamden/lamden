@@ -147,11 +147,13 @@ def verify_packed_tx(sender, tx):
 
 def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: bytes,
                          driver: MetaDataStorage):
+
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
         return False
 
     pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
+
     if pending_nonce is None:
         pending_nonce = 0
 
@@ -159,7 +161,6 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
         return False
 
     pending_nonce += 1
-    driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
 
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
@@ -184,5 +185,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
 
         if balance < tx.payload.stampsSupplied:
             return False
+
+    driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
 
     return True
