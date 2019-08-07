@@ -12,12 +12,17 @@ from cilantro_ee.messages import capnp as schemas
 import hashlib
 from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.protocol.wallet import Wallet, _verify
+from cilantro_ee.protocol.pow import SHA3POWBytes
+
+from contracting.db.driver import ContractDriver
+from contracting import config
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
 
 class TransactionBatcher(Worker):
 
@@ -27,6 +32,8 @@ class TransactionBatcher(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
         self._ready = False
+
+        self.driver = ContractDriver()
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
@@ -78,6 +85,8 @@ class TransactionBatcher(Worker):
         while not self._ready:
             await asyncio.sleep(1)
 
+
+
     async def compose_transactions(self):
         await self._wait_until_ready()
 
@@ -127,8 +136,30 @@ class TransactionBatcher(Worker):
                     continue
 
                 # Validate proof
+                if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
+                                          tx.metadata.proof):
 
-                #
+                    self.log.critical('TX not proven!')
+                    continue
+
+                # Check if the sender has enough stamps
+                if tx.payload.stampsSupplied > 0:
+                    currency_contract = 'currency'
+                    balances_hash = 'balances'
+
+                    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                                       config.INDEX_SEPARATOR,
+                                                       balances_hash,
+                                                       config.DELIMITER,
+                                                       tx.payload.sender.hex())
+
+                    balance = self.driver.get(balances_key) or 0
+
+                    if balance < tx.payload.stampsSupplied:
+                        self.log.critical('Not enough stamps!')
+
+                        continue
+
 
 
                 # current_nonce = self.driver.get('__nonces__:processor:sender')

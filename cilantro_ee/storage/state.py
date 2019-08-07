@@ -7,11 +7,16 @@ from contracting.db.driver import DatabaseDriver
 
 
 class MetaDataStorage(DatabaseDriver):
-    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num'):
+    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key=b'__n',
+                 pending_nonce_key=b'__pn'):
+
         self.block_hash_key = block_hash_key
         self.block_num_key = block_num_key
         self.log = get_logger('StateDriver')
         self.interface = None
+
+        self.nonce_key = nonce_key
+        self.pending_nonce_key = pending_nonce_key
 
         super().__init__()
 
@@ -65,3 +70,16 @@ class MetaDataStorage(DatabaseDriver):
         self.set(self.block_num_key, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
+
+    # Nonce methods
+    def get_pending_nonce(self, processor: bytes, sender: bytes):
+        self.get(b':'.join([self.pending_nonce_key, processor, sender]))
+
+    def get_nonce(self, processor: bytes, sender: bytes):
+        self.get(b':'.join([self.nonce_key, processor, sender]))
+
+    def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
+        self.set(b':'.join([self.pending_nonce_key, processor, sender]), nonce)
+
+    def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
+        self.set(b':'.join([self.nonce_key, processor, sender]), nonce)
