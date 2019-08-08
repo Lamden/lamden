@@ -10,7 +10,7 @@ class CurrencyTester(Dumpatron):
 
     FETCH_BALANCES_TIMEOUT = 30
     ASSERT_BALANCES_TIMEOUT = 90
-    SLEEP_BEFORE_ASSERTING = 12  # How long we should wait between sending transactions and asserting new balances
+    SLEEP_BEFORE_ASSERTING = 12  # How long we should wait between sending transactions and asserting _new balances
     POLL_INTERVAL = 2
 
     MIN_AMOUNT = 1

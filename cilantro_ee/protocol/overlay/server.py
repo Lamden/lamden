@@ -137,7 +137,7 @@ class OverlayServer:
             }
 
         response = await self.network.find_node(self.network_address, vk)  # 0.0.0.0 NO PORT
-        ip = response.get(vk)
+        ip = response.get(vk) if response else None
         if not ip:
             return {
                 'event': 'not_found',

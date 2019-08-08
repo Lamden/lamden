@@ -17,29 +17,29 @@ class TestMetaDataStorage(TestCase):
         self.assertIsNotNone(self.db)
 
     def test_set_latest_block_hash_not_64_chars(self):
-        bhash = 'a' * 12
+        bhash = b'a' * 6
         with self.assertRaises(AssertionError):
             self.db.set_latest_block_hash(bhash)
 
     def test_set_latest_block_hash_not_hex_fails(self):
-        bhash = 'x' * 64
+        bhash = 'x' * 32
         with self.assertRaises(ValueError):
             self.db.set_latest_block_hash(bhash)
 
     def test_set_latest_block_hash_returns_when_successful(self):
-        bhash = 'a' * 64
+        bhash = b'a' * 32
 
         self.db.set_latest_block_hash(bhash)
 
     def test_get_latest_block_hash_none(self):
-        expected = '0' * 64
+        expected = b'\00' * 32
 
         got = self.db.get_latest_block_hash()
 
         self.assertEqual(expected, got)
 
     def test_get_latest_block_hash_after_setting(self):
-        expected = 'a' * 64
+        expected = b'a' * 32
 
         self.db.set_latest_block_hash(expected)
 
@@ -48,7 +48,7 @@ class TestMetaDataStorage(TestCase):
         self.assertEqual(expected, got)
 
     def test_latest_block_hash_as_property(self):
-        expected = 'a' * 64
+        expected = b'a' * 32
 
         self.db.latest_block_hash = expected
 

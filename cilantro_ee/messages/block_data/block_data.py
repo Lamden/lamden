@@ -11,7 +11,7 @@ from cilantro_ee.logger import get_logger
 import blockdata_capnp
 
 log = get_logger(__name__)
-GENESIS_BLOCK_HASH = '0' * 64  # TODO find a better home for this?
+GENESIS_BLOCK_HASH = b'\x00' * 32  # TODO find a better home for this?
 
 
 class BlockData(MessageBase):

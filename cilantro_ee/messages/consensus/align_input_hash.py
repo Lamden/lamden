@@ -11,7 +11,7 @@ class AlignInputHash(MessageBase):
     # TODO switch underlying data struct for this guy to Capnp (or at least JSON)
     """
     AlignInputHash is the message object that is published to sub-block builders
-    when the input hashes of new block notification doesn't match the input hashes of sub-block-contenders sent
+    when the input hashes of _new block notification doesn't match the input hashes of sub-block-contenders sent
     This message will help sub-block builders align their input bags
     It just contains a input hash
     """

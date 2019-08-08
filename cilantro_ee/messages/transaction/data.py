@@ -31,14 +31,15 @@ class TransactionData(MessageBase):
     @classmethod
     def create(cls, contract_tx: TransactionBase, status: str, state: str):
         assert issubclass(type(contract_tx), TransactionBase), "transaction must be a subclass of TransactionBase"
-        assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
-            .format(type(contract_tx), MessageBase.registry)
+        # assert type(contract_tx) in MessageBase.registry, "MessageBase class {} not found in registry {}"\
+        #     .format(type(contract_tx), MessageBase.registry)
 
         data = transaction_capnp.TransactionData.new_message()
         data.transaction = contract_tx.serialize()
         data.status = status
         data.state = state
-        data.contractType = MessageBase.registry[type(contract_tx)]
+
+        data.contractType = 0
 
         return cls(data)
 
@@ -52,7 +53,7 @@ class TransactionData(MessageBase):
 
     @property
     def contract_type(self) -> type:
-        return MessageBase.registry[self._data.contractType]
+        return ContractTransaction
 
     @property
     def state(self) -> str:

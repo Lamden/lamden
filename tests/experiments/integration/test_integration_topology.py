@@ -13,10 +13,10 @@
 # """
 #
 # W = Wallet
-# sk1, vk1 = W.new()
-# sk2, vk2 = W.new()
-# sk3, vk3 = W.new()
-# sk4, vk4 = W.new()
+# sk1, vk1 = W._new()
+# sk2, vk2 = W._new()
+# sk3, vk3 = W._new()
+# sk4, vk4 = W._new()
 # FILTERS = ['FILTER_' + str(i) for i in range(100)]
 # URLS = ['tcp://127.0.0.1:' + str(i) for i in range(9000, 9999, 10)]
 #

@@ -23,22 +23,14 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
-from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
+from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages.transaction.batch import TransactionBatch
-from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
-from cilantro_ee.messages.signals.delegate import MakeNextBlock, PendingTransactions, NoTransactions
-from cilantro_ee.messages.signals.node import Ready
-
+from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
-from contracting.db.cr.callback_data import ExecutionData, SBData
+from contracting.db.cr.callback_data import SBData
 
-from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 
@@ -47,12 +39,60 @@ from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
-
+from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
-import asyncio, zmq.asyncio, time, os
+import asyncio, zmq.asyncio, time
 from datetime import datetime
-from typing import List
+import hashlib
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+from decimal import Decimal
 
+
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
+
+class Metadata:
+    def __init__(self, proof, signature, timestamp):
+        self.proof = proof
+        self.signature = signature
+        self.timestamp = timestamp
+
+
+class Payload:
+    def __init__(self, sender, nonce, stamps_supplied, contract_name, function_name, kwargs):
+        self.sender = sender
+        self.nonce = nonce
+        self.stampsSupplied = stamps_supplied
+        self.contractName = contract_name
+        self.functionName = function_name
+        self.kwargs = kwargs
+
+
+class UnpackedContractTransaction:
+    def __init__(self, capnp_struct: transaction_capnp.ContractTransaction):
+        self.metadata = Metadata(proof=capnp_struct.metadata.proof,
+                                 signature=capnp_struct.metadata.signature,
+                                 timestamp=capnp_struct.metadata.timestamp)
+
+        kwargs = {}
+        for entry in capnp_struct.payload.kwargs.entries:
+            if entry.value.which() == 'fixedPoint':
+                kwargs[entry.key] = Decimal(entry.value.fixedPoint)
+            else:
+                kwargs[entry.key] = getattr(entry.value, entry.value.which())
+
+        self.payload = Payload(sender=capnp_struct.payload.sender,
+                               nonce=capnp_struct.payload.nonce,
+                               stamps_supplied=capnp_struct.payload.stampsSupplied,
+                               contract_name=capnp_struct.payload.contractName,
+                               function_name=capnp_struct.payload.functionName,
+                               kwargs=kwargs)
 
 @unique
 class NextBlockState(Enum):
@@ -61,34 +101,41 @@ class NextBlockState(Enum):
     PROCESSED = 2
 
 
+# raghu
+class SBClientManager:
+    def __init__(self, sbb_idx, loop):
+        # self.client = SubBlockClient(sbb_idx=sbb_idx, num_sbb=NUM_SB_PER_BLOCK, loop=loop)
+        self.next_sm_index = 0
+        self.max_caches = 2
+        self.sb_caches = []
+
+
 class NextBlockToMake:
     def __init__(self, block_index: int=0, state: NextBlockState=NextBlockState.READY):
         self.next_block_index = block_index
         self.state = state
+
 
 # This is a convenience struct to hold all data related to a sub-block in one place.
 # Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
 class SubBlockManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.sub_block_index = sub_block_index
-        self.empty_input_hash = None
+        self.connected_vk = None
+        self.empty_input_iter = 0
         self.sub_socket = sub_socket
         self.processed_txs_timestamp = processed_txs_timestamp
         self.pending_txs = LinkedHashTable()
         self.to_finalize_txs = LinkedHashTable()
 
+    def get_empty_input_hash(self):
+        self.empty_input_iter += 1
+        return Hasher.hash(self.connected_vk + str(self.empty_input_iter))
+
 
 class SubBlockBuilder(Worker):
     def __init__(self, ip: str, signing_key: str, ipc_ip: str, ipc_port: int, sbb_index: int, *args, **kwargs):
         super().__init__(signing_key=signing_key, name="SubBlockBuilder_{}".format(sbb_index))
-
-        # These variables are used only for testing
-        self.bad_actor = bool(os.getenv('BAD_ACTOR'))
-        if self.bad_actor:
-            self.log.critical("Warning!!! Bad actor mode enabled for delegate with vk {}".format(self.verifying_key))
-            self.good_sb_count = 0
-            self.fail_idxs = set([int(i) for i in os.getenv('SB_IDX_FAIL').split(',')])
-            self.fail_interval = int(os.getenv('NUM_SUCC_SBS'))
 
         self.state = MetaDataStorage()
 
@@ -96,9 +143,13 @@ class SubBlockBuilder(Worker):
         self.sb_blder_idx = sbb_index
         self.startup = True
         self.num_txn_bags = 0
-        self._empty_txn_batch = TransactionBatch.create([])
+        self._empty_txn_batch = transaction_capnp.TransactionBatch.new_message(
+            transactions=[],
+            timestamp=time.time(),
+            signature=b'',
+            sender=b''
+        )
 
-        # self.pending_block_index = -1
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
         # DEBUG -- TODO DELETE
@@ -119,6 +170,8 @@ class SubBlockBuilder(Worker):
         self.log.notice("sbb_index {} tot_sbs {} num_blks {} num_sb_blders {} num_sb_per_block {} num_sb_per_builder {} sbs_per_blk_per_blder {}"
                         .format(sbb_index, NUM_SUB_BLOCKS, NUM_BLOCKS, NUM_SB_BUILDERS, NUM_SB_PER_BLOCK, NUM_SB_PER_BUILDER, NUM_SB_PER_BLOCK_PER_BUILDER))
 
+        self.pending_transactions = []
+
         self.run()
 
     def run(self):
@@ -132,20 +185,18 @@ class SubBlockBuilder(Worker):
         await self.send_ready_to_bm()
 
     async def send_ready_to_bm(self):
-        # await asyncio.sleep(1)
-        message = Ready.create()
-        self._send_msg_over_ipc(message)
+        message = MessageManager.pack_dict(MessageTypes.READY_INTERNAL, arg_dict={'messageType': MessageTypes.READY_INTERNAL})
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), message])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def initialize_next_block_to_make(self, next_block_index: int):
         self._next_block_to_make.next_block_index = next_block_index % NUM_BLOCKS
         self._next_block_to_make.state = NextBlockState.READY
-        # self._next_block_to_make.state = NextBlockState.READY if self.client.can_start_next_sb \
-                                             # else NextBlockState.NOT_READY
 
     def move_next_block_to_make(self):
         if self._next_block_to_make.state == NextBlockState.PROCESSED:
             self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
+
         return self._next_block_to_make.state == NextBlockState.READY
 
     def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
@@ -161,36 +212,23 @@ class SubBlockBuilder(Worker):
         for idx in range(NUM_SB_PER_BUILDER):
             sub = self.manager.create_socket(socket_type=zmq.SUB, name="SBB-Sub[{}]-{}".format(self.sb_blder_idx, idx),
                                              secure=True)
+
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sb_index = idx * NUM_SB_BUILDERS + self.sb_blder_idx
+
             self.sb_managers.append(SubBlockManager(sub_block_index=sb_index, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
-
-    def _connect_new_node(self, vk):
-        d = NetworkTopology.get_sbb_publisher(vk)
-
-        if d is None:
-            return
-
-        sbb_idx = d['sb_idx'] % NUM_SB_BUILDERS
-
-        if sbb_idx != self.sbb_index:
-            return
-
-        smi = d['sb_idx'] // NUM_SB_BUILDERS
-
-        self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
-
 
     async def _connect_sub_sockets(self):
         for smi, d in enumerate(NetworkTopology.get_sbb_publishers(self.verifying_key, self.sb_blder_idx), 0):
             vk, port, sb_idx = d['vk'], d['port'], d['sb_idx']
             assert self.sb_managers[smi].sub_block_index == sb_idx, "something went wrong in connections"
             self.sb_managers[smi].sub_socket.connect(port=port, vk=vk)
-            self.sb_managers[smi].empty_input_hash = Hasher.hash(vk)
+            self.sb_managers[smi].connected_vk = vk
 
     def _align_to_hash(self, smi, input_hash):
         num_discards = 0
+
         if input_hash in self.sb_managers[smi].pending_txs:
             # clear entirely to_finalize
             num_discards = num_discards + len(self.sb_managers[smi].to_finalize_txs)
@@ -210,6 +248,8 @@ class SubBlockBuilder(Worker):
     def align_input_hashes(self, aih: AlignInputHash):
         self.log.notice("Discarding all pending sub blocks and aligning input hash to {}".format(aih.input_hash))
         self.client.flush_all()
+        self.startup = True
+        # is this remainder or division here ??
         smi = aih.sb_index // NUM_SB_BUILDERS
         num_discards = self._align_to_hash(smi, aih.input_hash)
         self.log.debug("Discarded {} input bags to get alignment".format(num_discards))
@@ -225,7 +265,7 @@ class SubBlockBuilder(Worker):
 
         num_discards = 0
         input_hashes = fbn.input_hashes[self.sb_blder_idx]
-        smi = fbn.sb_indices[self.sb_blder_idx] // NUM_SB_BUILDERS
+        smi = (fbn.first_sb_index + self.sb_blder_idx) // NUM_SB_BUILDERS
 
         for input_hash in input_hashes:
             num_discards = num_discards + self._align_to_hash(smi, input_hash)
@@ -239,156 +279,217 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
 
         self.client.flush_all()
-        self._make_next_sb()
+        self.startup = True
+        # self._make_next_sb()
 
     def handle_ipc_msg(self, frames):
-        self.log.spam("Got msg over Dealer IPC from BlockManager with frames: {}".format(frames))
-        assert len(frames) == 2, "Expected 3 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
+        self.log.info("SBB received an IPC message {}".format(frames))
+        assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = bytes_to_int(frames[0])
         msg_blob = frames[1]
+        msg = None
 
-        msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
-        self.log.debugv("SBB received an IPC message {}".format(msg))
-
-        if isinstance(msg, MakeNextBlock):
-            self.log.important2("Got MakeNextBlock notif from block manager!!!")  # TODO REMOOOVE
+        if msg_type == MessageTypes.MAKE_NEXT_BLOCK:
+            self.log.success("MAKE NEXT BLOCK SIGNAL")
             self._make_next_sub_block()
+            return
 
-        # if not matched consensus, then discard current state and use catchup flow
-        elif isinstance(msg, AlignInputHash):
-            self.align_input_hashes(msg)
+        if MessageBase.registry.get(msg_type) is not None:
+            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
 
-        # if not matched consensus, then discard current state and use catchup flow
-        elif isinstance(msg, FailedBlockNotification):
-            self._fail_block(msg)
+        if isinstance(msg, MessageBase):
+            # DATA
+            # if not matched consensus, then discard current state and use catchup flow
+            if isinstance(msg, AlignInputHash):
+                self.align_input_hashes(msg)
 
-        else:
-            raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
-                            .format(type(msg)))
+            # SIGNAL
+            elif isinstance(msg, FailedBlockNotification):
+                self._fail_block(msg)
 
-    def _send_msg_over_ipc(self, message: MessageBase):
+            else:
+                raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
+                                .format(type(msg)))
+
+    def _send_msg_over_ipc(self, message):
         """
         Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
         type of message
         """
-        assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
-        message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-        self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+        if isinstance(message, MessageBase):
+            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
 
-    def adjust_work_load(self, input_bag: Envelope, is_add: bool):
-        if input_bag.message.is_empty:
-            return
+            self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+
+    def adjust_work_load(self, input_bag, is_add: bool):
         self.num_txn_bags += 1 if is_add else -1
-        message = None
+
+        # Create Signal
         if self.num_txn_bags == 0:
-            message = NoTransactions.create()
+            no_transactions = MessageManager.pack_dict(MessageTypes.NO_TRANSACTIONS,
+                                                       arg_dict={'messageType': MessageTypes.NO_TRANSACTIONS})
+
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), no_transactions])
+
         elif self.num_txn_bags == 1:
-            message = PendingTransactions.create()
-        if message:
-            self._send_msg_over_ipc(message)
+            # SIGNAL CREATION
+            pending_transactions = MessageManager.pack_dict(MessageTypes.PENDING_TRANSACTIONS,
+                                                            arg_dict={'messageType': MessageTypes.PENDING_TRANSACTIONS})
 
+            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
+
+# ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
-        # self.log.spam("Sub socket got frames {} with handler_index {}".format(frames, index))
-        assert 0 <= index < len(self.sb_managers), "Got index {} out of range of sb_managers array {}".format(
-            index, self.sb_managers)
+        msg_filter, msg_type, msg_blob = frames
 
-        envelope = Envelope.from_bytes(frames[-1])
-        timestamp = envelope.meta.timestamp
-        assert isinstance(envelope.message, TransactionBatch), "Handler expected TransactionBatch but got {}".format(envelope.messages)
+        if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
+                0 <= index < len(self.sb_managers):
 
-        if timestamp <= self.sb_managers[index].processed_txs_timestamp:
-            self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
-                           .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
-            return
+            batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
 
-        input_hash = Hasher.hash(envelope)
-        # if the sb_manager already has this bag, ignore it
-        if input_hash in self.sb_managers[index].pending_txs:
-            self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
-            return
+            if len(batch.transactions) < 1:
+                self.log.info('Empty bag. Tossing.')
+                return
 
-        if not envelope.verify_seal():
-            self.log.error("Could not validate seal for envelope {}".format(envelope))
-            return
+            self.log.info('Got tx batch with {} txs for sbb {}'.format(len(batch.transactions), index))
+
+            if batch.sender.hex() not in PhoneBook.masternodes:
+                self.log.critical('RECEIVED TX BATCH FROM NON DELEGATE')
+                return
+            else:
+                self.log.success('{} is a masternode!'.format(batch.sender.hex()))
+
+            timestamp = batch.timestamp
+            self.log.info(timestamp, time.time())
+
+            if timestamp <= self.sb_managers[index].processed_txs_timestamp:
+                self.log.debug("Got timestamp {} that is prior to the most recent timestamp {} for sb_manager {} tho"
+                               .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
+                return
+
+            # Get the hash of all transactions
+            h = hashlib.sha3_256()
+
+            #h.update('{}'.format(timestamp).encode())
+
+            for tx in batch.transactions:
+                h.update(tx.as_builder().to_bytes_packed())
+
+            input_hash = h.digest()
+
+            if not _verify(batch.sender, input_hash, batch.signature):
+                self.log.critical('INCORRECT SIGNATURE.')
+                return
+            else:
+                self.log.success('Input has verifies!')
+
+            self.log.info(input_hash)
+            # if the sb_manager already has this bag, ignore it
+            if input_hash in self.sb_managers[index].pending_txs:
+                self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
+                return
 
         # DEBUG -- TODO DELETE
-        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(envelope.message.transactions), input_hash))
-        # END DEBUG
+        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
 
         self.sb_managers[index].processed_txs_timestamp = timestamp
 
-        self.log.debug("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
-        self.adjust_work_load(envelope, True)
-        self.sb_managers[index].pending_txs.append(input_hash, envelope)
+        self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
+        self.adjust_work_load(batch, True)
 
-    def _create_empty_sbc(self, sb_data: SBData):
+        self.sb_managers[index].pending_txs.append(input_hash, batch)
+
+    def _create_empty_sbc(self, sb_idx: int, sb_data: SBData):
         """
         Creates an Empty Sub Block Contender
         """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
-        signature = wallet.sign(self.signing_key, bytes.fromhex(sb_data.input_hash))
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(int(time.time())),
-                                            sender=self.verifying_key)
 
-        sbc = SubBlockContender.create_empty_sublock(input_hash=sb_data.input_hash,
-                                                     sub_block_index=self.sb_blder_idx, signature=merkle_sig,
-                                                     prev_block_hash=self.state.get_latest_block_hash())
-        # Send to block manager
+        signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
+
+        merkle_proof = subblock_capnp.MerkleProof.new_message(
+            hash=bytes.fromhex(sb_data.input_hash),
+            signer=self.wallet.verifying_key(),
+            signature=signature
+        ).to_bytes_packed()
+
+        sbc = subblock_capnp.SubBlockContender.new_message(
+              resultHash=bytes.fromhex(sb_data.input_hash),
+              inputHash=bytes.fromhex(sb_data.input_hash),
+              merkleLeaves=[],
+              signature=merkle_proof,
+              transactions=[],
+              subBlockIdx=sb_idx,
+              prevBlockHash=self.state.get_latest_block_hash()
+        ).to_bytes_packed()
+
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
-        self._send_msg_over_ipc(sbc)
 
-    def _create_sbc_from_batch(self, sb_data: SBData):
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+
+    def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
         """
         Creates a Sub Block Contender from a TransactionBatch
         """
 
-        # TODO somehow get the input hash from CR!
-
         self.log.info("Building sub block contender for input hash {}".format(sb_data.input_hash))
-
         exec_data = sb_data.tx_data
-        # self.log.important3("GOT SB DATA: {}".format(sb_data))
 
-        txs_data = [TransactionData.create(contract_tx=d.contract, status=str(d.status), state=d.state) for d in exec_data]
+        txs_data = []
 
-        # Purposely produce a bad SBC if BAD_ACTOR is set, and the conditions are right
-        if self.bad_actor:
-            if self.good_sb_count >= self.fail_interval and self.sb_blder_idx in self.fail_idxs:
-                self.log.critical("Creating an evil sub-block for idx {}!".format(self.sb_blder_idx))
-                txs_data = TransactionDataBuilder.create_random_batch(len(txs_data))
-                self.good_sb_count = 0
-            else:
-                self.log.info("Not producing an evil sub-block.....for now....")
-
-        txs_data_serialized = [t.serialize() for t in txs_data]
-        txs = [d.contract for d in exec_data]
+        for i in range(len(exec_data)):
+            d = exec_data[i]
+            tx = self.pending_transactions[i]
+            txs_data.append(transaction_capnp.TransactionData.new_message(
+                transaction=tx,
+                status=str(d.status),
+                state=d.state,
+                contractType=0
+            ).to_bytes_packed())
 
         # build sbc
-        merkle = MerkleTree.from_raw_transactions(txs_data_serialized)
-        signature = wallet.sign(self.signing_key, merkle.root)
-        merkle_sig = MerkleSignature.create(sig_hex=signature,
-                                            timestamp=str(time.time()),
-                                            sender=self.verifying_key)
+        merkle = MerkleTree.from_raw_transactions(txs_data)
 
-        sbc = SubBlockContender.create(result_hash=merkle.root_as_hex, input_hash=sb_data.input_hash,
-                                       merkle_leaves=merkle.leaves, sub_block_index=self.sb_blder_idx,
-                                       signature=merkle_sig, transactions=txs_data,
-                                       prev_block_hash=self.state.latest_block_hash)
+        merkle_proof = subblock_capnp.MerkleProof.new_message(
+            hash=merkle.root,
+            signer=self.wallet.verifying_key(),
+            signature=self.wallet.sign(merkle.root)
+        ).to_bytes_packed()
 
-        # Send sbc to block manager
-        self.log.important2("Sending SBC with {} txs and input hash {} to block manager!"
-                            .format(len(txs), sb_data.input_hash))
-        self._send_msg_over_ipc(sbc)
+        sbc = subblock_capnp.SubBlockContender.new_message(
+            resultHash=merkle.root,
+            inputHash=sb_data.input_hash,
+            merkleLeaves=[leaf for leaf in merkle.leaves],
+            signature=merkle_proof,
+            transactions=[tx for tx in txs_data],
+            subBlockIdx=sb_idx,
+            prevBlockHash=self.state.get_latest_block_hash()
+        ).to_bytes_packed()
+
+        self.pending_transactions = []
+
+        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+
+
+    def create_sb_contender(self, sb_idx: int, sb_data: SBData):
+        if len(sb_data.tx_data) > 0:
+            self._create_sbc_from_batch(sb_idx, sb_data)
+        else:
+            self._create_empty_sbc(sb_idx, sb_data)
+
 
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
-    def _execute_sb(self, input_hash: str, tx_batch: TransactionBatch, \
-                          timestamp: float, sbb_idx: int):
-        self.log.debug("SBB {} attempting to build a sub block with index {}"
-                       .format(self.sb_blder_idx, sbb_idx))
+    def _execute_sb(self,
+                    input_hash: str,
+                    tx_batch: transaction_capnp.TransactionBatch,
+                    timestamp: float,
+                    sb_idx: int):
 
-        callback = self._create_empty_sbc if tx_batch.is_empty else self._create_sbc_from_batch
+        self.log.debug("SBB {} attempting to build a sub block with index {}"
+                       .format(self.sb_blder_idx, sb_idx))
+
+        callback = self.create_sb_contender
 
         # Pass protocol level variables into environment so they are accessible at runtime in smart contracts
         block_hash = self.state.latest_block_hash
@@ -409,53 +510,73 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
-        result = self.client.execute_sb(input_hash, tx_batch.transactions, callback, environment=environment)
+        self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
+
+        transactions = []
+        for transaction in tx_batch.transactions:
+            transactions.append(UnpackedContractTransaction(transaction))
+            self.pending_transactions.append(transaction)
+
+        result = self.client.execute_sb(input_hash,
+                                        transactions,
+                                        sb_idx,
+                                        callback,
+                                        environment=environment)
+
+        self.log.success('RESULT FOR TX BATCH: {}'.format(result))
 
         if result:
             self._next_block_to_make.state = NextBlockState.PROCESSED
             return True
+
         return False
 
 
-    def _execute_input_bag(self, input_hash: str, envelope: Envelope, sbb_idx: int):
-        return self._execute_sb(input_hash, envelope.message, envelope.meta.timestamp, sbb_idx)
+    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sb_idx: int):
+        return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sb_idx)
 
     def _make_next_sb(self):
+        self.log.info('making next sb')
         if not self.move_next_block_to_make():
-            self.log.debug("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
+            self.log.info("Not ready to make next sub-block. Waiting for seneca-client to be ready ... ")
             return
 
         # now start next one
         cur_block_index = self._next_block_to_make.next_block_index
+        self.log.info('Working on {}'.format(cur_block_index))
+
         sm_idx_start = cur_block_index * NUM_SB_PER_BLOCK_PER_BUILDER
+
         for i in range(NUM_SB_PER_BLOCK_PER_BUILDER):
             sm_idx = sm_idx_start + i
+
             if sm_idx >= len(self.sb_managers):    # out of range already
-                self.log.debug("Uneven sub-blocks per block. May not work seneca clients properly in current scheme")
-                self.log.debug("i {} num_sb_pb_pb {} num_sb_mgrs {} sm_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sm_idx))
+                self.log.info("Uneven sub-blocks per block. May not work seneca clients properly in current scheme")
+                self.log.info("i {} num_sb_pb_pb {} num_sb_mgrs {} sm_idx {}".format(i, NUM_SB_PER_BLOCK_PER_BUILDER, len(self.sb_managers), sm_idx))
                 return
 
             if len(self.sb_managers[sm_idx].to_finalize_txs) > NUM_CACHES:
                 self.sb_managers[sm_idx].to_finalize_txs.pop_front()
+
             sb_index = self.sb_managers[sm_idx].sub_block_index
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
-                input_hash, envelope = self.sb_managers[sm_idx].pending_txs.pop_front()
-                self.adjust_work_load(envelope, False)
-                self.log.debug("Make next sub-block with input hash {}".format(input_hash))
-                self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, envelope)
-                self._execute_input_bag(input_hash, envelope, sb_index)
+
+                input_hash, tx_batch = self.sb_managers[sm_idx].pending_txs.pop_front()
+
+                self.adjust_work_load(tx_batch, False)
+
+                self.log.info("Make next sub-block with input hash {}".format(input_hash))
+
+                self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, tx_batch)
+
+                self._execute_input_bag(input_hash, tx_batch, sb_index)
+
             else:
                 timestamp = float(time.time())
-                input_hash = self.sb_managers[sm_idx].empty_input_hash
+                input_hash = self.sb_managers[sm_idx].get_empty_input_hash()
                 self._execute_sb(input_hash, self._empty_txn_batch, timestamp, sb_index)
 
     def _make_next_sub_block(self):
-        # The following block is test code
-        if self.bad_actor:
-            self.log.info("Incrementing good sb count!")
-            self.good_sb_count += 1
-
-        # first commit current state only if we have some pending dbs!
         if not self.startup:
             self.log.info("Merge pending db to master db")
             self.client.update_master_db()

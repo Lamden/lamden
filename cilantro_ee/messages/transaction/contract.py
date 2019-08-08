@@ -66,8 +66,8 @@ class ContractTransaction(TransactionBase):
 
         payload_binary = payload.to_bytes()
 
-        struct.metadata.proof = SHA3POW.find(payload_binary)[0]
-        struct.metadata.signature = wallet.sign(sender_sk, payload_binary)
+        struct.metadata.proof = SHA3POW.find(payload_binary)[0]  # Nah
+        struct.metadata.signature = wallet.sign(sender_sk, payload_binary)  # Nah
         struct.payload = payload_binary
 
         return ContractTransaction.from_data(struct)

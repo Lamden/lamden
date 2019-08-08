@@ -1,83 +1,118 @@
 from unittest import TestCase
 import unittest
-from cilantro_ee.messages.transaction.data import TransactionDataBuilder, TransactionData
-from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
+from cilantro_ee.messages.transaction.data import TransactionDataBuilder
+from cilantro_ee.messages.block_data.sub_block import SubBlockBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH, BlockData
+from cilantro_ee.storage.state import MetaDataStorage
+import json
+from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.messages._new.transactions.messages import ContractTransaction
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+import secrets
+from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 
-import redis
-from cilantro_ee.constants.db_config import *
-from cilantro_ee.storage.driver import SafeDriver
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 class TestStateDriver(TestCase):
-
     def setUp(self):
-        self.r = SafeDriver  # this is a class, not an instance, so we do not instantiate
+        self.r = MetaDataStorage()  # this is a class, not an instance, so we do not instantiate
         self.r.flush()
 
     def test_state_updated(self):
-        states = [
-            'SET hello world;SET goodbye world;',
-            'SET entropy regression;',
-            'SET land sea;',
-            'SET xxx holic;',
-            'SET beyonce sings;',
-            'SET cow poo;',
-            'SET anthropologist discovers;',
-            'SET cranberry juice;',
-            'SET optic fiber;',
-            'SET before after;'
-        ]
-        txs = []
-        for i in range(len(states) // 2):
-            txs.append(TransactionDataBuilder.create_random_tx(status='SUCC', state=states[i*2] + states[i*2+1]))
+        # Generate some random transactions
+        transactions = []
+        get_sets = []
+        for i in range(50):
+            w = Wallet()
+            tx = ContractTransaction(w.verifying_key(), contract='currency',
+                                     function='transfer',
+                                     kwargs={'amount': 10, 'to': 'jeff'},
+                                     stamps=500000,
+                                     nonce=w.verifying_key() + secrets.token_bytes(32))
 
-        sb = SubBlockBuilder.create(transactions=txs)
-        block = BlockData.create(block_hash=BlockData.compute_block_hash([sb.merkle_root], GENESIS_BLOCK_HASH),
-                                 prev_block_hash=GENESIS_BLOCK_HASH, block_owners=['AB'*32], block_num=1, sub_blocks=[sb])
+            tx.sign(w.signing_key())
+            packed_tx = tx.as_struct()
 
-        StateDriver.update_with_block(block)
-        self.assertEqual(self.r.get('hello'), b'world')
-        self.assertEqual(self.r.get('goodbye'), b'world')
-        self.assertEqual(self.r.get('entropy'), b'regression')
-        self.assertEqual(self.r.get('land'), b'sea')
-        self.assertEqual(self.r.get('xxx'), b'holic')
-        self.assertEqual(self.r.get('beyonce'), b'sings')
-        self.assertEqual(self.r.get('cow'), b'poo')
-        self.assertEqual(self.r.get('anthropologist'), b'discovers')
-        self.assertEqual(self.r.get('cranberry'), b'juice')
-        self.assertEqual(self.r.get('optic'), b'fiber')
-        self.assertEqual(self.r.get('before'), b'after')
+            # Create a hashmap between a key and the value it should be set to randomly
+            get_set = {secrets.token_hex(8): secrets.token_hex(8)}
+            get_sets.append(get_set)
+
+            # Put this hashmap as the state of the contract execution and contruct it into a capnp struct
+            tx_data = transaction_capnp.TransactionData.new_message(
+                transaction=packed_tx,
+                status='SUCC',
+                state=json.dumps(get_set),
+                contractType=0
+            )
+
+            # Append it to our list
+            transactions.append(tx_data)
+
+        # Build a subblock. One will do
+        tree = MerkleTree.from_raw_transactions([tx.to_bytes_packed() for tx in transactions])
+
+        w = Wallet()
+
+        sig = w.sign(tree.root)
+
+        sb = subblock_capnp.SubBlock.new_message(
+            merkleRoot=tree.root,
+            signatures=[sig],
+            merkleLeaves=tree.leaves,
+            subBlockIdx=0,
+            inputHash=b'a' * 32,
+            transactions=[tx for tx in transactions]
+        )
+
+        import hashlib
+
+        h = hashlib.sha3_256()
+        h.update(b'\00' * 32)
+        h.update(tree.root)
+
+        block = blockdata_capnp.BlockData.new_message(
+            blockHash=h.digest(),
+            blockNum=1,
+            blockOwners=[b'\00' * 32],
+            prevBlockHash=b'\00' * 32,
+            subBlocks=[sb]
+        )
+
+        self.r.update_with_block(block)
+
+        for kv in get_sets:
+            k, v = list(kv.items())[0]
+            got = self.r.get(k.encode())
+            self.assertEqual(v.encode(), got)
 
     # TODO test this with publish transactions
 
     def test_get_latest_block_hash_with_none_set(self):
-        b_hash = StateDriver.get_latest_block_hash()
+        b_hash = self.r.get_latest_block_hash()
         self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
 
     def test_get_latest_block_num_with_none_set(self):
-        b_num = StateDriver.get_latest_block_num()
+        b_num = self.r.get_latest_block_num()
         self.assertEqual(0, b_num)
 
     def test_set_get_latest_block_hash(self):
-        b_hash = 'ABCD' * 16
-        StateDriver.set_latest_block_hash(b_hash)
+        b_hash = b'A' * 32
+        self.r.set_latest_block_hash(b_hash)
 
-        self.assertEqual(StateDriver.get_latest_block_hash(), b_hash)
+        self.assertEqual(self.r.get_latest_block_hash(), b_hash)
 
     def test_set_get_latest_block_num(self):
         b_num = 9001
-        StateDriver.set_latest_block_num(b_num)
+        self.r.set_latest_block_num(b_num)
 
-        self.assertEqual(StateDriver.get_latest_block_num(), b_num)
-
-    def test_set_get_latest_info(self):
-        b_num = 9001
-        b_hash = 'ABCD' * 16
-
-        StateDriver.set_latest_block_info(b_hash, b_num)
-        self.assertEqual(StateDriver.get_latest_block_info(), (b_hash, b_num))
-
+        self.assertEqual(self.r.get_latest_block_num(), b_num)
 
 if __name__ == '__main__':
     unittest.main()

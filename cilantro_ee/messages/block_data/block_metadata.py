@@ -1,11 +1,5 @@
-from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 from cilantro_ee.messages.block_data.block_data import BlockData
-from cilantro_ee.messages.utils import validate_hex
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.utils import lazy_property
-from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK
-import time
 from typing import List
 
 import capnp
@@ -35,23 +29,3 @@ class BlockMetaData(BlockData):
 
         return cls.from_data(data._data)
 
-
-class NewBlockNotification(BlockMetaData):
-    pass
-
-
-class SkipBlockNotification(BlockMetaData):
-    pass
-
-    def validate(self):
-        pass     # don't worry about it for now
-
-    @classmethod
-    def create_from_sub_blocks(cls, prev_block_hash: str, block_num: int, sub_blocks: List[SubBlock]):
-        # Sort sub-blocks by index if they are not done so already
-        sub_blocks = sorted(sub_blocks, key=lambda sb: sb.index)
-
-        roots = [sb.input_hash for sb in sub_blocks]
-        block_hash = BlockData.compute_block_hash(sbc_roots=roots, prev_block_hash=prev_block_hash)
-
-        return cls.create(block_hash, prev_block_hash, [], block_num, sub_blocks)

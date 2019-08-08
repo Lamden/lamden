@@ -10,7 +10,7 @@ from cilantro_ee.storage.master import DistributedMasterStorage
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.block_data.block_metadata import *
+from cilantro_ee.messages.block_data.notification import *
 import asyncio, time
 from cilantro_ee.protocol import wallet
 
@@ -41,7 +41,7 @@ DELE_VK4 = wallet.get_vk(DELE_SK4)
 
 DELE_VKS = [DELE_VK1, DELE_VK2, DELE_VK3, DELE_VK4]
 
-PhoneBook = VKBook(MN_VKS, DELE_VKS, debug=True)
+PhoneBook = VKBook(MN_VKS, DELE_VKS, len(MN_VKS), len(DELE_VKS), False, False, debug=True)
 
 
 class TestCatchupManager(TestCase):
@@ -50,7 +50,7 @@ class TestCatchupManager(TestCase):
 
         self.state.latest_block_hash = GENESIS_BLOCK_HASH
         self.state.latest_block_num = 0
-        # TODO how to rest Mongo between runs?
+        # TODO how to reset Mongo between runs?
         self.manager = None
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -88,22 +88,21 @@ class TestCatchupManager(TestCase):
         MN_VK3 = PhoneBook.masternodes[2]
         MN_VK4 = PhoneBook.masternodes[3]
 
+        vks = [MN_VK1, MN_VK2, MN_VK3, MN_VK4]
+
         reply_data = None
         index_reply = BlockIndexReply.create(block_info = reply_data)
 
         cm = self._build_manager()
         cm.run_catchup()
-        self.assertFalse(cm.is_catchup_done())
 
-        cm.recv_block_idx_reply(MN_VK1, index_reply)
-        self.assertTrue(MN_VK1 in cm.node_idx_reply_set)
-        self.assertFalse(cm.is_catchup_done())  # is_catchup_done() should be False, as we've only recv 1/4 required responses
+        my_quorum = cm.my_quorum
+        while (my_quorum > 0) and (len(vks) > 0):
+            self.assertFalse(cm.is_catchup_done())
+            cm.recv_block_idx_reply(vks.pop(), index_reply)
+            my_quorum -= 1
 
-        cm.recv_block_idx_reply(MN_VK2, index_reply)
-        cm.recv_block_idx_reply(MN_VK3, index_reply)
-        cm.recv_block_idx_reply(MN_VK4, index_reply)
-
-        self.assertTrue(cm.is_catchup_done())  # Now that we have 2/4 replies, we should be out of Catchup
+        self.assertTrue(cm.is_catchup_done())  # Now that we have quorum replies, we should be out of Catchup
 
     def test_catchup_with_new_blocks_requests_proper_data(self, *args):
         cm = self._build_manager()
@@ -150,8 +149,8 @@ class TestCatchupManager(TestCase):
         # Store 5 blocks
         blocks = BlockDataBuilder.create_conseq_blocks(5)
         for block in blocks:
-            sblk = self.state.store_block(block.sub_blocks)
-            self.state.update_with_block(sblk)
+            # sblk = self.state.store_block(block.sub_blocks)
+            self.state.update_with_block(block)
 
         # Send a fake index request from MN_VK1
         req = BlockIndexRequest.create(block_num=0, block_hash='0' * 64)
@@ -169,7 +168,7 @@ class TestCatchupManager(TestCase):
         cm.is_caught_up = False
 
     def test_catchup_with_new_blocks_and_replies(self, *args):
-        cm = self._build_manager()
+        cm = self._build_manager(store_blocks=False)
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
@@ -222,7 +221,8 @@ class TestCatchupManager(TestCase):
 
         # Store the first 2 blocks
         curr_blk = blocks[1]
-        self.state.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
+        self.state.set_latest_block_hash(curr_blk.block_hash)
+        self.state.set_latest_block_num(curr_blk.block_num)
 
         cm = self._build_manager(store_blocks=False)
 
@@ -281,7 +281,7 @@ class TestCatchupManager(TestCase):
         self.assertEqual(self.state.get_latest_block_hash(), blocks[-1].block_hash)
 
     def test_get_new_block_notif_many_behind_after_caught_up(self, *args):
-        cm = self._build_manager()
+        cm = self._build_manager(store_blocks=False)
         cm.run_catchup()
         self.assertFalse(cm.is_catchup_done())
 
@@ -321,7 +321,9 @@ class TestCatchupManager(TestCase):
         self.assertFalse(cm.is_catchup_done())
 
         # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
-        new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
+        blk = blocks[-1]
+        new_block_notif = NewBlockNotification.create(blk.prev_block_hash, blk.block_hash, blk.block_num,
+                                                      0, blk.block_owners, blk.input_hashes)
         cm.recv_new_blk_notif(new_block_notif)
 
         self.assertFalse(cm.is_catchup_done())
@@ -376,7 +378,9 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.is_catchup_done())
 
         # Now, send a NewBlockNotification from a new hash/num, and make sure things worked propperly
-        new_block_notif = NewBlockNotification.create_from_block_data(blocks[-1])
+        blk = blocks[-1]
+        new_block_notif = NewBlockNotification.create(blk.prev_block_hash, blk.block_hash, blk.block_num,
+                                                      0, blk.block_owners, blk.input_hashes)
 
         cm.recv_new_blk_notif(new_block_notif)
         self.assertFalse(cm.is_catchup_done())
@@ -405,19 +409,18 @@ class TestCatchupManager(TestCase):
         index_reply3 = BlockIndexReply.create(list(all_idx_replies[4:]))
         index_reply4 = BlockIndexReply.create(list(all_idx_replies[4:]))
 
+        vks = [MN_VK4, MN_VK3, MN_VK2, MN_VK1]
+        idx_replies = [index_reply4, index_reply3, index_reply2, index_reply1]
 
-        # As a Masternode (store_full_blocks=True), he should require 2/4 other idx replies
-        cm.recv_block_idx_reply(MN_VK1, index_reply1)
-        self.assertFalse(cm._check_idx_reply_quorum())
+        my_quorum = cm.my_quorum
+        self.assertTrue(my_quorum > 0)
 
-        cm.recv_block_idx_reply(MN_VK2, index_reply2)
-        self.assertTrue(cm._check_idx_reply_quorum())
+        while (my_quorum > 0) and (len(vks) > 0):
+            self.assertFalse(cm.is_catchup_done())
+            cm.recv_block_idx_reply(vks.pop(), idx_replies.pop())
+            my_quorum -= 1
 
-        cm.recv_block_idx_reply(MN_VK3, index_reply3)
-        self.assertTrue(cm._check_idx_reply_quorum())
-
-        cm.recv_block_idx_reply(MN_VK4, index_reply4)
-        self.assertTrue(cm._check_idx_reply_quorum())
+        self.assertTrue(cm.is_catchup_done())  # Now that we have quorum replies, we should be out of Catchup
 
     def test_catchup_qourum_reached_for_delegate(self, *args):
         cm = self._build_manager(store_blocks=False)
@@ -445,19 +448,29 @@ class TestCatchupManager(TestCase):
         index_reply4 = BlockIndexReply.create(list(all_idx_replies))
 
 
+        my_quorum = cm.my_quorum
+        self.assertTrue(my_quorum > 0)
         # As a Delegate (store_full_blocks=False), he should require 2/3 other idx replies
         #
         cm.recv_block_idx_reply(MN_VK1, index_reply1)
-        self.assertFalse(cm._check_idx_reply_quorum())
+        my_quorum -= 1
+        is_quorum = not cm._check_idx_reply_quorum() if my_quorum > 0 else cm._check_idx_reply_quorum()
+        self.assertTrue(is_quorum)
 
         cm.recv_block_idx_reply(MN_VK2, index_reply2)
-        self.assertFalse(cm._check_idx_reply_quorum())
+        my_quorum -= 1
+        is_quorum = not cm._check_idx_reply_quorum() if my_quorum > 0 else cm._check_idx_reply_quorum()
+        self.assertTrue(is_quorum)
 
         cm.recv_block_idx_reply(MN_VK3, index_reply3)
-        self.assertTrue(cm._check_idx_reply_quorum())
+        my_quorum -= 1
+        is_quorum = not cm._check_idx_reply_quorum() if my_quorum > 0 else cm._check_idx_reply_quorum()
+        self.assertTrue(is_quorum)
 
         cm.recv_block_idx_reply(MN_VK4, index_reply4)
-        self.assertTrue(cm._check_idx_reply_quorum())
+        my_quorum -= 1
+        is_quorum = not cm._check_idx_reply_quorum() if my_quorum > 0 else cm._check_idx_reply_quorum()
+        self.assertTrue(is_quorum)
 
     def test_catchup_with_new_blocks_and_replies_when_we_start_with_some_blocks_already_and_then_we_catchup_again(self, *args):
         """
@@ -474,7 +487,8 @@ class TestCatchupManager(TestCase):
 
         # # Store the first 2 blocks
         curr_blk = blocks[1]
-        self.state.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
+        self.state.set_latest_block_hash(curr_blk.block_hash)
+        self.state.set_latest_block_num(curr_blk.block_num)
 
         cm = self._build_manager(store_blocks=False)
 
@@ -580,7 +594,7 @@ class TestCatchupManager(TestCase):
         # curr_blk = blocks[0]
         # StateDriver.set_latest_block_info(block_hash=curr_blk.block_hash, block_num=curr_blk.block_num)
 
-        cm = self._build_manager()
+        cm = self._build_manager(store_blocks=False)
         cm.run_catchup()
 
         MN_VK1 = PhoneBook.masternodes[0]
@@ -614,9 +628,10 @@ class TestCatchupManager(TestCase):
         self.assertTrue(cm.is_catchup_done())
 
     def test_catchup_from_new_block_notifs(self, *args):
-        cm = self._build_manager()
-        cm.run_catchup()
-        self.assertFalse(cm.is_catchup_done())
+        cm = self._build_manager(vk=DELE_VK1, store_blocks=False)
+        # cm.run_catchup()
+        cm.is_caught_up = True
+        self.assertTrue(cm.is_catchup_done())
 
         # TODO should i send this guy an empty block notif so he knows he is caught up at 0??? Bug seems to repro
         # the same anyway
@@ -628,7 +643,9 @@ class TestCatchupManager(TestCase):
         for block in blocks:
             bd_copy = BlockData.from_bytes(block.serialize())
             reply_datas.append(BlockDataReply.create_from_block(bd_copy))
-            new_block_notifs.append(NewBlockNotification.create_from_block_data(block))
+            new_block_notif = NewBlockNotification.create(block.prev_block_hash, block.block_hash, block.block_num,
+                                                          0, block.block_owners, block.input_hashes)
+            new_block_notifs.append(new_block_notif)
 
         # Send the BlockIndexReplies (1 extra)
 

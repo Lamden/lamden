@@ -10,7 +10,7 @@ class TestFailedBlockNotification(TestCase):
         prev_hash = 'A' * 64
         input_hashes = [{'AB' * 32, 'BC' * 32}, {'C'*64, 'D'*64}, set(), {'E'*64}]
 
-        fbn = FailedBlockNotification.create(prev_block_hash=prev_hash, input_hashes=input_hashes)
+        fbn = FailedBlockNotification.create(prev_block_hash=prev_hash, input_hashes=input_hashes, sb_indices=[0, 1])
 
         self.assertEqual(fbn.prev_block_hash, prev_hash)
         self.assertEqual(fbn.input_hashes, input_hashes)
@@ -20,7 +20,7 @@ class TestFailedBlockNotification(TestCase):
         prev_hash = 'A' * 64
         input_hashes = [{'AB' * 32, 'BC' * 32}, {'C'*64, 'D'*64}, set(), {'E'*64}]
 
-        fbn = FailedBlockNotification.create(prev_block_hash=prev_hash, input_hashes=input_hashes)
+        fbn = FailedBlockNotification.create(prev_block_hash=prev_hash, input_hashes=input_hashes, sb_indices=[0, 1])
         clone = FailedBlockNotification.from_bytes(fbn.serialize())
 
         self.assertEqual(fbn, clone)

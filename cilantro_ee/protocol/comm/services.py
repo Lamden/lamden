@@ -4,7 +4,6 @@ import zmq
 import asyncio
 import json
 
-
 class SocketEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, SocketStruct):
@@ -23,6 +22,7 @@ class Protocols:
 # syntactic sugar yum yum
 def _socket(s: str):
     return SocketStruct.from_string(s)
+
 
 class SocketStruct:
     def __init__(self, protocol: int, id: str, port: int=0):
@@ -190,7 +190,7 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
     socket = ctx.socket(zmq.REQ)
     socket.setsockopt(zmq.LINGER, linger)
     try:
-        # Allow passing an existing socket to save time on initializing a new one and waiting for connection.
+        # Allow passing an existing socket to save time on initializing a _new one and waiting for connection.
         socket.connect(str(socket_id))
 
         await socket.send(msg)
@@ -210,39 +210,74 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
         return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
-class DataFormat:
-    RAW = 0
-    STRING = 1
-    JSON = 2
-    MULTIPART = 3
-    PYOBJ = 4
-    SERIALIZED = 5
+class AsyncInbox:
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        socket_id.id = '*'
+
+        self.address = str(socket_id)
+
+        self.wallet = wallet
+        self.ctx = ctx
+
+        self.socket = None
+
+        self.linger = linger
+        self.poll_timeout = poll_timeout
+
+        self.running = False
+
+    async def serve(self):
+        self.setup_socket()
+
+        self.running = True
+
+        while self.running:
+            try:
+                event = await self.socket.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
+                if event:
+                    _id = await self.socket.recv()
+                    msg = await self.socket.recv()
+                    asyncio.ensure_future(self.handle_msg(_id, msg))
+
+            except zmq.error.ZMQError:
+                self.socket.close()
+                self.setup_socket()
+
+        self.socket.close()
+
+    async def handle_msg(self, _id, msg):
+        await self.return_msg(_id, msg)
+
+    async def return_msg(self, _id, msg):
+        sent = False
+        while not sent:
+            try:
+                await self.socket.send_multipart([_id, msg])
+                sent = True
+            except zmq.error.ZMQError:
+                self.socket.close()
+                self.setup_socket()
+
+    def setup_socket(self):
+        self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket.setsockopt(zmq.LINGER, self.linger)
+        self.socket.bind(self.address)
+
+    def stop(self):
+        self.running = False
 
 
-def send_recv_funcs_for_format(format: int, socket: zmq.Socket):
-    functions = [(socket.send, socket.recv),
-                 (socket.send_string, socket.recv_string),
-                 (socket.send_json, socket.recv_json),
-                 (socket.send_multipart, socket.recv_multipart),
-                 (socket.send_pyobj, socket.recv_pyobj),
-                 (socket.send_serialized, socket.recv_serialized)]
+class AsyncOutbox:
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+        self.ctx = ctx
+        self.wallet = wallet
+        self.address = str(socket_id)
 
-    return functions[format]
+        self.linger = linger
+        self.poll_timeout = poll_timeout
 
+        self.socket = self.ctx.socket(zmq.DEALER)
+        self.socket.setsockopt(zmq.LINGER, self.linger)
 
-# Graceful request from ZMQ socket. Should be expanded to support sending types
-async def _get(socket: zmq.Socket, msg, timeout=500, format=DataFormat.RAW):
-    send, recv = send_recv_funcs_for_format(format, socket)
-    try:
-        await send(msg)
-
-        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
-        if event:
-            response = await recv()
-
-            return response
-        else:
-            return None
-    except Exception as e:
-        log.info(str(e))
-        return None
+    def send(self, _id, msg_type, msg_payload):
+        pass

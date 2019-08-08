@@ -17,3 +17,11 @@ struct Envelope {
     meta @1: MessageMeta;
     message @2: Data;
 }
+
+
+struct Message {
+    payload @0: Data;
+    signature @1: Data;
+    verifyingKey @2: Data;
+    proof @3: Data;
+}
