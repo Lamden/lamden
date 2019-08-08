@@ -10,6 +10,7 @@ import os
 import capnp
 import secrets
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from contracting.db import encoder
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -202,3 +203,38 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(nonces.get((b'456', b'123')), 1000)
         self.assertEqual(nonces.get((b'456', b'124')), 999)
+
+    def test_set_transaction_data_single_value(self):
+        update = {'123': 999}
+        encoded = json.dumps(update)
+        tx_data = transaction_capnp.TransactionData.new_message(
+            state=encoded
+        )
+
+        self.r.set_transaction_data(tx=tx_data)
+
+        self.assertEqual(self.r.get('123'), 999)
+
+    def test_set_transaction_multiple_values(self):
+        update = {'123': 999,
+                  'stu': b'555',
+                  'something': [1, 2, 3]}
+
+        encoded = encoder.encode(update)
+        tx_data = transaction_capnp.TransactionData.new_message(
+            state=encoded
+        )
+
+        self.r.set_transaction_data(tx=tx_data)
+        self.assertEqual(self.r.get('123'), 999)
+        self.assertEqual(self.r.get('stu'), b'555')
+        self.assertEqual(self.r.get('something'), [1, 2, 3])
+        '''
+        struct TransactionData {
+    transaction @0 :Transaction;
+    status @1: Text;
+    state @2: Text;
+    contractType @3: UInt16;
+}
+        :return: 
+        '''

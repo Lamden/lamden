@@ -24,6 +24,7 @@ struct Transaction {
     metadata @0: MetaData;
     payload @1: TransactionPayload;
 }
+
 struct TransactionData {
     transaction @0 :Transaction;
     status @1: Text;
