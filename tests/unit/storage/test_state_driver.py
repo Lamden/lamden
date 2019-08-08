@@ -230,6 +230,27 @@ class TestStateDriver(TestCase):
         self.assertEqual(self.r.get('stu'), b'555')
         self.assertEqual(self.r.get('something'), [1, 2, 3])
 
+    def test_set_transaction_corrupted_json_doesnt_work(self):
+        update = b'999'
+        tx_data = transaction_capnp.TransactionData.new_message(
+            state=update
+        )
+        self.r.set_transaction_data(tx=tx_data)
+
+        # Won't write the data because it's not a valid JSON map
+        self.assertEqual(len(self.r.keys()), 0)
+
+    def test_set_transaction_non_dicts_dont_work(self):
+        update = ['1', 2, 'three']
+        encoded = encoder.encode(update)
+        tx_data = transaction_capnp.TransactionData.new_message(
+            state=encoded
+        )
+        self.r.set_transaction_data(tx=tx_data)
+
+        # Won't write the data because it's not a valid JSON map
+        self.assertEqual(len(self.r.keys()), 0)
+
         '''
         struct TransactionData {
     transaction @0 :Transaction;

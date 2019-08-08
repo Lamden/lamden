@@ -10,7 +10,7 @@ import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
-
+import contextlib
 def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
     # Modifies the provided dict
     k = (tx_payload.processor, tx_payload.sender)
@@ -44,18 +44,18 @@ class MetaDataStorage(DatabaseDriver):
 
     def set_transaction_data(self, tx=transaction_capnp.TransactionData):
         if tx.state is not None and len(tx.state) > 0:
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 sets = json.loads(tx.state)
 
-                # For each KV in the JSON, set the key to the value
-                for k, v in sets.items():
-                    self.log.info('SETTING "{}" to "{}"'.format(k, v))
+            if type(sets) != dict:
+                return
 
-                    # Not sure if this should be encoded or not...
-                    self.set(k, v)
-            except Exception as e:
-                # Log exceptions
-                self.log.critical(str(e))
+            # For each KV in the JSON, set the key to the value
+            for k, v in sets.items():
+                self.log.info('SETTING "{}" to "{}"'.format(k, v))
+
+                # Not sure if this should be encoded or not...
+                self.set(k, v)
 
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
@@ -88,7 +88,7 @@ class MetaDataStorage(DatabaseDriver):
         block_hash = self.get(self.block_hash_key)
         if block_hash is None:
             return b'\x00' * 32
-        return bytes.fromhex(block_hash)
+        return block_hash
 
     def set_latest_block_hash(self, v: bytes):
         if type(v) == str:
