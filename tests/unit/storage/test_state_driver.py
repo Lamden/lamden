@@ -251,12 +251,38 @@ class TestStateDriver(TestCase):
         # Won't write the data because it's not a valid JSON map
         self.assertEqual(len(self.r.keys()), 0)
 
-        '''
-        struct TransactionData {
-    transaction @0 :Transaction;
-    status @1: Text;
-    state @2: Text;
-    contractType @3: UInt16;
-}
-        :return: 
-        '''
+    def test_nonces_are_set_and_deleted_from_commit_nonces(self):
+        pass
+
+    def test_delete_pending_nonce_removes_all_pending_nonce_but_not_normal_nonces(self):
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_nonce(processor=secrets.token_bytes(32),
+                         sender=secrets.token_bytes(32),
+                         nonce=100)
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
+
+        self.r.delete_pending_nonces()
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)

@@ -11,6 +11,8 @@ import capnp
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 import contextlib
+
+
 def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
     # Modifies the provided dict
     k = (tx_payload.processor, tx_payload.sender)
@@ -42,48 +44,6 @@ class MetaDataStorage(DatabaseDriver):
         v = encoder.encode(value)
         super().set(key, v)
 
-    def set_transaction_data(self, tx=transaction_capnp.TransactionData):
-        if tx.state is not None and len(tx.state) > 0:
-            with contextlib.suppress(json.JSONDecodeError):
-                sets = json.loads(tx.state)
-
-            if type(sets) != dict:
-                return
-
-            # For each KV in the JSON, set the key to the value
-            for k, v in sets.items():
-                self.log.info('SETTING "{}" to "{}"'.format(k, v))
-
-                # Not sure if this should be encoded or not...
-                self.set(k, v)
-
-    def update_with_block(self, block):
-        self.log.success('UPDATING STATE')
-
-        # Map of tuple to nonce such that (processor, sender) => nonce
-        nonces = {}
-
-        for sb in block.subBlocks:
-            for tx in sb.transactions:
-                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
-                self.set_transaction_data(tx=tx)
-
-
-        # Delete pending nonces and update the nonces
-        for k, v in nonces.items():
-            processor, sender = k
-            self.set_nonce(processor=processor, sender=sender, nonce=v)
-            self.delete_pending_nonce(processor=processor, sender=sender)
-
-        # Update our block hash and block num
-        self.latest_block_hash = block.blockHash
-        self.latest_block_num = block.blockNum
-
-        #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
-
-        assert self.latest_block_hash == block.blockHash, \
-            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
-
     def get_latest_block_hash(self):
         block_hash = self.get(self.block_hash_key)
         if block_hash is None:
@@ -112,24 +72,75 @@ class MetaDataStorage(DatabaseDriver):
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
-    def _key_for_nonce(self, processor: bytes, sender: bytes, pending=False):
-        key = self.pending_nonce_key if pending else self.nonce_key
-        key_str = ':'.join([key, processor.hex(), sender.hex()])
-        return key_str
+    def set_transaction_data(self, tx=transaction_capnp.TransactionData):
+        if tx.state is not None and len(tx.state) > 0:
+            with contextlib.suppress(json.JSONDecodeError):
+                sets = json.loads(tx.state)
 
-    def get_nonce(self, processor: bytes, sender: bytes, pending=False):
-        key_str = self._key_for_nonce(processor, sender, pending)
-        nonce = self.get(key_str)
-        return encoder.decode(nonce)
+            if type(sets) != dict:
+                return
 
-    def set_nonce(self, processor:bytes, sender: bytes, nonce: int, pending=False):
-        key_str = self._key_for_nonce(processor, sender, pending)
-        nonce = encoder.encode(nonce)
-        self.set(key_str, nonce)
+            # For each KV in the JSON, set the key to the value
+            for k, v in sets.items():
+                self.log.info('SETTING "{}" to "{}"'.format(k, v))
 
-    def delete_nonce(self, processor: bytes, sender: bytes, pending=False):
-        key_str = self._key_for_nonce(processor, sender, pending)
-        self.delete(key_str)
+                # Not sure if this should be encoded or not...
+                self.set(k, v)
+
+    def commit_nonces(self, nonce_hash):
+        # Delete pending nonces and update the nonces
+        for k, v in nonce_hash.items():
+            processor, sender = k
+            self.set_nonce(processor=processor, sender=sender, nonce=v)
+            self.delete_pending_nonce(processor=processor, sender=sender)
+
+    def delete_pending_nonces(self):
+        for nonce in self.iter(self.pending_nonce_key):
+            self.delete(nonce)
+
+    def update_with_block(self, block):
+        self.log.success('UPDATING STATE')
+
+        # Map of tuple to nonce such that (processor, sender) => nonce
+        nonces = {}
+
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                self.set_transaction_data(tx=tx)
+
+        self.commit_nonces(nonce_hash=nonces)
+        self.delete_pending_nonces()
+
+        # Update our block hash and block num
+        self.latest_block_hash = block.blockHash
+        self.latest_block_num = block.blockNum
+
+        #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
+
+        assert self.latest_block_hash == block.blockHash, \
+            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
+
+
+
+    # def _key_for_nonce(self, processor: bytes, sender: bytes, pending=False):
+    #     key = self.pending_nonce_key if pending else self.nonce_key
+    #     key_str = ':'.join([key, processor.hex(), sender.hex()])
+    #     return key_str
+    #
+    # def get_nonce(self, processor: bytes, sender: bytes, pending=False):
+    #     key_str = self._key_for_nonce(processor, sender, pending)
+    #     nonce = self.get(key_str)
+    #     return encoder.decode(nonce)
+    #
+    # def set_nonce(self, processor:bytes, sender: bytes, nonce: int, pending=False):
+    #     key_str = self._key_for_nonce(processor, sender, pending)
+    #     nonce = encoder.encode(nonce)
+    #     self.set(key_str, nonce)
+    #
+    # def delete_nonce(self, processor: bytes, sender: bytes, pending=False):
+    #     key_str = self._key_for_nonce(processor, sender, pending)
+    #     self.delete(key_str)
 
     @staticmethod
     def n_key(key, processor, sender):
