@@ -50,7 +50,7 @@ class MetaDataStorage(DatabaseDriver):
         super().set(key, v)
 
     def get_latest_block_hash(self):
-        block_hash = self.get(self.block_hash_key)
+        block_hash = super().get(self.block_hash_key)
         if block_hash is None:
             return b'\x00' * 32
         return block_hash
@@ -59,7 +59,7 @@ class MetaDataStorage(DatabaseDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        self.set(self.block_hash_key, v)
+        super().set(self.block_hash_key, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
