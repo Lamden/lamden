@@ -47,17 +47,10 @@ metadata_driver = MetaDataStorage()
 static_headers = {}
 
 
-def _respond_to_request(payload, headers={}, status=200, resptype='json'):
-    if resptype == 'json':
-        return json(payload, headers=dict(headers, **static_headers), status=status)
-    elif resptype == 'text':
-        return text(payload, headers=dict(headers, **static_headers), status=status)
-
-
 # ping to check whether server is online or not
 @app.route("/ping", methods=["GET","OPTIONS",])
 async def ping(request):
-    return _respond_to_request({'status': 'online'})
+    return json({'status': 'online'})
 
 
 @app.route('/id', methods=['GET'])
@@ -78,6 +71,17 @@ async def get_nonce(request, vk):
             pending_nonce = nonce
 
     return json({'nonce': pending_nonce, 'processor': conf.HOST_VK.hex(), 'sender': vk})
+
+
+@app.route('/epoch', methods=['GET'])
+async def get_epoch(request):
+    epoch_hash = metadata_driver.latest_epoch_hash
+    block_num = metadata_driver.latest_block_num
+    e = (block_num // conf.EPOCH_INTERVAL) + 1
+    blocks_until_next_epoch = (e * conf.EPOCH_INTERVAL) - block_num
+
+    return json({'epoch_hash': epoch_hash.hex(),
+                 'blocks_until_next_epoch': blocks_until_next_epoch})
 
 
 @app.route("/", methods=["POST","OPTIONS",])
@@ -176,7 +180,7 @@ async def get_variable(request, contract, variable):
 async def get_latest_block(request):
     index = MasterStorage.get_last_n(1)
     latest_block_hash = index.get('blockHash')
-    return _respond_to_request({ 'hash': '{}'.format(latest_block_hash) })
+    return json({ 'hash': '{}'.format(latest_block_hash) })
 
 
 @app.route('/blocks', methods=["GET","OPTIONS",])
@@ -185,7 +189,7 @@ async def get_block(request):
         num = request.json['number']
         block = MasterStorage.get_block(num)
         if block is None:
-            return _respond_to_request({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
+            return json({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     # TODO check block by hash isn't implemented
     # else:
     #     _hash = request.json['hash']
@@ -193,7 +197,7 @@ async def get_block(request):
     #     if block is None:
     #         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    return _respond_to_request(_json.dumps(block))
+    return json(_json.dumps(block))
 
 
 def start_webserver(q):
