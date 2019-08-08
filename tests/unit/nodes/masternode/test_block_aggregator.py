@@ -4,34 +4,29 @@ from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro_ee.storage.vkbook import PhoneBook
 
 import unittest, asyncio
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
 
-from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_PUB_PORT
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
-from cilantro_ee.messages.transaction.data import TransactionData, TransactionDataBuilder
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
+from cilantro_ee.messages.block_data.notification import *
 from cilantro_ee.messages.block_data.block_metadata import *
 from cilantro_ee.messages.consensus.merkle_signature import *
 
-from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.protocol import wallet
-from cilantro_ee.storage.mongo import MDB
 from cilantro_ee.storage.driver import SafeDriver
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
-import time
 from cilantro_ee.logger.base import get_logger
 
 
@@ -54,6 +49,10 @@ TEST_SK = TESTNET_MASTERNODES[0]['sk']
 TEST_VK = TESTNET_MASTERNODES[0]['vk']
 DEL_SK = TESTNET_DELEGATES[0]['sk']
 DEL_VK = TESTNET_DELEGATES[0]['vk']
+
+TEST_DELEGATES = [TESTNET_DELEGATES[i]['vk'] for i in range(len(TESTNET_DELEGATES))]
+TEST_MASTERS = [TESTNET_MASTERNODES[i]['vk'] for i in range(len(TESTNET_MASTERNODES))]
+
 INPUT_HASH1 = '1' * 64
 INPUT_HASH2 = '2' * 64
 RAWTXS1 = [
@@ -90,14 +89,7 @@ log = get_logger('BlockAggregatorTester')
 
 
 class TestBlockAggregator(TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        MDB(s_key = TEST_SK)
-
     def setUp(self):
-        MDB.init_mdb = True
-        MDB.reset_db()
         SafeDriver.flush()
 
     @BlockAggTester.test
@@ -145,10 +137,10 @@ class TestBlockAggregator(TestCase):
     #     ba.build_task_list()
     #     ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
     #
-    #     sk1, vk1 = wallet.new()
-    #     sk2, vk2 = wallet.new()
-    #     sk3, vk3 = wallet.new()
-    #     sk4, vk4 = wallet.new()
+    #     sk1, vk1 = wallet._new()
+    #     sk2, vk2 = wallet._new()
+    #     sk3, vk3 = wallet._new()
+    #     sk4, vk4 = wallet._new()
     #
     #     sb1_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
     #     sb2_txs = [TransactionDataBuilder.create_random_tx() for _ in range(8)]
@@ -235,6 +227,9 @@ class TestBlockAggregator(TestCase):
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=DEL_SK, vk=DEL_VK)
+
+        PhoneBook = VKBook(delegates=[DEL_VK, TESTNET_DELEGATES[1]['vk']], masternodes=[TESTNET_MASTERNODES[0]])
+
         sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0, GENESIS_BLOCK_HASH)
 
         ba.recv_sub_block_contender(DEL_VK, sbc)
@@ -250,6 +245,9 @@ class TestBlockAggregator(TestCase):
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         signature = build_test_merkle_sig(msg=bytes.fromhex(INPUT_HASH1), sk=DEL_SK, vk=DEL_VK)
+
+        PhoneBook = VKBook(delegates=[DEL_VK, TESTNET_DELEGATES[1]['vk']], masternodes=[TESTNET_MASTERNODES[0]])
+
         sbc = SubBlockContender.create_empty_sublock(INPUT_HASH1, sub_block_index=0, signature=signature,
                                                      prev_block_hash=GENESIS_BLOCK_HASH)
 
@@ -266,6 +264,8 @@ class TestBlockAggregator(TestCase):
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
@@ -286,6 +286,8 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
         old_b_hash = ba.curr_block_hash
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(DELEGATE_MAJORITY):
@@ -314,6 +316,8 @@ class TestBlockAggregator(TestCase):
         ba.pub = MagicMock()
         old_b_hash = ba.curr_block_hash
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         # Sub block 0
         for i in range(NUM_DELEGATES):
@@ -356,7 +360,7 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(block_data.merkle_roots, [RESULT_HASH1])
         self.assertEqual(block_data.transactions, TXS1)
 
-    # TODO fix this test once we care about getting consensus on new block notifications --davis
+    # TODO fix this test once we care about getting consensus on _new block notifications --davis
     # @BlockAggTester.test
     # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.MASTERNODE_MAJORITY", 2)
     # @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
@@ -407,6 +411,8 @@ class TestBlockAggregator(TestCase):
         ba.build_task_list()
         ba.send_new_block_notif = MagicMock()
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
+
+        PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
 
         for i in range(DELEGATE_MAJORITY):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])

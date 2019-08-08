@@ -9,12 +9,8 @@ from cilantro_ee.messages.transaction.data import TransactionDataBuilder
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from unittest import TestCase
-
+from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 import unittest
-from unittest.mock import MagicMock
-
-import secrets
-from unittest.mock import patch
 
 
 TEST_SK = TESTNET_MASTERNODES[0]['sk']
@@ -24,6 +20,9 @@ DEL_VK = TESTNET_DELEGATES[0]['vk']
 
 
 class TestSubBlockContender(TestCase):
+
+    def setUp(self):
+        PhoneBook = VKBook(delegates=[DEL_VK], masternodes=[TEST_VK])
 
     def test_builder(self):
         sbc = SubBlockContenderBuilder.create()
@@ -79,10 +78,11 @@ class TestSubBlockContender(TestCase):
         sbc1 = SubBlockContender.create(result_hash=tree.root_as_hex, input_hash=input_hash, merkle_leaves=tree.leaves,
                                        signature=signature, transactions=txs, sub_block_index=0, prev_block_hash='0'*64)
         self.assertFalse(sbc1.is_empty)
-        msg_type = MessageBase.registry[type(sbc1)]
-        sbc2 = MessageBase.registry[msg_type].from_bytes(sbc1.serialize())
+        #msg_type = MessageBase.registry[type(sbc1)]
+        sbc2 = SubBlockContender.from_bytes(sbc1.serialize())
         self.assertEqual(sbc1, sbc2)
-        msg2 = Envelope.create_from_message(message=sbc2, signing_key=DEL_SK, verifying_key=DEL_VK)
+
+        msg2 = Envelope.create_from_message(message=sbc2.serialize(), signing_key=DEL_SK, verifying_key=DEL_VK)
         es = msg2.serialize()
         env = Envelope.from_bytes(es)
         sbc = env.message

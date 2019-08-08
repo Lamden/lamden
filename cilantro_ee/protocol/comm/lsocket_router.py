@@ -8,7 +8,7 @@ from typing import List
 # between retries (i.e. we retry in 1, then 2, then 4, then 8 seconds and so on)
 PING_TIMEOUT = 127
 
-# How long before a 'session' with another Router client expires. After the session expires, a new PING/PONG exchange
+# How long before a 'session' with another Router client expires. After the session expires, a _new PING/PONG exchange
 # must occur before any messages can be sent to that client
 SESSION_TIMEOUT = 1800  # 30 minutes
 

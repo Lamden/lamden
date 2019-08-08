@@ -117,7 +117,7 @@ class MPTesterProcess:
         self.gathered_tasks = None
         self.log = get_logger("TesterProc-{}".format(name))
 
-        # Speculation: New processes has to start with a new event loop
+        # Speculation: New processes has to start with a _new event loop
         self._new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._new_loop)
 
@@ -168,7 +168,7 @@ class MPTesterProcess:
         # Validate loop
         assert isinstance(loop, asyncio.AbstractEventLoop), \
             "Got {} that isn't an instance of asyncio.AbstractEventLoop".format(loop)
-        assert self._new_loop == loop, "Builder object returned new loop {} that does not match MPTesterProcess's event " \
+        assert self._new_loop == loop, "Builder object returned _new loop {} that does not match MPTesterProcess's event " \
                                        "loop {}".format(loop, self._new_loop)
         asyncio.set_event_loop(loop)
 
@@ -371,7 +371,7 @@ class MPTesterBase:
         url = BaseNetworkTestCase.ports[self.container_name][MPTEST_PORT]  # URL the orchestration node should connect to
         url = url.replace('localhost', '127.0.0.1')  # Adjust localhost to 127.0.0.1
         url = "tcp://{}".format(url)
-        self.log.debug("Host machine changing old URL {} to new URL {} for container {}".format(old_url, url, self.container_name))
+        self.log.debug("Host machine changing old URL {} to _new URL {} for container {}".format(old_url, url, self.container_name))
         self.url = url
 
         self.log.notice("Host machine reconnecting to URL {}".format(self.url))

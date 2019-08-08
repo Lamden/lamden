@@ -9,8 +9,8 @@ log = get_logger("VKBook")
 
 
 class VKBook:
-    def __init__(self, masternodes, delegates, num_boot_mns, \
-                 num_boot_del, stamps, nonces, debug=True):
+    def __init__(self, masternodes, delegates, num_boot_mns=1,
+                 num_boot_del=1, stamps=True, nonces=False, debug=True):
         self.client = ContractingClient()
 
         self.contract = self.client.get_contract('vkbook')
@@ -27,12 +27,17 @@ class VKBook:
             self.contract = self.client.get_contract('vkbook')
 
         self.masternode_quorum_max = math.ceil(len(self.masternodes) * 2 / 3)
+
         self.delegate_quorum_max = math.ceil(len(self.delegates) * 2 / 3)
 
         num_boot_mns = self.contract.get_num_boot_masternodes()
+
         self.masternode_quorum_min = min(self.masternode_quorum_max, num_boot_mns)
+
         num_boot_del = self.contract.get_num_boot_delegates()
+
         self.delegate_quorum_min = min(self.delegate_quorum_max, num_boot_del)
+
         self.quorum_min = self.masternode_quorum_min + self.delegate_quorum_min
 
 

@@ -1,23 +1,22 @@
 from unittest import TestCase
-from cilantro_ee.storage.mongo import MasterDatabase
+from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.protocol import wallet
 
 
 class TestMasterDatabase(TestCase):
     def setUp(self):
         self.sk, self.vk = wallet.new()
-        self.db = MasterDatabase(signing_key=self.sk)
+        self.db = MasterStorage()
 
     def tearDown(self):
-        #self.db.drop_db()
-        pass
+        self.db.drop_collections()
 
     def test_init_masterdatabase(self):
         self.assertIsNotNone(self.db.blocks)
 
     def test_insert_block_type_error_if_not_dict(self):
         with self.assertRaises(TypeError):
-            self.db.insert_block(123)
+            self.db.put(123)
 
     def test_insert_block_returns_true_when_provided_correct_arguments(self):
 
@@ -27,12 +26,8 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
-
-    def test_insert_block_returns_false_if_none_provided(self):
-        result = self.db.insert_block()
-        self.assertFalse(result)
 
     def test_get_block_number_returns_data(self):
         block = {
@@ -41,9 +36,9 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        self.db.insert_block(block)
+        self.db.put(block)
 
-        block = self.db.get_block_by_number(1)
+        block = self.db.get_block(1)
         self.assertTrue(block)
 
     def test_drop_db(self):
@@ -53,15 +48,15 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        block = self.db.get_block_by_number(1)
+        block = self.db.get_block(1)
         self.assertTrue(block)
 
-        self.db.drop_db()
+        self.db.drop_collections()
 
-        block = self.db.get_block_by_number(1)
+        block = self.db.get_block(1)
         self.assertIsNone(block)
 
     def test_get_block_by_hash(self):
@@ -72,10 +67,12 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        stored_block = self.db.get_block_by_hash('a')
+        stored_block = self.db.get_block('a')
+
+        del block['_id']
 
         self.assertEqual(block, stored_block)
 
@@ -87,10 +84,12 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        stored_block = self.db.get_block_by_number(1)
+        stored_block = self.db.get_block(1)
+
+        del block['_id']
 
         self.assertEqual(block, stored_block)
 
@@ -102,10 +101,12 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        stored_block = self.db.get_block_by_hash('b')
+        stored_block = self.db.get_block('b')
+
+        del block['_id']
 
         self.assertIsNone(stored_block)
 
@@ -117,10 +118,12 @@ class TestMasterDatabase(TestCase):
             'amount': 1000000
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        stored_block = self.db.get_block_by_number(2)
+        stored_block = self.db.get_block(2)
+
+        del block['_id']
 
         self.assertIsNone(stored_block)
 
@@ -134,7 +137,7 @@ class TestMasterDatabase(TestCase):
         result = self.db.indexes.collection.insert_one(block)
         self.assertTrue(result)
 
-        owners = self.db.get_block_owners(1)
+        owners = self.db.get_owners(1)
 
         self.assertEqual(block['blockOwners'], owners)
 
@@ -148,7 +151,7 @@ class TestMasterDatabase(TestCase):
         result = self.db.indexes.collection.insert_one(block)
         self.assertTrue(result)
 
-        owners = self.db.get_block_owners(block_hash='a')
+        owners = self.db.get_owners('a')
 
         self.assertEqual(block['blockOwners'], owners)
 
@@ -161,10 +164,10 @@ class TestMasterDatabase(TestCase):
             'blockOwners': ['stu', 'raghu']
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        owners = self.db.get_block_owners(2)
+        owners = self.db.get_owners(2)
 
         self.assertIsNone(owners)
 
@@ -177,10 +180,10 @@ class TestMasterDatabase(TestCase):
             'blockOwners': ['stu', 'raghu']
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        owners = self.db.get_block_owners(block_hash='x')
+        owners = self.db.get_owners('x')
 
         self.assertIsNone(owners)
 
@@ -193,17 +196,15 @@ class TestMasterDatabase(TestCase):
             'blockOwners': ['stu', 'raghu']
         }
 
-        result = self.db.insert_block(block)
+        result = self.db.put(block)
         self.assertTrue(result)
 
-        owners = self.db.get_block_owners()
+        owners = self.db.get_owners(1000)
 
         self.assertIsNone(owners)
 
     def test_create_genesis_block(self):
-        self.db.create_genesis_block()
-
-        block = self.db.get_block_by_number(0)
+        block = self.db.get_block(0)
 
         self.assertIsNotNone(block)
 
@@ -244,7 +245,7 @@ class TestMasterDatabase(TestCase):
         self.db.indexes.collection.insert_one(block_4)
         self.db.indexes.collection.insert_one(block_5)
 
-        blocks = self.db.get_last_n_local_blocks(3)
+        blocks = self.db.get_last_n(3)
 
         nums = [block['blockNum'] for block in blocks]
 
@@ -287,8 +288,8 @@ class TestMasterDatabase(TestCase):
         self.db.indexes.collection.insert_one(block_4)
         self.db.indexes.collection.insert_one(block_5)
 
-        blocks = self.db.get_last_n_local_blocks(300)
+        blocks = self.db.get_last_n(300)
 
         nums = [block['blockNum'] for block in blocks]
 
-        self.assertEqual(nums, [5, 4, 3, 2, 1])
+        self.assertEqual(nums, [5, 4, 3, 2, 1, 0])
