@@ -252,7 +252,36 @@ class TestStateDriver(TestCase):
         self.assertEqual(len(self.r.keys()), 0)
 
     def test_nonces_are_set_and_deleted_from_commit_nonces(self):
-        pass
+        n1 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n2 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n3 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n4 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n5 = (secrets.token_bytes(32), secrets.token_bytes(32))
+
+        nonces = {
+            n1: 5,
+            n3: 3,
+            n5: 6
+        }
+
+        self.r.set_pending_nonce(n1[0], n1[1], 5)
+        self.r.set_pending_nonce(n2[0], n2[1], 999)
+        self.r.set_pending_nonce(n3[0], n3[1], 3)
+        self.r.set_pending_nonce(n4[0], n4[1], 888)
+        self.r.set_pending_nonce(n5[0], n5[1], 6)
+
+        self.r.set_nonce(n1[0], n1[1], 4)
+        self.r.set_nonce(n3[0], n3[1], 2)
+        self.r.set_nonce(n5[0], n5[1], 5)
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 3)
+
+        self.r.commit_nonces(nonce_hash=nonces)
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 2)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 3)
+
 
     def test_delete_pending_nonce_removes_all_pending_nonce_but_not_normal_nonces(self):
         self.r.set_pending_nonce(processor=secrets.token_bytes(32),
