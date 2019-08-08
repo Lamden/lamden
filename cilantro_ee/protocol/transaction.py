@@ -152,10 +152,18 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
     if tx.payload.processor != expected_processor:
         return False
 
+    # Attempt to get the current block's pending nonce
     pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
 
+    # If it doesn't exist, get the current nonce
     if pending_nonce is None:
-        pending_nonce = 0
+        nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender)
+
+        # If that doesn't exist, this is the first TX. Set pending nonce to 0
+        if nonce is None:
+            pending_nonce = 0
+        else:
+            pending_nonce = nonce
 
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:

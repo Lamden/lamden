@@ -561,6 +561,7 @@ class SubBlockBuilder(Worker):
 
             sb_index = self.sb_managers[sm_idx].sub_block_index
             timestamp = self.sb_managers[sm_idx].processed_txs_timestamp
+
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
 
                 input_hash, tx_batch = self.sb_managers[sm_idx].pending_txs.pop_front()
