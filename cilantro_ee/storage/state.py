@@ -103,12 +103,19 @@ class MetaDataStorage(DatabaseDriver):
             for k, v in sets.items():
                 self.set(k, v)
 
-    def commit_nonces(self, nonce_hash):
+    def commit_nonces(self, nonce_hash=None):
         # Delete pending nonces and update the nonces
-        for k, v in nonce_hash.items():
-            processor, sender = k
-            self.set_nonce(processor=processor, sender=sender, nonce=v)
-            self.delete_pending_nonce(processor=processor, sender=sender)
+        if nonce_hash is not None:
+            for k, v in nonce_hash.items():
+                processor, sender = k
+                self.set_nonce(processor=processor, sender=sender, nonce=v)
+                self.delete_pending_nonce(processor=processor, sender=sender)
+        else:
+            # Commit all pending nonces straight up
+            for n in self.iter(self.pending_nonce_key):
+                _, processor, sender = n.split(':')
+                self.set_nonce(processor=processor, sender=sender)
+                self.delete(n)
 
     def delete_pending_nonces(self):
         for nonce in self.iter(self.pending_nonce_key):

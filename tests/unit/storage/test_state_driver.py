@@ -35,9 +35,14 @@ class TestStateDriver(TestCase):
                                     kwargs={'amount': 10, 'to': 'jeff'},
                                     stamps=500000,
                                     processor=secrets.token_bytes(32),
+                                    epoch=b'\x00' * 32,
                                     nonce=i)
 
             tx.sign(w.signing_key())
+
+            tx.proof=b'\x00'
+            tx.proof_generated=True
+
             packed_tx = transaction_capnp.Transaction.from_bytes_packed(tx.serialize())
 
             # Create a hashmap between a key and the value it should be set to randomly
@@ -314,3 +319,6 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
+
+    def test_commit_nonce_when_nonce_hash_is_none_that_it_commits_all_current_pending_nonces(self):
+        pass
