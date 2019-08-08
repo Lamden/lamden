@@ -161,6 +161,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:
         if tx.payload.nonce != pending_nonce:
+            print('Nonce failed')
             return False
         pending_nonce += 1
 
@@ -168,18 +169,21 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     # delegates shouldn't be as concerned. (1, 2, 4) should be valid for delegates.
     else:
         if tx.payload.nonce < pending_nonce:
+            print('Nonce failed')
             return False
         pending_nonce = tx.payload.nonce + 1
 
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
+        print('Verify failed')
         return False
 
     pipehash_state = driver.latest_epoch_hash
     if not pipehash.check_solution(state=pipehash_state,
                                    data=tx.payload.as_builder().to_bytes_packed(),
                                    nonce=tx.metadata.proof):
+        print('Proof failed')
         return False
 
     # if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
@@ -198,7 +202,11 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
 
         balance = driver.get(balances_key) or 0
 
+        print('BALANCE: {} {}'.format(balance, type(balance)))
+        print('STAMPS : {} {}'.format(tx.payload.stampsSupplied, type(tx.payload.stampsSupplied)))
+
         if balance < tx.payload.stampsSupplied:
+            print('Balance failed')
             return False
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
