@@ -127,3 +127,78 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(nonces.get((b'456', b'123')), 999)
 
+    def test_update_nonce_when_new_max_nonce_found(self):
+        nonces = {}
+
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=999,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=1000,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        self.assertEqual(nonces.get((b'456', b'123')), 1000)
+
+    def test_update_nonce_only_keeps_max_values(self):
+        nonces = {}
+
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=1000,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=999,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        self.assertEqual(nonces.get((b'456', b'123')), 1000)
+
+    def test_update_nonce_keeps_multiple_nonces(self):
+        nonces = {}
+
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=1000,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        sender = b'124'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=999,
+        )
+
+        update_nonce_hash(nonces, tx_payload)
+
+        self.assertEqual(nonces.get((b'456', b'123')), 1000)
+        self.assertEqual(nonces.get((b'456', b'124')), 999)
