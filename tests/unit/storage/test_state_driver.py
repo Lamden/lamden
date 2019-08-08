@@ -1,7 +1,7 @@
 from unittest import TestCase
 import unittest
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
 import json
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.protocol.transaction import TransactionBuilder
@@ -113,5 +113,17 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(self.r.get_latest_block_num(), b_num)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_update_nonce_empty_hash_adds_anything(self):
+        sender = b'123'
+        processor = b'456'
+        tx_payload = transaction_capnp.TransactionPayload.new_message(
+            sender=sender,
+            processor=processor,
+            nonce=999,
+        )
+
+        nonces = {}
+        update_nonce_hash(nonces, tx_payload)
+
+        self.assertEqual(nonces.get((b'456', b'123')), 999)
+

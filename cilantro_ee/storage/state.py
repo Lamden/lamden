@@ -42,9 +42,6 @@ class MetaDataStorage(DatabaseDriver):
         v = encoder.encode(value)
         super().set(key, v)
 
-    def raw_set(self, key, value):
-        super().set(key, value)
-
     def set_transaction_data(self, tx=transaction_capnp.TransactionData):
         if tx.state is not None and len(tx.state) > 0:
             try:
