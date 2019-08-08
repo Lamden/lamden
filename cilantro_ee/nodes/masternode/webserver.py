@@ -77,6 +77,7 @@ async def get_nonce(request, vk):
 async def get_epoch(request):
     epoch_hash = metadata_driver.latest_epoch_hash
     block_num = metadata_driver.latest_block_num
+
     e = (block_num // conf.EPOCH_INTERVAL) + 1
     blocks_until_next_epoch = (e * conf.EPOCH_INTERVAL) - block_num
 

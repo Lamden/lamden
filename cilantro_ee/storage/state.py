@@ -113,8 +113,13 @@ class MetaDataStorage(DatabaseDriver):
         else:
             # Commit all pending nonces straight up
             for n in self.iter(self.pending_nonce_key):
-                _, processor, sender = n.split(':')
-                self.set_nonce(processor=processor, sender=sender)
+                nonce = self.get(n)
+                _, processor, sender = n.decode().split(':')
+
+                processor = bytes.fromhex(processor)
+                sender = bytes.fromhex(sender)
+
+                self.set_nonce(processor=processor, sender=sender, nonce=nonce)
                 self.delete(n)
 
     def delete_pending_nonces(self):

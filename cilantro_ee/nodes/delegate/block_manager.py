@@ -547,6 +547,7 @@ class BlockManager(Worker):
                     self.db_state.driver.latest_block_hash = my_new_block_hash
 
                 self.send_updated_db_msg()
+                self.driver.commit_nonces()
 
                 # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
             else:

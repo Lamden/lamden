@@ -40,8 +40,8 @@ class TestStateDriver(TestCase):
 
             tx.sign(w.signing_key())
 
-            tx.proof=b'\x00'
-            tx.proof_generated=True
+            tx.proof = b'\x00'
+            tx.proof_generated = True
 
             packed_tx = transaction_capnp.Transaction.from_bytes_packed(tx.serialize())
 
@@ -321,4 +321,34 @@ class TestStateDriver(TestCase):
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
 
     def test_commit_nonce_when_nonce_hash_is_none_that_it_commits_all_current_pending_nonces(self):
-        pass
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
+                                 sender=secrets.token_bytes(32),
+                                 nonce=100)
+
+        self.r.set_nonce(processor=secrets.token_bytes(32),
+                         sender=secrets.token_bytes(32),
+                         nonce=100)
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
+
+        self.r.commit_nonces()
+
+        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 6)
