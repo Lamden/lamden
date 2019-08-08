@@ -64,7 +64,7 @@ class MetaDataStorage(DatabaseDriver):
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
     def get_latest_epoch_hash(self):
-        epoch_hash = self.get(self.epoch_hash_key)
+        epoch_hash = super().get(self.epoch_hash_key)
         if epoch_hash is None:
             return b'\x00' * 32
         return epoch_hash
@@ -73,7 +73,7 @@ class MetaDataStorage(DatabaseDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        self.set(self.epoch_hash_key, v)
+        super().set(self.epoch_hash_key, v)
 
     latest_epoch_hash = property(get_latest_epoch_hash, set_latest_epoch_hash)
 
