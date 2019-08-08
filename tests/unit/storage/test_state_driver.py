@@ -229,6 +229,7 @@ class TestStateDriver(TestCase):
         self.assertEqual(self.r.get('123'), 999)
         self.assertEqual(self.r.get('stu'), b'555')
         self.assertEqual(self.r.get('something'), [1, 2, 3])
+
         '''
         struct TransactionData {
     transaction @0 :Transaction;
