@@ -1,6 +1,7 @@
 from decimal import Decimal
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
+from cilantro_ee.protocol import pipehash
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.messages import capnp as schemas
@@ -133,8 +134,10 @@ def verify_packed_tx(sender, tx):
         return False
 
 
-def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: bytes,
-                         driver: MetaDataStorage, strict=True):
+def transaction_is_valid(tx: transaction_capnp.Transaction,
+                         expected_processor: bytes,
+                         driver: MetaDataStorage,
+                         strict=True):
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
@@ -166,15 +169,20 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
             return False
         pending_nonce = tx.payload.nonce + 1
 
-
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
         return False
 
-    if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
-                              tx.metadata.proof):
+    pipehash_state = driver.latest_epoch_hash
+    if not pipehash.check_solution(state=pipehash_state,
+                                   data=tx.payload.as_builder().to_bytes_packed(),
+                                   nonce=tx.metadata.proof):
         return False
+
+    # if not SHA3POWBytes.check(tx.payload.as_builder().to_bytes_packed(),
+    #                           tx.metadata.proof):
+    #     return False
 
     if tx.payload.stampsSupplied > 0:
         currency_contract = 'currency'

@@ -64,9 +64,20 @@ async def ping(request):
 async def get_id(request):
     return json({'verifying_key': conf.HOST_VK.hex()})
 
+
 @app.route('/nonce/<vk>', methods=['GET'])
 async def get_nonce(request, vk):
-    metadata_driver.get_pending_nonce(processor=conf.HOST_VK.hex())
+    # Might have to change this sucker from hex to bytes.
+    pending_nonce = metadata_driver.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+
+    if pending_nonce is None:
+        nonce = metadata_driver.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+        if nonce is None:
+            pending_nonce = 0
+        else:
+            pending_nonce = nonce
+
+    return json({'nonce': pending_nonce, 'processor': conf.HOST_VK.hex(), 'sender': vk})
 
 
 @app.route("/", methods=["POST","OPTIONS",])

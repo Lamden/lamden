@@ -85,18 +85,22 @@ def check_solution(state: bytes,
                    data: bytes,
                    nonce: bytes,
                    difficulty=DEFAULT_DIFF):
+
+    if len(nonce) != 32:
+        return False
+
     d_i = int(difficulty, 16)
 
     h = hashlib.sha3_256()
-    h.update(data)
-    h.update(nonce)
+    h.update(data+nonce)
 
     d = h.digest()
 
-    work = encrypt(state, d)
-    w_i = int(work.hex(), 16)
+    solution = encrypt(state, d)
+    s_i = int(solution.hex(), 16)
 
-    return w_i < d_i
+    return s_i < d_i
+
 
 def find_solution(state: bytes, data: bytes):
     nonce = secrets.token_bytes(32)
