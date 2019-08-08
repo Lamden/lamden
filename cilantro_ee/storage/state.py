@@ -45,6 +45,21 @@ class MetaDataStorage(DatabaseDriver):
     def raw_set(self, key, value):
         super().set(key, value)
 
+    def set_transaction_data(self, tx=transaction_capnp.TransactionData):
+        if tx.state is not None and len(tx.state) > 0:
+            try:
+                sets = json.loads(tx.state)
+
+                # For each KV in the JSON, set the key to the value
+                for k, v in sets.items():
+                    self.log.info('SETTING "{}" to "{}"'.format(k, v))
+
+                    # Not sure if this should be encoded or not...
+                    self.set(k, v)
+            except Exception as e:
+                # Log exceptions
+                self.log.critical(str(e))
+
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
 
@@ -53,23 +68,9 @@ class MetaDataStorage(DatabaseDriver):
 
         for sb in block.subBlocks:
             for tx in sb.transactions:
-
                 update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                self.set_transaction_data(tx=tx)
 
-                # If there are state effects in the transaction, try setting them by loading the JSON
-                if tx.state is not None and len(tx.state) > 0:
-                    try:
-                        sets = json.loads(tx.state)
-
-                        # For each KV in the JSON, set the key to the value
-                        for k, v in sets.items():
-                            self.log.info('SETTING "{}" to "{}"'.format(k, v))
-
-                            # Not sure if this should be encoded or not...
-                            self.raw_set(k, v)
-                    except Exception as e:
-                        # Log exceptions
-                        self.log.critical(str(e))
 
         # Delete pending nonces and update the nonces
         for k, v in nonces.items():
@@ -113,6 +114,25 @@ class MetaDataStorage(DatabaseDriver):
         self.set(self.block_num_key, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
+
+    def _key_for_nonce(self, processor: bytes, sender: bytes, pending=False):
+        key = self.pending_nonce_key if pending else self.nonce_key
+        key_str = ':'.join([key, processor.hex(), sender.hex()])
+        return key_str
+
+    def get_nonce(self, processor: bytes, sender: bytes, pending=False):
+        key_str = self._key_for_nonce(processor, sender, pending)
+        nonce = self.get(key_str)
+        return encoder.decode(nonce)
+
+    def set_nonce(self, processor:bytes, sender: bytes, nonce: int, pending=False):
+        key_str = self._key_for_nonce(processor, sender, pending)
+        nonce = encoder.encode(nonce)
+        self.set(key_str, nonce)
+
+    def delete_nonce(self, processor: bytes, sender: bytes, pending=False):
+        key_str = self._key_for_nonce(processor, sender, pending)
+        self.delete(key_str)
 
     @staticmethod
     def n_key(key, processor, sender):

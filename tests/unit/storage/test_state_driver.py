@@ -33,7 +33,8 @@ class TestStateDriver(TestCase):
                                     function='transfer',
                                     kwargs={'amount': 10, 'to': 'jeff'},
                                     stamps=500000,
-                                    nonce=w.verifying_key() + secrets.token_bytes(32))
+                                    processor=secrets.token_bytes(32),
+                                    nonce=0)
 
             tx.sign(w.signing_key())
             packed_tx = tx.as_struct()
@@ -87,8 +88,8 @@ class TestStateDriver(TestCase):
 
         for kv in get_sets:
             k, v = list(kv.items())[0]
-            got = self.r.get(k.encode())
-            self.assertEqual(v.encode(), got)
+            got = self.r.get(k)
+            self.assertEqual(v, got)
 
     # TODO test this with publish transactions
 
