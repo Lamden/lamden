@@ -23,10 +23,15 @@ def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.Transactio
 
 
 class MetaDataStorage(DatabaseDriver):
-    def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key='__n',
+    def __init__(self,
+                 block_hash_key='_current_block_hash',
+                 epoch_hash_key='_current_epoch_hash',
+                 block_num_key='_current_block_num',
+                 nonce_key='__n',
                  pending_nonce_key='__pn'):
 
         self.block_hash_key = block_hash_key
+        self.epoch_hash_key = epoch_hash_key
         self.block_num_key = block_num_key
         self.log = get_logger('StateDriver')
         self.interface = None
@@ -58,6 +63,20 @@ class MetaDataStorage(DatabaseDriver):
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
+    def get_latest_epoch_hash(self):
+        epoch_hash = self.get(self.epoch_hash_key)
+        if epoch_hash is None:
+            return b'\x00' * 32
+        return epoch_hash
+
+    def set_latest_epoch_hash(self, v: bytes):
+        if type(v) == str:
+            v = bytes.fromhex(v)
+        assert len(v) == 32, 'Hash provided is not 32 bytes.'
+        self.set(self.epoch_hash_key, v)
+
+    latest_epoch_hash = property(get_latest_epoch_hash, set_latest_epoch_hash)
+
     def get_latest_block_num(self):
         num = self.get(self.block_num_key)
         if num is None:
@@ -82,9 +101,6 @@ class MetaDataStorage(DatabaseDriver):
 
             # For each KV in the JSON, set the key to the value
             for k, v in sets.items():
-                self.log.info('SETTING "{}" to "{}"'.format(k, v))
-
-                # Not sure if this should be encoded or not...
                 self.set(k, v)
 
     def commit_nonces(self, nonce_hash):

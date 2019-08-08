@@ -275,6 +275,10 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
 
         self.client.flush_all()
+
+        # Toss all pending nonces
+        self.state.delete_pending_nonces()
+
         self.startup = True
         # self._make_next_sb()
 
@@ -307,18 +311,6 @@ class SubBlockBuilder(Worker):
             else:
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
-
-### DEPRECATE
-    def _send_msg_over_ipc(self, message):
-        """
-        Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
-        type of message
-        """
-        if isinstance(message, MessageBase):
-            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-
-            self.ipc_dealer.send_multipart([message_type, message.serialize()])
-###
 
     def adjust_work_load(self, input_bag, is_add: bool):
         self.num_txn_bags += 1 if is_add else -1

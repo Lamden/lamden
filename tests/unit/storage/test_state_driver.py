@@ -35,10 +35,10 @@ class TestStateDriver(TestCase):
                                     kwargs={'amount': 10, 'to': 'jeff'},
                                     stamps=500000,
                                     processor=secrets.token_bytes(32),
-                                    nonce=0)
+                                    nonce=i)
 
             tx.sign(w.signing_key())
-            packed_tx = tx.as_struct()
+            packed_tx = transaction_capnp.Transaction.from_bytes_packed(tx.serialize())
 
             # Create a hashmap between a key and the value it should be set to randomly
             get_set = {secrets.token_hex(8): secrets.token_hex(8)}
@@ -281,7 +281,6 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 2)
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 3)
-
 
     def test_delete_pending_nonce_removes_all_pending_nonce_but_not_normal_nonces(self):
         self.r.set_pending_nonce(processor=secrets.token_bytes(32),

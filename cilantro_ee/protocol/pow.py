@@ -109,7 +109,7 @@ class DynamicPOW:
         BLAKE2B_2ND_HALF
     ]
 
-    def pipeline_encryptor(self, state, nonce, step=4):
+    def pipe_encrypt(self, state, nonce, step=4):
         data = nonce
         for i in range(len(state) // step):
             start = (i * step)
@@ -139,7 +139,7 @@ class DynamicPOW:
 
         d = h.digest()
 
-        work = self.pipeline_encryptor(state, d)
+        work = self.pipe_encrypt(state, d)
         w_i = int(work.hex(), 16)
 
         return w_i < d_i

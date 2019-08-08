@@ -118,18 +118,6 @@ class TransactionBuilder:
 
         return self.struct.to_bytes_packed()
 
-    def as_struct(self):
-        if not self.tx_signed:
-            return None
-
-        if not self.proof_generated:
-            self.generate_proof()
-
-        return transaction_capnp.Transaction.new_message(
-            metadata=self.struct.metadata,
-            payload=self.struct.payload
-        )
-
 
 def verify_packed_tx(sender, tx):
     try:
