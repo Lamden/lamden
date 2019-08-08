@@ -48,7 +48,7 @@ class TransactionWrapper:
 
 
 class TransactionBuilder:
-    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, nonce: int):
+    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, epoch: bytes, nonce: int):
         # Stores variables in self for convenience
         self.sender = sender
         self.stamps = stamps
@@ -57,6 +57,7 @@ class TransactionBuilder:
         self.function = function
         self.nonce = nonce
         self.kwargs = kwargs
+        self.epoch = epoch
 
         # Serializes all that it can on init
         self.struct = transaction_capnp.Transaction.new_message()
@@ -102,7 +103,8 @@ class TransactionBuilder:
         self.tx_signed = True
 
     def generate_proof(self):
-        self.proof = SHA3POWBytes.find(self.payload_bytes)
+        self.proof = pipehash.find_solution(self.epoch, self.payload_bytes)
+        #self.proof = SHA3POWBytes.find(self.payload_bytes)
         self.proof_generated = True
 
     def serialize(self):
