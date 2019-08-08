@@ -4,6 +4,21 @@ import json
 from contracting.db.driver import DatabaseDriver
 from contracting.db import encoder
 
+from cilantro_ee.messages import capnp as schemas
+import os
+import capnp
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+
+def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
+    # Modifies the provided dict
+    k = (tx_payload.processor, tx_payload.sender)
+    current_nonce = nonce_hash.get(k)
+
+    if current_nonce is None or current_nonce < tx_payload.nonce:
+        nonce_hash[k] = tx_payload.nonce
+
 
 class MetaDataStorage(DatabaseDriver):
     def __init__(self, block_hash_key='_current_block_hash', block_num_key='_current_block_num', nonce_key='__n',
@@ -39,14 +54,7 @@ class MetaDataStorage(DatabaseDriver):
         for sb in block.subBlocks:
             for tx in sb.transactions:
 
-                # Get the current nonce stored
-                current_nonce = nonces.get((tx.transaction.payload.processor, tx.transaction.payload.sender))
-
-                # If no nonce has been stored, or the one stored is less than the one in the new transaction,
-                # set it to the new transaction's nonce
-                if current_nonce is None or current_nonce < tx.transaction.payload.nonce:
-                    nonces[(tx.transaction.payload.processor, tx.transaction.payload.sender)] = \
-                    tx.transaction.payload.nonce
+                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
 
                 # If there are state effects in the transaction, try setting them by loading the JSON
                 if tx.state is not None and len(tx.state) > 0:
@@ -107,23 +115,23 @@ class MetaDataStorage(DatabaseDriver):
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
     @staticmethod
-    def nonce_key(key, processor, sender):
+    def n_key(key, processor, sender):
         return ':'.join([key, processor.hex(), sender.hex()])
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]))
+        nonce = self.get(self.n_key(self.pending_nonce_key, processor, sender))
         return encoder.decode(nonce)
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(':'.join([self.nonce_key, processor.hex(), sender.hex()]))
+        nonce = self.get(self.n_key(self.nonce_key, processor, sender))
         return encoder.decode(nonce)
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]), encoder.encode(nonce))
+        self.set(self.n_key(self.pending_nonce_key, processor, sender), encoder.encode(nonce))
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(':'.join([self.nonce_key, processor.hex(), sender.hex()]), encoder.encode(nonce))
+        self.set(self.n_key(self.nonce_key, processor, sender), encoder.encode(nonce))
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
-        self.delete(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]))
+        self.delete(self.n_key(self.pending_nonce_key, processor, sender))
