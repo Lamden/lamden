@@ -27,19 +27,47 @@ class MetaDataStorage(DatabaseDriver):
         v = encoder.encode(value)
         super().set(key, v)
 
+    def raw_set(self, key, value):
+        super().set(key, value)
+
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
+
+        # Map of tuple to nonce such that (processor, sender) => nonce
+        nonces = {}
+
         for sb in block.subBlocks:
             for tx in sb.transactions:
+
+                # Get the current nonce stored
+                current_nonce = nonces.get((tx.transaction.payload.processor, tx.transaction.payload.sender))
+
+                # If no nonce has been stored, or the one stored is less than the one in the new transaction,
+                # set it to the new transaction's nonce
+                if current_nonce is None or current_nonce < tx.transaction.payload.nonce:
+                    nonces[(tx.transaction.payload.processor, tx.transaction.payload.sender)] = \
+                    tx.transaction.payload.nonce
+
+                # If there are state effects in the transaction, try setting them by loading the JSON
                 if tx.state is not None and len(tx.state) > 0:
                     try:
                         sets = json.loads(tx.state)
 
+                        # For each KV in the JSON, set the key to the value
                         for k, v in sets.items():
                             self.log.info('SETTING "{}" to "{}"'.format(k, v))
-                            self.set(k, v)
+
+                            # Not sure if this should be encoded or not...
+                            self.raw_set(k, v)
                     except Exception as e:
+                        # Log exceptions
                         self.log.critical(str(e))
+
+        # Delete pending nonces and update the nonces
+        for k, v in nonces.items():
+            processor, sender = k
+            self.set_nonce(processor=processor, sender=sender, nonce=v)
+            self.delete_pending_nonce(processor=processor, sender=sender)
 
         # Update our block hash and block num
         self.latest_block_hash = block.blockHash
@@ -78,6 +106,10 @@ class MetaDataStorage(DatabaseDriver):
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
+    @staticmethod
+    def nonce_key(key, processor, sender):
+        return ':'.join([key, processor.hex(), sender.hex()])
+
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
         nonce = self.get(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]))
@@ -92,3 +124,6 @@ class MetaDataStorage(DatabaseDriver):
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
         self.set(':'.join([self.nonce_key, processor.hex(), sender.hex()]), encoder.encode(nonce))
+
+    def delete_pending_nonce(self, processor: bytes, sender: bytes):
+        self.delete(':'.join([self.pending_nonce_key, processor.hex(), sender.hex()]))

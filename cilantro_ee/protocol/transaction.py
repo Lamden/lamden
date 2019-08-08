@@ -172,11 +172,12 @@ def transaction_is_valid(tx: transaction_capnp.Transaction, expected_processor: 
         pending_nonce += 1
 
     # However, some of those tx's might fail verification and never make it to delegates. Thus,
-    # delegates shouldn't be as concerned. (1, 2, 4) should be valid as well.
+    # delegates shouldn't be as concerned. (1, 2, 4) should be valid for delegates.
     else:
         if tx.payload.nonce < pending_nonce:
             return False
         pending_nonce = tx.payload.nonce + 1
+
 
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
