@@ -168,7 +168,8 @@ class BlockManager(Worker):
         self.ip = ip
         self.sb_builders = {}  # index -> process
         # raghu todo - delete this and remove sb_index related functionality
-        self.sb_index = self._get_my_index() % NUM_SB_BUILDERS
+        self.sb_index = PhoneBook.delegates.index(self.wallet.verifying_key().hex()) % NUM_SB_BUILDERS
+
         self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
@@ -213,9 +214,6 @@ class BlockManager(Worker):
         # NOT GETTING READY FROM MASTERNODES
         if self._are_masternodes_ready():
             self.send_start_to_sbb()
-
-    def _is_pending_work(self):
-        return self._pending_work_at_sbb > 0
 
     # raghu todo need bit maps here
     def _are_masternodes_ready(self):
@@ -284,17 +282,14 @@ class BlockManager(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self._connect_and_process())
 
-    def _connect_master_node(self, vk):
-        self.sub.connect(vk=vk, port=MN_PUB_PORT)
-        self.router.connect(vk=vk, port=MN_ROUTER_PORT)
-
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
         for vk in PhoneBook.masternodes:
-            self._connect_master_node(vk)
+            self.sub.connect(vk=vk, port=MN_PUB_PORT)
+            self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # now start the catchup
         await self.catchup_db_state()
@@ -319,13 +314,6 @@ class BlockManager(Worker):
 
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
-
-    def _get_my_index(self):
-        for index, vk in enumerate(PhoneBook.delegates):
-            if vk == self.verifying_key:
-                return index
-
-        raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, PhoneBook.delegates))
 
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
@@ -399,19 +387,10 @@ class BlockManager(Worker):
 
                 # Process accordingly
                 self.handle_block_notification(block, external_message.sender, msg_type)
-
-    def handle_nbn_sub_msg(self, frames):
-        self.log.critical('FRAMES FROM SUB {}'.format(frames))
-        sender = frames[1]
-        msg = frames[-1]
-        self.handle_block_notification(msg, sender)
-
-    def is_ready_to_start_sub_blocks(self):
-        self.start_sub_blocks += 1
-        return self.start_sub_blocks == 3
         
     def send_start_to_sbb(self):
-        if self.is_ready_to_start_sub_blocks():
+        self.start_sub_blocks += 1
+        if self.start_sub_blocks == 3:
             self.send_updated_db_msg()
 
     def set_catchup_done(self):
