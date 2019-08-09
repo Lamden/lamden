@@ -26,6 +26,7 @@ from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
+from cilantro_ee.constants import conf
 
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.message import MessageTypes
@@ -545,6 +546,10 @@ class BlockManager(Worker):
                 if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
                     self.db_state.driver.latest_block_num = block.blockNum
                     self.db_state.driver.latest_block_hash = my_new_block_hash
+
+                    # Set the epoch hash if a new epoch has begun
+                    if block.blockNum % conf.EPOCH_INTERVAL == 0:
+                        self.db_state.driver.latest_epoch_hash = my_new_block_hash
 
                 self.send_updated_db_msg()
                 self.driver.commit_nonces()

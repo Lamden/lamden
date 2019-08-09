@@ -1,6 +1,6 @@
 from cilantro_ee.logger.base import get_logger
 import json
-
+from cilantro_ee.constants import conf
 from contracting.db.driver import DatabaseDriver
 from contracting.db import encoder
 
@@ -146,7 +146,9 @@ class MetaDataStorage(DatabaseDriver):
         self.latest_block_hash = block.blockHash
         self.latest_block_num = block.blockNum
 
-        #self.log.info('Processed block #{} with hash {}.'.format(self.latest_block_num, self.latest_block_hash))
+        # Update the epoch hash if it is time
+        if block.blockNum % conf.EPOCH_INTERVAL == 0:
+            self.latest_epoch_hash = block.blockHash
 
         assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
