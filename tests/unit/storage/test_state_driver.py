@@ -321,29 +321,20 @@ class TestStateDriver(TestCase):
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
 
     def test_commit_nonce_when_nonce_hash_is_none_that_it_commits_all_current_pending_nonces(self):
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
+        n1 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n2 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n3 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n4 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n5 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n6 = (secrets.token_bytes(32), secrets.token_bytes(32))
 
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
+        self.r.set_pending_nonce(processor=n1[0], sender=n1[1], nonce=100)
+        self.r.set_pending_nonce(processor=n2[0], sender=n2[1], nonce=100)
+        self.r.set_pending_nonce(processor=n3[0], sender=n3[1], nonce=100)
+        self.r.set_pending_nonce(processor=n4[0], sender=n4[1], nonce=100)
+        self.r.set_pending_nonce(processor=n5[0], sender=n5[1], nonce=100)
 
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_nonce(processor=secrets.token_bytes(32),
-                         sender=secrets.token_bytes(32),
-                         nonce=100)
+        self.r.set_nonce(processor=n6[0], sender=n6[1], nonce=100)
 
         self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
@@ -352,3 +343,9 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
         self.assertEqual(len(self.r.iter(self.r.nonce_key)), 6)
+
+        self.assertEqual(self.r.get_nonce(processor=n1[0], sender=n1[1]), 100)
+        self.assertEqual(self.r.get_nonce(processor=n2[0], sender=n2[1]), 100)
+        self.assertEqual(self.r.get_nonce(processor=n3[0], sender=n3[1]), 100)
+        self.assertEqual(self.r.get_nonce(processor=n4[0], sender=n4[1]), 100)
+        self.assertEqual(self.r.get_nonce(processor=n5[0], sender=n5[1]), 100)
