@@ -1,6 +1,4 @@
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.envelope.envelope import Envelope
-from cilantro_ee.protocol.structures.envelope_auth import EnvelopeAuth
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
@@ -104,16 +102,6 @@ class LSocketBase:
         self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
 
         self.send_multipart([filter, msg_type, msg])
-
-    def send_envelope(self, env: Envelope, header: bytes=None):
-        """ Same as send_msg, but for an Envelope instance. See documentation for send_msg. """
-        data = env.serialize()
-
-        if header is not None:
-            assert type(header) is bytes, "Header arg must be bytes, not {}".format(type(header))
-            self.send_multipart([header, data])
-        else:
-            self.send_multipart([data])
 
     def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         """ Registered a handler function for data received on this socket.
@@ -272,43 +260,3 @@ class LSocketBase:
         assert protocol, "protocol missing from kwargs {}".format(kwargs)
         assert ip, "ip missing from kwargs {}".format(kwargs)
         return "{}://{}:{}".format(protocol, ip, port)
-
-    def _defer_func(self, cmd_name):
-        def _capture_args(*args, **kwargs):
-            self.log.spam("Socket defered func named {} with args {} and kwargs {}".format(cmd_name, args, kwargs))
-            self.pending_commands.append((cmd_name, args, kwargs))
-
-        return _capture_args
-
-    def _package_msg(self, msg: MessageBase):
-        """ Convenience method to package a message into an envelope
-        :param msg: The MessageBase instance to package
-        :return: An Envelope instance
-        """
-        if type(msg) is not Envelope and issubclass(type(msg), MessageBase):
-            return Envelope.create_from_message(message=msg, signing_key=Keys.sk,
-                                                verifying_key=Keys.vk)
-
-        # tuple of msg_type and msg_payload
-        elif type(msg) == tuple:
-            return None
-
-    def _package_reply(self, reply: MessageBase, req_env: Envelope) -> Envelope:
-        """ Convenience method to create a reply envelope. The difference between this func and _package_msg, is that
-        in the reply envelope the UUID must be the hash of the original request's uuid (not some randomly generated int)
-        :param reply: The reply message (an instance of MessageBase)
-        :param req_env: The original request envelope (an instance of Envelope)
-        :return: An Envelope instance """
-        self.log.spam("Creating REPLY envelope with msg type {} for request envelope {}".format(type(reply), req_env))
-        request_uuid = req_env.meta.uuid
-        reply_uuid = EnvelopeAuth.reply_uuid(request_uuid)
-
-        return Envelope.create_from_message(message=reply, signing_key=Keys.sk,
-                                            verifying_key=Keys.vk, uuid=reply_uuid)
-
-    def _flush_pending_commands(self):
-        self.log.debug("Flushing {} pending commands from queue".format(len(self.pending_commands)))
-        for cmd_name, args, kwargs in self.pending_commands:
-            self.log.spam("Executing pending command named '{}' with args {} and kwargs {}".format(cmd_name, args, kwargs))
-            getattr(self, cmd_name)(*args, **kwargs)
-        self.pending_commands.clear()
