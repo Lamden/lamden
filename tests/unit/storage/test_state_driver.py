@@ -262,11 +262,13 @@ class TestStateDriver(TestCase):
         n3 = (secrets.token_bytes(32), secrets.token_bytes(32))
         n4 = (secrets.token_bytes(32), secrets.token_bytes(32))
         n5 = (secrets.token_bytes(32), secrets.token_bytes(32))
+        n6 = (secrets.token_bytes(32), secrets.token_bytes(32))
 
         nonces = {
             n1: 5,
             n3: 3,
-            n5: 6
+            n5: 6,
+            n6: 100
         }
 
         self.r.set_pending_nonce(n1[0], n1[1], 5)
@@ -285,7 +287,9 @@ class TestStateDriver(TestCase):
         self.r.commit_nonces(nonce_hash=nonces)
 
         self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 2)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 3)
+        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 4)
+
+        print(type(self.r.get_nonce(processor=n6[0], sender=n6[1])))
 
     def test_delete_pending_nonce_removes_all_pending_nonce_but_not_normal_nonces(self):
         self.r.set_pending_nonce(processor=secrets.token_bytes(32),

@@ -108,6 +108,7 @@ class MetaDataStorage(DatabaseDriver):
         if nonce_hash is not None:
             for k, v in nonce_hash.items():
                 processor, sender = k
+
                 self.set_nonce(processor=processor, sender=sender, nonce=v)
                 self.delete_pending_nonce(processor=processor, sender=sender)
         else:
@@ -177,18 +178,16 @@ class MetaDataStorage(DatabaseDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(self.n_key(self.pending_nonce_key, processor, sender))
-        return encoder.decode(nonce)
+        return self.get(self.n_key(self.pending_nonce_key, processor, sender))
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        nonce = self.get(self.n_key(self.nonce_key, processor, sender))
-        return encoder.decode(nonce)
+        return self.get(self.n_key(self.nonce_key, processor, sender))
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.pending_nonce_key, processor, sender), encoder.encode(nonce))
+        self.set(self.n_key(self.pending_nonce_key, processor, sender), nonce)
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.nonce_key, processor, sender), encoder.encode(nonce))
+        self.set(self.n_key(self.nonce_key, processor, sender), nonce)
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
         self.delete(self.n_key(self.pending_nonce_key, processor, sender))
