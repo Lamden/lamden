@@ -152,9 +152,17 @@ class LSocketBase:
         ev_name = event['event']
 
         if ev_name == 'got_ip':
-            self._handle_got_ip(event)
+            assert event[
+                       'event_id'] in self.pending_lookups, "LSocket got 'got_ip' event that is not in pending lookups"
+
+            cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
+            kwargs['ip'] = event['ip']
+            getattr(self, cmd_name)(*args, **kwargs)
         elif ev_name == 'not_found':
-            self._handle_not_found(event)
+            assert event[
+                       'event_id'] in self.pending_lookups, "LSocket got 'not_found' event that is not in pending lookups"
+            self.log.socket("Could not resolve IP for VK {}".format(event['vk']))
+            del self.pending_lookups[event['event_id']]
         else:
             raise Exception("LSocket got overlay reply '{}' that it is not configured to handle!".format(ev_name))
 
@@ -163,51 +171,38 @@ class LSocketBase:
         ev_name = event['event']
 
         if ev_name == 'node_online':
-            self._handle_node_online(event)
+            if event['vk'] not in self.conn_tracker:
+                self.log.debugv(
+                    "Socket never connected to node with vk {}. Ignoring node_online event.".format(event['vk']))
+                return
+
+            cmd_name, args, kwargs = self.conn_tracker[event['vk']]
+            kwargs['ip'] = event['ip']
+            url = self._get_url_from_kwargs(**kwargs)
+
+            self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection for URL {}"
+                          .format(event['vk'], event['ip'], url))
+
+            # First disconnect if we are already connected to this peer
+            if url in self.active_conns:
+                self.log.debugv("First disconnecting from URL {} before reconnecting".format(url))
+                self.socket.disconnect(url)
+
+            # TODO remove this else
+            else:
+                self.log.important("URL {} not in self.active_conns {}".format(url, self.active_conns))
+
+            # We wrap the reconnect in the try/except to ignore 'address already in use' errors from attempting to bind
+            # to an address that we already bound to. I know this is mad hacky but its 'works' until we come up
+            # with something more clever --davis
+            try:
+                getattr(self, cmd_name)(*args, **kwargs)
+            except zmq.error.ZMQError as e:
+                if str(e) != 'Address already in use':
+                    self.log.warning(
+                        "Got error trying to reconnect that is not 'Address in use'!!! Error: {}".format(e))
         else:
             raise Exception("LSocket got overlay event '{}' that it is not configured to handle!".format(ev_name))
-
-    def _handle_got_ip(self, event: dict):
-        assert event['event_id'] in self.pending_lookups, "LSocket got 'got_ip' event that is not in pending lookups"
-
-        cmd_name, args, kwargs = self.pending_lookups.pop(event['event_id'])
-        kwargs['ip'] = event['ip']
-        getattr(self, cmd_name)(*args, **kwargs)
-
-    def _handle_not_found(self, event: dict):
-        assert event['event_id'] in self.pending_lookups, "LSocket got 'not_found' event that is not in pending lookups"
-        self.log.socket("Could not resolve IP for VK {}".format(event['vk']))
-        del self.pending_lookups[event['event_id']]
-
-    def _handle_node_online(self, event: dict):
-        if event['vk'] not in self.conn_tracker:
-            self.log.debugv("Socket never connected to node with vk {}. Ignoring node_online event.".format(event['vk']))
-            return
-
-        cmd_name, args, kwargs = self.conn_tracker[event['vk']]
-        kwargs['ip'] = event['ip']
-        url = self._get_url_from_kwargs(**kwargs)
-
-        self.log.info("Node with vk {} and ip {} has come back online. Re-establishing connection for URL {}"
-                      .format(event['vk'], event['ip'], url))
-
-        # First disconnect if we are already connected to this peer
-        if url in self.active_conns:
-            self.log.debugv("First disconnecting from URL {} before reconnecting".format(url))
-            self.socket.disconnect(url)
-
-        # TODO remove this else
-        else:
-            self.log.important("URL {} not in self.active_conns {}".format(url, self.active_conns))
-
-        # We wrap the reconnect in the try/except to ignore 'address already in use' errors from attempting to bind
-        # to an address that we already bound to. I know this is mad hacky but its 'works' until we come up
-        # with something more clever --davis
-        try:
-            getattr(self, cmd_name)(*args, **kwargs)
-        except zmq.error.ZMQError as e:
-            if str(e) != 'Address already in use':
-                self.log.warning("Got error trying to reconnect that is not 'Address in use'!!! Error: {}".format(e))
 
     def _connect_or_bind(self, should_connect: bool, port: int, protocol: str='tcp', ip: str='', vk: str=''):
         assert ip, "Expected ip arg to be present!"

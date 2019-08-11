@@ -158,9 +158,7 @@ class DBState:
         self.my_sub_blocks.reset()
 
 
-
 class BlockManager(Worker):
-
     def __init__(self, ip, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
@@ -205,19 +203,6 @@ class BlockManager(Worker):
         self.start_sbb_procs()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    def _add_masternode_ready(self, mn_vk):
-        if mn_vk in self._masternodes_ready:
-            return
-        self._masternodes_ready.add(mn_vk)
-
-        # NOT GETTING READY FROM MASTERNODES
-        if self._are_masternodes_ready():
-            self.send_start_to_sbb()
-
-    # raghu todo need bit maps here
-    def _are_masternodes_ready(self):
-        return len(self._masternodes_ready) == self.my_quorum
 
     def _set_pending_work(self, sbb_index):
         self._pending_work_at_sbb |= (1 << sbb_index)
@@ -363,12 +348,18 @@ class BlockManager(Worker):
             external_ready_signal = signal_capnp.ExternalSignal.from_bytes_packed(msg_blob)
 
             # Only allow signals that are sent within 2000 milliseconds to be validated
-            if time.time() - external_ready_signal.timestamp < 2000:
-                encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
+            if time.time() - external_ready_signal.timestamp > 2000:
+                return
 
-                # Make sure that the signal has been signed properly
-                if _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
-                    self._add_masternode_ready(external_ready_signal.sender)
+            encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
+
+            # Make sure that the signal has been signed properly
+            if not _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
+                return
+
+            self._masternodes_ready.add(external_ready_signal.sender)
+            if len(self._masternodes_ready) == PhoneBook.masternode_quorum_min:
+                self.send_start_to_sbb()
 
         # Process block notification messages
         elif msg_type == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
@@ -379,14 +370,15 @@ class BlockManager(Worker):
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
 
             # If the sender has signed the payload, continue
-            if _verify(external_message.sender, external_message.data, external_message.signature):
+            if not _verify(external_message.sender, external_message.data, external_message.signature):
+                return
 
-                # Unpack the block
-                block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
-                self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
+            # Unpack the block
+            block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+            self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
 
-                # Process accordingly
-                self.handle_block_notification(block, external_message.sender, msg_type)
+            # Process accordingly
+            self.handle_block_notification(block, external_message.sender, msg_type)
         
     def send_start_to_sbb(self):
         self.start_sub_blocks += 1

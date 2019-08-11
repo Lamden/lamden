@@ -398,7 +398,14 @@ class SubBlockBuilder(Worker):
         """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
 
-        signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
+        self.log.info(type(sb_data.input_hash))
+
+        if type(sb_data.input_hash) == str:
+            input_hash = bytes.fromhex(sb_data.input_hash)
+        else:
+            input_hash = sb_data.input_hash
+
+        signature = self.wallet.sign(input_hash)
 
         merkle_proof = subblock_capnp.MerkleProof.new_message(
             hash=bytes.fromhex(sb_data.input_hash),
