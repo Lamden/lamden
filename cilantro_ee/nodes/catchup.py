@@ -1,24 +1,21 @@
 import time
 import asyncio
-import math
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.driver import SafeDriver
+from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
-from cilantro_ee.messages.block_data.state_update import BlockIndexRequest, BlockIndexReply, BlockDataRequest, BlockDataReply
+from cilantro_ee.messages.block_data.state_update import BlockIndexReply, BlockDataRequest
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 
-from cilantro_ee.messages._new.message import MessageTypes
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.messages.message import MessageTypes
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -113,6 +110,22 @@ class CatchupManager:
                     del blk_dict['_id']
                 block = BlockData.from_dict(blk_dict)
                 self.state.update_with_block(block=block)
+
+        # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date
+        blk_dict = self.driver.get_block(latest_state_num)
+
+        nonces = {}
+
+        for raw_sb in blk_dict['subBlocks']:
+            subblock = subblock_capnp.SubBlock.from_bytes_packed(raw_sb)
+            self.log.info('Block: {}'.format(subblock))
+            for tx in subblock.transactions:
+                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                self.state.set_transaction_data(tx=tx)
+
+        self.state.commit_nonces(nonce_hash=nonces)
+        self.state.delete_pending_nonces()
+
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
     # should be called only once per node after bootup is done
@@ -192,10 +205,8 @@ class CatchupManager:
         }).to_bytes_packed()
 
         self.pub.send_msg(BLOCK_IDX_REQ_FILTER.encode(),
-                          int_to_bytes(MessageTypes.BLOCK_INDEX_REQUEST),
+                          MessageTypes.BLOCK_INDEX_REQUEST,
                           req)
-
-        # self.log.important2("SEND BIR")
 
     def _recv_block_idx_reply(self, sender_vk: str, reply: BlockIndexReply):
         self.log.info('Got REPLY from {} as {}'.format(sender_vk, reply))
@@ -353,7 +364,7 @@ class CatchupManager:
 
         self.log.debugv("Sending block index reply to vk {}, catchup {}".format(reply_to_vk, catchup_list))
         self.router.send_msg(filter=reply_to_vk,
-                             msg_type=int_to_bytes(MessageTypes.BLOCK_INDEX_REPLY),
+                             msg_type=MessageTypes.BLOCK_INDEX_REPLY,
                              msg=reply._data if reply._data is not None else b'')
 
     # MASTER ONLY CALL
@@ -383,7 +394,7 @@ class CatchupManager:
         block.prevBlockHash = blk_dict['prevBlockHash']
         block.subBlocks = [subblock_capnp.SubBlock.from_bytes_packed(s).as_builder() for s in blk_dict['subBlocks']]
 
-        self.router.send_msg(block.to_bytes_packed(), header=sender_vk.encode())
+        self.router.send_msg(sender_vk.encode(), msg=block.to_bytes_packed(), msg_type=MessageTypes.BLOCK_DATA_REPLY)
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del

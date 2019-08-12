@@ -74,7 +74,9 @@ class SocketManager:
 
         if e['event_id'] in self.pending_lookups:
             sock = self.pending_lookups.pop(e['event_id'])
+
             sock.handle_overlay_reply(e)
+
             if (e['event'] == 'got_ip') and (e['vk'] in PhoneBook.delegates):
                 self.num_delegates_joined_since_last += 1
         else:

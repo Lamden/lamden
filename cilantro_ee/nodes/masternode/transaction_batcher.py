@@ -5,20 +5,24 @@ from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.system_config import BATCH_SLEEP_INTERVAL, NUM_BLOCKS
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 import zmq.asyncio
-import asyncio, time, os
+import asyncio, time
 import os
 import capnp
 from cilantro_ee.messages import capnp as schemas
 import hashlib
-from cilantro_ee.messages._new.message import MessageTypes
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.protocol.wallet import Wallet, _verify
+from cilantro_ee.protocol.pow import SHA3POWBytes
+from cilantro_ee.protocol.transaction import transaction_is_valid
+from cilantro_ee.storage.state import MetaDataStorage
+from contracting import config
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
 
 class TransactionBatcher(Worker):
 
@@ -28,6 +32,8 @@ class TransactionBatcher(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
         self._ready = False
+
+        self.driver = MetaDataStorage()
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
@@ -60,7 +66,7 @@ class TransactionBatcher(Worker):
     def handle_ipc_msg(self, frames):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
-        msg_type = bytes_to_int(frames[0])
+        msg_type = frames[0]
         #msg_blob = frames[1]
 
         self.log.info('Got message on IPC {}'.format(msg_type))
@@ -114,6 +120,13 @@ class TransactionBatcher(Worker):
                 # Get a transaction from the queue
                 tx = self.queue.get()
 
+                # Make sure that the transaction is valid
+                if not transaction_is_valid(tx=tx,
+                                            expected_processor=self.wallet.verifying_key(),
+                                            driver=self.driver,
+                                            strict=True):
+                    continue
+
                 # Hash it
                 tx_bytes = tx.as_builder().to_bytes_packed()
                 h.update(tx_bytes)
@@ -124,6 +137,7 @@ class TransactionBatcher(Worker):
 
             batch = transaction_capnp.TransactionBatch.new_message()
             batch.init('transactions', len(tx_list))
+
             for i, tx in enumerate(tx_list):
                 batch.transactions[i] = tx
 
@@ -136,7 +150,7 @@ class TransactionBatcher(Worker):
             batch.timestamp = timestamp
 
             self.pub_sock.send_msg(msg=batch.to_bytes_packed(),
-                                   msg_type=int_to_bytes(MessageTypes.TRANSACTION_BATCH),
+                                   msg_type=MessageTypes.TRANSACTION_BATCH,
                                    filter=TRANSACTION_FILTER.encode())
 
             self.num_bags_sent = self.num_bags_sent + NUM_BLOCKS

@@ -19,24 +19,22 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.storage.state import MetaDataStorage
 
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
+from cilantro_ee.constants import conf
 
-from cilantro_ee.messages.block_data.notification import BlockNotification, FailedBlockNotification
-from cilantro_ee.messages._new.message import MessageTypes, MessageManager
+from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
-import asyncio, zmq, os, time, random
+import asyncio, zmq, time, random
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
@@ -160,9 +158,7 @@ class DBState:
         self.my_sub_blocks.reset()
 
 
-
 class BlockManager(Worker):
-
     def __init__(self, ip, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockManager[{}]".format(self.verifying_key[:8]))
@@ -170,7 +166,8 @@ class BlockManager(Worker):
         self.ip = ip
         self.sb_builders = {}  # index -> process
         # raghu todo - delete this and remove sb_index related functionality
-        self.sb_index = self._get_my_index() % NUM_SB_BUILDERS
+        self.sb_index = PhoneBook.delegates.index(self.wallet.verifying_key().hex()) % NUM_SB_BUILDERS
+
         self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
@@ -206,22 +203,6 @@ class BlockManager(Worker):
         self.start_sbb_procs()
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
-    def _add_masternode_ready(self, mn_vk):
-        if mn_vk in self._masternodes_ready:
-            return
-        self._masternodes_ready.add(mn_vk)
-
-        # NOT GETTING READY FROM MASTERNODES
-        if self._are_masternodes_ready():
-            self.send_start_to_sbb()
-
-    def _is_pending_work(self):
-        return self._pending_work_at_sbb > 0
-
-    # raghu todo need bit maps here
-    def _are_masternodes_ready(self):
-        return len(self._masternodes_ready) == self.my_quorum
 
     def _set_pending_work(self, sbb_index):
         self._pending_work_at_sbb |= (1 << sbb_index)
@@ -286,17 +267,14 @@ class BlockManager(Worker):
         self.tasks.append(self.sub.add_handler(self.handle_sub_msg))
         self.tasks.append(self._connect_and_process())
 
-    def _connect_master_node(self, vk):
-        self.sub.connect(vk=vk, port=MN_PUB_PORT)
-        self.router.connect(vk=vk, port=MN_ROUTER_PORT)
-
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
         for vk in PhoneBook.masternodes:
-            self._connect_master_node(vk)
+            self.sub.connect(vk=vk, port=MN_PUB_PORT)
+            self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
         # now start the catchup
         await self.catchup_db_state()
@@ -322,13 +300,6 @@ class BlockManager(Worker):
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
-    def _get_my_index(self):
-        for index, vk in enumerate(PhoneBook.delegates):
-            if vk == self.verifying_key:
-                return index
-
-        raise Exception("Delegate VK {} not found in VKBook {}".format(self.verifying_key, PhoneBook.delegates))
-
     def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
@@ -338,7 +309,7 @@ class BlockManager(Worker):
         assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
             .format(sbb_index, self.sb_builders)
 
-        msg_type = bytes_to_int(frames[1])
+        msg_type = frames[1]
         self.log.info('MSG TYPE: {}'.format(msg_type))
         msg_blob = frames[2]
 
@@ -373,47 +344,45 @@ class BlockManager(Worker):
         msg_filter, msg_type, msg_blob = frames
 
         # Process external ready signals
-        if bytes_to_int(msg_type) == MessageTypes.READY_EXTERNAL:
+        if msg_type == MessageTypes.READY_EXTERNAL:
             external_ready_signal = signal_capnp.ExternalSignal.from_bytes_packed(msg_blob)
 
             # Only allow signals that are sent within 2000 milliseconds to be validated
-            if time.time() - external_ready_signal.timestamp < 2000:
-                encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
+            if time.time() - external_ready_signal.timestamp > 2000:
+                return
 
-                # Make sure that the signal has been signed properly
-                if _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
-                    self._add_masternode_ready(external_ready_signal.sender)
+            encoded_timestamp = '{}'.format(external_ready_signal.timestamp).encode()
+
+            # Make sure that the signal has been signed properly
+            if not _verify(external_ready_signal.sender, encoded_timestamp, external_ready_signal.signature):
+                return
+
+            self._masternodes_ready.add(external_ready_signal.sender)
+            if len(self._masternodes_ready) == PhoneBook.masternode_quorum_min:
+                self.send_start_to_sbb()
 
         # Process block notification messages
-        elif bytes_to_int(msg_type) == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
-             bytes_to_int(msg_type) == MessageTypes.NEW_BLOCK_NOTIFICATION or \
-             bytes_to_int(msg_type) == MessageTypes.FAIL_BLOCK_NOTIFICATION:
+        elif msg_type == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
+             msg_type == MessageTypes.NEW_BLOCK_NOTIFICATION or \
+             msg_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
             self.log.info('Block notification!!')
             # Unpack the message
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
 
             # If the sender has signed the payload, continue
-            if _verify(external_message.sender, external_message.data, external_message.signature):
+            if not _verify(external_message.sender, external_message.data, external_message.signature):
+                return
 
-                # Unpack the block
-                block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
-                self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
+            # Unpack the block
+            block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+            self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
 
-                # Process accordingly
-                self.handle_block_notification(block, external_message.sender, bytes_to_int(msg_type))
-
-    def handle_nbn_sub_msg(self, frames):
-        self.log.critical('FRAMES FROM SUB {}'.format(frames))
-        sender = frames[1]
-        msg = frames[-1]
-        self.handle_block_notification(msg, sender)
-
-    def is_ready_to_start_sub_blocks(self):
-        self.start_sub_blocks += 1
-        return self.start_sub_blocks == 3
+            # Process accordingly
+            self.handle_block_notification(block, external_message.sender, msg_type)
         
     def send_start_to_sbb(self):
-        if self.is_ready_to_start_sub_blocks():
+        self.start_sub_blocks += 1
+        if self.start_sub_blocks == 3:
             self.send_updated_db_msg()
 
     def set_catchup_done(self):
@@ -449,10 +418,10 @@ class BlockManager(Worker):
     def handle_router_msg(self, frames):
         sender, msg_type, msg_blob = frames
 
-        if bytes_to_int(msg_type) == MessageTypes.BLOCK_INDEX_REPLY:
+        if msg_type == MessageTypes.BLOCK_INDEX_REPLY:
             self.recv_block_idx_reply(sender, msg_blob)
 
-        elif bytes_to_int(msg_type) == MessageTypes.BLOCK_DATA_REPLY:
+        elif msg_type == MessageTypes.BLOCK_DATA_REPLY:
             self.recv_block_data_reply(msg_blob)
 
     def _get_new_block_hash(self):
@@ -480,7 +449,7 @@ class BlockManager(Worker):
 
         # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
-                          msg_type=int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER),
+                          msg_type=MessageTypes.SUBBLOCK_CONTENDER,
                           msg=msg_blob)
 
         self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
@@ -496,7 +465,7 @@ class BlockManager(Worker):
         if isinstance(message, MessageBase):
             id_frame = str(sb_index).encode()
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-            self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+            self.ipc_router.send_multipart([id_frame, message_type, message.serialize()])
 
     def _send_input_align_msg(self, block: blockdata_capnp.BlockData):
         self.log.info("Sending AlignInputHash message to SBBs")
@@ -509,16 +478,11 @@ class BlockManager(Worker):
             sb_idx = i % NUM_SB_BUILDERS
 
             self.ipc_router.send_multipart(['{}'.format(sb_idx).encode(),
-                                            int_to_bytes(MessageTypes.ALIGN_INPUT_HASH),
+                                            MessageTypes.ALIGN_INPUT_HASH,
                                             align_input_hash])
 
-    def _send_fail_block_msg(self, block_data: FailedBlockNotification):
-        for idx in range(NUM_SB_BUILDERS):
-            # SIGNAL
-            self._send_msg_over_ipc(sb_index=idx, message=block_data)
-
     # make sure block aggregator adds block_num for all notifications?
-    def handle_block_notification(self, block: blockdata_capnp.BlockData, sender: bytes, notification_type: int):
+    def handle_block_notification(self, block: blockdata_capnp.BlockData, sender: bytes, notification_type):
 
         self.log.notice('BM with sender {} being handled'.format(sender))
         self.log.notice("Got block notification for block num {} with hash {}".format(block.blockNum, block.blockHash))
@@ -549,14 +513,23 @@ class BlockManager(Worker):
                     self.db_state.driver.latest_block_num = block.blockNum
                     self.db_state.driver.latest_block_hash = my_new_block_hash
 
+                    # Set the epoch hash if a new epoch has begun
+                    if block.blockNum % conf.EPOCH_INTERVAL == 0:
+                        self.db_state.driver.latest_epoch_hash = my_new_block_hash
+
                 self.send_updated_db_msg()
+                self.driver.commit_nonces()
+
                 # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
             else:
                 self.log.critical(
                     'BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(
                         my_new_block_hash, block.blockHash))
                 if notification_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
-                    self._send_fail_block_msg(block)
+                    for idx in range(NUM_SB_BUILDERS):
+                        # SIGNAL
+                        self._send_msg_over_ipc(sb_index=idx, message=block)
+
                 else:
                     self._send_input_align_msg(block)
                 if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
@@ -569,8 +542,5 @@ class BlockManager(Worker):
         self.db_state.reset()
         self.log.info("Sending MakeNextBlock message to SBBs")
 
-        make_next_block = MessageManager.pack_dict(MessageTypes.MAKE_NEXT_BLOCK,
-                                                   arg_dict={'messageType': MessageTypes.MAKE_NEXT_BLOCK})
-
         for idx in range(NUM_SB_BUILDERS):
-            self.ipc_router.send_multipart([str(idx).encode(), int_to_bytes(MessageTypes.MAKE_NEXT_BLOCK), make_next_block])
+            self.ipc_router.send_multipart([str(idx).encode(), MessageTypes.MAKE_NEXT_BLOCK, b''])

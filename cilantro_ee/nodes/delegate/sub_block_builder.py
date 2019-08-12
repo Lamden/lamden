@@ -17,7 +17,6 @@
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
-from cilantro_ee.logger import get_logger
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
@@ -25,7 +24,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.block_data.notification import FailedBlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
-from cilantro_ee.messages._new.message import MessageTypes, MessageManager
+from cilantro_ee.messages.message import MessageTypes
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -37,8 +36,9 @@ from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
+from cilantro_ee.protocol.transaction import transaction_is_valid
+
 from cilantro_ee.utils.hasher import Hasher
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.protocol.wallet import _verify
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time
@@ -65,9 +65,10 @@ class Metadata:
 
 
 class Payload:
-    def __init__(self, sender, nonce, stamps_supplied, contract_name, function_name, kwargs):
+    def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
         self.sender = sender
         self.nonce = nonce
+        self.processor = processor
         self.stampsSupplied = stamps_supplied
         self.contractName = contract_name
         self.functionName = function_name
@@ -75,7 +76,7 @@ class Payload:
 
 
 class UnpackedContractTransaction:
-    def __init__(self, capnp_struct: transaction_capnp.ContractTransaction):
+    def __init__(self, capnp_struct: transaction_capnp.Transaction):
         self.metadata = Metadata(proof=capnp_struct.metadata.proof,
                                  signature=capnp_struct.metadata.signature,
                                  timestamp=capnp_struct.metadata.timestamp)
@@ -89,6 +90,7 @@ class UnpackedContractTransaction:
 
         self.payload = Payload(sender=capnp_struct.payload.sender,
                                nonce=capnp_struct.payload.nonce,
+                               processor=capnp_struct.payload.processor,
                                stamps_supplied=capnp_struct.payload.stampsSupplied,
                                contract_name=capnp_struct.payload.contractName,
                                function_name=capnp_struct.payload.functionName,
@@ -143,12 +145,7 @@ class SubBlockBuilder(Worker):
         self.sb_blder_idx = sbb_index
         self.startup = True
         self.num_txn_bags = 0
-        self._empty_txn_batch = transaction_capnp.TransactionBatch.new_message(
-            transactions=[],
-            timestamp=time.time(),
-            signature=b'',
-            sender=b''
-        )
+        self._empty_txn_batch = []
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
 
@@ -157,8 +154,12 @@ class SubBlockBuilder(Worker):
         # END DEBUG
 
         # Create DEALER socket to talk to the BlockManager process over IPC
-        self.ipc_dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sb_blder_idx).encode())
+        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER,
+                                                     name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
+        self.ipc_dealer.setsockopt(zmq.IDENTITY, str(self.sb_blder_idx).encode())
+        self.ipc_dealer.connect(port=ipc_port, protocol='ipc', ip=ipc_ip)
+
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -182,31 +183,15 @@ class SubBlockBuilder(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
         await self._connect_sub_sockets()
-        await self.send_ready_to_bm()
-
-    async def send_ready_to_bm(self):
-        message = MessageManager.pack_dict(MessageTypes.READY_INTERNAL, arg_dict={'messageType': MessageTypes.READY_INTERNAL})
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.READY_INTERNAL), message])
+        await self.ipc_dealer.send_multipart([MessageTypes.READY_INTERNAL, b''])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
-    def initialize_next_block_to_make(self, next_block_index: int):
-        self._next_block_to_make.next_block_index = next_block_index % NUM_BLOCKS
-        self._next_block_to_make.state = NextBlockState.READY
-
     def move_next_block_to_make(self):
         if self._next_block_to_make.state == NextBlockState.PROCESSED:
-            self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
+            self._next_block_to_make.next_block_index = self._next_block_to_make.next_block_index + 1 % NUM_BLOCKS
+            self._next_block_to_make.state = NextBlockState.READY
 
         return self._next_block_to_make.state == NextBlockState.READY
-
-    def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
-        self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
-                      .format(ip, port, identity))
-        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
-        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
-        self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
-
-        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
         for idx in range(NUM_SB_PER_BUILDER):
@@ -234,10 +219,14 @@ class SubBlockBuilder(Worker):
             num_discards = num_discards + len(self.sb_managers[smi].to_finalize_txs)
             self.sb_managers[smi].to_finalize_txs.clear()
             ih2 = None
+
             while input_hash != ih2:
                 ih2, txs_bag = self.sb_managers[smi].pending_txs.pop_front()
+
                 self.adjust_work_load(txs_bag, False)
+
                 num_discards = num_discards + 1
+
         elif input_hash in self.sb_managers[smi].to_finalize_txs:
             ih2 = None
             while input_hash != ih2:
@@ -279,6 +268,10 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
 
         self.client.flush_all()
+
+        # Toss all pending nonces
+        self.state.delete_pending_nonces()
+
         self.startup = True
         # self._make_next_sb()
 
@@ -286,7 +279,7 @@ class SubBlockBuilder(Worker):
         self.log.info("SBB received an IPC message {}".format(frames))
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
-        msg_type = bytes_to_int(frames[0])
+        msg_type = frames[0]
         msg_blob = frames[1]
         msg = None
 
@@ -295,56 +288,44 @@ class SubBlockBuilder(Worker):
             self._make_next_sub_block()
             return
 
-        if MessageBase.registry.get(msg_type) is not None:
-            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        elif msg_type == MessageTypes.ALIGN_INPUT_HASH:
+            msg = subblock_capnp.AlignInputHash.from_bytes_packed(msg_blob)
+            self.align_input_hashes(msg)
 
         if isinstance(msg, MessageBase):
-            # DATA
-            # if not matched consensus, then discard current state and use catchup flow
-            if isinstance(msg, AlignInputHash):
-                self.align_input_hashes(msg)
-
             # SIGNAL
-            elif isinstance(msg, FailedBlockNotification):
+            if isinstance(msg, FailedBlockNotification):
                 self._fail_block(msg)
 
             else:
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
 
-    def _send_msg_over_ipc(self, message):
-        """
-        Convenience method to send a MessageBase instance over IPC dealer socket. Includes a frame to identify the
-        type of message
-        """
-        if isinstance(message, MessageBase):
-            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
+    def send_workload_signal(self):
+        # Create Signal
+        if self.num_txn_bags == 0:
+            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
 
-            self.ipc_dealer.send_multipart([int_to_bytes(message_type), message.serialize()])
+        elif self.num_txn_bags == 1:
+            # SIGNAL CREATION
+            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
 
     def adjust_work_load(self, input_bag, is_add: bool):
         self.num_txn_bags += 1 if is_add else -1
 
         # Create Signal
         if self.num_txn_bags == 0:
-            no_transactions = MessageManager.pack_dict(MessageTypes.NO_TRANSACTIONS,
-                                                       arg_dict={'messageType': MessageTypes.NO_TRANSACTIONS})
-
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.NO_TRANSACTIONS), no_transactions])
+            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
 
         elif self.num_txn_bags == 1:
             # SIGNAL CREATION
-            pending_transactions = MessageManager.pack_dict(MessageTypes.PENDING_TRANSACTIONS,
-                                                            arg_dict={'messageType': MessageTypes.PENDING_TRANSACTIONS})
-
-            self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.PENDING_TRANSACTIONS), pending_transactions])
+            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
 
 # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
 
-        if bytes_to_int(msg_type) == MessageTypes.TRANSACTION_BATCH and \
-                0 <= index < len(self.sb_managers):
+        if msg_type == MessageTypes.TRANSACTION_BATCH and 0 <= index < len(self.sb_managers):
 
             batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
 
@@ -357,6 +338,7 @@ class SubBlockBuilder(Worker):
             if batch.sender.hex() not in PhoneBook.masternodes:
                 self.log.critical('RECEIVED TX BATCH FROM NON DELEGATE')
                 return
+
             else:
                 self.log.success('{} is a masternode!'.format(batch.sender.hex()))
 
@@ -368,12 +350,22 @@ class SubBlockBuilder(Worker):
                                .format(timestamp, self.sb_managers[index].processed_txs_timestamp, index))
                 return
 
-            # Get the hash of all transactions
+            # Set up a hasher for input hash and a list for valid txs
             h = hashlib.sha3_256()
-
-            #h.update('{}'.format(timestamp).encode())
+            valid_transactions = []
 
             for tx in batch.transactions:
+                # Double check to make sure all transactions are valid
+                if transaction_is_valid(tx=tx,
+                                        expected_processor=batch.sender,
+                                        driver=self.state,
+                                        strict=False):
+
+                    valid_transactions.append(tx)
+                else:
+                    self.log.critical('TX NOT VALID FOR SOME REASON.')
+
+                # Hash all transactions regardless because the proof from masternodes is derived from all hashes
                 h.update(tx.as_builder().to_bytes_packed())
 
             input_hash = h.digest()
@@ -381,24 +373,22 @@ class SubBlockBuilder(Worker):
             if not _verify(batch.sender, input_hash, batch.signature):
                 self.log.critical('INCORRECT SIGNATURE.')
                 return
-            else:
-                self.log.success('Input has verifies!')
 
-            self.log.info(input_hash)
             # if the sb_manager already has this bag, ignore it
             if input_hash in self.sb_managers[index].pending_txs:
                 self.log.debugv("Input hash {} already found in sb_manager at index {}".format(input_hash, index))
                 return
 
-        # DEBUG -- TODO DELETE
-        self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
+            # DEBUG -- TODO DELETE
+            self.log.notice("Recv tx batch w/ {} transactions, and input hash {}".format(len(batch.transactions), input_hash))
 
-        self.sb_managers[index].processed_txs_timestamp = timestamp
+            self.sb_managers[index].processed_txs_timestamp = timestamp
 
-        self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
-        self.adjust_work_load(batch, True)
+            self.log.info("Queueing transaction batch for sb manager {}. SB_Manager={}".format(index, self.sb_managers[index]))
+            self.adjust_work_load(valid_transactions, True)
 
-        self.sb_managers[index].pending_txs.append(input_hash, batch)
+            # Add the valid transactions to
+            self.sb_managers[index].pending_txs.append(input_hash, valid_transactions)
 
     def _create_empty_sbc(self, sb_idx: int, sb_data: SBData):
         """
@@ -406,17 +396,24 @@ class SubBlockBuilder(Worker):
         """
         self.log.info("Building empty sub block contender for input hash {}".format(sb_data.input_hash))
 
-        signature = self.wallet.sign(bytes.fromhex(sb_data.input_hash))
+        self.log.info(type(sb_data.input_hash))
+
+        if type(sb_data.input_hash) == str:
+            input_hash = bytes.fromhex(sb_data.input_hash)
+        else:
+            input_hash = sb_data.input_hash
+
+        signature = self.wallet.sign(input_hash)
 
         merkle_proof = subblock_capnp.MerkleProof.new_message(
-            hash=bytes.fromhex(sb_data.input_hash),
+            hash=input_hash,
             signer=self.wallet.verifying_key(),
             signature=signature
         ).to_bytes_packed()
 
         sbc = subblock_capnp.SubBlockContender.new_message(
-              resultHash=bytes.fromhex(sb_data.input_hash),
-              inputHash=bytes.fromhex(sb_data.input_hash),
+              resultHash=input_hash,
+              inputHash=input_hash,
               merkleLeaves=[],
               signature=merkle_proof,
               transactions=[],
@@ -426,7 +423,7 @@ class SubBlockBuilder(Worker):
 
         self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
 
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
 
     def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
         """
@@ -469,7 +466,7 @@ class SubBlockBuilder(Worker):
 
         self.pending_transactions = []
 
-        self.ipc_dealer.send_multipart([int_to_bytes(MessageTypes.SUBBLOCK_CONTENDER), sbc])
+        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
 
 
     def create_sb_contender(self, sb_idx: int, sb_data: SBData):
@@ -482,7 +479,7 @@ class SubBlockBuilder(Worker):
     # raghu todo sb_index is not correct between sb-builder and seneca-client. Need to handle more than one sb per client?
     def _execute_sb(self,
                     input_hash: str,
-                    tx_batch: transaction_capnp.TransactionBatch,
+                    tx_batch: list,
                     timestamp: float,
                     sb_idx: int):
 
@@ -510,10 +507,12 @@ class SubBlockBuilder(Worker):
             'now': dt_object
         }
 
-        self.log.info('Transactions to execute: {}'.format(tx_batch.transactions))
+        self.log.info('Transactions to execute: {}'.format(tx_batch))
 
         transactions = []
-        for transaction in tx_batch.transactions:
+        for transaction in tx_batch:
+            # This should be streamlined so that we can just pass the tx_batch forward because it's already ready to be processed at this point
+            # The reason why it isn't like this already is because Contracting uses a weird pseudo wrapper for the capnp struct
             transactions.append(UnpackedContractTransaction(transaction))
             self.pending_transactions.append(transaction)
 
@@ -531,8 +530,7 @@ class SubBlockBuilder(Worker):
 
         return False
 
-
-    def _execute_input_bag(self, input_hash: bytes, tx_batch: transaction_capnp.TransactionBatch, sb_idx: int):
+    def _execute_input_bag(self, input_hash: bytes, tx_batch, sb_idx: int):
         return self._execute_sb(input_hash, tx_batch, tx_batch.timestamp, sb_idx)
 
     def _make_next_sb(self):
@@ -559,6 +557,8 @@ class SubBlockBuilder(Worker):
                 self.sb_managers[sm_idx].to_finalize_txs.pop_front()
 
             sb_index = self.sb_managers[sm_idx].sub_block_index
+            timestamp = self.sb_managers[sm_idx].processed_txs_timestamp
+
             if len(self.sb_managers[sm_idx].pending_txs) > 0:
 
                 input_hash, tx_batch = self.sb_managers[sm_idx].pending_txs.pop_front()
@@ -569,7 +569,7 @@ class SubBlockBuilder(Worker):
 
                 self.sb_managers[sm_idx].to_finalize_txs.append(input_hash, tx_batch)
 
-                self._execute_input_bag(input_hash, tx_batch, sb_index)
+                self._execute_sb(input_hash, tx_batch, timestamp, sb_index)
 
             else:
                 timestamp = float(time.time())
