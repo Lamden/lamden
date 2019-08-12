@@ -8,6 +8,7 @@ from cilantro_ee.messages import capnp as schemas
 import time
 import os
 import capnp
+from cilantro_ee.constants import conf
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -48,7 +49,9 @@ class TransactionWrapper:
 
 
 class TransactionBuilder:
-    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, epoch: bytes, nonce: int):
+    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, epoch: bytes,
+                 nonce: int, proof_difficulty: str=conf.DEFAULT_DIFFICULTY):
+
         # Stores variables in self for convenience
         self.sender = sender
         self.stamps = stamps
@@ -58,6 +61,7 @@ class TransactionBuilder:
         self.nonce = nonce
         self.kwargs = kwargs
         self.epoch = epoch
+        self.proof_difficulty = proof_difficulty
 
         # Serializes all that it can on init
         self.struct = transaction_capnp.Transaction.new_message()
@@ -103,7 +107,7 @@ class TransactionBuilder:
         self.tx_signed = True
 
     def generate_proof(self):
-        self.proof = pipehash.find_solution(self.epoch, self.payload_bytes)
+        self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
         #self.proof = SHA3POWBytes.find(self.payload_bytes)
         self.proof_generated = True
 
@@ -139,7 +143,8 @@ def verify_packed_tx(sender, tx):
 def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
                          driver: MetaDataStorage,
-                         strict=True):
+                         strict=True,
+                         difficulty=conf.DEFAULT_DIFFICULTY):
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
@@ -179,7 +184,8 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     pipehash_state = driver.latest_epoch_hash
     if not pipehash.check_solution(state=pipehash_state,
                                    data=tx.payload.as_builder().to_bytes_packed(),
-                                   nonce=tx.metadata.proof):
+                                   nonce=tx.metadata.proof,
+                                   difficulty=difficulty):
         return False
 
     if tx.payload.stampsSupplied > 0:

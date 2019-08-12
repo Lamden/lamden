@@ -102,10 +102,10 @@ def check_solution(state: bytes,
     return s_i < d_i
 
 
-def find_solution(state: bytes, data: bytes):
+def find_solution(state: bytes, data: bytes, difficulty=DEFAULT_DIFF):
     nonce = secrets.token_bytes(32)
 
-    while not check_solution(state, data, nonce):
+    while not check_solution(state, data, nonce, difficulty=difficulty):
         nonce = secrets.token_bytes(32)
 
     return nonce

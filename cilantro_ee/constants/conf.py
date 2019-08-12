@@ -16,7 +16,7 @@ BOOT_DELEGATE_IP_LIST = []
 BOOTNODES = []
 HOST_VK = None
 EPOCH_INTERVAL = 1
-
+DEFAULT_DIFFICULTY = 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 SETUP = False
 
 if not SETUP:
