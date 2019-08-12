@@ -63,12 +63,17 @@ async def get_nonce(request, vk):
     # Might have to change this sucker from hex to bytes.
     pending_nonce = metadata_driver.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
 
+    log.info('Pending nonce: {}'.format(pending_nonce))
+
     if pending_nonce is None:
         nonce = metadata_driver.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+        log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
         if nonce is None:
             pending_nonce = 0
+            log.info('Nonce was now so pending nonce is now zero.')
         else:
             pending_nonce = nonce
+            log.info('Nonce was not none so setting pending nonce to it.')
 
     return json({'nonce': pending_nonce, 'processor': conf.HOST_VK.hex(), 'sender': vk})
 

@@ -19,7 +19,7 @@ def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.Transactio
     current_nonce = nonce_hash.get(k)
 
     if current_nonce is None or current_nonce < tx_payload.nonce:
-        nonce_hash[k] = tx_payload.nonce
+        nonce_hash[k] = tx_payload.nonce + 1
 
 
 class MetaDataStorage(DatabaseDriver):
