@@ -481,11 +481,6 @@ class BlockManager(Worker):
                                             MessageTypes.ALIGN_INPUT_HASH,
                                             align_input_hash])
 
-    def _send_fail_block_msg(self, block_data: FailedBlockNotification):
-        for idx in range(NUM_SB_BUILDERS):
-            # SIGNAL
-            self._send_msg_over_ipc(sb_index=idx, message=block_data)
-
     # make sure block aggregator adds block_num for all notifications?
     def handle_block_notification(self, block: blockdata_capnp.BlockData, sender: bytes, notification_type):
 
@@ -531,7 +526,10 @@ class BlockManager(Worker):
                     'BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(
                         my_new_block_hash, block.blockHash))
                 if notification_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
-                    self._send_fail_block_msg(block)
+                    for idx in range(NUM_SB_BUILDERS):
+                        # SIGNAL
+                        self._send_msg_over_ipc(sb_index=idx, message=block)
+
                 else:
                     self._send_input_align_msg(block)
                 if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:

@@ -154,8 +154,12 @@ class SubBlockBuilder(Worker):
         # END DEBUG
 
         # Create DEALER socket to talk to the BlockManager process over IPC
-        self.ipc_dealer = None
-        self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(self.sb_blder_idx).encode())
+        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER,
+                                                     name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
+        self.ipc_dealer.setsockopt(zmq.IDENTITY, str(self.sb_blder_idx).encode())
+        self.ipc_dealer.connect(port=ipc_port, protocol='ipc', ip=ipc_ip)
+
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -179,30 +183,15 @@ class SubBlockBuilder(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
         await self._connect_sub_sockets()
-        await self.send_ready_to_bm()
-
-    async def send_ready_to_bm(self):
-        self.ipc_dealer.send_multipart([MessageTypes.READY_INTERNAL, b''])
+        await self.ipc_dealer.send_multipart([MessageTypes.READY_INTERNAL, b''])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
-    def initialize_next_block_to_make(self, next_block_index: int):
-        self._next_block_to_make.next_block_index = next_block_index % NUM_BLOCKS
-        self._next_block_to_make.state = NextBlockState.READY
-
     def move_next_block_to_make(self):
         if self._next_block_to_make.state == NextBlockState.PROCESSED:
-            self.initialize_next_block_to_make(self._next_block_to_make.next_block_index + 1)
+            self._next_block_to_make.next_block_index = self._next_block_to_make.next_block_index + 1 % NUM_BLOCKS
+            self._next_block_to_make.state = NextBlockState.READY
 
         return self._next_block_to_make.state == NextBlockState.READY
-
-    def _create_dealer_ipc(self, port: int, ip: str, identity: bytes):
-        self.log.info("Connecting to BlockManager's ROUTER socket with a DEALER using ip {}, port {}, and id {}"
-                      .format(ip, port, identity))
-        self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER, name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
-        self.ipc_dealer.setsockopt(zmq.IDENTITY, identity)
-        self.ipc_dealer.connect(port=port, protocol='ipc', ip=ip)
-
-        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
 
     def _create_sub_sockets(self):
         for idx in range(NUM_SB_PER_BUILDER):
@@ -230,10 +219,14 @@ class SubBlockBuilder(Worker):
             num_discards = num_discards + len(self.sb_managers[smi].to_finalize_txs)
             self.sb_managers[smi].to_finalize_txs.clear()
             ih2 = None
+
             while input_hash != ih2:
                 ih2, txs_bag = self.sb_managers[smi].pending_txs.pop_front()
+
                 self.adjust_work_load(txs_bag, False)
+
                 num_discards = num_discards + 1
+
         elif input_hash in self.sb_managers[smi].to_finalize_txs:
             ih2 = None
             while input_hash != ih2:
@@ -295,22 +288,27 @@ class SubBlockBuilder(Worker):
             self._make_next_sub_block()
             return
 
-        if MessageBase.registry.get(msg_type) is not None:
-            msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
+        elif msg_type == MessageTypes.ALIGN_INPUT_HASH:
+            msg = subblock_capnp.AlignInputHash.from_bytes_packed(msg_blob)
+            self.align_input_hashes(msg)
 
         if isinstance(msg, MessageBase):
-            # DATA
-            # if not matched consensus, then discard current state and use catchup flow
-            if isinstance(msg, AlignInputHash):
-                self.align_input_hashes(msg)
-
             # SIGNAL
-            elif isinstance(msg, FailedBlockNotification):
+            if isinstance(msg, FailedBlockNotification):
                 self._fail_block(msg)
 
             else:
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
+
+    def send_workload_signal(self):
+        # Create Signal
+        if self.num_txn_bags == 0:
+            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
+
+        elif self.num_txn_bags == 1:
+            # SIGNAL CREATION
+            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
 
     def adjust_work_load(self, input_bag, is_add: bool):
         self.num_txn_bags += 1 if is_add else -1
@@ -327,8 +325,7 @@ class SubBlockBuilder(Worker):
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
 
-        if msg_type == MessageTypes.TRANSACTION_BATCH and \
-                0 <= index < len(self.sb_managers):
+        if msg_type == MessageTypes.TRANSACTION_BATCH and 0 <= index < len(self.sb_managers):
 
             batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
 
@@ -341,6 +338,7 @@ class SubBlockBuilder(Worker):
             if batch.sender.hex() not in PhoneBook.masternodes:
                 self.log.critical('RECEIVED TX BATCH FROM NON DELEGATE')
                 return
+
             else:
                 self.log.success('{} is a masternode!'.format(batch.sender.hex()))
 
@@ -408,14 +406,14 @@ class SubBlockBuilder(Worker):
         signature = self.wallet.sign(input_hash)
 
         merkle_proof = subblock_capnp.MerkleProof.new_message(
-            hash=bytes.fromhex(sb_data.input_hash),
+            hash=input_hash,
             signer=self.wallet.verifying_key(),
             signature=signature
         ).to_bytes_packed()
 
         sbc = subblock_capnp.SubBlockContender.new_message(
-              resultHash=bytes.fromhex(sb_data.input_hash),
-              inputHash=bytes.fromhex(sb_data.input_hash),
+              resultHash=input_hash,
+              inputHash=input_hash,
               merkleLeaves=[],
               signature=merkle_proof,
               transactions=[],

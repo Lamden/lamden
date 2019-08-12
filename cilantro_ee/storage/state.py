@@ -132,14 +132,14 @@ class MetaDataStorage(DatabaseDriver):
         self.log.success('UPDATING STATE')
 
         # Map of tuple to nonce such that (processor, sender) => nonce
-        #nonces = {}
+        nonces = {}
 
         for sb in block.subBlocks:
             for tx in sb.transactions:
-                #update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
 
-        self.commit_nonces()
+        self.commit_nonces(nonce_hash=nonces)
         self.delete_pending_nonces()
 
         # Update our block hash and block num
