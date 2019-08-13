@@ -23,7 +23,7 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages._new.message import MessageTypes, MessageManager
 from contracting.config import NUM_CACHES
@@ -260,7 +260,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
         # self._make_next_sb()
 
-    def _fail_block(self, fbn: FailedBlockNotification):
+    def _fail_block(self, fbn: BlockNotification):
         self.log.notice("FailedBlockNotification - aligning input hashes")
 
         num_discards = 0
@@ -294,6 +294,9 @@ class SubBlockBuilder(Worker):
             self.log.success("MAKE NEXT BLOCK SIGNAL")
             self._make_next_sub_block()
             return
+        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
+            self._fail_block(msg)
+            return
 
         if MessageBase.registry.get(msg_type) is not None:
             msg = MessageBase.registry[msg_type].from_bytes(msg_blob)
@@ -303,10 +306,6 @@ class SubBlockBuilder(Worker):
             # if not matched consensus, then discard current state and use catchup flow
             if isinstance(msg, AlignInputHash):
                 self.align_input_hashes(msg)
-
-            # SIGNAL
-            elif isinstance(msg, FailedBlockNotification):
-                self._fail_block(msg)
 
             else:
                 raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
