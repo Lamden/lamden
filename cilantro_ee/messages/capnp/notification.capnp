@@ -1,20 +1,16 @@
 @0xc9b01417cf45e892;
 
-
-struct ConsensusBlockNotification {
-    prevBlockHash @0 :Text;
-    blockHash @1 :Text;
-    blockNum @2 :UInt32;
-    firstSbIdx @3 :UInt32;
-    blockOwners @4 :List(Text);
-    inputHashes @5 :List(Data);
-}
-
-
-struct FailedBlockNotification {
-    prevBlockHash @0 :Text;
-    blockHash @1 :Text;
-    blockNum @2 :UInt32;
+# crp do we need prevBlockHash ??
+struct BlockNotification {
+    blockNum @0 :UInt32;
+    blockHash @1 :Data;
+    blockOwners @2 :List(Text);
     firstSbIdx @3 :UInt32;
     inputHashes @4 :List(List(Text));
+    type :union  {
+      failedBlock @5 :Void;
+      newBlock @6 :Void;
+      emptyBlock @7 :Void;
+      partialBlock @8 :Void;
+    }
 }

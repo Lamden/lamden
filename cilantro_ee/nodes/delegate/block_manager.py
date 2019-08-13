@@ -28,7 +28,7 @@ from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILT
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
 
-from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.block_data.notification import BlockNotification 
 from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.protocol.wallet import _verify
@@ -38,6 +38,7 @@ import asyncio, zmq, time, random
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
+import notification_capnp
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -77,7 +78,7 @@ class SubBlocks:
 class NextBlockData:
     def __init__(self, block_notif):
         self.block_notif = block_notif
-        is_failed = isinstance(block_notif, FailedBlockNotification)
+        is_failed = block_notif.type.which() == "FailedBlock"
         self.quorum_num = FAILED_BLOCK_NOTIFICATION_QUORUM if is_failed \
                             else BLOCK_NOTIFICATION_QUORUM
         self.is_quorum = False
@@ -362,9 +363,7 @@ class BlockManager(Worker):
                 self.send_start_to_sbb()
 
         # Process block notification messages
-        elif msg_type == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
-             msg_type == MessageTypes.NEW_BLOCK_NOTIFICATION or \
-             msg_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
+        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
             self.log.info('Block notification!!')
             # Unpack the message
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
@@ -374,11 +373,16 @@ class BlockManager(Worker):
                 return
 
             # Unpack the block
-            block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+            block = BlockNotification.unpack_block_notification(external_message.data)
             self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
 
             # Process accordingly
-            self.handle_block_notification(block, external_message.sender, msg_type)
+            self.handle_block_notification(block, external_message.sender)
+
+
+    def is_ready_to_start_sub_blocks(self):
+        self.start_sub_blocks += 1
+        return self.start_sub_blocks == 3
         
     def send_start_to_sbb(self):
         self.start_sub_blocks += 1
@@ -467,12 +471,11 @@ class BlockManager(Worker):
             message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
             self.ipc_router.send_multipart([id_frame, message_type, message.serialize()])
 
-    def _send_input_align_msg(self, block: blockdata_capnp.BlockData):
+    def _send_input_align_msg(self, block: notification_capnp.BlockNotification):
         self.log.info("Sending AlignInputHash message to SBBs")
-        first_sb_index = block.subBlocks[0].subBlockIdx
-        input_hashes = [sb.inputHash for sb in block.subBlocks]
-        for i, input_hash in enumerate(input_hashes):
-            align_input_hash = subblock_capnp.AlignInputHash.new_message(inputHash=input_hash,
+        first_sb_index = block.first_sb_idx
+        for i, input_hash in enumerate(block.input_hashes):
+            align_input_hash = subblock_capnp.AlignInputHash.new_message(inputHash=input_hash[0],
                                                                          sbIndex=first_sb_index + i).to_bytes_packed()
 
             sb_idx = i % NUM_SB_BUILDERS
@@ -481,8 +484,13 @@ class BlockManager(Worker):
                                             MessageTypes.ALIGN_INPUT_HASH,
                                             align_input_hash])
 
+    def _send_fail_block_msg(self, block: notification_capnp.BlockNotification):
+        for idx in range(NUM_SB_BUILDERS):
+            # SIGNAL
+            self._send_msg_over_ipc(sb_index=idx, message=block)
+
     # make sure block aggregator adds block_num for all notifications?
-    def handle_block_notification(self, block: blockdata_capnp.BlockData, sender: bytes, notification_type):
+    def handle_block_notification(self, block: notification_capnp.BlockNotification, sender: bytes):
 
         self.log.notice('BM with sender {} being handled'.format(sender))
         self.log.notice("Got block notification for block num {} with hash {}".format(block.blockNum, block.blockHash))
@@ -497,6 +505,7 @@ class BlockManager(Worker):
         if block.blockNum > next_block_num:
             self.log.warning("Current block num {} is behind the block num {} received. Need to run catchup!"
                              .format(self.db_state.driver.latest_block_num, block.blockNum))
+            # raghu todo call this below only if it is a new_block_notifi
             self.recv_block_notif(block)     # raghu todo
             return
 
@@ -509,7 +518,7 @@ class BlockManager(Worker):
             self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash))
 
             if my_new_block_hash == block.blockHash:
-                if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
+                if block.type.which() == "newBlock":
                     self.db_state.driver.latest_block_num = block.blockNum
                     self.db_state.driver.latest_block_hash = my_new_block_hash
 
@@ -525,14 +534,13 @@ class BlockManager(Worker):
                 self.log.critical(
                     'BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(
                         my_new_block_hash, block.blockHash))
-                if notification_type == MessageTypes.FAIL_BLOCK_NOTIFICATION:
-                    for idx in range(NUM_SB_BUILDERS):
-                        # SIGNAL
-                        self._send_msg_over_ipc(sb_index=idx, message=block)
-
+                # crp - simply forward the block notification. it is input align on sbb
+                if block.type.which() == "failedBlock":
+                    self._send_fail_block_msg(block)
                 else:
                     self._send_input_align_msg(block)
-                if notification_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
+                # crp - this can be at sub-block blder level - where it will wait for anothr message only if it is new-block-notif otherwise, it will align input hashes and proceed to make next block
+                if block.type.which() == "newBlock":
                     self.recv_block_notif(block)
                 else:
                     self.send_updated_db_msg()

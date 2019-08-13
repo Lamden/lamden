@@ -10,7 +10,7 @@ from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PU
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.notification import NewBlockNotification, SkipBlockNotification, FailedBlockNotification
+from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages.message import MessageTypes
 from typing import List
@@ -19,6 +19,7 @@ import math, asyncio, zmq, time
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
+import notification_capnp
 import hashlib
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -53,8 +54,6 @@ class BlockAggregator(Worker):
         self.cur_quorum = 0
 
         self.curr_block_hash = self.state.get_latest_block_hash()
-        # Sanity check -- make sure StorageDriver and StateDriver have same latest block hash
-        # STOP COMMENTING THIS OUT PLEASE --davis
 
         self.driver = CilantroStorageDriver(key=self.signing_key)
 
@@ -67,6 +66,7 @@ class BlockAggregator(Worker):
         #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
         #     .format(latest_hash, self.state.latest_block_hash)
 
+        # raghu this may create inconsistent state when redis is behind mongo
         self.state.latest_block_num = latest_num
         self.state.latest_block_hash = latest_hash
 
@@ -189,8 +189,7 @@ class BlockAggregator(Worker):
                 self.recv_sub_block_contender(signature.signer, msg)
 
         # Process block notification messages
-        elif msg_type == MessageTypes.SKIP_BLOCK_NOTIFICATION or \
-             msg_type == MessageTypes.NEW_BLOCK_NOTIFICATION:
+        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
 
             # Unpack the message
             external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
@@ -198,7 +197,7 @@ class BlockAggregator(Worker):
             # If the sender has signed the payload, continue
             if _verify(external_message.sender, external_message.data, external_message.signature):
                 # Unpack the block
-                block = blockdata_capnp.BlockData.from_bytes_packed(external_message.data)
+                block = BlockNotification.unpack_block_notification(external_message.data)
                 self.log.important3(
                     "BlockAGG got BlockNotification from sender {} with hash {}".format(external_message.sender,
                                                                                   block.blockHash))
@@ -319,8 +318,21 @@ class BlockAggregator(Worker):
 
         self._reset_curr_block()
 
-    def send_new_block_notif(self, block_data):
 
+    def send_block_notif(self, msg_type, block_notif):
+        sig = self.wallet.sign(block_notif)
+
+        msg = signal_capnp.ExternalMessage.new_message(
+            data=block_notif,
+            sender=self.wallet.verifying_key(),
+            signature=sig
+        ).to_bytes_packed()
+
+        # clean up filters for different block notifications - unify it under BLK_NOTIF_FILTER ?
+        self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=msg_type, msg=msg)
+
+
+    def send_new_block_notif(self, block_data):
         self.ipc_router.send_multipart([b'0', MessageTypes.NON_EMPTY_BLOCK_MADE, b''])
 
         # new_block_notif = NewBlockNotification.create(block_data.prevBlockHash,
@@ -333,84 +345,70 @@ class BlockAggregator(Worker):
         # sleep a bit so slower nodes don't have to constantly use catchup mgr 
         time.sleep(0.1)
 
-# SEND NEW BLOCK NOTIFICATION on pub
-        block = block_data.to_bytes_packed()
-
-        sig = self.wallet.sign(block)
-
-        msg = signal_capnp.ExternalMessage.new_message(
-            data=block,
-            sender=self.wallet.verifying_key(),
-            signature=sig
-        ).to_bytes_packed()
-
-        self.pub.send_msg(filter=NEW_BLK_NOTIF_FILTER.encode(),
-                          msg_type=MessageTypes.NEW_BLOCK_NOTIFICATION,
-                          msg=msg)
-
-        self.log.info('Published new block notif with hash "{}" and prev hash {}'
-                      .format(block_data.blockHash, block_data.prevBlockHash))
+        # SEND NEW BLOCK NOTIFICATION on pub
+        block = BlockNotification.get_new_block_notification(block_data.blockNum, block_data.blockHash, \
+                                           block_data.blockOwners, block_data.subBlocks[0].subBlockIdx, \
+                                           [sb.inputHash for sb in block_data.subBlocks])
+        self.send_block_notif(MessageTypes.BLOCK_NOTIFICATION, block)
+        self.log.info('Published new block notif with hash "{}" and block num {}'
+                      .format(block_data.blockHash, block_data.blockNum))
 
     def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
         # until we have proper async way to control the speed of network, we use this crude method to control the speed
-        time.sleep(20)
-
+        time.sleep(5)
         self.ipc_router.send_multipart([b'0', MessageTypes.EMPTY_BLOCK_MADE, b''])
 
         #skip_notif = SkipBlockNotification.create_from_sub_blocks(self.curr_block_hash, self.state.latest_block_num+1, [], sub_blocks)
 
-        block_hash = self.state.latest_block_hash
+        # crp todo block_hash is not consistent with the previous scheme. see if there are any issues in BM
+        last_hash = self.state.latest_block_hash
+
+        if type(last_hash) == str:
+            last_hash = bytes.fromhex(last_hash)
 
         h = hashlib.sha3_256()
-
-        h.update(block_hash)
+        h.update(last_hash)
 
         for sb in sub_blocks:
-            h.update(sb.inputHash)
+            input_hash = sb.inputHash
+            if type(input_hash) == str:
+                input_hash = bytes.fromhex(input_hash)
+            h.update(input_hash)
+
+        block_hash = h.digest()
 
         block_num = self.state.latest_block_num + 1
 
-        empty_block = blockdata_capnp.BlockData.new_message(
-            blockHash=h.digest(),
-            blockNum=block_num,
-            blockOwners=[],
-            prevBlockHash=block_hash,
-            subBlocks=[sub_block for sub_block in sub_blocks]
-        ).to_bytes_packed()
+        empty_block = BlockNotification.get_empty_block_notification(
+                        block_num=block_num, block_hash=block_hash,
+                        first_sb_idx=sub_blocks[0].subBlockIdx,
+                        input_hashes=[sb.inputHash for sb in sub_blocks])
 
-        skip_block_notification = signal_capnp.ExternalMessage.new_message(
-            data=empty_block,
-            sender=self.wallet.verifying_key(),
-            signature=self.wallet.sign(empty_block)
-        ).to_bytes_packed()
-
-# SEND EMPTY BLOCK ON DEFAULT(?)
-        self.pub.send_msg(msg=skip_block_notification, filter=DEFAULT_FILTER.encode(), msg_type=MessageTypes.SKIP_BLOCK_NOTIFICATION)
-
-        self.log.debugv("Send skip block notification for prev hash {}".format(self.curr_block_hash))
+        self.send_block_notif(MessageTypes.BLOCK_NOTIFICATION, empty_block)
+        self.log.debugv("Send skip block notification for hash {}".format(block_hash))
 
     def send_fail_block_notif(self):
         msg = self.curr_block.get_failed_block_notif()
         self.log.debugv("Sending failed block notif {}".format(msg))
 
-# SEND FAILED BLOCK ON DEFAULT(?)
+        # crp todo
+        # self.send_block_notif(msg)
+        # SEND FAILED BLOCK ON DEFAULT(?)
         self.pub.send_msg(msg=msg, header=DEFAULT_FILTER.encode())
 
-    def recv_new_block_notif(self, sender_vk: str, notif: NewBlockNotification):
+    def recv_new_block_notif(self, sender_vk: str, notif: notification_capnp.BlockNotification):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
-        if isinstance(notif, SkipBlockNotification):
-            blocknum = notif.block_num
-        else:
-            blocknum = notif.blockNum
+        blocknum = notif.blockNum
 
-        if blocknum > self.state.latest_block_num + 1:
+        if (blocknum > self.state.latest_block_num + 1) and \
+           (notif.type.which() == "newBlock"):
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
 
-    def recv_fail_block_notif(self, sender_vk: str, notif: FailedBlockNotification):
+    def recv_fail_block_notif(self, sender_vk: str, notif: notification_capnp.BlockNotification):
         self.log.debugv("MN got fail block notification: {}".format(notif))
         # TODO implement
 

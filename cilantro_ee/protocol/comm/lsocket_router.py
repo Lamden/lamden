@@ -1,5 +1,4 @@
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
-from cilantro_ee.messages.envelope.envelope import Envelope
 import time, asyncio
 from collections import defaultdict, deque
 from typing import List
@@ -30,23 +29,6 @@ class LSocketRouter(LSocketBase):
         # 1) we could rely on retries of PING
         # 2) (more complex) we could wait until the VK lookup goes thru before
         # lets go with option 1
-
-    def send_envelope(self, env: Envelope, header: bytes=None):
-        assert header is not None, "Header must be identity frame when using send on Router sockets. Cannot be None."
-
-        # If we received a recent PONG, go ahead and send the message immediately
-        if header in self.recent_pongs and time.time() - self.recent_pongs[header] < SESSION_TIMEOUT:
-            self.socket.send_multipart([header, env.serialize()])
-
-        # Otherwise, we need to send a PING and wait for a PONG before sending the envelope
-        else:
-            if header not in self.timeout_futs:
-                self.log.debug("No recent contract from client with ID {}. Sending a PING.".format(header))
-                self.timeout_futs[header] = asyncio.ensure_future(self._start_ping_timer(header))
-                self.socket.send_multipart([header, PING])
-
-            self.log.debugv("Deferring msg to client with ID {} since we have not had recent contract".format(header))
-            self.deferred_msgs[header].append(env.serialize())
 
     async def _start_ping_timer(self, header):
         try:

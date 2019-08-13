@@ -1,37 +1,52 @@
 from cilantro_ee.messages.block_data.notification import *
+from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 # import unittest
 from unittest import TestCase
+import hashlib
 
 
 class TestBlockNotification(TestCase):
 
-    def test_create(self):
-        prev_hash = 'A' * 64
+    def test_new_block_notification(self):
         block_hash = 'X3' * 32
         block_num = 32
         first_sb_idx = 4
         block_owners = [ "abc", "def", "pqr"]
         input_hashes = ['AB' * 32, 'BC' * 32, 'C'*64, 'D'*64]
 
-        fbn = ConsensusBlockNotification.create(prev_block_hash=prev_hash,
-                           block_hash=block_hash, block_num=block_num, first_sb_idx=first_sb_idx,
-                           block_owners=block_owners, input_hashes=input_hashes)
+        nbn = BlockNotification.get_new_block_notification(block_num=block_num,
+                           block_hash=block_hash, block_owners=block_owners,
+                           first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
-        self.assertEqual(fbn.prev_block_hash, prev_hash)
-        self.assertEqual(fbn.input_hashes, input_hashes)
+        bn = BlockNotification.unpack_block_notification(nbn)
+        self.assertEqual(bn.blockNum, block_num)
+        self.assertEqual(len(bn.blockOwners), len(block_owners))
+        self.assertEqual(bn.type.which(), "newBlock")
+        self.assertNotEqual(bn.type.which(), "emptyBlock")
 
-    def test_serialize_deserialize(self):
+    def test_empty_block_notification(self):
         prev_hash = 'A' * 64
-        # block_hash = 'X3' * 32
-        # block_num = 32
-        # block_owners = [ "abc", "def", "pqr"]
+        block_num = 32
+        first_sb_idx = 4
+        input_hashes = ['AB' * 32, 'BC' * 32, 'C'*64, 'D'*64]
 
-        input_hashes = [['AB' * 32, 'BC' * 32], ['C'*64, 'D'*64], [], ['E'*64]]
+        if type(prev_hash) == str:
+            prev_hash = bytes.fromhex(prev_hash)
+        h = hashlib.sha3_256()
+        h.update(prev_hash)
+        for ih in input_hashes:
+            if type(ih) == str:
+                ih = bytes.fromhex(ih)
+            h.update(ih)
+        block_hash = h.digest()
 
-        fbn = FailedBlockNotification.create(prev_block_hash=prev_hash, input_hashes=input_hashes)
-        clone = FailedBlockNotification.from_bytes(fbn.serialize())
+        ebn = BlockNotification.get_empty_block_notification(block_num=block_num,
+                           block_hash=block_hash,
+                           first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
-        self.maxDiff = None
-        self.assertEqual(clone.input_hashes, input_hashes)
-        self.assertEqual(fbn, clone)
-
+        bn = BlockNotification.unpack_block_notification(ebn)
+        self.assertEqual(bn.blockNum, block_num)
+        self.assertEqual(bn.blockHash, block_hash)
+        self.assertEqual(len(bn.blockOwners), 0)
+        self.assertNotEqual(bn.type.which(), "newBlock")
+        self.assertEqual(bn.type.which(), "emptyBlock")

@@ -22,7 +22,7 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.message import MessageTypes
 from contracting.config import NUM_CACHES
@@ -249,7 +249,7 @@ class SubBlockBuilder(Worker):
             self.sb_managers[smi].pending_txs.insert_front(ih, txs_bag)
         # self._make_next_sb()
 
-    def _fail_block(self, fbn: FailedBlockNotification):
+    def _fail_block(self, fbn: BlockNotification):
         self.log.notice("FailedBlockNotification - aligning input hashes")
 
         num_discards = 0
@@ -287,18 +287,16 @@ class SubBlockBuilder(Worker):
             self.log.success("MAKE NEXT BLOCK SIGNAL")
             self._make_next_sub_block()
             return
+        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
+            self._fail_block(msg)
+            return
 
         elif msg_type == MessageTypes.ALIGN_INPUT_HASH:
             msg = subblock_capnp.AlignInputHash.from_bytes_packed(msg_blob)
             self.align_input_hashes(msg)
 
-        if isinstance(msg, MessageBase):
-            # SIGNAL
-            if isinstance(msg, FailedBlockNotification):
-                self._fail_block(msg)
-
-            else:
-                raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
+        else:
+            raise Exception("SBB got message type {} from IPC dealer socket that it does not know how to handle"
                                 .format(type(msg)))
 
     def send_workload_signal(self):
