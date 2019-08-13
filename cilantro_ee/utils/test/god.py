@@ -1,7 +1,5 @@
-from cilantro_ee.messages.transaction.container import TransactionContainer
 from cilantro_ee.messages.transaction.publish import *
 from cilantro_ee.messages.transaction.contract import *
-from cilantro_ee.messages.signals.kill_signal import KillSignal
 
 from cilantro_ee.logger import get_logger
 from cilantro_ee.utils.test.utils import *
