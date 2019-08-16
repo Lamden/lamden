@@ -70,3 +70,8 @@ src
 # Docs
 docs/sphinx/_build
 fsock
+
+#dir
+build
+dist
+ops
