@@ -6,7 +6,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.notification import FailedBlockNotification
+from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.protocol.wallet import _verify
 
 from collections import defaultdict
@@ -246,7 +246,7 @@ class BlockContender:
         self.committed = False
         self.consensus_reached = False
         self.state = MetaDataStorage()
-        self.curr_block_hash = self.state.latest_block_hash
+        self.curr_block_hash = self.state.get_latest_block_hash()
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
@@ -263,7 +263,7 @@ class BlockContender:
         # Reset all the data
         self.committed = False
         self.consensus_reached = False
-        self.curr_block_hash = self.state.latest_block_hash
+        self.curr_block_hash = self.state.get_latest_block_hash()
         self.time_created = time.time()
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
@@ -326,18 +326,12 @@ class BlockContender:
 
         return sb_data
 
-    def get_failed_block_notif(self) -> FailedBlockNotification:
-        self.log.info("raghu 1")
+    def get_failed_block_notif(self) -> BlockNotification:
         input_hashes = self._get_input_hashes()
-        self.log.info("raghu 2")
         first_sb_idx = self._get_first_sb_idx()
-        self.log.info("raghu 3")
         block_hash = Hasher.hash(str(input_hashes))
-        self.log.info("raghu 4")
         block_num = self.state.latest_block_num + 1
-        self.log.info("raghu 5")
-        # sb_indices = self._get_sb_indices()
-        return FailedBlockNotification.create(prev_block_hash=self.curr_block_hash, \
+        return BlockNotification.get_failed_block_notification(block_owners=[], \
                                               block_hash=block_hash, block_num=block_num, \
                                               first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
@@ -388,11 +382,3 @@ class BlockContender:
             input_hashes.append([])
 
         return input_hashes
-
-    def _get_sb_indices(self) -> List:
-        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
-        input_indices = []
-        for sb_group in sb_groups:
-            input_indices.append(sb_group.sb_idx)
-
-        return input_indices

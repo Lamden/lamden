@@ -2,7 +2,6 @@ from cilantro_ee.logger.base import get_logger
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
 
 from cilantro_ee.storage.vkbook import PhoneBook
 
@@ -177,7 +176,7 @@ class StateSync(Worker):
     def _send_msg_over_ipc_pub(self, message: MessageBase):
         self.log.debug("Publishing message {} over IPC".format(message))
         message_type = MessageBase.registry[type(message)]
-        self.ipc_pub.send_multipart([STATESYNC_FILTER.encode(), int_to_bytes(message_type), message.serialize()])
+        self.ipc_pub.send_multipart([STATESYNC_FILTER.encode(), message_type, message.serialize()])
 
     def _send_msg_over_ipc_router(self, task_idx: int, message: MessageBase):
         """ Convenience method to send a MessageBase instance over IPC router socket to a particular dealer.
@@ -186,4 +185,4 @@ class StateSync(Worker):
         assert isinstance(message, MessageBase), "Must pass in a MessageBase instance"
         id_frame = str(task_idx).encode()
         message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-        self.ipc_router.send_multipart([id_frame, int_to_bytes(message_type), message.serialize()])
+        self.ipc_router.send_multipart([id_frame, message_type, message.serialize()])
