@@ -4,6 +4,8 @@ import math
 
 POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basically disables POW
 
+BLOCK_HEART_BEAT_INTERVAL = 60
+INPUT_BAG_TIMEOUT = 10
 
 # In reality, these should be inferred from VKBook instead of hard-coded, once we start using smart contracts for
 # some of these config constants
@@ -38,10 +40,8 @@ TRANSACTIONS_PER_SUB_BLOCK = 20
 
 _MAX_SUB_BLOCK_BUILDERS = 4
 _MIN_BLOCKS = 1  
-NUM_SUB_BLOCKS = 1  # NUM_MASTERS -- cheap trick
-NUM_BLOCKS = max(_MIN_BLOCKS, (NUM_SUB_BLOCKS + _MAX_SUB_BLOCK_BUILDERS - 1) // _MAX_SUB_BLOCK_BUILDERS) # 1
-
-# max of 1, (2 + 4 - 1) 5 // 4 = 1
+NUM_SUB_BLOCKS = NUM_MASTERS
+NUM_BLOCKS = max(_MIN_BLOCKS, (NUM_SUB_BLOCKS + _MAX_SUB_BLOCK_BUILDERS - 1) // _MAX_SUB_BLOCK_BUILDERS) 
 
 NUM_SB_PER_BLOCK = (NUM_SUB_BLOCKS + NUM_BLOCKS - 1) // NUM_BLOCKS
 

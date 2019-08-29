@@ -14,6 +14,7 @@ from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
+import notification_capnp
 
 from cilantro_ee.messages.message import MessageTypes
 
@@ -256,18 +257,17 @@ class CatchupManager:
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
                       .format(req_blk_num, mn_vk))
         req = BlockDataRequest.create(block_num = req_blk_num)
-        self.router.send_msg(req, header=mn_vk.encode())
+        self.router.send_msg(mn_vk.encode(), MessageTypes.BLOCK_DATA_REQUEST, req.serialize())
 
-    def _recv_block_data_reply(self, reply: BlockData):
+    def _recv_block_data_reply(self, reply: blockdata_capnp.BlockData):
         # check if given block is older thn expected drop this reply
         # check if given blocknum grter thn current expected blk -> store temp
         # if given block needs to be stored update state/storage delete frm expected DT
         self.log.info('Recieved {}:'.format(reply))
 
-
-        rcv_blk_num = reply.block_num
+        rcv_blk_num = reply.blockNum
         if rcv_blk_num <= self.curr_num:
-            self.log.debug2("dropping already processed blk reply blk-{}:hash-{} ".format(reply.block_num, reply.block_hash))
+            self.log.debug2("dropping already processed blk reply blk-{}:hash-{} ".format(reply.blockNum, reply.blockHash))
             return
 
         self.rcv_block_dict[rcv_blk_num] = reply
@@ -282,8 +282,9 @@ class CatchupManager:
             self.update_received_block(block = reply)
             self.process_recv_idx()
 
-    def recv_block_data_reply(self, reply: BlockData):
-        self._recv_block_data_reply(reply)
+    def recv_block_data_reply(self, reply: bytes):
+        block = blockdata_capnp.BlockData.from_bytes_packed(reply)
+        self._recv_block_data_reply(block)
         return self.is_catchup_done()
 
     # MASTER ONLY CALL
@@ -323,9 +324,9 @@ class CatchupManager:
         self._send_block_idx_reply(reply_to_vk=requester_vk,
                                    catchup_list=delta_idx)
 
-    def _recv_blk_notif(self, update: BlockMetaData):
+    def _recv_blk_notif(self, update: notification_capnp.BlockNotification):
         # can get any time - hopefully one incremental request, how do you handle it in all cases?
-        nw_blk_num = update.block_num
+        nw_blk_num = update.blockNum
         if self.is_caught_up:
             self.curr_hash = self.state.latest_block_hash
             self.curr_num = self.state.latest_block_num
@@ -337,21 +338,16 @@ class CatchupManager:
             self.run_catchup()
         else:
             # actually you can request block data directly
-            # elem = {}
-            # elem["blockNum"] = nw_blk_num
-            # elem["blockHash"] = update.block_hash
-            # elem["blockOwners"] = update.block_owners
-            # self.block_delta_list.append(elem)
-            for vk in update.block_owners:
+            for vk in update.blockOwners:
                 self.node_idx_reply_set.add(vk)
             self.is_caught_up = False
             self.target_blk_num = nw_blk_num
             if self.awaited_blknum == self.curr_num:
                 self.awaited_blknum += 1
-            for vk in update.block_owners:
+            for vk in update.blockOwners:
                 self._send_block_data_req(mn_vk = vk, req_blk_num = nw_blk_num)
 
-    def recv_new_blk_notif(self, update: BlockMetaData):
+    def recv_new_blk_notif(self, update: notification_capnp.BlockNotification):
         self._recv_blk_notif(update)
         return self.is_catchup_done()
 
@@ -370,8 +366,9 @@ class CatchupManager:
                              msg=reply._data if reply._data is not None else b'')
 
     # MASTER ONLY CALL
-    def recv_block_data_req(self, sender_vk: str, req: BlockDataRequest):
-        blk_dict = self.driver.get_block(req.block_num)
+    def recv_block_data_req(self, sender: bytes, req: BlockDataRequest):
+        block_num = req['block_num']
+        blk_dict = self.driver.get_block(block_num)
 
         self.log.info(blk_dict)
 
@@ -396,7 +393,7 @@ class CatchupManager:
         block.prevBlockHash = blk_dict['prevBlockHash']
         block.subBlocks = [subblock_capnp.SubBlock.from_bytes_packed(s).as_builder() for s in blk_dict['subBlocks']]
 
-        self.router.send_msg(sender_vk.encode(), msg=block.to_bytes_packed(), msg_type=MessageTypes.BLOCK_DATA_REPLY)
+        self.router.send_msg(sender, msg=block.to_bytes_packed(), msg_type=MessageTypes.BLOCK_DATA_REPLY)
 
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
