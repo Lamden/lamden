@@ -38,7 +38,8 @@ struct Transactions {
 
 struct TransactionBatch {
     transactions @0 :List(Transaction);
-    timestamp @1: Float32;
+    timestamp @1: Float64;
     signature @2: Data;
     sender @3: Data;
+    inputHash @4: Data;  # hash of transactions + timestamp
 }

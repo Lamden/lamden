@@ -100,7 +100,7 @@ class LSocketBase:
 
         self.send_multipart([filter, msg_type, msg])
 
-    def add_handler(self, handler_func, handler_key=None, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
+    def add_handler(self, handler_func, handler_key=None, is_async=False, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
         """ Registered a handler function for data received on this socket.
         :param handler_func: The handler function, which is invoked with the raw frames received over the wire (as a
         list), and optionally the handler_key if this arg is specified
@@ -113,14 +113,14 @@ class LSocketBase:
 
         self.log.spam("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
         self.handler_added = True
-        coro = self._listen(handler_func, handler_key)
+        coro = self._listen(handler_func, handler_key, is_async)
 
         if start_listening:
             return asyncio.ensure_future(coro)
         else:
             return coro
 
-    async def _listen(self, func, key):
+    async def _listen(self, func, key, is_async=False):
         await asyncio.sleep(1)
         self.log.debug("Starting listener handler key {}".format(key))
 
@@ -142,9 +142,15 @@ class LSocketBase:
                 continue
 
             if key is not None:
-                func(msg, key)
+                if is_async:
+                    await func(msg, key)
+                else:
+                    func(msg, key)
             else:
-                func(msg)
+                if is_async:
+                    await func(msg)
+                else:
+                    func(msg)
 
     def handle_overlay_reply(self, event: dict):
         self.log.spam("Socket handling overlay reply {}".format(event))

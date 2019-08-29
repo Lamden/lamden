@@ -77,8 +77,8 @@ class OverlayServer:
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
                                   bootnodes=conf.BOOTNODES,
-                                  initial_mn_quorum=PhoneBook.masternode_quorum_min,
-                                  initial_del_quorum=PhoneBook.delegate_quorum_min,
+                                  initial_mn_quorum=PhoneBook.num_boot_masternodes,
+                                  initial_del_quorum=PhoneBook.num_boot_delegates,
                                   mn_to_find=PhoneBook.masternodes,
                                   del_to_find=PhoneBook.delegates)
 

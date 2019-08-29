@@ -329,11 +329,11 @@ class BlockContender:
     def get_failed_block_notif(self) -> BlockNotification:
         input_hashes = self._get_input_hashes()
         first_sb_idx = self._get_first_sb_idx()
-        block_hash = Hasher.hash(str(input_hashes))
         block_num = self.state.latest_block_num + 1
-        return BlockNotification.get_failed_block_notification(block_owners=[], \
-                                              block_hash=block_hash, block_num=block_num, \
-                                              first_sb_idx=first_sb_idx, input_hashes=input_hashes)
+        last_hash = self.state.latest_block_hash
+        return BlockNotification.get_failed_block_notification(
+                                  block_num=block_num, prev_block_hash=last_hash,
+                                  first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
     def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender) -> bool:
         """

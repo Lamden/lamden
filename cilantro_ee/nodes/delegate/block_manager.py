@@ -54,24 +54,36 @@ IPC_PORT = 6967
 class SubBlocks:
     def __init__(self):
         self.sbs = {}
+        self.futures = []
 
     def reset(self):
         self.sbs = {}
+        self.futures = []
 
     def is_quorum(self):
-        return len(self.sbs) == NUM_SB_BUILDERS
+        return len(self.sbs) == NUM_SB_PER_BLOCK
 
-    def add_sub_block(self, sb_index, sub_block):
-        if sb_index in self.sbs:
+    def add_sub_block(self, sub_block, fut):
+        sb_idx = sub_block.subBlockIdx % NUM_SB_PER_BLOCK
+        if sb_idx in self.sbs:
             # todo log it as an issue
             pass
-        self.sbs[sb_index] = sub_block
+        self.sbs[sb_idx] = sub_block
+        self.futures.append(fut)
 
     def get_sb_hashes_sorted(self):
         sb_hashes = []
-        for i in range(NUM_SB_BUILDERS):
+        for i in range(NUM_SB_PER_BLOCK):
             sb = self.sbs[i]
             sb_hashes.append(sb.resultHash)
+        return sb_hashes
+
+    def get_input_hashes_sorted(self):
+        sb_hashes = []
+        num_sbs = len(self.sbs)
+        for i in range(num_sbs):
+            sb = self.sbs[i]
+            sb_hashes.append(sb.inputHash.hex())
         return sb_hashes
 
 
@@ -174,7 +186,6 @@ class BlockManager(Worker):
         self.db_state = DBState()
         self.my_quorum = PhoneBook.masternode_quorum_min
         self._pending_work_at_sbb = 0
-        self._sub_blocks_have_data = 0
         self._masternodes_ready = set()
         self.start_sub_blocks = 0
 
@@ -205,17 +216,16 @@ class BlockManager(Worker):
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
-    def _set_pending_work(self, sbb_index):
+    def set_pending_work(self, sbb_index):
+        # self.log.info("set pending work {} for sbb {}".format(self._pending_work_at_sbb, sbb_index))
         self._pending_work_at_sbb |= (1 << sbb_index)
 
-    def _reset_pending_work(self, sbb_index):
+    def reset_pending_work(self, sbb_index):
+        # self.log.info("reset pending work {} for sbb {}".format(self._pending_work_at_sbb, sbb_index))
         self._pending_work_at_sbb &= ~(1 << sbb_index)
 
-    def _set_sb_have_data(self, sbb_index):
-        self._sub_blocks_have_data |= (1 << sbb_index)
-
-    def _reset_sb_have_data(self, sbb_index):
-        self._sub_blocks_have_data &= ~(1 << sbb_index)
+    def is_pending_work(self):
+        return self._pending_work_at_sbb > 0
 
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
@@ -234,7 +244,7 @@ class BlockManager(Worker):
         self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
-        self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg))
+        self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg, None, True))
 
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
@@ -301,7 +311,7 @@ class BlockManager(Worker):
             self.log.info("Starting SBB #{}".format(i))
             self.sb_builders[i].start()
 
-    def handle_ipc_msg(self, frames):
+    async def handle_ipc_msg(self, frames):
         self.log.spam("Got msg over ROUTER IPC from a SBB with frames: {}".format(frames))  # TODO delete this
         assert len(frames) == 3, "Expected 3 frames: (id, msg_type, msg_blob). Got {} instead.".format(frames)
 
@@ -319,23 +329,13 @@ class BlockManager(Worker):
             self.set_sbb_ready()
 
         elif msg_type == MessageTypes.PENDING_TRANSACTIONS:
-            self._set_pending_work(sbb_index)
-            self.log.info('Pending transactions.')
+            self.set_pending_work(sbb_index)
 
         elif msg_type == MessageTypes.NO_TRANSACTIONS:
-            self._reset_pending_work(sbb_index)
-            self.log.info('No transactions. Resetting work.')
+            self.reset_pending_work(sbb_index)
 
         elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
-            msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
-
-            self._handle_sbc(sbb_index, msg, msg_blob)
-            if len(msg.merkleLeaves) == 0:
-                self._reset_sb_have_data(sbb_index)
-                self.log.info('Message empty, resetting SB.')
-            else:
-                self._set_sb_have_data(sbb_index)
-                self.log.info('Setting SB {} has data.'.format(sbb_index))
+            await self._handle_sbc(sbb_index, msg_blob)
 
     def handle_sub_msg(self, frames):
         self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
@@ -374,7 +374,7 @@ class BlockManager(Worker):
 
             # Unpack the block
             block = BlockNotification.unpack_block_notification(external_message.data)
-            self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash))
+            self.log.important3("BM got BlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash.hex()))
 
             # Process accordingly
             self.handle_block_notification(block, external_message.sender)
@@ -447,33 +447,39 @@ class BlockManager(Worker):
 
         return h.digest()
 
-    def _handle_sbc(self, sbb_index: int, sbc: subblock_capnp.SubBlockContender, msg_blob: bytes):
-        self.log.important("Got SBC with sb-index {} result-hash {}. Sending to Masternodes.".format(sbc.subBlockIdx,
-                                                                                                     sbc.resultHash))
 
-        # if not self._is_pending_work() and (sbb_index == 0): # todo need async methods here
+    async def _send_sbc(self, msg_blob: bytes):
+        wait_time = 0
+        while not self.is_pending_work() and wait_time < BLOCK_HEART_BEAT_INTERVAL:
+            await asyncio.sleep(1)
+            wait_time += 1
+        # self.log.info("Waited for {} secs. Sending to Masternodes.".format(wait_time))
+        # raghu todo - when BM gets a block notification - it should turn off sleep as well as not send in this pub message
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
                           msg_type=MessageTypes.SUBBLOCK_CONTENDER,
                           msg=msg_blob)
 
-        self.db_state.my_sub_blocks.add_sub_block(sbb_index, sbc)
+    async def _handle_sbc(self, sbb_index: int, msg_blob: bytes):
+        sbc = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+        self.log.important("Got SBC with sb-index {} input-hash {}".format(sbc.subBlockIdx, sbc.inputHash.hex()))
+        coro = self._send_sbc(msg_blob)
+        fut = asyncio.ensure_future(coro)
+        self.db_state.my_sub_blocks.add_sub_block(sbc, fut)
 
     # TODO make this DRY
-    def _send_msg_over_ipc(self, sb_index: int, message):
+    def _send_msg_over_ipc(self, sb_index: int, msg_type, message):
         """
         Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
         self.log.spam("Sending msg to sb_index {} with payload {}".format(sb_index, message))
 
-        if isinstance(message, MessageBase):
-            id_frame = str(sb_index).encode()
-            message_type = MessageBase.registry[type(message)]  # this is an int (enum) denoting the class of message
-            self.ipc_router.send_multipart([id_frame, message_type, message.serialize()])
+        id_frame = str(sb_index).encode()
+        self.ipc_router.send_multipart([id_frame, msg_type, message])
 
     def _send_input_align_msg(self, block: notification_capnp.BlockNotification):
         self.log.info("Sending AlignInputHash message to SBBs")
-        first_sb_index = block.first_sb_idx
+        first_sb_index = block.firstSbIdx
         for i, input_hash in enumerate(block.input_hashes):
             align_input_hash = subblock_capnp.AlignInputHash.new_message(inputHash=input_hash[0],
                                                                          sbIndex=first_sb_index + i).to_bytes_packed()
@@ -485,9 +491,10 @@ class BlockManager(Worker):
                                             align_input_hash])
 
     def _send_fail_block_msg(self, block: notification_capnp.BlockNotification):
+        bn = BlockNotification.pack_block_notification(block.as_builder())
         for idx in range(NUM_SB_BUILDERS):
             # SIGNAL
-            self._send_msg_over_ipc(sb_index=idx, message=block)
+            self._send_msg_over_ipc(sb_index=idx, msg_type=MessageTypes.BLOCK_NOTIFICATION, message=bn)
 
     # make sure block aggregator adds block_num for all notifications?
     def handle_block_notification(self, block: notification_capnp.BlockNotification, sender: bytes):
@@ -515,7 +522,7 @@ class BlockManager(Worker):
             self.log.info("New block quorum met!")
             my_new_block_hash = self._get_new_block_hash()
 
-            self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash))
+            self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash.hex()))
 
             if my_new_block_hash == block.blockHash:
                 if block.type.which() == "newBlock":
@@ -534,13 +541,12 @@ class BlockManager(Worker):
                 self.log.critical(
                     'BlockNotification hash received is not the same as the one we have!!!\n{}\n{}'.format(
                         my_new_block_hash, block.blockHash))
-                # crp - simply forward the block notification. it is input align on sbb
-                if block.type.which() == "failedBlock":
-                    self._send_fail_block_msg(block)
-                else:
-                    self._send_input_align_msg(block)
-                # crp - this can be at sub-block blder level - where it will wait for anothr message only if it is new-block-notif otherwise, it will align input hashes and proceed to make next block
+
+                # simply forward the block notification. it is input align on sbb
+                self._send_fail_block_msg(block)
+                # this can be at sub-block blder level - where it will wait for anothr message only if it is new-block-notif otherwise, it will align input hashes and proceed to make next block
                 if block.type.which() == "newBlock":
+                    self.db_state.reset()
                     self.recv_block_notif(block)
                 else:
                     self.send_updated_db_msg()
