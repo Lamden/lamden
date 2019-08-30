@@ -18,7 +18,7 @@ setup(
         'seneca',
         'click',
         'simple-crypt',
-        'sanic',
+        'sanic==19.6.3',
         'pymongo==3.7.2'
     ],
     extras_require={

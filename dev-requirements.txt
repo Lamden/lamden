@@ -14,7 +14,7 @@ yarl==1.1.0
 Click==7.0
 sanic
 sanic-limiter==0.1.3
-Sanic-Cors==0.9.7
+Sanic-Cors==0.9.9
 secure
 
 pathspec
