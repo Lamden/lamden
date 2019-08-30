@@ -63,7 +63,6 @@ tests/cloud/Dockerfile
 
 # Docker
 docker-compose.yml
-dump.rdb
 docker/redis.env
 src
 
