@@ -17,6 +17,7 @@
 
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
+from typing import Dict, Callable
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
@@ -57,14 +58,6 @@ envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
-
-class Metadata:
-    def __init__(self, proof, signature, timestamp):
-        self.proof = proof
-        self.signature = signature
-        self.timestamp = timestamp
-
-
 class Payload:
     def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
         self.sender = sender
@@ -78,10 +71,6 @@ class Payload:
 
 class UnpackedContractTransaction:
     def __init__(self, capnp_struct: transaction_capnp.Transaction):
-        self.metadata = Metadata(proof=capnp_struct.metadata.proof,
-                                 signature=capnp_struct.metadata.signature,
-                                 timestamp=capnp_struct.metadata.timestamp)
-
         kwargs = {}
         for entry in capnp_struct.payload.kwargs.entries:
             if entry.value.which() == 'fixedPoint':
@@ -157,10 +146,14 @@ class SubBlockBuilder(Worker):
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = self.manager.create_socket(socket_type=zmq.DEALER,
                                                      name="SBB-IPC-Dealer[{}]".format(self.sb_blder_idx), secure=False)
+        # setting identity and other (few important) socket options can be part of create_socket api above
         self.ipc_dealer.setsockopt(zmq.IDENTITY, str(self.sb_blder_idx).encode())
+        # connect or bind is a separate step
         self.ipc_dealer.connect(port=ipc_port, protocol='ipc', ip=ipc_ip)
 
-        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
+        # self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
+        # Adding message_handler with dictionary of actions as a separate step - this api could change
+        self.tasks.append(self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -180,6 +173,12 @@ class SubBlockBuilder(Worker):
     def run(self):
         self.log.notice("SBB {} starting...".format(self.sb_blder_idx))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    def get_ipc_message_action_dict(self):
+        return {
+            MessageTypes.MAKE_NEXT_BLOCK: self.__make_next_sub_block,
+            MessageTypes.BLOCK_NOTIFICATION: self.__fail_block
+        }
 
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
@@ -311,6 +310,11 @@ class SubBlockBuilder(Worker):
         self.reset_next_block_to_make()
 
         # self._make_next_sb()
+
+    async def __fail_block(self, msg: bytes):
+        self.log.info("RPC going through this flow - __fail_block")
+        block = BlockNotification.unpack_block_notification(msg)
+        self._fail_block(block)
 
     def handle_ipc_msg(self, frames):
         self.log.info("SBB received an IPC message {}".format(frames))
@@ -617,3 +621,7 @@ class SubBlockBuilder(Worker):
             time.sleep(2)
 
         self._make_next_sb()
+
+    async def __make_next_sub_block(self, msg: bytes):
+        self.log.info("RPC going through this flow - __make_next_sub_block")
+        self._make_next_sub_block()

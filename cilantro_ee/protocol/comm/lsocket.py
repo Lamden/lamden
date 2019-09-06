@@ -80,6 +80,7 @@ class LSocketBase:
 
         self.ready = True  # If False, all DEFERRED_FUNCS will be suspended until ready. Used by subclasses
         self.handler_added = False  # We use this just for dev sanity checks, to ensure only one handler is added
+        self.handler_map = None
 
     @vk_lookup
     def connect(self, port: int, protocol: str='tcp', ip: str='', vk: str=''):
@@ -109,16 +110,51 @@ class LSocketBase:
         :param start_listening: If True, the socket listener coroutine is automatically started, and a Future is
         returned. Otherwise, the listener coro itself is returned and must be started manually.
         :return: A coroutine if start_listening is False, otherwise a Future. """
+
         assert not self.handler_added, "Handler already added for socket named {}".format(self.name)
+        self.handler_added = True
 
         self.log.spam("Socket adding handler func named {} with handler key {}".format(handler_func, handler_key))
-        self.handler_added = True
         coro = self._listen(handler_func, handler_key, is_async)
 
         if start_listening:
             return asyncio.ensure_future(coro)
         else:
             return coro
+
+
+    def add_message_handler(self, handler_map, start_listening=False) -> Union[asyncio.Future, asyncio.coroutine]:
+        """ Registered a handler function for data received on this socket.
+        :param handler_map: message type and corresponding trigger function dictionary
+        :param start_listening: If True, the socket listener coroutine is automatically started, and a Future is
+        returned. Otherwise, the listener coro itself is returned and must be started manually.
+        :return: A coroutine if start_listening is False, otherwise a Future. """
+
+        assert not self.handler_added, "Handler already added for socket named {}".format(self.name)
+        self.handler_added = True
+        self.handler_map = handler_map
+
+        self.log.spam("Socket adding handler map ...")
+        coro = self._listen(self._message_handler, None, True)
+
+        if start_listening:
+            return asyncio.ensure_future(coro)
+        else:
+            return coro
+
+    async def _message_handler(self, frames):
+        assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(len(frames))
+
+        msg_type = frames[0]
+        msg_blob = frames[1]
+
+        if msg_type not in self.handler_map:
+            self.log.error("Got invalid message type '{}'. "
+                           "Ignoring it ..".format(type(msg_type)))
+            return
+
+        func = self.handler_map[msg_type]
+        await func(msg_blob)
 
     async def _listen(self, func, key, is_async=False):
         await asyncio.sleep(1)
