@@ -42,7 +42,6 @@ import notification_capnp
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
@@ -476,19 +475,6 @@ class BlockManager(Worker):
 
         id_frame = str(sb_index).encode()
         self.ipc_router.send_multipart([id_frame, msg_type, message])
-
-    def _send_input_align_msg(self, block: notification_capnp.BlockNotification):
-        self.log.info("Sending AlignInputHash message to SBBs")
-        first_sb_index = block.firstSbIdx
-        for i, input_hash in enumerate(block.input_hashes):
-            align_input_hash = subblock_capnp.AlignInputHash.new_message(inputHash=input_hash[0],
-                                                                         sbIndex=first_sb_index + i).to_bytes_packed()
-
-            sb_idx = i % NUM_SB_BUILDERS
-
-            self.ipc_router.send_multipart(['{}'.format(sb_idx).encode(),
-                                            MessageTypes.ALIGN_INPUT_HASH,
-                                            align_input_hash])
 
     def _send_fail_block_msg(self, block: notification_capnp.BlockNotification):
         bn = BlockNotification.pack_block_notification(block.as_builder())

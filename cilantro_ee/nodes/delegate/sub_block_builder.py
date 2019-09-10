@@ -54,7 +54,6 @@ from decimal import Decimal
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
@@ -312,7 +311,6 @@ class SubBlockBuilder(Worker):
         # self._make_next_sb()
 
     async def __fail_block(self, msg: bytes):
-        self.log.info("RPC going through this flow - __fail_block")
         block = BlockNotification.unpack_block_notification(msg)
         self._fail_block(block)
 
@@ -623,5 +621,4 @@ class SubBlockBuilder(Worker):
         self._make_next_sb()
 
     async def __make_next_sub_block(self, msg: bytes):
-        self.log.info("RPC going through this flow - __make_next_sub_block")
         self._make_next_sub_block()
