@@ -129,19 +129,28 @@ class StateSync(Worker):
         await self.catchup_db_state()
 
     def handle_sub_msg(self, frames):
-        envelope = Envelope.from_bytes(frames[-1])
-        msg = envelope.message
-        sender = envelope.sender
+        # Unpack the frames
+        msg_filter, msg_type, msg_blob = frames
 
         # TODO -- consensus on NewBlockNotifications before we feed it to the cm manager
 
-        if isinstance(msg, NewBlockNotification):
-            self.log.info("Got NewBlockNotification from sender {} with hash {}".format(sender, msg.block_hash))
-            self._handle_new_blk_notif(msg)
+        if msg_type == MessageTypes.BLOCK_NOTIFICATION:
+            # Unpack the message
+            external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
+
+            # If the sender has signed the payload, continue
+            if not _verify(external_message.sender, external_message.data, external_message.signature):
+                return
+
+            # Unpack the block
+            block = BlockNotification.unpack_block_notification(external_message.data)
+            if block.type.which() == "newBlock":
+                self.log.info("Got NewBlockNotification from sender {} with hash {}".format(external_message.sender, block.blockHash.hex()))
+                self._handle_new_blk_notif(block)
         else:
             self.log.warning("Got unexpected message type {}".format(type(msg)))
 
-    def _handle_new_blk_notif(self, nbc: NewBlockNotification):
+    def _handle_new_blk_notif(self, nbc: notification_capnp.BlockNotification):
         self.new_blk_notifs[nbc.block_hash].append(nbc)
         if len(self.new_blk_notifs[nbc.block_hash]) >= self.mn_quorum:
             del self.new_blk_notifs[nbc.block_hash]

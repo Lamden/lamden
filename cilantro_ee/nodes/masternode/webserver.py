@@ -23,11 +23,7 @@ from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 WEB_SERVER_PORT = 8080
 SSL_WEB_SERVER_PORT = 443
