@@ -41,6 +41,13 @@ def get_delegates():
 def get_masternodes():
     return masternode_list.get()
 
+@export
+def check_master(vk):
+    return vk in masternode_list.get()
+
+@export
+def check_delegate(vk):
+    return vk in delegate_list.get()
 
 @export
 def get_witnesses():
@@ -73,5 +80,6 @@ def get_stamps_enabled():
 @export
 def get_nonces_enabled():
     return nonces_enabled.get()
+
 
 
