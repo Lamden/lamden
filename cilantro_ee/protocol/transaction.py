@@ -1,7 +1,6 @@
 from decimal import Decimal
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
-from cilantro_ee.protocol import pipehash
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.messages import capnp as schemas
@@ -18,34 +17,6 @@ VALUE_TYPE_MAP = {
     bytes: 'data',
     bool: 'bool'
 }
-
-
-class TransactionWrapper:
-    def __init__(self, struct: transaction_capnp.Transaction):
-        self.struct = struct
-
-    def is_signed(self) -> bool:
-        return wallet._verify(vk=self.struct.payload.sender,
-                              msg=self.struct.payload,
-                              signature=self.struct.metadata.signature)
-
-    def is_proven(self) -> bool:
-        return SHA3POW.check(self.struct.payload, self.struct.metadata.proof)
-
-    def nonce_is_correct(self, driver) -> bool:
-        pass
-
-    def is_completely_valid(self, driver):
-        return self.is_signed() and self.is_proven() and self.nonce_is_correct(driver)
-
-    def arguments_to_py_dict(self) -> dict:
-        kwargs = {}
-        for entry in self.struct.payload.kwargs.entries:
-            if entry.value.which() == 'fixedPoint':
-                kwargs[entry.key] = Decimal(entry.value.fixedPoint)
-            else:
-                kwargs[entry.key] = getattr(entry.value, entry.value.which())
-        return kwargs
 
 
 class TransactionBuilder:
@@ -143,16 +114,28 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
                          driver: MetaDataStorage,
                          strict=True,
-                         tx_per_block=15,
-                         difficulty=conf.DEFAULT_DIFFICULTY):
+                         tx_per_block=15):
+    # Validate Signature
+    if not wallet._verify(tx.payload.sender,
+                          tx.payload.as_builder().to_bytes_packed(),
+                          tx.metadata.signature):
+        return False
+
+    # Validate Proof
+    if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
+        return False
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
         return False
 
     # Attempt to get the current block's pending nonce
-    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or \
-                    driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
+    nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
+
+    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or nonce
+
+    if tx.payload.nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
+        return False
 
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:
@@ -166,22 +149,6 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
         if tx.payload.nonce < pending_nonce:
             return False
         pending_nonce = tx.payload.nonce + 1
-
-    # # Check to make sure that this sender has not more txs per block than they are allowed
-    # nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
-    #
-    # if tx.payload.nonce - nonce > tx_per_block:
-    #     return False
-
-    # Validate Signature
-    if not wallet._verify(tx.payload.sender,
-                          tx.payload.as_builder().to_bytes_packed(),
-                          tx.metadata.signature):
-        return False
-
-    # Validate Proof
-    if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
-        return False
 
     # Validate Stamps
     if tx.payload.stampsSupplied < 0:

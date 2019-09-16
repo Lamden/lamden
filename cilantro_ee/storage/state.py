@@ -153,27 +153,6 @@ class MetaDataStorage(DatabaseDriver):
         assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
-
-
-    # def _key_for_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key = self.pending_nonce_key if pending else self.nonce_key
-    #     key_str = ':'.join([key, processor.hex(), sender.hex()])
-    #     return key_str
-    #
-    # def get_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     nonce = self.get(key_str)
-    #     return encoder.decode(nonce)
-    #
-    # def set_nonce(self, processor:bytes, sender: bytes, nonce: int, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     nonce = encoder.encode(nonce)
-    #     self.set(key_str, nonce)
-    #
-    # def delete_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     self.delete(key_str)
-
     @staticmethod
     def n_key(key, processor, sender):
         return ':'.join([key, processor.hex(), sender.hex()])

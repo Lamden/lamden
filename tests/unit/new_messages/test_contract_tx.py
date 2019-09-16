@@ -29,6 +29,7 @@ class TestContractTransaction(TestCase):
         tx = TransactionBuilder(w.verifying_key().hex(),
                                 1000000, 'currency', 'transfer', 'test',
                                 {'amount': 123})
+
         self.assertFalse(tx.proof_generated)
 
         tx.generate_proof()
