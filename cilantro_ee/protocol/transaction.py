@@ -49,7 +49,7 @@ class TransactionWrapper:
 
 
 class TransactionBuilder:
-    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, epoch: bytes,
+    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes,
                  nonce: int, proof_difficulty: str=conf.DEFAULT_DIFFICULTY):
 
         # Stores variables in self for convenience
@@ -60,7 +60,6 @@ class TransactionBuilder:
         self.function = function
         self.nonce = nonce
         self.kwargs = kwargs
-        self.epoch = epoch
         self.proof_difficulty = proof_difficulty
 
         # Serializes all that it can on init
@@ -107,8 +106,8 @@ class TransactionBuilder:
         self.tx_signed = True
 
     def generate_proof(self):
-        self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
-        #self.proof = SHA3POWBytes.find(self.payload_bytes)
+        #self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
+        self.proof = SHA3POWBytes.find(self.payload_bytes)
         self.proof_generated = True
 
     def serialize(self):
@@ -144,6 +143,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
                          driver: MetaDataStorage,
                          strict=True,
+                         tx_per_block=15,
                          difficulty=conf.DEFAULT_DIFFICULTY):
 
     # Check nonce processor is correct
@@ -176,17 +176,26 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
             return False
         pending_nonce = tx.payload.nonce + 1
 
+    # # Check to make sure that this sender has not more txs per block than they are allowed
+    # nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
+    #
+    # if tx.payload.nonce - nonce > tx_per_block:
+    #     return False
+
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
         return False
 
-    pipehash_state = driver.latest_epoch_hash
-    if not pipehash.check_solution(state=pipehash_state,
-                                   data=tx.payload.as_builder().to_bytes_packed(),
-                                   nonce=tx.metadata.proof,
-                                   difficulty=difficulty):
+    if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
         return False
+
+    # pipehash_state = driver.latest_epoch_hash
+    # if not pipehash.check_solution(state=pipehash_state,
+    #                                data=tx.payload.as_builder().to_bytes_packed(),
+    #                                nonce=tx.metadata.proof,
+    #                                difficulty=difficulty):
+    #     return False
 
     if tx.payload.stampsSupplied > 0:
         currency_contract = 'currency'
