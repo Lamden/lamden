@@ -134,7 +134,7 @@ class MetaDataStorage(DatabaseDriver):
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
 
-        for sb in block.subBlocks:
+        for sb in block['subBlocks']:
             for tx in sb.transactions:
                 update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
@@ -143,14 +143,14 @@ class MetaDataStorage(DatabaseDriver):
         self.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.latest_block_hash = block.blockHash
-        self.latest_block_num = block.blockNum
+        self.latest_block_hash = block['blockHash']
+        self.latest_block_num = block['blockNum']
 
         # Update the epoch hash if it is time
-        if block.blockNum % conf.EPOCH_INTERVAL == 0:
-            self.latest_epoch_hash = block.blockHash
+        if block['blockNum'] % conf.EPOCH_INTERVAL == 0:
+            self.latest_epoch_hash = block['blockHash']
 
-        assert self.latest_block_hash == block.blockHash, \
+        assert self.latest_block_hash == block['blockHash'], \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
 

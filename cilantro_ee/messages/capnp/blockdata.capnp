@@ -26,3 +26,7 @@ struct BlockIndexRequest {
     blockHash @0: Data;
     sender @1: Data;
 }
+
+struct BlockDataRequest {
+    blockNum @0: Data;
+}

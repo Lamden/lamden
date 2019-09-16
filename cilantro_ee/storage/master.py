@@ -2,12 +2,10 @@ import cilantro_ee
 from cilantro_ee.protocol import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
-from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.logger.base import get_logger
 from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
-from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.constants.system_config import *
 
 from cilantro_ee.messages import capnp as schemas
@@ -158,13 +156,13 @@ class MasterStorage:
 
         return tx
 
-    def put_tx_map(self, block: BlockData):
-        m = block.get_tx_hash_to_merkle_leaf()
-        blk_id = block.block_num
-
-        for entry in m:
-            entry['block'] = blk_id
-            self.txs.collection.insert_one(entry)
+#    def put_tx_map(self, block: BlockData):
+#        m = block.get_tx_hash_to_merkle_leaf()
+#        blk_id = block.block_num
+#
+#        for entry in m:
+#            entry['block'] = blk_id
+#            self.txs.collection.insert_one(entry)
 
     def drop_collections(self):
         self.blocks.flush()
@@ -336,20 +334,15 @@ class CilantroStorageDriver(DistributedMasterStorage):
             'subBlocks': [s for s in sub_blocks]
         }
 
-        # Get a blob for the protocol
-        block = blockdata_capnp.BlockData.new_message(**block_dict)
-
         # Serialize the sub block for mongo
         block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
-
-        #if not self.distribute_writes:
-        #    block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
 
         successful_storage = self.evaluate_wr(entry=block_dict)
 
         assert successful_storage is None or successful_storage is True, 'Write failure.'
+        block_dict['subBlocks'] = [s for s in sub_blocks]
 
-        return block
+        return block_dict
 
     def get_transactions(self, tx_hash):
         txs = self.get_tx(tx_hash)
