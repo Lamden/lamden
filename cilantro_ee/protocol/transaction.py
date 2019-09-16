@@ -151,17 +151,8 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
         return False
 
     # Attempt to get the current block's pending nonce
-    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
-
-    # If it doesn't exist, get the current nonce
-    if pending_nonce is None:
-        nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender)
-
-        # If that doesn't exist, this is the first TX. Set pending nonce to 0
-        if nonce is None:
-            pending_nonce = 0
-        else:
-            pending_nonce = nonce
+    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or \
+                    driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
 
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:
@@ -182,35 +173,33 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     # if tx.payload.nonce - nonce > tx_per_block:
     #     return False
 
+    # Validate Signature
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
         return False
 
+    # Validate Proof
     if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
         return False
 
-    # pipehash_state = driver.latest_epoch_hash
-    # if not pipehash.check_solution(state=pipehash_state,
-    #                                data=tx.payload.as_builder().to_bytes_packed(),
-    #                                nonce=tx.metadata.proof,
-    #                                difficulty=difficulty):
-    #     return False
+    # Validate Stamps
+    if tx.payload.stampsSupplied < 0:
+        return False
 
-    if tx.payload.stampsSupplied > 0:
-        currency_contract = 'currency'
-        balances_hash = 'balances'
+    currency_contract = 'currency'
+    balances_hash = 'balances'
 
-        balances_key = '{}{}{}{}{}'.format(currency_contract,
-                                           config.INDEX_SEPARATOR,
-                                           balances_hash,
-                                           config.DELIMITER,
-                                           tx.payload.sender.hex())
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       tx.payload.sender.hex())
 
-        balance = driver.get(balances_key) or 0
+    balance = driver.get(balances_key) or 0
 
-        if balance < tx.payload.stampsSupplied:
-            return False
+    if balance < tx.payload.stampsSupplied:
+        return False
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
 
