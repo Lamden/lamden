@@ -7,9 +7,7 @@ from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
-from cilantro_ee.messages.block_data.block_data import BlockData
-from cilantro_ee.messages.block_data.block_metadata import BlockMetaData
-from cilantro_ee.messages.block_data.state_update import BlockIndexReply, BlockDataRequest
+from cilantro_ee.messages.block_data.state_update import BlockIndexReply
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages import capnp as schemas
 import os
@@ -106,7 +104,7 @@ class CatchupManager:
                 blk_dict = self.driver.get_block(latest_state_num)
                 if '_id' in blk_dict:
                     del blk_dict['_id']
-                block = BlockData.from_dict(blk_dict)
+                block = blockdata_capnp.BlockData.new_message(**blk_dict)
                 self.state.update_with_block(block=block)
 
         # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date
@@ -253,7 +251,9 @@ class CatchupManager:
     def _send_block_data_req(self, mn_vk, req_blk_num):
         self.log.info("Unicast BlockDateRequests to masternode owner with current block num {} key {}"
                       .format(req_blk_num, mn_vk))
-        req = BlockDataRequest.create(block_num = req_blk_num)
+        req = blockdata_capnp.BlockDataRequest.new_message(**{
+            'blockNum': req_blk_num
+        }).to_bytes_packed()
         self.router.send_msg(mn_vk.encode(), MessageTypes.BLOCK_DATA_REQUEST, req.serialize())
 
     def _recv_block_data_reply(self, reply: blockdata_capnp.BlockData):
@@ -363,8 +363,8 @@ class CatchupManager:
                              msg=reply._data if reply._data is not None else b'')
 
     # MASTER ONLY CALL
-    def recv_block_data_req(self, sender: bytes, req: BlockDataRequest):
-        block_num = req['block_num']
+    def recv_block_data_req(self, sender: bytes, req: blockdata_capnp.BlockDataRequest):
+        block_num = req.blockNum
         blk_dict = self.driver.get_block(block_num)
 
         self.log.info(blk_dict)

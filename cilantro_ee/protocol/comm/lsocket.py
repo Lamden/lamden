@@ -94,9 +94,9 @@ class LSocketBase:
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
-        :param msg: The MessageBase instance to wrap in an envelope and send
+        :param msg: The message to send
         :param header: The header frame to use. If None, no header frame will be sent. """
-        self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
+        # self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
 
         self.send_multipart([filter, msg_type, msg])
 

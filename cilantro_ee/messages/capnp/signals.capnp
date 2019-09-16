@@ -1,5 +1,8 @@
 @0xc8e348aff0c0e620;
 
+# this file can go away completely
+# ExternalMessage is signedMessage and ExternalSignal is signed signal
+# signal is nothing but the messageType??
 
 struct Signal {
     messageType @0 :UInt32;

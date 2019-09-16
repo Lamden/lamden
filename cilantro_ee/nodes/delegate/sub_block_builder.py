@@ -22,9 +22,7 @@ from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
-from cilantro_ee.messages.base.base import MessageBase
 from cilantro_ee.messages.block_data.notification import BlockNotification
-from cilantro_ee.messages.consensus.align_input_hash import AlignInputHash
 from cilantro_ee.messages.message import MessageTypes
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime

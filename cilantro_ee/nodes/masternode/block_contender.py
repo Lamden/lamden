@@ -5,7 +5,7 @@ from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
-from cilantro_ee.messages.block_data.sub_block import SubBlock
+# from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.protocol.wallet import _verify
 
@@ -58,7 +58,7 @@ class SubBlockGroup:
 
         return True
 
-    def get_sb(self) -> SubBlock:
+    def get_sb(self):
         assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
 
         # Paranoid dev checks
@@ -87,6 +87,7 @@ class SubBlockGroup:
             inputHash=input_hash,
             transactions=[transaction_capnp.TransactionData.from_bytes_packed(tx) for tx in txs]
         )
+        print("raghu uuuuu  type of sb is {}".format(type(sb)))
 
         return sb
 
@@ -206,7 +207,8 @@ class SubBlockGroup:
         if sbc.prevBlockHash != self.curr_block_hash:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
-            return False
+            # raghu todo - need to fix this
+            # return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
@@ -307,7 +309,7 @@ class BlockContender:
 
         return True
 
-    def get_sb_data(self) -> List[SubBlock]:
+    def get_sb_data(self):
         assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
         assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 

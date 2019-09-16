@@ -9,7 +9,6 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.messages.block_data.notification import BlockNotification, BurnInputHashes
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.messages.message import MessageTypes
@@ -302,14 +301,14 @@ class BlockAggregator(Worker):
             block_data = self.driver.store_block(sb_data)
             self.log.debug(block_data)
 
-            assert block_data.prevBlockHash == self.curr_block_hash, \
+            assert block_data['prevBlockHash'] == self.curr_block_hash, \
                 "Current block hash {} does not match StorageDriver previous block hash {}"\
-                .format(self.curr_block_hash, block_data.prevBlockHash)
+                .format(self.curr_block_hash, block_data['prevBlockHash'])
 
-            self.curr_block_hash = block_data.blockHash
+            self.curr_block_hash = block_data['blockHash']
             self.state.update_with_block(block_data)
 
-            self.log.success2("STORED BLOCK WITH HASH {}".format(block_data.blockHash))
+            self.log.success2("STORED BLOCK WITH HASH {}".format(block_data['blockHash']))
 
             self.send_new_block_notif(block_data)
 
@@ -326,8 +325,8 @@ class BlockAggregator(Worker):
 
 
     def send_block_notif(self, block_notif):
-        self.log.info("raghu input hashes in notif {}".format(block_notif.inputHashes))
-        self.log.info("raghu input hashes for sb {} in notif {}".format(self.my_sb_idx, block_notif.inputHashes[self.my_sb_idx]))
+        self.log.debug("input hashes in notif {}".format(block_notif.inputHashes))
+        self.log.debug("input hashes for sb {} in notif {}".format(self.my_sb_idx, block_notif.inputHashes[self.my_sb_idx]))
         mn_idx = block_notif.firstSbIdx + self.my_sb_idx
         if mn_idx == self.my_mn_idx:
             input_hashes = [ih for ih in block_notif.inputHashes[self.my_sb_idx]]
@@ -353,15 +352,15 @@ class BlockAggregator(Worker):
         time.sleep(0.1)
 
         # SEND NEW BLOCK NOTIFICATION on pub
-        block = BlockNotification.get_new_block_notification(block_data.blockNum,
-                                    block_data.blockHash, block_data.blockOwners,
-                                    block_data.subBlocks[0].subBlockIdx, 
-                                    [sb.inputHash for sb in block_data.subBlocks])
+        block = BlockNotification.get_new_block_notification(block_data['blockNum'],
+                                    block_data['blockHash'], block_data['blockOwners'],
+                                    block_data['subBlocks'][0].subBlockIdx, 
+                                    [sb.inputHash for sb in block_data['subBlocks']])
         self.send_block_notif(block)
         self.log.info('Published new block notif with hash "{}" and block num {}'
                       .format(block.blockHash, block.blockNum))
 
-    def send_skip_block_notif(self, sub_blocks: List[SubBlock]):
+    def send_skip_block_notif(self, sub_blocks):
         # assert that sub_blocks are sorted by subBlockIdx
         last_hash = self.state.latest_block_hash
         block_num = self.state.latest_block_num + 1
