@@ -599,3 +599,48 @@ class TestTXValidity(TestCase):
         is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
 
         self.assertFalse(is_valid)
+
+    def test_15_in_row_valid_16th_not_due_to_tx_per_block_failing(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.driver.set(balances_key, 500000)
+
+        for i in range(15):
+            tx = TransactionBuilder(w.verifying_key(),
+                                    contract='currency',
+                                    function='transfer',
+                                    kwargs={'amount': 10, 'to': 'jeff'},
+                                    stamps=500000,
+                                    processor=expected_processor,
+                                    nonce=i)
+
+            tx.sign(w.signing_key())
+            tx_bytes = tx.serialize()
+            tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+            is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+            self.assertTrue(is_valid)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 10, 'to': 'jeff'},
+                                stamps=500000,
+                                processor=expected_processor,
+                                nonce=15)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+
+        is_valid = transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.driver)
+
+        self.assertFalse(is_valid)
