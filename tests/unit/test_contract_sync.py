@@ -34,9 +34,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNone(upgrade)
 
     def test_sync_genesis_contracts_if_one_deleted(self):
         driver = ContractDriver()
@@ -50,9 +52,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNone(upgrade)
 
     def test_sync_genesis_contracts_if_none_deleted(self):
         driver = ContractDriver()
@@ -63,9 +67,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNone(upgrade)
 
     def test_submit_contract_with_specific_construction_args(self):
         driver = ContractDriver()
