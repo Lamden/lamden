@@ -26,8 +26,11 @@ def seed():
     upg_lock.set(False)
 
 @export
-def init_upgrade(pepper, vk):
-    if vkbook.check_master(vk) or vkbook.check_delegate(vk):
+def init_upgrade(pepper, initiator_vk):
+    if upg_lock.get() is True:
+        assert_parallel_upg_check()
+
+    if vkbook.check_master(initiator_vk) or vkbook.check_delegate(initiator_vk):
         upg_lock.set(True)
         upg_init_time.set(datetime.now)
         upg_pepper.set(pepper)
@@ -66,3 +69,7 @@ def check_vote_state():
 def reset_contract():
     upg_init_time.set(None)
     upg_lock.set(False)
+
+
+def assert_parallel_upg_check():
+    assert 'Upgrade under way. Cannot initiate parallel upgrade'
