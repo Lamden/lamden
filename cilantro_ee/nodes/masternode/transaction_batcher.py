@@ -28,7 +28,6 @@ class TransactionBatcher(Worker):
     def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.queue, self.ip = queue, ip
-        self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
         self._ready = False
 

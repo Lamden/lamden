@@ -8,7 +8,7 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.constants.system_config import *
+from cilantro_ee.constants import system_config
 
 from cilantro_ee.messages import capnp as schemas
 import os
@@ -172,7 +172,7 @@ class MasterStorage:
 
 
 class DistributedMasterStorage(MasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
         super().__init__(config_path=config_path)
 
         self.distribute_writes = distribute_writes
@@ -297,7 +297,7 @@ class DistributedMasterStorage(MasterStorage):
 
 
 class CilantroStorageDriver(DistributedMasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
         self.state_id = ObjectId(OID)
         self.log = get_logger("StorageDriver")
 
@@ -331,7 +331,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block_dict = {
             'blockHash': block_hash,
             'blockNum': current_block_num,
-            'blockOwners': [m for m in PhoneBook.masternodes],
+            'blockOwners': [m for m in system_config.PhoneBook.masternodes],
             'prevBlockHash': last_hash,
             'subBlocks': [s for s in sub_blocks]
         }
@@ -363,7 +363,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block = self.get_block(block_num)
         sub_blocks = block.get('subBlocks')
 
-        for i in range(0, NUM_SB_PER_BLOCK):
+        for i in range(0, system_config.NUM_SB_PER_BLOCK):
             leaves = sub_blocks[i].get('merkleLeaves')
 
             try:

@@ -21,7 +21,7 @@ VALUE_TYPE_MAP = {
 
 class TransactionBuilder:
     def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes,
-                 nonce: int, proof_difficulty: str=conf.DEFAULT_DIFFICULTY):
+                 nonce: int):
 
         # Stores variables in self for convenience
         self.sender = sender
@@ -31,7 +31,6 @@ class TransactionBuilder:
         self.function = function
         self.nonce = nonce
         self.kwargs = kwargs
-        self.proof_difficulty = proof_difficulty
 
         # Serializes all that it can on init
         self.struct = transaction_capnp.Transaction.new_message()

@@ -159,10 +159,8 @@ async def get_variable(request, contract, variable):
 
     key = request.args.get('key')
 
-    if key is None:
-        response = client.raw_driver.get('{}.{}'.format(contract, variable))
-    else:
-        response = client.raw_driver.get('{}.{}:{}'.format(contract, variable, key))
+    k = client.raw_driver.make_key(key=contract, field=variable, args=key)
+    response = client.raw_driver.get(k)
 
     if response is None:
         return json({'value': None}, status=404)
@@ -182,7 +180,7 @@ async def get_variable(request, contract, variable):
 async def get_latest_block(request):
     index = MasterStorage.get_last_n(1)
     latest_block_hash = index.get('blockHash')
-    return json({ 'hash': '{}'.format(latest_block_hash) })
+    return json({'hash': '{}'.format(latest_block_hash) })
 
 
 @app.route('/blocks', methods=["GET","OPTIONS",])
@@ -203,8 +201,6 @@ async def get_block(request):
 
 
 def start_webserver(q):
-    time.sleep(30)
-    log.debugv("TESTING Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.queue = q
     if ssl_enabled:
         context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
