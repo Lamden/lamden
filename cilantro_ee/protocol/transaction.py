@@ -118,14 +118,17 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     if not wallet._verify(tx.payload.sender,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
+        print('bad verify')
         return False
 
     # Validate Proof
     if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
+        print('bad verify')
         return False
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
+        print('bad verify')
         return False
 
     # Attempt to get the current block's pending nonce
@@ -134,6 +137,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or nonce
 
     if tx.payload.nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
+        print('bad verify')
         return False
 
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
@@ -146,11 +150,13 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     # delegates shouldn't be as concerned. (1, 2, 4) should be valid for delegates.
     else:
         if tx.payload.nonce < pending_nonce:
+            print('bad nonce')
             return False
         pending_nonce = tx.payload.nonce + 1
 
     # Validate Stamps
     if tx.payload.stampsSupplied < 0:
+        print('bad stamps')
         return False
 
     currency_contract = 'currency'
@@ -165,8 +171,9 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     balance = driver.get(balances_key) or 0
 
     if balance < tx.payload.stampsSupplied:
+        print('bad stamps')
         return False
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
-
+    print('bad verify')
     return True
