@@ -37,7 +37,7 @@ from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
-from cilantro_ee.protocol.transaction import transaction_is_valid
+from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.wallet import _verify
@@ -389,13 +389,13 @@ class SubBlockBuilder(Worker):
 
             for tx in batch.transactions:
                 # Double check to make sure all transactions are valid
-                if transaction_is_valid(tx=tx,
-                                        expected_processor=batch.sender,
-                                        driver=self.state,
-                                        strict=False):
-
+                try:
+                    transaction_is_valid(tx=tx,
+                                         expected_processor=batch.sender,
+                                         driver=self.state,
+                                         strict=False)
                     valid_transactions.append(tx)
-                else:
+                except TransactionException:
                     self.log.critical('TX NOT VALID FOR SOME REASON.')
 
                 # Hash all transactions regardless because the proof from masternodes is derived from all hashes
