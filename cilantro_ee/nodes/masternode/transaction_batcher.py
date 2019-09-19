@@ -16,7 +16,7 @@ import hashlib
 from cilantro_ee.messages.message import MessageTypes
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.pow import SHA3POWBytes
-from cilantro_ee.protocol.transaction import transaction_is_valid
+from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.storage.state import MetaDataStorage
 from contracting import config
 
@@ -149,10 +149,12 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 # Make sure that the transaction is valid
-                if not transaction_is_valid(tx=tx,
-                                            expected_processor=self.wallet.verifying_key(),
-                                            driver=self.driver,
-                                            strict=True):
+                try:
+                    transaction_is_valid(tx=tx,
+                                         expected_processor=self.wallet.verifying_key(),
+                                         driver=self.driver,
+                                         strict=True)
+                except TransactionException:
                     continue
 
                 # Hash it

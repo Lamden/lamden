@@ -109,31 +109,35 @@ def verify_packed_tx(sender, tx):
         return False
 
 
-class TransactionSignatureInvalid(Exception):
+class TransactionException(Exception):
     pass
 
 
-class TransactionPOWProofInvalid(Exception):
+class TransactionSignatureInvalid(TransactionException):
     pass
 
 
-class TransactionProcessorInvalid(Exception):
+class TransactionPOWProofInvalid(TransactionException):
     pass
 
 
-class TransactionTooManyPendingException(Exception):
+class TransactionProcessorInvalid(TransactionException):
     pass
 
 
-class TransactionNonceInvalid(Exception):
+class TransactionTooManyPendingException(TransactionException):
     pass
 
 
-class TransactionStampsNegative(Exception):
+class TransactionNonceInvalid(TransactionException):
     pass
 
 
-class TransactionSenderTooFewStamps(Exception):
+class TransactionStampsNegative(TransactionException):
+    pass
+
+
+class TransactionSenderTooFewStamps(TransactionException):
     pass
 
 
