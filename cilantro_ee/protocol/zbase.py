@@ -17,7 +17,7 @@ base32_map = {
 }
 
 
-def bytes_to_zbase32(b, encode=False):
+def bytes_to_zbase32(b: bytes):
     b = base64.b32encode(b)
     b = b.decode()
 
@@ -25,16 +25,10 @@ def bytes_to_zbase32(b, encode=False):
     for bb in b:
         z += zbase32_map[bb]
 
-    if encode:
-        z = z.encode()
-
     return z
 
 
-def zbase32_to_bytes(z, encoded=False):
-    if encoded:
-        z = z.decode()
-
+def zbase32_to_bytes(z: str):
     b = ''
     for zz in z:
         b += base32_map[zz]
