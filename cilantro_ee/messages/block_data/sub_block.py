@@ -91,27 +91,3 @@ class SubBlock(MessageBase):
     @lazy_property
     def transactions(self) -> List[TransactionData]:
         return [TransactionData.from_data(tx) for tx in self._data.transactions]
-
-
-class SubBlockBuilder:
-
-    @staticmethod
-    def create(transactions: List[TransactionData]=None, num_txs=8, input_hash='A'*64, idx=0, signing_keys: List[str]=None):
-        from cilantro_ee.messages.transaction.data import TransactionDataBuilder
-        from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-
-        if not transactions:
-            transactions = []
-            for _ in range(num_txs):
-                transactions.append(TransactionDataBuilder.create_random_tx())
-        transactions_bin = [tx.serialize() for tx in transactions]
-
-        tree = MerkleTree.from_raw_transactions(transactions_bin)
-        merkle_root = tree.root_as_hex
-
-        signing_keys = signing_keys or ['AB' * 32, 'BC' * 32]
-        sigs = [MerkleSignature.create_from_payload(sk, tree.root) for sk in signing_keys]
-
-        sb = SubBlock.create(merkle_root=merkle_root, signatures=sigs, merkle_leaves=tree.leaves_as_hex,
-                             sub_block_idx=idx, input_hash=input_hash, transactions=transactions)
-        return sb

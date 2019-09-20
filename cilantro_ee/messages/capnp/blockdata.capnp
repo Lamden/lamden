@@ -27,11 +27,6 @@ struct BlockIndexRequest {
     sender @1: Data;
 }
 
-struct StateUpdateRequest {
-    blockHash @0 :Data;
-}
-
-
-struct StateUpdateReply {
-    blockData @0 :BlockData;
+struct BlockDataRequest {
+    blockNum @0: Data;
 }

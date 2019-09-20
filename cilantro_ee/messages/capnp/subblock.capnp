@@ -28,8 +28,3 @@ struct SubBlockContender {
     subBlockIdx @5: UInt8;
     prevBlockHash @6: Data;
 }
-
-struct AlignInputHash {
-    inputHash @0 :Data;
-    sbIndex @1: UInt8;
-}

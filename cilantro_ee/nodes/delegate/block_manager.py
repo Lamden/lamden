@@ -468,7 +468,7 @@ class BlockManager(Worker):
     # TODO make this DRY
     def _send_msg_over_ipc(self, sb_index: int, msg_type, message):
         """
-        Convenience method to send a MessageBase instance over IPC router socket to a particular SBB process. Includes a
+        Convenience method to send a message over IPC router socket to a particular SBB process. Includes a
         frame to identify the type of message
         """
         self.log.spam("Sending msg to sb_index {} with payload {}".format(sb_index, message))

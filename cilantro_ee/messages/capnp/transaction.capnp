@@ -8,6 +8,10 @@ struct MetaData {
     timestamp @2 :Float32;
 }
 
+struct Transactions {
+    transactions @0 :List(Transaction);
+}
+
 struct TransactionPayload {
     sender @0 :Data;
     processor @1: Data;
@@ -30,10 +34,6 @@ struct TransactionData {
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;
-}
-
-struct Transactions {
-    transactions @0 :List(Transaction);
 }
 
 struct TransactionBatch {

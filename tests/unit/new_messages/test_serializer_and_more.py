@@ -1,7 +1,13 @@
 from unittest import TestCase
-from cilantro_ee.messages.message import Serializer, signal_capnp, envelope_capnp
+# from cilantro_ee.messages.message import Serializer, signal_capnp, envelope_capnp
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.protocol.pow import SHA3POWBytes
+
+import capnp
+
+from cilantro_ee.messages import capnp as schemas
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class TestSerializer(TestCase):

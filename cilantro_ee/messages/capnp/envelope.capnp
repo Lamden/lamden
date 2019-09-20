@@ -1,5 +1,7 @@
 @0x93eca3fe49376df5;
 
+# can adopt this for SignedMessage ??
+# need signature, VK, timestamp, sender ?? - kinda merge of Seal and MessageMeta ??
 struct Seal {
     signature @0: Data;
     verifyingKey @1: Data;

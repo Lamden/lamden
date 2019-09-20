@@ -161,7 +161,6 @@ class TransactionBatcher(Worker):
                 h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
-                # tx_struct = transaction_capnp.ContractTransaction.from_bytes_packed(tx)
                 tx_list.append(tx)
 
             batch = transaction_capnp.TransactionBatch.new_message()
@@ -187,6 +186,6 @@ class TransactionBatcher(Worker):
                                    filter=TRANSACTION_FILTER.encode())
 
 
-            self.log.debug1("Send {} transactions with hash {} and timestamp {}"
-                      .format(bag_size, batch.inputHash.hex(), batch.timestamp))
+            self.log.debug1("Send {} / {} transactions with hash {} and timestamp {}"
+                      .format(bag_size, len(batch.transactions), batch.inputHash.hex(), batch.timestamp))
 
