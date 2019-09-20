@@ -114,4 +114,10 @@ class Wallet:
             return False
         return True
 
+    @property
+    def vk_pretty(self):
+        return self.vk
 
+    @property
+    def sk_pretty(self):
+        return self.sk
