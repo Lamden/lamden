@@ -1,9 +1,14 @@
-class MessageTypes:
-    MAKE_NEXT_BLOCK = b'\x00'
-    PENDING_TRANSACTIONS = b'\x01'
-    NO_TRANSACTIONS = b'\x02'
-    READY_INTERNAL = b'\x05'
-    READY_EXTERNAL = b'\x06'
+from enum import Enum, unique
+
+
+@unique
+class MessageType(Enum):
+    SIGNED_MESSAGE = b'\x00'
+
+    MAKE_NEXT_BLOCK = b'\x01'
+    PENDING_TRANSACTIONS = b'\x02'
+    NO_TRANSACTIONS = b'\x03'
+    READY = b'\x04'
 
     SUBBLOCK_CONTENDER = b'\x0a'
     BLOCK_INDEX_REQUEST = b'\x0b'
@@ -14,3 +19,7 @@ class MessageTypes:
     BURN_INPUT_HASHES = b'\x13'
 
     TRANSACTION_BATCH = b'\x15'
+
+
+
+    

@@ -13,7 +13,7 @@ import os
 import capnp
 from cilantro_ee.messages import capnp as schemas
 import hashlib
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message import MessageTypes
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.pow import SHA3POWBytes
 from cilantro_ee.protocol.transaction import transaction_is_valid

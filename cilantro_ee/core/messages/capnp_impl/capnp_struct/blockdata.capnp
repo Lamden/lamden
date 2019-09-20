@@ -28,5 +28,5 @@ struct BlockIndexRequest {
 }
 
 struct BlockDataRequest {
-    blockNum @0: Data;
+    blockNum @0: UInt32;
 }

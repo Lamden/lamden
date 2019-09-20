@@ -29,7 +29,7 @@ from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
 
 from cilantro_ee.messages.block_data.notification import BlockNotification 
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message import MessageTypes
 from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
@@ -381,6 +381,7 @@ class BlockManager(Worker):
 
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
+        # raghu - wow - who changed this to hard coded 3?
         return self.start_sub_blocks == 3
         
     def send_start_to_sbb(self):

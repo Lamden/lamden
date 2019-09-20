@@ -14,7 +14,7 @@ import os
 import capnp
 import notification_capnp
 
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message import MessageTypes
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')

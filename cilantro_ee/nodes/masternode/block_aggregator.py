@@ -11,7 +11,7 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
 from cilantro_ee.messages.block_data.notification import BlockNotification, BurnInputHashes
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message import MessageTypes
 from cilantro_ee.messages.base.base_json import MessageBaseJson
 from typing import List
 from cilantro_ee.protocol.wallet import _verify
