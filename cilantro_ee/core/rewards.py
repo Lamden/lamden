@@ -40,6 +40,8 @@ class RewardManager:
         for d in delegates:
             self.add_to_balance(vk=d, amount=delegate_reward)
 
+        self.set_pending_rewards(0)
+
     def add_to_balance(self, vk, amount):
         current_balance = self.currency_contract.quick_read(variable='balances', key=vk) or 0
         self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
@@ -73,4 +75,4 @@ class RewardManager:
 
     @property
     def reward_ratio(self):
-        return self.reward_ratio.quick_read('value')
+        return self.reward_contract.quick_read(variable='value')

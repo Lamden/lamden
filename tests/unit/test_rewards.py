@@ -64,3 +64,39 @@ class TestRewards(TestCase):
         current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
 
         self.assertEqual(current_balance, 2234)
+
+    def test_stamps_per_tau_works(self):
+        self.assertEqual(self.r.stamps_per_tau, 1_000_000)
+
+        stamps = self.client.get_contract('stamp_cost')
+
+        stamps.quick_write('S', 'rate', 555)
+
+        self.assertEqual(self.r.stamps_per_tau, 555)
+
+    def test_pending_rewards_get_sets(self):
+        self.assertEqual(self.r.get_pending_rewards(), 0)
+
+        self.r.set_pending_rewards(1000)
+
+        self.assertEqual(self.r.get_pending_rewards(), 1000)
+
+    def test_add_pending_rewards(self):
+        block = random_txs.random_block()
+
+        total = 0
+
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                total += tx.stampsUsed
+
+        expected = total / 1_000_000
+
+        self.assertEqual(self.r.get_pending_rewards(), 0)
+
+        self.r.add_pending_rewards(block)
+
+        self.assertEqual(float(self.r.get_pending_rewards()), expected)
+
+    def test_reward_ratio_works(self):
+        self.assertEqual(self.r.reward_ratio, [0.5, 0.5, 0, 0])
