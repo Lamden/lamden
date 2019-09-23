@@ -3,6 +3,7 @@ import nacl.encoding
 import nacl.signing
 from zmq.utils import z85
 import secrets
+from . import zbase
 
 
 def generate_keys(seed=None) -> tuple:
@@ -32,17 +33,20 @@ def format_to_keys(s) -> tuple:
     return s, s.verify_key
 
 
+# Can be deprecated
 def new(seed=None) -> tuple:
     s, v = generate_keys(seed=seed)
     return keys_to_format(s, v)
 
 
+# Single instance in Merkle signature
 def sign(s: str, msg: bytes) -> str:
     assert type(msg).__name__ == 'bytes', 'Message argument must be a byte string.'
     (s, v) = format_to_keys(s)
     return s.sign(msg).signature.hex()
 
 
+# Single instance in Merkle Signature
 def verify(v: str, msg: bytes, sig: str) -> bool:
     v = bytes.fromhex(v)
     sig = bytes.fromhex(sig)
@@ -116,8 +120,10 @@ class Wallet:
 
     @property
     def vk_pretty(self):
-        return self.vk
+        key = zbase.bytes_to_zbase32(self.vk.encode())
+        return 'pub_{}'.format(key[:-4])
 
     @property
     def sk_pretty(self):
-        return self.sk
+        key = zbase.bytes_to_zbase32(self.vk.encode())
+        return 'priv_{}'.format(key[:-4])

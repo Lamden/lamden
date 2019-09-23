@@ -101,7 +101,7 @@ class MetaDataStorage(DatabaseDriver):
 
             # For each KV in the JSON, set the key to the value
             for k, v in sets.items():
-                super().set(k, v)
+                self.set(k, v)
 
     def commit_nonces(self, nonce_hash=None):
         # Delete pending nonces and update the nonces
@@ -150,8 +150,13 @@ class MetaDataStorage(DatabaseDriver):
         if block.blockNum % conf.EPOCH_INTERVAL == 0:
             self.latest_epoch_hash = block.blockHash
 
+            # Update rewards
+
         assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
+
+    def distribute_rewards(self):
+        pass
 
     @staticmethod
     def n_key(key, processor, sender):

@@ -34,7 +34,6 @@ class TestStateDriver(TestCase):
                                     kwargs={'amount': 10, 'to': 'jeff'},
                                     stamps=500000,
                                     processor=secrets.token_bytes(32),
-                                    epoch=b'\x00' * 32,
                                     nonce=i)
 
             tx.sign(w.signing_key())
@@ -223,6 +222,8 @@ class TestStateDriver(TestCase):
         update = {'123': 999,
                   'stu': b'555',
                   'something': [1, 2, 3]}
+
+        print(encoder.encode(update))
 
         encoded = encoder.encode(update)
         tx_data = transaction_capnp.TransactionData.new_message(

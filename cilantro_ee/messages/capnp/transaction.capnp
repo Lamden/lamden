@@ -30,6 +30,7 @@ struct TransactionData {
     status @1: Text;
     state @2: Text;
     contractType @3: UInt16;
+    stampsUsed @4: UInt64;
 }
 
 struct Transactions {

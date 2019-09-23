@@ -472,6 +472,7 @@ class SubBlockBuilder(Worker):
 
         txs_data = []
 
+        # Add stamps used to TransactionData payload
         for i in range(len(exec_data)):
             d = exec_data[i]
             tx = self.pending_transactions[i]
