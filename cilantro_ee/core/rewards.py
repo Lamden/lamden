@@ -1,18 +1,21 @@
 from cilantro_ee.storage.state import MetaDataStorage
 from contracting.client import ContractingClient
 
+PENDING_REWARDS_KEY = b'__rewards'
+
+
 class RewardManager:
-    def __init__(self, driver=MetaDataStorage()):
+    def __init__(self, driver=MetaDataStorage(), client=ContractingClient()):
         self.driver = driver
+        self.client = client
 
     def issue_rewards(self):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
 
 
-
     @property
     def pending_rewards(self):
-        pass
+        return self.driver.get(PENDING_REWARDS_KEY)
 
     @property
     def stamps_per_tau(self):
@@ -24,3 +27,12 @@ class RewardManager:
     @property
     def reward_ratio(self):
         return [0, 0, 0, 0]
+
+    def get_masternodes(self):
+        pass
+
+    def get_delegates(self):
+        pass
+
+    def get_foundation(self):
+        pass

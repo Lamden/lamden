@@ -480,7 +480,8 @@ class SubBlockBuilder(Worker):
                 transaction=tx,
                 status=str(d.status),
                 state=d.state,
-                contractType=0
+                contractType=0,
+                stampsUsed=d.stamps
             ).to_bytes_packed())
 
         # build sbc

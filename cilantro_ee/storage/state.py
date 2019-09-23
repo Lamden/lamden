@@ -158,9 +158,6 @@ class MetaDataStorage(DatabaseDriver):
         assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
-    def distribute_rewards(self):
-        pass
-
     @staticmethod
     def n_key(key, processor, sender):
         return ':'.join([key, processor.hex(), sender.hex()])
