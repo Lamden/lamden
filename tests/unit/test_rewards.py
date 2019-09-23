@@ -5,6 +5,7 @@ from cilantro_ee.storage.state import MetaDataStorage
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
+from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 
 
 class TestRewards(TestCase):
@@ -100,3 +101,28 @@ class TestRewards(TestCase):
 
     def test_reward_ratio_works(self):
         self.assertEqual(self.r.reward_ratio, [0.5, 0.5, 0, 0])
+
+    def test_issue_rewards_works(self):
+        PhoneBook = VKBook(masternodes=['stu', 'raghu', 'steve'],
+                           delegates=['tejas', 'alex'],
+                           num_boot_mns=3,
+                           num_boot_del=2,
+                           stamps=True,
+                           nonces=True)
+
+        self.r.set_pending_rewards(1000)
+        self.r.issue_rewards()
+
+        currency_contract = self.client.get_contract('currency')
+
+        self.r.add_to_balance('raghu', 1000)
+        self.r.add_to_balance('steve', 10000)
+
+        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='stu')), 166.66666666666666)
+        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='raghu')), 1166.66666666666666)
+        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='steve')), 10166.66666666666666)
+
+        self.assertEqual(currency_contract.quick_read(variable='balances', key='tejas'), 250)
+        self.assertEqual(currency_contract.quick_read(variable='balances', key='alex'), 250)
+
+        self.assertEqual(self.r.get_pending_rewards(), 0)

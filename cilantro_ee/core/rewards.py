@@ -27,7 +27,7 @@ class RewardManager:
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
         pending_rewards = self.get_pending_rewards()
 
-        masters = PhoneBook.delegates
+        masters = PhoneBook.masternodes
         delegates = PhoneBook.delegates
 
         master_reward = (master_ratio * pending_rewards) / len(masters)
