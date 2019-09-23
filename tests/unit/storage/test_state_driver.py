@@ -23,6 +23,9 @@ class TestStateDriver(TestCase):
         self.r = MetaDataStorage()  # this is a class, not an instance, so we do not instantiate
         self.r.flush()
 
+    def tearDown(self):
+        self.r.flush()
+
     def test_state_updated(self):
         # Generate some random transactions
         transactions = []
@@ -129,7 +132,7 @@ class TestStateDriver(TestCase):
         nonces = {}
         update_nonce_hash(nonces, tx_payload)
 
-        self.assertEqual(nonces.get((b'456', b'123')), 999)
+        self.assertEqual(nonces.get((b'456', b'123')), 1000)
 
     def test_update_nonce_when_new_max_nonce_found(self):
         nonces = {}
@@ -154,7 +157,7 @@ class TestStateDriver(TestCase):
 
         update_nonce_hash(nonces, tx_payload)
 
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
+        self.assertEqual(nonces.get((b'456', b'123')), 1001)
 
     def test_update_nonce_only_keeps_max_values(self):
         nonces = {}
@@ -179,7 +182,7 @@ class TestStateDriver(TestCase):
 
         update_nonce_hash(nonces, tx_payload)
 
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
+        self.assertEqual(nonces.get((b'456', b'123')), 1001)
 
     def test_update_nonce_keeps_multiple_nonces(self):
         nonces = {}
@@ -204,8 +207,8 @@ class TestStateDriver(TestCase):
 
         update_nonce_hash(nonces, tx_payload)
 
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
-        self.assertEqual(nonces.get((b'456', b'124')), 999)
+        self.assertEqual(nonces.get((b'456', b'123')), 1001)
+        self.assertEqual(nonces.get((b'456', b'124')), 1000)
 
     def test_set_transaction_data_single_value(self):
         update = {'123': 999}

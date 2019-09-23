@@ -13,12 +13,15 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 import contextlib
 
 
+# Used during catchup to take a block, isolate the nonce_hashes, and calculate what the new nonce should be
+# New nonce should be +1 of whatever it was before. This is for when there are multiple transactions in a block
+# Or if nonce is none, the first nonce will be 0, so set the current to 1.
 def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
     # Modifies the provided dict
     k = (tx_payload.processor, tx_payload.sender)
     current_nonce = nonce_hash.get(k)
 
-    if current_nonce is None or current_nonce < tx_payload.nonce:
+    if current_nonce is None or current_nonce == tx_payload.nonce:
         nonce_hash[k] = tx_payload.nonce + 1
 
 
