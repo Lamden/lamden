@@ -42,7 +42,7 @@ def random_tx_data(tx:transaction_capnp.Transaction):
         status='SUCC',
         state=json.dumps(get_set),
         contractType=0,
-        stampsUsed=1000
+        stampsUsed=random.randint(100_000, 1_000_000)
     )
     return tx_data
 
@@ -67,7 +67,7 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
-def random_block(txs=20, subblocks=2, i=1):
+def random_block(txs=20, subblocks=2, i=1) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)

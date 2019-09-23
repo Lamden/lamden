@@ -18,7 +18,6 @@ class RewardManager:
     def issue_rewards(self):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
 
-
     @property
     def pending_rewards(self):
         return self.driver.get(PENDING_REWARDS_KEY)
@@ -28,10 +27,19 @@ class RewardManager:
         pass
 
     def stamps_in_block(self, block):
-        pass
+        total = 0
+
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                total += tx.stampsUsed
+
+        return total
 
     def add_pending_rewards(self, block):
-        pass
+        current_rewards = self.pending_rewards
+        used_stamps = self.stamps_in_block(block)
+
+
 
     @property
     def reward_ratio(self):
