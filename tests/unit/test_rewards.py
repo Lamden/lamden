@@ -5,6 +5,8 @@ from cilantro_ee.storage.state import MetaDataStorage
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
+
+
 class TestRewards(TestCase):
     def setUp(self):
 
@@ -46,4 +48,19 @@ class TestRewards(TestCase):
         self.assertEqual(self.r.stamps_in_block(block), total)
 
     def test_add_to_balance(self):
-        pass
+        currency_contract = self.client.get_contract('currency')
+        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+
+        self.assertEqual(current_balance, 0)
+
+        self.r.add_to_balance('test', 1234)
+
+        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+
+        self.assertEqual(current_balance, 1234)
+
+        self.r.add_to_balance('test', 1000)
+
+        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+
+        self.assertEqual(current_balance, 2234)
