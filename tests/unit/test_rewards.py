@@ -87,15 +87,14 @@ class TestRewards(TestCase):
 
         total = 0
 
-        for sb in block.subBlocks:
-            for tx in sb.transactions:
-                total += tx.stampsUsed
+        for tx in block.subBlocks[0].transactions:
+            total += tx.stampsUsed
 
         expected = total / 1_000_000
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
 
-        self.r.add_pending_rewards(block)
+        self.r.add_pending_rewards(block.subBlocks[0])
 
         self.assertEqual(float(self.r.get_pending_rewards()), expected)
 

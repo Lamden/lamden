@@ -66,9 +66,18 @@ class RewardManager:
 
         return total
 
-    def add_pending_rewards(self, block):
+    @staticmethod
+    def stamps_in_subblock(subblock):
+        total = 0
+
+        for tx in subblock.transactions:
+            total += tx.stampsUsed
+
+        return total
+
+    def add_pending_rewards(self, subblock):
         current_rewards = self.get_pending_rewards()
-        used_stamps = self.stamps_in_block(block)
+        used_stamps = self.stamps_in_subblock(subblock)
 
         rewards_as_tau = used_stamps / self.stamps_per_tau
         self.set_pending_rewards(current_rewards + rewards_as_tau)
