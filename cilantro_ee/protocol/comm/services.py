@@ -4,11 +4,13 @@ import zmq
 import asyncio
 import json
 
+
 class SocketEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, SocketStruct):
             return str(o)
         return json.JSONEncoder.default(self, o)
+
 
 log = get_logger("BaseServices")
 
