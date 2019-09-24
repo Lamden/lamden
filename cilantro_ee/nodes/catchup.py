@@ -292,7 +292,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def recv_block_idx_req(self, request: blockdata_capnp.BlockIndexRequest):
         """
-        Receive BlockIndexRequests calls storage nonce_manager to process req and build response
+        Receive BlockIndexRequests calls storage driver to process req and build response
         :param requester_vk:
         :param request:
         :return:
