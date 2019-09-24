@@ -14,18 +14,6 @@ import contextlib
 from cilantro_ee.core.nonces import NonceManager
 
 
-# Used during catchup to take a block, isolate the nonce_hashes, and calculate what the new nonce should be
-# New nonce should be +1 of whatever it was before. This is for when there are multiple transactions in a block
-# Or if nonce is none, the first nonce will be 0, so set the current to 1.
-def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
-    # Modifies the provided dict
-    k = (tx_payload.processor, tx_payload.sender)
-    current_nonce = nonce_hash.get(k)
-
-    if current_nonce is None or current_nonce == tx_payload.nonce:
-        nonce_hash[k] = tx_payload.nonce + 1
-
-
 class MetaDataStorage(DatabaseDriver):
     def __init__(self,
                  block_hash_key='_current_block_hash',
@@ -109,31 +97,6 @@ class MetaDataStorage(DatabaseDriver):
             for k, v in sets.items():
                 self.set(k, v)
 
-    def commit_nonces(self, nonce_hash=None):
-        # Delete pending nonces and update the nonces
-        if nonce_hash is not None:
-            for k, v in nonce_hash.items():
-                processor, sender = k
-
-                self.set_nonce(processor=processor, sender=sender, nonce=v)
-                self.delete_pending_nonce(processor=processor, sender=sender)
-        else:
-            # Commit all pending nonces straight up
-            for n in self.iter(self.pending_nonce_key):
-                _, processor, sender = n.decode().split(':')
-
-                processor = bytes.fromhex(processor)
-                sender = bytes.fromhex(sender)
-
-                nonce = self.nonce_manager.get_pending_nonce(processor=processor, sender=sender)
-
-                self.set_nonce(processor=processor, sender=sender, nonce=nonce)
-                self.delete(n)
-
-    def delete_pending_nonces(self):
-        for nonce in self.iter(self.pending_nonce_key):
-            self.delete(nonce)
-
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
 
@@ -161,22 +124,3 @@ class MetaDataStorage(DatabaseDriver):
         assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
-    @staticmethod
-    def n_key(key, processor, sender):
-        return ':'.join([key, processor.hex(), sender.hex()])
-
-    # Nonce methods
-    def get_pending_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(self.pending_nonce_key, processor, sender))
-
-    def get_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(self.nonce_key, processor, sender))
-
-    def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.pending_nonce_key, processor, sender), nonce)
-
-    def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.nonce_key, processor, sender), nonce)
-
-    def delete_pending_nonce(self, processor: bytes, sender: bytes):
-        self.delete(self.n_key(self.pending_nonce_key, processor, sender))

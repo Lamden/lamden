@@ -51,6 +51,7 @@ import capnp
 import notification_capnp
 from decimal import Decimal
 
+from cilantro_ee.core.nonces import NonceManager
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -137,6 +138,7 @@ class SubBlockBuilder(Worker):
         self._empty_txn_batch = []
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
+        self.nonce_manager = NonceManager()
 
         # DEBUG -- TODO DELETE
         self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
@@ -281,7 +283,7 @@ class SubBlockBuilder(Worker):
         self.client.flush_all()
 
         # Toss all pending nonces
-        self.state.delete_pending_nonces()
+        self.nonce_manager.delete_pending_nonces()
 
         smi = block.firstSbIdx // NUM_SB_BUILDERS
         # assert smi == self._next_block_to_make.pending_sm_idx, "misalignment in align input hashes"

@@ -129,7 +129,7 @@ class CatchupManager:
                     self.state.set_transaction_data(tx=tx)
 
         self.nonce_manager.commit_nonces(nonce_hash=nonces)
-        self.state.delete_pending_nonces()
+        self.nonce_manager.delete_pending_nonces()
 
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 

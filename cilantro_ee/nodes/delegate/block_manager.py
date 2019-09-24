@@ -198,7 +198,7 @@ class BlockManager(Worker):
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.driver = MetaDataStorage()
-        self.nonce_manager = NonceManager(driver=self.driver)
+        self.nonce_manager = NonceManager()
         self.run()
 
     def _thicc_log(self):
