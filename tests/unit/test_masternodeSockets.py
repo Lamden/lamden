@@ -1,5 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.core.sockets import MasternodeSockets
+import zmq
 
 
 class TestMasternodeSockets(TestCase):
@@ -20,3 +21,14 @@ class TestMasternodeSockets(TestCase):
         all_nodes = {1, 4, 5, 6, 7, 8}
 
         self.assertEqual(MasternodeSockets.old_nodes(all_nodes, current_nodes), {2, 3})
+
+    def test_remove_node(self):
+        m = MasternodeSockets()
+        ctx = zmq.Context()
+        m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
+
+        m.remove_node('a')
+
+        self.assertIsNone(m.sockets.get('a'))
+        self.assertIsNotNone(m.sockets.get('b'))
+

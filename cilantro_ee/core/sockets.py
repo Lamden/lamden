@@ -4,13 +4,23 @@ import asyncio
 
 
 class MasternodeSockets:
-    def __init__(self, network: Network):
+    def __init__(self, network=None):
         # Mapping between VK and ZMQ socket
         self.network = network
         self.sockets = {}
 
     async def refresh(self):
-        pass
+        pb_nodes = set(PhoneBook.masternodes)
+        current_nodes = set(self.sockets.keys())
+
+        to_add = self.new_nodes(pb_nodes, current_nodes)
+        to_del = self.old_nodes(pb_nodes, current_nodes)
+
+        for node in to_add:
+            pass
+
+        for node in to_del:
+            self.remove_node(node)
 
     @staticmethod
     def new_nodes(phone_book_nodes, current_nodes):
@@ -20,3 +30,9 @@ class MasternodeSockets:
     def old_nodes(phone_book_nodes, current_nodes):
         return current_nodes - phone_book_nodes
 
+    def remove_node(self, vk):
+        entry = self.sockets.get(vk)
+
+        if entry is not None:
+            entry.close()
+            del self.sockets[vk]
