@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.core.rewards import RewardManager
 from tests import random_txs
-from cilantro_ee.storage.state import MetaDataStorage
+from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
@@ -11,7 +11,7 @@ from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 class TestRewards(TestCase):
     def setUp(self):
 
-        self.driver = MetaDataStorage()
+        self.driver = ContractDriver()
         self.client = ContractingClient()
 
         genesis_path = os.path.dirname(genesis.__file__)

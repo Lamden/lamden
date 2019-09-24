@@ -1,5 +1,5 @@
-from cilantro_ee.storage.state import MetaDataStorage
 from contracting.client import ContractingClient
+from contracting.db.driver import ContractDriver
 from cilantro_ee.storage.vkbook import PhoneBook
 import capnp
 import os
@@ -11,7 +11,7 @@ PENDING_REWARDS_KEY = b'__rewards'
 
 
 class RewardManager:
-    def __init__(self, driver=MetaDataStorage(), client=ContractingClient()):
+    def __init__(self, driver=ContractDriver(), client=ContractingClient()):
         self.driver = driver
         self.client = client
 
