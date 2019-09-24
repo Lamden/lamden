@@ -108,6 +108,7 @@ class MetaDataStorage(DatabaseDriver):
                 self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
 
+        # Commit new nonces
         self.nonce_manager.commit_nonces(nonce_hash=nonces)
         self.nonce_manager.delete_pending_nonces()
 
