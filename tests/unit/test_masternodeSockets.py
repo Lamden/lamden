@@ -9,6 +9,7 @@ import zmq.asyncio
 
 import asyncio
 
+
 class TestSocketBook(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
@@ -79,5 +80,57 @@ class TestSocketBook(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(masternodes.refresh())
+
+        self.assertDictEqual(masternodes.sockets, expected)
+
+    def test_refresh_remove_old_nodes(self):
+        PhoneBook = VKBook(masternodes=['stu', 'raghu'],
+                           delegates=['tejas', 'alex', 'steve'],
+                           num_boot_mns=2,
+                           num_boot_del=3,
+                           stamps=True,
+                           nonces=True)
+
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        ctx = zmq.Context()
+
+        peeps = {
+            'stu': ctx.socket(zmq.SUB),
+            'raghu': ctx.socket(zmq.SUB),
+            'tejas': ctx.socket(zmq.SUB),
+            'steve': ctx.socket(zmq.SUB)
+        }
+
+        p1.peer_service.table.peers = peeps
+        masternodes = SocketBook(network=p1, phonebook_function=PhoneBook.contract.get_masternodes)
+
+        self.assertDictEqual(masternodes.sockets, {})
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(masternodes.refresh())
+
+        expected = {
+            'stu': peeps['stu'],
+            'raghu': peeps['raghu'],
+        }
+
+        self.assertDictEqual(masternodes.sockets, expected)
+
+        PhoneBook = VKBook(masternodes=['stu', 'tejas'],
+                           delegates=['raghu', 'alex', 'steve'],
+                           num_boot_mns=2,
+                           num_boot_del=3,
+                           stamps=True,
+                           nonces=True)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(masternodes.refresh())
+
+        expected = {
+            'stu': peeps['stu'],
+            'tejas': peeps['tejas']
+        }
 
         self.assertDictEqual(masternodes.sockets, expected)
