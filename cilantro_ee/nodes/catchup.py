@@ -18,6 +18,9 @@ import notification_capnp
 
 from cilantro_ee.messages.message import MessageTypes
 
+
+from cilantro_ee.core.nonces import NonceManager
+
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -42,7 +45,7 @@ class CatchupManager:
         self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
-        # self.driver = CilantroStorageDriver(key=self.signing_key)
+        # self.nonce_manager = CilantroStorageDriver(key=self.signing_key)
 
         self.state = MetaDataStorage()
 
@@ -77,6 +80,8 @@ class CatchupManager:
         self.log.test("CatchupManager VKBook MN's: {}".format(PhoneBook.masternodes))
         self.log.test("CatchupManager VKBook Delegates's: {}".format(PhoneBook.delegates))
         # END DEBUG
+
+        self.nonce_manager = NonceManager(driver=self.state)
 
     def update_state(self):
         """
@@ -123,7 +128,7 @@ class CatchupManager:
                     update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                     self.state.set_transaction_data(tx=tx)
 
-        self.state.commit_nonces(nonce_hash=nonces)
+        self.nonce_manager.commit_nonces(nonce_hash=nonces)
         self.state.delete_pending_nonces()
 
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
@@ -287,7 +292,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def recv_block_idx_req(self, request: blockdata_capnp.BlockIndexRequest):
         """
-        Receive BlockIndexRequests calls storage driver to process req and build response
+        Receive BlockIndexRequests calls storage nonce_manager to process req and build response
         :param requester_vk:
         :param request:
         :return:

@@ -11,6 +11,7 @@ import capnp
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 import contextlib
+from cilantro_ee.core.nonces import NonceManager
 
 
 # Used during catchup to take a block, isolate the nonce_hashes, and calculate what the new nonce should be
@@ -41,6 +42,8 @@ class MetaDataStorage(DatabaseDriver):
 
         self.nonce_key = nonce_key
         self.pending_nonce_key = pending_nonce_key
+
+        self.nonce_manager = NonceManager()
 
         super().__init__()
 
@@ -122,7 +125,7 @@ class MetaDataStorage(DatabaseDriver):
                 processor = bytes.fromhex(processor)
                 sender = bytes.fromhex(sender)
 
-                nonce = self.get_pending_nonce(processor=processor, sender=sender)
+                nonce = self.nonce_manager.get_pending_nonce(processor=processor, sender=sender)
 
                 self.set_nonce(processor=processor, sender=sender, nonce=nonce)
                 self.delete(n)
@@ -139,11 +142,11 @@ class MetaDataStorage(DatabaseDriver):
 
         for sb in block.subBlocks:
             for tx in sb.transactions:
-                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
 
-        self.commit_nonces(nonce_hash=nonces)
-        self.delete_pending_nonces()
+        self.nonce_manager.commit_nonces(nonce_hash=nonces)
+        self.nonce_manager.delete_pending_nonces()
 
         # Update our block hash and block num
         self.latest_block_hash = block.blockHash

@@ -48,6 +48,8 @@ signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
+from cilantro_ee.core.nonces import NonceManager
+
 
 # class to keep track of sub-blocks sent over from my sub-block builders
 class SubBlocks:
@@ -196,6 +198,7 @@ class BlockManager(Worker):
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.driver = MetaDataStorage()
+        self.nonce_manager = NonceManager(driver=self.driver)
         self.run()
 
     def _thicc_log(self):
@@ -520,7 +523,7 @@ class BlockManager(Worker):
                         self.db_state.driver.latest_epoch_hash = my_new_block_hash
 
                 self.send_updated_db_msg()
-                self.driver.commit_nonces()
+                self.nonce_manager.commit_nonces()
 
                 # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
             else:

@@ -12,6 +12,7 @@ from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.core.nonces import NonceManager
 
 from multiprocessing import Queue
 import ast
@@ -39,6 +40,7 @@ CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 client = ContractingClient()
 metadata_driver = MetaDataStorage()
+nonce_manager = NonceManager()
 
 static_headers = {}
 
@@ -57,12 +59,12 @@ async def get_id(request):
 @app.route('/nonce/<vk>', methods=['GET'])
 async def get_nonce(request, vk):
     # Might have to change this sucker from hex to bytes.
-    pending_nonce = metadata_driver.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+    pending_nonce = nonce_manager.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
 
     log.info('Pending nonce: {}'.format(pending_nonce))
 
     if pending_nonce is None:
-        nonce = metadata_driver.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+        nonce = nonce_manager.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
         log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
         if nonce is None:
             pending_nonce = 0
