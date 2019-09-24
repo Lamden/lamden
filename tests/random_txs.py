@@ -67,7 +67,7 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
-def random_block(txs=20, subblocks=2, i=1, nonce_offset=0) -> blockdata_capnp.BlockData:
+def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)
@@ -79,7 +79,7 @@ def random_block(txs=20, subblocks=2, i=1, nonce_offset=0) -> blockdata_capnp.Bl
 
     block = blockdata_capnp.BlockData.new_message(
         blockHash=secrets.token_bytes(32),
-        blockNum=i,
+        blockNum=block_num,
         blockOwners=[secrets.token_bytes(32)],
         prevBlockHash=secrets.token_bytes(32),
         subBlocks=[sb for sb in sbs_capnp]

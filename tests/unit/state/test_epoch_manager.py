@@ -1,5 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.core.epochs import EpochManager, EPOCH_HASH_KEY, EPOCH_NUMBER_KEY
+from tests import random_txs
 
 
 class TestEpochManager(TestCase):
@@ -31,3 +32,21 @@ class TestEpochManager(TestCase):
     def test_set_epoch_number(self):
         self.e.set_epoch_number(32)
         self.assertEqual(self.e.get_epoch_number(), 32)
+
+    def test_epoch_updates_if_needed(self):
+        block = random_txs.random_block(block_num=4000)
+        h = block.blockHash
+        self.e.update_epoch_if_needed(block)
+        self.assertEqual(self.e.get_epoch_hash(), h)
+        self.assertEqual(self.e.get_epoch_number(), 40)
+
+    def test_epoch_doesnt_update_if_not_needed(self):
+        self.e.set_epoch_hash(b'x/AA' * 32)
+        self.e.set_epoch_number(12)
+
+        block = random_txs.random_block(block_num=1234)
+        h = block.blockHash
+
+        self.e.update_epoch_if_needed(block)
+        self.assertEqual(self.e.get_epoch_hash(), b'x/AA' * 32)
+        self.assertEqual(self.e.get_epoch_number(), 12)
