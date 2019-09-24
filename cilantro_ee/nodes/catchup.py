@@ -4,7 +4,7 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.messages.block_data.block_data import BlockData
@@ -83,13 +83,13 @@ class CatchupManager:
 
         self.nonce_manager = NonceManager(driver=self.state)
 
+        self.driver = CilantroStorageDriver(key=self.signing_key)
+
     def update_state(self):
         """
         Sync block and state DB if either is out of sync.
         :return:
         """
-        self.driver = CilantroStorageDriver(key=self.signing_key)
-
         last_block = self.driver.get_last_n(1, MasterStorage.INDEX)[0]
 
         db_latest_blk_num = last_block.get('blockNum')
@@ -125,7 +125,7 @@ class CatchupManager:
                 subblock = subblock_capnp.SubBlock.from_bytes_packed(raw_sb)
                 self.log.info('Block: {}'.format(subblock))
                 for tx in subblock.transactions:
-                    update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                    self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                     self.state.set_transaction_data(tx=tx)
 
         self.nonce_manager.commit_nonces(nonce_hash=nonces)
@@ -401,7 +401,9 @@ class CatchupManager:
         # check if requester is master or del
         self.log.info(sender_bhash)
         valid_node = vk.decode() in PhoneBook.state_sync
+
         if valid_node:
+
             index = self.driver.get_index(sender_bhash)
 
             given_blk_num = index.get('blockNum') if index else 0

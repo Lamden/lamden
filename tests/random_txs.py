@@ -67,7 +67,7 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
-def random_block(txs=20, subblocks=2, i=1) -> blockdata_capnp.BlockData:
+def random_block(txs=20, subblocks=2, i=1, nonce_offset=0) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)

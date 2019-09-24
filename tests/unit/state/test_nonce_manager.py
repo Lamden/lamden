@@ -2,6 +2,7 @@ from unittest import TestCase
 import secrets
 import os
 import capnp
+from tests import random_txs
 
 from cilantro_ee.messages import capnp as schemas
 from cilantro_ee.core.nonces import NonceManager, PENDING_NONCE_KEY, NONCE_KEY
@@ -205,3 +206,18 @@ class TestNonceManager(TestCase):
         self.assertEqual(self.r.get_nonce(processor=n3[0], sender=n3[1]), 100)
         self.assertEqual(self.r.get_nonce(processor=n4[0], sender=n4[1]), 100)
         self.assertEqual(self.r.get_nonce(processor=n5[0], sender=n5[1]), 100)
+
+    def test_update_nonces_with_block(self):
+        block = random_txs.random_block(txs=20)
+
+        self.r.update_nonces_with_block(block)
+
+        nonces = self.r.driver.iter(NONCE_KEY)
+
+        self.assertEqual(len(nonces), 20)
+
+        vals = []
+        for n in nonces:
+            vals.append(self.r.driver.get(n))
+
+        self.assertEqual(sorted(vals), list(range(1, 21)))

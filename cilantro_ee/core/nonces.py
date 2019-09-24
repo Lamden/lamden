@@ -4,6 +4,8 @@ import os
 import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 PENDING_NONCE_KEY = '__pn'
 NONCE_KEY = '__n'
@@ -70,3 +72,14 @@ class NonceManager:
             self.driver.delete(nonce)
 
         self.driver.commit()
+
+    def update_nonces_with_block(self, block):
+        # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date
+        nonces = {}
+
+        for sb in block.subBlocks:
+            for tx in sb.transactions:
+                self.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+
+        self.commit_nonces(nonce_hash=nonces)
+        self.delete_pending_nonces()

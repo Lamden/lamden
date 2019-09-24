@@ -7,7 +7,7 @@ from cilantro_ee.messages import capnp as schemas
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
-PENDING_REWARDS_KEY = b'__rewards'
+PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
