@@ -2,7 +2,7 @@ import os
 import time
 import capnp
 import struct
-
+from cilantro_ee.protocol.wallet import _sign
 from cilantro_ee.core.messages.message_type import MessageType
 
 
@@ -50,9 +50,9 @@ class CapnpImpl:
     # def get_signed_message(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
     # return None, None     # prevent using this directly until we know use cases
 
-    def get_signed_message_packed(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed(self, signee: bytes, msg_type: MessageType, **kwargs):
         msg_type, msg = self.get_message_packed(msg_type, **kwargs)
-        sig = sign(msg)
+        sig = _sign(signee, msg)
         signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=int(msg_type),
                                                                          message=msg, signature=sig, signee=signee,
                                                                          timestamp=time.time())

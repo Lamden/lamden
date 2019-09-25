@@ -38,7 +38,7 @@ class TestBlockServer(TestCase):
 
             return res
 
-        message = Message.get_signed_message_packed(signee=w.sk.encode(), msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=100, sign=wallet.sign)
+        message = Message.get_signed_message_packed(signee=w.sk.encode(), msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=100)
         print(message)
 
         tasks = asyncio.gather(
