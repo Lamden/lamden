@@ -47,7 +47,8 @@ class BlockFetcher:
 
         return responses.top_item()
 
-    async def get_missing_block_index(self, socket):
+    @staticmethod
+    async def get_missing_block_index(socket):
         response = await get(socket_id=socket, msg=b'GET BLOCK INDEX PLS', timeout=3000, retries=0)
         return response
 
