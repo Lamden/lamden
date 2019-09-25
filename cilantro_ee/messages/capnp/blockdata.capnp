@@ -35,3 +35,7 @@ struct StateUpdateRequest {
 struct StateUpdateReply {
     blockData @0 :BlockData;
 }
+
+struct BlockDataRequest {
+    blockNum @0: UInt32;
+}

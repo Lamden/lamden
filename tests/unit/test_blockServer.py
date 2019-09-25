@@ -1,7 +1,12 @@
 from unittest import TestCase
 from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.protocol import wallet
 from cilantro_ee.services.block_server import BlockServer
+
+from cilantro_ee.core.messages.message import Message
+from cilantro_ee.core.messages.message_type import MessageType
+
 import zmq.asyncio
 import zmq
 import asyncio
@@ -27,15 +32,18 @@ class TestBlockServer(TestCase):
             socket = self.ctx.socket(zmq.DEALER)
             socket.connect('tcp://127.0.0.1:10000')
 
-            await socket.send(msg)
+            await socket.send(b'0'+msg[1])
 
             res = await socket.recv()
 
             return res
 
+        message = Message.get_signed_message_packed(signee=w.sk.encode(), msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=100, sign=wallet.sign)
+        print(message)
+
         tasks = asyncio.gather(
             m.serve(),
-            get(json.dumps((1, 'hello')).encode()),
+            get(message),
             stop_server(m, 0.2),
         )
 

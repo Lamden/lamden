@@ -17,3 +17,11 @@ struct ExternalMessage {
     sender @1: Data;
     signature @2: Data;
 }
+
+struct SignedMessage {
+    msgType @0 :UInt16;
+    message @1 :Data;
+    signature @2: Data;
+    signee @3: Data;
+    timestamp @4: Float64;
+}

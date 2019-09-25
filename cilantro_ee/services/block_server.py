@@ -2,6 +2,8 @@ from cilantro_ee.protocol.comm.services import AsyncInbox, SocketStruct, Protoco
 from cilantro_ee.messages import capnp as schemas
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
+from cilantro_ee.core.messages.message import Message
+from cilantro_ee.core.messages.message_type import MessageType
 import os
 import capnp
 import json
@@ -65,10 +67,12 @@ class BlockServer(AsyncInbox):
                          poll_timeout=poll_timeout)
 
     async def handle_msg(self, _id, msg):
-        msg = json.loads(msg.decode())
-        msg_type, msg_blob = msg
+        print(msg)
+        msg_type = msg[0]
+        msg_blob = msg[1:]
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=MessageType.SIGNED_MESSAGE, message=msg_blob)
 
-        print(_id, msg_type, msg_blob)
+        print(_id, msg_type, msg, sender, timestamp, is_verified)
 
         if msg_type == BLOCK_DATA_REQUEST and self.driver is not None:
             block_dict = await self.driver.get_block(msg_blob)
