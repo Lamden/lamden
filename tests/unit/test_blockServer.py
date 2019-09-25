@@ -1,17 +1,45 @@
 from unittest import TestCase
-from cilantro_ee.services.block_server import BlockServer, block_dictionary_to_block_struct, block_struct_to_block_dictionary
-from cilantro_ee.storage.master import MasterStorage, CilantroStorageDriver
-from tests import random_txs
+from cilantro_ee.protocol.comm import services
 from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.services.block_server import BlockServer
+import zmq.asyncio
+import zmq
+import asyncio
+import json
+
+async def stop_server(s, timeout):
+    await asyncio.sleep(timeout)
+    s.stop()
 
 
 class TestBlockServer(TestCase):
-    def test_block_dictionary_to_block_struct(self):
-        block = random_txs.random_block()
-        # block_store = CilantroStorageDriver(key=Wallet().sk.encode().hex())
-        #
-        # b = block_store.store_block([sb for sb in block.subBlocks])
-        block_dict = block_struct_to_block_dictionary(block)
-        block_struct = block_dictionary_to_block_struct(block_dict)
+    def setUp(self):
+        self.ctx = zmq.asyncio.Context()
 
-        self.assertEqual(block.to_dict(), block_struct)
+    def tearDown(self):
+        self.ctx.destroy()
+
+    def test_sending_message_returns_it(self):
+        w = Wallet()
+        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+
+        async def get(msg):
+            socket = self.ctx.socket(zmq.DEALER)
+            socket.connect('tcp://127.0.0.1:10000')
+
+            await socket.send(msg)
+
+            res = await socket.recv()
+
+            return res
+
+        tasks = asyncio.gather(
+            m.serve(),
+            get(json.dumps((1, 'hello')).encode()),
+            stop_server(m, 0.2),
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[1], b'howdy')

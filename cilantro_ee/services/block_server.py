@@ -4,6 +4,7 @@ from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 import os
 import capnp
+import json
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -54,13 +55,20 @@ def block_struct_to_block_dictionary(block_struct: blockdata_capnp.BlockData):
 # Provide a block driver to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 class BlockServer(AsyncInbox):
-    def __init__(self, driver=None, top=TopBlockManager()):
+    def __init__(self, socket_id, wallet, ctx, linger, poll_timeout, driver=None, top=TopBlockManager()):
         self.driver = driver
         self.top = top
-        super().__init__()
+        super().__init__(socket_id=socket_id,
+                         wallet=wallet,
+                         ctx=ctx,
+                         linger=linger,
+                         poll_timeout=poll_timeout)
 
     async def handle_msg(self, _id, msg):
+        msg = json.loads(msg.decode())
         msg_type, msg_blob = msg
+
+        print(_id, msg_type, msg_blob)
 
         if msg_type == BLOCK_DATA_REQUEST and self.driver is not None:
             block_dict = await self.driver.get_block(msg_blob)
@@ -68,10 +76,13 @@ class BlockServer(AsyncInbox):
             await self.return_msg(_id, block.to_bytes_packed())
 
         elif msg_type == BLOCK_INDEX_REQUEST and self.driver is not None:
-            pass
+            await self.return_msg(_id, b'howdy')
 
         elif msg_type == BLOCK_TOP_NUM:
             await self.return_msg(_id, self.top.get_latest_block_number())
 
         elif msg_type == BLOCK_TOP_HASH:
             await self.return_msg(_id, self.top.get_latest_block_hash())
+
+        else:
+            await self.return_msg(_id, b'bad')

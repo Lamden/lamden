@@ -9,6 +9,7 @@ DISCOVERY_PORT = 10000
 AUTH_PORT = 10001
 DHT_PORT = 10002
 EVENT_PORT = 10003
+BLOCK_SERVER = 10004
 
 # ---------------------------------------------------------------
 # Masternode Ports :10010-10019
