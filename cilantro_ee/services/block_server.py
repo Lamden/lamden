@@ -7,6 +7,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 import os
 import capnp
 import json
+import struct
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -70,7 +71,7 @@ class BlockServer(AsyncInbox):
         print(msg)
         msg_type = msg[0]
         msg_blob = msg[1:]
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=MessageType.SIGNED_MESSAGE, message=msg_blob)
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=struct.pack('B', msg_type), message=msg_blob)
 
         print(_id, msg_type, msg, sender, timestamp, is_verified)
 

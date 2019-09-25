@@ -32,7 +32,7 @@ class TestBlockServer(TestCase):
             socket = self.ctx.socket(zmq.DEALER)
             socket.connect('tcp://127.0.0.1:10000')
 
-            await socket.send(b'0'+msg[1])
+            await socket.send(msg[0]+msg[1])
 
             res = await socket.recv()
 

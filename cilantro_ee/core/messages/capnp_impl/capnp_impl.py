@@ -11,7 +11,7 @@ def pack(i: int):
 
 
 def unpack(b: bytes):
-    return struct.unpack('B', b)
+    return struct.unpack('B', b)[0]
 
 
 class CapnpImpl:
