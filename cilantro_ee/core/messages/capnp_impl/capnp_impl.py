@@ -20,7 +20,7 @@ class CapnpImpl:
 
         self.blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
         self.notification_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/notification.capnp')
-        self.signed_message_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signed_message.capnp')
+        self.signed_message_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
         self.subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
         self.transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
