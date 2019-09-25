@@ -8,6 +8,7 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.messages.block_data.sub_block import SubBlock
+from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import system_config
 
 from cilantro_ee.messages import capnp as schemas
@@ -331,7 +332,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block_dict = {
             'blockHash': block_hash,
             'blockNum': current_block_num,
-            'blockOwners': [m for m in system_config.PhoneBook.masternodes],
+            'blockOwners': [m for m in PhoneBook.masternodes],
             'prevBlockHash': last_hash,
             'subBlocks': [s for s in sub_blocks]
         }
