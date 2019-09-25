@@ -353,21 +353,17 @@ class BlockContender:
         self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty
 
-    def __get_first_sb_idx(self, sb_groups) -> int:
+    def get_first_sb_idx_unsorted(self, sb_groups) -> int:
         sb_idx = sb_groups[0].sb_idx
         sbb_rem = sb_idx % NUM_SB_BUILDERS
         assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
 
-    def _get_first_sb_idx(self) -> int:
-        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
-        return self.__get_first_sb_idx(sb_groups)
-
-    def _get_input_hashes(self) -> List[list]:
+    def get_input_hashes_sorted(self) -> List[list]:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
         assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
-        sb_idx = self.__get_first_sb_idx(sb_groups)
+        sb_idx = self.get_first_sb_idx_unsorted(sb_groups)
         input_hashes = []
         for sb_group in sb_groups:
             while sb_idx < sb_group.sb_idx:

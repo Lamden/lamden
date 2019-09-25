@@ -39,7 +39,32 @@ class TestMessages(TestCase):
 
     def test_signal(self):
         capnp_impl = CapnpImpl()
-        _, message = capnp_impl.get_message(msg_type=MessageType.READY)
-        print("rpc msg {}".format(message))
-        _, message = capnp_impl.get_message_packed(msg_type=MessageType.READY)
-        print("rpc msg {}".format(message))
+        msg_type, message = capnp_impl.get_message(msg_type=MessageType.READY)
+        self.assertEqual(msg_type, MessageType.READY)
+        self.assertEqual(message, '')
+        msg_type, message = capnp_impl.get_message_packed(msg_type=MessageType.MAKE_NEXT_BLOCK)
+        self.assertEqual(msg_type, MessageType.MAKE_NEXT_BLOCK)
+        self.assertEqual(message, b'')
+
+    def test_union(self):
+        blk_owners = ["abc", "def", "wtf"]
+        input_hashes = [[h.encode()] for h in blk_owners]
+        capnp_impl = CapnpImpl()
+        msg_type, message = capnp_impl.get_message(
+                               msg_type=MessageType.BLOCK_NOTIFICATION,
+                               blockNum=123, blockOwners=blk_owners,
+                               inputHashes=input_hashes, newBlock=None)
+        self.assertEqual(msg_type, MessageType.BLOCK_NOTIFICATION)
+        self.assertEqual(message.which(), "newBlock")
+
+        wallet = Wallet()
+        mtype2, msg2 = capnp_impl.get_signed_message_packed(
+                               signee=wallet.verifying_key(), sign=wallet.sign,
+                               msg_type=MessageType.BLOCK_NOTIFICATION,
+                               blockNum=123, blockOwners=blk_owners,
+                               inputHashes=input_hashes, newBlock=None)
+
+        self.assertEqual(mtype2, MessageType.SIGNED_MESSAGE)
+        mtype3, msg3, sender, timestamp = capnp_impl.unpack_message(mtype2, msg2)
+        self.assertEqual(mtype3, MessageType.BLOCK_NOTIFICATION)
+        self.assertEqual(msg3.which(), "newBlock")

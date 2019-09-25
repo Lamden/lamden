@@ -43,11 +43,11 @@ class CapnpImpl:
         # return None, None     # prevent using this directly until we know use cases
         
     def get_signed_message_packed(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
-        msg_type, msg = self.get_message_packed(msg_type, kwargs)
+        msg_type, msg = self.get_message_packed(msg_type, **kwargs)
         sig = sign(msg)
-        signed_msg = signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
-                            message= msg, signature=sig, signee=signee, timestamp=time.time())
-        return MessageType.SIGNED_MESSAGE, signed_msg
+        signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=int(msg_type),
+                            message=msg, signature=sig, signee=signee, timestamp=time.time())
+        return MessageType.SIGNED_MESSAGE, signed_msg.to_bytes_packed()
 
     def unpack_message(self, msg_type: MessageType, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
@@ -55,13 +55,14 @@ class CapnpImpl:
         if msg_type == MessageType.SIGNED_MESSAGE:
             return self._unpack_signed_message(message, is_verify)
         if msg_type in self.message_capnp:
-            return msg_type, self.message_capnp[msg_type].from_bytes_packed(msg), sender, timestamp
-        return None, None, sender, timestamp
+            return msg_type, self.message_capnp[msg_type].from_bytes_packed(message), sender, timestamp
+        return None, None, sender, timestamp, True
 
     def _unpack_signed_message(self, message: bytes, is_verify: bool):
-        signed_msg = signed_message_capnp.SignedMessage.from_bytes_packed(message)
+        signed_msg = self.signed_message_capnp.SignedMessage.from_bytes_packed(message)
+        # if is_verify and not verified:
+            # return signed_msg.msgType, None, signed_msg.signee, signed_msg.timestamp, False
         if is_verify:
             pass        # todo verify
-        # todo - may need to return timestamp too ??
         return self.unpack_message(msg_type=signed_msg.msgType, message=signed_msg.message,
                                    sender=signed_msg.signee, timestamp=signed_msg.timestamp)

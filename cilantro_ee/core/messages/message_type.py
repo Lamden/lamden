@@ -1,25 +1,27 @@
-from enum import Enum, unique
-
+from enum import IntEnum, auto, unique
 
 @unique
-class MessageType(Enum):
-    SIGNED_MESSAGE = b'\x00'
-
-    MAKE_NEXT_BLOCK = b'\x01'
-    PENDING_TRANSACTIONS = b'\x02'
-    NO_TRANSACTIONS = b'\x03'
-    READY = b'\x04'
-
-    SUBBLOCK_CONTENDER = b'\x0a'
-    BLOCK_INDEX_REQUEST = b'\x0b'
-    BLOCK_INDEX_REPLY = b'\x0d'
-    BLOCK_DATA_REQUEST = b'\x0e'
-    BLOCK_DATA_REPLY = b'\x0f'
-    BLOCK_NOTIFICATION = b'\x11'
-    BURN_INPUT_HASHES = b'\x13'
-
-    TRANSACTION_BATCH = b'\x15'
+class MessageBaseType(IntEnum):
+    def _generate_next_value_(name, start, count, last_values):
+        assert count < 128, "Exceeds the maximum supported message types"
+        return 2 * count
 
 
 
-    
+class MessageType(MessageBaseType):
+    SIGNED_MESSAGE = 0
+
+    MAKE_NEXT_BLOCK = auto()
+    PENDING_TRANSACTIONS = auto()
+    NO_TRANSACTIONS = auto()
+    READY = auto()
+
+    SUBBLOCK_CONTENDER = auto()
+    BLOCK_INDEX_REQUEST = auto()
+    BLOCK_INDEX_REPLY = auto()
+    BLOCK_DATA_REQUEST = auto()
+    BLOCK_DATA_REPLY = auto()
+    BLOCK_NOTIFICATION = auto()
+    BURN_INPUT_HASHES = auto()
+
+    TRANSACTION_BATCH = auto()

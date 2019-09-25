@@ -97,6 +97,7 @@ class TransactionBuilder:
         return self.struct.to_bytes_packed()
 
 
+# raghu todo this method is not used
 def verify_packed_tx(sender, tx):
     try:
         unpacked = transaction_capnp.Transaction.from_bytes_packed(tx)

@@ -150,6 +150,7 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 # Make sure that the transaction is valid
+                # this is better done at webserver level before packing and putting it into the queue - raghu todo
                 if not transaction_is_valid(tx=tx,
                                             expected_processor=self.wallet.verifying_key(),
                                             driver=self.driver,

@@ -3,13 +3,9 @@
 using V = import "values.capnp";
 
 struct MetaData {
-    proof @0 :Data;
+    proof @0 :Data;         # raghu - can be eliminated
     signature @1 :Data;
     timestamp @2 :Float32;
-}
-
-struct Transactions {
-    transactions @0 :List(Transaction);
 }
 
 struct TransactionPayload {

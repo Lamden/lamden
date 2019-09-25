@@ -6,7 +6,7 @@ struct BlockNotification {
     blockOwners @2 :List(Text);
     firstSbIdx @3 :UInt32;
     inputHashes @4 :List(List(Data));
-    type :union  {
+    union {
       failedBlock @5 :Void;
       newBlock @6 :Void;
       emptyBlock @7 :Void;
