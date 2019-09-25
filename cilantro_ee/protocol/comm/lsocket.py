@@ -1,22 +1,13 @@
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
-import zmq.asyncio, asyncio, os
+import zmq.asyncio, asyncio
 
 from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
-from os.path import join
 
 from cilantro_ee.constants import conf
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 def vk_lookup(func):

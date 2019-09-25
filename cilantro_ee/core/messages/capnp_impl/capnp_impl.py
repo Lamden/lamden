@@ -2,6 +2,7 @@ import os
 import time
 import capnp
 
+from cilantro_ee.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.core.messages.message_type import MessageType
 
 
@@ -32,12 +33,12 @@ class CapnpImpl:
     def get_message(self, msg_type: MessageType, **kwargs):
         if msg_type in self.message_capnp:
             return msg_type, self.message_capnp[msg_type].new_message(**kwargs)
-        return msg_type, ''
+        return int_to_bytes(int(msg_type)), ''
 
     def get_message_packed(self, msg_type: MessageType, **kwargs):
         if msg_type in self.message_capnp:
             return msg_type, self.message_capnp[msg_type].new_message(**kwargs).to_bytes_packed()
-        return msg_type, b''
+        return int_to_bytes(int(msg_type)), b''
 
     # def get_signed_message(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
         # return None, None     # prevent using this directly until we know use cases
@@ -47,11 +48,17 @@ class CapnpImpl:
         sig = sign(msg)
         signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=int(msg_type),
                             message=msg, signature=sig, signee=signee, timestamp=time.time())
-        return MessageType.SIGNED_MESSAGE, signed_msg.to_bytes_packed()
+        return int_to_bytes(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
 
-    def unpack_message(self, msg_type: MessageType, message: bytes,
+    def unpack_message(self, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
                        is_verify: bool = True):
+        msg_type = bytes_to_int(msg_type)
+        return self._unpack_message(MessageType(msg_type), message, sender, timestamp, is_verify)
+
+    def _unpack_message(self, msg_type: MessageType,  message: bytes,
+                        sender: bytes = None, timestamp: float = time.time(),
+                        is_verify: bool = True):
         if msg_type == MessageType.SIGNED_MESSAGE:
             return self._unpack_signed_message(message, is_verify)
         if msg_type in self.message_capnp:
@@ -64,5 +71,5 @@ class CapnpImpl:
             # return signed_msg.msgType, None, signed_msg.signee, signed_msg.timestamp, False
         if is_verify:
             pass        # todo verify
-        return self.unpack_message(msg_type=signed_msg.msgType, message=signed_msg.message,
+        return self._unpack_message(msg_type=signed_msg.msgType, message=signed_msg.message,
                                    sender=signed_msg.signee, timestamp=signed_msg.timestamp)
