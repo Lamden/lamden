@@ -1,6 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.core import canonical
-
+from tests import random_txs
+from copy import deepcopy
 
 class TestCanonicalCoding(TestCase):
     def test_recursive_dictionary_sort_works(self):
@@ -42,3 +43,37 @@ class TestCanonicalCoding(TestCase):
         s = canonical.format_dictionary(b)
 
         self.assertEqual(s['b'], a)
+
+    def test_random_subblock_converts_successfully(self):
+        sb = random_txs.random_block().subBlocks[0].to_dict()
+
+        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockIdx', 'transactions']
+
+        sorted_sb = canonical.format_dictionary(sb)
+        sorted_sb_keys = list(sorted_sb.keys())
+        for i in range(len(sorted_sb_keys)):
+            self.assertEqual(sorted_sb_keys[i], expected_order[i])
+
+    def test_random_subblocks_all_convert_successfully_at_top_level(self):
+        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockIdx', 'transactions']
+
+        block = random_txs.random_block()
+        sbs = [block.subBlocks[i].to_dict() for i in range(len(block.subBlocks))]
+
+        for sb in sbs:
+            sorted_sb = canonical.format_dictionary(sb)
+            sorted_sb_keys = list(sorted_sb.keys())
+            for i in range(len(sorted_sb_keys)):
+                self.assertEqual(sorted_sb_keys[i], expected_order[i])
+
+    def test_random_subblock_all_transactiondata_convert_successfully(self):
+        sb = random_txs.random_block().subBlocks[0].to_dict()
+
+        sb = canonical.format_dictionary(sb)
+
+        expected_order = ['contractType', 'stampsUsed', 'state', 'status', 'transaction']
+
+        for tx in sb['transactions']:
+            sorted_tx_keys = list(tx.keys())
+            self.assertEqual(sorted_tx_keys, expected_order)
+
