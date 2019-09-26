@@ -25,3 +25,7 @@ class MessageType(MessageBaseType):
     BURN_INPUT_HASHES = auto()
 
     TRANSACTION_BATCH = auto()
+
+    LATEST_BLOCK_HEIGHT_REQUEST = auto()
+    LATEST_BLOCK_HEIGHT_REPLY = auto()
+

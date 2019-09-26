@@ -7,10 +7,13 @@ from cilantro_ee.services.block_server import BlockServer
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
+from cilantro_ee.core.top import TopBlockManager
+import time
 import zmq.asyncio
 import zmq
 import asyncio
 import json
+import struct
 
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
@@ -20,13 +23,17 @@ async def stop_server(s, timeout):
 class TestBlockServer(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
+        self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
+        self.t.driver.flush()
 
     def test_sending_message_returns_it(self):
         w = Wallet()
         m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+
+        self.t.set_latest_block_number(555)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
@@ -38,8 +45,9 @@ class TestBlockServer(TestCase):
 
             return res
 
-        message = Message.get_signed_message_packed(signee=w.sk.encode(), msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=100)
-        print(message)
+        message = Message.get_signed_message_packed(signee=w.sk.encode(),
+                                                    msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
+                                                    timestamp=int(time.time()))
 
         tasks = asyncio.gather(
             m.serve(),
@@ -50,4 +58,10 @@ class TestBlockServer(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        self.assertEqual(res[1], b'howdy')
+        msg_type = res[1][0]
+        msg_blob = res[1][1:]
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=struct.pack('B', msg_type),
+                                                                               message=msg_blob)
+
+        self.assertEqual(msg.blockHeight, 555)

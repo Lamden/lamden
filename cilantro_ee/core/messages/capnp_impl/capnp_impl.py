@@ -35,6 +35,8 @@ class CapnpImpl:
             MessageType.BURN_INPUT_HASHES: self.notification_capnp.BurnInputHashes,
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
             MessageType.TRANSACTION_BATCH: self.transaction_capnp.TransactionBatch,
+            MessageType.LATEST_BLOCK_HEIGHT_REQUEST: self.blockdata_capnp.LatestBlockHeightRequest,
+            MessageType.LATEST_BLOCK_HEIGHT_REPLY: self.blockdata_capnp.LatestBlockHeightReply
         }
 
     def get_message(self, msg_type: MessageType, **kwargs):

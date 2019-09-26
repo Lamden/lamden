@@ -68,26 +68,27 @@ class BlockServer(AsyncInbox):
                          poll_timeout=poll_timeout)
 
     async def handle_msg(self, _id, msg):
-        print(msg)
         msg_type = msg[0]
         msg_blob = msg[1:]
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=struct.pack('B', msg_type), message=msg_blob)
 
-        print(_id, msg_type, msg, sender, timestamp, is_verified)
-
-        if msg_type == BLOCK_DATA_REQUEST and self.driver is not None:
+        if msg_type == MessageType.BLOCK_DATA_REQUEST and self.driver is not None:
             block_dict = await self.driver.get_block(msg_blob)
             block = block_dictionary_to_block_struct(block_dict)
             await self.return_msg(_id, block.to_bytes_packed())
 
-        elif msg_type == BLOCK_INDEX_REQUEST and self.driver is not None:
-            await self.return_msg(_id, b'howdy')
+        # elif msg_type == BLOCK_INDEX_REQUEST and self.driver is not None:
+        #     await self.return_msg(_id, b'howdy')
 
-        elif msg_type == BLOCK_TOP_NUM:
-            await self.return_msg(_id, self.top.get_latest_block_number())
+        elif msg_type == MessageType.LATEST_BLOCK_HEIGHT_REQUEST:
+            reply = Message.get_signed_message_packed(signee=self.wallet.sk.encode(),
+                                                      msg_type=MessageType.LATEST_BLOCK_HEIGHT_REPLY,
+                                                      blockHeight=self.top.get_latest_block_number())
 
-        elif msg_type == BLOCK_TOP_HASH:
-            await self.return_msg(_id, self.top.get_latest_block_hash())
+            await self.return_msg(_id, reply[0] + reply[1])
 
-        else:
-            await self.return_msg(_id, b'bad')
+        # elif msg_type == BLOCK_TOP_HASH:
+        #     await self.return_msg(_id, self.top.get_latest_block_hash())
+        #
+        # else:
+        #     await self.return_msg(_id, b'bad')

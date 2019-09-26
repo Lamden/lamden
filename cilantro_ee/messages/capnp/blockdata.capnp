@@ -39,3 +39,11 @@ struct StateUpdateReply {
 struct BlockDataRequest {
     blockNum @0: UInt32;
 }
+
+struct LatestBlockHeightRequest {
+    timestamp @0: UInt64;
+}
+
+struct LatestBlockHeightReply {
+    blockHeight @0: UInt32;
+}
