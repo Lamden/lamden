@@ -27,9 +27,8 @@ struct Transaction {
 
 struct TransactionData {
     transaction @0 :Transaction;
-    status @1: Text;
-    state @2: Text;
-    contractType @3: UInt16;
+    status @1: UInt8;
+    state @2: Data;
 }
 
 struct TransactionBatch {

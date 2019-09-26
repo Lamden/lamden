@@ -22,7 +22,6 @@ from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
-from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.core.messages.message import MessageTypes
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
@@ -43,14 +42,11 @@ from enum import Enum, unique
 import asyncio, zmq.asyncio, time
 from datetime import datetime
 import hashlib
-from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
-import notification_capnp
 from decimal import Decimal
 
 
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
@@ -274,7 +270,7 @@ class SubBlockBuilder(Worker):
             num_txns -= 1
             ret_smi -= 1
             
-    def _fail_block(self, block: notification_capnp.BlockNotification):
+    def _fail_block(self, block):
         self.log.notice("FailedBlockNotification - aligning input hashes")
         self.client.flush_all()
 
@@ -439,25 +435,24 @@ class SubBlockBuilder(Worker):
 
         signature = self.wallet.sign(input_hash)
 
-        merkle_proof = subblock_capnp.MerkleProof.new_message(
-            hash=input_hash,
-            signer=self.wallet.verifying_key(),
-            signature=signature
-        ).to_bytes_packed()
+        merkle_proof = {
+                         "hash": input_hash,
+                         "signer": self.wallet.verifying_key(),
+                         "signature": signature
+                       }
 
-        sbc = subblock_capnp.SubBlockContender.new_message(
-              resultHash=input_hash,
-              inputHash=input_hash,
-              merkleLeaves=[],
-              signature=merkle_proof,
-              transactions=[],
-              subBlockIdx=sb_idx,
-              prevBlockHash=self.state.get_latest_block_hash()
-        ).to_bytes_packed()
+        mtype, msg = Message.get_message_packed(MessageType.SUBBLOCK_CONTENDER,
+                                resultHash=input_hash,
+                                inputHash=input_hash,
+                                merkleLeaves=[],
+                                signature=merkle_proof,
+                                transactions=[],
+                                subBlockIdx=sb_idx,
+                                prevBlockHash=self.state.get_latest_block_hash())
 
-        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
+        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(input_hash))
 
-        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
+        self.ipc_dealer.send_multipart([mtype, msg])
 
     def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
 
@@ -470,6 +465,7 @@ class SubBlockBuilder(Worker):
 
         txs_data = []
 
+xxxx
         for i in range(len(exec_data)):
             d = exec_data[i]
             tx = self.pending_transactions[i]

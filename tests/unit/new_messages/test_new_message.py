@@ -18,13 +18,11 @@ class TestMessages(TestCase):
         message = blockdata_capnp.BlockDataRequest.new_message(blockNum=123)
         msgType, same_message = capnp_impl.get_message(msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=123)
 
-        # mtype1, msg1 = Message.get_message(msg_type=MessageType.BLOCK_DATA_REQUEST, blockNum=123)
         mtype1, msg1 = Message.get_message(MessageType.BLOCK_DATA_REQUEST, blockNum=123)
        
         self.assertEqual(msgType, mtype1)
         self.assertEqual(message.blockNum, msg1.blockNum)
 
-        # self.assertEqual(msgType, MessageType.BLOCK_DATA_REQUEST)
         self.assertEqual(message.blockNum, same_message.blockNum)
 
     def test_unpack_returns_equal_capnp_struct(self):
@@ -40,10 +38,8 @@ class TestMessages(TestCase):
     def test_signal(self):
         capnp_impl = CapnpImpl()
         msg_type, message = capnp_impl.get_message(msg_type=MessageType.READY)
-        # self.assertEqual(msg_type, MessageType.READY)
         self.assertEqual(message, '')
         msg_type, message = capnp_impl.get_message_packed(msg_type=MessageType.MAKE_NEXT_BLOCK)
-        # self.assertEqual(msg_type, MessageType.MAKE_NEXT_BLOCK)
         self.assertEqual(message, b'')
 
     def test_union(self):
@@ -54,7 +50,6 @@ class TestMessages(TestCase):
                                msg_type=MessageType.BLOCK_NOTIFICATION,
                                blockNum=123, blockOwners=blk_owners,
                                inputHashes=input_hashes, newBlock=None)
-        self.assertEqual(msg_type, MessageType.BLOCK_NOTIFICATION)
         self.assertEqual(message.which(), "newBlock")
 
         wallet = Wallet()
@@ -64,7 +59,7 @@ class TestMessages(TestCase):
                                blockNum=123, blockOwners=blk_owners,
                                inputHashes=input_hashes, newBlock=None)
 
-        # self.assertEqual(mtype2, MessageType.SIGNED_MESSAGE)
-        mtype3, msg3, sender, timestamp = capnp_impl.unpack_message(mtype2, msg2)
+        mtype3, msg3, sender, timestamp, is_verified = capnp_impl.unpack_message(mtype2, msg2)
+        self.assertEqual(is_verified, True)
         self.assertEqual(mtype3, MessageType.BLOCK_NOTIFICATION)
         self.assertEqual(msg3.which(), "newBlock")
