@@ -3,6 +3,7 @@ from cilantro_ee.core import canonical
 from tests import random_txs
 from copy import deepcopy
 
+
 class TestCanonicalCoding(TestCase):
     def test_recursive_dictionary_sort_works(self):
         unsorted = {
@@ -32,17 +33,6 @@ class TestCanonicalCoding(TestCase):
         s = canonical.format_dictionary(unsorted)
 
         self.assertDictEqual(s, sorted_dict)
-
-    def test_bytes_get_turned_to_hex(self):
-        a = b'123'.hex()
-
-        b = {
-            'b': b'123'
-        }
-
-        s = canonical.format_dictionary(b)
-
-        self.assertEqual(s['b'], a)
 
     def test_random_subblock_converts_successfully(self):
         sb = random_txs.random_block().subBlocks[0].to_dict()
@@ -77,3 +67,13 @@ class TestCanonicalCoding(TestCase):
             sorted_tx_keys = list(tx.keys())
             self.assertEqual(sorted_tx_keys, expected_order)
 
+    def test_random_subblock_all_transactions_convert_successfully(self):
+        sb = random_txs.random_block().subBlocks[0].to_dict()
+
+        expected_order = ['contractName', 'functionName', 'kwargs', 'nonce', 'processor', 'sender', 'stampsSupplied']
+
+        sb = canonical.format_dictionary(sb)
+
+        for tx in sb['transactions']:
+            sorted_tx_keys = list(tx['transaction']['payload'].keys())
+            self.assertEqual(sorted_tx_keys, expected_order)

@@ -6,6 +6,6 @@ def format_dictionary(d: dict) -> dict:
                 if isinstance(v[i], dict):
                     v[i] = format_dictionary(v[i])
         elif isinstance(v, dict):
-            v = format_dictionary(v)
+            d[k] = format_dictionary(v)
     return {k: v for k, v in sorted(d.items())}
 
