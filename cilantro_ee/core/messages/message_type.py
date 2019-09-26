@@ -29,3 +29,5 @@ class MessageType(MessageBaseType):
     LATEST_BLOCK_HEIGHT_REQUEST = auto()
     LATEST_BLOCK_HEIGHT_REPLY = auto()
 
+    LATEST_BLOCK_HASH_REQUEST = auto()
+    LATEST_BLOCK_HASH_REPLY = auto()

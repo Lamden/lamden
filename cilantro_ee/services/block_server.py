@@ -87,8 +87,11 @@ class BlockServer(AsyncInbox):
 
             await self.return_msg(_id, reply[0] + reply[1])
 
-        # elif msg_type == BLOCK_TOP_HASH:
-        #     await self.return_msg(_id, self.top.get_latest_block_hash())
-        #
+        elif msg_type == MessageType.LATEST_BLOCK_HASH_REQUEST:
+            reply = Message.get_signed_message_packed(signee=self.wallet.sk.encode(),
+                                                      msg_type=MessageType.LATEST_BLOCK_HASH_REPLY,
+                                                      blockHash=self.top.get_latest_block_hash())
+
+            await self.return_msg(_id, reply[0] + reply[1])
         # else:
         #     await self.return_msg(_id, b'bad')

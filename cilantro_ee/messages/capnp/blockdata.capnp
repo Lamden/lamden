@@ -47,3 +47,11 @@ struct LatestBlockHeightRequest {
 struct LatestBlockHeightReply {
     blockHeight @0: UInt32;
 }
+
+struct LatestBlockHashRequest {
+    timestamp @0: UInt64;
+}
+
+struct LatestBlockHashReply {
+    blockHash @0: Data;
+}

@@ -29,7 +29,7 @@ class TestBlockServer(TestCase):
         self.ctx.destroy()
         self.t.driver.flush()
 
-    def test_sending_message_returns_it(self):
+    def test_get_latest_block_height(self):
         w = Wallet()
         m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
 
@@ -61,3 +61,36 @@ class TestBlockServer(TestCase):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
 
         self.assertEqual(msg.blockHeight, 555)
+
+    def test_get_latest_block_hash(self):
+        w = Wallet()
+        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+
+        self.t.set_latest_block_hash(b'\xAA' * 32)
+
+        async def get(msg):
+            socket = self.ctx.socket(zmq.DEALER)
+            socket.connect('tcp://127.0.0.1:10000')
+
+            await socket.send(msg)
+
+            res = await socket.recv()
+
+            return res
+
+        message = Message.get_signed_message_packed_2(sk=w.sk.encode(),
+                                                      msg_type=MessageType.LATEST_BLOCK_HASH_REQUEST,
+                                                      timestamp=int(time.time()))
+
+        tasks = asyncio.gather(
+            m.serve(),
+            get(message),
+            stop_server(m, 0.2),
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
+
+        self.assertEqual(msg.blockHash, b'\xAA' * 32)
