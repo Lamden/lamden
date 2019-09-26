@@ -28,6 +28,7 @@ class CapnpImpl:
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
             MessageType.TRANSACTION_BATCH: self.transaction_capnp.TransactionBatch,
             MessageType.TRANSACTION_DATA: self.transaction_capnp.TransactionData,
+            MessageType.MERKLE_PROOF: self.subblock_capnp.MerkleProof,
         }
 
 

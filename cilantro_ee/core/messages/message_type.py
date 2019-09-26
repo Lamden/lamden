@@ -25,3 +25,6 @@ class MessageType(MessageBaseType):
     BURN_INPUT_HASHES = auto()
 
     TRANSACTION_BATCH = auto()
+    # todo - need a better way to handle internal messages inside another message
+    TRANSACTION_DATA = auto()
+    MERKLE_PROOF = auto()
