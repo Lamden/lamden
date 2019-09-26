@@ -13,7 +13,7 @@ struct MerkleProof {
 struct SubBlock {
     merkleRoot @0 :Data;
     signatures @1 :List(Data);
-    merkleLeaves @2 :List(Text);
+    merkleLeaves @2 :List(Data);
     subBlockIdx @3 :UInt8;
     inputHash @4 :Data;
     transactions @5 :List(T.TransactionData);

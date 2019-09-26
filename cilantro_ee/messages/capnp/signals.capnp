@@ -25,3 +25,7 @@ struct SignedMessage {
     signee @3: Data;
     timestamp @4: Float64;
 }
+
+struct BadRequest {
+    timestamp @0 :UInt32;
+}

@@ -20,7 +20,7 @@ class MessageType(MessageBaseType):
     BLOCK_INDEX_REQUEST = auto()
     BLOCK_INDEX_REPLY = auto()
     BLOCK_DATA_REQUEST = auto()
-    BLOCK_DATA_REPLY = auto()
+    BLOCK_DATA = auto()
     BLOCK_NOTIFICATION = auto()
     BURN_INPUT_HASHES = auto()
 
@@ -31,3 +31,5 @@ class MessageType(MessageBaseType):
 
     LATEST_BLOCK_HASH_REQUEST = auto()
     LATEST_BLOCK_HASH_REPLY = auto()
+
+    BAD_REQUEST = auto()

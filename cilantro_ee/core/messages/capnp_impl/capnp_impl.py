@@ -30,7 +30,7 @@ class CapnpImpl:
             MessageType.BLOCK_INDEX_REQUEST: self.blockdata_capnp.BlockIndexRequest,
             # MessageType.BLOCK_INDEX_REPLY: self.blockdata_capnp.BlockIndexReply,        # ?
             MessageType.BLOCK_DATA_REQUEST: self.blockdata_capnp.BlockDataRequest,
-            MessageType.BLOCK_DATA_REPLY: self.blockdata_capnp.BlockData,  # ?
+            MessageType.BLOCK_DATA: self.blockdata_capnp.BlockData,  # ?
             MessageType.BLOCK_NOTIFICATION: self.notification_capnp.BlockNotification,  # ?
             MessageType.BURN_INPUT_HASHES: self.notification_capnp.BurnInputHashes,
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
@@ -38,7 +38,8 @@ class CapnpImpl:
             MessageType.LATEST_BLOCK_HEIGHT_REQUEST: self.blockdata_capnp.LatestBlockHeightRequest,
             MessageType.LATEST_BLOCK_HEIGHT_REPLY: self.blockdata_capnp.LatestBlockHeightReply,
             MessageType.LATEST_BLOCK_HASH_REQUEST: self.blockdata_capnp.LatestBlockHashRequest,
-            MessageType.LATEST_BLOCK_HASH_REPLY: self.blockdata_capnp.LatestBlockHashReply
+            MessageType.LATEST_BLOCK_HASH_REPLY: self.blockdata_capnp.LatestBlockHashReply,
+            MessageType.BAD_REQUEST: self.signed_message_capnp.BadRequest
         }
 
     def get_message(self, msg_type: MessageType, **kwargs):

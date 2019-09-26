@@ -308,7 +308,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, vkbook=vkbook)
 
     def store_block(self, sub_blocks):
-        last_block = self.get_last_n(1, DistributedMasterStorage.INDEX)[0]
+        last_block = self.get_last_n(1, self.INDEX)[0]
 
         last_hash = last_block.get('blockHash')
         current_block_num = last_block.get('blockNum') + 1
