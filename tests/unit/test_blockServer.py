@@ -39,15 +39,15 @@ class TestBlockServer(TestCase):
             socket = self.ctx.socket(zmq.DEALER)
             socket.connect('tcp://127.0.0.1:10000')
 
-            await socket.send(msg[0]+msg[1])
+            await socket.send(msg)
 
             res = await socket.recv()
 
             return res
 
-        message = Message.get_signed_message_packed(signee=w.sk.encode(),
-                                                    msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
-                                                    timestamp=int(time.time()))
+        message = Message.get_signed_message_packed_2(sk=w.sk.encode(),
+                                                      msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
+                                                      timestamp=int(time.time()))
 
         tasks = asyncio.gather(
             m.serve(),
@@ -58,10 +58,6 @@ class TestBlockServer(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        msg_type = res[1][0]
-        msg_blob = res[1][1:]
-
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type=struct.pack('B', msg_type),
-                                                                               message=msg_blob)
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
 
         self.assertEqual(msg.blockHeight, 555)

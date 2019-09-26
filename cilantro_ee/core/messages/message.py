@@ -3,6 +3,7 @@ import time
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
 
+import struct
 
 class Message:
     _msg_impl = CapnpImpl()  # currently only capnp implementation is available
@@ -33,3 +34,18 @@ class Message:
             msg_type=msg_type, message=message,
             sender=sender, timestamp=timestamp,
             is_verify=is_verify)
+
+    @classmethod
+    def unpack_message_2(cls, message: bytes):
+        msg_type = struct.pack('B', message[0])
+        msg_blob = message[1:]
+
+        return cls._msg_impl.unpack_message(msg_type=msg_type, message=msg_blob)
+
+    @classmethod
+    def get_signed_message_packed_2(cls, sk: bytes, msg_type: MessageType, **kwargs):
+        t, m = cls._msg_impl.get_signed_message_packed(
+            signee=sk,
+            msg_type=msg_type, **kwargs)
+
+        return t + m

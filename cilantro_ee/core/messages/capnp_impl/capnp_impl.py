@@ -70,6 +70,7 @@ class CapnpImpl:
     def _unpack_message(self, msg_type: MessageType, message: bytes,
                         sender: bytes = None, timestamp: float = time.time(),
                         is_verify: bool = True):
+
         if msg_type == MessageType.SIGNED_MESSAGE:
             return self._unpack_signed_message(message, is_verify)
         if msg_type in self.message_capnp:
