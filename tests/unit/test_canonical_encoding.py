@@ -1,7 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.core import canonical
 from tests import random_txs
-from copy import deepcopy
 
 
 class TestCanonicalCoding(TestCase):
