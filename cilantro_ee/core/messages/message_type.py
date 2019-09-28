@@ -28,3 +28,5 @@ class MessageType(MessageBaseType):
     # todo - need a better way to handle internal messages inside another message
     TRANSACTION_DATA = auto()
     MERKLE_PROOF = auto()
+    TRANSACTION = auto()
+    SUBBLOCK = auto()

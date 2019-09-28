@@ -2,20 +2,15 @@ import time
 import asyncio
 from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.core.messages.message import Message
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
-import os
-import capnp
 
-from cilantro_ee.core.messages.message import MessageTypes
-
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
@@ -114,7 +109,7 @@ class CatchupManager:
         # raghu todo - need to revisit this? why do we serialize sub-blocks only, but not block
         if sbs is not None:
             for raw_sb in blk_dict['subBlocks']:
-                subblock = subblock_capnp.SubBlock.from_bytes_packed(raw_sb)
+                subblock = Message.unpack_message_internal(MessageType.SUBBLOCK, raw_sb)
                 self.log.info('Block: {}'.format(subblock))
                 for tx in subblock.transactions:
                     update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
@@ -223,10 +218,10 @@ class CatchupManager:
         if len(tmp_list) > 1:
             assert tmp_list[0].get('blockNum') > tmp_list[-1].get('blockNum'), "ensure reply are in ascending order {}"\
                 .format(tmp_list)
-        # Todo @tejas we need to think if we need reverse sort here
-        tmp_list.reverse()
+            tmp_list.reverse()
+
         self.log.debugv("tmp list -> {}".format(tmp_list))
-        self.new_target_blk_num = tmp_list[-1].get('blockNum')
+        self.new_target_blk_num = tmp_list[-1].get('blockNum') if len(tmp_list) > 0 else 0
         new_blks = self.new_target_blk_num - self.target_blk_num
 
         if new_blks > 0:
@@ -307,6 +302,9 @@ class CatchupManager:
                                       latest_blk_num=self.curr_num,
                                       sender_bhash=request.blockHash)
 
+        if delta_idx is None:
+            delta_idx = []
+       
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                           request.blockHash))
 
@@ -346,7 +344,7 @@ class CatchupManager:
 
     # todo handle mismatch between redis and monodb
     # MASTER ONLY CALL
-    def _send_block_idx_reply(self, reply_to_vk=None, catchup_list=None):
+    def _send_block_idx_reply(self, reply_to_vk, catchup_list=[]):
         # this func doesnt care abt catchup_state we respond irrespective
         self.log.info("catchup list -> {}".format(catchup_list))
 

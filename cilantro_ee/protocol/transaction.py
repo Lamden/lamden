@@ -4,7 +4,7 @@ from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
 from cilantro_ee.protocol import pipehash
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import time
 import os
 import capnp

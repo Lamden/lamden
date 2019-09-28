@@ -170,11 +170,10 @@ class BlockAggregator(Worker):
         msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
-        # msg_type, msg, sender, timestamp = Message.unpack_message(msg_type, msg_blob)
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
-                          .format(msg_type, sender, timestamp)
+                          .format(msg_type, sender, timestamp))
             return
 
         if msg_type == MessageType.BLOCK_INDEX_REQUEST:
@@ -228,7 +227,7 @@ class BlockAggregator(Worker):
         msg_type, msg, signee, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
-                          .format(msg_type, sender, timestamp)
+                          .format(msg_type, sender, timestamp))
             return
 
         if msg_type == MessageType.BLOCK_INDEX_REPLY:

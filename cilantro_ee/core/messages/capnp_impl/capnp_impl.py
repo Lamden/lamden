@@ -28,7 +28,9 @@ class CapnpImpl:
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
             MessageType.TRANSACTION_BATCH: self.transaction_capnp.TransactionBatch,
             MessageType.TRANSACTION_DATA: self.transaction_capnp.TransactionData,
+            MessageType.TRANSACTION: self.transaction_capnp.Transaction,
             MessageType.MERKLE_PROOF: self.subblock_capnp.MerkleProof,
+            MessageType.SUBBLOCK: self.subblock_capnp.SubBlock,
         }
 
 
@@ -67,7 +69,7 @@ class CapnpImpl:
             return self._unpack_signed_message(message, is_verify)
         if msg_type in self.message_capnp:
             return msg_type, self.message_capnp[msg_type].from_bytes_packed(message), sender, timestamp, True
-        return None, None, sender, timestamp, True
+        return msg_type, None, sender, timestamp, True
 
     def _unpack_signed_message(self, message: bytes, is_verify: bool):
         signed_msg = self.signed_message_capnp.SignedMessage.from_bytes_packed(message)

@@ -34,7 +34,7 @@ struct BlockDataRequest {
 struct BlockIndex {
     blockNum @0 :UInt32;
     blockHash @1 :Data;
-    blockOwners @2 :List(Data)
+    blockOwners @2 :List(Data);
 }
 
 struct BlockIndexReply {

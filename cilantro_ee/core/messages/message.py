@@ -27,10 +27,20 @@ class Message:
 
     # returns msg_type, encoded_msg, sender, timestamp, is_verified
     @classmethod
-    def unpack_message(cls, msg_type: MessageType, message: bytes,
+    def unpack_message(cls, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
                        is_verify: bool = True):
         return cls._msg_impl.unpack_message(
                                  msg_type=msg_type, message=message,
                                  sender=sender, timestamp=timestamp, 
                                  is_verify=is_verify)
+
+
+    # returns encoded_msg
+    @classmethod
+    def unpack_message_internal(cls, msg_type: MessageType, message: bytes):
+        _, msg, _, _, _ = cls._msg_impl._unpack_message(
+                                 msg_type=msg_type, message=message,
+                                 sender=sender, timestamp=timestamp, 
+                                 is_verify=is_verify)
+        return msg

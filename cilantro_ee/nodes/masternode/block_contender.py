@@ -5,21 +5,14 @@ from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
-# from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.notification import BlockNotification
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 from cilantro_ee.protocol.wallet import _verify
 
 from collections import defaultdict
 from typing import List
 import time
 import hashlib
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-
 
 class SubBlockGroup:
 
@@ -71,6 +64,7 @@ class SubBlockGroup:
         sigs = [c.signature for c in contenders]
 
         # Get a contender from the set. This presumes that the contenders have identical data, which they should.
+        # contenders should be grouped based on prevBlockHash and resultHash equality - then they will have identical data - raghu
         contender = contenders.pop()
         contenders.add(contender)
 
@@ -79,16 +73,14 @@ class SubBlockGroup:
 
         txs = self._get_ordered_transactions()
 
-        sb = subblock_capnp.SubBlock.new_message(
-            merkleRoot=merkle_root,
-            signatures=sigs,
-            merkleLeaves=[leaf for leaf in leaves],
-            subBlockIdx=self.sb_idx,
-            inputHash=input_hash,
-            transactions=[transaction_capnp.TransactionData.from_bytes_packed(tx) for tx in txs]
-        )
-        print("raghu uuuuu  type of sb is {}".format(type(sb)))
-
+        # looks like sbc has txns packed while sb will have them as unpacked. Need to eliminate these inconsistencies for better performance - raghu
+        mtype_bytes = int_to_bytes(int(MessageType.TRANSACTION_DATA))
+        sb = Message.get_message(
+                   MessageType.SUBBLOCK, merkleRoot=merkle_root,
+                   signatures=sigs, merkleLeaves=[leaf for leaf in leaves],
+                   subBlockIdx=self.sb_idx, inputHash=input_hash,
+                   transactions=[Message.unpack_message(mtype_bytes, tx) for tx in txs])
+   
         return sb
 
     def is_consensus_reached(self) -> bool:
@@ -144,7 +136,7 @@ class SubBlockGroup:
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
         return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
 
-    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender):
+    def add_sbc(self, sender_vk: str, sbc):
         # Verify that the SubBlockContender message is validly constructured
         if not self._verify_sbc(sender_vk, sbc):
             self.log.error("Could not verify SBC from sender {}".format(sender_vk))
@@ -180,9 +172,10 @@ class SubBlockGroup:
 
         self.log.info("Added SBC")
 
-    def _verify_sbc(self, sender_vk: bytes, sbc: subblock_capnp.SubBlockContender) -> bool:
+    def _verify_sbc(self, sender_vk: bytes, sbc) -> bool:
         # Dev sanity checks
-        merkle_proof = subblock_capnp.MerkleProof.from_bytes_packed(sbc.signature)
+        mtype_bytes = int_to_bytes(int(MessageType.MERKLE_PROOF))
+        merkle_proof = Message.unpack_message(mtype_bytes, sbc.signature)
 
         if not merkle_proof.signer == sender_vk:
             self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
@@ -325,7 +318,7 @@ class BlockContender:
 
         return sb_data
 
-    def get_failed_block_notif(self) -> BlockNotification:
+    def get_failed_block_notif(self):
         input_hashes = self._get_input_hashes()
         first_sb_idx = self._get_first_sb_idx()
         block_num = self.state.latest_block_num + 1
@@ -334,7 +327,7 @@ class BlockContender:
                                   block_num=block_num, prev_block_hash=last_hash,
                                   first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
-    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender) -> bool:
+    def add_sbc(self, sender_vk: str, sbc) -> bool:
         """
         Adds a SubBlockContender to this BlockContender's data.
         :param sender_vk: The VK of the sender of the SubBlockContender
