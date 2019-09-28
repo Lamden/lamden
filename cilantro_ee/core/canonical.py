@@ -20,19 +20,26 @@ def format_dictionary(d: dict) -> dict:
     return {k: v for k, v in sorted(d.items())}
 
 
-def block_from_subblocks(subblocks, top: TopBlockManager=TopBlockManager()):
+def block_from_subblocks(subblocks, top: TopBlockManager=TopBlockManager()) -> dict:
     block_hasher = hashlib.sha3_256()
     block_hasher.update(top.get_latest_block_hash())
+
+    deserialized_subblocks = []
 
     for subblock in subblocks:
         sb = subblock.to_dict()
 
         sb = format_dictionary(sb)
+        deserialized_subblocks.append(sb)
 
         encoded_sb = bson.dumps(sb)
-
         block_hasher.update(encoded_sb)
 
-    block_hash = block_hasher.digest()
-    block_num = top.get_latest_block_number() + 1
+    block = {
+        'blockHash': block_hasher.digest(),
+        'blockNum': top.get_latest_block_number() + 1,
+        'prevBlockHash': top.get_latest_block_hash(),
+        'subBlocks': deserialized_subblocks
+    }
 
+    return block

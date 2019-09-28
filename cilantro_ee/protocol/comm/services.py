@@ -186,7 +186,7 @@ class RequestReplyService:
 
 
 async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10):
-    if retries <= 0:
+    if retries < 0:
         return None
 
     socket = ctx.socket(zmq.REQ)
