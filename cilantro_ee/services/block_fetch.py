@@ -52,9 +52,7 @@ class BlockFetcher:
                                                       msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
                                                       timestamp=int(time.time()))
 
-        print('ok')
-
-        response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0)
+        response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
 
         return response
 

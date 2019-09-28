@@ -185,11 +185,15 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10, dealer=False):
     if retries < 0:
         return None
 
-    socket = ctx.socket(zmq.REQ)
+    if dealer:
+        socket = ctx.socket(zmq.DEALER)
+    else:
+        socket = ctx.socket(zmq.REQ)
+
     socket.setsockopt(zmq.LINGER, linger)
     try:
         # Allow passing an existing socket to save time on initializing a _new one and waiting for connection.

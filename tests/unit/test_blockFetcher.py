@@ -67,7 +67,7 @@ class TestBlockFetcher(TestCase):
         tasks = asyncio.gather(
             m.serve(),
             f.get_latest_block_height(services._socket('tcp://127.0.0.1:10000')),
-            stop_server(m, 0.5),
+            stop_server(m, 0.1),
         )
 
         loop = asyncio.get_event_loop()
