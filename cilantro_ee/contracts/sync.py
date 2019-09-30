@@ -53,9 +53,9 @@ def submit_contract_with_construction_args(name, args={}):
 
     with open(file) as f:
         code = f.read()
-        log.debug('code {}'.format(code))
-        log.debug('name {}'.format(name))
-        log.debug('args {}'.format(args))
-        client.submit(code, name=name, metering=None, constructor_args=args)
+        # log.debug('code {}'.format(code))
+        # log.debug('name {}'.format(name))
+        # log.debug('args {}'.format(args))
+        client.submit(code, name=name, constructor_args=args)
 
     client.raw_driver.commit()
