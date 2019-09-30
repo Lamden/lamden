@@ -7,7 +7,6 @@ class MessageBaseType(IntEnum):
         return 2 * count
 
 
-
 class MessageType(MessageBaseType):
     SIGNED_MESSAGE = 0
 

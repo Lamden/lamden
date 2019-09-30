@@ -1,12 +1,13 @@
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.protocol.transaction import TransactionBuilder
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 import random
 import json
+import hashlib
 
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -39,9 +40,8 @@ def random_tx_data(tx:transaction_capnp.Transaction):
     # Put this hashmap as the state of the contract execution and contruct it into a capnp struct
     tx_data = transaction_capnp.TransactionData.new_message(
         transaction=tx,
-        status='SUCC',
+        status=1,
         state=json.dumps(get_set),
-        contractType=0,
         stampsUsed=random.randint(100_000, 1_000_000)
     )
     return tx_data
@@ -54,10 +54,14 @@ def subblock_from_txs(txs, idx=0):
     w = Wallet()
 
     sig = w.sign(tree.root)
+    h = hashlib.sha3_256()
+    h.update(tree.root)
+
+    proof = subblock_capnp.MerkleProof.new_message(hash=h.digest(), signer=w.vk.encode(), signature=sig)
 
     sb = subblock_capnp.SubBlock.new_message(
         merkleRoot=tree.root,
-        signatures=[sig],
+        signatures=[proof],
         merkleLeaves=tree.leaves,
         subBlockIdx=0,
         inputHash=secrets.token_bytes(32),

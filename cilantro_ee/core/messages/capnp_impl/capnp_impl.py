@@ -33,7 +33,7 @@ class CapnpImpl:
             MessageType.BLOCK_INDEX_REQUEST: self.blockdata_capnp.BlockIndexRequest,
             MessageType.BLOCK_INDEX_REPLY: self.blockdata_capnp.BlockIndexReply,
             MessageType.BLOCK_DATA_REQUEST: self.blockdata_capnp.BlockDataRequest,
-            MessageType.BLOCK_DATA_REPLY: self.blockdata_capnp.BlockData,               # ?
+            MessageType.BLOCK_DATA: self.blockdata_capnp.BlockData,               # ?
             MessageType.BLOCK_NOTIFICATION: self.notification_capnp.BlockNotification,  # ?
             MessageType.BURN_INPUT_HASHES: self.notification_capnp.BurnInputHashes,
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
@@ -64,26 +64,33 @@ class CapnpImpl:
     # def get_signed_message(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
         # return None, None     # prevent using this directly until we know use cases
 
-    def get_signed_message_packed(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed(self, signee: bytes, msg_type: MessageType, **kwargs):
         msg_type, msg = self.get_message_packed(msg_type, **kwargs)
-        sig = sign(msg)
+        sig = _sign(signee, msg)
+
         signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
                             message=msg, signature=sig, signee=signee, timestamp=time.time())
+
         return pack(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
 
     def unpack_message(self, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
                        is_verify: bool = True):
+
         msg_type = unpack(msg_type)
+
         return self._unpack_message(MessageType(msg_type), message, sender, timestamp, is_verify)
 
     def _unpack_message(self, msg_type: MessageType,  message: bytes,
                         sender: bytes = None, timestamp: float = time.time(),
                         is_verify: bool = True):
+
         if msg_type == MessageType.SIGNED_MESSAGE:
             return self._unpack_signed_message(message, is_verify)
+
         if msg_type in self.message_capnp:
             return msg_type, self.message_capnp[msg_type].from_bytes_packed(message), sender, timestamp, True
+
         return msg_type, None, sender, timestamp, True
 
     def _unpack_signed_message(self, message: bytes, is_verify: bool):

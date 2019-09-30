@@ -1,5 +1,4 @@
 import time
-
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
 import struct

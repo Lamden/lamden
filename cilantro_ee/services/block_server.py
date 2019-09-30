@@ -6,7 +6,7 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 import os
 import capnp
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import json
 import struct
 import time

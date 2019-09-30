@@ -109,7 +109,7 @@ class TestBlockServer(TestCase):
             'blockNum': 0
         })
 
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500, driver=c)
+        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=2000, poll_timeout=500, driver=c)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)

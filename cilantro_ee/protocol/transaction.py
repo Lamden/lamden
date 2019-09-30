@@ -5,7 +5,7 @@ from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.core.nonces import NonceManager
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import time
 import os
 import capnp
