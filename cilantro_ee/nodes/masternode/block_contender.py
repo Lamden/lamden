@@ -7,6 +7,7 @@ from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
+from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack, unpack
 from cilantro_ee.protocol.wallet import _verify
 
 from collections import defaultdict
@@ -74,7 +75,7 @@ class SubBlockGroup:
         txs = self._get_ordered_transactions()
 
         # looks like sbc has txns packed while sb will have them as unpacked. Need to eliminate these inconsistencies for better performance - raghu
-        mtype_bytes = int_to_bytes(int(MessageType.TRANSACTION_DATA))
+        mtype_bytes = pack(int(MessageType.TRANSACTION_DATA))
         sb = Message.get_message(
                    MessageType.SUBBLOCK, merkleRoot=merkle_root,
                    signatures=sigs, merkleLeaves=[leaf for leaf in leaves],
@@ -174,7 +175,7 @@ class SubBlockGroup:
 
     def _verify_sbc(self, sender_vk: bytes, sbc) -> bool:
         # Dev sanity checks
-        mtype_bytes = int_to_bytes(int(MessageType.MERKLE_PROOF))
+        mtype_bytes = pack(int(MessageType.MERKLE_PROOF))
         merkle_proof = Message.unpack_message(mtype_bytes, sbc.signature)
 
         if not merkle_proof.signer == sender_vk:
