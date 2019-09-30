@@ -38,6 +38,7 @@ class CatchupManager:
         # self.driver = CilantroStorageDriver(key=self.signing_key)
 
         self.state = MetaDataStorage()
+        self.nonce_manager = NonceManager()
 
         # catchup state
         self.is_caught_up = False
