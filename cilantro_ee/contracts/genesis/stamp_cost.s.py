@@ -7,7 +7,7 @@ VOTING_PERIOD = datetime.DAYS * 1
 
 
 @construct
-def seed(initial_rate):
+def seed(initial_rate=100_000):
     S['rate'] = initial_rate
     reset()
 
