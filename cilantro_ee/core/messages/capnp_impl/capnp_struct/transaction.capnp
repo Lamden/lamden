@@ -3,13 +3,9 @@
 using V = import "values.capnp";
 
 struct MetaData {
-    proof @0 :Data;
+    proof @0 :Data;         # raghu - can be eliminated
     signature @1 :Data;
     timestamp @2 :Float32;
-}
-
-struct Transactions {
-    transactions @0 :List(Transaction);
 }
 
 struct TransactionPayload {
@@ -31,9 +27,8 @@ struct Transaction {
 
 struct TransactionData {
     transaction @0 :Transaction;
-    status @1: Text;
-    state @2: Text;
-    contractType @3: UInt16;
+    status @1: UInt8;
+    state @2: Data;
 }
 
 struct TransactionBatch {

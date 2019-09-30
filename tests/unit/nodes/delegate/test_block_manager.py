@@ -1,3 +1,4 @@
+import asyncio
 from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 
@@ -10,7 +11,8 @@ from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
-from cilantro_ee.messages.base.base import MessageBase
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 _log = get_logger("TestBlockManager")
@@ -82,14 +84,19 @@ class TestBlockManager(TestCase):
         bm.start_sbb_procs()
 
         num_sbb = len(bm.sb_builders)
-        message = Ready.create()
-        message_type = MessageBase.registry[type(message)]
+        mtype, message = Message.get_message_packed(MessageType.READY)
 
+        futs = []
         for i in range(num_sbb):
             self.assertFalse(bm.is_sbb_ready())
-            frames = [str(i).encode(), int_to_bytes(message_type), message.serialize()]
-            bm.handle_ipc_msg(frames)
+            frames = [str(i).encode(), mtype, message]
+            futs.append(asyncio.ensure_future(bm.handle_ipc_msg(frames)))
 
+        while len(futs) > 0:
+            fut = futs.pop(0)
+            if not fut.done():
+                futs.append(fut)
+            
         self.assertTrue(bm.is_sbb_ready())
 
 

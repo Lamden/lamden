@@ -8,15 +8,7 @@ from collections import defaultdict
 from typing import List
 from cilantro_ee.constants.system_config import *
 
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
 import hashlib
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64

@@ -5,6 +5,7 @@ from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
+from cilantro_ee.utils import int_to_bytes
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
@@ -12,17 +13,15 @@ from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.storage.state import MetaDataStorage
 
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
+
 from multiprocessing import Queue
 import ast
 import ssl
 import time
 
 import hashlib
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 WEB_SERVER_PORT = 8080
 SSL_WEB_SERVER_PORT = 443
@@ -101,7 +100,7 @@ async def submit_transaction(request):
     # Try to deserialize transaction.
     try:
         tx_bytes = request.body
-        tx = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx = Message.unpack_message(int_to_bytes(int(MessageType.TRANSACTION)), tx_bytes)
 
     except Exception as e:
         return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)

@@ -29,8 +29,6 @@ class Hasher:
         :return: Bytes
         :raises: An assertion if data is a non-trivial type that could not be casted to bytes
         """
-        # MessageBase imported here to fix cyclic imports...TODO -- fix dependencies
-        from cilantro_ee.messages.base.base import MessageBase
         from cilantro_ee.utils import int_to_bytes
 
         assert data is not None, "Cannot hash a None type!"
@@ -41,8 +39,6 @@ class Hasher:
             data = data.encode()
         elif t is int:
             data = int_to_bytes(data)
-        elif issubclass(t, MessageBase):
-            data = data.serialize()
 
         assert type(data) is bytes, "Unable to cast data of original type {} into bytes".format(t)
 

@@ -3,6 +3,9 @@
 using T = import "transaction.capnp";
 
 # SubBlock is intended to be nested inside of BlockData, and never really used on its own
+# todo - remove hash from MerkleProof - it is same as MerkleRoot at higher level
+#      - remove inputHash from SubBlock
+#      - include SubBlock as part of SubBlockContender with additional fields: prevBlockHash and inputHash
 
 struct MerkleProof {
     hash @0 :Data;
@@ -12,7 +15,7 @@ struct MerkleProof {
 
 struct SubBlock {
     merkleRoot @0 :Data;
-    signatures @1 :List(Data);
+    signatures @1 :List(MerkleProof);
     merkleLeaves @2 :List(Text);
     subBlockIdx @3 :UInt8;
     inputHash @4 :Data;
@@ -23,7 +26,7 @@ struct SubBlockContender {
     resultHash @0 :Data;
     inputHash @1 :Data;
     merkleLeaves @2: List(Data);
-    signature @3 :Data;
+    signature @3 :MerkleProof;
     transactions @4: List(Data);
     subBlockIdx @5: UInt8;
     prevBlockHash @6: Data;
