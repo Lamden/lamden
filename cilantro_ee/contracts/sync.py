@@ -1,7 +1,9 @@
 import glob
 import os
 from contracting.client import ContractingClient
+from cilantro_ee.logger.base import get_logger
 
+log = get_logger("sync")
 
 def contract_name_from_file_path(p: str) -> str:
     directories = p.split('/')
@@ -51,7 +53,9 @@ def submit_contract_with_construction_args(name, args={}):
 
     with open(file) as f:
         code = f.read()
-
+        log.debug('code {}'.format(code))
+        log.debug('name {}'.format(name))
+        log.debug('args {}'.format(args))
         client.submit(code, name=name, constructor_args=args)
 
     client.raw_driver.commit()
