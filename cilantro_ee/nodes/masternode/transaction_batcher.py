@@ -147,12 +147,12 @@ class TransactionBatcher(Worker):
 
             for _ in range(bag_size):
                 # Get a transaction from the queue
-                _, tx = self.queue.get()
+                tx = self.queue.get()
 
                 # Make sure that the transaction is valid
                 # this is better done at webserver level before packing and putting it into the queue - raghu todo
                 try:
-                    transaction_is_valid(tx=tx,
+                    transaction_is_valid(tx=tx[1],
                                          expected_processor=self.wallet.verifying_key(),
                                          driver=self.driver,
                                          strict=True)
@@ -160,11 +160,11 @@ class TransactionBatcher(Worker):
                     continue
 
                 # Hash it
-                tx_bytes = tx.as_builder().to_bytes_packed()
+                tx_bytes = tx[1].as_builder().to_bytes_packed()
                 h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
-                tx_list.append(tx)
+                tx_list.append(tx[1])
 
             # Add a timestamp
             timestamp = time.time()
@@ -178,9 +178,9 @@ class TransactionBatcher(Worker):
 
             mtype, msg = Message.get_message_packed(
                              MessageType.TRANSACTION_BATCH,
-                             transactions=tx_list, timestamp=timestamp,
+                             transactions=[t for t in tx_list], timestamp=timestamp,
                              signature=signature, inputHash=inputHash,
-                             sender=my_wallet.verifying_key())
+                             sender=my_wallet.vk.encode())
 
             self.pub_sock.send_msg(msg=msg, msg_type=mtype,
                                    filter=TRANSACTION_FILTER.encode())

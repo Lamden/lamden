@@ -74,7 +74,10 @@ class CatchupManager:
 
         self.nonce_manager = NonceManager(driver=self.state)
 
-        self.driver = CilantroStorageDriver(key=self.signing_key)
+        if self.store_full_blocks:
+            self.driver = CilantroStorageDriver(key=self.signing_key)
+        else:
+            self.driver = None
 
     def update_state(self):
         """
