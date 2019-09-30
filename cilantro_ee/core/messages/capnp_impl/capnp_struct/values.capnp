@@ -40,8 +40,3 @@ struct Map(Key, Value) {
   }
 }
 
-
-struct Kwargs {
-    kwargs @0: Map(Text, Value);
-}
-

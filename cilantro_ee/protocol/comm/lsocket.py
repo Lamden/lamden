@@ -1,22 +1,13 @@
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.logger.base import get_logger
-import zmq.asyncio, asyncio, os
+import zmq.asyncio, asyncio
 
 from collections import defaultdict, deque
 from functools import wraps
 from typing import List, Union
-from os.path import join
 
 from cilantro_ee.constants import conf
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 def vk_lookup(func):
@@ -94,9 +85,9 @@ class LSocketBase:
         """ Convenience method to send a message over this socket using send_multipart. If 'header' arg exists, it will be
         used as the first frame of the message. For example, should be a filter if sending over PUB, or an ID frame if
         it is a Router socket.
-        :param msg: The MessageBase instance to wrap in an envelope and send
+        :param msg: The message to send
         :param header: The header frame to use. If None, no header frame will be sent. """
-        self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
+        # self.log.info('sending a message type {} with header {}'.format(msg_type.hex(), filter))
 
         self.send_multipart([filter, msg_type, msg])
 

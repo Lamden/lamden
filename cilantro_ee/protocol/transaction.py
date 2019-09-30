@@ -3,6 +3,7 @@ from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.messages import capnp as schemas
 import time
@@ -96,6 +97,7 @@ class TransactionBuilder:
         return self.struct.to_bytes_packed()
 
 
+# raghu todo this method is not used
 def verify_packed_tx(sender, tx):
     try:
         unpacked = transaction_capnp.Transaction.from_bytes_packed(tx)

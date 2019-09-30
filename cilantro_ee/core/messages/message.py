@@ -2,11 +2,12 @@ import time
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
-
 import struct
 
 class Message:
-    _msg_impl = CapnpImpl()  # currently only capnp implementation is available
+
+    _msg_impl = CapnpImpl()   # currently only capnp implementation is available
+
 
     # returns msg_type, encoded_msg
     @classmethod
@@ -20,10 +21,20 @@ class Message:
 
     # returns encoded_msg_type, signed_encoded_msg_packed
     @classmethod
-    def get_signed_message_packed(cls, signee: bytes, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed(cls, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
         return cls._msg_impl.get_signed_message_packed(
-            signee=signee,
-            msg_type=msg_type, **kwargs)
+                                  signee=signee, sign=sign,
+                                  msg_type=msg_type, **kwargs)
+
+    # returns encoded_msg
+
+    @classmethod
+    def unpack_message_internal(cls, msg_type: MessageType, message: bytes):
+        _, msg, _, _, _ = cls._msg_impl._unpack_message(
+            msg_type=msg_type, message=message,
+            sender=sender, timestamp=timestamp,
+            is_verify=is_verify)
+        return msg
 
     # returns msg_type, encoded_msg, sender, timestamp, is_verified
     @classmethod
@@ -49,3 +60,4 @@ class Message:
             msg_type=msg_type, **kwargs)
 
         return t + m
+

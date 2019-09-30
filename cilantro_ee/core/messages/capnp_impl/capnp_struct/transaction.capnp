@@ -3,7 +3,7 @@
 using V = import "values.capnp";
 
 struct MetaData {
-    proof @0 :Data;
+    proof @0 :Data;         # raghu - can be eliminated
     signature @1 :Data;
     timestamp @2 :Float32;
 }
@@ -27,10 +27,9 @@ struct Transaction {
 
 struct TransactionData {
     transaction @0 :Transaction;
-    status @1: Text;
-    state @2: Text;
-    contractType @3: UInt16;
-    stampsUsed @4: UInt64;
+    status @1: UInt8;
+    state @2: Data;
+    stampsUsed @3: UInt64;
 }
 
 struct Transactions {

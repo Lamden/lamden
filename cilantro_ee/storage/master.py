@@ -2,24 +2,16 @@ import cilantro_ee
 from cilantro_ee.protocol import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
-from cilantro_ee.messages.block_data.block_data import BlockData
 from cilantro_ee.logger.base import get_logger
 from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
+from cilantro_ee.constants.system_config import *
 from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import system_config
 
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
 import hashlib
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = '0' * 64
@@ -159,13 +151,13 @@ class MasterStorage:
 
         return tx
 
-    def put_tx_map(self, block: BlockData):
-        m = block.get_tx_hash_to_merkle_leaf()
-        blk_id = block.block_num
-
-        for entry in m:
-            entry['block'] = blk_id
-            self.txs.collection.insert_one(entry)
+#    def put_tx_map(self, block: BlockData):
+#        m = block.get_tx_hash_to_merkle_leaf()
+#        blk_id = block.block_num
+#
+#        for entry in m:
+#            entry['block'] = blk_id
+#            self.txs.collection.insert_one(entry)
 
     def drop_collections(self):
         self.blocks.flush()
@@ -349,8 +341,9 @@ class CilantroStorageDriver(DistributedMasterStorage):
         successful_storage = self.evaluate_wr(entry=block_dict)
 
         assert successful_storage is None or successful_storage is True, 'Write failure.'
+        block_dict['subBlocks'] = [s for s in sub_blocks]
 
-        return block
+        return block_dict
 
     def get_transactions(self, tx_hash):
         txs = self.get_tx(tx_hash)

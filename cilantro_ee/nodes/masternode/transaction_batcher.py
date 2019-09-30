@@ -5,22 +5,17 @@ from cilantro_ee.constants.batcher import MAX_TXN_SUBMISSION_DELAY
 from cilantro_ee.constants.batcher import MAX_TXNS_PER_SUB_BLOCK
 from cilantro_ee.constants.system_config import BLOCK_HEART_BEAT_INTERVAL
 from cilantro_ee.constants.system_config import INPUT_BAG_TIMEOUT
-from cilantro_ee.messages.block_data.notification import BurnInputHashes
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 import zmq.asyncio
 import asyncio, time
-import os
-import capnp
-from cilantro_ee.messages import capnp as schemas
 import hashlib
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.pow import SHA3POWBytes
 from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.storage.state import MetaDataStorage
 from contracting import config
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class TransactionBatcher(Worker):
@@ -82,16 +77,21 @@ class TransactionBatcher(Worker):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 
         msg_type = frames[0]
-        #msg_blob = frames[1]
+        msg_blob = frames[1]
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        if not is_verified:
+            self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
+                          .format(msg_type, sender, timestamp))
+            return
 
         self.log.info('Got message on IPC {}'.format(msg_type))
 
-        if msg_type == MessageTypes.BURN_INPUT_HASHES:
+        if msg_type == MessageType.BURN_INPUT_HASHES:
             self.log.info('An empty or non-empty block was made.')
-            bih = BurnInputHashes.unpack_burn_input_hashes(frames[1])
-            self._update_sent_input_hashes([ih for ih in bih.inputHashes])
+            self._update_sent_input_hashes(msg.inputHashes)
 
-        elif msg_type == MessageTypes.READY_INTERNAL:
+        elif msg_type == MessageType.READY:
             self.log.success('READY.')
             self._ready = True
 
@@ -115,6 +115,7 @@ class TransactionBatcher(Worker):
         cur_txn_delay = 0
         empty_bag_delay = 0
         max_empty_bag_delay = BLOCK_HEART_BEAT_INTERVAL - INPUT_BAG_TIMEOUT
+        my_wallet = Wallet(seed=self.signing_key)
 
         while True:
             num_txns = self.queue.qsize() 
@@ -149,6 +150,7 @@ class TransactionBatcher(Worker):
                 tx = self.queue.get()
 
                 # Make sure that the transaction is valid
+                # this is better done at webserver level before packing and putting it into the queue - raghu todo
                 try:
                     transaction_is_valid(tx=tx,
                                          expected_processor=self.wallet.verifying_key(),
@@ -162,32 +164,28 @@ class TransactionBatcher(Worker):
                 h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
-                # tx_struct = transaction_capnp.ContractTransaction.from_bytes_packed(tx)
                 tx_list.append(tx)
 
-            batch = transaction_capnp.TransactionBatch.new_message()
-            batch.init('transactions', len(tx_list))
-
-            for i, tx in enumerate(tx_list):
-                batch.transactions[i] = tx
-
             # Add a timestamp
-            batch.timestamp = time.time()
-            h.update('{}'.format(batch.timestamp).encode())
-            batch.inputHash = h.digest()
-            self.sent_input_hashes.append(batch.inputHash)
+            timestamp = time.time()
+            h.update('{}'.format(timestamp).encode())
+            inputHash = h.digest()
 
             # Sign the message for verification
-            w = Wallet(seed=self.signing_key)
-            batch.signature = w.sign(batch.inputHash)
-            batch.sender = w.verifying_key()
+            signature = my_wallet.sign(inputHash)
 
-            batch_packed = batch.to_bytes_packed()
-            self.pub_sock.send_msg(msg=batch_packed,
-                                   msg_type=MessageTypes.TRANSACTION_BATCH,
+            self.sent_input_hashes.append(inputHash)
+
+            mtype, msg = Message.get_message_packed(
+                             MessageType.TRANSACTION_BATCH,
+                             transactions=tx_list, timestamp=timestamp,
+                             signature=signature, inputHash=inputHash,
+                             sender=my_wallet.verifying_key())
+
+            self.pub_sock.send_msg(msg=msg, msg_type=mtype,
                                    filter=TRANSACTION_FILTER.encode())
 
 
-            self.log.debug1("Send {} transactions with hash {} and timestamp {}"
-                      .format(bag_size, batch.inputHash.hex(), batch.timestamp))
+            self.log.debug1("Send {} / {} transactions with hash {} and timestamp {}"
+                      .format(bag_size, len(tx_list), inputHash.hex(), timestamp))
 

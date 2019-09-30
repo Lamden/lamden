@@ -23,17 +23,22 @@ struct BlockData {
 }
 
 struct BlockIndexRequest {
-    blockHash @0: Data;
-    sender @1: Data;
-}
-
-struct StateUpdateRequest {
     blockHash @0 :Data;
+    sender @1 :Data;
 }
 
+struct BlockDataRequest {
+    blockNum @0 :UInt32;
+}
 
-struct StateUpdateReply {
-    blockData @0 :BlockData;
+struct BlockIndex {
+    blockNum @0 :UInt32;
+    blockHash @1 :Data;
+    blockOwners @2 :List(Data);
+}
+
+struct BlockIndexReply {
+    indices @0 :List(BlockIndex);
 }
 
 struct BlockDataRequest {

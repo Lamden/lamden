@@ -20,11 +20,18 @@ class MessageType(MessageBaseType):
     BLOCK_INDEX_REQUEST = auto()
     BLOCK_INDEX_REPLY = auto()
     BLOCK_DATA_REQUEST = auto()
+    BLOCK_DATA_REPLY = auto()
     BLOCK_DATA = auto()
     BLOCK_NOTIFICATION = auto()
     BURN_INPUT_HASHES = auto()
 
     TRANSACTION_BATCH = auto()
+    # todo - need a better way to handle internal messages inside another message
+    TRANSACTION_DATA = auto()
+    MERKLE_PROOF = auto()
+    TRANSACTION = auto()
+    SUBBLOCK = auto()
+
 
     LATEST_BLOCK_HEIGHT_REQUEST = auto()
     LATEST_BLOCK_HEIGHT_REPLY = auto()
