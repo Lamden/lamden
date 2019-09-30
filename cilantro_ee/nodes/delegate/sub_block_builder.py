@@ -141,9 +141,9 @@ class SubBlockBuilder(Worker):
         # connect or bind is a separate step
         self.ipc_dealer.connect(port=ipc_port, protocol='ipc', ip=ipc_ip)
 
-        # self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
         # Adding message_handler with dictionary of actions as a separate step - this api could change
-        self.tasks.append(self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()))
+        # self.tasks.append(self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -314,6 +314,8 @@ class SubBlockBuilder(Worker):
         msg_blob = frames[1]
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        self.log.info("Got message type '{}' msg '{}' from block manager. "
+                      .format(msg_type, msg))
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, sender, timestamp))
