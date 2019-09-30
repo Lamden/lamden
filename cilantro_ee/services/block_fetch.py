@@ -54,7 +54,9 @@ class BlockFetcher:
 
         response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
 
-        return response
+        _, unpacked, _, _, _ = Message.unpack_message_2(response)
+
+        return unpacked.blockHeight
 
     def fetch_blocks(self, starting_block_number=0):
         pass

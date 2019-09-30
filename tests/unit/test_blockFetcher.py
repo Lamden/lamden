@@ -29,6 +29,7 @@ class FakeTopBlockManager:
     def get_latest_block_number(self):
         return self.height
 
+
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
     s.stop()
@@ -49,20 +50,10 @@ class TestBlockFetcher(TestCase):
                         wallet=w,
                         ctx=self.ctx,
                         linger=500,
-                        poll_timeout=500,
+                        poll_timeout=100,
                         top=FakeTopBlockManager(101, 'abcd'))
 
         f = BlockFetcher(wallet=Wallet(), ctx=self.ctx)
-
-        async def get(msg):
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
-
-            await socket.send(msg)
-
-            res = await socket.recv()
-
-            return res
 
         tasks = asyncio.gather(
             m.serve(),
@@ -73,4 +64,5 @@ class TestBlockFetcher(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        print(res)
+        self.assertEqual(res[1], 101)
+
