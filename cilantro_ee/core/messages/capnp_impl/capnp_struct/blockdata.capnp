@@ -40,23 +40,3 @@ struct BlockIndex {
 struct BlockIndexReply {
     indices @0 :List(BlockIndex);
 }
-
-struct BlockDataRequest {
-    blockNum @0: UInt32;
-}
-
-struct LatestBlockHeightRequest {
-    timestamp @0: UInt64;
-}
-
-struct LatestBlockHeightReply {
-    blockHeight @0: UInt32;
-}
-
-struct LatestBlockHashRequest {
-    timestamp @0: UInt64;
-}
-
-struct LatestBlockHashReply {
-    blockHash @0: Data;
-}

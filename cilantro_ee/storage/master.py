@@ -7,7 +7,6 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.messages.block_data.sub_block import SubBlock
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import system_config
 

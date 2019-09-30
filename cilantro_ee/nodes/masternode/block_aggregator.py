@@ -9,11 +9,10 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-from cilantro_ee.messages.block_data.notification import BlockNotification
+from cilantro_ee.core.messages.notification import BlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from typing import List
 import math, asyncio, zmq, time
 
 

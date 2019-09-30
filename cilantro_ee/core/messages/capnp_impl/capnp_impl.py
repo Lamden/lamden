@@ -2,7 +2,6 @@ import os
 import time
 import capnp
 
-from cilantro_ee.utils import int_to_bytes, bytes_to_int
 from cilantro_ee.core.messages.message_type import MessageType
 import struct
 from cilantro_ee.protocol.wallet import _sign
@@ -26,6 +25,7 @@ class CapnpImpl:
         self.signed_message_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signed_message.capnp')
         self.subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
         self.transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+        self.signals_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
         self.message_capnp = {
             # we don't add this to prevent users directly accessing it
@@ -42,22 +42,21 @@ class CapnpImpl:
             MessageType.TRANSACTION: self.transaction_capnp.Transaction,
             MessageType.MERKLE_PROOF: self.subblock_capnp.MerkleProof,
             MessageType.SUBBLOCK: self.subblock_capnp.SubBlock,
-            MessageType.LATEST_BLOCK_HEIGHT_REQUEST: self.blockdata_capnp.LatestBlockHeightRequest,
-            MessageType.LATEST_BLOCK_HEIGHT_REPLY: self.blockdata_capnp.LatestBlockHeightReply,
-            MessageType.LATEST_BLOCK_HASH_REQUEST: self.blockdata_capnp.LatestBlockHashRequest,
-            MessageType.LATEST_BLOCK_HASH_REPLY: self.blockdata_capnp.LatestBlockHashReply,
-            MessageType.BAD_REQUEST: self.signed_message_capnp.BadRequest
+            MessageType.LATEST_BLOCK_HEIGHT_REQUEST: self.signals_capnp.LatestBlockHeightRequest,
+            MessageType.LATEST_BLOCK_HEIGHT_REPLY: self.signals_capnp.LatestBlockHeightReply,
+            MessageType.LATEST_BLOCK_HASH_REQUEST: self.signals_capnp.LatestBlockHashRequest,
+            MessageType.LATEST_BLOCK_HASH_REPLY: self.signals_capnp.LatestBlockHashReply,
+            MessageType.BAD_REQUEST: self.signals_capnp.BadRequest
         }
 
-
     def get_message(self, msg_type: MessageType, **kwargs):
-        mtype_bytes = int_to_bytes(int(msg_type))
+        mtype_bytes = pack(int(msg_type))
         if msg_type in self.message_capnp:
             return mtype_bytes, self.message_capnp[msg_type].new_message(**kwargs)
         return mtype_bytes, ''
 
     def get_message_packed(self, msg_type: MessageType, **kwargs):
-        mtype_bytes = int_to_bytes(int(msg_type))
+        mtype_bytes = pack(int(msg_type))
         if msg_type in self.message_capnp:
             return mtype_bytes, self.message_capnp[msg_type].new_message(**kwargs).to_bytes_packed()
         return mtype_bytes, b''
@@ -70,12 +69,12 @@ class CapnpImpl:
         sig = sign(msg)
         signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
                             message=msg, signature=sig, signee=signee, timestamp=time.time())
-        return int_to_bytes(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
+        return pack(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
 
     def unpack_message(self, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
                        is_verify: bool = True):
-        msg_type = bytes_to_int(msg_type)
+        msg_type = unpack(msg_type)
         return self._unpack_message(MessageType(msg_type), message, sender, timestamp, is_verify)
 
     def _unpack_message(self, msg_type: MessageType,  message: bytes,
