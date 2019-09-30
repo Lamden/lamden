@@ -207,9 +207,8 @@ class BlockAggregator(Worker):
 
             # Construct a cryptographically signed message of the current time such that the receiver can verify it
             mtype, msg = Message.get_signed_message_packed(
-                                    self.wallet.verifying_key(),
-                                    self.wallet.sign,
-                                    MessageType.READY)
+                                    wallet=self.wallet,
+                                    msg_type=MessageType.READY)
 
 ### Send signed READY signal on pub
             self.log.success('READY SIGNAL SENT TO SUBS')
@@ -236,7 +235,7 @@ class BlockAggregator(Worker):
         elif msg_type == MessageType.BLOCK_DATA_REQUEST:
             self.catchup_manager.recv_block_data_req(sender, msg)
 
-        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+        elif msg_type == MessageType.BLOCK_DATA:
             if self.catchup_manager.recv_block_data_reply(msg):
                 self._set_catchup_done()
 
@@ -320,8 +319,8 @@ class BlockAggregator(Worker):
             self.ipc_router.send_multipart([b'0', msg_type, msg])
 
         mtype, bn = Message.get_signed_message_packed(
-                             self.wallet.verifying_key(), self.wallet.sign,
-                             msg_type, **kwargs)
+                             wallet=self.wallet,
+                             msg_type=msg_type, **kwargs)
 
         # clean up filters for different block notifications - unify it under BLK_NOTIF_FILTER ?
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=mtype, msg=bn)

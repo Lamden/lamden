@@ -103,7 +103,7 @@ class CatchupManager:
                 blk_dict = self.driver.get_block(latest_state_num)
                 if '_id' in blk_dict:
                     del blk_dict['_id']
-                block = Message.get_message(MessageType.BLOCK_DATA_REPLY, **blk_dict)
+                block = Message.get_message(MessageType.BLOCK_DATA, **blk_dict)
                 self.state.update_with_block(block=block)
 
         # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date

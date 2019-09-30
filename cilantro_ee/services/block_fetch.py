@@ -48,7 +48,7 @@ class BlockFetcher:
         return responses.top_item()
 
     async def get_latest_block_height(self, socket):
-        request = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+        request = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                       msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
                                                       timestamp=int(time.time()))
 

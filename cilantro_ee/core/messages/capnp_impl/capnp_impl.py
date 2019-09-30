@@ -5,6 +5,7 @@ import capnp
 from cilantro_ee.core.messages.message_type import MessageType
 import struct
 from cilantro_ee.protocol.wallet import _sign
+from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.core.messages.message_type import MessageType
 
 
@@ -64,12 +65,17 @@ class CapnpImpl:
     # def get_signed_message(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
         # return None, None     # prevent using this directly until we know use cases
 
-    def get_signed_message_packed(self, signee: bytes, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed(self, wallet: Wallet, msg_type: MessageType, **kwargs):
         msg_type, msg = self.get_message_packed(msg_type, **kwargs)
-        sig = _sign(signee, msg)
+        sig = wallet.sign(msg)
 
-        signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
-                            message=msg, signature=sig, signee=signee, timestamp=time.time())
+        signed_msg = self.signed_message_capnp.SignedMessage.new_message(
+            msgType=msg_type,
+            message=msg,
+            signature=sig,
+            signee=wallet.vk.encode(),
+            timestamp=time.time()
+        )
 
         return pack(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
 
@@ -99,5 +105,8 @@ class CapnpImpl:
             # return signed_msg.msgType, None, signed_msg.signee, signed_msg.timestamp, False
         if is_verify:
             pass        # todo verify
-        return self.unpack_message(msg_type=signed_msg.msgType, message=signed_msg.message,
-                                   sender=signed_msg.signee, timestamp=signed_msg.timestamp)
+
+        return self.unpack_message(msg_type=signed_msg.msgType,
+                                   message=signed_msg.message,
+                                   sender=signed_msg.signee,
+                                   timestamp=signed_msg.timestamp)

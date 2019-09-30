@@ -422,7 +422,7 @@ class BlockManager(Worker):
         if msg_type == MessageType.BLOCK_INDEX_REPLY:
             self.recv_block_idx_reply(sender, msg)
 
-        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+        elif msg_type == MessageType.BLOCK_DATA:
             self.recv_block_data_reply(msg)
 
     def _get_new_block_hash(self):

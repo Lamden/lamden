@@ -36,7 +36,7 @@ class BlockServer(AsyncInbox):
             if block_dict is not None:
                 block = block_dict.get('blob')
                 block = blockdata_capnp.BlockData.from_bytes_packed(block)
-                reply = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+                reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                             msg_type=MessageType.BLOCK_DATA,
                                                             blockHash=block.blockHash,
                                                             blockNum=block.blockNum,
@@ -47,7 +47,7 @@ class BlockServer(AsyncInbox):
 
                 await self.return_msg(_id, reply)
             else:
-                reply = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+                reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                             msg_type=MessageType.BAD_REQUEST,
                                                             timestamp=int(time.time()))
                 await self.return_msg(_id, reply)
@@ -56,20 +56,20 @@ class BlockServer(AsyncInbox):
             await self.return_msg(_id, b'howdy')
 
         elif msg_type == MessageType.LATEST_BLOCK_HEIGHT_REQUEST:
-            reply = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                         msg_type=MessageType.LATEST_BLOCK_HEIGHT_REPLY,
                                                         blockHeight=self.top.get_latest_block_number())
 
             await self.return_msg(_id, reply)
 
         elif msg_type == MessageType.LATEST_BLOCK_HASH_REQUEST:
-            reply = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                         msg_type=MessageType.LATEST_BLOCK_HASH_REPLY,
                                                         blockHash=self.top.get_latest_block_hash())
 
             await self.return_msg(_id, reply)
         else:
-            reply = Message.get_signed_message_packed_2(sk=self.wallet.sk.encode(),
+            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                         msg_type=MessageType.BAD_REQUEST,
                                                         timestamp=int(time.time()))
             await self.return_msg(_id, reply)

@@ -1,6 +1,7 @@
 import time
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
+from cilantro_ee.protocol.wallet import Wallet
 import struct
 
 class Message:
@@ -20,10 +21,10 @@ class Message:
 
     # returns encoded_msg_type, signed_encoded_msg_packed
     @classmethod
-    def get_signed_message_packed(cls, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed(cls, wallet: Wallet, msg_type: MessageType, **kwargs):
         return cls._msg_impl.get_signed_message_packed(
-                                  signee=signee, sign=sign,
-                                  msg_type=msg_type, **kwargs)
+                                  wallet=wallet,
+                                  msg_type=msg_type,**kwargs)
 
     # returns encoded_msg
 
@@ -53,9 +54,9 @@ class Message:
         return cls._msg_impl.unpack_message(msg_type=msg_type, message=msg_blob)
 
     @classmethod
-    def get_signed_message_packed_2(cls, sk: bytes, msg_type: MessageType, **kwargs):
+    def get_signed_message_packed_2(cls, wallet: Wallet, msg_type: MessageType, **kwargs):
         t, m = cls._msg_impl.get_signed_message_packed(
-            signee=sk,
+            wallet=wallet,
             msg_type=msg_type, **kwargs)
 
         return t + m
