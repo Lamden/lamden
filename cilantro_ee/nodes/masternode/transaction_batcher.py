@@ -147,7 +147,7 @@ class TransactionBatcher(Worker):
 
             for _ in range(bag_size):
                 # Get a transaction from the queue
-                tx = self.queue.get()
+                _, tx = self.queue.get()
 
                 # Make sure that the transaction is valid
                 # this is better done at webserver level before packing and putting it into the queue - raghu todo
