@@ -311,11 +311,10 @@ class BlockManager(Worker):
         assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
             .format(sbb_index, self.sb_builders)
 
-        msg_type = frames[1]
-        self.log.info('MSG TYPE: {}'.format(msg_type))
+        mtype_enc = frames[1]
         msg_blob = frames[2]
 
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(mtype_enc, msg_blob)
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, sender, timestamp))
@@ -332,7 +331,7 @@ class BlockManager(Worker):
             self.reset_pending_work(sbb_index)
 
         elif msg_type == MessageType.SUBBLOCK_CONTENDER:
-            await self._handle_sbc(sbb_index, msg_blob)
+            await self._handle_sbc(sbb_index, msg, mtype_enc, msg_blob)
 
     def handle_sub_msg(self, frames):
         self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
@@ -442,7 +441,7 @@ class BlockManager(Worker):
         return h.digest()
 
 
-    async def _send_sbc(self, msg_blob: bytes):
+    async def _send_sbc(self, mtype_enc: bytes, msg_blob: bytes):
         wait_time = 0
         while not self.is_pending_work() and wait_time < BLOCK_HEART_BEAT_INTERVAL:
             await asyncio.sleep(1)
@@ -450,13 +449,12 @@ class BlockManager(Worker):
         # self.log.info("Waited for {} secs. Sending to Masternodes.".format(wait_time))
         # raghu todo - when BM gets a block notification - it should turn off sleep as well as not send in this pub message
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
-                          msg_type=MessageType.SUBBLOCK_CONTENDER,
+                          msg_type=mtype_enc,
                           msg=msg_blob)
 
-    async def _handle_sbc(self, sbb_index: int, msg_blob: bytes):
-        sbc = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+    async def _handle_sbc(self, sbb_index: int, sbc, mtype_enc: bytes, msg_blob: bytes):
         self.log.important("Got SBC with sb-index {} input-hash {}".format(sbc.subBlockIdx, sbc.inputHash.hex()))
-        coro = self._send_sbc(msg_blob)
+        coro = self._send_sbc(mtype_enc, msg_blob)
         fut = asyncio.ensure_future(coro)
         self.db_state.my_sub_blocks.add_sub_block(sbc, fut)
 
