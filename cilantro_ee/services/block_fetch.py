@@ -15,24 +15,28 @@ class ConfirmationCounter(Counter):
         return self.most_common()[0][0]
 
     def top_count(self):
+        if len(self.most_common()) == 0:
+            return 0
         return self.most_common()[0][1]
 
 
 class BlockFetcher:
-    def __init__(self, wallet: Wallet, ctx: zmq.Context, top=TopBlockManager()):
-        self.masternodes = SocketBook(None, PhoneBook.contract.get_masternodes)
-        self.delegates = SocketBook(None, PhoneBook.contract.get_delegates)
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, top=TopBlockManager(),
+                 masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes)):
+
+        self.masternodes = masternode_sockets
         self.top = top
         self.wallet = wallet
         self.ctx = ctx
 
+    # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
         await self.masternodes.refresh()
 
         responses = ConfirmationCounter()
 
         futures = []
-        # Fire off requests to all nodes on the network
+        # Fire off requests to masternodes on the network
         for master in self.masternodes.sockets.values():
             f = asyncio.ensure_future(self.get_latest_block_height(master))
             futures.append(f)
@@ -58,5 +62,11 @@ class BlockFetcher:
 
         return unpacked.blockHeight
 
-    def fetch_blocks(self, starting_block_number=0):
-        pass
+    def fetch_blocks(self, latest_block_available=0):
+        latest_block_stored = self.top.get_latest_block_number()
+
+        if latest_block_available <= latest_block_stored:
+            return
+
+        for i in range(latest_block_stored, latest_block_available + 1):
+            pass

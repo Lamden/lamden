@@ -14,19 +14,19 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.pow import SHA3POWBytes
 from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
-from cilantro_ee.storage.state import MetaDataStorage
 from contracting import config
-
+from cilantro_ee.core.nonces import NonceManager
 
 class TransactionBatcher(Worker):
 
     def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.queue, self.ip = queue, ip
+        self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
         self._ready = False
 
-        self.driver = MetaDataStorage()
+        self.driver = NonceManager()
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
