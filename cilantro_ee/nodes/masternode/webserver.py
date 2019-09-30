@@ -214,7 +214,7 @@ if __name__ == '__main__':
     import pyximport; pyximport.install()
     if not app.config.REQUEST_MAX_SIZE:
         app.config.update({
-            'REQUEST_MAX_SIZE': 5,
-            'REQUEST_TIMEOUT': 5
+            'REQUEST_MAX_SIZE': 10000,
+            'REQUEST_TIMEOUT': 20
         })
     start_webserver(Queue())
