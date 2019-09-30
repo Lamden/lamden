@@ -388,7 +388,7 @@ class SubBlockBuilder(Worker):
                 try:
                     transaction_is_valid(tx=tx,
                                          expected_processor=batch.sender,
-                                         driver=self.state,
+                                         driver=self.nonce_manager,
                                          strict=False)
                     valid_transactions.append(tx)
                 except TransactionException:
