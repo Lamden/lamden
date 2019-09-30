@@ -9,22 +9,12 @@ from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-from cilantro_ee.messages.block_data.notification import BlockNotification, BurnInputHashes
+from cilantro_ee.messages.block_data.notification import BlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
-from cilantro_ee.messages.message import MessageTypes
-from cilantro_ee.messages.base.base_json import MessageBaseJson
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 from typing import List
-from cilantro_ee.protocol.wallet import _verify
 import math, asyncio, zmq, time
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-import notification_capnp
-import hashlib
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
 class BlockAggregator(Worker):
@@ -180,34 +170,30 @@ class BlockAggregator(Worker):
         msg_filter, msg_type, msg_blob = frames
         self.log.success(len(frames))
 
-        if msg_type == MessageTypes.BLOCK_INDEX_REQUEST:
-            req = blockdata_capnp.BlockIndexRequest.from_bytes_packed(msg_blob)
-            self.catchup_manager.recv_block_idx_req(req)
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        if not is_verified:
+            self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
+                          .format(msg_type, sender, timestamp))
+            return
 
-        elif msg_type == MessageTypes.SUBBLOCK_CONTENDER:
-            msg = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+        if msg_type == MessageType.BLOCK_INDEX_REQUEST:
+            self.catchup_manager.recv_block_idx_req(msg)
+
+        elif msg_type == MessageType.SUBBLOCK_CONTENDER:
             if not self.catchup_manager.is_catchup_done():
                 self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
             else:
-                signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
-                self.recv_sub_block_contender(signature.signer, msg)
+                # todo needs to handle this ??
+                # signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
+                self.recv_sub_block_contender(sender, msg)
 
         # Process block notification messages
-        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
-
-            # Unpack the message
-            external_message = signal_capnp.ExternalMessage.from_bytes_packed(msg_blob)
-
-            # If the sender has signed the payload, continue
-            if _verify(external_message.sender, external_message.data, external_message.signature):
-                # Unpack the block
-                block = BlockNotification.unpack_block_notification(external_message.data)
-                self.log.important3(
-                    "BlockAGG got BlockNotification from sender {} with hash {}".format(external_message.sender,
-                                                                                  block.blockHash))
-
-                # Process accordingly
-                self.recv_new_block_notif(external_message.sender, block)
+        elif msg_type == MessageType.BLOCK_NOTIFICATION:
+            self.log.important3(
+                "BlockAGG got BlockNotification from sender {} with hash {}"
+                .format(sender, msg.blockHash))
+            # Process accordingly
+            self.recv_new_block_notif(sender, msg)
 
     def _set_catchup_done(self):
         if not self._is_catchup_done:
@@ -215,26 +201,20 @@ class BlockAggregator(Worker):
             self.curr_block_hash = self.state.get_latest_block_hash()
             self.curr_block.reset()
 
-            self.ipc_router.send_multipart([b'0', MessageTypes.READY_INTERNAL, b''])
+            mtype, msg = Message.get_message_packed(MessageType.READY)
+            self.ipc_router.send_multipart([b'0', mtype, msg])
 
             time.sleep(3)
 
             # Construct a cryptographically signed message of the current time such that the receiver can verify it
-            timestamp = int(time.time())
-            timestamp_as_bytes = '{}'.format(timestamp).encode()
-            signature = self.wallet.sign(timestamp_as_bytes)
-
-            external_ready_signal = signal_capnp.ExternalSignal.new_message(
-                id=0, # Probably can deprecate this
-                timestamp=timestamp,
-                sender=self.wallet.verifying_key(),
-                signature=signature
-            ).to_bytes_packed()
+            mtype, msg = Message.get_signed_message_packed(
+                                    self.wallet.verifying_key(),
+                                    self.wallet.sign,
+                                    MessageType.READY)
 
 ### Send signed READY signal on pub
             self.log.success('READY SIGNAL SENT TO SUBS')
-            self.pub.send_msg(msg=external_ready_signal,
-                              msg_type=MessageTypes.READY_EXTERNAL,
+            self.pub.send_msg(msg=msg, msg_type=mtype,
                               filter=DEFAULT_FILTER.encode())
 
 ### HM.
@@ -243,15 +223,22 @@ class BlockAggregator(Worker):
 
         sender, msg_type, msg_blob = frames
 
-        if msg_type == MessageTypes.BLOCK_INDEX_REPLY:
-            if self.catchup_manager.recv_block_idx_reply(sender, msg_blob):
+        # need to distinguish between sender (remote socket identity vs. message signer which is vk)
+        msg_type, msg, signee, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        if not is_verified:
+            self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
+                          .format(msg_type, sender, timestamp))
+            return
+
+        if msg_type == MessageType.BLOCK_INDEX_REPLY:
+            if self.catchup_manager.recv_block_idx_reply(sender, msg):
                 self._set_catchup_done()
 
-        elif msg_type == MessageTypes.BLOCK_DATA_REQUEST:
-            self.catchup_manager.recv_block_data_req(sender, MessageBaseJson._deserialize_data(msg_blob))
+        elif msg_type == MessageType.BLOCK_DATA_REQUEST:
+            self.catchup_manager.recv_block_data_req(sender, msg)
 
-        elif msg_type == MessageTypes.BLOCK_DATA_REPLY:
-            if self.catchup_manager.recv_block_data_reply(msg_blob):
+        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+            if self.catchup_manager.recv_block_data_reply(msg):
                 self._set_catchup_done()
 
 
@@ -324,27 +311,21 @@ class BlockAggregator(Worker):
         self._reset_curr_block()
 
 
-    def send_block_notif(self, block_notif):
-        self.log.debug("input hashes in notif {}".format(block_notif.inputHashes))
-        self.log.debug("input hashes for sb {} in notif {}".format(self.my_sb_idx, block_notif.inputHashes[self.my_sb_idx]))
-        mn_idx = block_notif.firstSbIdx + self.my_sb_idx
+    def send_block_notif(self, msg_type, **kwargs):
+        mn_idx = kwargs.get('firstSbIdx') + self.my_sb_idx
         if mn_idx == self.my_mn_idx:
-            input_hashes = [ih for ih in block_notif.inputHashes[self.my_sb_idx]]
-            self.log.info("Need to burn input bags with hash(es) {}".format(input_hashes))
-            bih = BurnInputHashes.get_burn_input_hashes_packed(input_hashes)
-            self.ipc_router.send_multipart([b'0', MessageTypes.BURN_INPUT_HASHES, bih])
+            input_hashes = kwargs.get('inputHashes')
+            my_input_hashes = input_hashes[self.my_sb_idx]
+            self.log.info("Need to burn input bags with hash(es) {}".format(my_input_hashes))
+            msg_type, msg = Message.get_message_packed(MessageType.BURN_INPUT_HASHES, my_input_hashes)
+            self.ipc_router.send_multipart([b'0', msg_type, msg])
 
-        bn = BlockNotification.pack_block_notification(block_notif)
-        sig = self.wallet.sign(bn)
-
-        msg = signal_capnp.ExternalMessage.new_message(
-            data=bn,
-            sender=self.wallet.verifying_key(),
-            signature=sig
-        ).to_bytes_packed()
+        mtype, bn = Message.get_signed_message_packed(
+                             self.wallet.verifying_key(), self.wallet.sign,
+                             msg_type, **kwargs)
 
         # clean up filters for different block notifications - unify it under BLK_NOTIF_FILTER ?
-        self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=MessageTypes.BLOCK_NOTIFICATION, msg=msg)
+        self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=mtype, msg=bn)
 
 
     def send_new_block_notif(self, block_data):
@@ -352,36 +333,53 @@ class BlockAggregator(Worker):
         time.sleep(0.1)
 
         # SEND NEW BLOCK NOTIFICATION on pub
-        block = BlockNotification.get_new_block_notification(block_data['blockNum'],
-                                    block_data['blockHash'], block_data['blockOwners'],
-                                    block_data['subBlocks'][0].subBlockIdx, 
-                                    [sb.inputHash for sb in block_data['subBlocks']])
-        self.send_block_notif(block)
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+                              blockNum=block_data['blockNum'],
+                              blockHash=block_data['blockHash'],
+                              blockOwners=block_data['blockOwners'],
+                              firstSbIdx=block_data['subBlocks'][0].subBlockIdx,
+                              inputHashes=[[sb.inputHash] for sb in block_data['subBlocks']],
+                              newBlock=None)
         self.log.info('Published new block notif with hash "{}" and block num {}'
-                      .format(block.blockHash, block.blockNum))
+                      .format(block_data['blockHash'], block_data['blockNum']))
 
     def send_skip_block_notif(self, sub_blocks):
         # assert that sub_blocks are sorted by subBlockIdx
         last_hash = self.state.latest_block_hash
         block_num = self.state.latest_block_num + 1
+        input_hashes = [[sb.inputHash] for sb in block_data['subBlocks']]
+        block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
 
-        empty_block = BlockNotification.get_empty_block_notification(
-                        block_num=block_num, prev_block_hash=last_hash,
-                        first_sb_idx=sub_blocks[0].subBlockIdx,
-                        input_hashes=[sb.inputHash for sb in sub_blocks])
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+                              blockNum=block_num,
+                              blockHash=block_hash,
+                              blockOwners=[],
+                              firstSbIdx=sub_blocks[0].subBlockIdx,
+                              inputHashes=input_hashes,
+                              emptyBlock=None)
 
-        self.send_block_notif(empty_block)
-        self.log.debugv("Published empty block notification for hash {}"
-                        .format(empty_block.blockHash))
+        self.log.debugv("Published empty block notification for hash {} num {}"
+                        .format(block_hash, block_num))
 
     def send_fail_block_notif(self):
-        failed_block = self.curr_block.get_failed_block_notif()
+        last_hash = self.state.latest_block_hash
+        block_num = self.state.latest_block_num + 1
+        input_hashes = self.curr_block.get_input_hashes_sorted()
+        block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
+        first_sb_idx = self.curr_block.get_first_sb_idx_unsorted()
 
-        self.send_block_notif(failed_block)
-        self.log.debugv("Published failed block notification for hash {}"
-                        .format(failed_block.blockHash))
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+                              blockNum=block_num,
+                              blockHash=block_hash,
+                              blockOwners=[],
+                              firstSbIdx=first_sb_idx,
+                              inputHashes=input_hashes,
+                              failedBlock=None)
 
-    def recv_new_block_notif(self, sender_vk: str, notif: notification_capnp.BlockNotification):
+        self.log.debugv("Published failed block notification for hash {} num {}"
+                        .format(block_hash, block_num))
+
+    def recv_new_block_notif(self, sender_vk: str, notif):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
         blocknum = notif.blockNum
@@ -393,7 +391,7 @@ class BlockAggregator(Worker):
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")
 
-    def recv_fail_block_notif(self, sender_vk: str, notif: notification_capnp.BlockNotification):
+    def recv_fail_block_notif(self, sender_vk: str, notif):
         self.log.debugv("MN got fail block notification: {}".format(notif))
         # TODO implement
 

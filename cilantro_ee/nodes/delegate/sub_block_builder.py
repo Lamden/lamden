@@ -22,8 +22,8 @@ from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
-from cilantro_ee.messages.block_data.notification import BlockNotification
-from cilantro_ee.messages.message import MessageTypes
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 from contracting.config import NUM_CACHES
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
@@ -43,17 +43,8 @@ from enum import Enum, unique
 import asyncio, zmq.asyncio, time
 from datetime import datetime
 import hashlib
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-import notification_capnp
 from decimal import Decimal
 
-
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 class Payload:
     def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
@@ -67,7 +58,7 @@ class Payload:
 
 
 class UnpackedContractTransaction:
-    def __init__(self, capnp_struct: transaction_capnp.Transaction):
+    def __init__(self, capnp_struct):
         kwargs = {}
         for entry in capnp_struct.payload.kwargs.entries:
             if entry.value.which() == 'fixedPoint':
@@ -173,15 +164,16 @@ class SubBlockBuilder(Worker):
 
     def get_ipc_message_action_dict(self):
         return {
-            MessageTypes.MAKE_NEXT_BLOCK: self.__make_next_sub_block,
-            MessageTypes.BLOCK_NOTIFICATION: self.__fail_block
+            MessageType.MAKE_NEXT_BLOCK: self.__make_next_sub_block,
+            MessageType.BLOCK_NOTIFICATION: self.__fail_block
         }
 
     async def _connect_and_process(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
         await self._connect_sub_sockets()
-        await self.ipc_dealer.send_multipart([MessageTypes.READY_INTERNAL, b''])
+        mtype, msg = Message.get_message_packed(MessageType.READY)
+        await self.ipc_dealer.send_multipart([mtype, msg])
 
     # raghu todo - call this right after catch up phase, need to figure out the right input hashes though for next block
     def move_next_block_to_make(self):
@@ -274,7 +266,7 @@ class SubBlockBuilder(Worker):
             num_txns -= 1
             ret_smi -= 1
             
-    def _fail_block(self, block: notification_capnp.BlockNotification):
+    def _fail_block(self, block):
         self.log.notice("FailedBlockNotification - aligning input hashes")
         self.client.flush_all()
 
@@ -319,27 +311,23 @@ class SubBlockBuilder(Worker):
         msg_type = frames[0]
         msg_blob = frames[1]
 
-        if msg_type == MessageTypes.MAKE_NEXT_BLOCK:
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        if not is_verified:
+            self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
+                          .format(msg_type, sender, timestamp))
+            return
+
+        if msg_type == MessageType.MAKE_NEXT_BLOCK:
             self.log.success("MAKE NEXT BLOCK SIGNAL")
             self._make_next_sub_block()
             return
-        elif msg_type == MessageTypes.BLOCK_NOTIFICATION:
-            block = BlockNotification.unpack_block_notification(msg_blob)
-            self._fail_block(block)
+        elif msg_type == MessageType.BLOCK_NOTIFICATION:
+            self._fail_block(msg)
             return
 
         else:
             self.log.error("Got invalid message type '{}' from block manager. "
                            "Ignoring it ..".format(type(msg_type)))
-
-    def send_workload_signal(self):
-        # Create Signal
-        if self.num_txn_bags == 0:
-            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
-
-        elif self.num_txn_bags == 1:
-            # SIGNAL CREATION
-            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
 
     def adjust_work_load(self, txn_batch, is_add: bool):
         if len(txn_batch) == 0:
@@ -351,18 +339,26 @@ class SubBlockBuilder(Worker):
 
         # Send pending work signal
         if self.num_txn_bags == 0:
-            self.ipc_dealer.send_multipart([MessageTypes.NO_TRANSACTIONS, b''])
+            msg_type, msg = Message.get_message_packed(MessageType.NO_TRANSACTIONS)
+            self.ipc_dealer.send_multipart([msg_type, msg])
 
         elif is_add and self.num_txn_bags == 1:
-            self.ipc_dealer.send_multipart([MessageTypes.PENDING_TRANSACTIONS, b''])
+            msg_type, msg = Message.get_message_packed(MessageType.PENDING_TRANSACTIONS)
+            self.ipc_dealer.send_multipart([msg_type, msg])
 
     # ONLY FOR TX BATCHES
     def handle_sub_msg(self, frames, index):
         msg_filter, msg_type, msg_blob = frames
 
-        if msg_type == MessageTypes.TRANSACTION_BATCH and 0 <= index < len(self.sb_managers):
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        if not is_verified:
+            self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
+                          .format(msg_type, sender, timestamp))
+            return
 
-            batch = transaction_capnp.TransactionBatch.from_bytes_packed(msg_blob)
+        if msg_type == MessageType.TRANSACTION_BATCH and 0 <= index < len(self.sb_managers):
+
+            batch = msg
             timestamp = batch.timestamp
 
 
@@ -439,25 +435,24 @@ class SubBlockBuilder(Worker):
 
         signature = self.wallet.sign(input_hash)
 
-        merkle_proof = subblock_capnp.MerkleProof.new_message(
-            hash=input_hash,
-            signer=self.wallet.verifying_key(),
-            signature=signature
-        ).to_bytes_packed()
+        merkle_proof = {
+                         "hash": input_hash,
+                         "signer": self.wallet.verifying_key(),
+                         "signature": signature
+                       }
 
-        sbc = subblock_capnp.SubBlockContender.new_message(
-              resultHash=input_hash,
-              inputHash=input_hash,
-              merkleLeaves=[],
-              signature=merkle_proof,
-              transactions=[],
-              subBlockIdx=sb_idx,
-              prevBlockHash=self.state.get_latest_block_hash()
-        ).to_bytes_packed()
+        mtype, msg = Message.get_message_packed(MessageType.SUBBLOCK_CONTENDER,
+                                resultHash=input_hash,
+                                inputHash=input_hash,
+                                merkleLeaves=[],
+                                signature=merkle_proof,
+                                transactions=[],
+                                subBlockIdx=sb_idx,
+                                prevBlockHash=self.state.get_latest_block_hash())
 
-        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(sb_data.input_hash))
+        self.log.important2("Sending EMPTY SBC with input hash {} to block manager!".format(input_hash))
 
-        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
+        self.ipc_dealer.send_multipart([mtype, msg])
 
     def _create_sbc_from_batch(self, sb_idx: int, sb_data: SBData):
 
@@ -473,35 +468,34 @@ class SubBlockBuilder(Worker):
         for i in range(len(exec_data)):
             d = exec_data[i]
             tx = self.pending_transactions[i]
-            txs_data.append(transaction_capnp.TransactionData.new_message(
-                transaction=tx,
-                status=str(d.status),
-                state=d.state,
-                contractType=0
-            ).to_bytes_packed())
+            _, txn_msg = Message.get_message_packed(
+                                    MessageType.TRANSACTION_DATA, 
+                                    transaction=tx,
+                                    status=d.status,
+                                    state=d.state)
+            txs_data.append(txn_msg)
 
         # build sbc
         merkle = MerkleTree.from_raw_transactions(txs_data)
 
-        merkle_proof = subblock_capnp.MerkleProof.new_message(
-            hash=merkle.root,
-            signer=self.wallet.verifying_key(),
-            signature=self.wallet.sign(merkle.root)
-        ).to_bytes_packed()
+        _, merkle_proof = Message.get_message_packed(
+                                    MessageType.TRANSACTION_DATA, 
+                                    hash=merkle.root,
+                                    signer=self.wallet.verifying_key(),
+                                    signature=self.wallet.sign(merkle.root))
 
-        sbc = subblock_capnp.SubBlockContender.new_message(
-            resultHash=merkle.root,
-            inputHash=sb_data.input_hash,
-            merkleLeaves=[leaf for leaf in merkle.leaves],
-            signature=merkle_proof,
-            transactions=[tx for tx in txs_data],
-            subBlockIdx=sb_idx,
-            prevBlockHash=self.state.get_latest_block_hash()
-        ).to_bytes_packed()
+        mtype, sbc = Message.get_message_packed(
+                           MessageType.SUBBLOCK_CONTENDER, 
+                           resultHash=merkle.root,
+                           inputHash=sb_data.input_hash,
+                           merkleLeaves=[leaf for leaf in merkle.leaves],
+                           signature=merkle_proof,
+                           transactions=[tx for tx in txs_data],
+                           subBlockIdx=sb_idx,
+                           prevBlockHash=self.state.get_latest_block_hash())
 
         self.pending_transactions = []
-
-        self.ipc_dealer.send_multipart([MessageTypes.SUBBLOCK_CONTENDER, sbc])
+        self.ipc_dealer.send_multipart([mtype, sbc])
 
 
     def create_sb_contender(self, sb_idx: int, sb_data: SBData):

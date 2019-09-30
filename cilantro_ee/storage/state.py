@@ -4,16 +4,10 @@ from cilantro_ee.constants import conf
 from contracting.db.driver import DatabaseDriver
 from contracting.db import encoder
 
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-
 import contextlib
 
 
-def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
+def update_nonce_hash(nonce_hash: dict, tx_payload):
     # Modifies the provided dict
     k = (tx_payload.processor, tx_payload.sender)
     current_nonce = nonce_hash.get(k)
@@ -91,7 +85,7 @@ class MetaDataStorage(DatabaseDriver):
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
-    def set_transaction_data(self, tx=transaction_capnp.TransactionData):
+    def set_transaction_data(self, tx):
         if tx.state is not None and len(tx.state) > 0:
             with contextlib.suppress(json.JSONDecodeError):
                 sets = json.loads(tx.state)
