@@ -76,3 +76,17 @@ class TestCanonicalCoding(TestCase):
         for tx in sb['transactions']:
             sorted_tx_keys = list(tx['transaction']['payload'].keys())
             self.assertEqual(sorted_tx_keys, expected_order)
+
+    def test_block_from_subblocks_verify_works(self):
+        sbs = random_txs.random_block().subBlocks
+
+        block = canonical.block_from_subblocks(subblocks=sbs)
+
+        prev_hash = block['prevBlockHash']
+        prop_hash = block['blockHash']
+        subblocks = block['subBlocks']
+
+        valid = canonical.verify_block(subblocks, prev_hash, prop_hash)
+
+        self.assertTrue(valid)
+

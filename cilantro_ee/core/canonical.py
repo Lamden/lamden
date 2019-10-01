@@ -32,7 +32,7 @@ def block_from_subblocks(subblocks, top: TopBlockManager=TopBlockManager()) -> d
         sb = format_dictionary(sb)
         deserialized_subblocks.append(sb)
 
-        encoded_sb = bson.dumps(sb)
+        encoded_sb = bson.BSON.encode(sb)
         block_hasher.update(encoded_sb)
 
     block = {
@@ -57,7 +57,7 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
         sb = format_dictionary(sb)
         deserialized_subblocks.append(sb)
 
-        encoded_sb = bson.dumps(sb)
+        encoded_sb = bson.BSON.encode(sb)
         block_hasher.update(encoded_sb)
 
     if block_hasher.digest() == proposed_hash:
