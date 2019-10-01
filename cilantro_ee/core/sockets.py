@@ -1,6 +1,10 @@
 from cilantro_ee.protocol.overlay.network import Network
 import asyncio
 
+# Keeps a dictionary between a VK and an IP string
+# Use refresh() to fetch any new VKs to stay up to date
+# You must turn the IP strings into SocketStructs yourself.
+# This means there is no port information on the strings.
 
 class SocketBook:
     def __init__(self, network: Network=None, phonebook_function: callable=None):

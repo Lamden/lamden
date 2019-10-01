@@ -132,13 +132,24 @@ class BlockFetcher:
 
                 # Only store if master, update state if master or delegate
 
-                self.blocks.put(block_dict)
+                if self.blocks is not None:
+                    self.blocks.put(block_dict)
+
+                self.state.update_with_block(block_dict)
                 self.top.set_latest_block_hash(block.blockHash)
                 self.top.set_latest_block_number(i)
 
                 latest_hash = self.top.get_latest_block_hash()
             else:
                 raise Exception('Could not find block with index {}. Catchup failed.'.format(i))
+
+    async def sync(self):
+        current_height = await self.find_missing_block_indexes()
+        latest_block_stored = self.top.get_latest_block_number()
+
+        while current_height < latest_block_stored:
+            await self.fetch_blocks(current_height)
+            current_height = await self.find_missing_block_indexes()
 
     async def sync_blocks_with_state(self):
         if self.blocks is None:

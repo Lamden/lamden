@@ -13,6 +13,7 @@ from cilantro_ee.core.messages.notification import BlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
+from cilantro_ee.services.block_fetch import BlockFetcher
 import math, asyncio, zmq, time
 
 
@@ -37,6 +38,7 @@ class BlockAggregator(Worker):
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+
         self._is_catchup_done = False
 
         self.min_quorum = PhoneBook.delegate_quorum_min
@@ -54,12 +56,11 @@ class BlockAggregator(Worker):
         latest_hash = last_block.get('blockHash')
         latest_num = last_block.get('blockNum')
 
-        # This assertion is pointless. Redis is not consistent.
-        # assert latest_hash == self.state.latest_block_hash, \
-        #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-        #     .format(latest_hash, self.state.latest_block_hash)
+        self.block_fetcher = BlockFetcher(wallet=self.wallet,
+                                          ctx=self.zmq_ctx,
+                                          blocks=self.driver,
+                                          state=self.state)
 
-        # raghu this may create inconsistent state when redis is behind mongo
         self.state.latest_block_num = latest_num
         self.state.latest_block_hash = latest_hash
 
