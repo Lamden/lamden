@@ -175,7 +175,7 @@ class SubBlockGroup:
     def _verify_sbc(self, sender_vk: bytes, sbc) -> bool:
         # Dev sanity checks
         mtype_bytes = int_to_bytes(int(MessageType.MERKLE_PROOF))
-        merkle_proof = Message.unpack_message(mtype_bytes, sbc.signature)
+        merkle_proof = Message.unpack_message_internal(mtype_bytes, sbc.signature)
 
         if not merkle_proof.signer == sender_vk:
             self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
