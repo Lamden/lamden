@@ -104,12 +104,14 @@ class TestBlockServer(TestCase):
         c = CilantroStorageDriver(key=w.sk.encode().hex())
         c.drop_collections()
 
-        d = canonical.block_from_subblocks([s for s in block.subBlocks])
+        d = canonical.block_from_subblocks([s for s in block.subBlocks], previous_hash=b'x/00' * 32, block_num=0)
 
-        d['blockNum'] = 0
         d['blockOwners'] = [secrets.token_bytes(32) for _ in range(12)]
 
         c.put(d)
+
+        del d['_id']
+        del d['blockOwners']
 
         m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=2000, poll_timeout=500, driver=c)
 
@@ -138,9 +140,9 @@ class TestBlockServer(TestCase):
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
 
-        print(msg)
+        dd = canonical.block_from_subblocks([s for s in msg.subBlocks], previous_hash=b'x/00' * 32, block_num=0)
 
-        #self.assertEqual(block.to_bytes_packed(), msg.as_builder().to_bytes_packed())
+        self.assertDictEqual(d, dd)
 
     def test_get_block_blob_by_block_but_failure_returns_bad_request(self):
         w = Wallet()
@@ -158,7 +160,7 @@ class TestBlockServer(TestCase):
 
             return res
 
-        message = Message.get_signed_message_packed_2(sk=w.sk.encode(),
+        message = Message.get_signed_message_packed_2(wallet=w,
                                                       msg_type=MessageType.BLOCK_DATA_REQUEST,
                                                       blockNum=0)
 

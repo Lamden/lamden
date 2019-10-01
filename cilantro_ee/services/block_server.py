@@ -34,7 +34,6 @@ class BlockServer(AsyncInbox):
             block_dict = self.driver.get_block(msg.blockNum)
 
             if block_dict is not None:
-                print('alrighty now')
                 block_hash = block_dict.get('blockHash')
                 block_num = block_dict.get('blockNum')
                 prev_hash = block_dict.get('prevBlockHash')
@@ -52,7 +51,6 @@ class BlockServer(AsyncInbox):
 
                 await self.return_msg(_id, reply)
             else:
-                print('uh oh')
                 reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                             msg_type=MessageType.BAD_REQUEST,
                                                             timestamp=int(time.time()))
@@ -75,7 +73,6 @@ class BlockServer(AsyncInbox):
 
             await self.return_msg(_id, reply)
         else:
-            print('bad boy')
             reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                         msg_type=MessageType.BAD_REQUEST,
                                                         timestamp=int(time.time()))
