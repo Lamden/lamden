@@ -28,7 +28,8 @@ def keys_to_format(s, v) -> tuple:
 
 
 def format_to_keys(s) -> tuple:
-    s = bytes.fromhex(s)
+    if type(s) != bytes:
+        s = bytes.fromhex(s)
     s = nacl.signing.SigningKey(s)
     return s, s.verify_key
 

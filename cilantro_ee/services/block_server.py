@@ -31,6 +31,7 @@ class BlockServer(AsyncInbox):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
 
         if msg_type == MessageType.BLOCK_DATA_REQUEST and self.driver is not None:
+
             block_dict = self.driver.get_block(msg.blockNum)
 
             if block_dict is not None:

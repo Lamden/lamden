@@ -61,9 +61,10 @@ class BlockFetcher:
 
         response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
 
-        _, unpacked, _, _, _ = Message.unpack_message_2(response)
+        if response is not None:
+            _, unpacked, _, _, _ = Message.unpack_message_2(response)
 
-        return unpacked.blockHeight
+            return unpacked.blockHeight
 
     async def get_block_from_master(self, i: int, socket):
         request = Message.get_signed_message_packed_2(wallet=self.wallet,
@@ -72,10 +73,11 @@ class BlockFetcher:
 
         response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
 
-        msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
+        if response is not None:
+            msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
 
-        if msg_type == MessageType.BLOCK_DATA:
-            return unpacked
+            if msg_type == MessageType.BLOCK_DATA:
+                return unpacked
 
     async def find_valid_block(self, i, latest_hash, timeout=3000):
         block_found = False
