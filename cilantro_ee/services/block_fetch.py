@@ -3,7 +3,9 @@ from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
+from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.protocol.comm.services import get, defer
+from cilantro_ee.storage.master import CilantroStorageDriver
 import zmq.asyncio
 import asyncio
 from collections import Counter
@@ -28,6 +30,7 @@ class BlockFetcher:
         self.top = top
         self.wallet = wallet
         self.ctx = ctx
+        self.driver = CilantroStorageDriver(key=wallet.sk.encode())
 
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
@@ -62,11 +65,75 @@ class BlockFetcher:
 
         return unpacked.blockHeight
 
-    def fetch_blocks(self, latest_block_available=0):
+    async def get_block_from_master(self, i: int, socket):
+        request = Message.get_signed_message_packed_2(wallet=self.wallet,
+                                                      msg_type=MessageType.BLOCK_DATA_REQUEST,
+                                                      blockNum=i)
+
+        response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
+
+        msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
+
+        if msg_type == MessageType.BLOCK_DATA:
+            return unpacked
+
+    async def find_valid_block(self, i, latest_hash, timeout=3000):
+        block_found = False
+        block = None
+
+        futures = []
+        # Fire off requests to masternodes on the network
+        for master in self.masternodes.sockets.values():
+            f = asyncio.ensure_future(self.get_block_from_master(i, master))
+            futures.append(f)
+
+        # Iterate through the status of the
+        now = time.time()
+        while not block_found or time.time() - now > timeout:
+            await defer()
+            for f in futures:
+                if f.done():
+                    block = f.result()
+                    block_found = verify_block(subblocks=block.subBlocks,
+                                               previous_hash=latest_hash,
+                                               proposed_hash=block.blockHash)
+
+        return block
+
+    async def fetch_blocks(self, latest_block_available=0):
         latest_block_stored = self.top.get_latest_block_number()
+        latest_hash = self.top.get_latest_block_hash()
 
         if latest_block_available <= latest_block_stored:
             return
 
         for i in range(latest_block_stored, latest_block_available + 1):
-            pass
+            block = await self.find_valid_block(i, latest_hash)
+
+            if block is not None:
+                block_dict = {
+                    'blockHash': block.blockHash,
+                    'blockNum': i,
+                    'blockOwners': [m for m in block.blockOwners],
+                    'prevBlockHash': latest_hash,
+                    'subBlocks': [s for s in block.subBlocks]
+                }
+
+                self.driver.put(block_dict)
+                self.top.set_latest_block_hash(block.blockHash)
+                self.top.set_latest_block_number(i)
+
+                latest_hash = self.top.get_latest_block_hash()
+            else:
+                raise Exception('Could not find block with index {}. Catchup failed.'.format(i))
+
+
+
+
+# struct BlockData {
+#     blockHash @0 :Data;
+#     blockNum @1 :UInt32;
+#     blockOwners @2 :List(Data);
+#     prevBlockHash @3 :Data;
+#     subBlocks @4 :List(SB.SubBlock);
+# }

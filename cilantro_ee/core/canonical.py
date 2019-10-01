@@ -1,7 +1,7 @@
 from .top import TopBlockManager
 import os
 import capnp
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import bson
 import hashlib
 
@@ -43,3 +43,23 @@ def block_from_subblocks(subblocks, top: TopBlockManager=TopBlockManager()) -> d
     }
 
     return block
+
+
+def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
+    block_hasher = hashlib.sha3_256()
+    block_hasher.update(previous_hash)
+
+    deserialized_subblocks = []
+
+    for subblock in subblocks:
+        sb = subblock.to_dict()
+
+        sb = format_dictionary(sb)
+        deserialized_subblocks.append(sb)
+
+        encoded_sb = bson.dumps(sb)
+        block_hasher.update(encoded_sb)
+
+    if block_hasher.digest() == proposed_hash:
+        return True
+    return False

@@ -60,7 +60,7 @@ class TestCanonicalCoding(TestCase):
 
         sb = canonical.format_dictionary(sb)
 
-        expected_order = ['contractType', 'stampsUsed', 'state', 'status', 'transaction']
+        expected_order = ['stampsUsed', 'state', 'status', 'transaction']
 
         for tx in sb['transactions']:
             sorted_tx_keys = list(tx.keys())

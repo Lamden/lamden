@@ -31,7 +31,6 @@ class MessageType(MessageBaseType):
     TRANSACTION = auto()
     SUBBLOCK = auto()
 
-
     LATEST_BLOCK_HEIGHT_REQUEST = auto()
     LATEST_BLOCK_HEIGHT_REPLY = auto()
 
