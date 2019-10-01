@@ -21,6 +21,7 @@ class Protocols:
     ICP = 2
     PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
 
+
 # syntactic sugar yum yum
 def _socket(s: str):
     return SocketStruct.from_string(s)
@@ -40,17 +41,6 @@ class SocketStruct:
             return '{}{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id)
         else:
             return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
-
-    def __str__(self):
-        return self.zmq_url()
-
-    def __repr__(self):
-        return '<ZMQ Socket: "{}">'.format(self.__str__())
-
-    def __eq__(self, other):
-        return self.protocol == other.protocol and \
-            self.id == other.id and \
-            self.port == other.port
 
     @classmethod
     def from_string(cls, str):
@@ -72,6 +62,17 @@ class SocketStruct:
     @classmethod
     def is_valid(cls, s):
         return ':' in s
+
+    def __str__(self):
+        return self.zmq_url()
+
+    def __repr__(self):
+        return '<ZMQ Socket: "{}">'.format(self.__str__())
+
+    def __eq__(self, other):
+        return self.protocol == other.protocol and \
+            self.id == other.id and \
+            self.port == other.port
 
 
 # Pushes current task to the back of the event loop

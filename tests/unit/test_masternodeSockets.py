@@ -70,25 +70,17 @@ class TestSocketBook(TestCase):
         w1 = Wallet()
         p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
 
-        stored = {
-            'stu': _socket('tcp://127.0.0.1:9000'),
-            'raghu': _socket('127.0.0.2:9000')
+        expected = {
+            'stu': '127.0.0.1',
+            'raghu': '127.0.0.2'
         }
-
-        p1.peer_service.table.peers = stored
-        masternodes = SocketBook(port=9999, network=p1, phonebook_function=PhoneBook.contract.get_masternodes)
+        p1.peer_service.table.peers = expected
+        masternodes = SocketBook(network=p1, phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(masternodes.refresh())
-
-        expected = {
-            'stu': _socket('tcp://127.0.0.1:9999'),
-            'raghu': _socket('tcp://127.0.0.2:9999')
-        }
-
-        print(masternodes.sockets)
 
         self.assertDictEqual(masternodes.sockets, expected)
 
