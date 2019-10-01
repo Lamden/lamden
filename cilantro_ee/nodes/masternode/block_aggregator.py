@@ -301,7 +301,7 @@ class BlockAggregator(Worker):
             #    self.log.error(str(e))
 
         # TODO
-        # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
+        # @tejas yo why does this assertion not pass? The storage blocks is NOT updating its block hash after storing!
         # assert StorageDriver.get_latest_block_hash() == self.state.get_latest_block_hash(), \
         #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
         #         .format(StorageDriver.get_latest_block_hash(), self.state.get_latest_block_hash())

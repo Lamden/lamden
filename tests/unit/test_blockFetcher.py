@@ -50,6 +50,13 @@ class FakeBlockDriver:
     def get_block(self, i):
         return self.block_dict
 
+class FakeBlockReciever:
+    def __init__(self):
+        self.blocks = {}
+
+    def put(self, d):
+        self.blocks[d['blockNum']] = d
+
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
     s.stop()
@@ -215,30 +222,6 @@ class TestBlockFetcher(TestCase):
         self.assertDictEqual(block_dict, got)
 
     def test_fetch_block_from_multiple_masters_where_some_are_corrupted(self):
-        '''
-        block_found = False
-        block = None
-
-        futures = []
-        # Fire off requests to masternodes on the network
-        for master in self.masternodes.sockets.values():
-            f = asyncio.ensure_future(self.get_block_from_master(i, master))
-            futures.append(f)
-
-        # Iterate through the status of the
-        now = time.time()
-        while not block_found or time.time() - now > timeout:
-            await defer()
-            for f in futures:
-                if f.done():
-                    block = f.result()
-                    block_found = verify_block(subblocks=block.subBlocks,
-                                               previous_hash=latest_hash,
-                                               proposed_hash=block.blockHash)
-
-        return block
-        '''
-
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()
@@ -314,3 +297,76 @@ class TestBlockFetcher(TestCase):
         got = canonical.block_from_subblocks([s for s in got_block.subBlocks], previous_hash=b'\x00' * 32, block_num=0)
 
         self.assertDictEqual(block_dict, got)
+
+    def test_fetch_multiple_blocks_works_with_good_actors(self):
+        w = Wallet()
+        c = CilantroStorageDriver(key=w.sk.encode())
+        c.drop_collections()
+
+        # Store 20 blocks
+        self.store_blocks(c, 10)
+
+        # Good one
+        w1 = Wallet()
+        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+                         wallet=w1,
+                         ctx=self.ctx,
+                         linger=500,
+                         poll_timeout=100,
+                         top=FakeTopBlockManager(101, 'abcd'),
+                         driver=c)
+
+        w2 = Wallet()
+        m2 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10001'),
+                         wallet=w2,
+                         ctx=self.ctx,
+                         linger=500,
+                         poll_timeout=100,
+                         top=FakeTopBlockManager(101, 'abcd'),
+                         driver=c)
+
+        w3 = Wallet()
+        m3 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10002'),
+                         wallet=w3,
+                         ctx=self.ctx,
+                         linger=500,
+                         poll_timeout=100,
+                         top=FakeTopBlockManager(101, 'abcd'),
+                         driver=c)
+
+        def get_sockets():
+            return {
+                'b': services._socket('tcp://127.0.0.1:10001'),
+                'c': services._socket('tcp://127.0.0.1:10002'),
+                'a': services._socket('tcp://127.0.0.1:10000'),
+            }
+
+        sock_book = FakeSocketBook(None, get_sockets)
+        fake_driver = FakeBlockReciever()
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, blocks=fake_driver)
+
+        tasks = asyncio.gather(
+            m1.serve(),
+            m2.serve(),
+            m3.serve(),
+            f.fetch_blocks(latest_block_available=9),
+            stop_server(m1, 1),
+            stop_server(m2, 1),
+            stop_server(m3, 1),
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        last_hash = b'\x00' * 32
+        for i in range(10):
+            block_dict = c.get_block(i)
+
+            del block_dict['blockOwners']
+
+            got = canonical.block_from_subblocks([s for s in fake_driver.blocks[i]['subBlocks']], previous_hash=last_hash,
+                                                 block_num=i)
+
+            last_hash = block_dict['blockHash']
+
+            self.assertDictEqual(block_dict, got)

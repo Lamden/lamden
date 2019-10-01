@@ -1,6 +1,7 @@
 from cilantro_ee.core.sockets import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.core.top import TopBlockManager
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
@@ -23,14 +24,19 @@ class ConfirmationCounter(Counter):
 
 
 class BlockFetcher:
-    def __init__(self, wallet: Wallet, ctx: zmq.Context, top=TopBlockManager(),
+    def __init__(self, wallet: Wallet,
+                 ctx: zmq.Context,
+                 blocks: CilantroStorageDriver=None,
+                 top=TopBlockManager(),
+                 state=MetaDataStorage(),
                  masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes)):
 
         self.masternodes = masternode_sockets
         self.top = top
         self.wallet = wallet
         self.ctx = ctx
-        self.driver = CilantroStorageDriver(key=wallet.sk.encode())
+        self.blocks = blocks
+        self.state = state
 
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
@@ -81,6 +87,7 @@ class BlockFetcher:
 
     async def find_valid_block(self, i, latest_hash, timeout=3000):
         await self.masternodes.refresh()
+
         block_found = False
         block = None
 
@@ -123,7 +130,9 @@ class BlockFetcher:
                     'subBlocks': [s for s in block.subBlocks]
                 }
 
-                self.driver.put(block_dict)
+                # Only store if master, update state if master or delegate
+
+                self.blocks.put(block_dict)
                 self.top.set_latest_block_hash(block.blockHash)
                 self.top.set_latest_block_number(i)
 
@@ -131,8 +140,19 @@ class BlockFetcher:
             else:
                 raise Exception('Could not find block with index {}. Catchup failed.'.format(i))
 
+    async def sync_blocks_with_state(self):
+        if self.blocks is None:
+            return
 
+        last_block = self.blocks.get_last_n(1, CilantroStorageDriver.INDEX)[0]
+        last_stored_block_num = last_block.get('blockNum')
+        last_state_block_num = self.top.get_latest_block_number()
 
+        while last_state_block_num < last_stored_block_num:
+            last_state_block_num += 1
+            block_dict = self.blocks.get_block(last_state_block_num)
+
+            self.state.update_with_block(block_dict)
 
 # struct BlockData {
 #     blockHash @0 :Data;

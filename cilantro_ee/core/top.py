@@ -9,7 +9,7 @@ class TopBlockManager:
         self.driver = driver
 
     def get_latest_block_hash(self):
-        return self.driver.get(BLOCK_HASH_KEY) or b'x/00' * 32
+        return self.driver.get(BLOCK_HASH_KEY) or b'\x00' * 32
 
     def set_latest_block_hash(self, value):
         self.driver.set(BLOCK_HASH_KEY, value)

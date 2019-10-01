@@ -44,6 +44,14 @@ class SocketStruct:
     def __str__(self):
         return self.zmq_url()
 
+    def __repr__(self):
+        return '<ZMQ Socket: "{}">'.format(self.__str__())
+
+    def __eq__(self, other):
+        return self.protocol == other.protocol and \
+            self.id == other.id and \
+            self.port == other.port
+
     @classmethod
     def from_string(cls, str):
         protocol = Protocols.TCP

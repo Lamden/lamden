@@ -15,7 +15,7 @@ blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.cap
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
-# Provide a block driver to enable data and index requests
+# Provide a block blocks to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 class BlockServer(AsyncInbox):
     def __init__(self, socket_id, wallet, ctx, linger, poll_timeout, driver: CilantroStorageDriver=None, top=TopBlockManager()):

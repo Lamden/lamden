@@ -368,7 +368,6 @@ class BlockManager(Worker):
             # Process accordingly
             self.handle_block_notification(frames, msg, sender)
 
-
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
         # raghu - wow - who changed this to hard coded 3?
@@ -442,7 +441,6 @@ class BlockManager(Worker):
             h.update(sb_hash)
 
         return h.digest()
-
 
     async def _send_sbc(self, mtype_enc: bytes, msg_blob: bytes):
         wait_time = 0

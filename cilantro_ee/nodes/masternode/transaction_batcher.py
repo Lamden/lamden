@@ -135,10 +135,10 @@ class TransactionBatcher(Worker):
 
             if (num_txns >= MAX_TXNS_PER_SUB_BLOCK) or \
                (cur_txn_delay >= MAX_TXN_SUBMISSION_DELAY):
-                bag_size =  min(num_txns, MAX_TXNS_PER_SUB_BLOCK)
+                bag_size = min(num_txns, MAX_TXNS_PER_SUB_BLOCK)
                 cur_txn_delay = 0
             else:
-                bag_size =  0
+                bag_size = 0
                 empty_bag_delay = 0
 
             tx_list = []

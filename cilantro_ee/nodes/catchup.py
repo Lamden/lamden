@@ -35,7 +35,7 @@ class CatchupManager:
         self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
-        # self.driver = CilantroStorageDriver(key=self.signing_key)
+        # self.blocks = CilantroStorageDriver(key=self.signing_key)
 
         self.state = MetaDataStorage()
         self.nonce_manager = NonceManager()
@@ -105,8 +105,10 @@ class CatchupManager:
                 latest_state_num = latest_state_num + 1
                 # TODO get nth full block wont work for now in distributed storage
                 blk_dict = self.driver.get_block(latest_state_num)
+
                 if '_id' in blk_dict:
                     del blk_dict['_id']
+
                 block = Message.get_message(MessageType.BLOCK_DATA, **blk_dict)
                 self.state.update_with_block(block=block)
 
@@ -288,7 +290,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def recv_block_idx_req(self, request):
         """
-        Receive BlockIndexRequests calls storage driver to process req and build response
+        Receive BlockIndexRequests calls storage blocks to process req and build response
         :param requester_vk:
         :param request:
         :return:

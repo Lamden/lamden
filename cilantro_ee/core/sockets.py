@@ -3,10 +3,11 @@ import asyncio
 
 
 class SocketBook:
-    def __init__(self, network: Network=None, phonebook_function: callable=None):
+    def __init__(self, port, network: Network=None, phonebook_function: callable=None):
         self.network = network
         self.phonebook_function = phonebook_function
         self.sockets = {}
+        self.port = port
 
     async def refresh(self):
         pb_nodes = set(self.phonebook_function())
@@ -33,7 +34,10 @@ class SocketBook:
 
         for r in results:
             if r is not None:
-                self.sockets.update(r)
+                k, v = list(r.items())[0]
+                print(v)
+                v.port = self.port
+                self.sockets.update({k: v})
 
     @staticmethod
     def new_nodes(phone_book_nodes, current_nodes):
