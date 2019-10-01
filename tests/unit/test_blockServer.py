@@ -174,4 +174,4 @@ class TestBlockServer(TestCase):
         res = loop.run_until_complete(tasks)
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
-        print(msg)
+        self.assertEqual(msg_type, MessageType.BAD_REQUEST)
