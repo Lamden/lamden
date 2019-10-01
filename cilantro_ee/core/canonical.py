@@ -62,4 +62,5 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
 
     if block_hasher.digest() == proposed_hash:
         return True
+
     return False

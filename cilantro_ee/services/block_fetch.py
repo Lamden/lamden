@@ -80,6 +80,7 @@ class BlockFetcher:
                 return unpacked
 
     async def find_valid_block(self, i, latest_hash, timeout=3000):
+        await self.masternodes.refresh()
         block_found = False
         block = None
 
@@ -99,6 +100,7 @@ class BlockFetcher:
                     block_found = verify_block(subblocks=block.subBlocks,
                                                previous_hash=latest_hash,
                                                proposed_hash=block.blockHash)
+                    futures.remove(f)
 
         return block
 
