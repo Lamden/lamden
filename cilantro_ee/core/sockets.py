@@ -1,5 +1,4 @@
-from cilantro_ee.protocol.overlay.network import Network
-from cilantro_ee.protocol.overlay.new_server import OverlayClient
+from cilantro_ee.protocol.overlay.sync_client import OverlayClientSync
 import asyncio
 
 # Keeps a dictionary between a VK and an IP string
@@ -9,7 +8,7 @@ import asyncio
 
 
 class SocketBook:
-    def __init__(self, client: OverlayClient=None, phonebook_function: callable=None):
+    def __init__(self, client: OverlayClientSync=None, phonebook_function: callable=None):
         self.client = client
         self.phonebook_function = phonebook_function
         self.sockets = {}
@@ -26,7 +25,7 @@ class SocketBook:
 
         # Add new nodes
         to_add = self.new_nodes(pb_nodes, current_nodes)
-        coroutines = [self.client.get_ip_for_vk(m) for m in to_add]
+        coroutines = [self.client.async_get_ip_sync(m) for m in to_add]
 
         tasks = asyncio.gather(*coroutines)
         loop = asyncio.get_event_loop()

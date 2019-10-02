@@ -3,6 +3,7 @@ from cilantro_ee.protocol.overlay.client import OverlayClient
 import time
 import asyncio
 
+
 class OverlayClientSync(OverlayClient):
     def __init__(self, ctx):
         super().__init__(self._handle_overlay_reply, self._handle_overlay_reply, ctx=ctx)
