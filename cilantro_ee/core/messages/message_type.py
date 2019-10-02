@@ -38,3 +38,6 @@ class MessageType(MessageBaseType):
     LATEST_BLOCK_HASH_REPLY = auto()
 
     BAD_REQUEST = auto()
+
+    IP_FOR_VK_REQUEST = auto()
+    IP_FOR_VK_REPLY = auto()

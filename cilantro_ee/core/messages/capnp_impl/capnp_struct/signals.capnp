@@ -48,3 +48,11 @@ struct LatestBlockHashRequest {
 struct LatestBlockHashReply {
     blockHash @0: Data;
 }
+
+struct IPForVKRequest {
+    vk @0: Data;
+}
+
+struct IPForVKReply {
+    ip @0: Data;
+}
