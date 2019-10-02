@@ -156,8 +156,17 @@ class BlockAggregator(Worker):
             self.cur_quorum = max(cq, self.min_quorum)
 
         # now start the catchup
+        # sync_genesis_contracts()
+        # await self.block_fetcher.sync()
+
+        await self._trigger_catchup()
+
+    async def _trigger_catchup(self):
+        self.log.info("Triggering catchup")
+        # Add genesis contracts to state db if needed
         sync_genesis_contracts()
-        await self.block_fetcher.sync()
+
+        self.catchup_manager.run_catchup()
 
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
