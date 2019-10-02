@@ -73,5 +73,3 @@ def get_stamps_enabled():
 @export
 def get_nonces_enabled():
     return nonces_enabled.get()
-
-

@@ -15,23 +15,24 @@ def contract_name_from_file_path(p: str) -> str:
     return name
 
 
-def contracts_for_directory(path, extension):
-    dir_path = os.path.join(os.path.dirname(__file__), path) + '/' + extension
+def contracts_for_directory(path, extension, directory=os.path.dirname(__file__)):
+    dir_path = os.path.join(directory, path) + '/' + extension
     contracts = glob.glob(dir_path)
     return contracts
 
 
 def sync_genesis_contracts(genesis_path: str='genesis',
                            extension: str='*.s.py',
-                           exclude=['vkbook']):
+                           exclude=['vkbook'],
+                           directory=os.path.dirname(__file__)):
 
     # Direct database writing of all contract files in the 'genesis' folder
     # direct_contracts = contracts_for_directory(direct_path, extension)
     # explicitly submit the submission contract
-    submission_file = os.path.dirname(__file__) + '/submission.s.py'
+    submission_file = directory + '/submission.s.py'
     client = ContractingClient(submission_filename=submission_file)
 
-    genesis_contracts = contracts_for_directory(genesis_path, extension)
+    genesis_contracts = contracts_for_directory(genesis_path, extension, directory=directory)
 
     for contract in genesis_contracts:
         name = contract_name_from_file_path(contract)
@@ -45,8 +46,8 @@ def sync_genesis_contracts(genesis_path: str='genesis',
             client.submit(code, name=name)
 
 
-def submit_contract_with_construction_args(name, args={}):
-    file = os.path.dirname(__file__) + '/genesis/{}.s.py'.format(name)
+def submit_contract_with_construction_args(name, directory=os.path.dirname(__file__), args={}):
+    file = directory + '/genesis/{}.s.py'.format(name)
 
     submission_file = os.path.dirname(__file__) + '/submission.s.py'
     client = ContractingClient(submission_filename=submission_file)

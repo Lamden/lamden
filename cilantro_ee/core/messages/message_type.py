@@ -7,7 +7,6 @@ class MessageBaseType(IntEnum):
         return 2 * count
 
 
-
 class MessageType(MessageBaseType):
     SIGNED_MESSAGE = 0
 
@@ -21,6 +20,7 @@ class MessageType(MessageBaseType):
     BLOCK_INDEX_REPLY = auto()
     BLOCK_DATA_REQUEST = auto()
     BLOCK_DATA_REPLY = auto()
+    BLOCK_DATA = auto()
     BLOCK_NOTIFICATION = auto()
     BURN_INPUT_HASHES = auto()
 
@@ -30,3 +30,14 @@ class MessageType(MessageBaseType):
     MERKLE_PROOF = auto()
     TRANSACTION = auto()
     SUBBLOCK = auto()
+
+    LATEST_BLOCK_HEIGHT_REQUEST = auto()
+    LATEST_BLOCK_HEIGHT_REPLY = auto()
+
+    LATEST_BLOCK_HASH_REQUEST = auto()
+    LATEST_BLOCK_HASH_REPLY = auto()
+
+    BAD_REQUEST = auto()
+
+    IP_FOR_VK_REQUEST = auto()
+    IP_FOR_VK_REPLY = auto()

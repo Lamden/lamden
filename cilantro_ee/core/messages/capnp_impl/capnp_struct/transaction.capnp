@@ -29,6 +29,11 @@ struct TransactionData {
     transaction @0 :Transaction;
     status @1: UInt8;
     state @2: Data;
+    stampsUsed @3: UInt64;
+}
+
+struct Transactions {
+    transactions @0 :List(Transaction);
 }
 
 struct TransactionBatch {

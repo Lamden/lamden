@@ -1,9 +1,10 @@
 from decimal import Decimal
 from cilantro_ee.protocol import wallet
 from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
-from cilantro_ee.protocol import pipehash
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import time
 import os
@@ -19,9 +20,10 @@ VALUE_TYPE_MAP = {
     bool: 'bool'
 }
 
+
 class TransactionBuilder:
-    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes, epoch: bytes,
-                 nonce: int, proof_difficulty: str=conf.DEFAULT_DIFFICULTY):
+    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes,
+                 nonce: int):
 
         # Stores variables in self for convenience
         self.sender = sender
@@ -31,8 +33,6 @@ class TransactionBuilder:
         self.function = function
         self.nonce = nonce
         self.kwargs = kwargs
-        self.epoch = epoch
-        self.proof_difficulty = proof_difficulty
 
         # Serializes all that it can on init
         self.struct = transaction_capnp.Transaction.new_message()
@@ -78,8 +78,8 @@ class TransactionBuilder:
         self.tx_signed = True
 
     def generate_proof(self):
-        self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
-        #self.proof = SHA3POWBytes.find(self.payload_bytes)
+        #self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
+        self.proof = SHA3POWBytes.find(self.payload_bytes)
         self.proof_generated = True
 
     def serialize(self):
@@ -112,69 +112,94 @@ def verify_packed_tx(sender, tx):
         return False
 
 
+class TransactionException(Exception):
+    pass
+
+
+class TransactionSignatureInvalid(TransactionException):
+    pass
+
+
+class TransactionPOWProofInvalid(TransactionException):
+    pass
+
+
+class TransactionProcessorInvalid(TransactionException):
+    pass
+
+
+class TransactionTooManyPendingException(TransactionException):
+    pass
+
+
+class TransactionNonceInvalid(TransactionException):
+    pass
+
+
+class TransactionStampsNegative(TransactionException):
+    pass
+
+
+class TransactionSenderTooFewStamps(TransactionException):
+    pass
+
+
 def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
-                         driver: MetaDataStorage,
+                         driver: NonceManager,
                          strict=True,
-                         difficulty=conf.DEFAULT_DIFFICULTY):
+                         tx_per_block=15):
+    # Validate Signature
+    if not wallet._verify(tx.payload.sender,
+                          tx.payload.as_builder().to_bytes_packed(),
+                          tx.metadata.signature):
+        raise TransactionSignatureInvalid
+
+    # Validate Proof
+    if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
+        raise TransactionPOWProofInvalid
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
-        return False
+        raise TransactionProcessorInvalid
 
     # Attempt to get the current block's pending nonce
-    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender)
+    nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
 
-    # If it doesn't exist, get the current nonce
-    if pending_nonce is None:
-        nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender)
+    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or nonce
 
-        # If that doesn't exist, this is the first TX. Set pending nonce to 0
-        if nonce is None:
-            pending_nonce = 0
-        else:
-            pending_nonce = nonce
+    if tx.payload.nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
+        raise TransactionTooManyPendingException
 
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:
         if tx.payload.nonce != pending_nonce:
-            return False
+            raise TransactionNonceInvalid
         pending_nonce += 1
 
     # However, some of those tx's might fail verification and never make it to delegates. Thus,
     # delegates shouldn't be as concerned. (1, 2, 4) should be valid for delegates.
     else:
         if tx.payload.nonce < pending_nonce:
-            return False
+            raise TransactionNonceInvalid
         pending_nonce = tx.payload.nonce + 1
 
-    if not wallet._verify(tx.payload.sender,
-                          tx.payload.as_builder().to_bytes_packed(),
-                          tx.metadata.signature):
-        return False
+    # Validate Stamps
+    if tx.payload.stampsSupplied < 0:
+        raise TransactionStampsNegative
 
-    pipehash_state = driver.latest_epoch_hash
-    if not pipehash.check_solution(state=pipehash_state,
-                                   data=tx.payload.as_builder().to_bytes_packed(),
-                                   nonce=tx.metadata.proof,
-                                   difficulty=difficulty):
-        return False
+    currency_contract = 'currency'
+    balances_hash = 'balances'
 
-    if tx.payload.stampsSupplied > 0:
-        currency_contract = 'currency'
-        balances_hash = 'balances'
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       tx.payload.sender.hex())
 
-        balances_key = '{}{}{}{}{}'.format(currency_contract,
-                                           config.INDEX_SEPARATOR,
-                                           balances_hash,
-                                           config.DELIMITER,
-                                           tx.payload.sender.hex())
+    balance = driver.driver.get(balances_key) or 0
 
-        balance = driver.get(balances_key) or 0
-
-        if balance < tx.payload.stampsSupplied:
-            return False
+    if balance < tx.payload.stampsSupplied:
+        raise TransactionSenderTooFewStamps
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
-
-    return True

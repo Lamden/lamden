@@ -4,13 +4,15 @@ from cilantro_ee.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook
-from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
+
+from cilantro_ee.core.nonces import NonceManager
 
 IDX_REPLY_TIMEOUT = 20
 TIMEOUT_CHECK_INTERVAL = 1
@@ -33,9 +35,10 @@ class CatchupManager:
         self.signing_key = signing_key
         self.store_full_blocks = store_full_blocks
 
-        # self.driver = CilantroStorageDriver(key=self.signing_key)
+        # self.blocks = CilantroStorageDriver(key=self.signing_key)
 
         self.state = MetaDataStorage()
+        self.nonce_manager = NonceManager()
 
         # catchup state
         self.is_caught_up = False
@@ -69,6 +72,13 @@ class CatchupManager:
         self.log.test("CatchupManager VKBook Delegates's: {}".format(PhoneBook.delegates))
         # END DEBUG
 
+        self.nonce_manager = NonceManager(driver=self.state)
+
+        if self.store_full_blocks:
+            self.driver = CilantroStorageDriver(key=self.signing_key)
+        else:
+            self.driver = None
+
     def update_state(self):
         """
         Sync block and state DB if either is out of sync.
@@ -95,9 +105,11 @@ class CatchupManager:
                 latest_state_num = latest_state_num + 1
                 # TODO get nth full block wont work for now in distributed storage
                 blk_dict = self.driver.get_block(latest_state_num)
+
                 if '_id' in blk_dict:
                     del blk_dict['_id']
-                block = Message.get_message(MessageType.BLOCK_DATA_REPLY, **blk_dict)
+
+                block = Message.get_message(MessageType.BLOCK_DATA, **blk_dict)
                 self.state.update_with_block(block=block)
 
         # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date
@@ -112,11 +124,11 @@ class CatchupManager:
                 subblock = Message.unpack_message_internal(MessageType.SUBBLOCK, raw_sb)
                 self.log.info('Block: {}'.format(subblock))
                 for tx in subblock.transactions:
-                    update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                    self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                     self.state.set_transaction_data(tx=tx)
 
-        self.state.commit_nonces(nonce_hash=nonces)
-        self.state.delete_pending_nonces()
+        self.nonce_manager.commit_nonces(nonce_hash=nonces)
+        self.nonce_manager.delete_pending_nonces()
 
         self.log.info("Verify StateDriver num {} StorageDriver num {}".format(latest_state_num, db_latest_blk_num))
 
@@ -214,7 +226,7 @@ class CatchupManager:
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             return
 
-        tmp_list = reply.indices
+        tmp_list = reply.get('indices')
         if len(tmp_list) > 1:
             assert tmp_list[0].get('blockNum') > tmp_list[-1].get('blockNum'), "ensure reply are in ascending order {}"\
                 .format(tmp_list)
@@ -236,7 +248,7 @@ class CatchupManager:
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply):
-        self._recv_block_idx_reply(sender_vk, reply)
+        self._recv_block_idx_reply(sender_vk, reply.to_dict())
         # self.log.important2("RCV BIRp")
         return self.is_catchup_done()
 
@@ -246,7 +258,7 @@ class CatchupManager:
         msg_type, msg = Message.get_message_packed(
                                       MessageType.BLOCK_DATA_REQUEST,
                                       blockNum=req_blk_num)
-        self.router.send_msg(mn_vk.encode(), msg_type, msg)
+        self.router.send_msg(mn_vk, msg_type, msg)
 
     def _recv_block_data_reply(self, reply):
         # check if given block is older thn expected drop this reply
@@ -278,7 +290,7 @@ class CatchupManager:
     # MASTER ONLY CALL
     def recv_block_idx_req(self, request):
         """
-        Receive BlockIndexRequests calls storage driver to process req and build response
+        Receive BlockIndexRequests calls storage blocks to process req and build response
         :param requester_vk:
         :param request:
         :return:
@@ -304,7 +316,7 @@ class CatchupManager:
 
         if delta_idx is None:
             delta_idx = []
-       
+
         self.log.debugv("Delta list {} for blk_num {} blk_hash {}".format(delta_idx, self.curr_num,
                                                                           request.blockHash))
 
@@ -377,7 +389,9 @@ class CatchupManager:
         # check if requester is master or del
         self.log.info(sender_bhash)
         valid_node = vk.decode() in PhoneBook.state_sync
+
         if valid_node:
+
             index = self.driver.get_index(sender_bhash)
 
             given_blk_num = index.get('blockNum') if index else 0

@@ -5,13 +5,13 @@ from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
-from cilantro_ee.utils import int_to_bytes
 
 from cilantro_ee.constants import conf
 from cilantro_ee.utils.hasher import Hasher
-
+from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
 from cilantro_ee.storage.master import MasterStorage
 from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.core.nonces import NonceManager
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
@@ -37,6 +37,7 @@ CORS(app, automatic_options=True)
 log = get_logger("MN-WebServer")
 client = ContractingClient()
 metadata_driver = MetaDataStorage()
+nonce_manager = NonceManager()
 
 static_headers = {}
 
@@ -55,12 +56,12 @@ async def get_id(request):
 @app.route('/nonce/<vk>', methods=['GET'])
 async def get_nonce(request, vk):
     # Might have to change this sucker from hex to bytes.
-    pending_nonce = metadata_driver.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+    pending_nonce = nonce_manager.get_pending_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
 
     log.info('Pending nonce: {}'.format(pending_nonce))
 
     if pending_nonce is None:
-        nonce = metadata_driver.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
+        nonce = nonce_manager.get_nonce(processor=conf.HOST_VK, sender=bytes.fromhex(vk))
         log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
         if nonce is None:
             pending_nonce = 0
@@ -92,7 +93,7 @@ async def submit_transaction(request):
     # Try to deserialize transaction.
     try:
         tx_bytes = request.body
-        tx = Message.unpack_message(int_to_bytes(int(MessageType.TRANSACTION)), tx_bytes)
+        tx = Message.unpack_message(pack(int(MessageType.TRANSACTION)), tx_bytes)
 
     except Exception as e:
         return json({'error': 'Malformed transaction.'.format(e)}, status=400)
@@ -157,10 +158,8 @@ async def get_variable(request, contract, variable):
 
     key = request.args.get('key')
 
-    if key is None:
-        response = client.raw_driver.get('{}.{}'.format(contract, variable))
-    else:
-        response = client.raw_driver.get('{}.{}:{}'.format(contract, variable, key))
+    k = client.raw_driver.make_key(key=contract, field=variable, args=key)
+    response = client.raw_driver.get(k)
 
     if response is None:
         return json({'value': None}, status=404)
@@ -180,7 +179,7 @@ async def get_variable(request, contract, variable):
 async def get_latest_block(request):
     index = MasterStorage.get_last_n(1)
     latest_block_hash = index.get('blockHash')
-    return json({ 'hash': '{}'.format(latest_block_hash) })
+    return json({'hash': '{}'.format(latest_block_hash) })
 
 
 @app.route('/blocks', methods=["GET","OPTIONS",])
@@ -201,8 +200,6 @@ async def get_block(request):
 
 
 def start_webserver(q):
-    time.sleep(30)
-    log.debugv("TESTING Creating REST server on port {}".format(WEB_SERVER_PORT))
     app.queue = q
     if ssl_enabled:
         context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)

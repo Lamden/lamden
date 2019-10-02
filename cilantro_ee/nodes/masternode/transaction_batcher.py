@@ -13,10 +13,9 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.protocol.wallet import Wallet, _verify
 from cilantro_ee.protocol.pow import SHA3POWBytes
-from cilantro_ee.protocol.transaction import transaction_is_valid
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 from contracting import config
-
+from cilantro_ee.core.nonces import NonceManager
 
 class TransactionBatcher(Worker):
 
@@ -27,7 +26,7 @@ class TransactionBatcher(Worker):
         self.ipc_port = ipc_port
         self._ready = False
 
-        self.driver = MetaDataStorage()
+        self.driver = NonceManager()
 
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
@@ -136,10 +135,10 @@ class TransactionBatcher(Worker):
 
             if (num_txns >= MAX_TXNS_PER_SUB_BLOCK) or \
                (cur_txn_delay >= MAX_TXN_SUBMISSION_DELAY):
-                bag_size =  min(num_txns, MAX_TXNS_PER_SUB_BLOCK)
+                bag_size = min(num_txns, MAX_TXNS_PER_SUB_BLOCK)
                 cur_txn_delay = 0
             else:
-                bag_size =  0
+                bag_size = 0
                 empty_bag_delay = 0
 
             tx_list = []
@@ -148,22 +147,24 @@ class TransactionBatcher(Worker):
 
             for _ in range(bag_size):
                 # Get a transaction from the queue
-                _, tx = self.queue.get()
+                tx = self.queue.get()
 
                 # Make sure that the transaction is valid
                 # this is better done at webserver level before packing and putting it into the queue - raghu todo
-                if not transaction_is_valid(tx=tx,
-                                            expected_processor=self.wallet.verifying_key(),
-                                            driver=self.driver,
-                                            strict=True):
+                try:
+                    transaction_is_valid(tx=tx[1],
+                                         expected_processor=self.wallet.verifying_key(),
+                                         driver=self.driver,
+                                         strict=True)
+                except TransactionException:
                     continue
 
                 # Hash it
-                tx_bytes = tx.as_builder().to_bytes_packed()
+                tx_bytes = tx[1].as_builder().to_bytes_packed()
                 h.update(tx_bytes)
 
                 # Deserialize it and put it in the list
-                tx_list.append(tx)
+                tx_list.append(tx[1])
 
             # Add a timestamp
             timestamp = time.time()
@@ -177,9 +178,9 @@ class TransactionBatcher(Worker):
 
             mtype, msg = Message.get_message_packed(
                              MessageType.TRANSACTION_BATCH,
-                             transactions=tx_list, timestamp=timestamp,
+                             transactions=[t for t in tx_list], timestamp=timestamp,
                              signature=signature, inputHash=inputHash,
-                             sender=my_wallet.verifying_key())
+                             sender=my_wallet.vk.encode())
 
             self.pub_sock.send_msg(msg=msg, msg_type=mtype,
                                    filter=TRANSACTION_FILTER.encode())

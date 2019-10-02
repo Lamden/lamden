@@ -7,6 +7,8 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.constants.system_config import *
+from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.constants import system_config
 
 import hashlib
 
@@ -162,7 +164,7 @@ class MasterStorage:
 
 
 class DistributedMasterStorage(MasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
         super().__init__(config_path=config_path)
 
         self.distribute_writes = distribute_writes
@@ -287,7 +289,7 @@ class DistributedMasterStorage(MasterStorage):
 
 
 class CilantroStorageDriver(DistributedMasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
         self.state_id = ObjectId(OID)
         self.log = get_logger("StorageDriver")
 
@@ -297,7 +299,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, vkbook=vkbook)
 
     def store_block(self, sub_blocks):
-        last_block = self.get_last_n(1, DistributedMasterStorage.INDEX)[0]
+        last_block = self.get_last_n(1, self.INDEX)[0]
 
         last_hash = last_block.get('blockHash')
         current_block_num = last_block.get('blockNum') + 1
@@ -329,6 +331,9 @@ class CilantroStorageDriver(DistributedMasterStorage):
         # Serialize the sub block for mongo
         block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
 
+        #if not self.distribute_writes:
+        #    block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
+
         successful_storage = self.evaluate_wr(entry=block_dict)
 
         assert successful_storage is None or successful_storage is True, 'Write failure.'
@@ -348,7 +353,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block = self.get_block(block_num)
         sub_blocks = block.get('subBlocks')
 
-        for i in range(0, NUM_SB_PER_BLOCK):
+        for i in range(0, system_config.NUM_SB_PER_BLOCK):
             leaves = sub_blocks[i].get('merkleLeaves')
 
             try:

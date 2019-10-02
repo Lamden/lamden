@@ -6,14 +6,7 @@ from contracting.db import encoder
 
 import contextlib
 
-
-def update_nonce_hash(nonce_hash: dict, tx_payload):
-    # Modifies the provided dict
-    k = (tx_payload.processor, tx_payload.sender)
-    current_nonce = nonce_hash.get(k)
-
-    if current_nonce is None or current_nonce < tx_payload.nonce:
-        nonce_hash[k] = tx_payload.nonce + 1
+from cilantro_ee.core.nonces import NonceManager
 
 
 class MetaDataStorage(DatabaseDriver):
@@ -32,6 +25,8 @@ class MetaDataStorage(DatabaseDriver):
 
         self.nonce_key = nonce_key
         self.pending_nonce_key = pending_nonce_key
+
+        self.nonce_manager = NonceManager()
 
         super().__init__()
 
@@ -95,95 +90,37 @@ class MetaDataStorage(DatabaseDriver):
 
             # For each KV in the JSON, set the key to the value
             for k, v in sets.items():
-                super().set(k, v)
-
-    def commit_nonces(self, nonce_hash=None):
-        # Delete pending nonces and update the nonces
-        if nonce_hash is not None:
-            for k, v in nonce_hash.items():
-                processor, sender = k
-
-                self.set_nonce(processor=processor, sender=sender, nonce=v)
-                self.delete_pending_nonce(processor=processor, sender=sender)
-        else:
-            # Commit all pending nonces straight up
-            for n in self.iter(self.pending_nonce_key):
-                _, processor, sender = n.decode().split(':')
-
-                processor = bytes.fromhex(processor)
-                sender = bytes.fromhex(sender)
-
-                nonce = self.get_pending_nonce(processor=processor, sender=sender)
-
-                self.set_nonce(processor=processor, sender=sender, nonce=nonce)
-                self.delete(n)
-
-    def delete_pending_nonces(self):
-        for nonce in self.iter(self.pending_nonce_key):
-            self.delete(nonce)
+                self.set(k, v)
 
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
 
+        # Capnp proto shim until we remove it completely from storage
+        if type(block) != dict:
+            block = block.to_dict()
+
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
 
-        for sb in block['subBlocks']:
+        for sb in block.subBlocks:
             for tx in sb.transactions:
-                update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+                self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
 
-        self.commit_nonces(nonce_hash=nonces)
-        self.delete_pending_nonces()
+        # Commit new nonces
+        self.nonce_manager.commit_nonces(nonce_hash=nonces)
+        self.nonce_manager.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.latest_block_hash = block['blockHash']
-        self.latest_block_num = block['blockNum']
+        self.latest_block_hash = block.blockHash
+        self.latest_block_num = block.blockNum
 
         # Update the epoch hash if it is time
-        if block['blockNum'] % conf.EPOCH_INTERVAL == 0:
-            self.latest_epoch_hash = block['blockHash']
+        if block.blockNum % conf.EPOCH_INTERVAL == 0:
+            self.latest_epoch_hash = block.blockHash
 
-        assert self.latest_block_hash == block['blockHash'], \
+            # Update rewards
+
+        assert self.latest_block_hash == block.blockHash, \
             "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
-
-
-    # def _key_for_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key = self.pending_nonce_key if pending else self.nonce_key
-    #     key_str = ':'.join([key, processor.hex(), sender.hex()])
-    #     return key_str
-    #
-    # def get_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     nonce = self.get(key_str)
-    #     return encoder.decode(nonce)
-    #
-    # def set_nonce(self, processor:bytes, sender: bytes, nonce: int, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     nonce = encoder.encode(nonce)
-    #     self.set(key_str, nonce)
-    #
-    # def delete_nonce(self, processor: bytes, sender: bytes, pending=False):
-    #     key_str = self._key_for_nonce(processor, sender, pending)
-    #     self.delete(key_str)
-
-    @staticmethod
-    def n_key(key, processor, sender):
-        return ':'.join([key, processor.hex(), sender.hex()])
-
-    # Nonce methods
-    def get_pending_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(self.pending_nonce_key, processor, sender))
-
-    def get_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(self.nonce_key, processor, sender))
-
-    def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.pending_nonce_key, processor, sender), nonce)
-
-    def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(self.nonce_key, processor, sender), nonce)
-
-    def delete_pending_nonce(self, processor: bytes, sender: bytes):
-        self.delete(self.n_key(self.pending_nonce_key, processor, sender))

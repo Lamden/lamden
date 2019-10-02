@@ -252,6 +252,7 @@ class Network:
         await self.peer_service.event_publisher.send(ready_msg)
 
         log.success('Sent ready signal.')
+        return
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
@@ -340,9 +341,12 @@ class Network:
         # Return the number of nodes needed left
         return current_quorum - len(nodes)
 
-    async def find_node(self, client_address: services.SocketStruct, vk_to_find, retries=3):
+    # Returns raw IP string for a node: 127.0.0.1 etc. Transform this into whatever you want.
+    async def find_node(self, client_address: services.SocketStruct=None, vk_to_find=None, retries=3):
         # Search locally if this is the case
-        if str(client_address) == str(self.peer_service_address) or vk_to_find == self.wallet.verifying_key().hex():
+        if str(client_address) == str(self.peer_service_address) or \
+                vk_to_find == self.wallet.verifying_key().hex() or \
+                client_address is None:
             response = self.table.find(vk_to_find)
 
         # Otherwise, send out a network request

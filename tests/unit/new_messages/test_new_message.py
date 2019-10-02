@@ -54,7 +54,7 @@ class TestMessages(TestCase):
 
         wallet = Wallet()
         mtype2, msg2 = capnp_impl.get_signed_message_packed(
-                               signee=wallet.verifying_key(), sign=wallet.sign,
+                               wallet=wallet,
                                msg_type=MessageType.BLOCK_NOTIFICATION,
                                blockNum=123, blockOwners=blk_owners,
                                inputHashes=input_hashes, newBlock=None)

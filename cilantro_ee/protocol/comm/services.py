@@ -4,11 +4,13 @@ import zmq
 import asyncio
 import json
 
+
 class SocketEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, SocketStruct):
             return str(o)
         return json.JSONEncoder.default(self, o)
+
 
 log = get_logger("BaseServices")
 
@@ -18,6 +20,7 @@ class Protocols:
     INPROC = 1
     ICP = 2
     PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
+
 
 # syntactic sugar yum yum
 def _socket(s: str):
@@ -39,9 +42,6 @@ class SocketStruct:
         else:
             return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
 
-    def __str__(self):
-        return self.zmq_url()
-
     @classmethod
     def from_string(cls, str):
         protocol = Protocols.TCP
@@ -62,6 +62,17 @@ class SocketStruct:
     @classmethod
     def is_valid(cls, s):
         return ':' in s
+
+    def __str__(self):
+        return self.zmq_url()
+
+    def __repr__(self):
+        return '<ZMQ Socket: "{}">'.format(self.__str__())
+
+    def __eq__(self, other):
+        return self.protocol == other.protocol and \
+            self.id == other.id and \
+            self.port == other.port
 
 
 # Pushes current task to the back of the event loop
@@ -183,11 +194,15 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10):
-    if retries <= 0:
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10, dealer=False):
+    if retries < 0:
         return None
 
-    socket = ctx.socket(zmq.REQ)
+    if dealer:
+        socket = ctx.socket(zmq.DEALER)
+    else:
+        socket = ctx.socket(zmq.REQ)
+
     socket.setsockopt(zmq.LINGER, linger)
     try:
         # Allow passing an existing socket to save time on initializing a _new one and waiting for connection.

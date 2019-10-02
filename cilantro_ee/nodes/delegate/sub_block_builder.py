@@ -35,7 +35,7 @@ from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
 
-from cilantro_ee.protocol.transaction import transaction_is_valid
+from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 
 from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.protocol.wallet import _verify
@@ -45,6 +45,7 @@ from datetime import datetime
 import hashlib
 from decimal import Decimal
 
+from cilantro_ee.core.nonces import NonceManager
 
 class Payload:
     def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
@@ -126,6 +127,7 @@ class SubBlockBuilder(Worker):
         self._empty_txn_batch = []
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
+        self.nonce_manager = NonceManager()
 
         # DEBUG -- TODO DELETE
         self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
@@ -271,7 +273,7 @@ class SubBlockBuilder(Worker):
         self.client.flush_all()
 
         # Toss all pending nonces
-        self.state.delete_pending_nonces()
+        self.nonce_manager.delete_pending_nonces()
 
         smi = block.firstSbIdx // NUM_SB_BUILDERS
         # assert smi == self._next_block_to_make.pending_sm_idx, "misalignment in align input hashes"
@@ -385,13 +387,13 @@ class SubBlockBuilder(Worker):
 
             for tx in batch.transactions:
                 # Double check to make sure all transactions are valid
-                if transaction_is_valid(tx=tx,
-                                        expected_processor=batch.sender,
-                                        driver=self.state,
-                                        strict=False):
-
+                try:
+                    transaction_is_valid(tx=tx,
+                                         expected_processor=batch.sender,
+                                         driver=self.nonce_manager,
+                                         strict=False)
                     valid_transactions.append(tx)
-                else:
+                except TransactionException:
                     self.log.critical('TX NOT VALID FOR SOME REASON.')
 
                 # Hash all transactions regardless because the proof from masternodes is derived from all hashes
@@ -436,7 +438,7 @@ class SubBlockBuilder(Worker):
             input_hash = sb_data.input_hash
 
         _, merkle_proof = Message.get_message_packed(
-                                    MessageType.MERKLE_PROOF, 
+                                    MessageType.MERKLE_PROOF,
                                     hash=input_hash,
                                     signer=self.wallet.verifying_key(),
                                     signature=self.wallet.sign(input_hash))
@@ -465,11 +467,12 @@ class SubBlockBuilder(Worker):
 
         txs_data = []
 
+        # Add stamps used to TransactionData payload
         for i in range(len(exec_data)):
             d = exec_data[i]
             tx = self.pending_transactions[i]
             _, txn_msg = Message.get_message_packed(
-                                    MessageType.TRANSACTION_DATA, 
+                                    MessageType.TRANSACTION_DATA,
                                     transaction=tx,
                                     status=d.status,
                                     state=d.state)
@@ -479,13 +482,13 @@ class SubBlockBuilder(Worker):
         merkle = MerkleTree.from_raw_transactions(txs_data)
 
         _, merkle_proof = Message.get_message_packed(
-                                    MessageType.MERKLE_PROOF, 
+                                    MessageType.MERKLE_PROOF,
                                     hash=merkle.root,
                                     signer=self.wallet.verifying_key(),
                                     signature=self.wallet.sign(merkle.root))
 
         mtype, sbc = Message.get_message_packed(
-                           MessageType.SUBBLOCK_CONTENDER, 
+                           MessageType.SUBBLOCK_CONTENDER,
                            resultHash=merkle.root,
                            inputHash=sb_data.input_hash,
                            merkleLeaves=[leaf for leaf in merkle.leaves],

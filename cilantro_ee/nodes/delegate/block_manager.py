@@ -40,6 +40,8 @@ import os
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
 
+from cilantro_ee.core.nonces import NonceManager
+
 
 # class to keep track of sub-blocks sent over from my sub-block builders
 class SubBlocks:
@@ -188,6 +190,7 @@ class BlockManager(Worker):
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.driver = MetaDataStorage()
+        self.nonce_manager = NonceManager()
         self.run()
 
     def _thicc_log(self):
@@ -365,7 +368,6 @@ class BlockManager(Worker):
             # Process accordingly
             self.handle_block_notification(frames, msg, sender)
 
-
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
         # raghu - wow - who changed this to hard coded 3?
@@ -418,7 +420,7 @@ class BlockManager(Worker):
         if msg_type == MessageType.BLOCK_INDEX_REPLY:
             self.recv_block_idx_reply(sender, msg)
 
-        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+        elif msg_type == MessageType.BLOCK_DATA:
             self.recv_block_data_reply(msg)
 
     def _get_new_block_hash(self):
@@ -439,7 +441,6 @@ class BlockManager(Worker):
             h.update(sb_hash)
 
         return h.digest()
-
 
     async def _send_sbc(self, mtype_enc: bytes, msg_blob: bytes):
         wait_time = 0
@@ -517,7 +518,7 @@ class BlockManager(Worker):
                         self.db_state.driver.latest_epoch_hash = my_new_block_hash
 
                 self.send_updated_db_msg()
-                self.driver.commit_nonces()
+                self.nonce_manager.commit_nonces()
 
                 # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
             else:
