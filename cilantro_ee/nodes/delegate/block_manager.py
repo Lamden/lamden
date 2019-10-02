@@ -99,6 +99,7 @@ class NextBlockData:
             return True
         return False
 
+
 # Keeps track of block notifications from master
 class NextBlock:
     def __init__(self):
@@ -225,9 +226,13 @@ class BlockManager(Worker):
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
         # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
-        #self.router = self.manager.create_socket(socket_type=zmq.ROUTER,name="BM-Router-{}".format(self.verifying_key[-4:]),secure=True,)
+        self.router = self.manager.create_socket(
+            socket_type=zmq.ROUTER,
+            name="BM-Router-{}".format(self.verifying_key[-4:]),
+            secure=True,
+        )
         # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
-        self.router.socket(zmq.ROUTER)
+
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -243,15 +248,14 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        # self.pub = self.manager.create_socket(
-        #     socket_type=zmq.PUB,
-        #     name="BM-Pub-{}".format(self.verifying_key[-4:]),
-        #     secure=True,
-        # )
-        #
-        #self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
-        self.pub = self.zmq_ctx.socket(zmq.PUB)
-        self.pub.connect('tcp://{}:{}'.format(self.ip, DELEGATE_PUB_PORT))
+        self.pub = self.manager.create_socket(
+            socket_type=zmq.PUB,
+            name="BM-Pub-{}".format(self.verifying_key[-4:]),
+            secure=True,
+        )
+        self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
+
+        self.pub_replacement = self.zmq_ctx.socket(zmq.PUB)
 
         self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
                                                    signing_key=self.signing_key,
@@ -270,8 +274,6 @@ class BlockManager(Worker):
             name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
         )
-        self.sub = self.zmq_ctx.socket(zmq.SUB)
-        #self.sub.connect('tcp://*:')
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
 

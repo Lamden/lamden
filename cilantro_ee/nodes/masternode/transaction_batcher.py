@@ -17,6 +17,7 @@ from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionEx
 from contracting import config
 from cilantro_ee.core.nonces import NonceManager
 
+
 class TransactionBatcher(Worker):
 
     def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
@@ -28,6 +29,7 @@ class TransactionBatcher(Worker):
 
         self.driver = NonceManager()
 
+# Are we even using this anymore?
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
