@@ -226,7 +226,7 @@ class CatchupManager:
             self.log.important("Received BlockIndexReply with no index info from masternode {}".format(sender_vk))
             return
 
-        tmp_list = reply.indices
+        tmp_list = reply.get('indices')
         if len(tmp_list) > 1:
             assert tmp_list[0].get('blockNum') > tmp_list[-1].get('blockNum'), "ensure reply are in ascending order {}"\
                 .format(tmp_list)
@@ -248,10 +248,7 @@ class CatchupManager:
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply):
-        print(reply)
-        msg = Message.unpack_message_internal(MessageType.BLOCK_INDEX_REQUEST, reply)
-        print(msg)
-        self._recv_block_idx_reply(sender_vk, reply)
+        self._recv_block_idx_reply(sender_vk, reply.to_dict())
         # self.log.important2("RCV BIRp")
         return self.is_catchup_done()
 
@@ -261,7 +258,7 @@ class CatchupManager:
         msg_type, msg = Message.get_message_packed(
                                       MessageType.BLOCK_DATA_REQUEST,
                                       blockNum=req_blk_num)
-        self.router.send_msg(mn_vk.encode(), msg_type, msg)
+        self.router.send_msg(mn_vk, msg_type, msg)
 
     def _recv_block_data_reply(self, reply):
         # check if given block is older thn expected drop this reply
