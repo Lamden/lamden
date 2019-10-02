@@ -228,12 +228,12 @@ class CatchupManager:
 
         tmp_list = reply.indices
         if len(tmp_list) > 1:
-            assert tmp_list[0].blockNum > tmp_list[-1].blockNum, "ensure reply are in ascending order {}"\
+            assert tmp_list[0].get('blockNum') > tmp_list[-1].get('blockNum'), "ensure reply are in ascending order {}"\
                 .format(tmp_list)
             tmp_list.reverse()
 
         self.log.debugv("tmp list -> {}".format(tmp_list))
-        self.new_target_blk_num = tmp_list[-1].blockNum if len(tmp_list) > 0 else 0
+        self.new_target_blk_num = tmp_list[-1].get('blockNum') if len(tmp_list) > 0 else 0
         new_blks = self.new_target_blk_num - self.target_blk_num
 
         if new_blks > 0:
@@ -248,6 +248,9 @@ class CatchupManager:
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply):
+        print(reply)
+        msg = Message.unpack_message_internal(MessageType.BLOCK_INDEX_REQUEST, reply)
+        print(msg)
         self._recv_block_idx_reply(sender_vk, reply)
         # self.log.important2("RCV BIRp")
         return self.is_catchup_done()
