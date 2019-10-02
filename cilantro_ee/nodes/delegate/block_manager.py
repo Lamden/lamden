@@ -83,7 +83,7 @@ class SubBlocks:
 class NextBlockData:
     def __init__(self, block_notif):
         self.block_notif = block_notif
-        is_failed = block_notif.type.which() == "FailedBlock"
+        is_failed = block_notif.which() == "FailedBlock"
         self.quorum_num = FAILED_BLOCK_NOTIFICATION_QUORUM if is_failed \
                             else BLOCK_NOTIFICATION_QUORUM
         self.is_quorum = False
@@ -449,9 +449,14 @@ class BlockManager(Worker):
             wait_time += 1
         # self.log.info("Waited for {} secs. Sending to Masternodes.".format(wait_time))
         # raghu todo - when BM gets a block notification - it should turn off sleep as well as not send in this pub message
+        # first sign the message 
+        mtype_sgn, msg_sgn = Message.get_message_signed_internal(
+                                  signee=self.wallet.verifying_key(),
+                                  sign=self.wallet.sign,
+                                  msg_type=mtype_enc, msg=msg_blob)
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
-                          msg_type=mtype_enc,
-                          msg=msg_blob)
+                          msg_type=mtype_sgn,
+                          msg=msg_sgn)
 
     async def _handle_sbc(self, sbb_index: int, sbc, mtype_enc: bytes, msg_blob: bytes):
         self.log.important("Got SBC with sb-index {} input-hash {}".format(sbc.subBlockIdx, sbc.inputHash.hex()))
@@ -504,7 +509,7 @@ class BlockManager(Worker):
             self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash.hex()))
 
             if my_new_block_hash == block.blockHash:
-                if block.type.which() == "newBlock":
+                if block.which() == "newBlock":
                     self.db_state.driver.latest_block_num = block.blockNum
                     self.db_state.driver.latest_block_hash = my_new_block_hash
 
@@ -524,7 +529,7 @@ class BlockManager(Worker):
                 # simply forward the block notification. it is input align on sbb
                 self._send_fail_block_msg(frames)
                 # this can be at sub-block blder level - where it will wait for anothr message only if it is new-block-notif otherwise, it will align input hashes and proceed to make next block
-                if block.type.which() == "newBlock":
+                if block.which() == "newBlock":
                     self.db_state.reset()
                     self.recv_block_notif(block)
                 else:

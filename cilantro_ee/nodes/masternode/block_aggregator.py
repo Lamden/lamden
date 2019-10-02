@@ -310,8 +310,8 @@ class BlockAggregator(Worker):
             input_hashes = kwargs.get('inputHashes')
             my_input_hashes = input_hashes[self.my_sb_idx]
             self.log.info("Need to burn input bags with hash(es) {}".format(my_input_hashes))
-            msg_type, msg = Message.get_message_packed(MessageType.BURN_INPUT_HASHES, my_input_hashes)
-            self.ipc_router.send_multipart([b'0', msg_type, msg])
+            bih_mtype, bih = Message.get_message_packed(MessageType.BURN_INPUT_HASHES, inputHashes=my_input_hashes)
+            self.ipc_router.send_multipart([b'0', bih_mtype, bih])
 
         mtype, bn = Message.get_signed_message_packed(
                              wallet=self.wallet,
@@ -340,7 +340,7 @@ class BlockAggregator(Worker):
         # assert that sub_blocks are sorted by subBlockIdx
         last_hash = self.state.latest_block_hash
         block_num = self.state.latest_block_num + 1
-        input_hashes = [[sb.inputHash] for sb in block_data['subBlocks']]
+        input_hashes = [[sb.inputHash] for sb in sub_blocks]
         block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
 
         self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
@@ -359,7 +359,7 @@ class BlockAggregator(Worker):
         block_num = self.state.latest_block_num + 1
         input_hashes = self.curr_block.get_input_hashes_sorted()
         block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
-        first_sb_idx = self.curr_block.get_first_sb_idx_unsorted()
+        first_sb_idx = self.curr_block.get_first_sb_idx_sorted()
 
         self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
                               blockNum=block_num,

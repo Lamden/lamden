@@ -437,13 +437,11 @@ class SubBlockBuilder(Worker):
         else:
             input_hash = sb_data.input_hash
 
-        signature = self.wallet.sign(input_hash)
-
-        merkle_proof = {
-                         "hash": input_hash,
-                         "signer": self.wallet.verifying_key(),
-                         "signature": signature
-                       }
+        _, merkle_proof = Message.get_message_packed(
+                                    MessageType.MERKLE_PROOF,
+                                    hash=input_hash,
+                                    signer=self.wallet.verifying_key(),
+                                    signature=self.wallet.sign(input_hash))
 
         mtype, msg = Message.get_message_packed(MessageType.SUBBLOCK_CONTENDER,
                                 resultHash=input_hash,
@@ -485,6 +483,7 @@ class SubBlockBuilder(Worker):
 
         _, merkle_proof = Message.get_message_packed(
                                     MessageType.TRANSACTION_DATA,
+                                    MessageType.MERKLE_PROOF,
                                     hash=merkle.root,
                                     signer=self.wallet.verifying_key(),
                                     signature=self.wallet.sign(merkle.root))

@@ -81,6 +81,12 @@ class CapnpImpl:
 
         return pack(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
 
+    def _get_message_signed(self, signee: bytes, sign: callable, msg_type: bytes, msg: bytes):
+        sig = sign(msg)
+        signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
+                            message=msg, signature=sig, signee=signee, timestamp=time.time())
+        return pack(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
+
     def unpack_message(self, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),
                        is_verify: bool = True):
