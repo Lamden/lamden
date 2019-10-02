@@ -328,9 +328,6 @@ class CilantroStorageDriver(DistributedMasterStorage):
             'subBlocks': [s for s in sub_blocks]
         }
 
-        # Get a blob for the protocol
-        block = blockdata_capnp.BlockData.new_message(**block_dict)
-
         # Serialize the sub block for mongo
         block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
 
