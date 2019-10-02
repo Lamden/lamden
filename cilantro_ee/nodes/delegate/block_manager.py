@@ -192,7 +192,7 @@ class BlockManager(Worker):
 
         self.driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
-        self.block_fetcher = BlockFetcher(wallet=self.wallet, blocks=None, state=self.driver)
+        self.block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.zmq_ctx, blocks=None, state=self.driver)
         self.run()
 
     def _thicc_log(self):
@@ -238,9 +238,7 @@ class BlockManager(Worker):
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        #self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
-
-        self.ipc_router = self.zmq_ctx.socket(zmq.ROUTER)
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg, None, True))
