@@ -1,11 +1,13 @@
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.protocol.multiprocessing.context import Context
+from cilantro_ee.protocol.comm.services import SocketStruct, Protocols
 from cilantro_ee.logger import get_logger
 from cilantro_ee.protocol.overlay.server import OverlayServer
+from cilantro_ee.protocol.overlay.new_server import OverlayServer as NewOverlayServer
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.constants import conf
+from cilantro_ee.constants import conf, ports
 import asyncio
 import time
 
@@ -46,6 +48,7 @@ class NodeBase(Context):
 
         self.log.info("Starting overlay service")
         self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
+
         self.start()
 
     def start(self):

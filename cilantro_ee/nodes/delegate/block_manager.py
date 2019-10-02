@@ -30,7 +30,7 @@ from cilantro_ee.constants import conf
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-
+from cilantro_ee.services.block_fetch import BlockFetcher
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
@@ -191,6 +191,7 @@ class BlockManager(Worker):
 
         self.driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
+        self.block_fetcher = BlockFetcher(wallet=self.wallet, blocks=None, state=self.driver)
         self.run()
 
     def _thicc_log(self):
@@ -224,18 +225,17 @@ class BlockManager(Worker):
     def build_task_list(self):
         # Create a TCP Router socket for comm with other nodes
         # self.router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-Router", secure=True)
-        self.router = self.manager.create_socket(
-            socket_type=zmq.ROUTER,
-            name="BM-Router-{}".format(self.verifying_key[-4:]),
-            secure=True,
-        )
+        #self.router = self.manager.create_socket(socket_type=zmq.ROUTER,name="BM-Router-{}".format(self.verifying_key[-4:]),secure=True,)
         # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+        self.router.socket(zmq.ROUTER)
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
+        #self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BM-IPC-Router")
+
+        self.ipc_router = self.zmq_ctx.socket(zmq.ROUTER)
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=IPC_PORT, protocol='ipc', ip=self.ipc_ip)
         self.tasks.append(self.ipc_router.add_handler(self.handle_ipc_msg, None, True))
@@ -243,20 +243,24 @@ class BlockManager(Worker):
         # Create PUB socket to publish new sub_block_contenders to all masters
         # Falcon - is it secure and has a different pub port ??
         #          do we have a corresponding sub at master that handles this properly ?
-        self.pub = self.manager.create_socket(
-            socket_type=zmq.PUB,
-            name="BM-Pub-{}".format(self.verifying_key[-4:]),
-            secure=True,
-        )
-        self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
-
-        self.pub_replacement = self.zmq_ctx.socket(zmq.PUB)
+        # self.pub = self.manager.create_socket(
+        #     socket_type=zmq.PUB,
+        #     name="BM-Pub-{}".format(self.verifying_key[-4:]),
+        #     secure=True,
+        # )
+        #
+        #self.pub.bind(port=DELEGATE_PUB_PORT, protocol='tcp', ip=self.ip)
+        self.pub = self.zmq_ctx.socket(zmq.PUB)
+        self.pub.connect('tcp://{}:{}'.format(self.ip, DELEGATE_PUB_PORT))
 
         self.db_state.catchup_mgr = CatchupManager(verifying_key=self.verifying_key,
                                                    signing_key=self.signing_key,
                                                    pub_socket=self.pub,
                                                    router_socket=self.router,
                                                    store_full_blocks=False)
+
+        # sync_genesis_contracts()
+        # await self.block_fetcher.sync()
 
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
@@ -266,6 +270,8 @@ class BlockManager(Worker):
             name="BM-Sub-{}".format(self.verifying_key[-4:]),
             secure=True,
         )
+        self.sub = self.zmq_ctx.socket(zmq.SUB)
+        #self.sub.connect('tcp://*:')
         self.sub.setsockopt(zmq.SUBSCRIBE, DEFAULT_FILTER.encode())
         self.sub.setsockopt(zmq.SUBSCRIBE, NEW_BLK_NOTIF_FILTER.encode())
 
@@ -287,9 +293,9 @@ class BlockManager(Worker):
     async def catchup_db_state(self):
         # do catch up logic here
         await asyncio.sleep(6)  # so pub/sub connections can complete
-        assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
+# Seems similar to block agg.
         # Add genesis contracts to state db if needed
         sync_genesis_contracts()
 
@@ -392,16 +398,6 @@ class BlockManager(Worker):
     def is_sbb_ready(self):
         return self.sbb_not_ready_count == 0
 
-    def recv_block_data_reply(self, reply):
-        # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.recv_block_data_reply(reply):
-            self.set_catchup_done()
-
-    def recv_block_idx_reply(self, sender, reply):
-        # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
-            self.set_catchup_done()
-
     def recv_block_notif(self, block):
         self.db_state.is_catchup_done = False
         # TODO call run_catchup() if catchup_manager is not already catching up
@@ -416,12 +412,6 @@ class BlockManager(Worker):
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, signer, timestamp))
             return
-
-        if msg_type == MessageType.BLOCK_INDEX_REPLY:
-            self.recv_block_idx_reply(sender, msg)
-
-        elif msg_type == MessageType.BLOCK_DATA:
-            self.recv_block_data_reply(msg)
 
     def _get_new_block_hash(self):
         if not self.db_state.my_sub_blocks.is_quorum():
