@@ -6,6 +6,7 @@ import asyncio
 # You must turn the IP strings into SocketStructs yourself.
 # This means there is no port information on the strings.
 
+
 class SocketBook:
     def __init__(self, network: Network=None, phonebook_function: callable=None):
         self.network = network

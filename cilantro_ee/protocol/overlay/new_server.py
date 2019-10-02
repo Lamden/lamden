@@ -12,27 +12,36 @@ import time
 
 
 class OverlayServer(AsyncInbox):
-    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, quorum, linger=2000, poll_timeout=2000):
+    def __init__(self, socket_id: SocketStruct,
+                 wallet: Wallet,
+                 ctx: zmq.Context,
+                 ip=conf.HOST_IP,
+                 peer_service_port=DHT_PORT,
+                 event_publisher_port=EVENT_PORT,
+                 bootnodes=conf.BOOTNODES,
+                 initial_mn_quorum=PhoneBook.num_boot_masternodes,
+                 initial_del_quorum=PhoneBook.num_boot_delegates,
+                 mn_to_find=PhoneBook.masternodes,
+                 del_to_find=PhoneBook.delegates,
+                 linger=2000,
+                 poll_timeout=2000):
+
         super().__init__(socket_id, wallet, ctx, linger, poll_timeout)
 
         self.network_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT)
 
         self.network = Network(wallet=self.wallet,
                                ctx=self.ctx,
-                               ip=conf.HOST_IP,
-                               peer_service_port=DHT_PORT,
-                               event_publisher_port=EVENT_PORT,
-                               bootnodes=conf.BOOTNODES,
-                               initial_mn_quorum=PhoneBook.num_boot_masternodes,
-                               initial_del_quorum=PhoneBook.num_boot_delegates,
-                               mn_to_find=PhoneBook.masternodes,
-                               del_to_find=PhoneBook.delegates)
+                               ip=ip,
+                               peer_service_port=peer_service_port,
+                               event_publisher_port=event_publisher_port,
+                               bootnodes=bootnodes,
+                               initial_mn_quorum=initial_mn_quorum,
+                               initial_del_quorum=initial_del_quorum,
+                               mn_to_find=mn_to_find,
+                               del_to_find=del_to_find)
 
         self.log = get_logger('Overlay.Server')
-        if quorum <= 0:
-            self.log.critical("quorum value should be greater than 0 for overlay server to properly synchronize!")
-
-        self.quorum = quorum
 
     async def serve(self):
         await self.network.start()
@@ -42,6 +51,7 @@ class OverlayServer(AsyncInbox):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
         if msg_type == MessageType.IP_FOR_VK_REQUEST:
             response = await self.network.find_node(vk_to_find=msg.vk.hex())
+
             reply = Message.get_signed_message_packed_2(wallet=self.wallet,
                                                         msg_type=MessageType.IP_FOR_VK_REPLY,
                                                         ip=response.encode())

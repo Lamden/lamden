@@ -252,6 +252,7 @@ class Network:
         await self.peer_service.event_publisher.send(ready_msg)
 
         log.success('Sent ready signal.')
+        return
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
