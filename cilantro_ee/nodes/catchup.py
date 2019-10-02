@@ -248,7 +248,7 @@ class CatchupManager:
                         .format(self.new_target_blk_num, self.target_blk_num, tmp_list))
 
     def recv_block_idx_reply(self, sender_vk: str, reply):
-        msg_type, msg = Message.unpack_message_2(reply)
+        msg = Message.unpack_message_internal(MessageType.BLOCK_INDEX_REPLY, reply)
         self._recv_block_idx_reply(sender_vk, msg.to_dict())
         # self.log.important2("RCV BIRp")
         return self.is_catchup_done()
