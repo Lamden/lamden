@@ -95,6 +95,10 @@ class MetaDataStorage(DatabaseDriver):
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
 
+        # Capnp proto shim until we remove it completely from storage
+        if type(block) != dict:
+            block = block.to_dict()
+
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
 
