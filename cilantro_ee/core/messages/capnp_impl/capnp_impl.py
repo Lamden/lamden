@@ -49,12 +49,15 @@ class CapnpImpl:
     # def get_signed_message(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
         # return None, None     # prevent using this directly until we know use cases
         
-    def get_signed_message_packed(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
-        msg_type, msg = self.get_message_packed(msg_type, **kwargs)
+    def _get_message_signed(self, signee: bytes, sign: callable, msg_type: bytes, msg: bytes):
         sig = sign(msg)
         signed_msg = self.signed_message_capnp.SignedMessage.new_message(msgType=msg_type,
                             message=msg, signature=sig, signee=signee, timestamp=time.time())
         return int_to_bytes(int(MessageType.SIGNED_MESSAGE)), signed_msg.to_bytes_packed()
+
+    def get_signed_message_packed(self, signee: bytes, sign: callable, msg_type: MessageType, **kwargs):
+        msg_type, msg = self.get_message_packed(msg_type, **kwargs)
+        return self._get_message_signed(signee, sign, msg_type, msg)
 
     def unpack_message(self, msg_type: bytes, message: bytes,
                        sender: bytes = None, timestamp: float = time.time(),

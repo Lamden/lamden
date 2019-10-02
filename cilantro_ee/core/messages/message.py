@@ -25,6 +25,13 @@ class Message:
                                   signee=signee, sign=sign,
                                   msg_type=msg_type, **kwargs)
 
+    # returns encoded_msg_type, signed_encoded_msg_packed
+    @classmethod
+    def get_message_signed_internal(cls, signee: bytes, sign: callable, msg_type: bytes, msg: bytes):
+        return cls._msg_impl._get_message_signed(
+                                  signee=signee, sign=sign,
+                                  msg_type=msg_type, msg=msg)
+
     # returns msg_type, encoded_msg, sender, timestamp, is_verified
     @classmethod
     def unpack_message(cls, msg_type: bytes, message: bytes,
@@ -41,6 +48,5 @@ class Message:
     def unpack_message_internal(cls, msg_type: MessageType, message: bytes):
         _, msg, _, _, _ = cls._msg_impl._unpack_message(
                                  msg_type=msg_type, message=message,
-                                 sender=sender, timestamp=timestamp, 
-                                 is_verify=is_verify)
+                                 is_verify=False)
         return msg
