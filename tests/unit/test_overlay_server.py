@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.overlay.new_server import OverlayServer
+from cilantro_ee.protocol.overlay.new_server import OverlayServer, OverlayClient
 from unittest import TestCase
 import zmq
 import zmq.asyncio
@@ -6,6 +6,7 @@ from cilantro_ee.protocol.wallet import Wallet
 import asyncio
 from cilantro_ee.protocol.comm.services import _socket, get
 from cilantro_ee.core.messages.message import MessageType, Message
+
 
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
@@ -85,3 +86,48 @@ class TestOverlayServer(TestCase):
 
         self.assertEqual(msg.ip.decode(), '127.0.0.1')
 
+
+class TestOverlayClient(TestCase):
+    def setUp(self):
+        self.ctx = zmq.asyncio.Context()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+    def tearDown(self):
+        self.ctx.destroy()
+        self.loop.close()
+
+    def test_get_ip_for_vk_works(self):
+        w1 = Wallet()
+        o = OverlayServer(
+            socket_id=_socket('tcp://127.0.0.1:10999'),
+            wallet=w1,
+            ctx=self.ctx,
+            ip='127.0.0.1',
+            peer_service_port=10001,
+            event_publisher_port=10002,
+            bootnodes=[],
+            mn_to_find=[],
+            del_to_find=[],
+            initial_mn_quorum=0,
+            initial_del_quorum=0)
+
+        w2 = Wallet()
+        c = OverlayClient(wallet=w2, ctx=self.ctx, overlay_server_socket=_socket('tcp://127.0.0.1:10999'))
+
+        async def lazy_wait():
+            await asyncio.sleep(5)
+            return await c.get_ip_for_vk(w1.vk.encode())
+
+        tasks = asyncio.gather(
+            o.serve(),
+            lazy_wait(),
+            stop_server(o, 6)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        msg = res[1]
+
+        self.assertEqual(msg, '127.0.0.1')
