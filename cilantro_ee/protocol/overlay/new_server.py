@@ -47,17 +47,25 @@ class OverlayServer(AsyncInbox):
         await self.network.start()
         await super().serve()
 
+    async def return_bad_request(self, _id):
+        reply = Message.get_signed_message_packed_2(wallet=self.wallet,
+                                                    msg_type=MessageType.BAD_REQUEST,
+                                                    timestamp=int(time.time()))
+        await self.return_msg(_id, reply)
+
     async def handle_msg(self, _id, msg):
+        print(msg)
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
         if msg_type == MessageType.IP_FOR_VK_REQUEST:
             response = await self.network.find_node(vk_to_find=msg.vk.hex())
 
-            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                        msg_type=MessageType.IP_FOR_VK_REPLY,
-                                                        ip=response.encode())
-            await self.return_msg(_id, reply)
+            ip = response.get(msg.vk.hex())
+            if ip is not None:
+                reply = Message.get_signed_message_packed_2(wallet=self.wallet,
+                                                            msg_type=MessageType.IP_FOR_VK_REPLY,
+                                                            ip=ip.encode())
+                await self.return_msg(_id, reply)
+            else:
+                await self.return_bad_request(_id)
         else:
-            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                        msg_type=MessageType.BAD_REQUEST,
-                                                        timestamp=int(time.time()))
-            await self.return_msg(_id, reply)
+            await self.return_bad_request(_id)
