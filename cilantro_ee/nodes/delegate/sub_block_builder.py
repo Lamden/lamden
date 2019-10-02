@@ -482,7 +482,6 @@ class SubBlockBuilder(Worker):
         merkle = MerkleTree.from_raw_transactions(txs_data)
 
         _, merkle_proof = Message.get_message_packed(
-                                    MessageType.TRANSACTION_DATA,
                                     MessageType.MERKLE_PROOF,
                                     hash=merkle.root,
                                     signer=self.wallet.verifying_key(),
