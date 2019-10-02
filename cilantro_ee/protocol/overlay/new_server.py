@@ -3,7 +3,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.comm.services import AsyncInbox, SocketStruct
+from cilantro_ee.protocol.comm.services import AsyncInbox, SocketStruct, get
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 import zmq.asyncio
@@ -69,3 +69,22 @@ class OverlayServer(AsyncInbox):
                 await self.return_bad_request(_id)
         else:
             await self.return_bad_request(_id)
+
+
+class OverlayClient:
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, overlay_server_socket: SocketStruct):
+        self.wallet = wallet
+        self.ctx = ctx
+        self.overlay_server_socket = overlay_server_socket
+
+    async def get_ip_for_vk(self, vk: bytes):
+        req = Message.get_signed_message_packed_2(wallet=self.wallet,
+                                                  msg_type=MessageType.IP_FOR_VK_REQUEST,
+                                                  vk=vk)
+
+        resp = await get(self.overlay_server_socket, msg=req, ctx=self.ctx, dealer=True)
+
+        if resp is not None:
+            msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=resp)
+
+            return msg.ip.decode()
