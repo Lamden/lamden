@@ -305,6 +305,7 @@ class BlockManager(Worker):
         # sync_genesis_contracts()
         # await self.block_fetcher.sync()
         sync_genesis_contracts()
+        self.log.info('done syncing contracts')
         # self.db_state.catchup_mgr.run_catchup()
 
         await self.block_fetcher.sync()

@@ -14,6 +14,7 @@ class SocketBook:
         self.sockets = {}
 
     async def refresh(self):
+        print('refreshing...')
         pb_nodes = set(self.phonebook_function())
         current_nodes = set(self.sockets.keys())
 
