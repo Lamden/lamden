@@ -1,6 +1,6 @@
 from sanic import Sanic
 from sanic import response
-from secure import SecureHeaders
+#from secure import SecureHeaders
 from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS
 import json as _json
@@ -41,9 +41,9 @@ metadata_driver = MetaDataStorage()
 static_headers = {}
 
 
-@app.middleware('response')
-async def set_secure_header(request, response):
-    SecureHeaders.sanic(response)
+# @app.middleware('response')
+# async def set_secure_header(request, response):
+#     SecureHeaders.sanic(response)
 
 @app.route("/")
 async def hello(request):
@@ -57,7 +57,7 @@ async def ping(request):
 
 @app.route('/id', methods=['GET'])
 async def get_id(request):
-    return response.json({'verifying_key': conf.HOST_VK.hex()})
+    return response.json({'verifying_key': conf.HOST_VK})
 
 
 @app.route('/nonce/<vk>', methods=['GET'])
