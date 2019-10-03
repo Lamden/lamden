@@ -89,6 +89,7 @@ class RateLimiter:
 
         return bag_size
 
+
 class TransactionBatcher:
     def __init__(self, socket_id, wallet, ctx, tx_queue, block_aggregator_socket_id, nonce_manager):
         self.wallet = wallet

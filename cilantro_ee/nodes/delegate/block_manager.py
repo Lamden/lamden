@@ -27,10 +27,11 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
-
+from cilantro_ee.core.sockets import SocketBook
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.protocol.overlay.sync_client import OverlayClientSync
 from cilantro_ee.protocol.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
@@ -192,7 +193,14 @@ class BlockManager(Worker):
 
         self.driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
-        self.block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.zmq_ctx, blocks=None, state=self.driver)
+
+        self.overlay_client = OverlayClientSync(ctx=self.zmq_ctx)
+        self.socket_book = SocketBook(client=self.overlay_client, phonebook_function=PhoneBook.contract.get_masternodes)
+        self.block_fetcher = BlockFetcher(wallet=self.wallet,
+                                          ctx=self.zmq_ctx,
+                                          blocks=None,
+                                          state=self.driver,
+                                          masternode_sockets=self.socket_book)
         self.run()
 
     def _thicc_log(self):
@@ -261,9 +269,6 @@ class BlockManager(Worker):
                                                    router_socket=self.router,
                                                    store_full_blocks=False)
 
-        # sync_genesis_contracts()
-        # await self.block_fetcher.sync()
-
         # Create SUB socket to
         # 1) listen for subblock contenders from other delegates
         # 2) listen for NewBlockNotifications from masternodes
@@ -297,9 +302,12 @@ class BlockManager(Worker):
 
 # Seems similar to block agg.
         # Add genesis contracts to state db if needed
+        # sync_genesis_contracts()
+        # await self.block_fetcher.sync()
         sync_genesis_contracts()
+        # self.db_state.catchup_mgr.run_catchup()
 
-        self.db_state.catchup_mgr.run_catchup()
+        await self.block_fetcher.sync()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -385,6 +393,11 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
 
     def set_catchup_done(self):
+        res = asyncio.get_event_loop().run_until_complete(self.block_fetcher.is_caught_up())
+        if res:
+            self.db_state.is_catchup_done = True
+            self.send_start_to_sbb()
+
         if not self.db_state.is_catchup_done:
             self.db_state.is_catchup_done = True
             self.send_start_to_sbb()

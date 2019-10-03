@@ -8,7 +8,7 @@ import asyncio
 
 
 class SocketBook:
-    def __init__(self, client: OverlayClientSync=None, phonebook_function: callable=None):
+    def __init__(self, client: OverlayClientSync, phonebook_function: callable=None):
         self.client = client
         self.phonebook_function = phonebook_function
         self.sockets = {}

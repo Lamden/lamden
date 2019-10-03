@@ -165,6 +165,11 @@ class BlockFetcher:
 
             self.state.update_with_block(block_dict)
 
+    async def is_caught_up(self):
+        current_height = await self.find_missing_block_indexes()
+        latest_block_stored = self.top.get_latest_block_number()
+        return current_height >= latest_block_stored
+
 # struct BlockData {
 #     blockHash @0 :Data;
 #     blockNum @1 :UInt32;
