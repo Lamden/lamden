@@ -306,9 +306,9 @@ class BlockManager(Worker):
         # await self.block_fetcher.sync()
         sync_genesis_contracts()
         self.log.info('done syncing contracts')
-        # self.db_state.catchup_mgr.run_catchup()
+        self.db_state.catchup_mgr.run_catchup()
 
-        await self.block_fetcher.sync()
+        #await self.block_fetcher.sync()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):

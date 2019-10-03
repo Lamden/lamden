@@ -42,8 +42,6 @@ class BlockFetcher:
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
         await self.masternodes.refresh()
 
-        print(self.masternodes.sockets)
-
         responses = ConfirmationCounter()
 
         futures = []

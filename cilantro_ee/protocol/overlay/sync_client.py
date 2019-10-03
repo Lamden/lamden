@@ -32,7 +32,7 @@ class OverlayClientSync(OverlayClient):
     async def async_get_ip_sync(self, vk):
         event_id = self.get_ip_from_vk(vk)
         while event_id not in self.events:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.2)
         e = self.events[event_id]
         if e['event'] == 'got_ip':
             return e['ip']
