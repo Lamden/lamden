@@ -1,6 +1,6 @@
 import time
 import asyncio
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.protocol.comm.lsocket import LSocketBase
 from cilantro_ee.storage.vkbook import PhoneBook

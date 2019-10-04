@@ -1,5 +1,5 @@
 from cilantro_ee.protocol.multiprocessing.context import Context
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.protocol.comm.socket_manager import SocketManager
 
 from typing import Callable

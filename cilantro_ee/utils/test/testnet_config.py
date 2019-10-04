@@ -4,7 +4,7 @@ Utilities to build sets of signing keys and verifying keys for TestNet
 import cilantro_ee
 import configparser
 from cilantro_ee.protocol import wallet
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 import json, os
 from os.path import join
 

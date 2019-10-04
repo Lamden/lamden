@@ -5,7 +5,7 @@ import os
 import uuid
 import json
 from cilantro_ee.constants.overlay_network import EVENT_URL, CMD_URL
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 log = get_logger('Overlay.Client')
 # Sends the following multipart message

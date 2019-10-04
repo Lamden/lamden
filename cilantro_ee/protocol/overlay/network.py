@@ -10,7 +10,7 @@ from functools import partial
 import asyncio
 import json
 import zmq
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 import random
 

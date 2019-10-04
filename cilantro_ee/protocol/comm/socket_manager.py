@@ -1,4 +1,4 @@
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.protocol.overlay.server import OverlayServer
 from cilantro_ee.protocol.overlay.client import OverlayClient
 from cilantro_ee.protocol.comm.lsocket import LSocketBase

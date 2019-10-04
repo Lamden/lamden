@@ -8,7 +8,7 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 # from cilantro_ee.protocol.comm.socket_auth import SocketAuth
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook
 from collections import defaultdict
 from cilantro_ee.constants import conf

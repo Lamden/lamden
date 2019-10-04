@@ -1,7 +1,7 @@
 from cilantro_ee.utils import is_valid_hex
 from cilantro_ee.utils import Hasher, lazy_property
 from typing import List
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 
 
 log = get_logger("MerkleTree")

@@ -12,7 +12,7 @@
 
 """
 
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder

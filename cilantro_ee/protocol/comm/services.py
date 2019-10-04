@@ -1,5 +1,5 @@
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 import zmq
 import asyncio
 import json

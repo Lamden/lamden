@@ -26,7 +26,7 @@ from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 
 class BlockAggTester:

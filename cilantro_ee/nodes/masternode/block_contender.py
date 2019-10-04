@@ -1,6 +1,6 @@
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher

@@ -1,4 +1,4 @@
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.utils.test.mp_test_case import MPTestCase
 from cilantro_ee.utils.test.mp_test import MPTesterBase, mp_testable
 from cilantro_ee.utils.test.god import God

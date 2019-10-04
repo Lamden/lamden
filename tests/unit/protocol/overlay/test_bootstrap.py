@@ -4,7 +4,7 @@
 # import zmq, zmq.asyncio
 # from os.path import join, dirname
 # from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
-# from cilantro_ee.logger.base import get_logger
+# from cilantro_ee.core.logger.base import get_logger
 #
 # def run_node(node_type, idx, addr_idxs):
 #     # NOTE: addr_idxs represents what each node has already discovered
@@ -42,7 +42,7 @@
 #         if len(n.routing_table.get_my_neighbors()) >= MIN_DISCOVERY_NODES:
 #             send_to_file(env('HOST_NAME'))
 #
-#     from cilantro_ee.logger import get_logger
+#     from cilantro_ee.core.logger import get_logger
 #     log = get_logger('{}_{}'.format(node_type, idx))
 #     loop = asyncio.new_event_loop()
 #     asyncio.set_event_loop(loop)

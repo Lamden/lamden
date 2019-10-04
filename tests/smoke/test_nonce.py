@@ -5,7 +5,7 @@ from vmnet.testcase import BaseNetworkTestCase
 import unittest, cilantro_ee
 from os.path import join, dirname
 from cilantro_ee.utils.test.mp_test_case import vmnet_test
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 
 LOG_LEVEL = 0
 
@@ -36,7 +36,7 @@ def run_mn():
 
 def run_user():
     from cilantro_ee.utils.test.god import God
-    from cilantro_ee.logger import get_logger
+    from cilantro_ee.core.logger import get_logger
     from cilantro_ee.protocol import wallet
 
     # Fix masternode URL on God

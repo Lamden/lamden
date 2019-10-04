@@ -1,5 +1,5 @@
 from multiprocessing import Process
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 import asyncio, zmq.asyncio, zmq
 from cilantro_ee.protocol.comm.lsocket import *
 from cilantro_ee.protocol.comm.socket_manager import *

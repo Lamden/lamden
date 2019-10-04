@@ -1,6 +1,6 @@
 from cilantro_ee.protocol.utils.socket import SocketUtil
 from cilantro_ee.protocol.multiprocessing.context import Context
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.protocol.overlay.server import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.storage.vkbook import VKBook, PhoneBook

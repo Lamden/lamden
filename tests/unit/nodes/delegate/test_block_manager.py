@@ -2,7 +2,7 @@ import asyncio
 from cilantro_ee.utils.test.testnet_config import set_testnet_config
 set_testnet_config('2-2-2.json')
 
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 from cilantro_ee.nodes.delegate.block_manager import BlockManager, IPC_PORT
 from cilantro_ee.utils import int_to_bytes

@@ -1,4 +1,4 @@
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 from cilantro_ee.contracts import sync
 from cilantro_ee.utils.test.testnet_config import read_public_constitution
