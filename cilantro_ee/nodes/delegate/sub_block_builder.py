@@ -32,8 +32,8 @@ from contracting.db.cr.callback_data import SBData
 from cilantro_ee.protocol.multiprocessing.worker import Worker
 from cilantro_ee.protocol.utils.network_topology import NetworkTopology
 
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.linked_hashtable import LinkedHashTable
 
 from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
 

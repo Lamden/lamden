@@ -21,7 +21,7 @@ from cilantro_ee.messages.block_data.state_update import *
 from cilantro_ee.messages.block_data.block_metadata import *
 from cilantro_ee.messages.consensus.merkle_signature import *
 
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from cilantro_ee.storage.driver import SafeDriver
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 

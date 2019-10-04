@@ -9,7 +9,7 @@ from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from contracting.db import encoder
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
