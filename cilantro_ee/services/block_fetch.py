@@ -1,4 +1,4 @@
-from cilantro_ee.core.sockets import SocketBook
+from cilantro_ee.core.sockets.sockets import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.storage.state import MetaDataStorage

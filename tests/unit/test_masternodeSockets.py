@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets import SocketBook
+from cilantro_ee.core.sockets.sockets import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.protocol.wallet import Wallet

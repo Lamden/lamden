@@ -3,7 +3,7 @@ from cilantro_ee.protocol.overlay.server import OverlayServer
 from cilantro_ee.protocol.overlay.client import OverlayClient
 from cilantro_ee.core.sockets.lsocket import LSocketBase
 from cilantro_ee.core.sockets.lsocket_router import LSocketRouter
-from cilantro_ee.protocol.utils.socket import SocketUtil
+from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
 from cilantro_ee.storage.vkbook import PhoneBook
 

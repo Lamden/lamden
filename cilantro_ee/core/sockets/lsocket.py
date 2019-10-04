@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.utils.socket import SocketUtil
+from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.core.logger.base import get_logger
 import zmq.asyncio, asyncio
