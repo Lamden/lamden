@@ -9,9 +9,9 @@
 # def run_node(node_type, idx, addr_idxs):
 #     # NOTE: addr_idxs represents what each node has already discovered
 #     from vmnet.comm import send_to_file
-#     from cilantro_ee.protocol.overlay.kademlia.network import Network
-#     from cilantro_ee.protocol.overlay.kademlia.utils import digest
-#     from cilantro_ee.protocol.overlay.kademlia.node import Node
+#     from cilantro_ee.services.overlay.kademlia.network import Network
+#     from cilantro_ee.services.overlay.kademlia.utils import digest
+#     from cilantro_ee.services.overlay.kademlia.node import Node
 #     from cilantro_ee.constants.ports import DHT_PORT
 #     from cilantro_ee.constants.overlay_network import MIN_DISCOVERY_NODES
 #     from cilantro_ee.utils.keys import Keys

@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.overlay.new_server import OverlayServer, OverlayClient
+from cilantro_ee.services.overlay.new_server import OverlayServer, OverlayClient
 from unittest import TestCase
 import zmq
 import zmq.asyncio

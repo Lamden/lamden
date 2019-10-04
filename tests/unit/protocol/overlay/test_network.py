@@ -1,8 +1,8 @@
 from unittest import TestCase
 from cilantro_ee.core.sockets.services import _socket
-from cilantro_ee.protocol.overlay.discovery import *
-from cilantro_ee.protocol.overlay.network import Network, PeerServer, KTable
-from cilantro_ee.protocol.overlay.discovery import DiscoveryServer
+from cilantro_ee.services.overlay.discovery import *
+from cilantro_ee.services.overlay.network import Network, PeerServer, KTable
+from cilantro_ee.services.overlay.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.core.sockets import services
 import zmq

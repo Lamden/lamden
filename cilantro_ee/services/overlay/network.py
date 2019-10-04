@@ -1,7 +1,7 @@
 from cilantro_ee.constants import conf
 from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.protocol.overlay import discovery
+from cilantro_ee.services.overlay import discovery
 from cilantro_ee.core.sockets import services
 from cilantro_ee.core.crypto.wallet import Wallet
 

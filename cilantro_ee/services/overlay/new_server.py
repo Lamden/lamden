@@ -1,6 +1,6 @@
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.constants import conf
-from cilantro_ee.protocol.overlay.network import Network
+from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.sockets.services import AsyncInbox, SocketStruct, get

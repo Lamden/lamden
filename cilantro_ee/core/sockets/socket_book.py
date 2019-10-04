@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.overlay.network import Network
+from cilantro_ee.services.overlay.network import Network
 import asyncio
 
 # Keeps a dictionary between a VK and an IP string

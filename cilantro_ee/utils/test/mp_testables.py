@@ -10,7 +10,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.witness.witness import Witness
 from cilantro_ee.nodes.base import NodeBase
-from cilantro_ee.protocol.overlay.daemon import OverlayServer
+from cilantro_ee.services.overlay.daemon import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
 # from cilantro_ee.storage.db import DB
 from cilantro_ee.utils.test.pubsub_auth import PubSubAuthTester

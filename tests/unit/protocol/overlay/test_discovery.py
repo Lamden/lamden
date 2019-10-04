@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.protocol.overlay.discovery import *
+from cilantro_ee.services.overlay.discovery import *
 import zmq
 import zmq.asyncio
 from cilantro_ee.core.crypto.wallet import Wallet

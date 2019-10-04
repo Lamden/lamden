@@ -4,7 +4,7 @@ from cilantro_ee.constants.overlay_network import *
 from cilantro_ee.constants.ports import AUTH_PORT
 from zmq.auth.thread import ThreadAuthenticator
 from zmq.auth.asyncio import AsyncioAuthenticator
-# from cilantro_ee.protocol.overlay.ip import *
+# from cilantro_ee.services.overlay.ip import *
 # from cilantro_ee.core.sockets.socket_auth import SocketAuth
 from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
