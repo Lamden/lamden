@@ -10,7 +10,7 @@ from nacl.public import PrivateKey
 from nacl.signing import SigningKey, VerifyKey
 from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 
-from cilantro_ee.protocol.overlay.kademlia.node import Node
+from cilantro_ee.services.overlay.kademlia.node import Node
 
 def mknode(node_id=None, ip=None, port=None, intid=None):
     """

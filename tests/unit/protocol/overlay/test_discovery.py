@@ -1,9 +1,9 @@
 from unittest import TestCase
-from cilantro_ee.protocol.overlay.discovery import *
+from cilantro_ee.services.overlay.discovery import *
 import zmq
 import zmq.asyncio
-from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.comm.services import _socket
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.sockets.services import _socket
 from time import sleep
 
 TIME_UNIT = 0.01

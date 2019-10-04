@@ -1,15 +1,15 @@
 from unittest import TestCase
 import unittest
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 import json
-from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.transaction import TransactionBuilder
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.utils.transaction import TransactionBuilder
 from cilantro_ee.messages import capnp as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from contracting.db import encoder
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')

@@ -1,7 +1,7 @@
 from unittest import TestCase
 # from cilantro_ee.messages.message import Serializer, signal_capnp, envelope_capnp
-from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.pow import SHA3POWBytes
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.utils.pow import SHA3POWBytes
 
 import capnp
 

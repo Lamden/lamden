@@ -5,15 +5,15 @@ from cilantro_ee.constants.batcher import MAX_TXN_SUBMISSION_DELAY
 from cilantro_ee.constants.batcher import MAX_TXNS_PER_SUB_BLOCK
 from cilantro_ee.constants.system_config import BLOCK_HEART_BEAT_INTERVAL
 from cilantro_ee.constants.system_config import INPUT_BAG_TIMEOUT
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 import zmq.asyncio
 import asyncio, time
 import hashlib
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.protocol.wallet import Wallet, _verify
-from cilantro_ee.protocol.pow import SHA3POWBytes
-from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
+from cilantro_ee.core.crypto.wallet import Wallet, _verify
+from cilantro_ee.core.utils.pow import SHA3POWBytes
+from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 from contracting import config
 from cilantro_ee.core.nonces import NonceManager
 

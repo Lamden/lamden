@@ -1,4 +1,4 @@
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 import json, math, os
 from cilantro_ee.utils.test.testnet_config import get_testnet_json_path
 

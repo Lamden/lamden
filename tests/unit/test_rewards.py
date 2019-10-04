@@ -5,7 +5,7 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
-from cilantro_ee.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
 
 
 class TestRewards(TestCase):

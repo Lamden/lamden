@@ -18,7 +18,7 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from typing import Dict, Callable
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
@@ -29,16 +29,16 @@ from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import SBData
 
-from cilantro_ee.protocol.multiprocessing.worker import Worker
-from cilantro_ee.protocol.utils.network_topology import NetworkTopology
+from cilantro_ee.core.utils.worker import Worker
+from cilantro_ee.core.utils.network_topology import NetworkTopology
 
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.linked_hashtable import LinkedHashTable
 
-from cilantro_ee.protocol.transaction import transaction_is_valid, TransactionException
+from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 
 from cilantro_ee.utils.hasher import Hasher
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time
 from datetime import datetime

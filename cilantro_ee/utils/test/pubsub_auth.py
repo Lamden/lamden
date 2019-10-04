@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 
 import os
 import asyncio

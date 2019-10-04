@@ -1,6 +1,6 @@
-from cilantro_ee.protocol.transaction import TransactionBuilder, verify_packed_tx
+from cilantro_ee.core.utils.transaction import TransactionBuilder, verify_packed_tx
 from unittest import TestCase
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 import os
 from cilantro_ee.messages import capnp as schemas
 

@@ -21,9 +21,9 @@ import unittest, time, random, vmnet, cilantro_ee, os
 from os.path import join, dirname
 from cilantro_ee.utils.test.mp_test_case import vmnet_test
 from cilantro_ee.utils.test.god import God
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.utils.test.node_runner import *
-from cilantro_ee.logger import get_logger, overwrite_logger_level
+from cilantro_ee.core.logger import get_logger, overwrite_logger_level
 import logging, os, shutil, time
 from cilantro_ee.constants.system_config import *
 

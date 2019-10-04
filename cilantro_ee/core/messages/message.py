@@ -1,7 +1,7 @@
 import time
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 import struct
 
 class Message:

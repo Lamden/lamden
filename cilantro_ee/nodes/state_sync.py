@@ -1,9 +1,9 @@
-# from cilantro_ee.logger.base import get_logger
-# from cilantro_ee.protocol.multiprocessing.worker import Worker
+# from cilantro_ee.core.logger.base import get_logger
+# from cilantro_ee.core.utils.worker import Worker
 #
 # from cilantro_ee.utils.lprocess import LProcess
 #
-# from cilantro_ee.storage.vkbook import PhoneBook
+# from cilantro_ee.services.storage.vkbook import PhoneBook
 #
 # from cilantro_ee.nodes.catchup import CatchupManager
 # from cilantro_ee.nodes.base import NodeBase
