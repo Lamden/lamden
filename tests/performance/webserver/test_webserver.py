@@ -8,7 +8,7 @@ from cilantro_ee.utils.lprocess import LProcess
 
 import cilantro_ee
 from cilantro_ee.messages.transaction.container import TransactionContainer
-from cilantro_ee.logger.base import overwrite_logger_level
+from cilantro_ee.core.logger.base import overwrite_logger_level
 from cilantro_ee.utils.test.god import God
 import os, time, subprocess
 

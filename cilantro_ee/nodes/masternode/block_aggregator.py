@@ -1,19 +1,19 @@
-from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.core.utils.worker import Worker
 
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
-from cilantro_ee.storage.master import CilantroStorageDriver
+from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.ports import MN_ROUTER_PORT, MN_PUB_PORT, DELEGATE_PUB_PORT, SS_PUB_PORT
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.masternode import *
-from cilantro_ee.messages.block_data.notification import BlockNotification
+from cilantro_ee.core.messages.notification import BlockNotification
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from typing import List
+from cilantro_ee.services.block_fetch import BlockFetcher
 import math, asyncio, zmq, time
 
 
@@ -38,6 +38,7 @@ class BlockAggregator(Worker):
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
+
         self._is_catchup_done = False
 
         self.min_quorum = PhoneBook.delegate_quorum_min
@@ -55,12 +56,11 @@ class BlockAggregator(Worker):
         latest_hash = last_block.get('blockHash')
         latest_num = last_block.get('blockNum')
 
-        # This assertion is pointless. Redis is not consistent.
-        # assert latest_hash == self.state.latest_block_hash, \
-        #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
-        #     .format(latest_hash, self.state.latest_block_hash)
+        self.block_fetcher = BlockFetcher(wallet=self.wallet,
+                                          ctx=self.zmq_ctx,
+                                          blocks=self.driver,
+                                          state=self.state)
 
-        # raghu this may create inconsistent state when redis is behind mongo
         self.state.latest_block_num = latest_num
         self.state.latest_block_hash = latest_hash
 
@@ -156,6 +156,9 @@ class BlockAggregator(Worker):
             self.cur_quorum = max(cq, self.min_quorum)
 
         # now start the catchup
+        # sync_genesis_contracts()
+        # await self.block_fetcher.sync()
+
         await self._trigger_catchup()
 
     async def _trigger_catchup(self):
@@ -208,9 +211,8 @@ class BlockAggregator(Worker):
 
             # Construct a cryptographically signed message of the current time such that the receiver can verify it
             mtype, msg = Message.get_signed_message_packed(
-                                    self.wallet.verifying_key(),
-                                    self.wallet.sign,
-                                    MessageType.READY)
+                                    wallet=self.wallet,
+                                    msg_type=MessageType.READY)
 
 ### Send signed READY signal on pub
             self.log.success('READY SIGNAL SENT TO SUBS')
@@ -237,7 +239,7 @@ class BlockAggregator(Worker):
         elif msg_type == MessageType.BLOCK_DATA_REQUEST:
             self.catchup_manager.recv_block_data_req(sender, msg)
 
-        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+        elif msg_type == MessageType.BLOCK_DATA:
             if self.catchup_manager.recv_block_data_reply(msg):
                 self._set_catchup_done()
 
@@ -303,7 +305,7 @@ class BlockAggregator(Worker):
             #    self.log.error(str(e))
 
         # TODO
-        # @tejas yo why does this assertion not pass? The storage driver is NOT updating its block hash after storing!
+        # @tejas yo why does this assertion not pass? The storage blocks is NOT updating its block hash after storing!
         # assert StorageDriver.get_latest_block_hash() == self.state.get_latest_block_hash(), \
         #     "StorageDriver latest block hash {} does not match StateDriver latest hash {}" \
         #         .format(StorageDriver.get_latest_block_hash(), self.state.get_latest_block_hash())
@@ -317,12 +319,12 @@ class BlockAggregator(Worker):
             input_hashes = kwargs.get('inputHashes')
             my_input_hashes = input_hashes[self.my_sb_idx]
             self.log.info("Need to burn input bags with hash(es) {}".format(my_input_hashes))
-            msg_type, msg = Message.get_message_packed(MessageType.BURN_INPUT_HASHES, my_input_hashes)
-            self.ipc_router.send_multipart([b'0', msg_type, msg])
+            bih_mtype, bih = Message.get_message_packed(MessageType.BURN_INPUT_HASHES, inputHashes=my_input_hashes)
+            self.ipc_router.send_multipart([b'0', bih_mtype, bih])
 
         mtype, bn = Message.get_signed_message_packed(
-                             self.wallet.verifying_key(), self.wallet.sign,
-                             msg_type, **kwargs)
+                             wallet=self.wallet,
+                             msg_type=msg_type, **kwargs)
 
         # clean up filters for different block notifications - unify it under BLK_NOTIF_FILTER ?
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(), msg_type=mtype, msg=bn)
@@ -333,7 +335,7 @@ class BlockAggregator(Worker):
         time.sleep(0.1)
 
         # SEND NEW BLOCK NOTIFICATION on pub
-        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
                               blockNum=block_data['blockNum'],
                               blockHash=block_data['blockHash'],
                               blockOwners=block_data['blockOwners'],
@@ -347,10 +349,10 @@ class BlockAggregator(Worker):
         # assert that sub_blocks are sorted by subBlockIdx
         last_hash = self.state.latest_block_hash
         block_num = self.state.latest_block_num + 1
-        input_hashes = [[sb.inputHash] for sb in block_data['subBlocks']]
+        input_hashes = [[sb.inputHash] for sb in sub_blocks]
         block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
 
-        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
                               blockNum=block_num,
                               blockHash=block_hash,
                               blockOwners=[],
@@ -366,9 +368,9 @@ class BlockAggregator(Worker):
         block_num = self.state.latest_block_num + 1
         input_hashes = self.curr_block.get_input_hashes_sorted()
         block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
-        first_sb_idx = self.curr_block.get_first_sb_idx_unsorted()
+        first_sb_idx = self.curr_block.get_first_sb_idx_sorted()
 
-        self.send_block_notif(MessageType.BLOCK_NOTIFICATION, 
+        self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
                               blockNum=block_num,
                               blockHash=block_hash,
                               blockOwners=[],

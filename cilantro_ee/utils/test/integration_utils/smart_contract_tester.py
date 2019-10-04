@@ -1,4 +1,4 @@
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.utils.test.dumpatron import Dumpatron
 from cilantro_ee.utils.test.god import God
 from cilantro_ee.utils.test.wallets import *

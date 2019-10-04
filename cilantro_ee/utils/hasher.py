@@ -2,6 +2,7 @@
 Utility class for hashing thangs
 """
 import hashlib
+from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack, unpack
 
 
 class Hasher:
@@ -38,7 +39,7 @@ class Hasher:
         if t is str:
             data = data.encode()
         elif t is int:
-            data = int_to_bytes(data)
+            data = pack(data)
 
         assert type(data) is bytes, "Unable to cast data of original type {} into bytes".format(t)
 

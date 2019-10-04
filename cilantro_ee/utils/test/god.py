@@ -1,7 +1,7 @@
 from cilantro_ee.messages.transaction.publish import *
 from cilantro_ee.messages.transaction.contract import *
 
-from cilantro_ee.logger import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.utils.test.utils import *
 from cilantro_ee.utils.test.wallets import ALL_WALLETS
 import os, requests, time, random, asyncio, secrets, math, json

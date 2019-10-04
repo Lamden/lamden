@@ -18,7 +18,7 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from typing import Dict, Callable
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 
@@ -29,22 +29,23 @@ from contracting.stdlib.bridge.time import Datetime
 from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import SBData
 
-from cilantro_ee.protocol.multiprocessing.worker import Worker
-from cilantro_ee.protocol.utils.network_topology import NetworkTopology
+from cilantro_ee.core.utils.worker import Worker
+from cilantro_ee.core.utils.network_topology import NetworkTopology
 
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.protocol.structures.linked_hashtable import LinkedHashTable
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.linked_hashtable import LinkedHashTable
 
-from cilantro_ee.protocol.transaction import transaction_is_valid
+from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 
 from cilantro_ee.utils.hasher import Hasher
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 from enum import Enum, unique
 import asyncio, zmq.asyncio, time
 from datetime import datetime
 import hashlib
 from decimal import Decimal
 
+from cilantro_ee.core.nonces import NonceManager
 
 class Payload:
     def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
@@ -126,6 +127,7 @@ class SubBlockBuilder(Worker):
         self._empty_txn_batch = []
 
         self.client = SubBlockClient(sbb_idx=sbb_index, num_sbb=NUM_SB_PER_BLOCK, loop=self.loop)
+        self.nonce_manager = NonceManager()
 
         # DEBUG -- TODO DELETE
         self.log.important("num sbb per blk {}".format(NUM_SB_PER_BLOCK))
@@ -139,9 +141,9 @@ class SubBlockBuilder(Worker):
         # connect or bind is a separate step
         self.ipc_dealer.connect(port=ipc_port, protocol='ipc', ip=ipc_ip)
 
-        # self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
+        self.tasks.append(self.ipc_dealer.add_handler(handler_func=self.handle_ipc_msg))
         # Adding message_handler with dictionary of actions as a separate step - this api could change
-        self.tasks.append(self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()))
+        # self.tasks.append(self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()))
 
         # BIND sub sockets to listen to witnesses
         self.sb_managers = []
@@ -271,7 +273,7 @@ class SubBlockBuilder(Worker):
         self.client.flush_all()
 
         # Toss all pending nonces
-        self.state.delete_pending_nonces()
+        self.nonce_manager.delete_pending_nonces()
 
         smi = block.firstSbIdx // NUM_SB_BUILDERS
         # assert smi == self._next_block_to_make.pending_sm_idx, "misalignment in align input hashes"
@@ -312,6 +314,8 @@ class SubBlockBuilder(Worker):
         msg_blob = frames[1]
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        self.log.info("Got message type '{}' msg '{}' from block manager. "
+                      .format(msg_type, msg))
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, sender, timestamp))
@@ -383,13 +387,13 @@ class SubBlockBuilder(Worker):
 
             for tx in batch.transactions:
                 # Double check to make sure all transactions are valid
-                if transaction_is_valid(tx=tx,
-                                        expected_processor=batch.sender,
-                                        driver=self.state,
-                                        strict=False):
-
+                try:
+                    transaction_is_valid(tx=tx,
+                                         expected_processor=batch.sender,
+                                         driver=self.nonce_manager,
+                                         strict=False)
                     valid_transactions.append(tx)
-                else:
+                except TransactionException:
                     self.log.critical('TX NOT VALID FOR SOME REASON.')
 
                 # Hash all transactions regardless because the proof from masternodes is derived from all hashes
@@ -433,13 +437,11 @@ class SubBlockBuilder(Worker):
         else:
             input_hash = sb_data.input_hash
 
-        signature = self.wallet.sign(input_hash)
-
-        merkle_proof = {
-                         "hash": input_hash,
-                         "signer": self.wallet.verifying_key(),
-                         "signature": signature
-                       }
+        _, merkle_proof = Message.get_message_packed(
+                                    MessageType.MERKLE_PROOF,
+                                    hash=input_hash,
+                                    signer=self.wallet.verifying_key(),
+                                    signature=self.wallet.sign(input_hash))
 
         mtype, msg = Message.get_message_packed(MessageType.SUBBLOCK_CONTENDER,
                                 resultHash=input_hash,
@@ -465,11 +467,12 @@ class SubBlockBuilder(Worker):
 
         txs_data = []
 
+        # Add stamps used to TransactionData payload
         for i in range(len(exec_data)):
             d = exec_data[i]
             tx = self.pending_transactions[i]
             _, txn_msg = Message.get_message_packed(
-                                    MessageType.TRANSACTION_DATA, 
+                                    MessageType.TRANSACTION_DATA,
                                     transaction=tx,
                                     status=d.status,
                                     state=d.state)
@@ -479,13 +482,13 @@ class SubBlockBuilder(Worker):
         merkle = MerkleTree.from_raw_transactions(txs_data)
 
         _, merkle_proof = Message.get_message_packed(
-                                    MessageType.TRANSACTION_DATA, 
+                                    MessageType.MERKLE_PROOF,
                                     hash=merkle.root,
                                     signer=self.wallet.verifying_key(),
                                     signature=self.wallet.sign(merkle.root))
 
         mtype, sbc = Message.get_message_packed(
-                           MessageType.SUBBLOCK_CONTENDER, 
+                           MessageType.SUBBLOCK_CONTENDER,
                            resultHash=merkle.root,
                            inputHash=sb_data.input_hash,
                            merkleLeaves=[leaf for leaf in merkle.leaves],

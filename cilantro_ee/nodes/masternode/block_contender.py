@@ -1,13 +1,13 @@
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
-from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 
 from collections import defaultdict
 from typing import List
@@ -72,14 +72,14 @@ class SubBlockGroup:
         input_hash = contender.inputHash
 
         txs = self._get_ordered_transactions()
+        transactions = [Message.unpack_message_internal(MessageType.TRANSACTION_DATA, tx) for tx in txs]
 
         # looks like sbc has txns packed while sb will have them as unpacked. Need to eliminate these inconsistencies for better performance - raghu
-        mtype_bytes = int_to_bytes(int(MessageType.TRANSACTION_DATA))
-        sb = Message.get_message(
+        _, sb = Message.get_message(
                    MessageType.SUBBLOCK, merkleRoot=merkle_root,
                    signatures=sigs, merkleLeaves=[leaf for leaf in leaves],
                    subBlockIdx=self.sb_idx, inputHash=input_hash,
-                   transactions=[Message.unpack_message(mtype_bytes, tx) for tx in txs])
+                   transactions=transactions)
    
         return sb
 
@@ -134,9 +134,10 @@ class SubBlockGroup:
         assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
 
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
-        return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
+        # return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
+        return next(iter(self.rh[self.best_rh])).transactions
 
-    def add_sbc(self, sender_vk: str, sbc):
+    def add_sbc(self, sender_vk: bytes, sbc):
         # Verify that the SubBlockContender message is validly constructured
         if not self._verify_sbc(sender_vk, sbc):
             self.log.error("Could not verify SBC from sender {}".format(sender_vk))
@@ -174,8 +175,7 @@ class SubBlockGroup:
 
     def _verify_sbc(self, sender_vk: bytes, sbc) -> bool:
         # Dev sanity checks
-        mtype_bytes = int_to_bytes(int(MessageType.MERKLE_PROOF))
-        merkle_proof = Message.unpack_message(mtype_bytes, sbc.signature)
+        merkle_proof = Message.unpack_message_internal(MessageType.MERKLE_PROOF, sbc.signature)
 
         if not merkle_proof.signer == sender_vk:
             self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
@@ -351,6 +351,12 @@ class BlockContender:
         sbb_rem = sb_idx % NUM_SB_BUILDERS
         assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
+
+    def get_first_sb_idx_sorted(self) -> int:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
+        num_sbg = len(sb_groups)
+        assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+        return self.get_first_sb_idx_unsorted(sb_groups)
 
     def get_input_hashes_sorted(self) -> List[list]:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)

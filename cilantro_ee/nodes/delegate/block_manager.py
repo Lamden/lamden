@@ -12,14 +12,14 @@
 
 """
 
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
 
@@ -31,7 +31,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
 import asyncio, zmq, time, random
@@ -39,6 +39,8 @@ import os
 
 IPC_IP = 'block-manager-ipc-sock'
 IPC_PORT = 6967
+
+from cilantro_ee.core.nonces import NonceManager
 
 
 # class to keep track of sub-blocks sent over from my sub-block builders
@@ -81,7 +83,7 @@ class SubBlocks:
 class NextBlockData:
     def __init__(self, block_notif):
         self.block_notif = block_notif
-        is_failed = block_notif.type.which() == "FailedBlock"
+        is_failed = block_notif.which() == "FailedBlock"
         self.quorum_num = FAILED_BLOCK_NOTIFICATION_QUORUM if is_failed \
                             else BLOCK_NOTIFICATION_QUORUM
         self.is_quorum = False
@@ -188,6 +190,7 @@ class BlockManager(Worker):
         self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
 
         self.driver = MetaDataStorage()
+        self.nonce_manager = NonceManager()
         self.run()
 
     def _thicc_log(self):
@@ -311,11 +314,10 @@ class BlockManager(Worker):
         assert sbb_index in self.sb_builders, "Got IPC message with ID {} that is not in sb_builders {}" \
             .format(sbb_index, self.sb_builders)
 
-        msg_type = frames[1]
-        self.log.info('MSG TYPE: {}'.format(msg_type))
+        mtype_enc = frames[1]
         msg_blob = frames[2]
 
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(mtype_enc, msg_blob)
         if not is_verified:
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, sender, timestamp))
@@ -332,7 +334,7 @@ class BlockManager(Worker):
             self.reset_pending_work(sbb_index)
 
         elif msg_type == MessageType.SUBBLOCK_CONTENDER:
-            await self._handle_sbc(sbb_index, msg_blob)
+            await self._handle_sbc(sbb_index, msg, mtype_enc, msg_blob)
 
     def handle_sub_msg(self, frames):
         self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
@@ -365,7 +367,6 @@ class BlockManager(Worker):
 
             # Process accordingly
             self.handle_block_notification(frames, msg, sender)
-
 
     def is_ready_to_start_sub_blocks(self):
         self.start_sub_blocks += 1
@@ -419,7 +420,7 @@ class BlockManager(Worker):
         if msg_type == MessageType.BLOCK_INDEX_REPLY:
             self.recv_block_idx_reply(sender, msg)
 
-        elif msg_type == MessageType.BLOCK_DATA_REPLY:
+        elif msg_type == MessageType.BLOCK_DATA:
             self.recv_block_data_reply(msg)
 
     def _get_new_block_hash(self):
@@ -441,22 +442,25 @@ class BlockManager(Worker):
 
         return h.digest()
 
-
-    async def _send_sbc(self, msg_blob: bytes):
+    async def _send_sbc(self, mtype_enc: bytes, msg_blob: bytes):
         wait_time = 0
         while not self.is_pending_work() and wait_time < BLOCK_HEART_BEAT_INTERVAL:
             await asyncio.sleep(1)
             wait_time += 1
         # self.log.info("Waited for {} secs. Sending to Masternodes.".format(wait_time))
         # raghu todo - when BM gets a block notification - it should turn off sleep as well as not send in this pub message
+        # first sign the message 
+        mtype_sgn, msg_sgn = Message.get_message_signed_internal(
+                                  signee=self.wallet.verifying_key(),
+                                  sign=self.wallet.sign,
+                                  msg_type=mtype_enc, msg=msg_blob)
         self.pub.send_msg(filter=DEFAULT_FILTER.encode(),
-                          msg_type=MessageType.SUBBLOCK_CONTENDER,
-                          msg=msg_blob)
+                          msg_type=mtype_sgn,
+                          msg=msg_sgn)
 
-    async def _handle_sbc(self, sbb_index: int, msg_blob: bytes):
-        sbc = subblock_capnp.SubBlockContender.from_bytes_packed(msg_blob)
+    async def _handle_sbc(self, sbb_index: int, sbc, mtype_enc: bytes, msg_blob: bytes):
         self.log.important("Got SBC with sb-index {} input-hash {}".format(sbc.subBlockIdx, sbc.inputHash.hex()))
-        coro = self._send_sbc(msg_blob)
+        coro = self._send_sbc(mtype_enc, msg_blob)
         fut = asyncio.ensure_future(coro)
         self.db_state.my_sub_blocks.add_sub_block(sbc, fut)
 
@@ -505,7 +509,7 @@ class BlockManager(Worker):
             self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash.hex()))
 
             if my_new_block_hash == block.blockHash:
-                if block.type.which() == "newBlock":
+                if block.which() == "newBlock":
                     self.db_state.driver.latest_block_num = block.blockNum
                     self.db_state.driver.latest_block_hash = my_new_block_hash
 
@@ -514,7 +518,7 @@ class BlockManager(Worker):
                         self.db_state.driver.latest_epoch_hash = my_new_block_hash
 
                 self.send_updated_db_msg()
-                self.driver.commit_nonces()
+                self.nonce_manager.commit_nonces()
 
                 # raghu todo - need to add bgsave for leveldb / redis / ledis if needed here
             else:
@@ -525,7 +529,7 @@ class BlockManager(Worker):
                 # simply forward the block notification. it is input align on sbb
                 self._send_fail_block_msg(frames)
                 # this can be at sub-block blder level - where it will wait for anothr message only if it is new-block-notif otherwise, it will align input hashes and proceed to make next block
-                if block.type.which() == "newBlock":
+                if block.which() == "newBlock":
                     self.db_state.reset()
                     self.recv_block_notif(block)
                 else:

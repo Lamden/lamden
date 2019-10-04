@@ -12,7 +12,7 @@ def wrap_func(fn, *args, **kwargs):
     return wrapper
 
 def run_mn(slot_num):
-    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.core.logger import get_logger, overwrite_logger_level
     from cilantro_ee.nodes import NodeFactory
     from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 
@@ -29,7 +29,7 @@ def run_mn(slot_num):
 
 
 def trigger_mn_wr(blocks):
-    from cilantro_ee.logger import get_logger, overwrite_logger_level
+    from cilantro_ee.core.logger import get_logger, overwrite_logger_level
     from cilantro_ee.utils.test import God
     overwrite_logger_level(15)
     God.dump_it(volume=volume, delay=delay)

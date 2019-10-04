@@ -15,7 +15,7 @@ class Keys:
             cls.vk = nacl_sk.verify_key.encode().hex()
 
             # DEBUG -- TODO DELETE
-            from cilantro_ee.protocol.wallet import get_vk
+            from cilantro_ee.core.crypto.wallet import get_vk
             wall_vk = get_vk(cls.sk)
             assert wall_vk == cls.vk, "wallet vk {} not match nacl vk {}".format(wall_vk, cls.vk)
             # END DEBUG

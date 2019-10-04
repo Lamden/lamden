@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.pow import SHA3POWBytes
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.utils.pow import SHA3POWBytes
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.core.messages.message_type import MessageType
@@ -54,7 +54,7 @@ class TestMessages(TestCase):
 
         wallet = Wallet()
         mtype2, msg2 = capnp_impl.get_signed_message_packed(
-                               signee=wallet.verifying_key(), sign=wallet.sign,
+                               wallet=wallet,
                                msg_type=MessageType.BLOCK_NOTIFICATION,
                                blockNum=123, blockOwners=blk_owners,
                                inputHashes=input_hashes, newBlock=None)
