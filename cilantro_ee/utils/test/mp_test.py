@@ -9,7 +9,7 @@ import traceback
 import time
 import os
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 from cilantro_ee.core.logger import get_logger, overwrite_logger_level
 from vmnet.testcase import BaseNetworkTestCase
 

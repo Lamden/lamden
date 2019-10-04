@@ -1,5 +1,5 @@
 from cilantro_ee.core.logger.base import get_logger
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.nodes.catchup import CatchupManager

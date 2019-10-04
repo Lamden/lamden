@@ -3,7 +3,7 @@ from cilantro_ee.core.logger.base import get_logger
 import asyncio, zmq.asyncio, zmq
 from cilantro_ee.core.sockets.lsocket import *
 from cilantro_ee.core.sockets.socket_manager import *
-from cilantro_ee.protocol.multiprocessing.worker import *
+from cilantro_ee.core.utils.worker import *
 from cilantro_ee.messages.signals.poke import *
 
 FILTER = 'HI'

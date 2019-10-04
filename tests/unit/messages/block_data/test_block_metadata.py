@@ -7,7 +7,7 @@ BlockMetaData is just a subclass of BlockData, with no additional fields, so tes
 # from unittest import TestCase
 # from unittest import mock
 #
-# from cilantro_ee.protocol import wallet
+# from cilantro_ee.core.crypto import wallet
 # from cilantro_ee.messages.block_data.block_data import BlockData
 # from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 #

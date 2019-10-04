@@ -7,7 +7,7 @@ from cilantro_ee.utils.hasher import Hasher
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 
 from collections import defaultdict
 from typing import List

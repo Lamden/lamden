@@ -19,7 +19,7 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.storage.state import MetaDataStorage
 
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
 
@@ -31,7 +31,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.crypto.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 import hashlib
 import asyncio, zmq, time, random

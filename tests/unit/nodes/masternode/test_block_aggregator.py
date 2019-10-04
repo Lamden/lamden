@@ -35,8 +35,8 @@ class BlockAggTester:
         @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 2)
-        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        # @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+        @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
         @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.BlockAggregator.run")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)

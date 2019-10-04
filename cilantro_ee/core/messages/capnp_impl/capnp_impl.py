@@ -4,8 +4,8 @@ import capnp
 
 from cilantro_ee.core.messages.message_type import MessageType
 import struct
-from cilantro_ee.protocol.wallet import _sign
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import _sign
+from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message_type import MessageType
 
 

@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.multiprocessing.context import Context
+from cilantro_ee.core.utils.context import Context
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.core.sockets.socket_manager import SocketManager
 

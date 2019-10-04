@@ -6,7 +6,7 @@ from cilantro_ee.utils.keys import Keys
 from cilantro_ee.protocol.overlay.interface import OverlayInterface
 from cilantro_ee.constants.overlay_network import CMD_URL
 from cilantro_ee.core.logger.base import get_logger
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.constants import conf

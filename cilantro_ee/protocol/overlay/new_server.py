@@ -7,7 +7,7 @@ from cilantro_ee.core.sockets.services import AsyncInbox, SocketStruct, get
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 import zmq.asyncio
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 import time
 
 

@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets.sockets import services
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.sockets import services
+from cilantro_ee.core.crypto.wallet import Wallet
 
 from cilantro_ee.services.block_fetch import BlockFetcher
 from cilantro_ee.services.block_server import BlockServer
@@ -11,7 +11,7 @@ import secrets
 from cilantro_ee.storage.master import CilantroStorageDriver
 
 from cilantro_ee.core.top import TopBlockManager
-from cilantro_ee.core.sockets.sockets import SocketBook
+from cilantro_ee.core.sockets.socket_book import SocketBook
 
 import time
 import zmq.asyncio

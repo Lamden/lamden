@@ -1,8 +1,8 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets.sockets import SocketBook
+from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.protocol.overlay.network import Network
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import SocketStruct, _socket
 
 import zmq

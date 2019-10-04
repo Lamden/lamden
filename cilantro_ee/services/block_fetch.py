@@ -1,8 +1,8 @@
-from cilantro_ee.core.sockets.sockets import SocketBook
+from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.core.sockets.services import get, defer

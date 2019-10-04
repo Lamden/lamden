@@ -4,10 +4,10 @@ from cilantro_ee.protocol.overlay.discovery import *
 from cilantro_ee.protocol.overlay.network import Network, PeerServer, KTable
 from cilantro_ee.protocol.overlay.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.core.sockets.sockets import services
+from cilantro_ee.core.sockets import services
 import zmq
 import zmq.asyncio
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 from time import sleep
 import json
 

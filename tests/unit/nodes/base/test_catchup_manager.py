@@ -10,7 +10,7 @@ from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
 import asyncio, time
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 
 from cilantro_ee.storage.vkbook import VKBook
 

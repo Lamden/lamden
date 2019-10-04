@@ -37,7 +37,7 @@ def run_mn():
 def run_user():
     from cilantro_ee.utils.test.god import God
     from cilantro_ee.core.logger import get_logger
-    from cilantro_ee.protocol import wallet
+    from cilantro_ee.core.crypto import wallet
 
     # Fix masternode URL on God
     God.multi_master = False

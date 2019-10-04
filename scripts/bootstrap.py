@@ -10,7 +10,7 @@ from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.storage.vkbook import PhoneBook
 from cilantro_ee.core.logger.base import overwrite_logger_level
 import sys, time
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 import requests
 
 def boot(delay):

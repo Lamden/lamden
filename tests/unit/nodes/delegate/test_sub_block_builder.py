@@ -24,7 +24,7 @@ from cilantro_ee.storage.vkbook import PhoneBook
 import asyncio
 import time
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 #
 _log = get_logger("TestSubBlockBuilder")
 #
@@ -48,8 +48,8 @@ class SBBTester:
 
     @staticmethod
     def test(func):
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+        @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
         @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
         @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder.run")
         def _func(*args, **kwargs):

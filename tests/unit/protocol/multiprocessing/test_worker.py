@@ -4,7 +4,7 @@ set_testnet_config('2-2-4.json')
 
 from unittest import TestCase, mock
 from unittest.mock import MagicMock
-from cilantro_ee.protocol.multiprocessing.worker import Worker
+from cilantro_ee.core.utils.worker import Worker
 from cilantro_ee.messages.base.base_signal import SignalBase
 
 
@@ -21,10 +21,10 @@ class WorkerTester:
 
     @staticmethod
     def test(func):
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
-        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq", autospec=True)
-        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.zmq.asyncio", autospec=True)
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        @mock.patch("cilantro_ee.core.utils.worker.asyncio", autospec=True)
+        # @mock.patch("cilantro_ee.core.utils.worker.zmq", autospec=True)
+        # @mock.patch("cilantro_ee.core.utils.worker.zmq.asyncio", autospec=True)
+        @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
         return _func

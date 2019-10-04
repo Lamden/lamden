@@ -27,8 +27,8 @@ TEST_SK = TESTNET_DELEGATES[0]['sk']
 class TestBlockManager(TestCase):
 
     # TODO we can probly DRY all this patching/setup code in a setup method or something
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+    @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+    @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
@@ -68,8 +68,8 @@ class TestBlockManager(TestCase):
         mock_ipc_router.add_handler.assert_called()
         self.assertTrue(mock_router_handler_task in bm.tasks)
 
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+    @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+    @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
@@ -101,8 +101,8 @@ class TestBlockManager(TestCase):
 
 
     # TODO comment this back in when catchup is fixed
-    # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
-    # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    # @mock.patch("cilantro_ee.core.utils.worker.asyncio", autospec=True)
+    # @mock.patch("cilantro_ee.core.utils.worker.SocketManager", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run", autospec=True)

@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.storage.master import DistributedMasterStorage
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 
 

@@ -1,5 +1,5 @@
 import cilantro_ee
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
 from cilantro_ee.core.logger.base import get_logger

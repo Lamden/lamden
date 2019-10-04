@@ -1,6 +1,6 @@
 from decimal import Decimal
-from cilantro_ee.protocol import wallet
-from cilantro_ee.protocol.pow import SHA3POW, SHA3POWBytes
+from cilantro_ee.core.crypto import wallet
+from cilantro_ee.core.utils.pow import SHA3POW, SHA3POWBytes
 from contracting import config
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas

@@ -22,7 +22,7 @@
 #     from cilantro_ee.core.logger import get_logger, overwrite_logger_level
 #     from cilantro_ee.nodes.factory import NodeFactory
 #     from cilantro_ee.utils.test.node_runner import log_create
-#     from cilantro_ee.protocol import wallet
+#     from cilantro_ee.core.crypto import wallet
 #
 #     overwrite_logger_level(log_lvl)
 #     vk = wallet.get_vk(sk)
@@ -39,7 +39,7 @@
 #     from cilantro_ee.constants.testnet import TESTNET_WITNESSES
 #     from cilantro_ee.constants.conf import CilantroConf
 #     from cilantro_ee.utils.test.node_runner import log_create
-#     from cilantro_ee.protocol import wallet
+#     from cilantro_ee.core.crypto import wallet
 #
 #     overwrite_logger_level(log_lvl)
 #
@@ -63,7 +63,7 @@
 #     from eneca.libs.logger import overwrite_logger_level as sen_overwrite_log
 #     from cilantro_ee.nodes.factory import NodeFactory
 #     from cilantro_ee.utils.test.node_runner import log_create
-#     from cilantro_ee.protocol import wallet
+#     from cilantro_ee.core.crypto import wallet
 #
 #     overwrite_logger_level(log_lvl)
 #     sen_overwrite_log(seneca_log_lvl)
