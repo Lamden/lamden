@@ -1,6 +1,6 @@
 from cilantro_ee.core.sockets.services import AsyncInbox
 
-from cilantro_ee.storage.master import CilantroStorageDriver
+from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType

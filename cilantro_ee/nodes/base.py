@@ -3,7 +3,7 @@ from cilantro_ee.core.utils.context import Context
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.services.overlay.server import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
-from cilantro_ee.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.constants import conf
 import asyncio

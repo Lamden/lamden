@@ -1,7 +1,7 @@
 from unittest import TestCase
 import unittest
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 import json
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.utils.transaction import TransactionBuilder

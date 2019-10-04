@@ -3,7 +3,7 @@ set_testnet_config('1-0-0.json')
 
 from cilantro_ee.utils.factory import NodeFactory
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 import os
 
 # overwrite_logger_level(logging.WARNING)

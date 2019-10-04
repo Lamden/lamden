@@ -3,7 +3,7 @@
 #
 # from cilantro_ee.utils.lprocess import LProcess
 #
-# from cilantro_ee.storage.vkbook import PhoneBook
+# from cilantro_ee.services.storage.vkbook import PhoneBook
 #
 # from cilantro_ee.nodes.catchup import CatchupManager
 # from cilantro_ee.nodes.base import NodeBase

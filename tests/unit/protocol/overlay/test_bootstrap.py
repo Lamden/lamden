@@ -18,7 +18,7 @@
 #     import asyncio, os, ujson as json
 #     import zmq, zmq.asyncio
 #     from os import getenv as env
-#     from cilantro_ee.storage.vkbook import VKBook
+#     from cilantro_ee.services.storage.vkbook import VKBook
 #     VKBook.setup()
 #
 #     # NOTE: This logic should be improved. There are no utilities for this right now

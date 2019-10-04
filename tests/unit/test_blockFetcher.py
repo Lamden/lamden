@@ -8,7 +8,7 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core import canonical
 import secrets
-from cilantro_ee.storage.master import CilantroStorageDriver
+from cilantro_ee.services.storage.master import CilantroStorageDriver
 
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.core.sockets.socket_book import SocketBook

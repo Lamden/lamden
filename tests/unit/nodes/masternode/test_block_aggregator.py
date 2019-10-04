@@ -22,8 +22,8 @@ from cilantro_ee.messages.block_data.block_metadata import *
 from cilantro_ee.messages.consensus.merkle_signature import *
 
 from cilantro_ee.core.containers.merkle_tree import MerkleTree
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.driver import SafeDriver
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
 from cilantro_ee.core.logger.base import get_logger

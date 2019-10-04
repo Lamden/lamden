@@ -13,12 +13,12 @@ from unittest.mock import MagicMock
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 
 _log = get_logger("TestBlockManager")
 
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_DELEGATES[0]['sk']

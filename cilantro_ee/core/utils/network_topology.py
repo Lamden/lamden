@@ -1,4 +1,4 @@
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 from cilantro_ee.constants.system_config import NUM_SB_BUILDERS, NUM_SB_PER_BUILDER
 from cilantro_ee.constants.ports import *
 

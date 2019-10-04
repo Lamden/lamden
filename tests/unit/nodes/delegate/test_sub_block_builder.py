@@ -18,9 +18,9 @@ from cilantro_ee.core.messages.message import Message
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.constants.testnet import *
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 import asyncio
 import time
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES

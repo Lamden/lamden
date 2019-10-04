@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 from cilantro_ee.constants import system_config
 
 import hashlib
@@ -44,7 +44,7 @@ class MasterStorage:
         self.config_path = config_path
 
         self.config = ConfigParser()
-        self.config.read(self.config_path + '/mn_db_conf.ini')
+        self.config.read(self.config_path + '/services/storage/mn_db_conf.ini')
 
         user = self.config.get('MN_DB', 'username')
         password = self.config.get('MN_DB', 'password')

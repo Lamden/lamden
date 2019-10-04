@@ -5,7 +5,7 @@ from cilantro_ee.core.sockets.lsocket import LSocketBase
 from cilantro_ee.core.sockets.lsocket_router import LSocketRouter
 from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 
 from collections import defaultdict
 import asyncio, zmq.asyncio, time

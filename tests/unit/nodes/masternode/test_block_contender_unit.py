@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 import secrets
 
 def random_wallets(n=10):

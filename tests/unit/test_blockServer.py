@@ -7,7 +7,7 @@ from cilantro_ee.services.block_server import BlockServer
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
-from cilantro_ee.storage.master import CilantroStorageDriver
+from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.core import canonical
 from cilantro_ee.core.top import TopBlockManager
 import time

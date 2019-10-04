@@ -1,6 +1,6 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from cilantro_ee.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 import capnp
 import os
 from cilantro_ee.messages import capnp as schemas

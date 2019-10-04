@@ -1,5 +1,5 @@
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *

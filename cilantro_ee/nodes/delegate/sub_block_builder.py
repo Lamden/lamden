@@ -18,7 +18,7 @@
 # need to clean this up - this is a dirty version of trying to separate out a sub-block builder in the old code
 
 from typing import Dict, Callable
-from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.constants.system_config import *
 

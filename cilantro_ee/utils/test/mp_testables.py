@@ -12,13 +12,13 @@ from cilantro_ee.nodes.witness.witness import Witness
 from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.services.overlay.daemon import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
-# from cilantro_ee.storage.db import DB
+# from cilantro_ee.services.storage.db import DB
 from cilantro_ee.utils.test.pubsub_auth import PubSubAuthTester
 from cilantro_ee.utils.test.router_auth import RouterAuthTester
 import asyncio
 import zmq.asyncio
 import os
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 
 
 @mp_testable(NodeBase)
@@ -41,7 +41,7 @@ class MPPubSubAuth(MPTesterBase):
         VKBook.setup()
         # # DEBUG -- TODO DELETE
         # print("VKBook on REMOTE MACHINE")
-        # from cilantro_ee.storage.vkbook import VKBook
+        # from cilantro_ee.services.storage.vkbook import VKBook
         # VKBook.test_print_nodes()
         # # END DEBUG
         loop = asyncio.get_event_loop()

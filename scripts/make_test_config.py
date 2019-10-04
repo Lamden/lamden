@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('--username', default='lamden')
     parser.add_argument('--database', default='mn')
     parser.add_argument('--hostname', default='127.0.0.1')
-    parser.add_argument('--output-file', default=cilantro_ee.__path__[0]+'/mn_db_conf.ini')
+    parser.add_argument('--output-file', default=cilantro_ee.__path__[0]+'/services/storage/n_db_conf.ini')
     parser.add_argument('--port', default=27017)
     args = parser.parse_args()
 
