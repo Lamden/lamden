@@ -3,7 +3,7 @@ from cilantro_ee.core.sockets import SocketBook
 from cilantro_ee.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.protocol.overlay.network import Network
 from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.comm.services import SocketStruct, _socket
+from cilantro_ee.core.sockets.services import SocketStruct, _socket
 
 import zmq
 import zmq.asyncio

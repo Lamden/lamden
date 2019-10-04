@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.comm.lsocket import LSocketBase
+from cilantro_ee.core.sockets.lsocket import LSocketBase
 import time, asyncio
 from collections import defaultdict, deque
 from typing import List

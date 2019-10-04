@@ -4,7 +4,7 @@ import zmq
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
 import asyncio
-from cilantro_ee.protocol.comm.services import _socket, get
+from cilantro_ee.core.sockets.services import _socket, get
 from cilantro_ee.core.messages.message import MessageType, Message
 
 

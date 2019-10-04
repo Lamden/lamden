@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.protocol.comm import services
+from cilantro_ee.core.sockets import services
 from cilantro_ee.protocol.wallet import Wallet
 from cilantro_ee.protocol import wallet
 from cilantro_ee.services.block_server import BlockServer

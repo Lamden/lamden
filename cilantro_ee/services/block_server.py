@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.comm.services import AsyncInbox
+from cilantro_ee.core.sockets.services import AsyncInbox
 
 from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager

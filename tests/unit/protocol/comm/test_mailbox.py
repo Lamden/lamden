@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.comm import services
+from cilantro_ee.core.sockets import services
 import zmq.asyncio
 from cilantro_ee.protocol.wallet import Wallet
 from unittest import TestCase
