@@ -99,10 +99,15 @@ class MetaDataStorage(DatabaseDriver):
         if type(block) != dict:
             block = block.to_dict()
 
+        # self.log.info("block {}".format(block))
+
+        assert self.latest_block_hash == block['prevBlockHash'], \
+            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
+
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
 
-        for sb in block.subBlocks:
+        for sb in block['subBlocks']:
             for tx in sb.transactions:
                 self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
                 self.set_transaction_data(tx=tx)
@@ -112,15 +117,12 @@ class MetaDataStorage(DatabaseDriver):
         self.nonce_manager.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.latest_block_hash = block.blockHash
-        self.latest_block_num = block.blockNum
+        self.latest_block_hash = block['blockHash']
+        self.latest_block_num = block['blockNum']
 
         # Update the epoch hash if it is time
-        if block.blockNum % conf.EPOCH_INTERVAL == 0:
-            self.latest_epoch_hash = block.blockHash
+        if self.latest_block_num % conf.EPOCH_INTERVAL == 0:
+            self.latest_epoch_hash = self.latest_block_hash
 
             # Update rewards
-
-        assert self.latest_block_hash == block.blockHash, \
-            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
 
