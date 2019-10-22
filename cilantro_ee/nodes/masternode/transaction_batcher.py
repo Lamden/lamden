@@ -3,31 +3,113 @@ from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.batcher import BATCHER_SLEEP_INTERVAL
 from cilantro_ee.constants.batcher import MAX_TXN_SUBMISSION_DELAY
 from cilantro_ee.constants.batcher import MAX_TXNS_PER_SUB_BLOCK
-from cilantro_ee.constants.system_config import BLOCK_HEART_BEAT_INTERVAL
-from cilantro_ee.constants.system_config import INPUT_BAG_TIMEOUT
+
 from cilantro_ee.core.utils.worker import Worker
-import zmq.asyncio
-import asyncio, time
-import hashlib
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.crypto.wallet import Wallet, _verify
-from cilantro_ee.core.utils.pow import SHA3POWBytes
 from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
-from contracting import config
 from cilantro_ee.core.nonces import NonceManager
+
+import zmq.asyncio
+import asyncio, time
+import hashlib
+
+# self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()
+
+class BatchRateLimiter:
+
+    def __init__(self, queue, wallet, sleep_interval, 
+                 max_batch_size, max_txn_delay):
+
+        self.queue = queue
+        self.wallet = wallet
+        self.batcher_sleep_interval = sleep_interval
+        self.max_batch_size = max_batch_size
+        self.max_txn_submission_delay = max_txn_delay
+
+        self.driver = NonceManager()
+        self.num_batches_sent = 0
+        self.txn_delay = 0
+        self.tasks = []
+        self.sent_batch_ids = []
+
+    # external interface
+    async def add_batch_id(self, batch_id):
+        self.sent_batch_ids.append(batch_id)
+        self.num_batches_sent += 1
+
+    # async def remove_batch_ids(self, batch_ids):
+    def remove_batch_ids(self, batch_ids):
+        self.num_batches_sent -= 1
+        for id in batch_ids:
+            while id in self.sent_batch_ids:
+                self.sent_batch_ids.pop(0)
+        list_len = len(self.sent_batch_ids)
+        if list_len < self.num_batches_sent:
+            self.num_batches_sent = list_len
+
+    async def get_next_batch_size(self):
+        while True:
+            num_txns = min(self.queue.qsize(), self.max_batch_size)
+
+            if num_txns > 0:
+                self.txn_delay += 1
+
+            if ((self.num_batches_sent >= 2) or \
+                ((self.num_batches_sent > 0) and \
+                 ((num_txns == 0) or \
+                  (self.txn_delay < self.max_txn_submission_delay)))):
+                await asyncio.sleep(self.batcher_sleep_interval)
+                continue
+            
+            if (num_txns >= self.max_batch_size) or \
+               (self.txn_delay >= self.max_txn_submission_delay):
+                self.txn_delay = 0
+                return num_txns
+ 
+            return 0
+
+
+    async def get_next_batch(self, batch_size):
+        tx_list = []
+        if batch_size == 0:
+            return tx_list
+        
+        for _ in range(batch_size):
+            # Get a transaction from the queue
+            tx = self.queue.get()
+
+            # Make sure that the transaction is valid
+            # this is better done at webserver level before packing and putting it into the queue - raghu todo
+            try:
+                transaction_is_valid(tx=tx[1],
+                                     expected_processor=self.wallet.verifying_key(),
+                                     driver=self.driver,
+                                     strict=True)
+            except TransactionException:
+                continue
+
+            tx_list.append(tx[1])
+
+        return tx_list
+
+
 
 class TransactionBatcher(Worker):
 
     def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.queue, self.ip = queue, ip
+        self.ip = ip
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
+
+        self.batcher = BatchRateLimiter(queue, self.wallet,
+                                        BATCHER_SLEEP_INTERVAL,
+                                        MAX_TXNS_PER_SUB_BLOCK,
+                                        MAX_TXN_SUBMISSION_DELAY)
+
         self._ready = False
-
-        self.driver = NonceManager()
-
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
@@ -35,9 +117,6 @@ class TransactionBatcher(Worker):
         # Create DEALER socket to talk to the BlockManager process over IPC
         self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(0).encode())
-
-        self.sent_input_hashes = []
-        self.num_mismatches = 0
 
         self.tasks.append(self.compose_transactions())
 
@@ -56,22 +135,6 @@ class TransactionBatcher(Worker):
                         "ip {}, port {}".format(self.ipc_ip, self.ipc_port))
         self.ipc_dealer.connect(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
-    def _get_num_bags_sent(self):
-        return len(self.sent_input_hashes) - self.num_mismatches
-
-    def _update_sent_input_hashes(self, input_hashes):
-        qsz = len(self.sent_input_hashes)
-        is_match = False
-        for input_hash in input_hashes:
-            if input_hash in self.sent_input_hashes:
-                ih = self.sent_input_hashes.pop(0)
-                while ih != input_hash:
-                    ih = self.sent_input_hashes.pop(0)
-                is_match = True
-        if is_match:
-            self.num_mismatches = 0
-        else:
-            self.num_mismatches += 1
 
     def handle_ipc_msg(self, frames):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
@@ -89,7 +152,7 @@ class TransactionBatcher(Worker):
 
         if msg_type == MessageType.BURN_INPUT_HASHES:
             self.log.info('An empty or non-empty block was made.')
-            self._update_sent_input_hashes(msg.inputHashes)
+            self.batcher.remove_batch_ids(msg.inputHashes)
 
         elif msg_type == MessageType.READY:
             self.log.success('READY.')
@@ -109,83 +172,35 @@ class TransactionBatcher(Worker):
         await self._wait_until_ready()
 
         self.log.notice("Starting TransactionBatcher ...")
-        self.log.debugv("Current queue size is {}".format(self.queue.qsize()))
 
-        encoded_filter = TRANSACTION_FILTER.encode()
-        cur_txn_delay = 0
-        empty_bag_delay = 0
-        max_empty_bag_delay = BLOCK_HEART_BEAT_INTERVAL - INPUT_BAG_TIMEOUT
-        my_wallet = Wallet(seed=self.signing_key)
+        enc_fltr = TRANSACTION_FILTER.encode()
 
         while True:
-            num_txns = self.queue.qsize() 
-            num_bags_sent = self._get_num_bags_sent()
-
-            if (num_txns == 0):
-                empty_bag_delay = (empty_bag_delay + 1) if num_bags_sent == 1 \
-                                  else 0
-            elif (num_txns < MAX_TXNS_PER_SUB_BLOCK):
-                cur_txn_delay += 1
-            if ((num_bags_sent > 3) or \
-                ((num_bags_sent > 0) and (num_txns < MAX_TXNS_PER_SUB_BLOCK) \
-                  and (cur_txn_delay < MAX_TXN_SUBMISSION_DELAY) \
-                  and (empty_bag_delay < max_empty_bag_delay))):
-                await asyncio.sleep(BATCHER_SLEEP_INTERVAL)
-                continue
-
-            if (num_txns >= MAX_TXNS_PER_SUB_BLOCK) or \
-               (cur_txn_delay >= MAX_TXN_SUBMISSION_DELAY):
-                bag_size = min(num_txns, MAX_TXNS_PER_SUB_BLOCK)
-                cur_txn_delay = 0
-            else:
-                bag_size = 0
-                empty_bag_delay = 0
-
-            tx_list = []
+            num_txns = await self.batcher.get_next_batch_size()
+            tx_list = await self.batcher.get_next_batch(num_txns)
 
             h = hashlib.sha3_256()
-
-            for _ in range(bag_size):
-                # Get a transaction from the queue
-                tx = self.queue.get()
-
-                # Make sure that the transaction is valid
-                # this is better done at webserver level before packing and putting it into the queue - raghu todo
-                try:
-                    transaction_is_valid(tx=tx[1],
-                                         expected_processor=self.wallet.verifying_key(),
-                                         driver=self.driver,
-                                         strict=True)
-                except TransactionException:
-                    continue
-
+            for tx in tx_list:
                 # Hash it
-                tx_bytes = tx[1].as_builder().to_bytes_packed()
+                tx_bytes = tx.as_builder().to_bytes_packed()
                 h.update(tx_bytes)
-
-                # Deserialize it and put it in the list
-                tx_list.append(tx[1])
 
             # Add a timestamp
             timestamp = time.time()
             h.update('{}'.format(timestamp).encode())
             inputHash = h.digest()
+            await self.batcher.add_batch_id(inputHash)
 
             # Sign the message for verification
-            signature = my_wallet.sign(inputHash)
-
-            self.sent_input_hashes.append(inputHash)
+            signature = self.wallet.sign(inputHash)
 
             mtype, msg = Message.get_message_packed(
                              MessageType.TRANSACTION_BATCH,
                              transactions=[t for t in tx_list], timestamp=timestamp,
                              signature=signature, inputHash=inputHash,
-                             sender=my_wallet.vk.encode())
+                             sender=self.wallet.verifying_key())
 
-            self.pub_sock.send_msg(msg=msg, msg_type=mtype,
-                                   filter=TRANSACTION_FILTER.encode())
+            self.pub_sock.send_msg(msg=msg, msg_type=mtype, filter=enc_fltr)
 
-
-            self.log.debug1("Send {} / {} transactions with hash {} and timestamp {}"
-                      .format(bag_size, len(tx_list), inputHash.hex(), timestamp))
-
+            self.log.debug1("Send {} transactions with hash {} and timestamp {}"
+                            .format(len(tx_list), inputHash.hex(), timestamp))
