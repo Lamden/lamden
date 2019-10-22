@@ -15,9 +15,7 @@ import zmq.asyncio
 import asyncio, time
 import hashlib
 
-# self.ipc_dealer.add_message_handler(self.get_ipc_message_action_dict()
-
-class BatchRateLimiter:
+class RateLimitingBatcher:
 
     def __init__(self, queue, wallet, sleep_interval, 
                  max_batch_size, max_txn_delay):
@@ -34,8 +32,7 @@ class BatchRateLimiter:
         self.tasks = []
         self.sent_batch_ids = []
 
-    # external interface
-    async def add_batch_id(self, batch_id):
+    def add_batch_id(self, batch_id):
         self.sent_batch_ids.append(batch_id)
         self.num_batches_sent += 1
 
@@ -49,33 +46,33 @@ class BatchRateLimiter:
         if list_len < self.num_batches_sent:
             self.num_batches_sent = list_len
 
-    async def get_next_batch_size(self):
-        while True:
-            num_txns = min(self.queue.qsize(), self.max_batch_size)
+    def ready_for_next_batch(self):
+        num_txns = self.queue.qsize()
 
-            if num_txns > 0:
-                self.txn_delay += 1
+        if num_txns > 0:
+            self.txn_delay += 1
 
-            if ((self.num_batches_sent >= 2) or \
-                ((self.num_batches_sent > 0) and \
-                 ((num_txns == 0) or \
-                  (self.txn_delay < self.max_txn_submission_delay)))):
-                await asyncio.sleep(self.batcher_sleep_interval)
-                continue
-            
-            if (num_txns >= self.max_batch_size) or \
-               (self.txn_delay >= self.max_txn_submission_delay):
-                self.txn_delay = 0
-                return num_txns
+        if ((self.num_batches_sent >= 2) or \
+            ((self.num_batches_sent > 0) and \
+             ((num_txns < self.max_batch_size) or \
+              (self.txn_delay < self.max_txn_submission_delay)))):
+            return False
+        return True
+
+
+    def get_next_batch_size(self):
+        num_txns = self.queue.qsize()
+
+        if (num_txns >= self.max_batch_size) or \
+           (self.txn_delay >= self.max_txn_submission_delay):
+            self.txn_delay = 0
+            return min(num_txns, self.max_batch_size)
  
-            return 0
+        return 0
 
 
-    async def get_next_batch(self, batch_size):
+    def get_txn_list(self, batch_size):
         tx_list = []
-        if batch_size == 0:
-            return tx_list
-        
         for _ in range(batch_size):
             # Get a transaction from the queue
             tx = self.queue.get()
@@ -95,6 +92,42 @@ class BatchRateLimiter:
         return tx_list
 
 
+    def pack_txn_list(self, tx_list):
+        h = hashlib.sha3_256()
+        for tx in tx_list:
+            # Hash it
+            tx_bytes = tx.as_builder().to_bytes_packed()
+            h.update(tx_bytes)
+
+        # Add a timestamp
+        timestamp = time.time()
+        h.update('{}'.format(timestamp).encode())
+        inputHash = h.digest()
+        self.add_batch_id(inputHash)
+
+        # Sign the message for verification
+        signature = self.wallet.sign(inputHash)
+
+        mtype, msg = Message.get_message_packed(
+                         MessageType.TRANSACTION_BATCH,
+                         transactions=[t for t in tx_list], timestamp=timestamp,
+                         signature=signature, inputHash=inputHash,
+                         sender=self.wallet.verifying_key())
+
+        # self.log.debug1("Send {} transactions with hash {} and timestamp {}"
+                        # .format(len(tx_list), inputHash.hex(), timestamp))
+
+        return mtype, msg
+
+    async def get_next_batch_packed(self):
+        while not self.ready_for_next_batch():
+            await asyncio.sleep(self.batcher_sleep_interval)
+        num_txns = self.get_next_batch_size()
+        tx_list = self.get_txn_list(num_txns)
+        mtype, msg = self.pack_txn_list(tx_list)
+        return mtype, msg
+
+
 
 class TransactionBatcher(Worker):
 
@@ -104,10 +137,10 @@ class TransactionBatcher(Worker):
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
 
-        self.batcher = BatchRateLimiter(queue, self.wallet,
-                                        BATCHER_SLEEP_INTERVAL,
-                                        MAX_TXNS_PER_SUB_BLOCK,
-                                        MAX_TXN_SUBMISSION_DELAY)
+        self.batcher = RateLimitingBatcher(queue, self.wallet,
+                                           BATCHER_SLEEP_INTERVAL,
+                                           MAX_TXNS_PER_SUB_BLOCK,
+                                           MAX_TXN_SUBMISSION_DELAY)
 
         self._ready = False
         # Create Pub socket to broadcast to witnesses
@@ -176,31 +209,6 @@ class TransactionBatcher(Worker):
         enc_fltr = TRANSACTION_FILTER.encode()
 
         while True:
-            num_txns = await self.batcher.get_next_batch_size()
-            tx_list = await self.batcher.get_next_batch(num_txns)
-
-            h = hashlib.sha3_256()
-            for tx in tx_list:
-                # Hash it
-                tx_bytes = tx.as_builder().to_bytes_packed()
-                h.update(tx_bytes)
-
-            # Add a timestamp
-            timestamp = time.time()
-            h.update('{}'.format(timestamp).encode())
-            inputHash = h.digest()
-            await self.batcher.add_batch_id(inputHash)
-
-            # Sign the message for verification
-            signature = self.wallet.sign(inputHash)
-
-            mtype, msg = Message.get_message_packed(
-                             MessageType.TRANSACTION_BATCH,
-                             transactions=[t for t in tx_list], timestamp=timestamp,
-                             signature=signature, inputHash=inputHash,
-                             sender=self.wallet.verifying_key())
-
+            mtype, msg = await self.batcher.get_next_batch_packed()
             self.pub_sock.send_msg(msg=msg, msg_type=mtype, filter=enc_fltr)
-
-            self.log.debug1("Send {} transactions with hash {} and timestamp {}"
-                            .format(len(tx_list), inputHash.hex(), timestamp))
+            self.log.info("Sent next batch ...")
