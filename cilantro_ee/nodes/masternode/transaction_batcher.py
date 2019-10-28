@@ -15,8 +15,11 @@ import zmq.asyncio
 import asyncio, time
 import hashlib
 
+'''
+Dynamically rate limits transaction batches so that the Trnasaction Batcher can just await responses and not have to
+worry about DDOS attacked or TX flooding.
+'''
 class RateLimitingBatcher:
-
     def __init__(self, queue, wallet, sleep_interval, 
                  max_batch_size, max_txn_delay):
 
@@ -39,10 +42,13 @@ class RateLimitingBatcher:
     # async def remove_batch_ids(self, batch_ids):
     def remove_batch_ids(self, batch_ids):
         self.num_batches_sent -= 1
+
         for id in batch_ids:
             while id in self.sent_batch_ids:
                 self.sent_batch_ids.pop(0)
+
         list_len = len(self.sent_batch_ids)
+
         if list_len < self.num_batches_sent:
             self.num_batches_sent = list_len
 
@@ -57,8 +63,8 @@ class RateLimitingBatcher:
              ((num_txns < self.max_batch_size) or \
               (self.txn_delay < self.max_txn_submission_delay)))):
             return False
-        return True
 
+        return True
 
     def get_next_batch_size(self):
         num_txns = self.queue.qsize()
@@ -69,7 +75,6 @@ class RateLimitingBatcher:
             return min(num_txns, self.max_batch_size)
  
         return 0
-
 
     def get_txn_list(self, batch_size):
         tx_list = []
@@ -90,7 +95,6 @@ class RateLimitingBatcher:
             tx_list.append(tx[1])
 
         return tx_list
-
 
     def pack_txn_list(self, tx_list):
         h = hashlib.sha3_256()
@@ -122,9 +126,11 @@ class RateLimitingBatcher:
     async def get_next_batch_packed(self):
         while not self.ready_for_next_batch():
             await asyncio.sleep(self.batcher_sleep_interval)
+
         num_txns = self.get_next_batch_size()
         tx_list = self.get_txn_list(num_txns)
         mtype, msg = self.pack_txn_list(tx_list)
+
         return mtype, msg
 
 
