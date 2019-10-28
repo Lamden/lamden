@@ -20,7 +20,7 @@ Dynamically rate limits transaction batches so that the Trnasaction Batcher can 
 worry about DDOS attacked or TX flooding.
 '''
 class RateLimitingBatcher:
-    def __init__(self, queue, wallet, sleep_interval, 
+    def __init__(self, queue, wallet, sleep_interval,
                  max_batch_size, max_txn_delay):
 
         self.queue = queue
@@ -58,10 +58,9 @@ class RateLimitingBatcher:
         if num_txns > 0:
             self.txn_delay += 1
 
-        if ((self.num_batches_sent >= 2) or \
-            ((self.num_batches_sent > 0) and \
-             ((num_txns < self.max_batch_size) or \
-              (self.txn_delay < self.max_txn_submission_delay)))):
+        if self.num_batches_sent >= 2 or \
+                (self.num_batches_sent > 0 and
+                 (num_txns < self.max_batch_size or self.txn_delay < self.max_txn_submission_delay)):
             return False
 
         return True
@@ -71,9 +70,10 @@ class RateLimitingBatcher:
 
         if (num_txns >= self.max_batch_size) or \
            (self.txn_delay >= self.max_txn_submission_delay):
+
             self.txn_delay = 0
             return min(num_txns, self.max_batch_size)
- 
+
         return 0
 
     def get_txn_list(self, batch_size):
@@ -107,6 +107,8 @@ class RateLimitingBatcher:
         timestamp = time.time()
         h.update('{}'.format(timestamp).encode())
         inputHash = h.digest()
+
+        # Make explicit, only being used once
         self.add_batch_id(inputHash)
 
         # Sign the message for verification
@@ -127,12 +129,17 @@ class RateLimitingBatcher:
         while not self.ready_for_next_batch():
             await asyncio.sleep(self.batcher_sleep_interval)
 
+            # Add to interval here... easier
+
+
+        # Make this explicit. not being used elsewhere
         num_txns = self.get_next_batch_size()
+
         tx_list = self.get_txn_list(num_txns)
+
         mtype, msg = self.pack_txn_list(tx_list)
 
         return mtype, msg
-
 
 
 class TransactionBatcher(Worker):
