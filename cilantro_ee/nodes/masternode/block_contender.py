@@ -14,8 +14,8 @@ from typing import List
 import time
 import hashlib
 
-class SubBlockGroup:
 
+class SubBlockGroup:
     def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
@@ -118,6 +118,7 @@ class SubBlockGroup:
 
         for sbc in self.sender_to_sbc.values():
             s.add(sbc.inputHash)
+
         return list(s)
 
     def is_empty(self):
@@ -232,7 +233,6 @@ class SubBlockGroup:
 
 
 class BlockContender:
-
     def __init__(self):
         self.log = get_logger("BlockContender")
         self.committed = False

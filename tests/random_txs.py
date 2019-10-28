@@ -71,6 +71,33 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
+def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, wallet=Wallet()):
+    transactions = []
+    for i in range(txs):
+        packed_tx = random_packed_tx(nonce=i)
+        tx_data = random_tx_data(packed_tx)
+        transactions.append(tx_data.to_bytes_packed())
+
+    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+
+    sig = wallet.sign(tree.root)
+    h = hashlib.sha3_256()
+    h.update(tree.root)
+
+    proof = subblock_capnp.MerkleProof.new_message(hash=h.digest(), signer=wallet.vk.encode(), signature=sig)
+
+    sb = subblock_capnp.SubBlockContender.new_message(
+        resultHash=tree.root,
+        inputHash=input_hash,
+        merkleLeaves=[leaf for leaf in tree.leaves],
+        signature=proof.to_bytes_packed(),
+        transactions=[tx for tx in transactions],
+        subBlockIdx=idx,
+        prevBlockHash=prev_block_hash)
+
+    return sb
+
+
 def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):

@@ -131,7 +131,6 @@ class RateLimitingBatcher:
 
             # Add to interval here... easier
 
-
         # Make this explicit. not being used elsewhere
         num_txns = self.get_next_batch_size()
 

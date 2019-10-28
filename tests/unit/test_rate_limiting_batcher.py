@@ -372,3 +372,27 @@ class TestRateLimitingBatcher(TestCase):
         queue.q.extend([(1, a), (1, b), (1, c), (1, d)])
 
         self.assertListEqual(r.get_txn_list(4), expected)
+
+    def test_get_txn_list_all_if_all_good(self):
+        w = Wallet()
+        queue = MockQueue()
+
+        r = RateLimitingBatcher(
+            queue=queue,
+            wallet=w,
+            sleep_interval=0,
+            max_batch_size=3,
+            max_txn_delay=1
+        )
+
+        a = make_good_tx(w.vk.encode())
+        b = make_good_tx(w.vk.encode())
+        c = make_good_tx(w.vk.encode())
+        d = make_good_tx(w.vk.encode())
+
+        expected = [a, b, c, d]
+
+        queue.q.extend([(1, a), (1, b), (1, c), (1, d)])
+
+        self.assertListEqual(r.get_txn_list(4), expected)
+
