@@ -168,7 +168,6 @@ class TransactionBatcher(Worker):
                         "ip {}, port {}".format(self.ipc_ip, self.ipc_port))
         self.ipc_dealer.connect(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
-
     def handle_ipc_msg(self, frames):
         assert len(frames) == 2, "Expected 2 frames: (msg_type, msg_blob). Got {} instead.".format(frames)
 

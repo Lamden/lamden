@@ -38,7 +38,6 @@ class BlockAggregator(Worker):
         self.catchup_manager = None  # This gets set at the end of build_task_list once sockets are created
         self.timeout_fut = None
 
-
         self._is_catchup_done = False
 
         self.min_quorum = PhoneBook.delegate_quorum_min
@@ -244,6 +243,7 @@ class BlockAggregator(Worker):
                 self._set_catchup_done()
 
 
+    # Most likely testable
     def recv_sub_block_contender(self, sender_vk: str, sbc):
         self.log.debugv("Received a sbc from sender {} with result hash {} and input hash {}"
                         .format(sender_vk, sbc.resultHash, sbc.inputHash))
@@ -272,6 +272,7 @@ class BlockAggregator(Worker):
         else:
             self.log.debugv("Consensus not reached yet.")
 
+    # Very testable
     def store_full_block(self):
         sb_data = self.curr_block.get_sb_data()
 
@@ -397,6 +398,7 @@ class BlockAggregator(Worker):
         self.log.debugv("MN got fail block notification: {}".format(notif))
         # TODO implement
 
+    # Probably testable
     async def schedule_block_timeout(self):
         try:
             elapsed = 0
