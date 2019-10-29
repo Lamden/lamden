@@ -216,10 +216,6 @@ class SubBlockGroup:
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
 
-        print(f'merkle proof signer {merkle_proof.signer.hex()}')
-        print(f'merkle proof hash {merkle_proof.hash.hex()}')
-        print(f'merkle proof signature {merkle_proof.signature.hex()}')
-
         valid_sig = _verify(vk=merkle_proof.signer,
                             msg=merkle_proof.hash,
                             signature=merkle_proof.signature)
@@ -234,7 +230,7 @@ class SubBlockGroup:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
             # raghu todo - need to fix this
-            # return False
+            return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves

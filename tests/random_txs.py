@@ -71,7 +71,7 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
-def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet()):
+def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisoned_sig=None):
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)
@@ -80,13 +80,12 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet()):
 
     tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
 
-    sig = w.sign(tree.root)
+    if poisoned_sig is not None:
+        sig = poisoned_sig
+    else:
+        sig = w.sign(tree.root)
 
     proof = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w.verifying_key(), signature=sig)
-
-    print(f'proof signer {proof.signer.hex()}')
-    print(f'proof hash {proof.hash.hex()}')
-    print(f'proof signature {proof.signature.hex()}')
 
     sb = subblock_capnp.SubBlockContender.new_message(
         resultHash=tree.root,

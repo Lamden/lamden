@@ -148,16 +148,72 @@ class TestSubBlockGroup(TestCase):
     # *** #
 
     def test_verify_sbc_false_sender_ne_merkle_proof_signer(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        self.assertFalse(s._verify_sbc(sender_vk=Wallet().verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_sbc_idx_ne_self_sb_idx(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=2)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_invalid_sig(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=0, poisoned_sig=b'\x00' * 64)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_prev_block_hash_ne_curr_block_hash(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, b'B' * 32, w=sender)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_sbc_merkle_leave_does_not_verify(self):
         pass
@@ -169,19 +225,18 @@ class TestSubBlockGroup(TestCase):
         pass
 
     def test_verify_sbc_true_if_no_failures(self):
-        input_hash = secrets.token_bytes(32)
-        prev_block_hash = secrets.token_bytes(32)
-
-        sender = Wallet()
-
-        sbc = random_txs.sbc_from_txs(input_hash, prev_block_hash, w=sender)
-
         delegates = random_wallets(10)
 
         contacts = VKBook(delegates=delegates,
                           masternodes=['A' * 64],
                           num_boot_del=10)
 
-        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
 
-        print(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        self.assertTrue(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
