@@ -1,6 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup
 from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.core.crypto.wallet import Wallet
 import secrets
 from tests import random_txs
 
@@ -171,6 +172,16 @@ class TestSubBlockGroup(TestCase):
         input_hash = secrets.token_bytes(32)
         prev_block_hash = secrets.token_bytes(32)
 
-        sbc = random_txs.sbc_from_txs(input_hash, prev_block_hash)
+        sender = Wallet()
 
-        print(sbc)
+        sbc = random_txs.sbc_from_txs(input_hash, prev_block_hash, w=sender)
+
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        print(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))

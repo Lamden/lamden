@@ -15,6 +15,33 @@ import time
 import hashlib
 
 
+class SBCSenderSignerMismatchError(Exception):
+    pass
+
+
+class SBCIndexMismatchError(Exception):
+    pass
+
+
+class SBCInvalidSignatureError(Exception):
+    pass
+
+
+class SBCTransactionNotInContenderError(Exception):
+    pass
+
+
+class SBCBlockHashMismatchError(Exception):
+    pass
+
+
+class SBCMerkleLeafVerificationError(Exception):
+    pass
+
+
+class SBCIndexGreaterThanPossibleError(Exception):
+    pass
+
 class SubBlockGroup:
     def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
@@ -188,12 +215,17 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
+
+        print(f'merkle proof signer {merkle_proof.signer.hex()}')
+        print(f'merkle proof hash {merkle_proof.hash.hex()}')
+        print(f'merkle proof signature {merkle_proof.signature.hex()}')
+
         valid_sig = _verify(vk=merkle_proof.signer,
                             msg=merkle_proof.hash,
                             signature=merkle_proof.signature)
 
         if not valid_sig:
-            self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
+            #self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
