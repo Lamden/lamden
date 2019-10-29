@@ -1,5 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup
+from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
+from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.crypto.wallet import Wallet
 import secrets
@@ -574,3 +575,24 @@ class TestSubBlockGroup(TestCase):
             _hash = h.digest()
 
             self.assertEqual(s.transactions[_hash], tx)
+
+
+class TestBlockContender(TestCase):
+    def test_reset_resets_all_state(self):
+        b = BlockContender()
+
+        b.committed = True
+        b.consensus_reached = True
+        b.sb_groups = {1, 2, 3}
+
+        m = MetaDataStorage()
+
+        m.set_latest_block_hash(b'C' * 32)
+
+        b.reset()
+
+        self.assertEqual(b.committed, False)
+        self.assertEqual(b.consensus_reached, False)
+        self.assertEqual(b.sb_groups, {})
+        self.assertEqual(b.curr_block_hash, b'C' * 32)
+
