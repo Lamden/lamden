@@ -495,3 +495,59 @@ class TestSubBlockGroup(TestCase):
         s.add_sbc(sender.verifying_key(), sbc_1)
 
         self.assertEqual(s.rh[sbc_1.resultHash], {sbc_1})
+
+# (self.best_rh is None) or (len(self.rh[sbc.resultHash]) > len(self.rh[self.best_rh]))
+
+    def test_add_sbc_best_rh_none_sets_best_to_submitted(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        self.assertEqual(s.best_rh, sbc_1.resultHash)
+
+    def test_add_sbc_added_result_hash_set_gt_current_best_rh_sets_best_rh_to_submitted(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender_1 = Wallet()
+        sender_2 = Wallet()
+
+        sbc_1, sbc_2 = random_txs.double_sbc_from_tx(input_hash, s.curr_block_hash, w1=sender_1, w2=sender_2)
+
+        sender_3 = Wallet()
+
+        sbc_3 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender_3)
+
+        s.add_sbc(sender_3.verifying_key(), sbc_3)
+
+        self.assertEqual(s.best_rh, sbc_3.resultHash)
+
+        s.add_sbc(sender_2.verifying_key(), sbc_2)
+
+        self.assertEqual(s.best_rh, sbc_3.resultHash)
+
+        s.add_sbc(sender_1.verifying_key(), sbc_1)
+
+        self.assertEqual(s.best_rh, sbc_2.resultHash)
+
+    def test_tx_hashes_added_to_transaction_hash_to_tx_object(self):
+        pass

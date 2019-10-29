@@ -109,6 +109,41 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisone
     return sb
 
 
+def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), w2=Wallet()):
+    transactions = []
+    for i in range(txs):
+        packed_tx = random_packed_tx(nonce=i)
+        tx_data = random_tx_data(packed_tx)
+        transactions.append(tx_data.to_bytes_packed())
+
+    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+
+    sig_1 = w1.sign(tree.root)
+    proof_1 = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w1.verifying_key(), signature=sig_1)
+
+    sig_2 = w2.sign(tree.root)
+    proof_2 = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w2.verifying_key(), signature=sig_2)
+
+    sb1 = subblock_capnp.SubBlockContender.new_message(
+        resultHash=tree.root,
+        inputHash=input_hash,
+        merkleLeaves=[leaf for leaf in tree.leaves],
+        signature=proof_1.to_bytes_packed(),
+        transactions=[tx for tx in transactions],
+        subBlockIdx=idx,
+        prevBlockHash=prev_block_hash)
+
+    sb2 = subblock_capnp.SubBlockContender.new_message(
+        resultHash=tree.root,
+        inputHash=input_hash,
+        merkleLeaves=[leaf for leaf in tree.leaves],
+        signature=proof_2.to_bytes_packed(),
+        transactions=[tx for tx in transactions],
+        subBlockIdx=idx,
+        prevBlockHash=prev_block_hash)
+
+    return sb1, sb2
+
 def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):
