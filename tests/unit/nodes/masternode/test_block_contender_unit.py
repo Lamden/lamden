@@ -5,7 +5,7 @@ from cilantro_ee.core.crypto.wallet import Wallet
 import secrets
 from tests import random_txs
 from collections import namedtuple
-
+import hashlib
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
@@ -550,4 +550,27 @@ class TestSubBlockGroup(TestCase):
         self.assertEqual(s.best_rh, sbc_2.resultHash)
 
     def test_tx_hashes_added_to_transaction_hash_to_tx_object(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        self.assertListEqual(list(s.transactions.values()), [tx for tx in sbc_1.transactions])
+
+        for tx in sbc_1.transactions:
+            h = hashlib.sha3_256()
+            h.update(tx)
+            _hash = h.digest()
+
+            self.assertEqual(s.transactions[_hash], tx)
