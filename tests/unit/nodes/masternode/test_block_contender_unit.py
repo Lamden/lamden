@@ -8,6 +8,7 @@ from tests import random_txs
 from collections import namedtuple
 import hashlib
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK, NUM_SB_BUILDERS
 import os
 import capnp
 
@@ -18,6 +19,10 @@ def random_wallets(n=10):
 
 
 class TestSubBlockGroup(TestCase):
+    def setUp(self):
+        m = MetaDataStorage()
+        m.flush()
+
     def test_init(self):
         SubBlockGroup(0, 'A' * 64)
 
@@ -578,6 +583,10 @@ class TestSubBlockGroup(TestCase):
 
 
 class TestBlockContender(TestCase):
+    def setUp(self):
+        m = MetaDataStorage()
+        m.flush()
+
     def test_reset_resets_all_state(self):
         b = BlockContender()
 
@@ -596,3 +605,449 @@ class TestBlockContender(TestCase):
         self.assertEqual(b.sb_groups, {})
         self.assertEqual(b.curr_block_hash, b'C' * 32)
 
+    def test_is_consensus_reached_false_if_len_sb_groups_lt_num_sb_per_block(self):
+        b = BlockContender()
+
+        b.sb_groups = {1, 2}
+
+        self.assertFalse(b.is_consensus_reached())
+
+    def test_consensus_not_reached_on_any_sb_group_returns_false(self):
+        contacts = VKBook(delegates=['A' * 64], masternodes=['A' * 64])
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+        t = SubBlockGroup(1, 'A' * 64, contacts=contacts)
+        u = SubBlockGroup(2, 'A' * 64, contacts=contacts)
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertFalse(b.is_consensus_reached())
+
+    def test_consensus_reached_returns_true_if_all_sb_groups_are_reached(self):
+        contacts = VKBook(delegates=['A' * 64, 'B' * 64, 'C' * 64, 'D' * 64], masternodes=['A' * 64],
+                          num_boot_del=3)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 'B' * 64
+
+        s.rh[s.best_rh] = {'A' * 64, 'B' * 64, 'C' * 64, 'D' * 64}
+
+        t = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        t.best_rh = 'B' * 64
+
+        t.rh[s.best_rh] = {'A' * 64, 'B' * 64, 'C' * 64, 'D' * 64}
+
+        u = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        u.best_rh = 'B' * 64
+
+        u.rh[s.best_rh] = {'A' * 64, 'B' * 64, 'C' * 64, 'D' * 64}
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertTrue(b.is_consensus_reached())
+
+    def test_consensus_not_possible_if_any_sb_groups_not_possible_returns_false(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64}
+        s.rh[2] = {'B' * 64}
+        s.rh[3] = {'B' * 64}
+        s.rh[4] = {'B' * 64}
+        s.rh[5] = {'B' * 64}
+        s.rh[6] = {'B' * 64}
+        s.rh[7] = {'B' * 64}
+        s.rh[8] = {'B' * 64}
+        s.rh[9] = {'B' * 64}
+        s.rh[0] = {'B' * 64}
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+        }
+
+        self.assertFalse(b.is_consensus_possible())
+
+    def test_consensus_possible_if_all_sb_groups_are_possible_returns_true(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        t = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        t.best_rh = 1
+        t.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        u = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        u.best_rh = 1
+        u.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertTrue(b.is_consensus_possible())
+
+    def test_get_current_quorum_reached_returns_0_if_not_enough_sb_per_block(self):
+        b = BlockContender()
+        b.sb_groups = {
+            0: 1,
+        }
+
+        self.assertEqual(b.get_current_quorum_reached(), 0)
+
+    def test_get_current_quorum_reached_returns_largest_quorum_if_less_than_max_quorum(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        s.best_rh = 1
+        s.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        t = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        t.best_rh = 1
+        t.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        u = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        u.best_rh = 1
+        u.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertEqual(b.get_current_quorum_reached(), 2)
+
+    def test_is_empty_returns_false_if_any_sb_in_group_is_not_empty(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+        SBCMockMerkle = namedtuple('SBCMockMerkle', ['merkleLeaves'])
+
+        best_sbc = SBCMockMerkle(merkleLeaves=(1, 2, 3, 4, 5))
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+        s.best_rh = b'B' * 32
+        s.rh[s.best_rh] = {best_sbc}
+
+        t = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        u = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertFalse(b.is_empty())
+
+    def test_is_empty_returns_true_if_all_sb_in_group_empty(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+        SBCMockMerkle = namedtuple('SBCMockMerkle', ['merkleLeaves'])
+
+        best_sbc = SBCMockMerkle(merkleLeaves=(1, 2, 3, 4, 5))
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        t = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        u = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        self.assertTrue(b.is_empty())
+
+    def test_get_sb_data_returns_sorted_list_by_subBlockIdx(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        t = SubBlockGroup(1, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_2 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=1)
+
+        t.add_sbc(sender.verifying_key(), sbc_2)
+
+        u = SubBlockGroup(2, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_3 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=2)
+
+        u.add_sbc(sender.verifying_key(), sbc_3)
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        sb_data = b.get_sb_data()
+
+        self.assertEqual(sbc_1.resultHash, sb_data[0].merkleRoot)
+        self.assertEqual(sbc_1.subBlockIdx, sb_data[0].subBlockIdx)
+
+        self.assertEqual(sbc_2.resultHash, sb_data[1].merkleRoot)
+        self.assertEqual(sbc_2.subBlockIdx, sb_data[1].subBlockIdx)
+
+        self.assertEqual(sbc_3.resultHash, sb_data[2].merkleRoot)
+        self.assertEqual(sbc_3.subBlockIdx, sb_data[2].subBlockIdx)
+
+    def test_add_sbc_returns_false_if_hash_already_in_old_input_hashes(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        b = BlockContender()
+        b.old_input_hashes.add(input_hash)
+
+        self.assertFalse(b.add_sbc(sender.verifying_key(), sbc))
+
+    def test_add_sbc_adds_subblock_group_if_sb_idx_doesnt_exist(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        b = BlockContender()
+
+        self.assertIsNone(b.sb_groups.get(0))
+
+        b.add_sbc(sender.verifying_key(), sbc)
+
+        sb_group = b.sb_groups.get(0)
+
+        self.assertEqual(sb_group.sb_idx, 0)
+        self.assertEqual(sb_group.curr_block_hash, b.curr_block_hash)
+
+    def test_add_sbc_adds_sbc_to_proper_index(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        b = BlockContender()
+        b.add_sbc(sender.verifying_key(), sbc)
+
+        got_sb = b.sb_groups[0].get_sb()
+
+        self.assertEqual(sbc.resultHash, got_sb.merkleRoot)
+        self.assertEqual(sbc.subBlockIdx, got_sb.subBlockIdx)
+
+        s = SubBlockGroup(1, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=1)
+
+        b.add_sbc(sender.verifying_key(), sbc)
+
+        got_sb = b.sb_groups[1].get_sb()
+
+        self.assertEqual(sbc.resultHash, got_sb.merkleRoot)
+        self.assertEqual(sbc.subBlockIdx, got_sb.subBlockIdx)
+
+    def test_add_sbc_returns_true_if_no_groups(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        b = BlockContender()
+
+        self.assertTrue(b.add_sbc(sender.verifying_key(), sbc))
+
+    def test_add_sbc_returns_false_if_groups_already_exist(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        b = BlockContender()
+        b.sb_groups[0] = s
+
+        self.assertFalse(b.add_sbc(sender.verifying_key(), sbc))
+
+    def test_get_first_sb_idx_unsorted_returns_properly(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        b = BlockContender()
+        b.sb_groups[0] = s
+
+        self.assertEqual(b.get_first_sb_idx_unsorted(b.sb_groups), 0)
+
+    def test_get_first_sb_idx_sorted_returns_properly(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
+
+        b = BlockContender()
+        b.sb_groups[0] = s
+
+        self.assertEqual(b.get_first_sb_idx_sorted(), 0)
+
+    def test_get_input_hashes_sorted_works(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        t = SubBlockGroup(1, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_2 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=1)
+
+        t.add_sbc(sender.verifying_key(), sbc_2)
+
+        u = SubBlockGroup(2, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+        sender = Wallet()
+        sbc_3 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=2)
+
+        u.add_sbc(sender.verifying_key(), sbc_3)
+
+        b = BlockContender()
+        b.sb_groups = {
+            0: s,
+            1: t,
+            2: u
+        }
+
+        input_hashes = b.get_input_hashes_sorted()
+
+        self.assertEqual(input_hashes[0][0], sbc_1.inputHash)
+        self.assertEqual(input_hashes[1][0], sbc_2.inputHash)
+        self.assertEqual(input_hashes[2][0], sbc_3.inputHash)

@@ -314,6 +314,7 @@ class BlockContender:
     def get_current_quorum_reached(self) -> int:
         if len(self.sb_groups) < NUM_SB_PER_BLOCK:
             return 0
+
         cur_quorum = PhoneBook.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
@@ -321,7 +322,7 @@ class BlockContender:
         return cur_quorum
 
     def is_empty(self):
-        assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
+        # assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
 
         for sb_group in self.sb_groups.values():
             if not sb_group.is_empty():
@@ -330,8 +331,8 @@ class BlockContender:
         return True
 
     def get_sb_data(self):
-        assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+        #assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
+        #assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
@@ -340,8 +341,8 @@ class BlockContender:
 
         sb_data = sorted(sb_data, key=lambda sb: sb.subBlockIdx)
 
-        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
-                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
+        #assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 #.format(len(sb_data), NUM_SB_PER_BLOCK)
 
         return sb_data
 
@@ -367,16 +368,18 @@ class BlockContender:
             return False
 
         groups_empty = len(self.sb_groups) == 0
+
         if sbc.subBlockIdx not in self.sb_groups:
             self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash)
 
         self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty
 
+    # Return to this. Is this behaving properly? Is it redundant?
     def get_first_sb_idx_unsorted(self, sb_groups) -> int:
         sb_idx = sb_groups[0].sb_idx
         sbb_rem = sb_idx % NUM_SB_BUILDERS
-        assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
+        # assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
 
     def get_first_sb_idx_sorted(self) -> int:
@@ -385,19 +388,26 @@ class BlockContender:
         assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
         return self.get_first_sb_idx_unsorted(sb_groups)
 
+    # Pads empty sb groups?
     def get_input_hashes_sorted(self) -> List[list]:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
-        assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
-        sb_idx = self.get_first_sb_idx_unsorted(sb_groups)
+        # assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+
+        sb_idx = self.get_first_sb_idx_unsorted(sb_groups) # 0
         input_hashes = []
+
         for sb_group in sb_groups:
+            # In what natural situation does is while loop conditional met?
             while sb_idx < sb_group.sb_idx:
                 sb_idx += 1
                 num_sbg += 1
                 input_hashes.append([])
+
             input_hashes.append(sb_group.get_input_hashes())
             sb_idx += 1
+
+        # In what natural situation does is while loop conditional met?
         while num_sbg < NUM_SB_PER_BLOCK:
             num_sbg += 1
             input_hashes.append([])
