@@ -71,7 +71,7 @@ def subblock_from_txs(txs, idx=0):
     return sb
 
 
-def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisoned_sig=None):
+def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisoned_sig=None, poison_result_hash=False, poison_tx=False):
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)
@@ -87,8 +87,18 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisone
 
     proof = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w.verifying_key(), signature=sig)
 
+    if poison_result_hash:
+        result_hash = secrets.token_bytes(32)
+    else:
+        result_hash = tree.root
+
+    if poison_tx:
+        packed_tx = random_packed_tx(nonce=0)
+        tx_data = random_tx_data(packed_tx)
+        transactions[0] = tx_data.to_bytes_packed()
+
     sb = subblock_capnp.SubBlockContender.new_message(
-        resultHash=tree.root,
+        resultHash=result_hash,
         inputHash=input_hash,
         merkleLeaves=[leaf for leaf in tree.leaves],
         signature=proof.to_bytes_packed(),

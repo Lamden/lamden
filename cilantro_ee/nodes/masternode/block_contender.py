@@ -18,7 +18,6 @@ import hashlib
 class SBCSenderSignerMismatchError(Exception):
     pass
 
-
 class SBCIndexMismatchError(Exception):
     pass
 
@@ -79,7 +78,7 @@ class SubBlockGroup:
         return True
 
     def get_sb(self):
-        assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
+        #assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
 
         # Paranoid dev checks
         # TODO make sure all merkle leaves are the same, and all result hashes are the same for self.rh[merkle_root],
@@ -159,7 +158,7 @@ class SubBlockGroup:
         return next(iter(self.rh[self.best_rh])).merkleLeaves
 
     def _get_ordered_transactions(self):
-        assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
+        #assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
 
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
         # return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]

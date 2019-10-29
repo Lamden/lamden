@@ -4,10 +4,17 @@ from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.crypto.wallet import Wallet
 import secrets
 from tests import random_txs
+from collections import namedtuple
 
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+import os
+import capnp
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 def random_wallets(n=10):
     return [secrets.token_hex(32) for _ in range(n)]
+
 
 class TestSubBlockGroup(TestCase):
     def test_init(self):
@@ -140,7 +147,27 @@ class TestSubBlockGroup(TestCase):
         self.assertTrue(s.is_consensus_possible())
 
     def test_get_input_hashes_returns_list_of_hashes_in_group(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
+
+        SBCInput = namedtuple('SBCInput', ['inputHash'])
+
+        s.sender_to_sbc = {
+            delegates[0]: SBCInput(b'A' * 32),
+            delegates[1]: SBCInput(b'B' * 32),
+            delegates[2]: SBCInput(b'C' * 32),
+            delegates[3]: SBCInput(b'D' * 32),
+            delegates[4]: SBCInput(b'E' * 32),
+        }
+
+        expected = [b'A' * 32, b'B' * 32, b'C' * 32, b'D' * 32, b'E' * 32]
+
+        self.assertEqual(set(s.get_input_hashes()), set(expected))
 
     def test_get_merkle_leaves_returns_empty_list_if_no_best_rh(self):
         pass
@@ -216,13 +243,55 @@ class TestSubBlockGroup(TestCase):
         self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_sbc_merkle_leave_does_not_verify(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, poison_result_hash=True)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_tx_hash_not_in_merkle_leaves(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, poison_tx=True)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_false_sb_idx_gte_num_sb_per_block(self):
-        pass
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(200, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, idx=200)
+
+        self.assertFalse(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
 
     def test_verify_sbc_true_if_no_failures(self):
         delegates = random_wallets(10)
@@ -240,3 +309,189 @@ class TestSubBlockGroup(TestCase):
         sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
 
         self.assertTrue(s._verify_sbc(sender_vk=sender.verifying_key(), sbc=sbc))
+
+    def test_get_sbc_builds_best_sb_and_returns(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.best_rh = sbc.resultHash
+        s.rh[s.best_rh] = {sbc}
+
+        got_sbc = s.get_sb()
+
+        self.assertEqual(sbc.resultHash, got_sbc.merkleRoot)
+        self.assertEqual(sbc.subBlockIdx, got_sbc.subBlockIdx)
+        self.assertEqual(sbc.inputHash, got_sbc.inputHash)
+        self.assertEqual(sbc.signature, got_sbc.signatures[0])
+        self.assertListEqual([leaf for leaf in sbc.merkleLeaves],
+                             [leaf for leaf in got_sbc.merkleLeaves])
+
+    def test_get_ordered_transactions_returns_properly(self):
+        SBCMockTXs = namedtuple('SBCMockTXs', ['transactions'])
+
+        best_sbc = SBCMockTXs(transactions=(1, 2, 3, 4, 5))
+
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        s.best_rh = b'B' * 32
+        s.rh[s.best_rh] = {best_sbc}
+
+        txs = s._get_ordered_transactions()
+
+        self.assertEqual((1, 2, 3, 4, 5), txs)
+
+    def test_get_merkle_leaves_returns_properly(self):
+        SBCMockMerkle = namedtuple('SBCMockMerkle', ['merkleLeaves'])
+
+        best_sbc = SBCMockMerkle(merkleLeaves=(1, 2, 3, 4, 5))
+
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        s.best_rh = b'B' * 32
+        s.rh[s.best_rh] = {best_sbc}
+
+        txs = s._get_merkle_leaves()
+
+        self.assertEqual((1, 2, 3, 4, 5), txs)
+
+    def test_get_merkle_leaves_returns_empty_list_if_no_best_rh(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        self.assertListEqual(s._get_merkle_leaves(), [])
+
+    def test_is_empty_returns_true_if_no_merkle_leaves(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        self.assertTrue(s.is_empty())
+
+    def test_is_empty_returns_false_if_merkle_leaves(self):
+        SBCMockMerkle = namedtuple('SBCMockMerkle', ['merkleLeaves'])
+
+        best_sbc = SBCMockMerkle(merkleLeaves=(1, 2, 3, 4, 5))
+
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        s.best_rh = b'B' * 32
+        s.rh[s.best_rh] = {best_sbc}
+
+        self.assertFalse(s.is_empty())
+
+    def test_add_sbc_returns_none_if_cannot_verify(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender, poison_tx=True)
+
+        self.assertFalse(s.add_sbc(sender.verifying_key(), sbc))
+
+    def test_add_sbc_sender_already_exists_overwrites_with_new_sbc(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+        sbc_2 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        self.assertEqual(s.sender_to_sbc[sender.verifying_key()], sbc_1)
+
+        s.add_sbc(sender.verifying_key(), sbc_2)
+
+        self.assertEqual(s.sender_to_sbc[sender.verifying_key()], sbc_2)
+
+    def test_add_sbc_adds_map_of_sender_vk_to_sbc(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        self.assertEqual(s.sender_to_sbc[sender.verifying_key()], sbc_1)
+
+    def test_add_sbc_adds_to_result_hash_set(self):
+        delegates = random_wallets(10)
+
+        contacts = VKBook(delegates=delegates,
+                          masternodes=['A' * 64],
+                          num_boot_del=10)
+
+        s = SubBlockGroup(0, b'A' * 32, contacts=contacts)
+
+        input_hash = secrets.token_bytes(32)
+
+        sender = Wallet()
+
+        sbc_1 = random_txs.sbc_from_txs(input_hash, s.curr_block_hash, w=sender)
+
+        s.add_sbc(sender.verifying_key(), sbc_1)
+
+        self.assertEqual(s.rh[sbc_1.resultHash], {sbc_1})
