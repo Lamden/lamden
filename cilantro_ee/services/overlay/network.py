@@ -93,8 +93,8 @@ class PeerServer(services.RequestReplyService):
             vk, ip = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
-        if command == 'ping':
-            return self.ping_response
+        #if command == 'ping':
+        #    return self.ping_response
 
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)

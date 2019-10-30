@@ -26,6 +26,8 @@ def command(fn):
     return _command
 
 
+# Test Overlay Client. Try publishing mock messages to the event socket
+
 class OverlayClient:
     def __init__(self, reply_handler, event_handler, ctx, name=None):
         self.name = name or str(os.getpid())
