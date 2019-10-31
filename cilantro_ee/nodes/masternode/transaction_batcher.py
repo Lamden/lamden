@@ -10,17 +10,79 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.crypto.wallet import Wallet, _verify
 from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.core.nonces import NonceManager
-
+from cilantro_ee.core.sockets.services import AsyncInbox
 from multiprocessing import Queue
 import zmq.asyncio
 import asyncio
 import time
 import hashlib
 
+IPC_IP = 'masternode-ipc-sock'
+IPC_PORT = 6967
+
 '''
 Dynamically rate limits transaction batches so that the Trnasaction Batcher can just await responses and not have to
 worry about DDOS attacked or TX flooding.
 '''
+
+
+class NewTransactionBatcher:
+    def __init__(self, queue, wallet, ctx: zmq.asyncio.Context):
+        self.wallet = wallet
+        self.queue = queue
+        self.ctx = ctx
+        self.ip = 0
+
+        self.ready = False
+        self.running = False
+
+        self.input_hash_inbox = InputHashInbox(parent=self, wallet=wallet)
+
+        self.batcher = RateLimitingBatcher(self.queue, self.wallet,
+                                           BATCHER_SLEEP_INTERVAL,
+                                           MAX_TXNS_PER_SUB_BLOCK,
+                                           MAX_TXN_SUBMISSION_DELAY)
+
+        self.publisher = self.ctx.socket(zmq.PUB)
+        self.publisher.bind(f'tcp://{self.ip}:{MN_TX_PUB_PORT}')
+
+    async def start(self):
+        asyncio.ensure_future(self.input_hash_inbox.serve())
+        while not self.ready:
+            asyncio.sleep(0)
+
+        asyncio.ensure_future(self.compose_transactions())
+
+    async def compose_transactions(self):
+        sub_filter = TRANSACTION_FILTER.encode()
+        self.running = True
+        while self.running:
+            mtype, msg = await self.batcher.get_next_batch_packed()
+            self.publisher.send_msg(msg=msg, msg_type=mtype, filter=sub_filter)
+
+    def stop(self):
+        self.running = False
+        self.input_hash_inbox.stop()
+
+
+class InputHashInbox(AsyncInbox):
+    def __init__(self, parent: NewTransactionBatcher, *args, **kwargs):
+        self.parent = parent
+        super().__init__(*args, **kwargs)
+
+    async def handle_msg(self, _id, msg):
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
+
+        if not is_verified:
+            return
+
+        if msg_type == MessageType.BURN_INPUT_HASHES:
+            self.parent.batcher.remove_batch_ids(msg.inputHashes)
+
+        elif msg_type == MessageType.READY:
+            self.parent.ready = True
+
+
 class RateLimitingBatcher:
     def __init__(self, queue, wallet, sleep_interval,
                  max_batch_size, max_txn_delay):
@@ -142,8 +204,6 @@ class RateLimitingBatcher:
 
         return mtype, msg
 
-IPC_IP = 'masternode-ipc-sock'
-IPC_PORT = 6967
 
 class TransactionBatcher(Worker):
     def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_IP, ipc_port=IPC_PORT, *args, **kwargs):
@@ -227,3 +287,5 @@ class TransactionBatcher(Worker):
             mtype, msg = await self.batcher.get_next_batch_packed()
             self.pub_sock.send_msg(msg=msg, msg_type=mtype, filter=enc_fltr)
             self.log.info("Sent next batch ...")
+
+
