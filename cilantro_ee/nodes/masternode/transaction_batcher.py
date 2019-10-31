@@ -61,11 +61,12 @@ class NewTransactionBatcher:
 
         while self.running:
             mtype, msg = await self.batcher.get_next_batch_packed()
-            self.publisher.send_msg(msg=msg, msg_type=mtype, filter=sub_filter)
+            self.publisher.send(mtype + msg)
 
     def stop(self):
         self.running = False
         self.input_hash_inbox.stop()
+        self.batcher.running = False
 
 
 class InputHashInbox(AsyncInbox):
@@ -101,6 +102,8 @@ class RateLimitingBatcher:
         self.txn_delay = 0
         self.tasks = []
         self.sent_batch_ids = []
+
+        self.running = True
 
     def add_batch_id(self, batch_id):
         self.sent_batch_ids.append(batch_id)
@@ -149,6 +152,7 @@ class RateLimitingBatcher:
             # Get a transaction from the queue
             tx = self.queue.get()
 
+
             # Make sure that the transaction is valid
             # this is better done at webserver level before packing and putting it into the queue - raghu todo
             try:
@@ -156,7 +160,7 @@ class RateLimitingBatcher:
                                      expected_processor=self.wallet.verifying_key(),
                                      driver=self.driver,
                                      strict=True)
-            except TransactionException:
+            except TransactionException as e:
                 continue
 
             tx_list.append(tx[1])
@@ -193,7 +197,7 @@ class RateLimitingBatcher:
         return mtype, msg
 
     async def get_next_batch_packed(self):
-        while not self.ready_for_next_batch():
+        while not self.ready_for_next_batch() and self.running:
             await asyncio.sleep(self.batcher_sleep_interval)
 
             # Add to interval here... easier

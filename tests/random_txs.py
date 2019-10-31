@@ -8,7 +8,9 @@ from cilantro_ee.core.containers.merkle_tree import MerkleTree
 import random
 import json
 import hashlib
-
+from cilantro_ee.core.nonces import NonceManager
+from contracting import config
+N = NonceManager()
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -16,19 +18,32 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
 
-def random_packed_tx(nonce=0):
+def random_packed_tx(nonce=0, processor=None, give_stamps=False):
     w = Wallet()
+
+    processor = secrets.token_bytes(32) if processor is None else processor
+    stamps = random.randint(100_000, 1_000_000)
+
+    if give_stamps:
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        N.driver.set(balances_key, stamps + 1000)
+
     tx = TransactionBuilder(w.verifying_key(), contract=secrets.token_hex(8),
                             function=secrets.token_hex(8),
                             kwargs={secrets.token_hex(8): secrets.token_hex(8)},
-                            stamps=random.randint(100_000, 1_000_000),
-                            processor=secrets.token_bytes(32),
+                            stamps=stamps,
+                            processor=processor,
                             nonce=nonce)
 
     tx.sign(w.signing_key())
 
-    tx.proof = b'\x00'
-    tx.proof_generated = True
+    #tx.proof = b'\x00' * 32
+    #tx.proof_generated = True
 
     packed_tx = transaction_capnp.Transaction.from_bytes_packed(tx.serialize())
     return packed_tx
