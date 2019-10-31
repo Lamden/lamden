@@ -58,25 +58,32 @@ class SubBlocks:
 
     def add_sub_block(self, sub_block, fut):
         sb_idx = sub_block.subBlockIdx % NUM_SB_PER_BLOCK
+
         if sb_idx in self.sbs:
             # todo log it as an issue
             pass
+
         self.sbs[sb_idx] = sub_block
+
         self.futures.append(fut)
 
     def get_sb_hashes_sorted(self):
         sb_hashes = []
+
         for i in range(NUM_SB_PER_BLOCK):
             sb = self.sbs[i]
             sb_hashes.append(sb.resultHash)
+
         return sb_hashes
 
     def get_input_hashes_sorted(self):
         sb_hashes = []
         num_sbs = len(self.sbs)
+
         for i in range(num_sbs):
             sb = self.sbs[i]
             sb_hashes.append(sb.inputHash.hex())
+
         return sb_hashes
 
 
