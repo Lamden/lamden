@@ -17,7 +17,7 @@ import asyncio
 import time
 import hashlib
 
-IPC_ID = '/tmp/masternode/input_hash_inbox'
+IPC_ID = '/tmp/masternode-input-hash-inbox'
 IPC_PORT = 6967
 
 '''
@@ -48,15 +48,17 @@ class NewTransactionBatcher:
         self.publisher.bind(f'tcp://{self.publisher_ip}:{MN_TX_PUB_PORT}')
 
     async def start(self):
+        self.running = True
         asyncio.ensure_future(self.input_hash_inbox.serve())
-        while not self.ready:
-            asyncio.sleep(0)
+
+        while not self.ready and self.running:
+            await asyncio.sleep(0)
 
         asyncio.ensure_future(self.compose_transactions())
 
     async def compose_transactions(self):
         sub_filter = TRANSACTION_FILTER.encode()
-        self.running = True
+
         while self.running:
             mtype, msg = await self.batcher.get_next_batch_packed()
             self.publisher.send_msg(msg=msg, msg_type=mtype, filter=sub_filter)

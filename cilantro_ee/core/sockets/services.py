@@ -19,7 +19,7 @@ class Protocols:
     TCP = 0
     INPROC = 1
     ICP = 2
-    PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
+    PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'ipc://']
 
 
 # syntactic sugar yum yum

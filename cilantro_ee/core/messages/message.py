@@ -60,6 +60,7 @@ class Message:
 
         return cls._msg_impl.unpack_message(msg_type=msg_type, message=msg_blob)
 
+    @classmethod
     def get_signed_message_packed_2(cls, wallet: Wallet, msg_type: MessageType, **kwargs):
         t, m = cls._msg_impl.get_signed_message_packed(
             wallet=wallet,
