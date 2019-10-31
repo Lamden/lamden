@@ -10,14 +10,14 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.crypto.wallet import Wallet, _verify
 from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.core.nonces import NonceManager
-from cilantro_ee.core.sockets.services import AsyncInbox
+from cilantro_ee.core.sockets.services import AsyncInbox, SocketStruct, Protocols
 from multiprocessing import Queue
 import zmq.asyncio
 import asyncio
 import time
 import hashlib
 
-IPC_IP = 'masternode-ipc-sock'
+IPC_ID = '/tmp/masternode/input_hash_inbox'
 IPC_PORT = 6967
 
 '''
@@ -27,16 +27,17 @@ worry about DDOS attacked or TX flooding.
 
 
 class NewTransactionBatcher:
-    def __init__(self, queue, wallet, ctx: zmq.asyncio.Context):
+    def __init__(self, publisher_ip: str, wallet: Wallet, ctx: zmq.asyncio.Context, queue: Queue=Queue(),ipc_id: str=IPC_ID):
         self.wallet = wallet
         self.queue = queue
         self.ctx = ctx
-        self.ip = 0
+        self.publisher_ip = publisher_ip
+        self.ipc_id = SocketStruct(protocol=Protocols.ICP, id=ipc_id)
 
         self.ready = False
         self.running = False
 
-        self.input_hash_inbox = InputHashInbox(parent=self, wallet=wallet)
+        self.input_hash_inbox = InputHashInbox(parent=self, socket_id=self.ipc_id, wallet=wallet, ctx=self.ctx)
 
         self.batcher = RateLimitingBatcher(self.queue, self.wallet,
                                            BATCHER_SLEEP_INTERVAL,
@@ -44,7 +45,7 @@ class NewTransactionBatcher:
                                            MAX_TXN_SUBMISSION_DELAY)
 
         self.publisher = self.ctx.socket(zmq.PUB)
-        self.publisher.bind(f'tcp://{self.ip}:{MN_TX_PUB_PORT}')
+        self.publisher.bind(f'tcp://{self.publisher_ip}:{MN_TX_PUB_PORT}')
 
     async def start(self):
         asyncio.ensure_future(self.input_hash_inbox.serve())
@@ -206,7 +207,7 @@ class RateLimitingBatcher:
 
 
 class TransactionBatcher(Worker):
-    def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_IP, ipc_port=IPC_PORT, *args, **kwargs):
+    def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_ID, ipc_port=IPC_PORT, *args, **kwargs):
         super().__init__(signing_key=signing_key, *args, **kwargs)
         self.ip = ip
         self.ipc_ip = ipc_ip

@@ -1,10 +1,9 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
+from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher, NewTransactionBatcher
 from cilantro_ee.core.crypto.wallet import Wallet
 import zmq
 import zmq.asyncio
 import asyncio
-
 
 class TestTransactionBatcher(TestCase):
     def setUp(self):
@@ -33,3 +32,16 @@ class TestTransactionBatcher(TestCase):
 
         t.loop.run_until_complete(tasks)
 
+
+class TestNewTransactionBatcher(TestCase):
+    def setUp(self):
+        self.ctx = zmq.asyncio.Context()
+        self.loop = asyncio.get_event_loop()
+
+    def tearDown(self):
+        self.ctx.destroy()
+        self.loop.close()
+
+    def test_init(self):
+        w = Wallet()
+        NewTransactionBatcher(publisher_ip='127.0.0.1', wallet=w, ctx=self.ctx)
