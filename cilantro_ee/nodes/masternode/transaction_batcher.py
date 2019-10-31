@@ -11,8 +11,10 @@ from cilantro_ee.core.crypto.wallet import Wallet, _verify
 from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.core.nonces import NonceManager
 
+from multiprocessing import Queue
 import zmq.asyncio
-import asyncio, time
+import asyncio
+import time
 import hashlib
 
 '''
@@ -140,11 +142,12 @@ class RateLimitingBatcher:
 
         return mtype, msg
 
+IPC_IP = 'masternode-ipc-sock'
+IPC_PORT = 6967
 
 class TransactionBatcher(Worker):
-
-    def __init__(self, queue, ip, ipc_ip, ipc_port, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_IP, ipc_port=IPC_PORT, *args, **kwargs):
+        super().__init__(signing_key=signing_key, *args, **kwargs)
         self.ip = ip
         self.ipc_ip = ipc_ip
         self.ipc_port = ipc_port
@@ -163,6 +166,7 @@ class TransactionBatcher(Worker):
         self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(0).encode())
 
+    def serve(self):
         self.tasks.append(self.compose_transactions())
 
         # Start main event loop
@@ -207,10 +211,10 @@ class TransactionBatcher(Worker):
                            "socket. Ignoring the msg {}".format(type(msg), msg))
 
     async def _wait_until_ready(self):
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
         self._connect_dealer_ipc()
         while not self._ready:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0)
 
     async def compose_transactions(self):
         await self._wait_until_ready()
