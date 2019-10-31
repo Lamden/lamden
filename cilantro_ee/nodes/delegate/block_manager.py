@@ -96,19 +96,25 @@ class NextBlockData:
         self.is_quorum = False
         self.senders = set()
 
+    # TODO: Deprecate. Not used in project files
     def is_quorum(self):
         return self.is_quorum
 
     def add_sender(self, sender):
         self.senders.add(sender)
+
         if not self.is_quorum and (len(self.senders) >= self.quorum_num):
             self.is_quorum = True
             return True
+
         return False
+
 
 # Keeps track of block notifications from master
 class NextBlock:
     def __init__(self):
+        self.next_block_data = {}
+        self.quorum_block = None
         self.hard_reset()
 
     # use this when it has to go to catchup
@@ -121,10 +127,11 @@ class NextBlock:
             bn = self.quorum_block.blockNum
             if bn < block_num and bn in self.next_block_data:
                 try:
-                    del self.next_block_data[bn]
+                    del self.next_block_data[bn] # This can never happen because you are checking for the key prior to deleting
                 except KeyError:
                     pass
                     # todo add a debug message - not supposed to happen
+
         self.quorum_block = None
 
     def is_quorum(self):
@@ -138,7 +145,7 @@ class NextBlock:
             # todo - if it is not matching blockhash, may need to audit it
             return False
 
-        if block_num not in self.next_block_data:
+        if block_num not in self.next_block_data: # default dict?
             self.next_block_data[block_num] = {}
             # todo add time info to implement timeout
 
