@@ -1,7 +1,7 @@
 from sanic import Sanic
-from sanic.response import json, text
-from secure import SecureHeaders
-from cilantro_ee.core.logger.base import get_logger
+from sanic import response
+#from secure import SecureHeaders
+from cilantro_ee.logger.base import get_logger
 from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
@@ -42,15 +42,23 @@ nonce_manager = NonceManager()
 static_headers = {}
 
 
+# @app.middleware('response')
+# async def set_secure_header(request, response):
+#     SecureHeaders.sanic(response)
+
+@app.route("/")
+async def hello(request):
+    return response.text("hello world")
+
 # ping to check whether server is online or not
 @app.route("/ping", methods=["GET","OPTIONS",])
 async def ping(request):
-    return json({'status': 'online'})
+    return response.json({'Hello', True})
 
 
 @app.route('/id', methods=['GET'])
 async def get_id(request):
-    return json({'verifying_key': conf.HOST_VK.hex()})
+    return response.json({'verifying_key': conf.HOST_VK})
 
 
 @app.route('/nonce/<vk>', methods=['GET'])
@@ -70,7 +78,7 @@ async def get_nonce(request, vk):
             pending_nonce = nonce
             log.info('Nonce was not none so setting pending nonce to it.')
 
-    return json({'nonce': pending_nonce, 'processor': conf.HOST_VK.hex(), 'sender': vk})
+    return response.json({'nonce': pending_nonce, 'processor': conf.HOST_VK.hex(), 'sender': vk})
 
 
 @app.route('/epoch', methods=['GET'])
@@ -81,14 +89,14 @@ async def get_epoch(request):
     e = (block_num // conf.EPOCH_INTERVAL) + 1
     blocks_until_next_epoch = (e * conf.EPOCH_INTERVAL) - block_num
 
-    return json({'epoch_hash': epoch_hash.hex(),
+    return response.json({'epoch_hash': epoch_hash.hex(),
                  'blocks_until_next_epoch': blocks_until_next_epoch})
 
 
 @app.route("/", methods=["POST","OPTIONS",])
 async def submit_transaction(request):
     if app.queue.full():
-        return json({'error': "Queue full. Resubmit shortly."}, status=503)
+        return response.json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     # Try to deserialize transaction.
     try:
@@ -96,19 +104,19 @@ async def submit_transaction(request):
         tx = Message.unpack_message(pack(int(MessageType.TRANSACTION)), tx_bytes)
 
     except Exception as e:
-        return json({'error': 'Malformed transaction.'.format(e)}, status=400)
+        return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
     # Try to put it in the request queue.
     try:
         app.queue.put_nowait(tx)
     except:
-        return json({'error': "Queue full. Resubmit shortly."}, status=503)
+        return response.json({'error': "Queue full. Resubmit shortly."}, status=503)
 
     h = hashlib.sha3_256()
     h.update(tx_bytes)
     tx_hash = h.digest()
 
-    return json({'success': 'Transaction successfully submitted to the network.',
+    return response.json({'success': 'Transaction successfully submitted to the network.',
                  'hash': tx_hash.hex()})
 
 
@@ -116,7 +124,7 @@ async def submit_transaction(request):
 @app.route('/contracts', methods=['GET'])
 async def get_contracts(request):
     contracts = client.get_contracts()
-    return json({'contracts': contracts})
+    return response.json({'contracts': contracts})
 
 
 @app.route('/contracts/<contract>', methods=['GET'])
@@ -124,8 +132,8 @@ async def get_contract(request, contract):
     contract_code = client.raw_driver.get_contract(contract)
 
     if contract_code is None:
-        return json({'error': '{} does not exist'.format(contract)}, status=404)
-    return json({'name': contract, 'code': contract_code}, status=200)
+        return response.json({'error': '{} does not exist'.format(contract)}, status=404)
+    return response.json({'name': contract, 'code': contract_code}, status=200)
 
 
 @app.route("/contracts/<contract>/methods", methods=['GET'])
@@ -133,7 +141,7 @@ async def get_methods(request, contract):
     contract_code = client.raw_driver.get_contract(contract)
 
     if contract_code is None:
-        return json({'error': '{} does not exist'.format(contract)}, status=404)
+        return response.json({'error': '{} does not exist'.format(contract)}, status=404)
 
     tree = ast.parse(contract_code)
 
@@ -146,7 +154,7 @@ async def get_methods(request, contract):
 
         funcs.append({'name': func_name, 'arguments': kwargs})
 
-    return json({'methods': funcs}, status=200)
+    return response.json({'methods': funcs}, status=200)
 
 
 @app.route('/contracts/<contract>/<variable>')
@@ -154,7 +162,7 @@ async def get_variable(request, contract, variable):
     contract_code = client.raw_driver.get_contract(contract)
 
     if contract_code is None:
-        return json({'error': '{} does not exist'.format(contract)}, status=404)
+        return response.json({'error': '{} does not exist'.format(contract)}, status=404)
 
     key = request.args.get('key')
 
@@ -162,9 +170,9 @@ async def get_variable(request, contract, variable):
     response = client.raw_driver.get(k)
 
     if response is None:
-        return json({'value': None}, status=404)
+        return response.json({'value': None}, status=404)
     else:
-        return json({'value': response}, status=200)
+        return response.json({'value': response}, status=200)
 
 
 # Expects json object such that:
@@ -179,7 +187,7 @@ async def get_variable(request, contract, variable):
 async def get_latest_block(request):
     index = MasterStorage.get_last_n(1)
     latest_block_hash = index.get('blockHash')
-    return json({'hash': '{}'.format(latest_block_hash) })
+    return response.json({ 'hash': '{}'.format(latest_block_hash) })
 
 
 @app.route('/blocks', methods=["GET","OPTIONS",])
@@ -188,7 +196,7 @@ async def get_block(request):
         num = request.json['number']
         block = MasterStorage.get_block(num)
         if block is None:
-            return json({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
+            return response.json({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
     # TODO check block by hash isn't implemented
     # else:
     #     _hash = request.json['hash']
@@ -196,7 +204,7 @@ async def get_block(request):
     #     if block is None:
     #         return _respond_to_request({'error': 'Block with hash {} does not exist.'.format(_hash)}, 400)
 
-    return json(_json.dumps(block))
+    return response.json(_json.dumps(block))
 
 
 def start_webserver(q):
