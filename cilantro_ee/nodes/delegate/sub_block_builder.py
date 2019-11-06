@@ -99,8 +99,8 @@ class NextBlockToMake:
 
 
 # This is a convenience struct to hold all data related to a sub-block in one place.
-# Since we have more than one sub-block per process, SBB'er will hold an array of SubBlockManager objects
-class SubBlockManager:
+# Since we have more than one sub-block per process, SBB'er will hold an array of SBManager objects
+class SBManager:
     def __init__(self, sub_block_index: int, sub_socket, processed_txs_timestamp: int=0):
         self.sub_block_index = sub_block_index
         self.connected_vk = None
@@ -122,7 +122,6 @@ class SubBlockBuilder(Worker):
 
         self.ip = ip
         self.sb_blder_idx = sbb_index
-        self.startup = True
         self.num_txn_bags = 0
         self._empty_txn_batch = []
 
@@ -203,7 +202,7 @@ class SubBlockBuilder(Worker):
             sub.setsockopt(zmq.SUBSCRIBE, TRANSACTION_FILTER.encode())
             sb_index = idx * NUM_SB_BUILDERS + self.sb_blder_idx
 
-            self.sb_managers.append(SubBlockManager(sub_block_index=sb_index, sub_socket=sub))
+            self.sb_managers.append(SBManager(sub_block_index=sb_index, sub_socket=sub))
             self.tasks.append(sub.add_handler(handler_func=self.handle_sub_msg, handler_key=idx))
 
     async def _connect_sub_sockets(self):
@@ -296,8 +295,6 @@ class SubBlockBuilder(Worker):
             input_hashes = block.inputHashes[idx]
             self._align_to_hashes(smi + i, input_hashes)
 
-        self.startup = True
-
         self.reset_next_block_to_make()
 
         # self._make_next_sb()
@@ -321,10 +318,11 @@ class SubBlockBuilder(Worker):
                           .format(msg_type, sender, timestamp))
             return
 
-        if msg_type == MessageType.MAKE_NEXT_BLOCK:
-            self.log.success("MAKE NEXT BLOCK SIGNAL")
+        if msg_type == MessageType.MAKE_NEXT_SB:
             self._make_next_sub_block()
-            return
+        elif msg_type == MessageType.COMMIT_CUR_SB:
+            self._commit_cur_sb()
+        # elif msg_type == MessageType.DISCORD_AND_ALIGN:
         elif msg_type == MessageType.BLOCK_NOTIFICATION:
             self._fail_block(msg)
             return
@@ -605,14 +603,11 @@ class SubBlockBuilder(Worker):
             self.adjust_work_load(tx_batch, False)
         self.move_pending_smi()
 
-    def _make_next_sub_block(self):
-        if not self.startup:
-            self.log.info("Merge pending db to master db")
-            self._update_master_db()
-        else:
-            self.startup = False
-            time.sleep(2)
+    def _commit_cur_sb(self):
+        self.log.info("Merge pending db to master db")
+        self._update_master_db()
 
+    def _make_next_sub_block(self):
         self._make_next_sb()
 
     async def __make_next_sub_block(self, msg: bytes):
