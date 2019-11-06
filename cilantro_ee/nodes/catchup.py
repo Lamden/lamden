@@ -330,7 +330,7 @@ class CatchupManager:
     def _recv_blk_notif(self, update):
         # can get any time - hopefully one incremental request, how do you handle it in all cases?
         nw_blk_num = update.blockNum
-        if self.is_caught_up:
+        if self.is_caught_up: # is caught up is current height - block notif height = -1
             self.curr_hash = self.state.latest_block_hash
             self.curr_num = self.state.latest_block_num
             self.target_blk_num = self.curr_num

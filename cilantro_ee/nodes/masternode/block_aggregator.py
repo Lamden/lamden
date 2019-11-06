@@ -172,18 +172,33 @@ class BlockAggregator(Worker):
             cq = math.ceil(9 * num_delegates_joined / 10)
             self.cur_quorum = max(cq, self.min_quorum)
 
-        # now start the catchup
-        # sync_genesis_contracts()
-        # await self.block_fetcher.sync()
-
         await self._trigger_catchup()
 
     async def _trigger_catchup(self):
         self.log.info("Triggering catchup")
         # Add genesis contracts to state db if needed
         sync_genesis_contracts()
+        await self.block_fetcher.sync()
 
-        self.catchup_manager.run_catchup()
+        self.curr_block_hash = self.state.get_latest_block_hash()
+        self.curr_block.reset()
+
+        mtype, msg = Message.get_message_packed(MessageType.READY)
+        self.ipc_router.send_multipart([b'0', mtype, msg])
+
+        time.sleep(3)
+
+        # Construct a cryptographically signed message of the current time such that the receiver can verify it
+        mtype, msg = Message.get_signed_message_packed(
+            wallet=self.wallet,
+            msg_type=MessageType.READY)
+
+        ### Send signed READY signal on pub
+        self.log.success('READY SIGNAL SENT TO SUBS')
+        self.pub.send_msg(msg=msg, msg_type=mtype,
+                          filter=DEFAULT_FILTER.encode())
+
+        #self.catchup_manager.run_catchup()
 
 ### SUB MESSAGE LOOP SHOULD BE ASYNC
     def handle_sub_msg(self, frames):
@@ -196,17 +211,12 @@ class BlockAggregator(Worker):
                           .format(msg_type, sender, timestamp))
             return
 
-        # Move this socket to where the communication is happening (IE: the blockserver?)
-        if msg_type == MessageType.BLOCK_INDEX_REQUEST:
-            self.catchup_manager.recv_block_idx_req(msg)
+        # # Move this socket to where the communication is happening (IE: the blockserver?)
+        # if msg_type == MessageType.BLOCK_INDEX_REQUEST:
+        #     self.catchup_manager.recv_block_idx_req(msg)
 
-        elif msg_type == MessageType.SUBBLOCK_CONTENDER:
-            if not self.catchup_manager.is_catchup_done():
-                self.log.info("Got SBC, but i'm still catching up. Ignoring: <{}>".format(msg))
-            else:
-                # todo needs to handle this ??
-                # signature = subblock_capnp.MerkleProof.from_bytes_packed(msg.signature)
-                self.recv_sub_block_contender(sender, msg)
+        if msg_type == MessageType.SUBBLOCK_CONTENDER:
+            self.recv_sub_block_contender(sender, msg)
 
         # Process block notification messages
         elif msg_type == MessageType.BLOCK_NOTIFICATION:
@@ -216,26 +226,6 @@ class BlockAggregator(Worker):
             # Process accordingly
             self.recv_new_block_notif(sender, msg)
 
-    def _set_catchup_done(self):
-        if not self._is_catchup_done:
-            self._is_catchup_done = True
-            self.curr_block_hash = self.state.get_latest_block_hash()
-            self.curr_block.reset()
-
-            mtype, msg = Message.get_message_packed(MessageType.READY)
-            self.ipc_router.send_multipart([b'0', mtype, msg])
-
-            time.sleep(3)
-
-            # Construct a cryptographically signed message of the current time such that the receiver can verify it
-            mtype, msg = Message.get_signed_message_packed(
-                                    wallet=self.wallet,
-                                    msg_type=MessageType.READY)
-
-### Send signed READY signal on pub
-            self.log.success('READY SIGNAL SENT TO SUBS')
-            self.pub.send_msg(msg=msg, msg_type=mtype,
-                              filter=DEFAULT_FILTER.encode())
 
     # Can we put this exclusively in Catchup manager?
     def handle_router_msg(self, frames):
@@ -251,16 +241,8 @@ class BlockAggregator(Worker):
             return
 
         # When does this happen?
-        if msg_type == MessageType.BLOCK_INDEX_REPLY:
-            if self.catchup_manager.recv_block_idx_reply(sender, msg):
-                self._set_catchup_done()
-
-        elif msg_type == MessageType.BLOCK_DATA_REQUEST:
+        if msg_type == MessageType.BLOCK_DATA_REQUEST:
             self.catchup_manager.recv_block_data_req(sender, msg)
-
-        elif msg_type == MessageType.BLOCK_DATA:
-            if self.catchup_manager.recv_block_data_reply(msg):
-                self._set_catchup_done()
 
 
     # Most likely testable
