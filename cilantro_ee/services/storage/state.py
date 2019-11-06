@@ -1,7 +1,7 @@
 from cilantro_ee.core.logger.base import get_logger
 import json
 from cilantro_ee.constants import conf
-from contracting.db.driver import DatabaseDriver
+from contracting.db.driver import RocksDriver
 from contracting.db import encoder
 
 import contextlib
@@ -9,7 +9,7 @@ import contextlib
 from cilantro_ee.core.nonces import NonceManager
 
 
-class MetaDataStorage(DatabaseDriver):
+class MetaDataStorage(RocksDriver):
     def __init__(self,
                  block_hash_key='_current_block_hash',
                  epoch_hash_key='_current_epoch_hash',
