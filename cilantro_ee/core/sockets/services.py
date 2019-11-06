@@ -130,10 +130,12 @@ class SubscriptionService:
                         msg = await socket.recv()
                         self.received.append((msg, address))
                 except zmq.error.ZMQError as e:
+                    filter = socket.getsockopt(zmq.SUBSCRIBE)
+
                     socket.close()
 
                     socket = self.ctx.socket(zmq.SUB)
-                    socket.setsockopt(zmq.SUBSCRIBE, b'')
+                    socket.setsockopt(zmq.SUBSCRIBE, filter)
                     socket.setsockopt(zmq.LINGER, self.linger)
 
                     socket.connect(str(address))

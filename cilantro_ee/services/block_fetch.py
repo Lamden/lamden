@@ -23,6 +23,7 @@ class ConfirmationCounter(Counter):
         return self.most_common()[0][1]
 
 
+# Open a socket and to listen for new block notifications
 class BlockFetcher:
     def __init__(self, wallet: Wallet,
                  ctx: zmq.Context,
@@ -57,6 +58,9 @@ class BlockFetcher:
             for f in futures:
                 if f.done():
                     responses.update([f.result()])
+
+                    # Remove future
+                    futures.remove(f)
 
         return responses.top_item()
 

@@ -76,7 +76,7 @@ def subblock_from_txs(txs, idx=0):
 
     sb = subblock_capnp.SubBlock.new_message(
         merkleRoot=tree.root,
-        signatures=[proof],
+        signatures=[proof.to_bytes_packed()],
         merkleLeaves=tree.leaves,
         subBlockIdx=0,
         inputHash=secrets.token_bytes(32),
@@ -158,6 +158,7 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
         prevBlockHash=prev_block_hash)
 
     return sb1, sb2
+
 
 def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:
     transactions = []

@@ -17,6 +17,24 @@ from cilantro_ee.services.block_fetch import BlockFetcher
 import math, asyncio, zmq, time
 
 
+from cilantro_ee.core.sockets.services import SocketStruct, SubscriptionService
+
+
+class TransactionBatcherInformer:
+    def __init__(self, socket_id):
+        pass
+
+    def send_ready(self):
+        pass
+
+    def send_burn_input_hashes(self):
+        pass
+
+
+class SubBlockBuilderSubscriber(SubscriptionService):
+    pass
+
+
 class BlockAggregator(Worker):
 
     def __init__(self, ip, ipc_ip, ipc_port, *args, **kwargs):
@@ -178,6 +196,7 @@ class BlockAggregator(Worker):
                           .format(msg_type, sender, timestamp))
             return
 
+        # Move this socket to where the communication is happening (IE: the blockserver?)
         if msg_type == MessageType.BLOCK_INDEX_REQUEST:
             self.catchup_manager.recv_block_idx_req(msg)
 
@@ -218,7 +237,7 @@ class BlockAggregator(Worker):
             self.pub.send_msg(msg=msg, msg_type=mtype,
                               filter=DEFAULT_FILTER.encode())
 
-### HM.
+    # Can we put this exclusively in Catchup manager?
     def handle_router_msg(self, frames):
         self.log.info('got message on block agg with frames {}'.format(frames))
 
@@ -231,6 +250,7 @@ class BlockAggregator(Worker):
                           .format(msg_type, sender, timestamp))
             return
 
+        # When does this happen?
         if msg_type == MessageType.BLOCK_INDEX_REPLY:
             if self.catchup_manager.recv_block_idx_reply(sender, msg):
                 self._set_catchup_done()
@@ -382,6 +402,7 @@ class BlockAggregator(Worker):
         self.log.debugv("Published failed block notification for hash {} num {}"
                         .format(block_hash, block_num))
 
+    # Can we put this on CatchupManager / BlockServer instead?
     def recv_new_block_notif(self, sender_vk: str, notif):
         self.log.debugv("MN got new block notification: {}".format(notif))
 
@@ -390,6 +411,8 @@ class BlockAggregator(Worker):
         if (blocknum > self.state.latest_block_num + 1) and \
            (notif.type.which() == "newBlock"):
             self.log.info("Block num {} on NBC does not match our block num {}! Triggering catchup".format(notif.block_num, self.state.latest_block_num))
+
+            # Call intermediate sync on Block Fetcher
             self.catchup_manager.recv_new_blk_notif(notif)
         else:
             self.log.debugv("Block num on NBC is LTE that ours. Ignoring")

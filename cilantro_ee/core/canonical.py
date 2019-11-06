@@ -46,6 +46,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
 
 
 def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
+    # Verify signatures!
     block_hasher = hashlib.sha3_256()
     block_hasher.update(previous_hash)
 
