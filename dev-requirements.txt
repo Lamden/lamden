@@ -12,7 +12,7 @@ uvloop==0.9.1
 #u-msgpack-python==2.5.0
 yarl==1.1.0
 Click==7.0
-sanic
+sanic==19.6.3
 sanic-limiter==0.1.3
 Sanic-Cors==0.9.9.post1
 secure

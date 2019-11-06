@@ -10,7 +10,10 @@ class MessageBaseType(IntEnum):
 class MessageType(MessageBaseType):
     SIGNED_MESSAGE = 0
 
-    MAKE_NEXT_BLOCK = auto()
+    MAKE_NEXT_SB = auto()
+    COMMIT_CUR_SB = auto()
+    DISCORD_AND_ALIGN = auto()
+
     PENDING_TRANSACTIONS = auto()
     NO_TRANSACTIONS = auto()
     READY = auto()

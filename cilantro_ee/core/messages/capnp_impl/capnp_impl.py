@@ -37,6 +37,7 @@ class CapnpImpl:
             MessageType.BLOCK_DATA: self.blockdata_capnp.BlockData,               # ?
             MessageType.BLOCK_NOTIFICATION: self.notification_capnp.BlockNotification,  # ?
             MessageType.BURN_INPUT_HASHES: self.notification_capnp.BurnInputHashes,
+            MessageType.DISCORD_AND_ALIGN: self.notification_capnp.BurnInputHashes,
             MessageType.SUBBLOCK_CONTENDER: self.subblock_capnp.SubBlockContender,
             MessageType.TRANSACTION_BATCH: self.transaction_capnp.TransactionBatch,
             MessageType.TRANSACTION_DATA: self.transaction_capnp.TransactionData,
