@@ -369,22 +369,6 @@ class CatchupManager:
                              msg_type=msg_type,
                              msg=msg)
 
-    # MASTER ONLY CALL
-    def recv_block_data_req(self, sender: bytes, req):
-        block_num = req.blockNum
-        blk_dict = self.driver.get_block(block_num)
-
-        self.log.info(blk_dict)
-
-        if '_id' in blk_dict:
-            del blk_dict['_id']
-
-        msg_type, msg = Message.get_message_packed(
-                                      MessageType.BLOCK_DATA_REPLY,
-                                      **blk_dict)
-
-        self.router.send_msg(sender, msg=msg, msg_type=msg_type)
-
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         self.log.info(sender_bhash)
