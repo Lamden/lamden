@@ -68,3 +68,8 @@ class Message:
 
         return t + m
 
+    @classmethod
+    def get_message_packed_2(cls, msg_type: MessageType, **kwargs):
+        t, m = cls._msg_impl.get_message_packed(msg_type=msg_type, **kwargs)
+
+        return t + m

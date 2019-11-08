@@ -30,12 +30,12 @@ class TransactionBatcherInformer:
         self.socket.bind(str(socket_id))
 
     async def send_ready(self):
-        ready = Message.get_signed_message_packed_2(msg_type=MessageType.READY, wallet=self.wallet)
+        ready = Message.get_message_packed_2(msg_type=MessageType.READY)
         await self.socket.send(ready)
 
     async def send_burn_input_hashes(self, hashes):
         if len(hashes) > 0:
-            burn_input_hashes = Message.get_signed_message_packed_2(MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
+            burn_input_hashes = Message.get_message_packed_2(msg_type=MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
             self.socket.send(burn_input_hashes)
 
 
