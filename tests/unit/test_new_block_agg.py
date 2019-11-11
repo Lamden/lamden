@@ -86,7 +86,7 @@ class TestBlockAggregator(TestCase):
         self.ctx.destroy()
 
     def test_block_timeout_without_any_quorum_returns_failed_block(self):
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.1, min_quorum=5, max_quorum=10)
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10)
 
         # Set this true so that it doesn't hang
         b.pending_block.started = True
@@ -103,7 +103,7 @@ class TestBlockAggregator(TestCase):
         contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
                           masternodes=['A' * 64])
 
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.1, min_quorum=10, max_quorum=20,
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=10, max_quorum=20,
                             subblocks_per_block=1, builders_per_block=1, contacts=contacts)
 
         b.pending_block.started = True
@@ -141,7 +141,7 @@ class TestBlockAggregator(TestCase):
         s.received.append((msg, 0))
 
         b = BlockAggregator(subscription=s,
-                            block_timeout=0.1,
+                            block_timeout=0.5,
                             min_quorum=10,
                             max_quorum=20,
                             current_quorum=12,
@@ -174,7 +174,7 @@ class TestBlockAggregator(TestCase):
             s.received.append((msg, 0))
 
         b = BlockAggregator(subscription=s,
-                            block_timeout=0.1,
+                            block_timeout=0.5,
                             min_quorum=10,
                             max_quorum=20,
                             current_quorum=20,
@@ -186,4 +186,48 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 0)
+        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+
+    def test_block_skip_if_all_sbc_are_in_sub_received_and_empty(self):
+        s = MockSubscription()
+
+        wallets = [Wallet() for _ in range(20)]
+
+        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
+                          masternodes=['A' * 64])
+
+        input_hash = secrets.token_bytes(32)
+
+        for wallet in wallets:
+            _, merkle_proof = Message.get_message_packed(
+                MessageType.MERKLE_PROOF,
+                hash=input_hash,
+                signer=wallet.verifying_key(),
+                signature=wallet.sign(input_hash))
+
+            msg = Message.get_signed_message_packed_2(wallet=wallet,
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      resultHash=input_hash,
+                                                      inputHash=input_hash,
+                                                      merkleLeaves=[],
+                                                      signature=merkle_proof,
+                                                      transactions=[],
+                                                      subBlockIdx=0,
+                                                      prevBlockHash=b'\x00' * 32)
+
+            s.received.append((msg, 0))
+
+        b = BlockAggregator(subscription=s,
+                            block_timeout=0.5,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=20,
+                            subblocks_per_block=1,
+                            builders_per_block=1,
+                            contacts=contacts)
+
+        loop = asyncio.get_event_loop()
+        block, kind = loop.run_until_complete(b.gather_block())
+
+        self.assertEqual(kind,1)
         self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
