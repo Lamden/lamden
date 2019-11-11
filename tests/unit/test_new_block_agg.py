@@ -231,3 +231,36 @@ class TestBlockAggregator(TestCase):
 
         self.assertEqual(kind,1)
         self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+
+    def test_block_fail_if_consensus_not_possible_but_hash_sbcs(self):
+        s = MockSubscription()
+
+        wallets = [Wallet() for _ in range(20)]
+
+        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
+                          masternodes=['A' * 64])
+
+        input_hash = secrets.token_bytes(32)
+
+        for wallet in wallets:
+            sbc = random_txs.sbc_from_txs(input_hash, b'\x00' * 32, w=wallet)
+            msg = Message.get_signed_message_packed_2(wallet=wallet,
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbc.to_dict())
+
+            s.received.append((msg, 0))
+
+        b = BlockAggregator(subscription=s,
+                            block_timeout=0.5,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=20,
+                            subblocks_per_block=1,
+                            builders_per_block=1,
+                            contacts=contacts)
+
+        loop = asyncio.get_event_loop()
+        block, kind = loop.run_until_complete(b.gather_block())
+
+        self.assertEqual(kind, 2)
+        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
