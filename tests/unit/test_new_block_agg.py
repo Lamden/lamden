@@ -12,7 +12,6 @@ from tests import random_txs
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
 
-
 class TestTransactionBatcherInformer(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
@@ -87,7 +86,7 @@ class TestBlockAggregator(TestCase):
         self.ctx.destroy()
 
     def test_block_timeout_without_any_quorum_returns_failed_block(self):
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=1, min_quorum=5, max_quorum=10)
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.1, min_quorum=5, max_quorum=10)
 
         # Set this true so that it doesn't hang
         b.pending_block.started = True
@@ -104,7 +103,7 @@ class TestBlockAggregator(TestCase):
         contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
                           masternodes=['A' * 64])
 
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=1, min_quorum=10, max_quorum=20,
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.1, min_quorum=10, max_quorum=20,
                             subblocks_per_block=1, builders_per_block=1, contacts=contacts)
 
         b.pending_block.started = True
@@ -122,3 +121,69 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 0)
+
+    def test_block_timeout_without_any_quorum_returns_failed_but_use_subscription_service(self):
+        s = MockSubscription()
+
+        wallets = [Wallet() for _ in range(20)]
+
+        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
+                          masternodes=['A' * 64])
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets[0:1], as_dict=True)
+
+        msg = Message.get_signed_message_packed_2(wallet=wallets[0],
+                                                  msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                  **sbcs[0])
+
+        s.received.append((msg, 0))
+
+        b = BlockAggregator(subscription=s,
+                            block_timeout=0.1,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=12,
+                            subblocks_per_block=1,
+                            builders_per_block=1,
+                            contacts=contacts)
+
+        loop = asyncio.get_event_loop()
+        block, kind = loop.run_until_complete(b.gather_block())
+
+        self.assertEqual(kind, 2)
+        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+
+    def test_block_new_if_all_sbc_are_in_sub_received(self):
+        s = MockSubscription()
+
+        wallets = [Wallet() for _ in range(20)]
+
+        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
+                          masternodes=['A' * 64])
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            s.received.append((msg, 0))
+
+        b = BlockAggregator(subscription=s,
+                            block_timeout=0.1,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=20,
+                            subblocks_per_block=1,
+                            builders_per_block=1,
+                            contacts=contacts)
+
+        loop = asyncio.get_event_loop()
+        block, kind = loop.run_until_complete(b.gather_block())
+
+        self.assertEqual(kind, 0)
+        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())

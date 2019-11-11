@@ -83,6 +83,8 @@ class BlockAggregator:
         self.subblock_subscription_service = subscription
 
         self.block_timeout = block_timeout
+        self.contacts = contacts
+
         self.current_quorum = current_quorum
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
@@ -93,7 +95,6 @@ class BlockAggregator:
                                    subblocks_per_block=subblocks_per_block,
                                    builders_per_block=builders_per_block,
                                    contacts=contacts)
-
 
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag
@@ -107,11 +108,10 @@ class BlockAggregator:
         while time.time() - start_time < self.block_timeout:
             if len(self.subblock_subscription_service.received) > 0:
                 # Pop the next SBC off of the subscription LIFO queue
-                sbc = self.subblock_subscription_service.received.pop(0)
-                msg_filter, msg_type, msg_blob = sbc
+                sbc, _ = self.subblock_subscription_service.received.pop(0)
+                msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(sbc)
 
                 # Deserialize it and add it to the pending block
-                msg_type, msg, sender, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)
                 self.pending_block.contender.add_sbc(sender, msg)
 
                 if self.pending_block.consensus_is_reached():
@@ -155,7 +155,8 @@ class BlockAggregatorController:
                  pub_port: int,
                  wallet, sb_idx, mn_idx, min_quorum, max_quorum,
                  masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes),
-                 delegate_sockets=SocketBook(None, PhoneBook.contract.get_delegates)):
+                 delegate_sockets=SocketBook(None, PhoneBook.contract.get_delegates),
+                 contacts=PhoneBook):
 
         self.state = state
         self.driver = driver
@@ -164,8 +165,10 @@ class BlockAggregatorController:
 
         self.sb_idx = sb_idx
         self.mn_idx = mn_idx
-        self.min_quorum = min_quorum
-        self.max_quorum = max_quorum
+
+        self.contacts = contacts
+        self.min_quorum = self.contacts.delegate_quorum_min
+        self.max_quorum = self.contacts.delegate_quorum_max
 
         self.masternode_sockets = masternode_sockets
         self.delegate_sockets = delegate_sockets
@@ -197,13 +200,16 @@ class BlockAggregatorController:
 
     async def start_aggregator(self):
         subscription = SubscriptionService(ctx=self.ctx)
+        current_quorum = 0
 
         for delegate in self.delegate_sockets.sockets.values():
             subscription.add_subscription(delegate)
+            current_quorum += 1
 
         self.aggregator = BlockAggregator(subscription=subscription,
                                           min_quorum=self.min_quorum,
-                                          max_quorum=self.max_quorum)
+                                          max_quorum=self.max_quorum,
+                                          current_quorum=current_quorum)
 
     async def process_blocks(self):
         while self.running:
