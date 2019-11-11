@@ -8,6 +8,7 @@ from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.constants.system_config import *
 
 import time
 import asyncio
@@ -52,8 +53,8 @@ class BNKind:
 
 
 class Block:
-    def __init__(self, min_quorum, max_quorum, current_quorum):
-        self.contender = BlockContender()
+    def __init__(self, min_quorum, max_quorum, current_quorum, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS, contacts=PhoneBook):
+        self.contender = BlockContender(subblocks_per_block, builders_per_block, contacts=contacts)
         self.started = False
         self.current_quorum = current_quorum
         self.min_quorum = min_quorum
@@ -66,7 +67,6 @@ class Block:
 
     def can_adjust_quorum(self):
         current_block_quorum = self.contender.get_current_quorum_reached()
-        print(current_block_quorum)
         return current_block_quorum >= self.min_quorum and current_block_quorum >= (9 * self.current_quorum // 10)
 
 
@@ -75,7 +75,10 @@ class BlockAggregator:
                  block_timeout=60*1000,
                  current_quorum=0,
                  min_quorum=0,
-                 max_quorum=1):
+                 max_quorum=1,
+                 subblocks_per_block=NUM_SB_PER_BLOCK,
+                 builders_per_block=NUM_SB_BUILDERS,
+                 contacts=PhoneBook):
 
         self.subblock_subscription_service = subscription
 
@@ -86,7 +89,11 @@ class BlockAggregator:
 
         self.pending_block = Block(min_quorum=self.min_quorum,
                                    max_quorum=self.max_quorum,
-                                   current_quorum=self.current_quorum)
+                                   current_quorum=self.current_quorum,
+                                   subblocks_per_block=subblocks_per_block,
+                                   builders_per_block=builders_per_block,
+                                   contacts=contacts)
+
 
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag

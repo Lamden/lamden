@@ -2,6 +2,7 @@ from cilantro_ee.nodes.masternode.new_ba import TransactionBatcherInformer, Bloc
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 from unittest import TestCase
 import zmq.asyncio
 import asyncio
@@ -98,24 +99,21 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(kind, 2)
 
     def test_block_timeout_with_quorum_that_is_90_max_returns_new_block(self):
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=1, min_quorum=10, max_quorum=20)
+        wallets = [Wallet() for _ in range(20)]
+
+        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
+                          masternodes=['A' * 64])
+
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=1, min_quorum=10, max_quorum=20,
+                            subblocks_per_block=1, builders_per_block=1, contacts=contacts)
 
         b.pending_block.started = True
 
-        wallets = [Wallet() for _ in range(10)]
-        print(len(wallets))
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64],
-                          num_boot_del=10)
-
-        s = SubBlockGroup(0, b'\x00' * 32, contacts=contacts)
-
         input_hash = secrets.token_bytes(32)
 
-        sbcs = random_txs.x_sbcs_from_tx(input_hash, s.curr_block_hash, wallets=wallets[:-1])
+        sbcs = random_txs.x_sbcs_from_tx(input_hash,  b'\x00' * 32, wallets=wallets)
 
-        for i in range(len(wallets)-1):
+        for i in range(13):
             b.pending_block.contender.add_sbc(wallets[i].verifying_key(), sbcs[i])
 
         b.pending_block.contender.get_current_quorum_reached()
@@ -123,4 +121,4 @@ class TestBlockAggregator(TestCase):
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
 
-        print(block, kind)
+        self.assertEqual(kind, 0)

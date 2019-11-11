@@ -265,7 +265,7 @@ class SubBlockGroup:
 
 
 class BlockContender:
-    def __init__(self, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS):
+    def __init__(self, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS, contacts=PhoneBook):
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
@@ -280,6 +280,8 @@ class BlockContender:
 
         self.subblocks_per_block = subblocks_per_block
         self.builders_per_block = builders_per_block
+
+        self.contacts = contacts
 
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
@@ -327,7 +329,7 @@ class BlockContender:
         if len(self.sb_groups) < self.subblocks_per_block:
             return 0
 
-        cur_quorum = PhoneBook.delegate_quorum_max
+        cur_quorum = self.sb_groups[0].contacts.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
 
@@ -382,7 +384,7 @@ class BlockContender:
         groups_empty = len(self.sb_groups) == 0
 
         if sbc.subBlockIdx not in self.sb_groups:
-            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash)
+            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash, contacts=self.contacts)
 
         self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty

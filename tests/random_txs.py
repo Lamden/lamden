@@ -10,6 +10,7 @@ import json
 import hashlib
 from cilantro_ee.core.nonces import NonceManager
 from contracting import config
+
 N = NonceManager()
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
