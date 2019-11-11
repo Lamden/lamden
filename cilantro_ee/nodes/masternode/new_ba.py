@@ -6,6 +6,8 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.contracts.sync import sync_genesis_contracts
+from cilantro_ee.core.sockets.socket_book import SocketBook
+from cilantro_ee.services.storage.vkbook import PhoneBook
 
 import time
 import asyncio
@@ -39,6 +41,10 @@ class TransactionBatcherInformer:
             self.socket.send(burn_input_hashes)
 
 
+class BlockNotificationForwarder:
+    pass
+
+
 class BNKind:
     NEW = 0
     SKIP = 1
@@ -60,19 +66,27 @@ class Block:
 
     def can_adjust_quorum(self):
         current_block_quorum = self.contender.get_current_quorum_reached()
+        print(current_block_quorum)
         return current_block_quorum >= self.min_quorum and current_block_quorum >= (9 * self.current_quorum // 10)
 
 
 class BlockAggregator:
-    def __init__(self, block_timeout=60*1000, current_quorum=0, min_quorum=0, max_quorum=1):
-        self.subblock_subscription_service = SubscriptionService()
+    def __init__(self, subscription: SubscriptionService,
+                 block_timeout=60*1000,
+                 current_quorum=0,
+                 min_quorum=0,
+                 max_quorum=1):
+
+        self.subblock_subscription_service = subscription
 
         self.block_timeout = block_timeout
-        self.pending_block = Block()
-
         self.current_quorum = current_quorum
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
+
+        self.pending_block = Block(min_quorum=self.min_quorum,
+                                   max_quorum=self.max_quorum,
+                                   current_quorum=self.current_quorum)
 
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag
@@ -109,7 +123,6 @@ class BlockAggregator:
 
         # This will be hit if timeout is reached
         block = self.pending_block.contender.get_sb_data()
-
         # Check if we can adjust the quorum and return
         if self.pending_block.can_adjust_quorum():
             self.pending_block.current_quorum = self.pending_block.contender.get_current_quorum_reached()
@@ -133,7 +146,9 @@ class BlockAggregatorController:
                  ctx: zmq.asyncio.Context,
                  informer_socket: SocketStruct,
                  pub_port: int,
-                 wallet, sb_idx, mn_idx, min_quorum, max_quorum):
+                 wallet, sb_idx, mn_idx, min_quorum, max_quorum,
+                 masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes),
+                 delegate_sockets=SocketBook(None, PhoneBook.contract.get_delegates)):
 
         self.state = state
         self.driver = driver
@@ -142,13 +157,18 @@ class BlockAggregatorController:
 
         self.sb_idx = sb_idx
         self.mn_idx = mn_idx
+        self.min_quorum = min_quorum
+        self.max_quorum = max_quorum
+
+        self.masternode_sockets = masternode_sockets
+        self.delegate_sockets = delegate_sockets
 
         self.fetcher = BlockFetcher(wallet=self.wallet,
                                     ctx=self.ctx,
                                     blocks=self.driver,
                                     state=self.state)
 
-        self.aggregator = BlockAggregator(current_quorum=0, min_quorum=min_quorum, max_quorum=max_quorum)
+        self.aggregator = None
 
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind('tcp://*:{}'.format(pub_port))
@@ -162,7 +182,21 @@ class BlockAggregatorController:
     async def start(self):
         sync_genesis_contracts()
         await self.fetcher.sync()
+
+        await self.start_aggregator()
+
         await self.informer.send_ready()
+        await self.send_ready()
+
+    async def start_aggregator(self):
+        subscription = SubscriptionService(ctx=self.ctx)
+
+        for delegate in self.delegate_sockets.sockets.values():
+            subscription.add_subscription(delegate)
+
+        self.aggregator = BlockAggregator(subscription=subscription,
+                                          min_quorum=self.min_quorum,
+                                          max_quorum=self.max_quorum)
 
     async def process_blocks(self):
         while self.running:
@@ -211,9 +245,9 @@ class BlockAggregatorController:
             return block['inputHashes'][self.sb_idx]
         return []
 
-    def send_ready(self):
+    async def send_ready(self):
         ready = Message.get_signed_message_packed_2(
             wallet=self.wallet,
             msg_type=MessageType.READY)
 
-        self.pub_socket.send(ready)
+        await self.pub_socket.send(ready)

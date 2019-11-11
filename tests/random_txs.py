@@ -160,6 +160,35 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
     return sb1, sb2
 
 
+def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0):
+    transactions = []
+    for i in range(txs):
+        packed_tx = random_packed_tx(nonce=i)
+        tx_data = random_tx_data(packed_tx)
+        transactions.append(tx_data.to_bytes_packed())
+
+    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+
+    sbcs = []
+
+    for wallet in wallets:
+        sig = wallet.sign(tree.root)
+        proof = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=wallet.verifying_key(), signature=sig)
+
+        sbc = subblock_capnp.SubBlockContender.new_message(
+            resultHash=tree.root,
+            inputHash=input_hash,
+            merkleLeaves=[leaf for leaf in tree.leaves],
+            signature=proof.to_bytes_packed(),
+            transactions=[tx for tx in transactions],
+            subBlockIdx=idx,
+            prevBlockHash=prev_block_hash)
+
+        sbcs.append(sbc)
+
+    return sbcs
+
+
 def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):

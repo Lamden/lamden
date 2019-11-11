@@ -18,6 +18,7 @@ import hashlib
 class SBCSenderSignerMismatchError(Exception):
     pass
 
+
 class SBCIndexMismatchError(Exception):
     pass
 
@@ -41,10 +42,14 @@ class SBCMerkleLeafVerificationError(Exception):
 class SBCIndexGreaterThanPossibleError(Exception):
     pass
 
+
 class SubBlockGroup:
-    def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
+    def __init__(self, sb_idx: int, curr_block_hash: str,
+                 contacts: VKBook=PhoneBook, subblocks_per_block=NUM_SB_PER_BLOCK):
+
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
+        self.subblocks_per_block = subblocks_per_block
 
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
 
@@ -252,7 +257,7 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
-        if sbc.subBlockIdx >= NUM_SB_PER_BLOCK:
+        if sbc.subBlockIdx >= self.subblocks_per_block:
             self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.subBlockIdx, sbc))
             return False
 
@@ -260,15 +265,22 @@ class SubBlockGroup:
 
 
 class BlockContender:
-    def __init__(self):
+    def __init__(self, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS):
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
+
         self.state = MetaDataStorage()
         self.curr_block_hash = self.state.get_latest_block_hash()
+
         self.time_created = time.time()
+
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
+
+        self.subblocks_per_block = subblocks_per_block
+        self.builders_per_block = builders_per_block
+
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
 
     def reset(self):
@@ -288,9 +300,9 @@ class BlockContender:
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
 
     def is_consensus_reached(self) -> bool:
-        assert len(self.sb_groups) <= NUM_SB_PER_BLOCK, "Got more sub block indices than SB_PER_BLOCK!"
+        assert len(self.sb_groups) <= self.subblocks_per_block, "Got more sub block indices than SB_PER_BLOCK!"
 
-        if len(self.sb_groups) != NUM_SB_PER_BLOCK:
+        if len(self.sb_groups) != self.subblocks_per_block:
             return False
 
         for sb_idx, sb_group in self.sb_groups.items():
@@ -312,7 +324,7 @@ class BlockContender:
         return True
 
     def get_current_quorum_reached(self) -> int:
-        if len(self.sb_groups) < NUM_SB_PER_BLOCK:
+        if len(self.sb_groups) < self.subblocks_per_block:
             return 0
 
         cur_quorum = PhoneBook.delegate_quorum_max
@@ -378,14 +390,14 @@ class BlockContender:
     # Return to this. Is this behaving properly? Is it redundant?
     def get_first_sb_idx_unsorted(self, sb_groups) -> int:
         sb_idx = sb_groups[0].sb_idx
-        sbb_rem = sb_idx % NUM_SB_BUILDERS
+        sbb_rem = sb_idx % self.builders_per_block
         # assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
 
     def get_first_sb_idx_sorted(self) -> int:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
-        assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+        assert num_sbg <= self.subblocks_per_block, "Sub groups are not in a consistent state"
         return self.get_first_sb_idx_unsorted(sb_groups)
 
     # Pads empty sb groups?
@@ -408,7 +420,7 @@ class BlockContender:
             sb_idx += 1
 
         # In what natural situation does is while loop conditional met?
-        while num_sbg < NUM_SB_PER_BLOCK:
+        while num_sbg < self.subblocks_per_block:
             num_sbg += 1
             input_hashes.append([])
 

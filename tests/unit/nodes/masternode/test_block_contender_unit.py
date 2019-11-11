@@ -695,8 +695,7 @@ class TestBlockContender(TestCase):
 
         s = SubBlockGroup(0, 'A' * 64, contacts=contacts)
 
-        s.best_rh = 1
-        s.rh[1] = {'B' * 64, 'C' * 64, 'D' * 64, 'E' * 64, 'F' * 64, '0' * 64, '1' * 64}
+
 
         t = SubBlockGroup(0, 'A' * 64, contacts=contacts)
 
