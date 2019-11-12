@@ -16,10 +16,6 @@ import zmq
 import zmq.asyncio
 
 
-class DynamicQuorumCalculator:
-    pass
-
-
 # Sends this to Transaction Batcher
 class TransactionBatcherInformer:
     def __init__(self, socket_id, ctx: zmq.asyncio.Context, wallet, linger=2000):

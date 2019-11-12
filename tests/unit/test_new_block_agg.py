@@ -264,3 +264,7 @@ class TestBlockAggregator(TestCase):
 
         self.assertEqual(kind, 2)
         self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+
+
+class TestBlockAggregatorController(TestCase):
+    pass
