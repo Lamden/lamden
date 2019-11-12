@@ -1,6 +1,9 @@
 from setuptools import setup, find_packages
 
-__version__ = '0.0.2dev'
+__version__ = '0.0.1'
+
+with open("README.md", "r") as fh:
+    long_desc = fh.read()
 
 setup(
     name='cilantro_ee',
@@ -15,7 +18,7 @@ setup(
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
-        'seneca',
+        'contracting',
         'click',
         'simple-crypt',
         'sanic==19.6.3',
@@ -36,11 +39,14 @@ setup(
         '': [],
         'cilantro_ee': ['cilantro_ee.conf'],
     },
-    long_description="this is a fast blockchain",
-    url='https://github.com/Lamden/cilantro_ee',
+    description = "Lamden Blockchain",
+    long_description= long_desc,
+    long_description_content_type="text/markdown",
+    url='https://github.com/Lamden/cilantro-enterprise',
     author='Lamden',
     author_email='team@lamden.io',
     classifiers=[
         'Programming Language :: Python :: 3.6',
     ],
+    python_requires='>=3.6.5',
 )
