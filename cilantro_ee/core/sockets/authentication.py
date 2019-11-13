@@ -8,10 +8,12 @@ import shutil
 import zmq.asyncio
 import asyncio
 import pathlib
+from nacl.signing import VerifyKey
+from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 class SocketAuthenticator:
     def __init__(self, wallet, contacts: VKBook, ctx: zmq.asyncio.Context,
-                 loop=asyncio.get_event_loop(), domain='*', cert_dir='.cilsocks'):
+                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks'):
 
         # Create the directory if it doesn't exist
 
@@ -51,28 +53,28 @@ class SocketAuthenticator:
         if isinstance(vk, str):
             vk = bytes.fromhex(vk)
 
-        zvk = z85.encode(vk).decode('utf-8')
-        print(zvk)
-        _write_key_file(self.cert_dir / f'{zvk}.key', banner=_cert_public_banner, public_key=zvk)
+        pk = crypto_sign_ed25519_pk_to_curve25519(vk)
 
-    def remove_public_key(self, vk: bytes):
-        if isinstance(vk, str):
-            hvk = vk
-
-        # Store hex string if already bytes
-        else:
-            hvk = vk.hex()
-
-        pathlib.Path.unlink(self.cert_dir / f'{hvk}.key')
+        zvk = z85.encode(pk).decode('utf-8')
+        _write_key_file(self.cert_dir / f'{vk.hex()}.key', banner=_cert_public_banner, public_key=zvk)
 
     def flush_all_keys(self):
         shutil.rmtree(str(self.cert_dir))
+        self.cert_dir.mkdir(parents=True, exist_ok=True)
 
-    def make_socket(self, zmq_type, will_bind=False):
+    def make_client(self, zmq_type, server_vk: bytes):
         sock = self.ctx.socket(zmq_type)
-        sock.curve_secretkey = z85.encode(self.wallet.signing_key())
-        sock.curve_publickey = z85.encode(self.wallet.verifying_key())
+        sock.curve_secretkey = self.wallet.curve_sk.encode()
+        sock.curve_publickey = self.wallet.curve_vk.encode()
+        sock.curve_serverkey = server_vk
 
-        sock.curve_server = will_bind
+        return sock
+
+    def make_server(self, zmq_type):
+        sock = self.ctx.socket(zmq_type)
+        sock.curve_secretkey = self.wallet.curve_sk.encode()
+        sock.curve_publickey = self.wallet.curve_vk.encode()
+
+        sock.curve_server = True
 
         return sock
