@@ -1,6 +1,6 @@
 from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.error import ZMQBaseError
-from zmq.auth.certs import _write_key_file, _cert_public_banner
+from zmq.auth.certs import _write_key_file, _cert_public_banner, load_certificate
 from zmq.utils import z85
 import os
 from cilantro_ee.services.storage.vkbook import VKBook
@@ -48,12 +48,20 @@ class SocketAuthenticator:
 
         self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
 
+    # Loads a key from a hex string
+    def load_key(self, vk: str):
+        pass
+
     def add_verifying_key(self, vk: bytes):
         # Convert to bytes if hex string
         if isinstance(vk, str):
             vk = bytes.fromhex(vk)
 
-        pk = crypto_sign_ed25519_pk_to_curve25519(vk)
+        try:
+            pk = crypto_sign_ed25519_pk_to_curve25519(vk)
+        # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
+        except RuntimeError:
+            return
 
         zvk = z85.encode(pk).decode('utf-8')
         _write_key_file(self.cert_dir / f'{vk.hex()}.key', banner=_cert_public_banner, public_key=zvk)
@@ -64,16 +72,20 @@ class SocketAuthenticator:
 
     def make_client(self, zmq_type, server_vk: bytes):
         sock = self.ctx.socket(zmq_type)
-        sock.curve_secretkey = self.wallet.curve_sk.encode()
-        sock.curve_publickey = self.wallet.curve_vk.encode()
-        sock.curve_serverkey = server_vk
+        sock.curve_secretkey = self.wallet.curve_sk
+        sock.curve_publickey = self.wallet.curve_vk
+
+        server_pub, _ = load_certificate(str(self.cert_dir / f'{server_vk.hex()}.key'))
+        print(server_pub)
+
+        sock.curve_serverkey = server_pub
 
         return sock
 
     def make_server(self, zmq_type):
         sock = self.ctx.socket(zmq_type)
-        sock.curve_secretkey = self.wallet.curve_sk.encode()
-        sock.curve_publickey = self.wallet.curve_vk.encode()
+        sock.curve_secretkey = self.wallet.curve_sk
+        sock.curve_publickey = self.wallet.curve_vk
 
         sock.curve_server = True
 

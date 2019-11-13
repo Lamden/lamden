@@ -89,8 +89,8 @@ class Wallet:
         self.sk = nacl.signing.SigningKey(seed=seed)
         self.vk = self.sk.verify_key
 
-        self.curve_sk = self.sk.to_curve25519_private_key()
-        self.curve_vk = self.vk.to_curve25519_public_key()
+        self.curve_sk = z85.encode(self.sk.to_curve25519_private_key().encode())
+        self.curve_vk = z85.encode(self.vk.to_curve25519_public_key().encode())
 
     @staticmethod
     def format_key(k, as_hex=False):

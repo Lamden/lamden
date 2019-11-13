@@ -8,6 +8,7 @@ from zmq.utils import z85
 from cilantro_ee.services.storage.vkbook import PhoneBook
 from nacl.signing import SigningKey
 
+
 class TestAuthenticator(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
@@ -40,37 +41,30 @@ class TestAuthenticator(TestCase):
         for d in self.s.contacts.delegates:
             self.assertTrue(os.path.exists(os.path.join(self.s.cert_dir, f'{d}.key')))
 
-    def test_test(self):
-        w = Wallet()
-
-        print(w.curve_sk)
-        print(w.curve_vk)
-
     def test_make_client_works(self):
         w = Wallet()
 
         pub = self.ctx.socket(zmq.PUB)
-        pub.curve_secretkey = w.curve_sk.encode()
-        pub.curve_publickey = w.curve_vk.encode()
+        pub.curve_secretkey = w.curve_sk
+        pub.curve_publickey = w.curve_vk
 
         pub.curve_server = True
         pub.setsockopt(zmq.LINGER, 1000)
-        pub.bind('tcp://*:8888')
+        pub.bind('inproc://test1')
 
-        sub = self.s.make_client(zmq.SUB, w.curve_vk.encode())
+        self.s.add_verifying_key(w.verifying_key())
 
-        sub.connect('tcp://127.0.0.1:8888')
-
-        async def send():
-            await pub.send(b'hi')
+        sub = self.s.make_client(zmq.SUB, w.verifying_key())
+        #sub = self.ctx.socket(zmq.SUB)
+        sub.setsockopt(zmq.SUBSCRIBE, b'')
+        sub.connect('inproc://test1')
 
         async def get():
-            return await sub.poll(1000)
-            #msg = await sub.recv()
-            #return msg
+            msg = await sub.recv()
+            return msg
 
         tasks = asyncio.gather(
-            send(),
+            pub.send(b'hi'),
             get()
         )
 
