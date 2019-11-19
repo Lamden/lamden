@@ -1,4 +1,4 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+from Deprecated.test import set_testnet_config
 set_testnet_config('2-2-2.json')
 from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()

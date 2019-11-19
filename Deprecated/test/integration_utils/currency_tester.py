@@ -1,8 +1,8 @@
 from cilantro_ee.core.logger.base import get_logger
-from cilantro_ee.utils.test.dumpatron import Dumpatron
-from cilantro_ee.utils.test.god import God
-from cilantro_ee.utils.test.wallets import GENERAL_WALLETS
-import time, random, asyncio, aiohttp
+from Deprecated.test.dumpatron import Dumpatron
+from Deprecated.test import God
+from Deprecated.test.wallets import GENERAL_WALLETS
+import random, asyncio
 from collections import defaultdict
 
 

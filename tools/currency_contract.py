@@ -9,7 +9,7 @@ import os
 # Pip installed python imports
 
 # Lamden imports
-import cilantro_ee.utils.test.god as god
+import Deprecated.test.god as god
 
 def setup_argparse(parser):
     # Add positional arguments
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     god.God.multi_master = True
     
     # Generate and send tx
-    currency_tx = god.God.create_currency_tx((args.sk,""), ("",args.to), args.amount, args.nonce)
+    currency_tx = god.God.create_currency_tx((args.sk, ""), ("", args.to), args.amount, args.nonce)
     backoff_factor = args.backoff
     waittime = args.baseretry
 
