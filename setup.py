@@ -29,7 +29,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'funniest-joke=funniest.command_line:main'
+            'cilantro_ee=__main__:main'
         ],
     },
     zip_safe=False,
