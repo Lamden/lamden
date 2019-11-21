@@ -1,4 +1,4 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+from Deprecated.test import set_testnet_config
 set_testnet_config('4-4-4.json')
 
 from unittest import TestCase

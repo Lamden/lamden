@@ -1,4 +1,4 @@
-from cilantro_ee.utils.test.utils import *
+from Deprecated.test.utils import *
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.core.crypto import wallet
 

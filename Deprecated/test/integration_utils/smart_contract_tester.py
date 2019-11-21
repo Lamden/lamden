@@ -1,10 +1,7 @@
-from cilantro_ee.core.logger.base import get_logger
-from cilantro_ee.utils.test.dumpatron import Dumpatron
-from cilantro_ee.utils.test.god import God
-from cilantro_ee.utils.test.wallets import *
-import time, random, os
-from collections import defaultdict
-
+from Deprecated.test.dumpatron import Dumpatron
+from Deprecated.test import God
+from Deprecated.test.wallets import *
+import time, os
 
 CONTRACT_FILENAME = 'stubucks.sen.py'
 

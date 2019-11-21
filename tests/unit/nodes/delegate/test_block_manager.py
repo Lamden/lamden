@@ -1,11 +1,10 @@
 import asyncio
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+from Deprecated.test import set_testnet_config
 set_testnet_config('2-2-2.json')
 
 from cilantro_ee.core.logger.base import get_logger
 
 from cilantro_ee.nodes.delegate.block_manager import BlockManager, IPC_PORT
-from cilantro_ee.utils import int_to_bytes
 
 from unittest import TestCase
 from unittest import mock
@@ -13,11 +12,10 @@ from unittest.mock import MagicMock
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 
 _log = get_logger("TestBlockManager")
 
-from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES
 TEST_IP = '127.0.0.1'
