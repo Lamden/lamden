@@ -1,4 +1,4 @@
-from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
+from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTERS
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.batcher import BATCHER_SLEEP_INTERVAL
 from cilantro_ee.constants.batcher import MAX_TXN_SUBMISSION_DELAY
@@ -288,7 +288,7 @@ class TransactionBatcher(Worker):
 
         self.log.notice("Starting TransactionBatcher ...")
 
-        enc_fltr = TRANSACTION_FILTER.encode()
+        enc_fltr = TRANSACTION_FILTERS[0].encode()
 
         while True:
             mtype, msg = await self.batcher.get_next_batch_packed()
