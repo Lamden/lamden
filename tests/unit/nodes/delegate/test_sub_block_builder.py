@@ -1,11 +1,9 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+# from Deprecated.test import set_testnet_config
 # set_testnet_config('2-2-2.json')
 #
-from cilantro_ee.core.logger.base import get_logger
 # from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 #
-from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import ExecutionData, SBData
 #
 # from cilantro_ee.nodes.delegate.block_manager import IPC_IP, IPC_PORT
@@ -18,16 +16,15 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
 from cilantro_ee.core.utils.transaction import TransactionBuilder
+# from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 #
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-# from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 from cilantro_ee.constants.testnet import *
 from cilantro_ee.services.storage.vkbook import PhoneBook
 import asyncio
-import time
-from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
 from cilantro_ee.core.crypto import wallet
 
 import hashlib

@@ -1,15 +1,10 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+from Deprecated.test import set_testnet_config
 set_testnet_config('2-2-4.json')
 
 
 from unittest import TestCase, mock
-from unittest.mock import MagicMock
 from cilantro_ee.core.utils.worker import Worker
 from cilantro_ee.messages.base.base_signal import SignalBase
-
-
-from cilantro_ee.constants.testnet import *
-from cilantro_ee.nodes.base import NodeTypes
 
 
 # A mock message type used just for these tests

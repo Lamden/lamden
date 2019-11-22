@@ -1,10 +1,9 @@
 from cilantro_ee.messages.transaction.publish import *
 from cilantro_ee.messages.transaction.contract import *
 
-from cilantro_ee.core.logger import get_logger
-from cilantro_ee.utils.test.utils import *
-from cilantro_ee.utils.test.wallets import ALL_WALLETS
-import os, requests, time, random, asyncio, secrets, math, json
+from Deprecated.test.utils import *
+from Deprecated.test.wallets import ALL_WALLETS
+import requests, time, random, asyncio, secrets
 from typing import List
 from decimal import Decimal
 
@@ -90,7 +89,7 @@ class God:
             gen_func = cls._default_gen_func()
 
         if use_poisson:
-            from scipy.stats import poisson, expon
+            from scipy.stats import expon
             rvs_func = lambda: expon.rvs(rate)/rate - 1
         else:
             rvs_func = lambda: 1/rate

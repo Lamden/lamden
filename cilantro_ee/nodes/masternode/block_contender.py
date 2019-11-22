@@ -14,8 +14,34 @@ from typing import List
 import time
 import hashlib
 
-class SubBlockGroup:
 
+class SBCSenderSignerMismatchError(Exception):
+    pass
+
+class SBCIndexMismatchError(Exception):
+    pass
+
+
+class SBCInvalidSignatureError(Exception):
+    pass
+
+
+class SBCTransactionNotInContenderError(Exception):
+    pass
+
+
+class SBCBlockHashMismatchError(Exception):
+    pass
+
+
+class SBCMerkleLeafVerificationError(Exception):
+    pass
+
+
+class SBCIndexGreaterThanPossibleError(Exception):
+    pass
+
+class SubBlockGroup:
     def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
@@ -52,7 +78,7 @@ class SubBlockGroup:
         return True
 
     def get_sb(self):
-        assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
+        #assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
 
         # Paranoid dev checks
         # TODO make sure all merkle leaves are the same, and all result hashes are the same for self.rh[merkle_root],
@@ -118,6 +144,7 @@ class SubBlockGroup:
 
         for sbc in self.sender_to_sbc.values():
             s.add(sbc.inputHash)
+
         return list(s)
 
     def is_empty(self):
@@ -131,7 +158,7 @@ class SubBlockGroup:
         return next(iter(self.rh[self.best_rh])).merkleLeaves
 
     def _get_ordered_transactions(self):
-        assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
+        #assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
 
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
         # return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
@@ -187,12 +214,13 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
+
         valid_sig = _verify(vk=merkle_proof.signer,
                             msg=merkle_proof.hash,
                             signature=merkle_proof.signature)
 
         if not valid_sig:
-            self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
+            #self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
@@ -201,7 +229,7 @@ class SubBlockGroup:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
             # raghu todo - need to fix this
-            # return False
+            return False
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate merkle leaves
@@ -232,7 +260,6 @@ class SubBlockGroup:
 
 
 class BlockContender:
-
     def __init__(self):
         self.log = get_logger("BlockContender")
         self.committed = False
@@ -287,6 +314,7 @@ class BlockContender:
     def get_current_quorum_reached(self) -> int:
         if len(self.sb_groups) < NUM_SB_PER_BLOCK:
             return 0
+
         cur_quorum = PhoneBook.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
@@ -294,7 +322,7 @@ class BlockContender:
         return cur_quorum
 
     def is_empty(self):
-        assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
+        # assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
 
         for sb_group in self.sb_groups.values():
             if not sb_group.is_empty():
@@ -303,8 +331,8 @@ class BlockContender:
         return True
 
     def get_sb_data(self):
-        assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+        #assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
+        #assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
@@ -313,8 +341,8 @@ class BlockContender:
 
         sb_data = sorted(sb_data, key=lambda sb: sb.subBlockIdx)
 
-        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
-                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
+        #assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 #.format(len(sb_data), NUM_SB_PER_BLOCK)
 
         return sb_data
 
@@ -340,16 +368,18 @@ class BlockContender:
             return False
 
         groups_empty = len(self.sb_groups) == 0
+
         if sbc.subBlockIdx not in self.sb_groups:
             self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash)
 
         self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty
 
+    # Return to this. Is this behaving properly? Is it redundant?
     def get_first_sb_idx_unsorted(self, sb_groups) -> int:
         sb_idx = sb_groups[0].sb_idx
         sbb_rem = sb_idx % NUM_SB_BUILDERS
-        assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
+        # assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
 
     def get_first_sb_idx_sorted(self) -> int:
@@ -358,19 +388,26 @@ class BlockContender:
         assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
         return self.get_first_sb_idx_unsorted(sb_groups)
 
+    # Pads empty sb groups?
     def get_input_hashes_sorted(self) -> List[list]:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
-        assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
-        sb_idx = self.get_first_sb_idx_unsorted(sb_groups)
+        # assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+
+        sb_idx = self.get_first_sb_idx_unsorted(sb_groups) # 0
         input_hashes = []
+
         for sb_group in sb_groups:
+            # In what natural situation does is while loop conditional met?
             while sb_idx < sb_group.sb_idx:
                 sb_idx += 1
                 num_sbg += 1
                 input_hashes.append([])
+
             input_hashes.append(sb_group.get_input_hashes())
             sb_idx += 1
+
+        # In what natural situation does is while loop conditional met?
         while num_sbg < NUM_SB_PER_BLOCK:
             num_sbg += 1
             input_hashes.append([])

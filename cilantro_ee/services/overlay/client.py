@@ -26,6 +26,8 @@ def command(fn):
     return _command
 
 
+# Test Overlay Client. Try publishing mock messages to the event socket
+
 class OverlayClient:
     def __init__(self, reply_handler, event_handler, ctx, name=None):
         self.name = name or str(os.getpid())
@@ -47,6 +49,8 @@ class OverlayClient:
             self.event_listener(event_handler),
         ]
 
+        self.running = False
+
     @command
     def ready(self, *args, **kwargs):
         # b'ready'
@@ -63,8 +67,8 @@ class OverlayClient:
         return event_id
 
     async def event_listener(self, event_handler):
-        self.log.success('Listening for overlay events over {}'.format(EVENT_URL))
-        while True:
+        self.log.success('Listening for overlay events.')
+        while self.running:
             msg = await self.evt_sock.recv()
             self.log.success("OverlayClient received event {}".format(msg))
 
@@ -75,7 +79,7 @@ class OverlayClient:
 
     async def reply_listener(self, reply_handler):
         self.log.success("Listening for overlay replies over {}".format(CMD_URL))
-        while True:
+        while self.running:
             msg = await self.cmd_sock.recv_multipart()
             event = json.loads(msg[-1])
             self.log.success("OverlayClient received reply {} and event {}".format(msg, event))
@@ -85,4 +89,10 @@ class OverlayClient:
         self.cmd_sock.close()
         self.evt_sock.close()
 
+    async def start(self):
+        self.running = True
+        asyncio.ensure_future(asyncio.gather(*self.tasks))
+        log.info('Overlay Client started!')
 
+    def stop(self):
+        self.running = False

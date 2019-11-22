@@ -93,3 +93,29 @@ class TestVKBook(TestCase):
         v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
 
         self.assertEqual(v.all, masternodes + delegates + [])
+
+    def test_check_master(self):
+        masternodes = ['a', 'b', 'c']
+        delegates = ['d', 'e', 'f']
+
+        stamps = False
+        nonces = False
+
+        mn = 'a'
+
+        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        self.assertEqual(v.masternodes[0], mn)
+
+    def test_check_delegate(self):
+        masternodes = ['a', 'b', 'c']
+        delegates = ['d', 'e', 'f']
+
+        stamps = False
+        nonces = False
+
+        dl = 'd'
+
+        v = VKBook(masternodes, delegates, stamps = stamps, nonces = nonces, debug = False)
+        self.assertEqual(v.delegates[0], dl)
+
+

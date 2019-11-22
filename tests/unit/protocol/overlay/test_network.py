@@ -713,3 +713,4 @@ class TestNetworkService(TestCase):
         self.assertIn(dw1.verifying_key().hex(), mn1.table.peers)
         self.assertIn(dw2.verifying_key().hex(), mn1.table.peers)
 
+    # def test quorum made and another node wants to connect afterwards

@@ -19,7 +19,7 @@ class Protocols:
     TCP = 0
     INPROC = 1
     ICP = 2
-    PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'icp://']
+    PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'ipc://']
 
 
 # syntactic sugar yum yum
@@ -130,10 +130,12 @@ class SubscriptionService:
                         msg = await socket.recv()
                         self.received.append((msg, address))
                 except zmq.error.ZMQError as e:
+                    filter = socket.getsockopt(zmq.SUBSCRIBE)
+
                     socket.close()
 
                     socket = self.ctx.socket(zmq.SUB)
-                    socket.setsockopt(zmq.SUBSCRIBE, b'')
+                    socket.setsockopt(zmq.SUBSCRIBE, filter)
                     socket.setsockopt(zmq.LINGER, self.linger)
 
                     socket.connect(str(address))
@@ -227,7 +229,8 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
 
 class AsyncInbox:
     def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        socket_id.id = '*'
+        if socket_id.protocol == Protocols.TCP:
+            socket_id.id = '*'
 
         self.address = str(socket_id)
 
