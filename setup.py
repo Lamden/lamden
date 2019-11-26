@@ -6,9 +6,9 @@ with open("README.md", "r") as fh:
     long_desc = fh.read()
 
 setup(
-    name='cilantro_ee',
+    name='cilantro',
     version=__version__,
-    packages=find_packages(exclude=['docs', 'tests', 'tools', 'ops', 'docker', 'deprecated']),
+    packages=find_packages(exclude=['docs', 'ops', 'docker', 'deprecated']),
     install_requires=[
         'Cython==0.29',
         'pycapnp==0.6.3',

@@ -1,5 +1,5 @@
 from deprecated.test import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('vk_dump.json')
 
 from cilantro_ee.messages.envelope.envelope import Envelope
 from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender, SubBlockContenderBuilder

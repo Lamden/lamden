@@ -1,6 +1,6 @@
 import asyncio
 from deprecated.test import set_testnet_config
-set_testnet_config('2-2-2.json')
+set_testnet_config('vk_dump.json')
 
 from cilantro_ee.core.logger.base import get_logger
 
