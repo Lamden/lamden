@@ -1,4 +1,4 @@
-from Deprecated.test import set_testnet_config
+from deprecated.test import set_testnet_config
 set_testnet_config('2-2-4.json')
 
 

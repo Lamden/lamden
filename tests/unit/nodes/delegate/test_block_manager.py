@@ -1,5 +1,5 @@
 import asyncio
-from Deprecated.test import set_testnet_config
+from deprecated.test import set_testnet_config
 set_testnet_config('2-2-2.json')
 
 from cilantro_ee.core.logger.base import get_logger

@@ -1,6 +1,6 @@
-from Deprecated.test.dumpatron import Dumpatron
-from Deprecated.test import God
-from Deprecated.test.wallets import *
+from deprecated.test.dumpatron import Dumpatron
+from deprecated.test import God
+from deprecated.test.wallets import *
 import time, os
 
 CONTRACT_FILENAME = 'stubucks.sen.py'

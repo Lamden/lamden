@@ -47,7 +47,7 @@ MN_SK2 = TESTNET_MASTERNODES[1]['sk']
 
 SK = '11babaea921684a1710cd1f763285af52461d1add0d0caf31cec834ff420d46c'
 SK = bytes.fromhex(SK)
-        
+
 w = Wallet(seed=SK)
 
 def get_transaction(amount=10, to='jeff', stamps=500000):
@@ -85,7 +85,7 @@ class SBBTester:
             h.update(tx_bytes)
             _, tx, _, _, _ = \
                 Message.unpack_message(pack(int(MessageType.TRANSACTION)), tx_bytes)
-            
+
             txns.append(tx)
 
         h.update('{}'.format(timestamp).encode())
@@ -114,7 +114,7 @@ class TestSubBlockBuilder(TestCase):
         ih, bag = tb.get_next_bag()
         self.assertEqual(ih, ih0)
         self.assertTrue(tb.empty_queue())
-        
+
         tb.add_bag(bag1)
         tb.add_bag(bag0)    # this shouldn't be added as timestamp is lower
 
@@ -137,11 +137,11 @@ class TestSubBlockBuilder(TestCase):
         # removes up to ih6, but not ih6 as it is non-empty bag
         tb.pop_to_align_bag(ih6)
         self.assertFalse(tb.empty_queue())
-        
+
         ih, bag = tb.get_next_bag()
         self.assertEqual(ih, ih6)
         self.assertTrue(tb.empty_queue())
-     
+
     def run_async_func(self, async_func):
         event_loop = asyncio.new_event_loop()
         event_loop.run_until_complete(async_func)
@@ -159,7 +159,7 @@ class TestSubBlockBuilder(TestCase):
         ih4, bag4 = SBBTester.get_bag(timestamp+4, 3)
         ih5, bag5 = SBBTester.get_bag(timestamp+5, 0)
         ih6, bag6 = SBBTester.get_bag(timestamp+6, 4)
-        
+
         tb.add_bag(0, bag1)
         self.assertEqual(0, tb.num_non_empty_txn_bags)
         tb.add_bag(1, bag2)
@@ -203,7 +203,7 @@ class TestSubBlockBuilder(TestCase):
         self.assertEqual(1, tb.last_active_bag_idx)
 
 
-        
+
 
 if __name__ == "__main__":
     import unittest

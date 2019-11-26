@@ -1,8 +1,8 @@
 from cilantro_ee.messages.transaction.publish import *
 from cilantro_ee.messages.transaction.contract import *
 
-from Deprecated.test.utils import *
-from Deprecated.test.wallets import ALL_WALLETS
+from deprecated.test.utils import *
+from deprecated.test.wallets import ALL_WALLETS
 import requests, time, random, asyncio, secrets
 from typing import List
 from decimal import Decimal

@@ -1,5 +1,5 @@
-from Deprecated.test.mp_test import MPTesterBase, mp_testable
-from Deprecated.test import God
+from deprecated.test.mp_test import MPTesterBase, mp_testable
+from deprecated.test import God
 from unittest.mock import MagicMock
 from cilantro_ee.protocol.transport.composer import Composer
 from cilantro_ee.protocol.executors.manager import ExecutorManager
@@ -8,8 +8,8 @@ from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.services.overlay.daemon import OverlayServer
 from cilantro_ee.utils.lprocess import LProcess
 # from cilantro_ee.services.storage.db import DB
-from Deprecated.test import PubSubAuthTester
-from Deprecated.test.router_auth import RouterAuthTester
+from deprecated.test import PubSubAuthTester
+from deprecated.test.router_auth import RouterAuthTester
 import asyncio
 import zmq.asyncio
 import os

@@ -1,7 +1,7 @@
 from cilantro_ee.core.logger.base import get_logger
-from Deprecated.test.dumpatron import Dumpatron
-from Deprecated.test import God
-from Deprecated.test.wallets import GENERAL_WALLETS
+from deprecated.test.dumpatron import Dumpatron
+from deprecated.test import God
+from deprecated.test.wallets import GENERAL_WALLETS
 import random, asyncio
 from collections import defaultdict
 

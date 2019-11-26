@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 setup(
     name='cilantro_ee',
     version=__version__,
-    packages=find_packages(exclude=['docs', 'tests']),
+    packages=find_packages(exclude=['docs', 'tests', 'tools', 'ops', 'docker', 'deprecated']),
     install_requires=[
         'Cython==0.29',
         'pycapnp==0.6.3',
@@ -29,9 +29,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'storage=cilantro_ee.networking.storage:serve',
-            'witness=cilantro_ee.networking.witness:serve',
-            'cil=cilantro_ee.cli:main'
+            'cilantro_ee=__main__:main'
         ],
     },
     zip_safe=False,
