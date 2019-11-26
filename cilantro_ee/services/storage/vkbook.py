@@ -1,11 +1,22 @@
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 from cilantro_ee.contracts import sync
-from deprecated.test import read_public_constitution
 from contracting.client import ContractingClient
+import cilantro_ee
 import math
+import json, os
+from os.path import join
 
 log = get_logger("VKBook")
+
+# need to refactor this code of vkbook
+PUBLIC_JSON_DIR = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/public'
+
+def read_public_constitution(filename) -> dict:
+    fpath = PUBLIC_JSON_DIR + '/' + filename
+    assert os.path.exists(fpath), "No public constitution file found at path {}".format(fpath)
+    with open(fpath) as f:
+        return json.load(f)
 
 
 class VKBook:

@@ -30,6 +30,10 @@ class LinkedHashTable:
         self._table.clear()
         self._first, self._last = None, None
 
+    # the order of keys may not reflect the order of linked hash table
+    def keys(self):
+        return list(self._table.keys())
+
     def find(self, key):
         return True if key in self._table else False
 
@@ -59,18 +63,6 @@ class LinkedHashTable:
         if not self._first:
             self._first = node
 
-    def popleft(self):
-        if not self._first:
-            return None
-
-        item = self._first
-        if item.next:
-            item.next.previous = None
-        self._first = item.next
-
-        self._table.pop(item.key)
-        return item.value
-
     def pop_front(self):
         if not self._first:
             return None, None
@@ -78,22 +70,12 @@ class LinkedHashTable:
         item = self._first
         if item.next:
             item.next.previous = None
+        else:
+            self._last = None
         self._first = item.next
 
         self._table.pop(item.key)
         return item.key, item.value
-
-    def pop(self):
-        if not self._last:
-            return None
-
-        item = self._last
-        if item.previous:
-            item.previous.next = None
-        self._last = item.previous
-
-        self._table.pop(item.key)
-        return item.value
 
     def pop_back(self):
         if not self._last:
@@ -102,6 +84,8 @@ class LinkedHashTable:
         item = self._last
         if item.previous:
             item.previous.next = None
+        else:
+            self._first = None
         self._last = item.previous
 
         self._table.pop(item.key)

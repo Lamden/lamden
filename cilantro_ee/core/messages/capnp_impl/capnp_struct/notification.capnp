@@ -4,7 +4,7 @@ struct BlockNotification {
     blockNum @0 :UInt32;
     blockHash @1 :Data;
     blockOwners @2 :List(Text);
-    firstSbIdx @3 :UInt32;
+    subBlockNum @3 :List(List(UInt32));
     inputHashes @4 :List(List(Data));
     union {
       failedBlock @5 :Void;
@@ -15,5 +15,6 @@ struct BlockNotification {
 }
 
 struct BurnInputHashes {
-    inputHashes @0: List(Data);
+    subBlockNum @0 :List(UInt32);
+    inputHashes @1: List(Data);
 }
