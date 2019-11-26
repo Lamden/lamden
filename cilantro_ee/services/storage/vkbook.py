@@ -1,7 +1,7 @@
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 from cilantro_ee.contracts import sync
-from Deprecated.test import read_public_constitution
+from deprecated.test import read_public_constitution
 from contracting.client import ContractingClient
 import math
 

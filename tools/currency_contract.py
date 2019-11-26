@@ -9,7 +9,7 @@ import os
 # Pip installed python imports
 
 # Lamden imports
-import Deprecated.test.god as god
+import deprecated.test.god as god
 
 def setup_argparse(parser):
     # Add positional arguments

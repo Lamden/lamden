@@ -1,6 +1,6 @@
 from cilantro_ee.core.logger import get_logger
 import json
-from Deprecated.test import get_testnet_json_path
+from deprecated.test import get_testnet_json_path
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
