@@ -11,15 +11,18 @@ RUN apt-get update \
         sudo ssh tar gzip ca-certificates curl \
         openssl python3.6 wget \
         python3-pip python3.6-dev build-essential \
-        gcc g++ git autoconf automake \
+        gcc git autoconf automake \
         libffi-dev libtool dpkg \
         gsl-bin zlib1g-dev libboost-all-dev \
+        librocksdb-dev liblz4-dev \
+        libgflags-dev libsnappy-dev libbz2-dev \
         nano vim \
         golang-1.10
 RUN apt-get install -y --no-install-recommends redis-server
 RUN pip3 install --upgrade setuptools wheel
 RUN pip3 install virtualenv
 RUN pip3 install circus
+RUN pip3 install rocks
 
 # Install Mongo (TODO put this in cilantro_full in the long term...this is just for rapid iterations)
 RUN apt-get update \
