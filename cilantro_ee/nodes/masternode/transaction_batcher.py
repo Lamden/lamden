@@ -233,7 +233,10 @@ class TransactionBatcher(Worker):
         self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(0).encode())
 
-    def serve(self):
+        self.run()
+
+    def run(self):
+        self.log.notice("Starting TransactionBatcher ...")
         self.tasks.append(self.compose_transactions())
 
         # Start main event loop
@@ -248,7 +251,7 @@ class TransactionBatcher(Worker):
 
     def _connect_dealer_ipc(self):
         self.log.notice("Connecting to BA's ROUTER socket with a DEALER using"
-                        "ip {}, port {}".format(self.ipc_ip, self.ipc_port))
+                        " ip {}, port {}".format(self.ipc_ip, self.ipc_port))
         self.ipc_dealer.connect(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
     def handle_ipc_msg(self, frames):
@@ -278,15 +281,16 @@ class TransactionBatcher(Worker):
                            "socket. Ignoring the msg {}".format(type(msg), msg))
 
     async def _wait_until_ready(self):
-        await asyncio.sleep(0)
+        await asyncio.sleep(1)
         self._connect_dealer_ipc()
+        await asyncio.sleep(3)
         while not self._ready:
-            await asyncio.sleep(0)
+            await asyncio.sleep(1)
 
     async def compose_transactions(self):
         await self._wait_until_ready()
 
-        self.log.notice("Starting TransactionBatcher ...")
+        self.log.notice("TransactionBatcher is ready to send transactions ...")
 
         enc_fltr = TRANSACTION_FILTERS[0].encode()
 
