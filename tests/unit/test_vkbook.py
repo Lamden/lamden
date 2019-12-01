@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
 from contracting.client import ContractingClient
 
 
@@ -117,5 +117,22 @@ class TestVKBook(TestCase):
 
         v = VKBook(masternodes, delegates, stamps = stamps, nonces = nonces, debug = False)
         self.assertEqual(v.delegates[0], dl)
+
+    def test_vkbook(self):
+        masternodes = ['a', 'b', 'c']
+        delegates = ['d', 'e', 'f']
+        stamps = False
+        nonces = False
+
+        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces)
+
+        self.assertEqual(1, v.masternode_quorum_min)
+        self.assertEqual(v.masternodes, masternodes)
+
+
+    def test_phonebook(self):
+        self.assertEqual(2, PhoneBook.masternode_quorum_min)
+        self.assertNotEqual(PhoneBook.masternodes, None)
+
 
 
