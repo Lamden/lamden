@@ -212,6 +212,7 @@ class RateLimitingBatcher:
         return mtype, msg
 
 
+
 class TransactionBatcher(Worker):
     def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_ID, ipc_port=IPC_PORT, *args, **kwargs):
         super().__init__(signing_key=signing_key, *args, **kwargs)
@@ -225,6 +226,10 @@ class TransactionBatcher(Worker):
                                            MAX_TXN_SUBMISSION_DELAY)
 
         self._ready = False
+
+        self.driver = NonceManager()
+
+# Are we even using this anymore?
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)

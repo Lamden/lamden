@@ -50,7 +50,8 @@ class CapnpImpl:
             MessageType.LATEST_BLOCK_HASH_REPLY: self.signals_capnp.LatestBlockHashReply,
             MessageType.IP_FOR_VK_REQUEST: self.signals_capnp.IPForVKRequest,
             MessageType.IP_FOR_VK_REPLY: self.signals_capnp.IPForVKReply,
-            MessageType.BAD_REQUEST: self.signals_capnp.BadRequest
+            MessageType.BAD_REQUEST: self.signals_capnp.BadRequest,
+            MessageType.ACKNOWLEDGED: self.signals_capnp.Acknowledged,
         }
 
     def get_message(self, msg_type: MessageType, **kwargs):
