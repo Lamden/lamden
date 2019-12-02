@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants import system_config
 
 import hashlib
@@ -164,7 +164,7 @@ class MasterStorage:
 
 
 class DistributedMasterStorage(MasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=VKBook()):
         super().__init__(config_path=config_path)
 
         self.distribute_writes = distribute_writes
@@ -323,7 +323,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block_dict = {
             'blockHash': block_hash,
             'blockNum': current_block_num,
-            'blockOwners': [m for m in PhoneBook.masternodes],
+            'blockOwners': [m for m in self.vkbook.masternodes],
             'prevBlockHash': last_hash,
             'subBlocks': [s for s in sub_blocks]
         }

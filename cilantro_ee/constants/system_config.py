@@ -1,6 +1,10 @@
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 import math
 
+m, d = sync.get_masternodes_and_delegates_from_constitution()
+sync.submit_vkbook(m, d)
+PhoneBook = VKBook()
 
 POW_COMPLEXITY = ''  # More '0's means more complicated POWs. Empty string basically disables POW
 

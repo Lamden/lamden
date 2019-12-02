@@ -1,6 +1,6 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 import capnp
 import os
 from cilantro_ee.messages import capnp as schemas
@@ -14,6 +14,7 @@ class RewardManager:
     def __init__(self, driver=ContractDriver(), client=ContractingClient()):
         self.driver = driver
         self.client = client
+        self.vkbook = VKBook()
 
         self.stamp_contract = self.client.get_contract('stamp_cost')
         self.reward_contract = self.client.get_contract('rewards')
@@ -27,8 +28,8 @@ class RewardManager:
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
         pending_rewards = self.get_pending_rewards()
 
-        masters = PhoneBook.masternodes
-        delegates = PhoneBook.delegates
+        masters = self.vkbook.masternodes
+        delegates = self.vkbook.delegates
 
         master_reward = (master_ratio * pending_rewards) / len(masters)
         delegate_reward = (delegate_ratio * pending_rewards) / len(delegates)
