@@ -1,4 +1,4 @@
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.containers.merkle_tree import MerkleTree
@@ -42,7 +42,7 @@ class SBCIndexGreaterThanPossibleError(Exception):
     pass
 
 class SubBlockGroup:
-    def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
+    def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
 
@@ -270,6 +270,7 @@ class BlockContender:
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
+        self.vkbook = VKBook()
 
     def reset(self):
         # Set old_input_hashes before we reset all the data
@@ -315,7 +316,7 @@ class BlockContender:
         if len(self.sb_groups) < NUM_SB_PER_BLOCK:
             return 0
 
-        cur_quorum = PhoneBook.delegate_quorum_max
+        cur_quorum = self.vkbook.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
 

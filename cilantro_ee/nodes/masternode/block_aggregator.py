@@ -14,6 +14,7 @@ from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.services.storage.vkbook import VKBook
 import math, asyncio, zmq, time
 
 
@@ -40,8 +41,9 @@ class BlockAggregator(Worker):
     def __init__(self, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockAggregator[{}]".format(self.verifying_key[:8]))
+        self.vkbook = VKBook()
 
-        assert self.verifying_key in PhoneBook.masternodes, "not a part of VKBook"
+        assert self.verifying_key in self.vkbook.masternodes, "not a part of VKBook"
 
         self.ip = ip
         self.ipc_ip = ipc_ip
@@ -58,11 +60,11 @@ class BlockAggregator(Worker):
 
         self._is_catchup_done = False
 
-        self.min_quorum = PhoneBook.delegate_quorum_min
-        self.max_quorum = PhoneBook.delegate_quorum_max
+        self.min_quorum = self.vkbook.delegate_quorum_min
+        self.max_quorum = self.vkbook.delegate_quorum_max
         self.cur_quorum = 0
 
-        self.my_mn_idx = PhoneBook.masternodes.index(self.verifying_key)
+        self.my_mn_idx = self.vkbook.masternodes.index(self.verifying_key)
         self.my_sb_idx = self.my_mn_idx % NUM_SB_BUILDERS
 
         self.curr_block_hash = self.state.get_latest_block_hash()
@@ -134,27 +136,27 @@ class BlockAggregator(Worker):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
-        self.log.info('connecting to masters: {}'.format(PhoneBook.masternodes))
-        self.log.info('connecting to delegates: {}'.format(PhoneBook.delegates))
+        self.log.info('connecting to masters: {}'.format(self.vkbook.masternodes))
+        self.log.info('connecting to delegates: {}'.format(self.vkbook.delegates))
 
         # Listen to masters for _new block notifs and state update requests from masters/delegates
-        for vk in PhoneBook.masternodes:
+        for vk in self.vkbook.masternodes:
             if vk != self.verifying_key:
                 self.sub.connect(vk=vk, port=MN_PUB_PORT)
                 # self.router.connect(vk=vk, port=MN_ROUTER_PORT)  # we don't want 2 simultaneous look ups @ overlay server
 
         # Listen to delegates for sub block contenders and state update requests
-        for vk in PhoneBook.delegates:
+        for vk in self.vkbook.delegates:
             self.sub.connect(vk=vk, port=DELEGATE_PUB_PORT)
             # I dont think we to connect to delegates to router here as delegates are already connecting
             # in BlockManager --davis
             # self.router.connect(vk=vk, port=DELEGATE_ROUTER_PORT)
 
-        for vk in PhoneBook.schedulers + PhoneBook.notifiers:
+        for vk in self.vkbook.schedulers + self.vkbook.notifiers:
             self.sub.connect(vk=vk, port=SS_PUB_PORT)
 
         # Listen to masters for new block notifs and state update requests from masters/delegates
-        for vk in PhoneBook.masternodes:
+        for vk in self.vkbook.masternodes:
             if vk != self.verifying_key:
                 self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
