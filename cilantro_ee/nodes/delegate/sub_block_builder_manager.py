@@ -31,7 +31,8 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.crypto.wallet import _verify
-from cilantro_ee.contracts.sync import sync_genesis_contracts
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 import hashlib
 import asyncio, zmq, time, random
 import os
@@ -230,7 +231,12 @@ class SubBlockManager:
         self.log.info("Catching up...")
 
         # Add genesis contracts to state db if needed
-        sync_genesis_contracts()
+        sync.sync_genesis_contracts()
+
+        # Make sure a VKBook exists in state
+        masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(masternodes, delegates)
+
         self.db_handler.start_catchup_process()
 
     # is passing callbacks better way
@@ -356,10 +362,12 @@ class SubBlockBuilderManager(Worker):
         self.ipc_ip =  'sbb-mgr-' + str(os.getpid()) + '-' \
                        + str(random.randint(0, 2**32))
 
-        self.mn_quorum_min = PhoneBook.masternode_quorum_min
+        self.vkbook = VKBook()
+
+        self.mn_quorum_min = self.vkbook.masternode_quorum_min
         self.mn_ready_count = 0
         self.masternodes_ready = set()
-        self.masternodes = PhoneBook.masternodes
+        self.masternodes = self.vkbook.masternodes
 
         self.sb_mapper = BlockSubBlockMapper(self.masternodes)
         self.sb_builders = {}  # index -> process

@@ -18,7 +18,7 @@ from cilantro_ee.nodes.catchup import CatchupManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.services.storage.state import MetaDataStorage
-
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
@@ -186,12 +186,15 @@ class BlockManager(Worker):
         self.ip = ip
         self.sb_builders = {}  # index -> process
         # raghu todo - delete this and remove sb_index related functionality
-        self.sb_index = PhoneBook.delegates.index(self.wallet.verifying_key().hex()) % NUM_SB_BUILDERS
+
+        self.vkbook = VKBook()
+
+        self.sb_index = self.vkbook.delegates.index(self.wallet.verifying_key().hex()) % NUM_SB_BUILDERS
 
         self.sbb_not_ready_count = NUM_SB_BUILDERS
 
         self.db_state = DBState()
-        self.my_quorum = PhoneBook.masternode_quorum_min
+        self.my_quorum = self.vkbook.masternode_quorum_min
         self._pending_work_at_sbb = 0
         self._masternodes_ready = set()
         self.start_sub_blocks = 0
@@ -291,7 +294,7 @@ class BlockManager(Worker):
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
-        for vk in PhoneBook.masternodes:
+        for vk in self.vkbook.masternodes:
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
 
@@ -370,7 +373,7 @@ class BlockManager(Worker):
                 return
 
             self._masternodes_ready.add(sender)
-            if len(self._masternodes_ready) == PhoneBook.masternode_quorum_min:
+            if len(self._masternodes_ready) == self.vkbook.masternode_quorum_min:
                 self.send_start_to_sbb()
 
         # Process block notification messages
