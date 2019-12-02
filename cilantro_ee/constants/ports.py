@@ -30,3 +30,5 @@ SBB_PORT_START = 10022   # only in use when witnesses are present in system (not
 # ---------------------------------------------------------------
 SS_ROUTER_PORT = 10030
 SS_PUB_PORT = 10031
+
+OVERLAY_SERVER = 10777

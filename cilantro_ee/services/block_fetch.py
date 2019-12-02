@@ -151,9 +151,15 @@ class BlockFetcher:
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.top.get_latest_block_number()
 
+        print('{} to {}'.format(current_height, latest_block_stored))
+
         while current_height < latest_block_stored:
+
             await self.fetch_blocks(current_height)
             current_height = await self.find_missing_block_indexes()
+            print('current height now: {}'.format(current_height))
+
+        print('done')
 
     async def sync_blocks_with_state(self):
         if self.blocks is None:
@@ -168,6 +174,11 @@ class BlockFetcher:
             block_dict = self.blocks.get_block(last_state_block_num)
 
             self.state.update_with_block(block_dict)
+
+    async def is_caught_up(self):
+        current_height = await self.find_missing_block_indexes()
+        latest_block_stored = self.top.get_latest_block_number()
+        return current_height >= latest_block_stored
 
 # struct BlockData {
 #     blockHash @0 :Data;

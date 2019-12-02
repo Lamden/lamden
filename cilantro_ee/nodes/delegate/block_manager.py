@@ -27,9 +27,11 @@ from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
-
+from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
+from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.protocol.overlay.sync_client import OverlayClientSync
 
 from cilantro_ee.core.crypto.wallet import _verify
 from cilantro_ee.contracts.sync import sync_genesis_contracts
@@ -79,7 +81,6 @@ class SubBlocks:
     def get_input_hashes_sorted(self):
         sb_hashes = []
         num_sbs = len(self.sbs)
-
         for i in range(num_sbs):
             sb = self.sbs[i]
             sb_hashes.append(sb.inputHash.hex())
@@ -208,6 +209,14 @@ class BlockManager(Worker):
 
         self.driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
+
+        self.overlay_client = OverlayClientSync(ctx=self.zmq_ctx)
+        self.socket_book = SocketBook(client=self.overlay_client, phonebook_function=PhoneBook.contract.get_masternodes)
+        self.block_fetcher = BlockFetcher(wallet=self.wallet,
+                                          ctx=self.zmq_ctx,
+                                          blocks=None,
+                                          state=self.driver,
+                                          masternode_sockets=self.socket_book)
         self.run()
 
     def _thicc_log(self):
@@ -247,6 +256,7 @@ class BlockManager(Worker):
             secure=True,
         )
         # self.router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
+
         self.router.setsockopt(zmq.IDENTITY, self.verifying_key.encode())
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
         self.tasks.append(self.router.add_handler(self.handle_router_msg))
@@ -304,13 +314,17 @@ class BlockManager(Worker):
     async def catchup_db_state(self):
         # do catch up logic here
         await asyncio.sleep(6)  # so pub/sub connections can complete
-        assert self.db_state.catchup_mgr, "Expected catchup_mgr initialized at this point"
         self.log.info("Catching up...")
 
+# Seems similar to block agg.
         # Add genesis contracts to state db if needed
+        # sync_genesis_contracts()
+        # await self.block_fetcher.sync()
         sync_genesis_contracts()
-
+        self.log.info('done syncing contracts')
         self.db_state.catchup_mgr.run_catchup()
+
+        #await self.block_fetcher.sync()
 
     def start_sbb_procs(self):
         for i in range(NUM_SB_BUILDERS):
@@ -396,6 +410,11 @@ class BlockManager(Worker):
             self.send_updated_db_msg()
 
     def set_catchup_done(self):
+        res = asyncio.get_event_loop().run_until_complete(self.block_fetcher.is_caught_up())
+        if res:
+            self.db_state.is_catchup_done = True
+            self.send_start_to_sbb()
+
         if not self.db_state.is_catchup_done:
             self.db_state.is_catchup_done = True
             self.send_start_to_sbb()
@@ -408,16 +427,6 @@ class BlockManager(Worker):
 
     def is_sbb_ready(self):
         return self.sbb_not_ready_count == 0
-
-    def recv_block_data_reply(self, reply):
-        # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.recv_block_data_reply(reply):
-            self.set_catchup_done()
-
-    def recv_block_idx_reply(self, sender, reply):
-        # will it block? otherwise, it may not work
-        if self.db_state.catchup_mgr.recv_block_idx_reply(sender, reply):
-            self.set_catchup_done()
 
     def recv_block_notif(self, block):
         self.db_state.is_catchup_done = False
@@ -433,12 +442,6 @@ class BlockManager(Worker):
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, signer, timestamp))
             return
-
-        if msg_type == MessageType.BLOCK_INDEX_REPLY:
-            self.recv_block_idx_reply(sender, msg)
-
-        elif msg_type == MessageType.BLOCK_DATA:
-            self.recv_block_data_reply(msg)
 
     def _get_new_block_hash(self):
         if not self.db_state.my_sub_blocks.is_quorum():
