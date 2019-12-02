@@ -48,10 +48,6 @@ class SocketAuthenticator:
 
         self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
 
-    # Loads a key from a hex string
-    def load_key(self, vk: str):
-        pass
-
     def add_verifying_key(self, vk: bytes):
         # Convert to bytes if hex string
         if isinstance(vk, str):
@@ -76,7 +72,6 @@ class SocketAuthenticator:
         sock.curve_publickey = self.wallet.curve_vk
 
         server_pub, _ = load_certificate(str(self.cert_dir / f'{server_vk.hex()}.key'))
-        print(server_pub)
 
         sock.curve_serverkey = server_pub
 

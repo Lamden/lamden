@@ -55,7 +55,7 @@ class TestAuthenticator(TestCase):
         self.s.add_verifying_key(w.verifying_key())
 
         sub = self.s.make_client(zmq.SUB, w.verifying_key())
-        #sub = self.ctx.socket(zmq.SUB)
+
         sub.setsockopt(zmq.SUBSCRIBE, b'')
         sub.connect('inproc://test1')
 
@@ -69,6 +69,34 @@ class TestAuthenticator(TestCase):
         )
 
         loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
+        _, msg = loop.run_until_complete(tasks)
 
-        print(res)
+        self.assertEqual(msg, b'hi')
+
+    def test_make_server_works(self):
+        w = Wallet()
+
+        pub = self.s.make_server(zmq.PUB)
+        pub.setsockopt(zmq.LINGER, 1000)
+        pub.bind('inproc://test1')
+
+        self.s.add_verifying_key(w.verifying_key())
+
+        sub = self.s.make_client(zmq.SUB, w.verifying_key())
+
+        sub.setsockopt(zmq.SUBSCRIBE, b'')
+        sub.connect('inproc://test1')
+
+        async def get():
+            msg = await sub.recv()
+            return msg
+
+        tasks = asyncio.gather(
+            pub.send(b'hi'),
+            get()
+        )
+
+        loop = asyncio.get_event_loop()
+        _, msg = loop.run_until_complete(tasks)
+
+        self.assertEqual(msg, b'hi')
