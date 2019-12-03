@@ -36,7 +36,7 @@ class TestCanonicalCoding(TestCase):
     def test_random_subblock_converts_successfully(self):
         sb = random_txs.random_block().subBlocks[0].to_dict()
 
-        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockIdx', 'transactions']
+        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockNum', 'transactions']
 
         sorted_sb = canonical.format_dictionary(sb)
         sorted_sb_keys = list(sorted_sb.keys())
@@ -44,7 +44,7 @@ class TestCanonicalCoding(TestCase):
             self.assertEqual(sorted_sb_keys[i], expected_order[i])
 
     def test_random_subblocks_all_convert_successfully_at_top_level(self):
-        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockIdx', 'transactions']
+        expected_order = ['inputHash', 'merkleLeaves', 'merkleRoot', 'signatures', 'subBlockNum', 'transactions']
 
         block = random_txs.random_block()
         sbs = [block.subBlocks[i].to_dict() for i in range(len(block.subBlocks))]

@@ -6,6 +6,8 @@ from cilantro_ee.core.crypto.wallet import Wallet
 import asyncio
 from cilantro_ee.core.sockets.services import _socket, get
 from cilantro_ee.core.messages.message import MessageType, Message
+from cilantro_ee.contracts import sync
+from cilantro_ee.services.storage.vkbook import VKBook
 
 
 async def stop_server(s, timeout):
@@ -24,6 +26,9 @@ class TestOverlayServer(TestCase):
         self.loop.close()
 
     def test_serve(self):
+        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(m, d, overwrite=True)
+
         w1 = Wallet()
         o = OverlayServer(
             socket_id=_socket('tcp://127.0.0.1:10999'),
@@ -32,11 +37,9 @@ class TestOverlayServer(TestCase):
             ip='127.0.0.1',
             peer_service_port=10001,
             event_publisher_port=10002,
-            bootnodes=[],
-            mn_to_find=[],
-            del_to_find=[],
-            initial_mn_quorum=0,
-            initial_del_quorum=0)
+            bootnodes=['13.57.241.138', '52.53.252.151'],
+            vkbook=VKBook(),
+        )
 
         tasks = asyncio.gather(
             o.serve(),

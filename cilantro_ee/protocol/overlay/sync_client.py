@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.overlay.client import OverlayClient
+from cilantro_ee.services.overlay.client import OverlayClient
 
 import time
 import asyncio

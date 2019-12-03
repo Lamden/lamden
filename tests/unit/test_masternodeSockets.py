@@ -1,9 +1,10 @@
 from unittest import TestCase
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import SocketStruct, _socket
+from cilantro_ee.contracts import sync
 
 import zmq
 import zmq.asyncio
@@ -60,12 +61,15 @@ class TestSocketBook(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_refresh(self):
-        PhoneBook = VKBook(masternodes=['stu', 'raghu'],
+        sync.submit_vkbook(masternodes=['stu', 'raghu'],
                            delegates=['tejas', 'alex', 'steve'],
                            num_boot_mns=2,
                            num_boot_del=3,
                            stamps=True,
-                           nonces=True)
+                           nonces=True,
+                           overwrite=True)
+
+        PhoneBook = VKBook()
 
         w1 = Wallet()
         p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
@@ -85,12 +89,15 @@ class TestSocketBook(TestCase):
         self.assertDictEqual(masternodes.sockets, expected)
 
     def test_refresh_remove_old_nodes(self):
-        PhoneBook = VKBook(masternodes=['stu', 'raghu'],
+        sync.submit_vkbook(masternodes=['stu', 'raghu'],
                            delegates=['tejas', 'alex', 'steve'],
                            num_boot_mns=2,
                            num_boot_del=3,
                            stamps=True,
-                           nonces=True)
+                           nonces=True,
+                           overwrite=True)
+
+        PhoneBook = VKBook()
 
         w1 = Wallet()
         p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
@@ -119,12 +126,15 @@ class TestSocketBook(TestCase):
 
         self.assertDictEqual(masternodes.sockets, expected)
 
-        PhoneBook = VKBook(masternodes=['stu', 'tejas'],
-                           delegates=['raghu', 'alex', 'steve'],
+        sync.submit_vkbook(masternodes=['stu', 'raghu'],
+                           delegates=['tejas', 'alex', 'steve'],
                            num_boot_mns=2,
                            num_boot_del=3,
                            stamps=True,
-                           nonces=True)
+                           nonces=True,
+                           overwrite=True)
+
+        PhoneBook = VKBook()
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(masternodes.refresh())

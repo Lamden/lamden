@@ -2,8 +2,22 @@ import glob
 import os
 from contracting.client import ContractingClient
 from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.constants import conf
+import cilantro_ee
+import json
 
 log = get_logger("sync")
+
+# need to refactor this code of vkbook
+PUBLIC_JSON_DIR = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/public'
+
+
+def read_public_constitution(filename) -> dict:
+    fpath = PUBLIC_JSON_DIR + '/' + filename
+    assert os.path.exists(fpath), "No public constitution file found at path {}".format(fpath)
+    with open(fpath) as f:
+        return json.load(f)
+
 
 def contract_name_from_file_path(p: str) -> str:
     directories = p.split('/')
@@ -60,3 +74,25 @@ def submit_contract_with_construction_args(name, directory=os.path.dirname(__fil
         client.submit(code, name=name, constructor_args=args)
 
     client.raw_driver.commit()
+
+
+def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE):
+    book = read_public_constitution(file)
+    masternodes = [node['vk'] for node in book['masternodes']]
+    delegates = [node['vk'] for node in book['delegates']]
+    return masternodes, delegates
+
+
+def submit_vkbook(masternodes, delegates, num_boot_mns=1, num_boot_del=1, stamps=True, nonces=False, overwrite=False):
+    if not overwrite:
+        c = ContractingClient()
+        contract = c.get_contract('vkbook')
+        if contract is not None:
+            return
+
+    submit_contract_with_construction_args('vkbook', args={'masternodes': masternodes,
+                                                           'delegates': delegates,
+                                                           'num_boot_mns': num_boot_mns,
+                                                           'num_boot_del': num_boot_del,
+                                                           'stamps': stamps,
+                                                           'nonces': nonces})

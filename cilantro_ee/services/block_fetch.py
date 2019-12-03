@@ -1,5 +1,5 @@
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.crypto.wallet import Wallet
@@ -12,6 +12,7 @@ import asyncio
 from collections import Counter
 import time
 
+PhoneBook = VKBook()
 
 class ConfirmationCounter(Counter):
     def top_item(self):

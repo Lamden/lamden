@@ -11,15 +11,15 @@ class TestTopBlockManager(TestCase):
         self.t.driver.reset_cache()
 
     def test_get_latest_block_hash_none(self):
-        self.assertEqual(self.t.get_latest_block_hash(), b'x/00' * 32)
+        self.assertEqual(self.t.get_latest_block_hash(), b'\x00' * 32)
 
     def test_get_latest_block_hash_already_exists(self):
-        self.t.driver.set(BLOCK_HASH_KEY, b'x/AA' * 32)
-        self.assertEqual(self.t.get_latest_block_hash(), b'x/AA' * 32)
+        self.t.driver.set(BLOCK_HASH_KEY, b'\xAA' * 32)
+        self.assertEqual(self.t.get_latest_block_hash(), b'\xAA' * 32)
 
     def test_set_latest_block_hash(self):
-        self.t.set_latest_block_hash(b'x/BB' * 32)
-        self.assertEqual(self.t.get_latest_block_hash(), b'x/BB' * 32)
+        self.t.set_latest_block_hash(b'\xBB' * 32)
+        self.assertEqual(self.t.get_latest_block_hash(), b'\xBB' * 32)
 
     def test_get_latest_block_num_none(self):
         self.assertEqual(self.t.get_latest_block_number(), 0)

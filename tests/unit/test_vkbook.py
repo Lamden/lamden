@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from contracting.client import ContractingClient
 
 
