@@ -69,12 +69,15 @@ async def pause(f, time):
 
 class TestBlockFetcher(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.ctx = zmq.asyncio.Context()
         self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
         self.t.driver.flush()
+        self.loop.close()
 
     def test_get_latest_block_height(self):
         w = Wallet()
