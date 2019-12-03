@@ -1,4 +1,4 @@
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants import conf
 from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
@@ -15,18 +15,24 @@ class OverlayServer(AsyncInbox):
     def __init__(self, socket_id: SocketStruct,
                  wallet: Wallet,
                  ctx: zmq.Context,
+                 vkbook: VKBook,
                  ip=conf.HOST_IP,
                  peer_service_port=DHT_PORT,
                  event_publisher_port=EVENT_PORT,
                  bootnodes=conf.BOOTNODES,
-                 initial_mn_quorum=PhoneBook.num_boot_masternodes,
-                 initial_del_quorum=PhoneBook.num_boot_delegates,
-                 mn_to_find=PhoneBook.masternodes,
-                 del_to_find=PhoneBook.delegates,
                  linger=2000,
                  poll_timeout=2000):
 
+        assert len(bootnodes) > 1, 'No bootnodes provided.'
+
         super().__init__(socket_id, wallet, ctx, linger, poll_timeout)
+
+        self.vkbook = vkbook
+
+        self.initial_mn_quorum = self.vkbook.num_boot_masternodes
+        self.initial_del_quorum = self.vkbook.num_boot_delegates
+        self.mn_to_find = self.vkbook.masternodes
+        self.del_to_find = self.vkbook.delegates
 
         self.network_address = 'tcp://{}:{}'.format(conf.HOST_IP, DHT_PORT)
 
@@ -36,10 +42,10 @@ class OverlayServer(AsyncInbox):
                                peer_service_port=peer_service_port,
                                event_publisher_port=event_publisher_port,
                                bootnodes=bootnodes,
-                               initial_mn_quorum=initial_mn_quorum,
-                               initial_del_quorum=initial_del_quorum,
-                               mn_to_find=mn_to_find,
-                               del_to_find=del_to_find)
+                               initial_mn_quorum=self.initial_mn_quorum,
+                               initial_del_quorum=self.initial_del_quorum,
+                               mn_to_find=self.mn_to_find,
+                               del_to_find=self.del_to_find)
 
         self.log = get_logger('Overlay.Server')
 

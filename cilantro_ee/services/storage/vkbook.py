@@ -29,7 +29,7 @@ class VKBook:
 
     @property
     def masternodes(self):
-        return self.contract.get_masternodes()
+        return self.contract.masternode_list.get()
 
     @property
     def delegates(self):
