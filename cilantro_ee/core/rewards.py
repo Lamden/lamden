@@ -3,7 +3,7 @@ from contracting.db.driver import ContractDriver
 from cilantro_ee.services.storage.vkbook import VKBook
 import capnp
 import os
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
@@ -11,10 +11,10 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, driver=ContractDriver(), client=ContractingClient()):
+    def __init__(self, vkbook:VKBook, driver=ContractDriver(), client=ContractingClient()):
+        self.vkbook = vkbook
         self.driver = driver
         self.client = client
-        self.vkbook = VKBook()
 
         self.stamp_contract = self.client.get_contract('stamp_cost')
         self.reward_contract = self.client.get_contract('rewards')
