@@ -4,20 +4,30 @@ import math
 
 class VKBook:
     def __init__(self, client=ContractingClient()):
-        self.client = client
-        self.contract = self.client.get_contract('vkbook')
+        self.reload(client)
+
+    def reload(self, client=ContractingClient()):
+        self.contract = client.get_contract('vkbook')
 
         assert self.contract is not None, 'VKBook not in state.'
 
         self.masternode_quorum_max = math.ceil(len(self.masternodes) * 2 / 3)
         self.delegate_quorum_max = math.ceil(len(self.delegates) * 2 / 3)
+        self.witness_quorum_max = math.ceil(len(self.witnesses) * 2 / 3)
+        self.notifier_quorum_max = math.ceil(len(self.notifiers) * 2 / 3)
+        self.scheduler_quorum_max = math.ceil(len(self.schedulers) * 2 / 3)
 
-        num_boot_mns = self.contract.get_num_boot_masternodes()
-        self.masternode_quorum_min = min(self.masternode_quorum_max, num_boot_mns)
+        self.masternode_quorum_min = min(self.masternode_quorum_max,
+                                      self.contract.get_masternode_quorum_min())
+        self.delegate_quorum_min = min(self.delegate_quorum_max,
+                                      self.contract.get_delegate_quorum_min())
+        self.witness_quorum_min = min(self.witness_quorum_max,
+                                      self.contract.get_witness_quorum_min())
+        self.notifier_quorum_min = min(self.notifier_quorum_max,
+                                      self.contract.get_notifier_quorum_min())
+        self.scheduler_quorum_min = min(self.scheduler_quorum_max,
+                                      self.contract.get_scheduler_quorum_min())
 
-        num_boot_del = self.contract.get_num_boot_delegates()
-        self.delegate_quorum_min = min(self.delegate_quorum_max, num_boot_del)
-        self.quorum_min = self.masternode_quorum_min + self.delegate_quorum_min
 
     @property
     def stamps_enabled(self):
@@ -29,7 +39,7 @@ class VKBook:
 
     @property
     def masternodes(self):
-        return self.contract.masternode_list.get()
+        return self.contract.get_masternodes()
 
     @property
     def delegates(self):
@@ -48,17 +58,5 @@ class VKBook:
         return self.contract.get_schedulers()
 
     @property
-    def state_sync(self):
+    def core_nodes(self):
         return self.masternodes + self.delegates
-
-    @property
-    def all(self):
-        return self.masternodes + self.delegates + self.witnesses
-
-    @property
-    def num_boot_masternodes(self):
-        return self.contract.get_num_boot_masternodes()
-
-    @property
-    def num_boot_delegates(self):
-        return self.contract.get_num_boot_delegates()

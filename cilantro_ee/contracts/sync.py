@@ -82,17 +82,42 @@ def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE)
     delegates = [node['vk'] for node in book['delegates']]
     return masternodes, delegates
 
-
-def submit_vkbook(masternodes, delegates, num_boot_mns=1, num_boot_del=1, stamps=True, nonces=False, overwrite=False):
+def submit_vkbook(vkbook_args: dict, overwrite=False):
     if not overwrite:
         c = ContractingClient()
         contract = c.get_contract('vkbook')
         if contract is not None:
             return
 
-    submit_contract_with_construction_args('vkbook', args={'masternodes': masternodes,
-                                                           'delegates': delegates,
-                                                           'num_boot_mns': num_boot_mns,
-                                                           'num_boot_del': num_boot_del,
-                                                           'stamps': stamps,
-                                                           'nonces': nonces})
+    submit_contract_with_construction_args('vkbook', args=vkbook_args)
+
+def extract_sub_dict_values(book, key):
+    if key in book:
+        sb = book[key]
+        vk_list = sb['vk_list'] if 'vk_list' in sb else []
+        num_vks = len(vk_list)
+        min_quorum = sb['min_quorum'] if 'min_quorum' in sb else num_vks
+        if min_quorum > num_vks:
+            log.warning(f"min quorum {min_quorum} is larger than number of vks"
+                        f" {num_vks} for {key}. Reducing it to num of vks")
+            min_quorum = num_vks
+    else:
+        vk_list = []
+        min_quorum = 0
+    return vk_list, min_quorum
+  
+
+def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
+    book = read_public_constitution(file)
+    book['masternodes'], book['masternode_min_quorum'] = \
+                              extract_sub_dict_values(book, 'masternodes')
+    book['delegates'], book['delegate_min_quorum'] = \
+                              extract_sub_dict_values(book, 'delegates')
+    book['witnesses'], book['witness_min_quorum'] = \
+                              extract_sub_dict_values(book, 'witnesses')
+    book['notifiers'], book['notifier_min_quorum'] = \
+                              extract_sub_dict_values(book, 'notifiers')
+    book['schedulers'], book['scheduler_min_quorum'] = \
+                              extract_sub_dict_values(book, 'schedulers')
+
+    submit_vkbook(book, overwrite)
