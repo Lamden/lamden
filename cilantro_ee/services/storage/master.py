@@ -289,14 +289,14 @@ class DistributedMasterStorage(MasterStorage):
 
 
 class CilantroStorageDriver(DistributedMasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=system_config.PhoneBook):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0]):
         self.state_id = ObjectId(OID)
         self.log = get_logger("StorageDriver")
 
         self.block_index_delta = defaultdict(dict)
         self.send_req_blk_num = 0
 
-        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, vkbook=vkbook)
+        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path)
 
     def store_block(self, sub_blocks):
         last_block = self.get_last_n(1, self.INDEX)[0]
@@ -332,7 +332,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
 
         #if not self.distribute_writes:
-        #    block_data = BlockData.create(block_hash, last_hash, PhoneBook.masternodes, current_block_num, sub_blocks)
+        #    block_data = BlockData.create(block_hash, last_hash, self.vkbook.masternodes, current_block_num, sub_blocks)
 
         successful_storage = self.evaluate_wr(entry=block_dict)
 

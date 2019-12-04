@@ -12,7 +12,7 @@ def start_redis(conf_path):
         print("Creating Redis directory at {}".format(REDIS_DIR))
         os.makedirs(REDIS_DIR, exist_ok=True)
 
-    print("Ledis using data directory: {}".format(REDIS_DIR))
+    print("Redis using data directory: {}".format(REDIS_DIR))
 
     if conf_path is None:
         print("Starting redis-server with no conf!")

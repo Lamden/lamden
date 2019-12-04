@@ -29,8 +29,8 @@ class OverlayServer(AsyncInbox):
 
         self.vkbook = vkbook
 
-        self.initial_mn_quorum = self.vkbook.num_boot_masternodes
-        self.initial_del_quorum = self.vkbook.num_boot_delegates
+        self.initial_mn_quorum = self.vkbook.masternode_quorum_min
+        self.initial_del_quorum = self.vkbook.delegate_quorum_min
         self.mn_to_find = self.vkbook.masternodes
         self.del_to_find = self.vkbook.delegates
 

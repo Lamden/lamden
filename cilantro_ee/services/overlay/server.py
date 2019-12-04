@@ -79,8 +79,8 @@ class OverlayServer:
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
                                   bootnodes=conf.BOOTNODES,
-                                  initial_mn_quorum=self.vkbook.num_boot_masternodes,
-                                  initial_del_quorum=self.vkbook.num_boot_delegates,
+                                  initial_mn_quorum=self.vkbook.masternode_quorum_min,
+                                  initial_del_quorum=self.vkbook.delegate_quorum_min,
                                   mn_to_find=self.vkbook.masternodes,
                                   del_to_find=self.vkbook.delegates)
 
@@ -123,7 +123,9 @@ class OverlayServer:
         return "Unsupported API"
 
     def is_valid_vk(self, vk):
-        return vk in PhoneBook.all
+        return vk in self.vkbook.masternodes or \
+               vk in self.vkbook.delegates or \
+               vk in self.vkbook.witnesses 
 
     # seems to be a reimplementation of peer services
     @async_reply
