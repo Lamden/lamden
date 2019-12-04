@@ -390,7 +390,8 @@ class CatchupManager:
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         self.log.info(sender_bhash)
-        valid_node = vk.decode() in PhoneBook.state_sync
+        core_nodes = self.vkbook.masternodes + self.vkbook.delegates
+        valid_node = vk.decode() in core_nodes
 
         if valid_node:
 

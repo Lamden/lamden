@@ -9,10 +9,11 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.keys import Keys
 from cilantro_ee.core.logger import get_logger
-from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from collections import defaultdict
 from cilantro_ee.constants import conf
 
+PhoneBook = VKBook()
 
 class Handshake:
     def __init__(self, vk, ctx):
