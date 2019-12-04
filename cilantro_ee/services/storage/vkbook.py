@@ -11,8 +11,6 @@ class VKBook:
 
         assert self.contract is not None, 'VKBook not in state.'
 
-        print(self.contract.__code__)
-
         self.masternode_quorum_max = math.ceil(len(self.masternodes) * 2 / 3)
         self.delegate_quorum_max = math.ceil(len(self.delegates) * 2 / 3)
         self.witness_quorum_max = math.ceil(len(self.witnesses) * 2 / 3)

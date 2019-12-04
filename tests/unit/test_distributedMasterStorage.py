@@ -20,7 +20,12 @@ class TestDistributedMasterStorage(TestCase):
         self.db.test_hook = False
 
         m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(m, d)
+        sync.submit_vkbook({'masternodes': m,
+                            'delegates': d,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -52,7 +57,12 @@ class TestDistributedMasterStorage(TestCase):
 
     def test_set_mn_id_test_hook_false_master_in_active_masters(self):
         m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(m, d)
+        sync.submit_vkbook({'masternodes': m,
+                            'delegates': d,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -78,7 +88,12 @@ class TestDistributedMasterStorage(TestCase):
 
     def test_build_write_list_returns_all_mns_when_jump_idx_0(self):
         m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(m, d)
+        sync.submit_vkbook({'masternodes': m,
+                            'delegates': d,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -90,7 +105,12 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+        sync.submit_vkbook({'masternodes': masternodes,
+                            'delegates': delegates,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         big_vkbook = VKBook()
 
@@ -103,7 +123,12 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+        sync.submit_vkbook({'masternodes': masternodes,
+                            'delegates': delegates,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         big_vkbook = VKBook()
 
@@ -159,7 +184,12 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+        sync.submit_vkbook({'masternodes': masternodes,
+                            'delegates': delegates,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
 
         big_vkbook = VKBook()
 
