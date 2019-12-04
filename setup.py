@@ -1,9 +1,17 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 
 __version__ = '0.0.2'
 
 with open("README.md", "r") as fh:
     long_desc = fh.read()
+
+
+class PostInstallCommand(install):
+    """ Triggers post installation boot script to startup node"""
+    def run(self):
+        # boot script here
+        install.run(self)
 
 setup(
     name='cilantro_ee',
@@ -23,6 +31,7 @@ setup(
         'simple-crypt',
         'sanic==19.6.3',
         'pymongo==3.7.2'
+        'rocks'
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
@@ -36,6 +45,9 @@ setup(
     package_data={
         '': [],
         'cilantro_ee': ['cilantro_ee.conf'],
+    },
+    cmdclass ={
+      'install': PostInstallCommand,
     },
     description = "Lamden Blockchain",
     long_description= long_desc,
