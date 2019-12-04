@@ -82,6 +82,7 @@ def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE)
     delegates = [node['vk'] for node in book['delegates']]
     return masternodes, delegates
 
+
 def submit_vkbook(vkbook_args: dict, overwrite=False):
     if not overwrite:
         c = ContractingClient()
@@ -91,6 +92,7 @@ def submit_vkbook(vkbook_args: dict, overwrite=False):
             return
 
     submit_contract_with_construction_args('vkbook', args=vkbook_args)
+
 
 def extract_sub_dict_values(book, key):
     if key in book:
@@ -122,3 +124,7 @@ def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
                               extract_sub_dict_values(book, 'schedulers')
 
     submit_vkbook(book, overwrite)
+
+
+def explicit_sync_genesis_contracts():
+    pass
