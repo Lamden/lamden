@@ -31,7 +31,7 @@ setup(
         'click',
         'simple-crypt',
         'sanic==19.6.3',
-        'pymongo==3.7.2'
+        'pymongo==3.9',
         'rocks'
     ],
     extras_require={
