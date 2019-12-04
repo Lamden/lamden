@@ -8,7 +8,7 @@ from tests import random_txs
 from collections import namedtuple
 import hashlib
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
-from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK, NUM_SB_BUILDERS
+#from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK, NUM_SB_BUILDERS
 import os
 import capnp
 

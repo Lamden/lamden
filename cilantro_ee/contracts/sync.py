@@ -87,6 +87,7 @@ def submit_vkbook(vkbook_args: dict, overwrite=False):
         c = ContractingClient()
         contract = c.get_contract('vkbook')
         if contract is not None:
+            print('already exists')
             return
 
     submit_contract_with_construction_args('vkbook', args=vkbook_args)
