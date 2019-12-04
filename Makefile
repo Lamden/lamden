@@ -31,6 +31,9 @@ clean-temps:
 clean-db:
 	bash ./scripts/clean-dbs.sh
 
+clean-bld:
+	bash ./scripts/clean-bld.sh
+
 clean: clean-logs clean-temps clean-db
 
 dockerbuild:
