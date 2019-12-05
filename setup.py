@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 
 
-__version__ = '0.0.3'
+__version__ = '0.0.4'
 
 with open("README.md", "r") as fh:
     long_desc = fh.read()
@@ -27,12 +27,12 @@ setup(
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
+        'rocks',
         'contracting',
         'click',
         'simple-crypt',
         'sanic==19.6.3',
         'pymongo==3.9',
-        'rocks'
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
