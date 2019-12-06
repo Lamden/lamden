@@ -5,7 +5,8 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
-from cilantro_ee.services.storage.vkbook import VKBook, PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 
 
 class TestRewards(TestCase):
@@ -32,7 +33,17 @@ class TestRewards(TestCase):
             c = f.read()
             self.client.submit(c, name='rewards', owner='election_house')
 
-        self.r = RewardManager()
+        sync.submit_vkbook(masternodes=['stu', 'raghu'],
+                           delegates=['tejas', 'alex', 'steve'],
+                           num_boot_mns=2,
+                           num_boot_del=3,
+                           stamps=True,
+                           nonces=True,
+                           overwrite=True)
+
+        PhoneBook = VKBook()
+
+        self.r = RewardManager(vkbook=PhoneBook)
 
     def tearDown(self):
         self.driver.flush()
@@ -102,13 +113,6 @@ class TestRewards(TestCase):
         self.assertEqual(self.r.reward_ratio, [0.5, 0.5, 0, 0])
 
     def test_issue_rewards_works(self):
-        PhoneBook = VKBook(masternodes=['stu', 'raghu', 'steve'],
-                           delegates=['tejas', 'alex'],
-                           num_boot_mns=3,
-                           num_boot_del=2,
-                           stamps=True,
-                           nonces=True)
-
         self.r.set_pending_rewards(1000)
         self.r.issue_rewards()
 

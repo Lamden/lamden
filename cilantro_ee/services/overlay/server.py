@@ -10,7 +10,7 @@ from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT
 from cilantro_ee.constants import conf
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.sockets.services import _socket, SocketStruct, SocketEncoder
 
 def no_reply(fn):
@@ -55,6 +55,8 @@ class OverlayServer:
         self.wallet = Wallet(seed=sk)
         self.loop = asyncio.get_event_loop()
 
+        self.vkbook = VKBook()
+
         Keys.setup(sk_hex=self.sk)
 
         self.loop = asyncio.get_event_loop()
@@ -77,10 +79,10 @@ class OverlayServer:
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
                                   bootnodes=conf.BOOTNODES,
-                                  initial_mn_quorum=PhoneBook.num_boot_masternodes,
-                                  initial_del_quorum=PhoneBook.num_boot_delegates,
-                                  mn_to_find=PhoneBook.masternodes,
-                                  del_to_find=PhoneBook.delegates)
+                                  initial_mn_quorum=self.vkbook.masternode_quorum_min,
+                                  initial_del_quorum=self.vkbook.delegate_quorum_min,
+                                  mn_to_find=self.vkbook.masternodes,
+                                  del_to_find=self.vkbook.delegates)
 
     def start(self):
         self.loop.run_until_complete(asyncio.ensure_future(
@@ -121,7 +123,9 @@ class OverlayServer:
         return "Unsupported API"
 
     def is_valid_vk(self, vk):
-        return vk in PhoneBook.all
+        return vk in self.vkbook.masternodes or \
+               vk in self.vkbook.delegates or \
+               vk in self.vkbook.witnesses 
 
     # seems to be a reimplementation of peer services
     @async_reply

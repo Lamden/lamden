@@ -1,9 +1,9 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 import capnp
 import os
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
@@ -11,7 +11,8 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, driver=ContractDriver(), client=ContractingClient(), contacts: VKBook=PhoneBook):
+    def __init__(self, vkbook:VKBook, driver=ContractDriver(), client=ContractingClient()):
+        self.vkbook = vkbook
         self.driver = driver
         self.client = client
 
@@ -27,8 +28,8 @@ class RewardManager:
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
         pending_rewards = self.get_pending_rewards()
 
-        masters = PhoneBook.masternodes
-        delegates = PhoneBook.delegates
+        masters = self.vkbook.masternodes
+        delegates = self.vkbook.delegates
 
         master_reward = (master_ratio * pending_rewards) / len(masters)
         delegate_reward = (delegate_ratio * pending_rewards) / len(delegates)

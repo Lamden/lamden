@@ -1,11 +1,10 @@
 from unittest import TestCase
 import unittest
-from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
 from cilantro_ee.services.storage.state import MetaDataStorage
 import json
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.utils.transaction import TransactionBuilder
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
@@ -102,7 +101,7 @@ class TestStateDriver(TestCase):
 
     def test_get_latest_block_hash_with_none_set(self):
         b_hash = self.r.get_latest_block_hash()
-        self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
+        self.assertEqual(b'\x00'*32, b_hash)
 
     def test_get_latest_block_num_with_none_set(self):
         b_num = self.r.get_latest_block_num()

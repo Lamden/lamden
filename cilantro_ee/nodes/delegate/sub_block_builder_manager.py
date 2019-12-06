@@ -16,20 +16,22 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.services.storage.state import MetaDataStorage
 
+from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
 
-from cilantro_ee.constants.system_config import *
+from cilantro_ee.constants.block import BLOCK_HEART_BEAT_INTERVAL, MAX_SUB_BLOCK_BUILDERS
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-
+from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.crypto.wallet import _verify
-from cilantro_ee.contracts.sync import sync_genesis_contracts
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 import hashlib
 import asyncio, zmq, time, random
 import os
@@ -37,7 +39,7 @@ import os
 
 # class to keep track of sub-blocks sent over from my sub-block builders
 class SubBlockHandler:
-    def __init__(self, num_sb_per_block=NUM_SB_PER_BLOCK):
+    def __init__(self, num_sb_per_block):
         self.num_sb_per_block = num_sb_per_block
         self.sbs = {}
 
@@ -48,11 +50,12 @@ class SubBlockHandler:
         return len(self.sbs) == self.num_sb_per_block
 
     def add_sub_block(self, sub_block):
-        sb_idx = sub_block.subBlockIdx % self.num_sb_per_block
-        if sb_idx in self.sbs:
+        sbb_idx = BlockSubBlockMapper.get_builder_index(sub_block.subBlockNum,
+                                                        self.num_sb_per_block)
+        if sbb_idx in self.sbs:
             # todo log it as an issue
             pass
-        self.sbs[sb_idx] = sub_block
+        self.sbs[sbb_idx] = sub_block
 
     def get_sb_hashes_sorted(self):
         sb_hashes = []
@@ -87,8 +90,7 @@ class SubBlockHandler:
 
 
 class BlockNotifData:
-    def __init__(self, block_notif, bn_quorum=BLOCK_NOTIFICATION_QUORUM,
-                 fbn_quorum=FAILED_BLOCK_NOTIFICATION_QUORUM):
+    def __init__(self, block_notif, bn_quorum, fbn_quorum):
         self.block_notif = block_notif
         is_failed = block_notif.which() == "FailedBlock"
         self.quorum_num = fbn_quorum if is_failed else bn_quorum
@@ -107,8 +109,10 @@ class BlockNotifData:
 
 # Keeps track of block notifications from master
 class BlockNotifHandler:
-    def __init__(self):
+    def __init__(self, num_masters):
         self.hard_reset()
+        self.blk_notif_quorum = (num_masters + 1) // 2
+        self.failed_blk_notif_quorum = num_masters - self.blk_notif_quorum + 1
 
     # use this when it has to go to catchup
     def hard_reset(self):
@@ -144,7 +148,8 @@ class BlockNotifHandler:
             # todo add time info to implement timeout
 
         if block_hash not in self.block_notif_data[block_num]:
-            self.block_notif_data[block_num][block_hash] = BlockNotifData(block_notif)
+            self.block_notif_data[block_num][block_hash] = \
+                   BlockNotifData(block_notif, self.blk_notif_quorum, self.failed_blk_notif_quorum)
 
         if self.block_notif_data[block_num][block_hash].add_sender(sender):
             self.quorum_block = block_notif
@@ -201,12 +206,12 @@ class DBHandler:
 
 class SubBlockManager:
     def __init__(self, sk, vk, sb_builder_requests,
-                 min_mn_quorum, num_sb_builders=NUM_SB_BUILDERS):
+                 min_mn_quorum, num_sb_builders):
         self.signing_key = sk
         self.verifying_key = vk
         self.sbb_requests = sb_builder_requests
         self.num_sb_builders = num_sb_builders
-        self.sb_handler = SubBlockHandler()
+        self.sb_handler = SubBlockHandler(num_sb_builders)
         self.bn_handler = BlockNotifHandler()
         self.db_handler = DBHandler()
         self.driver = MetaDataStorage()
@@ -227,7 +232,12 @@ class SubBlockManager:
         self.log.info("Catching up...")
 
         # Add genesis contracts to state db if needed
-        sync_genesis_contracts()
+        sync.sync_genesis_contracts()
+
+        # Make sure a VKBook exists in state
+        masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(masternodes, delegates)
+
         self.db_handler.start_catchup_process()
 
     # is passing callbacks better way
@@ -288,6 +298,7 @@ class SubBlockManager:
                     if block.blockNum % conf.EPOCH_INTERVAL == 0:
                         self.driver.latest_epoch_hash = my_new_block_hash
 
+                # todo - nonce commit is removed. need to fix this
                 self.commit_cur_db()
 
             else:
@@ -317,7 +328,7 @@ class SubBlockManager:
 
 
 class SBBState:
-    def __init__(self, num_sb_builders=NUM_SB_BUILDERS):
+    def __init__(self, num_sb_builders):
         self.num_sb_builders = num_sb_builders
         self.sbb_ready_count = 0
 
@@ -346,17 +357,23 @@ class SubBlockBuilderManager(Worker):
         self.log = get_logger("SBBuilderManager[{}]".format(self.verifying_key[:8]))
 
         self.ip = ip
+        # todo - choose random open port number for additional security
+        # todo - even ipc sockets require zmq handshake
         self.ipc_port = 6967   # hard coded port number right now
-        self.ipc_ip =  'sbb-mgr-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
+        self.ipc_ip =  'sbb-mgr-' + str(os.getpid()) + '-' \
+                       + str(random.randint(0, 2**32))
 
-        self.mn_quorum_min = PhoneBook.masternode_quorum_min
+        self.vkbook = VKBook()
+
+        self.mn_quorum_min = self.vkbook.masternode_quorum_min
         self.mn_ready_count = 0
         self.masternodes_ready = set()
+        self.masternodes = self.vkbook.masternodes
+        num_masters = len(self.masternodes)
 
-        # only initial start up really depends on these two
+        self.sb_mapper = BlockSubBlockMapper(self.masternodes)
         self.sb_builders = {}  # index -> process
-        self.num_sb_builders = NUM_SB_BUILDERS
-        self.sbb_state = SBBState(self.num_sb_builders)
+        self.sbb_state = SBBState(self.sb_mapper.num_sb_builders)
 
         # crp todo - pass in self.log or eliminate logging at this level??
         self.sbb_requests = {
@@ -445,11 +462,14 @@ class SubBlockBuilderManager(Worker):
             self.masternodes_ready.add(sender)
             self.mn_ready_count += 1
 
-    def start_sbb_procs(self, ipc_ip, ipc_port, ip):
-        kwargs={'ipc_ip': ipc_ip, 'ipc_port': ipc_port,
-                'signing_key': self.signing_key, 'ip': self.ip}
-        for i in range(self.num_sb_builders):
+    def start_sbb_procs(self, ipc_ip, ipc_port):
+        sub_list = self.sb_mapper.get_list_of_subscriber_list()
+        kwargs={'signing_key': self.signing_key, 
+                'num_sb_builders': self.sb_mapper.num_sb_builders,
+                'ipc_ip': ipc_ip, 'ipc_port': ipc_port}
+        for i in range(self.sb_mapper.num_sb_builders):
             kwargs['sbb_index'] = i
+            kwargs['sub_list'] = sub_list[i]
             self.sb_builders[i] = LProcess(target=SubBlockBuilder,
                                            name="SBB_Proc-{}".format(i),
                                            kwargs=kwargs)
@@ -458,14 +478,14 @@ class SubBlockBuilderManager(Worker):
             self.sb_builders[i].start()
 
     async def async_setup1(self):
-        self.start_sbb_procs(self.ipc_ip, self.ipc_port, self.ip)
+        self.start_sbb_procs(self.ipc_ip, self.ipc_port)
 
     async def async_setup2(self):
         # first make sure, we have overlay server ready
         await self._wait_until_ready()
 
         # Listen to Masternodes over sub and connect router for catchup communication
-        for vk in PhoneBook.masternodes:
+        for vk in self.masternodes:
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
         # let's wait a bit so connections are established properly
@@ -585,7 +605,7 @@ class SubBlockBuilderManager(Worker):
 
 
     def send_ipc_message(self, msg_type: bytes, msg: bytes):
-        for idx in range(self.num_sb_builders):
+        for idx in range(self.sb_mapper.num_sb_builders):
             self.ipc_router.send_multipart([str(idx).encode(), msg_type, msg])
 
     async def wait_for_work(self):
@@ -613,13 +633,12 @@ class SubBlockBuilderManager(Worker):
         msg_type, msg = Message.get_message_packed(MessageType.COMMIT_CUR_SB)
         self.send_ipc_message(msg_type, msg)
 
-    def xx_send_discord_cur_sb_and_align(self, input_hashes):
-        for i in range(len(input_hashes)):
-            idx = i % self.num_sb_builders
+    def send_discord_cur_sb_and_align(self, sb_numbers, input_hashes):
+        assert len(sb_numbers) == self.sb_mapper.num_sb_builders, "wrong num sb"
+        assert len(input_hashes) == self.sb_mapper.num_sb_builders, "wrong num ih"
+        for i in range(self.sb_mapper.num_sb_builders):
             mtype, msg = Message.get_message_packed(MessageType.DISCORD_AND_ALIGN,
+                                                    subBlockNum=sb_numbers[i],
                                                     inputHashes=input_hashes[i])
             self.ipc_router.send_multipart([str(idx).encode(), mtype, msg])
 
-    def send_discord_cur_sb_and_align(self, frames):
-        self.send_ipc_message(frames[1], frames[2])
-     

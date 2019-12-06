@@ -1,5 +1,5 @@
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.crypto.wallet import Wallet
@@ -12,6 +12,7 @@ import asyncio
 from collections import Counter
 import time
 
+PhoneBook = VKBook()
 
 class ConfirmationCounter(Counter):
     def top_item(self):
@@ -158,9 +159,15 @@ class BlockFetcher:
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.top.get_latest_block_number()
 
+        print('{} to {}'.format(current_height, latest_block_stored))
+
         while current_height < latest_block_stored:
+
             await self.fetch_blocks(current_height)
             current_height = await self.find_missing_block_indexes()
+            print('current height now: {}'.format(current_height))
+
+        print('done')
 
         self.in_catchup = False
 
@@ -191,6 +198,11 @@ class BlockFetcher:
             block_dict = self.blocks.get_block(last_state_block_num)
 
             self.state.update_with_block(block_dict)
+
+    async def is_caught_up(self):
+        current_height = await self.find_missing_block_indexes()
+        latest_block_stored = self.top.get_latest_block_number()
+        return current_height >= latest_block_stored
 
 # struct BlockData {
 #     blockHash @0 :Data;

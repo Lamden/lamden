@@ -1,10 +1,20 @@
 from unittest import TestCase
 from cilantro_ee.contracts import sync
+from cilantro_ee.services.storage.vkbook import VKBook
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 
 
 class TestContractSync(TestCase):
+    def setup(self):
+        masternodes = ['a', 'b', 'c']
+        delegates = ['d', 'e', 'f']
+        stamps = False
+        nonces = False
+
+        #v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        #self.assertIsNotNone(v)
+
     def test_directory_to_filename_works(self):
         directory = '~/something/something/hello/this/is/a/path.txt'
         name = 'path'
@@ -34,9 +44,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNotNone(upgrade)
 
     def test_sync_genesis_contracts_if_one_deleted(self):
         driver = ContractDriver()
@@ -50,9 +62,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNotNone(upgrade)
 
     def test_sync_genesis_contracts_if_none_deleted(self):
         driver = ContractDriver()
@@ -63,9 +77,11 @@ class TestContractSync(TestCase):
 
         submission = driver.get_contract('submission')
         currency = driver.get_contract('currency')
+        upgrade = driver.get_contract('upgrade')
 
         self.assertIsNotNone(submission)
         self.assertIsNotNone(currency)
+        self.assertIsNotNone(upgrade)
 
     def test_submit_contract_with_specific_construction_args(self):
         driver = ContractDriver()

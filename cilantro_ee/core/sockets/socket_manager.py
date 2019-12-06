@@ -5,7 +5,7 @@ from cilantro_ee.core.sockets.lsocket import LSocketBase
 from cilantro_ee.core.sockets.lsocket_router import LSocketRouter
 from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.utils.utils import is_valid_hex
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 
 from collections import defaultdict
 import asyncio, zmq.asyncio, time
@@ -15,6 +15,8 @@ class SocketManager:
 
     def __init__(self, context):
         self.log = get_logger(type(self).__name__)
+
+        self.vkbook = VKBook()
 
         self.context = context
         self.secure_context, self.auth = SocketUtil.secure_context(self.log, async=True)
@@ -61,7 +63,7 @@ class SocketManager:
         return socket
 
     def get_and_reset_num_delegates_joined(self):
-        nd = min(self.num_delegates_joined_since_last, len(PhoneBook.delegates))
+        nd = min(self.num_delegates_joined_since_last, len(self.vkbook.delegates))
         self.num_delegates_joined_since_last = 0
         return nd
 
@@ -77,7 +79,7 @@ class SocketManager:
 
             sock.handle_overlay_reply(e)
 
-            if (e['event'] == 'got_ip') and (e['vk'] in PhoneBook.delegates):
+            if (e['event'] == 'got_ip') and (e['vk'] in self.vkbook.delegates):
                 self.num_delegates_joined_since_last += 1
         else:
             self.log.debugv("SocketManager got overlay reply {} that is not a "
@@ -94,7 +96,7 @@ class SocketManager:
         elif (e['event'] == 'node_online') and (e['vk'] in self.tracking_vks):
             for sock in self.tracking_vks[e['vk']]:
                 sock.handle_overlay_event(e)
-            if (e['vk'] in PhoneBook.delegates):
+            if (e['vk'] in self.vkbook.delegates):
                 self.num_delegates_joined_since_last += 1
 
         else:

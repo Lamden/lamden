@@ -3,7 +3,7 @@ import asyncio
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants.zmq_filters import *
 from cilantro_ee.core.sockets.lsocket import LSocketBase
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.services.storage.master import MasterStorage
@@ -28,6 +28,8 @@ class CatchupManager:
         :param store_full_blocks: Master node uses this flag to indicate block storage
         """
         self.log = get_logger("CatchupManager")
+
+        self.vkbook = VKBook()
 
         # infra input
         self.pub, self.router = pub_socket, router_socket
@@ -54,7 +56,7 @@ class CatchupManager:
         # loop to schedule timeouts
         self.timeout_fut = None
 
-        self.my_quorum = PhoneBook.masternode_quorum_min
+        self.my_quorum = self.vkbook.masternode_quorum_min
 
         # masternode should make sure redis and mongo are in sync
         if store_full_blocks:
@@ -68,8 +70,8 @@ class CatchupManager:
         self.awaited_blknum = self.curr_num
 
         # DEBUG -- TODO DELETE
-        self.log.test("CatchupManager VKBook MN's: {}".format(PhoneBook.masternodes))
-        self.log.test("CatchupManager VKBook Delegates's: {}".format(PhoneBook.delegates))
+        self.log.test("CatchupManager VKBook MN's: {}".format(self.vkbook.masternodes))
+        self.log.test("CatchupManager VKBook Delegates's: {}".format(self.vkbook.delegates))
         # END DEBUG
 
         self.nonce_manager = NonceManager(driver=self.state)
@@ -372,7 +374,8 @@ class CatchupManager:
     def get_idx_list(self, vk, latest_blk_num, sender_bhash):
         # check if requester is master or del
         self.log.info(sender_bhash)
-        valid_node = vk.decode() in PhoneBook.state_sync
+        core_nodes = self.vkbook.masternodes + self.vkbook.delegates
+        valid_node = vk.decode() in core_nodes
 
         if valid_node:
 

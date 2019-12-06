@@ -1,4 +1,4 @@
-from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
+from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTERS
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.batcher import BATCHER_SLEEP_INTERVAL
 from cilantro_ee.constants.batcher import MAX_TXN_SUBMISSION_DELAY
@@ -212,6 +212,7 @@ class RateLimitingBatcher:
         return mtype, msg
 
 
+
 class TransactionBatcher(Worker):
     def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_ID, ipc_port=IPC_PORT, *args, **kwargs):
         super().__init__(signing_key=signing_key, *args, **kwargs)
@@ -225,6 +226,10 @@ class TransactionBatcher(Worker):
                                            MAX_TXN_SUBMISSION_DELAY)
 
         self._ready = False
+
+        self.driver = NonceManager()
+
+# Are we even using this anymore?
         # Create Pub socket to broadcast to witnesses
         self.pub_sock = self.manager.create_socket(socket_type=zmq.PUB, name="TxBatcher-PUB", secure=True)
         self.pub_sock.bind(port=MN_TX_PUB_PORT, ip=self.ip)
@@ -233,7 +238,10 @@ class TransactionBatcher(Worker):
         self.ipc_dealer = None
         self._create_dealer_ipc(port=ipc_port, ip=ipc_ip, identity=str(0).encode())
 
-    def serve(self):
+        self.run()
+
+    def run(self):
+        self.log.notice("Starting TransactionBatcher ...")
         self.tasks.append(self.compose_transactions())
 
         # Start main event loop
@@ -248,7 +256,7 @@ class TransactionBatcher(Worker):
 
     def _connect_dealer_ipc(self):
         self.log.notice("Connecting to BA's ROUTER socket with a DEALER using"
-                        "ip {}, port {}".format(self.ipc_ip, self.ipc_port))
+                        " ip {}, port {}".format(self.ipc_ip, self.ipc_port))
         self.ipc_dealer.connect(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
     def handle_ipc_msg(self, frames):
@@ -278,17 +286,18 @@ class TransactionBatcher(Worker):
                            "socket. Ignoring the msg {}".format(type(msg), msg))
 
     async def _wait_until_ready(self):
-        await asyncio.sleep(0)
+        await asyncio.sleep(1)
         self._connect_dealer_ipc()
+        await asyncio.sleep(3)
         while not self._ready:
-            await asyncio.sleep(0)
+            await asyncio.sleep(1)
 
     async def compose_transactions(self):
         await self._wait_until_ready()
 
-        self.log.notice("Starting TransactionBatcher ...")
+        self.log.notice("TransactionBatcher is ready to send transactions ...")
 
-        enc_fltr = TRANSACTION_FILTER.encode()
+        enc_fltr = TRANSACTION_FILTERS[0].encode()
 
         while True:
             mtype, msg = await self.batcher.get_next_batch_packed()

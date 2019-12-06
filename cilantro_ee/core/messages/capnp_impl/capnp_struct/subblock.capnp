@@ -17,7 +17,7 @@ struct SubBlock {
     merkleRoot @0 :Data;
     signatures @1 :List(Data);
     merkleLeaves @2 :List(Data);
-    subBlockIdx @3 :UInt8;
+    subBlockNum @3 :UInt8;
     inputHash @4 :Data;
     transactions @5 :List(T.TransactionData);
 }
@@ -28,6 +28,6 @@ struct SubBlockContender {
     merkleLeaves @2: List(Data);
     signature @3 :Data;
     transactions @4: List(Data);
-    subBlockIdx @5: UInt8;
+    subBlockNum @5: UInt8;
     prevBlockHash @6: Data;
 }

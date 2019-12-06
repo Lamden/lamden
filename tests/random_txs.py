@@ -79,7 +79,7 @@ def subblock_from_txs(txs, idx=0):
         merkleRoot=tree.root,
         signatures=[proof.to_bytes_packed()],
         merkleLeaves=tree.leaves,
-        subBlockIdx=0,
+        subBlockNum=0,
         inputHash=secrets.token_bytes(32),
         transactions=[tx for tx in txs]
     )
@@ -119,7 +119,7 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisone
         merkleLeaves=[leaf for leaf in tree.leaves],
         signature=proof.to_bytes_packed(),
         transactions=[tx for tx in transactions],
-        subBlockIdx=idx,
+        subBlockNum=idx,
         prevBlockHash=prev_block_hash)
 
     return sb
@@ -146,7 +146,7 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
         merkleLeaves=[leaf for leaf in tree.leaves],
         signature=proof_1.to_bytes_packed(),
         transactions=[tx for tx in transactions],
-        subBlockIdx=idx,
+        subBlockNum=idx,
         prevBlockHash=prev_block_hash)
 
     sb2 = subblock_capnp.SubBlockContender.new_message(
@@ -155,7 +155,7 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
         merkleLeaves=[leaf for leaf in tree.leaves],
         signature=proof_2.to_bytes_packed(),
         transactions=[tx for tx in transactions],
-        subBlockIdx=idx,
+        subBlockNum=idx,
         prevBlockHash=prev_block_hash)
 
     return sb1, sb2

@@ -13,6 +13,7 @@ from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.services.storage.vkbook import VKBook
 import math
 import asyncio
 import zmq
@@ -186,8 +187,9 @@ class BlockAggregator(Worker):
     def __init__(self, ip, ipc_ip, ipc_port, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.log = get_logger("BlockAggregator[{}]".format(self.verifying_key[:8]))
+        self.vkbook = VKBook()
 
-        assert self.verifying_key in PhoneBook.masternodes, "not a part of VKBook"
+        assert self.verifying_key in self.vkbook.masternodes, "not a part of VKBook"
 
         self.ip = ip
         self.ipc_ip = ipc_ip
@@ -201,11 +203,13 @@ class BlockAggregator(Worker):
 
         self.timeout_fut = None
 
-        self.min_quorum = PhoneBook.delegate_quorum_min
-        self.max_quorum = PhoneBook.delegate_quorum_max
+        self._is_catchup_done = False
+
+        self.min_quorum = self.vkbook.delegate_quorum_min
+        self.max_quorum = self.vkbook.delegate_quorum_max
         self.cur_quorum = 0
 
-        self.my_mn_idx = PhoneBook.masternodes.index(self.verifying_key)
+        self.my_mn_idx = self.vkbook.masternodes.index(self.verifying_key)
         self.my_sb_idx = self.my_mn_idx % NUM_SB_BUILDERS
 
         self.curr_block_hash = self.state.get_latest_block_hash()

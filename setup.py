@@ -1,11 +1,23 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
 
-__version__ = '0.0.2dev'
+
+__version__ = '0.0.3'
+
+with open("README.md", "r") as fh:
+    long_desc = fh.read()
+
+
+class PostInstallCommand(install):
+    """ Triggers post installation boot script to startup node"""
+    def run(self):
+        # boot script here
+        install.run(self)
 
 setup(
     name='cilantro_ee',
     version=__version__,
-    packages=find_packages(exclude=['docs', 'tests']),
+    packages=find_packages(exclude=['docs', 'ops', 'docker', 'deprecated']),
     install_requires=[
         'Cython==0.29',
         'pycapnp==0.6.3',
@@ -15,20 +27,19 @@ setup(
         'uvloop==0.9.1',
         'u-msgpack-python==2.5.0',
         'yarl==1.1.0',
-        'seneca',
+        'contracting',
         'click',
         'simple-crypt',
         'sanic==19.6.3',
         'pymongo==3.7.2'
+        'rocks'
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
     },
     entry_points={
         'console_scripts': [
-            'storage=cilantro_ee.networking.storage:serve',
-            'witness=cilantro_ee.networking.witness:serve',
-            'cil=cilantro_ee.cli:main'
+            'cilantro_ee=__main__:main'
         ],
     },
     zip_safe=False,
@@ -36,11 +47,17 @@ setup(
         '': [],
         'cilantro_ee': ['cilantro_ee.conf'],
     },
-    long_description="this is a fast blockchain",
-    url='https://github.com/Lamden/cilantro_ee',
+    cmdclass ={
+      'install': PostInstallCommand,
+    },
+    description = "Lamden Blockchain",
+    long_description= long_desc,
+    long_description_content_type="text/markdown",
+    url='https://github.com/Lamden/cilantro-enterprise',
     author='Lamden',
     author_email='team@lamden.io',
     classifiers=[
         'Programming Language :: Python :: 3.6',
     ],
+    python_requires='>=3.6.5',
 )

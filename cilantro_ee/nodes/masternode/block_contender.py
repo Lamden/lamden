@@ -1,4 +1,4 @@
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.containers.merkle_tree import MerkleTree
@@ -45,7 +45,7 @@ class SBCIndexGreaterThanPossibleError(Exception):
 
 class SubBlockGroup:
     def __init__(self, sb_idx: int, curr_block_hash: str,
-                 contacts: VKBook=PhoneBook, subblocks_per_block=NUM_SB_PER_BLOCK):
+                 contacts: VKBook, subblocks_per_block=NUM_SB_PER_BLOCK):
 
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
@@ -284,6 +284,7 @@ class BlockContender:
         self.contacts = contacts
 
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
+        self.vkbook = VKBook()
 
     def reset(self):
         # Set old_input_hashes before we reset all the data

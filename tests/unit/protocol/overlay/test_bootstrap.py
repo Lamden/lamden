@@ -60,7 +60,7 @@
 # class TestBootstrap(BaseTestCase):
 #     log = get_logger(__name__)
 #     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
-#     environment = {'CONSTITUTION_FILE': '2-2-2.json'}
+#     environment = {'CONSTITUTION_FILE': 'vk_dump.json'}
 #     enable_ui = False
 #
 # ################################################################################
