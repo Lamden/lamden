@@ -26,13 +26,4 @@ class Worker(Context):
             await asyncio.sleep(0)
         self.log.debugv("overlay server is ready!!")
 
-    def add_overlay_handler_fn(self, key: str, handler: Callable[[dict], None]):
-        """
-        Adds a handler for a overlay events with name 'key'. Multiple handler events can be added for the same key,
-        and all of them will be run in arbitrary order.
-        :param key: The 'event' key of the overlay event which will trigger the callback handler
-        :param handler: The function that is invoked once an overlay event is observed with the same event name as 'key'
-        The handler function is called with a single arguement, a dictionary containing info about the overlay event
-        """
-        self.manager.overlay_callbacks[key].add(handler)
 

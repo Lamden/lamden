@@ -49,7 +49,7 @@ class OverlayClient:
             self.event_listener(event_handler),
         ]
 
-        self.running = False
+        self.running = True
 
     @command
     def ready(self, *args, **kwargs):

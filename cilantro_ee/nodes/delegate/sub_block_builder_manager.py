@@ -206,13 +206,13 @@ class DBHandler:
 
 class SubBlockManager:
     def __init__(self, sk, vk, sb_builder_requests,
-                 min_mn_quorum, num_sb_builders):
+                 min_mn_quorum, num_masters, num_sb_builders):
         self.signing_key = sk
         self.verifying_key = vk
         self.sbb_requests = sb_builder_requests
         self.num_sb_builders = num_sb_builders
         self.sb_handler = SubBlockHandler(num_sb_builders)
-        self.bn_handler = BlockNotifHandler()
+        self.bn_handler = BlockNotifHandler(num_masters)
         self.db_handler = DBHandler()
         self.driver = MetaDataStorage()
 
@@ -381,25 +381,14 @@ class SubBlockBuilderManager(Worker):
                 'commit_cur_sb': self.send_commit_cur_sb,
                 'discord_cur_sb_and_align': self.send_discord_cur_sb_and_align}
         self.sb_mgr = SubBlockManager(self.signing_key, self.verifying_key,
-                                      self.mn_quorum_min, self.sbb_requests)
-
-        self._thicc_log()
+                                      self.sbb_requests, self.mn_quorum_min,
+                                      num_masters, self.sb_mapper.num_sb_builders)
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
 
-
         self.run()
 
-    def _thicc_log(self):
-        self.log.notice("\nSBBuilderManager initializing with\nvk={vk}\n"
-                        "num_sub_blocks={num_sb}\nnum_blocks={num_blocks}\nsub_blocks_per_block={sb_per_block}\n"
-                        "num_sb_builders={num_sb_builders}\nsub_blocks_per_builder={sb_per_builder}\n"
-                        "sub_blocks_per_block_per_builder={sb_per_block_per_builder}\n"
-                        .format(vk=self.verifying_key, num_sb=NUM_SUB_BLOCKS,
-                                num_blocks=NUM_BLOCKS, sb_per_block=NUM_SB_PER_BLOCK,
-                                num_sb_builders=NUM_SB_BUILDERS, sb_per_builder=NUM_SB_PER_BUILDER,
-                                sb_per_block_per_builder=NUM_SB_PER_BLOCK_PER_BUILDER))
 
     def run(self):
         # sync set up
@@ -408,7 +397,8 @@ class SubBlockBuilderManager(Worker):
 
         self.sb_mgr.setup_catchup_mgr(self.pub, self.router)
 
-        self.log.info("Block Sub-block coordinator starting...")
+        # self.log.info("Sub-block builder manager starting...")
+        self.log.info("Sub-block builder manager starting...")
 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
@@ -493,8 +483,8 @@ class SubBlockBuilderManager(Worker):
         # need to wait for 6 secs to let connections form as well as
         # sub-block builders and min number of master nodes ready
         wait_time = 0
-        while (wait_time < 6) or not self.sbb_state.are_sbbs_ready() or \
-              (self.mn_ready_count < self.mn_quorum_min): 
+        while not self.sbb_state.are_sbbs_ready() or \
+              ((wait_time < 6) and (self.mn_ready_count < self.mn_quorum_min)): 
             wait_time += 1
             asyncio.sleep(1)
 
@@ -533,8 +523,8 @@ class SubBlockBuilderManager(Worker):
         elif msg_type == MessageType.SUBBLOCK_CONTENDER:
             await self._handle_sbc(sbb_index, msg, mtype_enc, msg_blob)
 
-    def handle_sub_msg(self, frames):
-        self.log.success('GOT A SUB MESSAGE ON BLOCK MGR')
+    async def handle_sub_msg(self, frames):
+        self.log.success('GOT A SUB MESSAGE ON SBB MGR')
         self.log.success(frames)
 
         # Unpack the frames
@@ -559,7 +549,7 @@ class SubBlockBuilderManager(Worker):
             self.sb_mgr.handle_block_notification(msg, sender)
 
 
-    def handle_router_msg(self, frames):
+    async def handle_router_msg(self, frames):
         sender, msg_type, msg_blob = frames
 
         msg_type, msg, signer, timestamp, is_verified = Message.unpack_message(msg_type, msg_blob)

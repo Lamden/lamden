@@ -15,6 +15,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.services.block_fetch import BlockFetcher
 from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 import math, asyncio, zmq, time
 
 
@@ -63,9 +64,10 @@ class BlockAggregator(Worker):
         self.min_quorum = self.vkbook.delegate_quorum_min
         self.max_quorum = self.vkbook.delegate_quorum_max
         self.cur_quorum = 0
+        self.sb_mapper = BlockSubBlockMapper(self.vkbook.masternodes)
 
         self.my_mn_idx = self.vkbook.masternodes.index(self.verifying_key)
-        self.my_sb_idx = self.my_mn_idx % NUM_SB_BUILDERS
+        self.my_sb_idx = self.my_mn_idx % self.sb_mapper.num_sb_builders
 
         self.curr_block_hash = self.state.get_latest_block_hash()
 
@@ -337,7 +339,7 @@ class BlockAggregator(Worker):
 
 
     def send_block_notif(self, msg_type, **kwargs):
-        mn_idx = kwargs.get('firstSbIdx') + self.my_sb_idx
+        mn_idx = self.my_sb_idx
         if mn_idx == self.my_mn_idx:
             input_hashes = kwargs.get('inputHashes')
             my_input_hashes = input_hashes[self.my_sb_idx]
@@ -362,7 +364,7 @@ class BlockAggregator(Worker):
                               blockNum=block_data['blockNum'],
                               blockHash=block_data['blockHash'],
                               blockOwners=block_data['blockOwners'],
-                              firstSbIdx=block_data['subBlocks'][0].subBlockIdx,
+                              firstSbIdx=block_data['subBlocks'][0].subBlockNum,
                               inputHashes=[[sb.inputHash] for sb in block_data['subBlocks']],
                               newBlock=None)
         self.log.info('Published new block notif with hash "{}" and block num {}'
@@ -379,7 +381,7 @@ class BlockAggregator(Worker):
                               blockNum=block_num,
                               blockHash=block_hash,
                               blockOwners=[],
-                              firstSbIdx=sub_blocks[0].subBlockIdx,
+                              firstSbIdx=sub_blocks[0].subBlockNum,
                               inputHashes=input_hashes,
                               emptyBlock=None)
 
@@ -391,13 +393,13 @@ class BlockAggregator(Worker):
         block_num = self.state.latest_block_num + 1
         input_hashes = self.curr_block.get_input_hashes_sorted()
         block_hash = BlockNotification.get_block_hash(last_hash, input_hashes)
-        first_sb_idx = self.curr_block.get_first_sb_idx_sorted()
+        first_sb_num = self.curr_block.get_first_sb_idx_sorted()
 
         self.send_block_notif(MessageType.BLOCK_NOTIFICATION,
                               blockNum=block_num,
                               blockHash=block_hash,
                               blockOwners=[],
-                              firstSbIdx=first_sb_idx,
+                              firstSbIdx=first_sb_num,
                               inputHashes=input_hashes,
                               failedBlock=None)
 
