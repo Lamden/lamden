@@ -335,7 +335,6 @@ class BlockAggregator(Worker):
 
         self._reset_curr_block()
 
-
     def send_block_notif(self, msg_type, **kwargs):
         mn_idx = kwargs.get('firstSbIdx') + self.my_sb_idx
         if mn_idx == self.my_mn_idx:

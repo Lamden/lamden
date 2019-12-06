@@ -79,8 +79,8 @@ class OverlayServer:
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
                                   bootnodes=conf.BOOTNODES,
-                                  initial_mn_quorum=self.vkbook.num_boot_masternodes,
-                                  initial_del_quorum=self.vkbook.num_boot_delegates,
+                                  initial_mn_quorum=self.vkbook.masternode_quorum_min,
+                                  initial_del_quorum=self.vkbook.delegate_quorum_min,
                                   mn_to_find=self.vkbook.masternodes,
                                   del_to_find=self.vkbook.delegates)
 
