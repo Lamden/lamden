@@ -10,6 +10,7 @@ import json
 import hashlib
 from cilantro_ee.core.nonces import NonceManager
 from contracting import config
+
 N = NonceManager()
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -158,6 +159,46 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
         prevBlockHash=prev_block_hash)
 
     return sb1, sb2
+
+
+def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=False):
+    transactions = []
+    for i in range(txs):
+        packed_tx = random_packed_tx(nonce=i)
+        tx_data = random_tx_data(packed_tx)
+        transactions.append(tx_data.to_bytes_packed())
+
+    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+
+    sbcs = []
+
+    for wallet in wallets:
+        sig = wallet.sign(tree.root)
+        proof = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=wallet.verifying_key(), signature=sig)
+
+        if not as_dict:
+            sbc = subblock_capnp.SubBlockContender.new_message(
+                resultHash=tree.root,
+                inputHash=input_hash,
+                merkleLeaves=[leaf for leaf in tree.leaves],
+                signature=proof.to_bytes_packed(),
+                transactions=[tx for tx in transactions],
+                subBlockIdx=idx,
+                prevBlockHash=prev_block_hash)
+        else:
+            sbc = {
+                'resultHash' :tree.root,
+                'inputHash': input_hash,
+                'merkleLeaves': [leaf for leaf in tree.leaves],
+                'signature': proof.to_bytes_packed(),
+                'transactions': [tx for tx in transactions],
+                'subBlockIdx': idx,
+                'prevBlockHash': prev_block_hash
+            }
+
+        sbcs.append(sbc)
+
+    return sbcs
 
 
 def random_block(txs=20, subblocks=2, block_num=1) -> blockdata_capnp.BlockData:

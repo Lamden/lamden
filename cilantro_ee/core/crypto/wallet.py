@@ -4,6 +4,7 @@ import nacl.signing
 from zmq.utils import z85
 import secrets
 from . import zbase
+from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 
 
 def generate_keys(seed=None) -> tuple:
@@ -88,9 +89,8 @@ class Wallet:
         self.sk = nacl.signing.SigningKey(seed=seed)
         self.vk = self.sk.verify_key
 
-        self.zmq_key = z85.encode(
-            self.vk.to_curve25519_public_key()._public_key
-        )
+        self.curve_sk = z85.encode(self.sk.to_curve25519_private_key().encode())
+        self.curve_vk = z85.encode(self.vk.to_curve25519_public_key().encode())
 
     @staticmethod
     def format_key(k, as_hex=False):
