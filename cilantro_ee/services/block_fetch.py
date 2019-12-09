@@ -12,8 +12,6 @@ import asyncio
 from collections import Counter
 import time
 
-PhoneBook = VKBook()
-
 class ConfirmationCounter(Counter):
     def top_item(self):
         return self.most_common()[0][0]
@@ -31,9 +29,11 @@ class BlockFetcher:
                  blocks: CilantroStorageDriver=None,
                  top=TopBlockManager(),
                  state=MetaDataStorage(),
-                 masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes)):
+                 masternode_sockets=None):
 
-        self.masternodes = masternode_sockets
+        self.phone_book = VKBook()
+        self.masternodes = masternode_sockets or \
+                           SocketBook(None, self.phone_book.contract.get_masternodes)
         self.top = top
         self.wallet = wallet
         self.ctx = ctx

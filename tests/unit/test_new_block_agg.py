@@ -1,8 +1,8 @@
-from cilantro_ee.nodes.masternode.new_ba import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
+from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
-from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from unittest import TestCase
 import zmq.asyncio
 import asyncio
@@ -15,6 +15,7 @@ from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockCon
 class TestTransactionBatcherInformer(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
+        seed_vkbook()
 
     def tearDown(self):
         self.ctx.destroy()

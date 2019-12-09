@@ -7,7 +7,7 @@ from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants.system_config import *
 
 import time
@@ -15,6 +15,7 @@ import asyncio
 import zmq
 import zmq.asyncio
 
+PhoneBook = VKBook()
 
 # Sends this to Transaction Batcher
 class TransactionBatcherInformer:

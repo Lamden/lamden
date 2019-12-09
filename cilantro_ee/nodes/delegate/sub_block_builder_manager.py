@@ -11,7 +11,7 @@
 
 from cilantro_ee.core.logger.base import get_logger
 
-from cilantro_ee.nodes.catchup import CatchupManager
+from cilantro_ee.services.block_fetch import BlockFetcher
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.services.storage.state import MetaDataStorage
@@ -161,7 +161,7 @@ class BlockNotifHandler:
 class DBHandler:
     def __init__(self):
         self.is_db_updated = False
-        self.catchup_mgr = None
+        self.fetcher = None
 
     def is_ready_for_next_sb(self):
         return self.is_db_updated
@@ -174,13 +174,12 @@ class DBHandler:
         self.is_db_updated = True
         return ret_code
 
-    def setup_catchup_mgr(self, vk, sk, pub_sock, router_sock):
-        self.catchup_mgr = CatchupManager(
-                                          verifying_key=vk,
-                                          signing_key=sk,
-                                          pub_socket=pub_sock,
-                                          router_socket=router_sock,
-                                          store_full_blocks=False)
+    def setup_catchup_mgr(self, wallet, ctx, driver, state):
+        self.fetcher = BlockFetcher(wallet=wallet,
+                                    ctx=ctx,
+                                    blocks=driver,
+                                    state=state)
+
 
     def start_catchup_process(self):
         assert self.catchup_mgr, "Expected catchup_mgr initialized at this point"
@@ -222,10 +221,10 @@ class SubBlockManager:
         self.bn_handler.reset(self.driver.latest_block_num)
         self.sb_handler.reset()
 
-    def setup_catchup_mgr(self, pub_sock, router_sock):
-        self.db_handler.setup_catchup_mgr(self.verifying_key,
-                                          self.signing_key,
-                                          pub_sock,
+    def setup_catchup_mgr(self, wallet, ctx, state):
+        self.db_handler.setup_catchup_mgr(wallet,
+                                          ctx,
+                                          self.driver,
                                           router_sock)
 
     def start_catchup_process(self):
@@ -395,7 +394,7 @@ class SubBlockBuilderManager(Worker):
         self.create_sockets()
         self.build_task_list()
 
-        self.sb_mgr.setup_catchup_mgr(self.pub, self.router)
+        self.sb_mgr.setup_catchup_mgr(self.wallet, self.ctx)
 
         # self.log.info("Sub-block builder manager starting...")
         self.log.info("Sub-block builder manager starting...")
