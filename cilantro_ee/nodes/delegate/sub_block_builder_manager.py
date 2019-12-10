@@ -22,7 +22,6 @@ from cilantro_ee.core.utils.worker import Worker
 from cilantro_ee.utils.lprocess import LProcess
 
 from cilantro_ee.constants.block import BLOCK_HEART_BEAT_INTERVAL, MAX_SUB_BLOCK_BUILDERS
-from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 from cilantro_ee.constants import conf
@@ -31,7 +30,8 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.crypto.wallet import _verify
-from cilantro_ee.contracts.sync import sync_genesis_contracts
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 import hashlib
 import asyncio, zmq, time, random
 import os
@@ -90,8 +90,7 @@ class SubBlockHandler:
 
 
 class BlockNotifData:
-    def __init__(self, block_notif, bn_quorum=BLOCK_NOTIFICATION_QUORUM,
-                 fbn_quorum=FAILED_BLOCK_NOTIFICATION_QUORUM):
+    def __init__(self, block_notif, bn_quorum, fbn_quorum):
         self.block_notif = block_notif
         is_failed = block_notif.which() == "FailedBlock"
         self.quorum_num = fbn_quorum if is_failed else bn_quorum
@@ -110,8 +109,10 @@ class BlockNotifData:
 
 # Keeps track of block notifications from master
 class BlockNotifHandler:
-    def __init__(self):
+    def __init__(self, num_masters):
         self.hard_reset()
+        self.blk_notif_quorum = (num_masters + 1) // 2
+        self.failed_blk_notif_quorum = num_masters - self.blk_notif_quorum + 1
 
     # use this when it has to go to catchup
     def hard_reset(self):
@@ -147,7 +148,8 @@ class BlockNotifHandler:
             # todo add time info to implement timeout
 
         if block_hash not in self.block_notif_data[block_num]:
-            self.block_notif_data[block_num][block_hash] = BlockNotifData(block_notif)
+            self.block_notif_data[block_num][block_hash] = \
+                   BlockNotifData(block_notif, self.blk_notif_quorum, self.failed_blk_notif_quorum)
 
         if self.block_notif_data[block_num][block_hash].add_sender(sender):
             self.quorum_block = block_notif
@@ -230,7 +232,12 @@ class SubBlockManager:
         self.log.info("Catching up...")
 
         # Add genesis contracts to state db if needed
-        sync_genesis_contracts()
+        sync.sync_genesis_contracts()
+
+        # Make sure a VKBook exists in state
+        masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(masternodes, delegates)
+
         self.db_handler.start_catchup_process()
 
     # is passing callbacks better way
@@ -356,10 +363,13 @@ class SubBlockBuilderManager(Worker):
         self.ipc_ip =  'sbb-mgr-' + str(os.getpid()) + '-' \
                        + str(random.randint(0, 2**32))
 
-        self.mn_quorum_min = PhoneBook.masternode_quorum_min
+        self.vkbook = VKBook()
+
+        self.mn_quorum_min = self.vkbook.masternode_quorum_min
         self.mn_ready_count = 0
         self.masternodes_ready = set()
-        self.masternodes = PhoneBook.masternodes
+        self.masternodes = self.vkbook.masternodes
+        num_masters = len(self.masternodes)
 
         self.sb_mapper = BlockSubBlockMapper(self.masternodes)
         self.sb_builders = {}  # index -> process

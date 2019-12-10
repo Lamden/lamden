@@ -13,7 +13,6 @@ class TestWallet(TestCase):
 
         self.assertEqual(w.vk, a.vk)
         self.assertEqual(w.sk, a.sk)
-        self.assertEqual(w.zmq_key, a.zmq_key)
 
     def test_signing_key_as_bytes(self):
         w = Wallet()

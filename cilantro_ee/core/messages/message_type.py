@@ -44,3 +44,6 @@ class MessageType(MessageBaseType):
 
     IP_FOR_VK_REQUEST = auto()
     IP_FOR_VK_REPLY = auto()
+
+    ACKNOWLEDGED = auto()
+

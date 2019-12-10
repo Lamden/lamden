@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.delegate.block_manager import SubBlocks, NextBlockData, NextBlock
+from cilantro_ee.nodes.delegate.sub_block_builder_manager import SubBlocks, NextBlockData, NextBlock
 from cilantro_ee.constants.system_config import *
 from collections import namedtuple
 

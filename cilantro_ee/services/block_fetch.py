@@ -1,5 +1,5 @@
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.crypto.wallet import Wallet
@@ -12,6 +12,7 @@ import asyncio
 from collections import Counter
 import time
 
+PhoneBook = VKBook()
 
 class ConfirmationCounter(Counter):
     def top_item(self):
@@ -38,6 +39,10 @@ class BlockFetcher:
         self.ctx = ctx
         self.blocks = blocks
         self.state = state
+
+        self.blocks_to_process = []
+
+        self.in_catchup = False
 
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
@@ -123,38 +128,63 @@ class BlockFetcher:
             return
 
         for i in range(latest_block_stored, latest_block_available + 1):
-            block = await self.find_valid_block(i, latest_hash)
+            await self.find_and_store_block(i, latest_hash)
+            latest_hash = self.top.get_latest_block_hash()
 
-            if block is not None:
-                block_dict = {
-                    'blockHash': block.blockHash,
-                    'blockNum': i,
-                    'blockOwners': [m for m in block.blockOwners],
-                    'prevBlockHash': latest_hash,
-                    'subBlocks': [s for s in block.subBlocks]
-                }
+    async def find_and_store_block(self, block_num, block_hash):
+        block = await self.find_valid_block(block_num, block_hash)
 
-                # Only store if master, update state if master or delegate
+        if block is not None:
+            block_dict = {
+                'blockHash': block.blockHash,
+                'blockNum': block_num,
+                'blockOwners': [m for m in block.blockOwners],
+                'prevBlockHash': block_hash,
+                'subBlocks': [s for s in block.subBlocks]
+            }
 
-                if self.blocks is not None:
-                    self.blocks.put(block_dict)
+            # Only store if master, update state if master or delegate
 
-                self.state.update_with_block(block_dict)
-                self.top.set_latest_block_hash(block.blockHash)
-                self.top.set_latest_block_number(i)
+            if self.blocks is not None:
+                self.blocks.put(block_dict)
 
-                latest_hash = self.top.get_latest_block_hash()
-            else:
-                raise Exception('Could not find block with index {}. Catchup failed.'.format(i))
+            self.state.update_with_block(block_dict)
+            self.top.set_latest_block_hash(block.blockHash)
+            self.top.set_latest_block_number(block_num)
 
+    # Main Catchup function. Called at launch of node
     async def sync(self):
+        self.in_catchup = True
+
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.top.get_latest_block_number()
 
+        print('{} to {}'.format(current_height, latest_block_stored))
+
         while current_height < latest_block_stored:
+
             await self.fetch_blocks(current_height)
             current_height = await self.find_missing_block_indexes()
+            print('current height now: {}'.format(current_height))
 
+        print('done')
+
+        self.in_catchup = False
+
+        # Finds all of the blocks that were processed while syncing
+        while len(self.blocks_to_process) > 0:
+            b = self.blocks_to_process.pop(0)
+            await self.find_and_store_block(b.blockNum, b.blockHash)
+
+    # Secondary Catchup function. Called if a new block is created.
+    async def intermediate_sync(self, block):
+        if self.in_catchup:
+            self.blocks_to_process.append(block)
+        else:
+            # store block directly
+            await self.find_and_store_block(block.blockNum, block.blockHash)
+
+    # Catchup for masternodes who already have storage and state is corrupted for some reason
     async def sync_blocks_with_state(self):
         if self.blocks is None:
             return
@@ -168,6 +198,11 @@ class BlockFetcher:
             block_dict = self.blocks.get_block(last_state_block_num)
 
             self.state.update_with_block(block_dict)
+
+    async def is_caught_up(self):
+        current_height = await self.find_missing_block_indexes()
+        latest_block_stored = self.top.get_latest_block_number()
+        return current_height >= latest_block_stored
 
 # struct BlockData {
 #     blockHash @0 :Data;

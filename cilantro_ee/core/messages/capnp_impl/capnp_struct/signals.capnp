@@ -56,3 +56,7 @@ struct IPForVKRequest {
 struct IPForVKReply {
     ip @0: Data;
 }
+
+struct Acknowledged {
+    timestamp @0 :UInt32;
+}
