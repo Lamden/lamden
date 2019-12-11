@@ -33,6 +33,7 @@ setup(
         'simple-crypt',
         'sanic==19.6.3',
         'pymongo==3.9',
+        'checksumdir==1.1.7',
     ],
     extras_require={
         'dev': open('dev-requirements.txt').readlines()
