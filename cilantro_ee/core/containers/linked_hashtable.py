@@ -101,13 +101,13 @@ class LinkedHashTable:
             item.previous.next = item.next
         else:
             assert item is self._first, "Key {} maps to item with no previous that is not self.first! item={}".format(key, item)
-            return self.popleft()
+            return self.pop_front()
 
         if item.next:
             item.next.previous = item.previous
         else:
             assert item is self._last, "Key {} maps to item with no next that is not self.last! item={}".format(key, item)
-            return self.pop()
+            return self.pop_back()
 
         self._table.pop(key)
         return item.value

@@ -10,6 +10,7 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 
 class TestContractTransaction(TestCase):
     def test_init(self):
+        w = Wallet()
         TransactionBuilder(sender=w.verifying_key().hex(),
                            stamps=1000000,
                            contract='currency',
