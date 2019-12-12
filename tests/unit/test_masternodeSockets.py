@@ -5,8 +5,6 @@ from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import SocketStruct, _socket
 from cilantro_ee.contracts import sync
-from cilantro_ee.services.overlay.sync_client import OverlayClientSync
-from cilantro_ee.services.overlay.server import OverlayServer
 
 import zmq
 import zmq.asyncio
@@ -80,46 +78,39 @@ class TestSocketBook(TestCase):
 
         w1 = Wallet()
 
-        #'tcp://127.0.0.1:10003'
+        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10003)
 
-        s1 = OverlayClientSync(ctx=self.ctx)
-        o = OverlayServer(sk='0'*64, ctx=self.ctx, quorum=1, vkbook=PhoneBook, discover=False)
+        #'tcp://127.0.0.1:10003'
 
         expected = {
             'stu': '127.0.0.1',
             'raghu': '127.0.0.2'
         }
+        p1.peer_service.table.peers = expected
 
-        o.network.peer_service.table.peers = expected
-
-        masternodes = SocketBook(client=s1, phonebook_function=PhoneBook.contract.get_masternodes)
+        # CHANGE CLIENT TO SOCKET
+        masternodes = SocketBook(peer_service_address=_socket('tcp://127.0.0.1:10001'),
+                                 port=9999,
+                                 ctx=self.ctx,
+                                 phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
 
-        loop = asyncio.get_event_loop()
-
-        async def slow_refresh():
+        async def late_refresh():
             await asyncio.sleep(0.3)
             await masternodes.refresh()
 
-        async def start():
-            await s1.start()
-            await asyncio.sleep(1)
-
-        async def kill_server(p, t=0.5):
-            await asyncio.sleep(t)
-            p.stop()
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
 
         tasks = asyncio.gather(
-            o.start(),
-            start(),
-            slow_refresh(),
-            kill_server(o)
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
         )
 
-        res = loop.run_until_complete(tasks)
-
-        print(res)
+        self.loop.run_until_complete(tasks)
 
         self.assertDictEqual(masternodes.sockets, expected)
 
