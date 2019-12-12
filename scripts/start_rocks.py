@@ -14,11 +14,6 @@ def start_rocks(reset=False):
 
     print("Rocks using data directory: {}".format(ROCKS_DIR))
 
-    # cmd = f"export LC_ALL=en_US.UTF-8; export LANG=C.UTF-8; rocks serve -d {ROCKS_DIR}"
-    # cmd = f"export LC_ALL=C.UTF-8; export LANG=C.UTF-8; rocks serve -d {ROCKS_DIR}"
-    # os.system('export LC_ALL=C.UTF-8; export LANG=C.UTF-8; rocks serve -d /Users/lamden/lamden/rocks')
-    # os.system('export LC_ALL=en_US.UTF-8; export LANG=C.UTF-8; rocks serve -d ROCKS_DIR')
-
     s = RocksDBServer(filename=ROCKS_DIR)
 
     if reset:
@@ -29,8 +24,6 @@ def start_rocks(reset=False):
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(s.serve())
-
-    # os.system(cmd)
 
 
 if __name__ == '__main__':
