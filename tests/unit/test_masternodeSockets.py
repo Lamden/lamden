@@ -51,8 +51,9 @@ class TestSocketBook(TestCase):
         self.assertEqual(SocketBook.old_nodes(all_nodes, current_nodes), {2, 3})
 
     def test_remove_node(self):
-        m = SocketBook(None)
         ctx = zmq.Context()
+        m = SocketBook(None, ctx=ctx, port=9999)
+
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
         m.remove_node('a')
@@ -61,8 +62,8 @@ class TestSocketBook(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_remove_node_doesnt_exist_does_nothing(self):
-        m = SocketBook(None)
         ctx = zmq.Context()
+        m = SocketBook(None, ctx=ctx, port=9999)
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
         m.remove_node('c')
