@@ -27,7 +27,8 @@ class TestOverlayServer(TestCase):
 
     def test_serve(self):
         m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(m, d, overwrite=True)
+        sync.submit_vkbook(
+            {'masternodes': m, 'delegates': d, 'masternode_min_quorum': 1}, overwrite=True)
 
         w1 = Wallet()
         o = OverlayServer(
