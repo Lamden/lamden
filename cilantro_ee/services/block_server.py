@@ -4,6 +4,7 @@ from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.constants.ports import BLOCK_SERVER
 import os
 import capnp
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
@@ -17,7 +18,7 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 # Provide a block blocks to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 class BlockServer(AsyncInbox):
-    def __init__(self, signing_key, socket_id, ctx=None,
+    def __init__(self, signing_key, ctx=None, port=BLOCK_SERVER,
                  linger=2000, poll_timeout=2000,
                  driver: CilantroStorageDriver=None, top=TopBlockManager()):
         self.wallet = Wallet(signing_key)

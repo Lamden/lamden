@@ -23,6 +23,7 @@ class Masternode(NodeBase):
         if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
             self._start_batcher()
             self._start_block_agg()
+            self._start_block_server()
             return 1
         else:
             self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
@@ -35,7 +36,8 @@ class Masternode(NodeBase):
 
     def _start_block_server(self):
         self.log.info("Masternode starting block server process")
-        self.blk_server = LProcess(target=BlockServer, name='BlockServer',
+        self.blk_server = LProcess(target=BlockServer, name='BlockServer', args=(self.signing_key,))
+        self.blk_server.sync_serve()
         # todo - complete this - do we need socket_id? or just a port?
 
     def _start_batcher(self):
