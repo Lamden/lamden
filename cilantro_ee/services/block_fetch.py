@@ -12,6 +12,7 @@ import asyncio
 from collections import Counter
 import time
 
+
 class ConfirmationCounter(Counter):
     def top_item(self):
         return self.most_common()[0][0]

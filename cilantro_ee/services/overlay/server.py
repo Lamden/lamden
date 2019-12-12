@@ -49,13 +49,15 @@ def async_reply(fn):
 
 
 class OverlayServer:
-    def __init__(self, sk, ctx, quorum):
+    def __init__(self, sk, ctx, quorum, vkbook, discover=True):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
         self.wallet = Wallet(seed=sk)
         self.loop = asyncio.get_event_loop()
 
-        self.vkbook = VKBook()
+        self.discover = discover
+
+        self.vkbook = vkbook
 
         Keys.setup(sk_hex=self.sk)
 
@@ -85,12 +87,12 @@ class OverlayServer:
                                   del_to_find=self.vkbook.delegates)
 
     def start(self):
-        self.loop.run_until_complete(asyncio.ensure_future(
+        asyncio.ensure_future(
             asyncio.gather(
-                self.network.start(),
+                self.network.start(discover=self.discover),
                 self.command_listener()
             )
-        ))
+        )
 
     async def command_listener(self):
         self.log.info('Listening for overlay commands over {}'.format(CMD_URL))
@@ -159,7 +161,7 @@ class OverlayServer:
             'vk': vk
         }
 
-    def teardown(self):
+    def stop(self):
         try:
             self.evt_sock.close()
             try:

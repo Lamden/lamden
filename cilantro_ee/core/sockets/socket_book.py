@@ -1,5 +1,8 @@
-from cilantro_ee.protocol.overlay.sync_client import OverlayClientSync
+from cilantro_ee.services.overlay.sync_client import OverlayClientSync
+from cilantro_ee.core.sockets.services import SocketStruct, get, Protocols
 import asyncio
+import zmq.asyncio
+import json
 
 # Keeps a dictionary between a VK and an IP string
 # Use refresh() to fetch any new VKs to stay up to date
@@ -8,11 +11,13 @@ import asyncio
 
 
 class SocketBook:
-    def __init__(self, client: OverlayClientSync, phonebook_function: callable=None):
+    def __init__(self, peer_service_address: SocketStruct, port: int, ctx: zmq.asyncio.Context, phonebook_function: callable=None):
         # self.port = port
-        self.client = client
+        self.peer_service_address = peer_service_address
         self.phonebook_function = phonebook_function
         self.sockets = {}
+        self.port = port
+        self.ctx = ctx
 
     async def refresh(self):
         pb_nodes = set(self.phonebook_function())
@@ -26,7 +31,8 @@ class SocketBook:
 
         # Add new nodes
         to_add = self.new_nodes(pb_nodes, current_nodes)
-        coroutines = [self.client.async_get_ip_sync(m) for m in to_add]
+
+        coroutines = [self.find_node(m) for m in to_add]
 
         tasks = asyncio.gather(*coroutines)
         loop = asyncio.get_event_loop()
@@ -38,7 +44,17 @@ class SocketBook:
 
         for r in results:
             if r is not None:
-                self.sockets.update(r)
+                _r = json.loads(r)
+
+                vk, tcp_str = [(k, v) for k, v in _r.items()][0]
+
+                self.sockets.update({vk: SocketStruct(protocol=Protocols.TCP, id=tcp_str, port=self.port)})
+
+    async def find_node(self, node):
+        find_message = ['find', node]
+        find_message = json.dumps(find_message).encode()
+
+        return await get(self.peer_service_address, msg=find_message, ctx=self.ctx, timeout=1000)
 
     @staticmethod
     def new_nodes(phone_book_nodes, current_nodes):
