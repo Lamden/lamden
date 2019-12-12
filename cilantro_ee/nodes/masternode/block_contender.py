@@ -45,7 +45,7 @@ class SBCIndexGreaterThanPossibleError(Exception):
 
 class SubBlockGroup:
     def __init__(self, sb_idx: int, curr_block_hash: str,
-                 contacts: VKBook, subblocks_per_block=NUM_SB_PER_BLOCK):
+                 contacts: VKBook, subblocks_per_block: int):
 
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
@@ -109,7 +109,7 @@ class SubBlockGroup:
         _, sb = Message.get_message(
                    MessageType.SUBBLOCK, merkleRoot=merkle_root,
                    signatures=sigs, merkleLeaves=[leaf for leaf in leaves],
-                   subBlockIdx=self.sb_idx, inputHash=input_hash,
+                   subBlockNum=self.sb_idx, inputHash=input_hash,
                    transactions=transactions)
    
         return sb
@@ -213,8 +213,8 @@ class SubBlockGroup:
             self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
             return False
 
-        if sbc.subBlockIdx != self.sb_idx:
-            self.log.error('{} != {}'.format(sbc.subBlockIdx, self.sb_idx))
+        if sbc.subBlockNum != self.sb_idx:
+            self.log.error('{} != {}'.format(sbc.subBlockNum, self.sb_idx))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
@@ -257,15 +257,16 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
-        if sbc.subBlockIdx >= self.subblocks_per_block:
-            self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.subBlockIdx, sbc))
-            return False
+        # can't use it as it is. need to convert back to the index
+        # if sbc.subBlockNum >= self.subblocks_per_block:
+            # self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.subBlockNum, sbc))
+            # return False
 
         return True
 
 
 class BlockContender:
-    def __init__(self, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS, contacts=PhoneBook):
+    def __init__(self, subblocks_per_block, builders_per_block, contacts=VKBook()):
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
@@ -347,17 +348,17 @@ class BlockContender:
 
     def get_sb_data(self):
         #assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        #assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+        #assert len(self.sb_groups) == self.subblocks_per_block, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
         for sb_group in self.sb_groups.values():
             sb_data.append(sb_group.get_sb())
 
-        sb_data = sorted(sb_data, key=lambda sb: sb.subBlockIdx)
+        sb_data = sorted(sb_data, key=lambda sb: sb.subBlockNum)
 
-        #assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
-                                                 #.format(len(sb_data), NUM_SB_PER_BLOCK)
+        #assert len(sb_data) == self.subblocks_per_block, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 #.format(len(sb_data), self.subblocks_per_block)
 
         return sb_data
 
@@ -384,10 +385,10 @@ class BlockContender:
 
         groups_empty = len(self.sb_groups) == 0
 
-        if sbc.subBlockIdx not in self.sb_groups:
-            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash, contacts=self.contacts)
+        if sbc.subBlockNum not in self.sb_groups:
+            self.sb_groups[sbc.subBlockNum] = SubBlockGroup(sb_idx=sbc.subBlockNum, curr_block_hash=self.curr_block_hash, contacts=self.contacts, subblocks_per_block=self.subblocks_per_block)
 
-        self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
+        self.sb_groups[sbc.subBlockNum].add_sbc(sender_vk, sbc)
         return groups_empty
 
     # Return to this. Is this behaving properly? Is it redundant?
@@ -407,7 +408,7 @@ class BlockContender:
     def get_input_hashes_sorted(self) -> List[list]:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
-        # assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+        # assert num_sbg <= self.subblocks_per_block, "Sub groups are not in a consistent state"
 
         sb_idx = self.get_first_sb_idx_unsorted(sb_groups) # 0
         input_hashes = []

@@ -18,7 +18,6 @@
 from typing import Dict, Callable
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.constants.zmq_filters import *
-from cilantro_ee.constants.system_config import *
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.block import INPUT_BAG_TIMEOUT
 
@@ -79,14 +78,6 @@ class UnpackedContractTransaction:
                                function_name=capnp_struct.payload.functionName,
                                kwargs=kwargs)
 
-
-
-class SBClientManager:
-    def __init__(self, sbb_idx, loop):
-        # self.client = SubBlockClient(sbb_idx=sbb_idx, num_sbb=NUM_SB_PER_BLOCK, loop=loop)
-        self.next_sm_index = 0
-        self.max_caches = 2
-        self.sb_caches = []
 
 
 # This is a convenience struct to hold all data related to a sub-block in one place.

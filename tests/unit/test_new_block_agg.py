@@ -1,13 +1,24 @@
-from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
-from cilantro_ee.core.sockets.services import _socket
+from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
 from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.messages.message import Message, MessageType
-from cilantro_ee.services.storage.vkbook import VKBook
-from unittest import TestCase
+from tests.utils.constitution_builder import ConstitutionBuilder
+
 import zmq.asyncio
 import asyncio
 import secrets
+
+ctx = zmq.asyncio.Context()
+const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
+book = const_builder.get_constitution()
+extract_vk_args(book)
+submit_vkbook(book, overwrite=True)
+
+from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
+from cilantro_ee.core.messages.message import Message, MessageType
+from cilantro_ee.core.sockets.services import _socket
+from cilantro_ee.services.storage.vkbook import VKBook
+from unittest import TestCase
 from tests import random_txs
+from copy import deepcopy
 
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
@@ -15,7 +26,9 @@ from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockCon
 class TestTransactionBatcherInformer(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
-        seed_vkbook()
+        # self.const_builder = ConstitutionBuilder(3, 3, False, False)
+        # submit_vkbook(self.const_builder.get_constitution())
+        # self.ctx = ctx
 
     def tearDown(self):
         self.ctx.destroy()
@@ -99,13 +112,11 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(kind, 2)
 
     def test_block_timeout_with_quorum_that_is_90_max_returns_new_block(self):
-        wallets = [Wallet() for _ in range(20)]
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64])
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
 
         b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=10, max_quorum=20,
-                            subblocks_per_block=1, builders_per_block=1, contacts=contacts)
+                            current_quorum=14, contacts=contacts)
 
         b.pending_block.started = True
 
@@ -126,10 +137,8 @@ class TestBlockAggregator(TestCase):
     def test_block_timeout_without_any_quorum_returns_failed_but_use_subscription_service(self):
         s = MockSubscription()
 
-        wallets = [Wallet() for _ in range(20)]
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64])
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
 
@@ -143,11 +152,9 @@ class TestBlockAggregator(TestCase):
 
         b = BlockAggregator(subscription=s,
                             block_timeout=0.5,
+                            current_quorum=12,
                             min_quorum=10,
                             max_quorum=20,
-                            current_quorum=12,
-                            subblocks_per_block=1,
-                            builders_per_block=1,
                             contacts=contacts)
 
         loop = asyncio.get_event_loop()
@@ -159,10 +166,8 @@ class TestBlockAggregator(TestCase):
     def test_block_new_if_all_sbc_are_in_sub_received(self):
         s = MockSubscription()
 
-        wallets = [Wallet() for _ in range(20)]
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64])
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
 
@@ -176,11 +181,9 @@ class TestBlockAggregator(TestCase):
 
         b = BlockAggregator(subscription=s,
                             block_timeout=0.5,
+                            current_quorum=20,
                             min_quorum=10,
                             max_quorum=20,
-                            current_quorum=20,
-                            subblocks_per_block=1,
-                            builders_per_block=1,
                             contacts=contacts)
 
         loop = asyncio.get_event_loop()
@@ -192,10 +195,8 @@ class TestBlockAggregator(TestCase):
     def test_block_skip_if_all_sbc_are_in_sub_received_and_empty(self):
         s = MockSubscription()
 
-        wallets = [Wallet() for _ in range(20)]
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64])
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
 
@@ -213,7 +214,7 @@ class TestBlockAggregator(TestCase):
                                                       merkleLeaves=[],
                                                       signature=merkle_proof,
                                                       transactions=[],
-                                                      subBlockIdx=0,
+                                                      subBlockNum=0,
                                                       prevBlockHash=b'\x00' * 32)
 
             s.received.append((msg, 0))
@@ -223,8 +224,6 @@ class TestBlockAggregator(TestCase):
                             min_quorum=10,
                             max_quorum=20,
                             current_quorum=20,
-                            subblocks_per_block=1,
-                            builders_per_block=1,
                             contacts=contacts)
 
         loop = asyncio.get_event_loop()
@@ -236,10 +235,8 @@ class TestBlockAggregator(TestCase):
     def test_block_fail_if_consensus_not_possible_but_hash_sbcs(self):
         s = MockSubscription()
 
-        wallets = [Wallet() for _ in range(20)]
-
-        contacts = VKBook(delegates=[w.verifying_key() for w in wallets],
-                          masternodes=['A' * 64])
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
 
@@ -256,8 +253,6 @@ class TestBlockAggregator(TestCase):
                             min_quorum=10,
                             max_quorum=20,
                             current_quorum=20,
-                            subblocks_per_block=1,
-                            builders_per_block=1,
                             contacts=contacts)
 
         loop = asyncio.get_event_loop()

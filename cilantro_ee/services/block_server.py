@@ -11,21 +11,24 @@ import json
 import struct
 import time
 
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
 # Provide a block blocks to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 class BlockServer(AsyncInbox):
-    def __init__(self, socket_id, wallet, ctx, linger, poll_timeout, driver: CilantroStorageDriver=None, top=TopBlockManager()):
-        self.driver = driver
-        self.top = top
+    def __init__(self, signing_key, socket_id, ctx=None,
+                 linger=2000, poll_timeout=2000,
+                 driver: CilantroStorageDriver=None, top=TopBlockManager()):
+        self.wallet = Wallet(signing_key)
+        self.ctx = ctx or zmq.asyncio.Context()
         super().__init__(socket_id=socket_id,
-                         wallet=wallet,
-                         ctx=ctx,
+                         wallet=self.wallet,
+                         ctx=self.ctx,
                          linger=linger,
                          poll_timeout=poll_timeout)
+        self.driver = driver or CilantroStorageDriver(key=signing_key)
+        self.top = top
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)

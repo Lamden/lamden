@@ -4,11 +4,12 @@ import asyncio
 # Keeps a dictionary between a VK and an IP string
 # Use refresh() to fetch any new VKs to stay up to date
 # You must turn the IP strings into SocketStructs yourself.
-# This means there is no port information on the strings.
+# this is currently available only for tcp connections
 
 
 class SocketBook:
     def __init__(self, client: OverlayClientSync, phonebook_function: callable=None):
+        # self.port = port
         self.client = client
         self.phonebook_function = phonebook_function
         self.sockets = {}

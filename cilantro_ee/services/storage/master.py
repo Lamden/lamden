@@ -6,9 +6,7 @@ from cilantro_ee.core.logger.base import get_logger
 from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
-from cilantro_ee.constants.system_config import *
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.constants import system_config
 
 import hashlib
 
@@ -353,8 +351,8 @@ class CilantroStorageDriver(DistributedMasterStorage):
         block = self.get_block(block_num)
         sub_blocks = block.get('subBlocks')
 
-        for i in range(0, system_config.NUM_SB_PER_BLOCK):
-            leaves = sub_blocks[i].get('merkleLeaves')
+        for sb in sub_blocks:
+            leaves = sb.get('merkleLeaves')
 
             try:
                 tx_idx = leaves.index(leaf)
@@ -362,7 +360,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
                 tx_idx = -1
 
             if tx_idx >= 0:
-                tx_dump = sub_blocks[i].get('transactions')
+                tx_dump = sb.get('transactions')
                 return tx_dump[tx_idx]
 
         return None

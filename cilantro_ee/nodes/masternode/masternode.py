@@ -5,12 +5,9 @@ from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro_ee.nodes.masternode.webserver import start_webserver
+from cilantro_ee.services.block_server import BlockServer
 
 import os, random
-
-
-IPC_IP = 'masternode-ipc-sock'
-IPC_PORT = 6967
 
 
 class Masternode(NodeBase):
@@ -18,7 +15,9 @@ class Masternode(NodeBase):
     # This call should not block!
     def start_node(self):
         self.tx_queue = Queue()
-        self.ipc_ip = IPC_IP + '-' + str(os.getpid()) + '-' + str(random.randint(0, 2**32))
+        self.ipc_ip = 'mn-ipc-sock-' + str(os.getpid()) + '-'
+                      .str(random.randint(0, 2**32))
+        self.ipc_port = 6967     # can be chosen randomly any open port
 
         self._start_web_server()
         if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
@@ -34,15 +33,27 @@ class Masternode(NodeBase):
         self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
         self.server.start()
 
+    def _start_block_server(self):
+        self.log.info("Masternode starting block server process")
+        self.blk_server = LProcess(target=BlockServer, name='BlockServer',
+        # todo - complete this - do we need socket_id? or just a port?
+
     def _start_batcher(self):
         # Create a worker to do transaction batching
         self.log.info("Masternode starting transaction batcher process")
         self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                kwargs={'queue': self.tx_queue, 'signing_key': self.signing_key,
-                                        'ip': self.ip, 'ipc_ip': self.ipc_ip, 'ipc_port': IPC_PORT})
+                                kwargs={'queue': self.tx_queue, 'ip': self.ip,
+                                        'signing_key': self.signing_key,
+                                        'ipc_ip': self.ipc_ip, 'ipc_port': self.ipc_port})
         self.batcher.start()
+
 
     def _start_block_agg(self):
         self.log.info("Masternode starting BlockAggregator Process")
-        self.block_agg = LProcess(target=BlockAggregator,  name='BlockAgg', kwargs={'ip': self.ip, 'ipc_ip': self.ipc_ip, 'ipc_port': IPC_PORT, 'signing_key': self.signing_key, 'name': 'BlockAgg'})
+        self.block_agg = LProcess(target=BlockAggregatorController,
+                                  name='BlockAgg',
+                                  kwargs={'ip': self.ip, 'ipc_ip': self.ipc_ip,
+                                          'ipc_port': self.ipc_port,
+                                          'signing_key': self.signing_key,
+                                          'name': 'BlockAgg'})
         self.block_agg.start()

@@ -106,9 +106,7 @@ def extract_sub_dict_values(book, key):
         min_quorum = 0
     return vk_list, min_quorum
   
-
-def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
-    book = read_public_constitution(file)
+def extract_vk_args(book):
     book['masternodes'], book['masternode_min_quorum'] = \
                               extract_sub_dict_values(book, 'masternodes')
     book['delegates'], book['delegate_min_quorum'] = \
@@ -120,4 +118,7 @@ def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
     book['schedulers'], book['scheduler_min_quorum'] = \
                               extract_sub_dict_values(book, 'schedulers')
 
+def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
+    book = read_public_constitution(file)
+    extract_vk_args(book)
     submit_vkbook(book, overwrite)

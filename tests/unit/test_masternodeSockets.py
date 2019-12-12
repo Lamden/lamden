@@ -22,6 +22,16 @@ class TestSocketBook(TestCase):
         self.ctx.destroy()
         self.loop.close()
 
+    def get_vkbook_args(self):
+        args = {}
+        args['masternodes'] = ['stu', 'raghu']
+        args['masternode_min_quorum'] = 2
+        args['delegates'] = ['tejas', 'alex', 'steve']
+        args['delegate_min_quorum'] = 2
+        args['enable_stamps'] = True
+        args['enable_nonces'] = True
+        return args
+
     def test_new_nodes(self):
         current_nodes = {1, 2, 3, 4}
         all_nodes = {1, 2, 3, 4, 5, 6, 7, 8}
@@ -41,7 +51,7 @@ class TestSocketBook(TestCase):
         self.assertEqual(SocketBook.old_nodes(all_nodes, current_nodes), {2, 3})
 
     def test_remove_node(self):
-        m = SocketBook()
+        m = SocketBook(None)
         ctx = zmq.Context()
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
@@ -51,7 +61,7 @@ class TestSocketBook(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_remove_node_doesnt_exist_does_nothing(self):
-        m = SocketBook()
+        m = SocketBook(None)
         ctx = zmq.Context()
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
@@ -61,13 +71,8 @@ class TestSocketBook(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_refresh(self):
-        sync.submit_vkbook(masternodes=['stu', 'raghu'],
-                           delegates=['tejas', 'alex', 'steve'],
-                           num_boot_mns=2,
-                           num_boot_del=3,
-                           stamps=True,
-                           nonces=True,
-                           overwrite=True)
+        vkbook_args = self.get_vkbook_args()
+        sync.submit_vkbook(vkbook_args, overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -89,13 +94,8 @@ class TestSocketBook(TestCase):
         self.assertDictEqual(masternodes.sockets, expected)
 
     def test_refresh_remove_old_nodes(self):
-        sync.submit_vkbook(masternodes=['stu', 'raghu'],
-                           delegates=['tejas', 'alex', 'steve'],
-                           num_boot_mns=2,
-                           num_boot_del=3,
-                           stamps=True,
-                           nonces=True,
-                           overwrite=True)
+        vkbook_args = self.get_vkbook_args()
+        sync.submit_vkbook(vkbook_args, overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -112,7 +112,7 @@ class TestSocketBook(TestCase):
         }
 
         p1.peer_service.table.peers = peeps
-        masternodes = SocketBook(network=p1, phonebook_function=PhoneBook.contract.get_masternodes)
+        masternodes = SocketBook(p1, phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
 
@@ -126,13 +126,8 @@ class TestSocketBook(TestCase):
 
         self.assertDictEqual(masternodes.sockets, expected)
 
-        sync.submit_vkbook(masternodes=['stu', 'raghu'],
-                           delegates=['tejas', 'alex', 'steve'],
-                           num_boot_mns=2,
-                           num_boot_del=3,
-                           stamps=True,
-                           nonces=True,
-                           overwrite=True)
+        vkbook_args = self.get_vkbook_args()
+        sync.submit_vkbook(vkbook_args, overwrite=True)
 
         PhoneBook = VKBook()
 

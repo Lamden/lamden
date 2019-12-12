@@ -24,6 +24,10 @@ class BlockSubBlockMapper:
     def get_num_blocks(self):
         return self.num_sb_builders * self.get_num_subscribers(0)
 
+    def get_sub_block_index(self, sub_block_num: int):
+        return BlockSubBlockMapper.get_builder_index(sub_block_num,
+                                                     self.num_sb_builders)
+
     def get_list_of_subscriber_list(self):
         # complete master list
         vf_list = [(v,f) for v in self.mn_vk_list for f in self.txn_filter_list]
@@ -52,6 +56,27 @@ class BlockSubBlockMapper:
             num_masters += 1
         return num_masters
    
+    # useful only for masternodes
+    def get_list_of_sb_numbers(self, mn_vk) -> list:
+        if mn_vk not in self.mn_vk_list:
+            return []
+        index = self.mn_vk_list.index(mn_vk)
+        num_filters = len(self.txn_filter_list)
+        first_sb_num = index * num_filters
+        # sb_nums = []
+        # for i in range(num_filters):
+            # sb_nums.append(first_sb_num + i)
+        # return sb_nums
+        return [ first_sb_num + i for i in range(num_filters) ]
+   
+    def get_set_of_sb_indices(self, sb_numbers: list) -> set:
+        # sb_indices = set()
+        # for num in sb_numbers:
+            # idx = self.get_sub_block_index(num)
+            # sb_indices.add(idx)
+        # return sb_indices
+        return { self.get_sub_block_index(num) for num in sb_numbers }
+
 
     @staticmethod
     def get_bag_index(sub_block_num: int, num_builders: int):

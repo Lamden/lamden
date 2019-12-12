@@ -3,40 +3,46 @@ from cilantro_ee.services.block_fetch import BlockFetcher
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.constants.system_config import *
 
 import time
 import asyncio
 import zmq
 import zmq.asyncio
 
-PhoneBook = VKBook()
-
 # Sends this to Transaction Batcher
 class TransactionBatcherInformer:
-    def __init__(self, socket_id, ctx: zmq.asyncio.Context, wallet, linger=2000):
-        if socket_id.protocol == Protocols.TCP:
-            socket_id.id = '*'
+    # def __init__(self, socket_id, ctx: zmq.asyncio.Context, wallet, linger=2000):
+        # if socket_id.protocol == Protocols.TCP:
+            # socket_id.id = '*'
 
+    def __init__(self, ipc_ip, ipc_port, ctx: zmq.asyncio.Context, wallet, linger=2000):
         self.wallet = wallet
         self.ctx = ctx
-        self.socket = self.ctx.socket(zmq.PAIR)
+        self.socket = self.ctx.socket(zmq.ROUTER, name="BA-IPC-Router")
         self.socket.setsockopt(zmq.LINGER, linger)
-        self.socket.bind(str(socket_id))
+        self.socket.bind(protocol='ipc', ip=ipc_ip, port=ipc_port)
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="BA-IPC-Router")
+        self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
     async def send_ready(self):
-        ready = Message.get_message_packed_2(msg_type=MessageType.READY)
-        await self.socket.send(ready)
+        # ready = Message.get_message_packed_2(msg_type=MessageType.READY)
+        # await self.socket.send(ready)
+        mtype, msg = Message.get_message_packed(msg_type=MessageType.READY)
+        await self.socket.send_multipart([b'0', mtype, msg])
 
     async def send_burn_input_hashes(self, hashes):
         if len(hashes) > 0:
-            burn_input_hashes = Message.get_message_packed_2(msg_type=MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
-            self.socket.send(burn_input_hashes)
+            # burn_input_hashes = Message.get_message_packed_2(msg_type=MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
+            # self.socket.send(burn_input_hashes)
+            mtype, msg = Message.get_message_packed(msg_type=MessageType.BURN_INPUT_HASHES,
+                                                    inputHashes=hashes)
+            await self.socket.send_multipart([b'0', mtype, msg])
 
 
 class BlockNotificationForwarder:
@@ -50,7 +56,8 @@ class BNKind:
 
 
 class Block:
-    def __init__(self, min_quorum, max_quorum, current_quorum, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS, contacts=PhoneBook):
+    def __init__(self, min_quorum, max_quorum, current_quorum,
+                 subblocks_per_block, builders_per_block, contacts=VKBook()):
         self.contender = BlockContender(subblocks_per_block, builders_per_block, contacts=contacts)
         self.started = False
         self.current_quorum = current_quorum
@@ -73,9 +80,7 @@ class BlockAggregator:
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
-                 subblocks_per_block=NUM_SB_PER_BLOCK,
-                 builders_per_block=NUM_SB_BUILDERS,
-                 contacts=PhoneBook):
+                 contacts=VKBook()):
 
         self.subblock_subscription_service = subscription
 
@@ -86,11 +91,13 @@ class BlockAggregator:
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
 
+        self.block_sb_mapper = BlockSubBlockMapper(self.contacts.masternodes)
+
         self.pending_block = Block(min_quorum=self.min_quorum,
                                    max_quorum=self.max_quorum,
                                    current_quorum=self.current_quorum,
-                                   subblocks_per_block=subblocks_per_block,
-                                   builders_per_block=builders_per_block,
+                                   subblocks_per_block=self.block_sb_mapper.num_sb_per_block,
+                                   builders_per_block=self.block_sb_mapper.num_sb_builders,
                                    contacts=contacts)
 
     async def gather_block(self):
@@ -145,30 +152,41 @@ class BlockAggregator:
 
 class BlockAggregatorController:
     def __init__(self,
-                 state: MetaDataStorage,
-                 driver: CilantroStorageDriver,
-                 ctx: zmq.asyncio.Context,
-                 informer_socket: SocketStruct,
+                 signing_key: bytes,
                  pub_port: int,
-                 wallet, sb_idx, mn_idx, min_quorum, max_quorum,
-                 masternode_sockets=SocketBook(None, PhoneBook.contract.get_masternodes),
-                 delegate_sockets=SocketBook(None, PhoneBook.contract.get_delegates),
-                 contacts=PhoneBook):
+                 ipc_ip,
+                 ipc_port,
+                 masternode_sockets=None, 
+                 delegate_sockets=None, 
+                 ctx: zmq.asyncio.Context=None,
+                 driver: CilantroStorageDriver=None,
+                 state: MetaDataStorage=MetaDataStorage(),
+                 contacts=VKBook()):
+
+        self.wallet = Wallet(signing_key)
+
+        self.masternode_sockets = masternode_sockets or \
+                                  SocketBook(None, contacts.masternodes)
+        self.delegate_sockets = delegate_sockets or \
+                                SocketBook(None, contacts.delegates)
+        self.ctx = ctx or zmq.asyncio.Context()
+        self.driver = driver or CilantroStorageDriver(key=signing_key)
+
 
         self.state = state
-        self.driver = driver
-        self.wallet = wallet
-        self.ctx = ctx
+        self.contacts = contacts
 
         self.sb_idx = sb_idx
         self.mn_idx = mn_idx
 
-        self.contacts = contacts
         self.min_quorum = self.contacts.delegate_quorum_min
         self.max_quorum = self.contacts.delegate_quorum_max
 
-        self.masternode_sockets = masternode_sockets
-        self.delegate_sockets = delegate_sockets
+        block_sb_mapper = BlockSubBlockMapper(self.contacts.masternodes)
+        my_vk = self.wallet.verifying_key()
+        sb_nums = block_sb_mapper.get_list_of_sb_numbers(my_vk)
+        self.sb_numbers = sb_nums
+        self.sb_indices = block_sb_mapper.get_set_of_sb_indices(sb_nums)
 
         self.fetcher = BlockFetcher(wallet=self.wallet,
                                     ctx=self.ctx,
@@ -181,7 +199,7 @@ class BlockAggregatorController:
         self.pub_socket.bind('tcp://*:{}'.format(pub_port))
 
         self.informer = TransactionBatcherInformer(
-            socket_id=informer_socket
+            ipc_ip, ipc_port, self.ctx, self.wallet
         )
 
         self.running = False
@@ -250,10 +268,10 @@ class BlockAggregatorController:
 
         return block_notification
 
-    def get_input_hashes_to_burn(self, block):
-        if block['firstSbIdx'] + self.sb_idx == self.mn_idx:
-            return block['inputHashes'][self.sb_idx]
-        return []
+    # raghu - ? is it sub_blocks
+    def get_input_hashes_to_burn(self, sub_blocks):
+        return [sub_blocks[i]['inputHash'] for i in self.sb_indices
+                       if sub_blocks[i]['subBlockNum'] in self.sb_numbers]
 
     async def send_ready(self):
         ready = Message.get_signed_message_packed_2(

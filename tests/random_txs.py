@@ -183,7 +183,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
                 merkleLeaves=[leaf for leaf in tree.leaves],
                 signature=proof.to_bytes_packed(),
                 transactions=[tx for tx in transactions],
-                subBlockIdx=idx,
+                subBlockNum=idx,
                 prevBlockHash=prev_block_hash)
         else:
             sbc = {
@@ -192,7 +192,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
                 'merkleLeaves': [leaf for leaf in tree.leaves],
                 'signature': proof.to_bytes_packed(),
                 'transactions': [tx for tx in transactions],
-                'subBlockIdx': idx,
+                'subBlockNum': idx,
                 'prevBlockHash': prev_block_hash
             }
 
