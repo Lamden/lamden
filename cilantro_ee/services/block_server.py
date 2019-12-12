@@ -10,6 +10,7 @@ from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import json
 import struct
 import time
+import asyncio
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -29,6 +30,11 @@ class BlockServer(AsyncInbox):
                          poll_timeout=poll_timeout)
         self.driver = driver or CilantroStorageDriver(key=signing_key)
         self.top = top
+
+    def sync_serve(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.serve())
+
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
