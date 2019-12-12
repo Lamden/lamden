@@ -22,9 +22,9 @@ class TestSocketBook(TestCase):
         self.ctx.destroy()
         self.loop.close()
 
-    def get_vkbook_args(self):
+    def get_vkbook_args(self, mns=['stu', 'raghu']):
         args = {}
-        args['masternodes'] = ['stu', 'raghu']
+        args['masternodes'] = mns
         args['masternode_min_quorum'] = 2
         args['delegates'] = ['tejas', 'alex', 'steve']
         args['delegate_min_quorum'] = 2
@@ -129,41 +129,72 @@ class TestSocketBook(TestCase):
         w1 = Wallet()
         p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
 
-        ctx = zmq.Context()
-
         peeps = {
-            'stu': ctx.socket(zmq.SUB),
-            'raghu': ctx.socket(zmq.SUB),
-            'tejas': ctx.socket(zmq.SUB),
-            'steve': ctx.socket(zmq.SUB)
+            'stu': '127.0.0.1',
+            'raghu': '127.0.0.8',
+            'tejas': '127.0.2.1',
+            'steve': '127.0.54.6'
         }
 
         p1.peer_service.table.peers = peeps
-        masternodes = SocketBook(p1, phonebook_function=PhoneBook.contract.get_masternodes)
+
+        masternodes = SocketBook(peer_service_address=_socket('tcp://127.0.0.1:10001'),
+                                 port=9999,
+                                 ctx=self.ctx,
+                                 phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(masternodes.refresh())
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await masternodes.refresh()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
 
         expected = {
-            'stu': peeps['stu'],
-            'raghu': peeps['raghu'],
+            'stu': _socket('tcp://127.0.0.1:9999'),
+            'raghu': _socket('tcp://127.0.0.8:9999')
         }
 
         self.assertDictEqual(masternodes.sockets, expected)
 
-        vkbook_args = self.get_vkbook_args()
+        self.ctx.destroy()
+        self.ctx = zmq.asyncio.Context()
+
+        p1.ctx = self.ctx
+
+        vkbook_args = self.get_vkbook_args(mns=['stu', 'tejas'])
         sync.submit_vkbook(vkbook_args, overwrite=True)
 
-        PhoneBook = VKBook()
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await masternodes.refresh()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(masternodes.refresh())
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
 
         expected = {
-            'stu': peeps['stu'],
-            'tejas': peeps['tejas']
+            'stu': _socket('tcp://127.0.0.1:9999'),
+            'tejas': _socket('tcp://127.0.2.1:9999'),
         }
 
         self.assertDictEqual(masternodes.sockets, expected)
