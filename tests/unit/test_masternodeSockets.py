@@ -82,11 +82,16 @@ class TestSocketBook(TestCase):
 
         #'tcp://127.0.0.1:10003'
 
-        expected = {
+        raw = {
             'stu': '127.0.0.1',
             'raghu': '127.0.0.2'
         }
-        p1.peer_service.table.peers = expected
+        p1.peer_service.table.peers = raw
+
+        expected = {
+            'stu': _socket('tcp://127.0.0.1:9999'),
+            'raghu': _socket('tcp://127.0.0.2:9999')
+        }
 
         # CHANGE CLIENT TO SOCKET
         masternodes = SocketBook(peer_service_address=_socket('tcp://127.0.0.1:10001'),

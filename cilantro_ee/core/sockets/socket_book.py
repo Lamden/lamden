@@ -1,5 +1,5 @@
 from cilantro_ee.services.overlay.sync_client import OverlayClientSync
-from cilantro_ee.core.sockets.services import SocketStruct, get
+from cilantro_ee.core.sockets.services import SocketStruct, get, Protocols
 import asyncio
 import zmq.asyncio
 import json
@@ -45,7 +45,10 @@ class SocketBook:
         for r in results:
             if r is not None:
                 _r = json.loads(r)
-                self.sockets.update(_r)
+
+                vk, tcp_str = [(k, v) for k, v in _r.items()][0]
+
+                self.sockets.update({vk: SocketStruct(protocol=Protocols.TCP, id=tcp_str, port=self.port)})
 
     async def find_node(self, node):
         find_message = ['find', node]
