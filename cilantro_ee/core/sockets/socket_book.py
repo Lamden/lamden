@@ -1,4 +1,4 @@
-from cilantro_ee.protocol.overlay.sync_client import OverlayClientSync
+from cilantro_ee.services.overlay.sync_client import OverlayClientSync
 import asyncio
 
 # Keeps a dictionary between a VK and an IP string
