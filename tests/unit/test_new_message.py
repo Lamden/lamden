@@ -39,7 +39,7 @@ class TestMessages(TestCase):
         capnp_impl = CapnpImpl()
         msg_type, message = capnp_impl.get_message(msg_type=MessageType.READY)
         self.assertEqual(message, '')
-        msg_type, message = capnp_impl.get_message_packed(msg_type=MessageType.MAKE_NEXT_BLOCK)
+        msg_type, message = capnp_impl.get_message_packed(msg_type=MessageType.MAKE_NEXT_SB)
         self.assertEqual(message, b'')
 
     def test_union(self):
