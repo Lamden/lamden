@@ -156,6 +156,7 @@ class PeerServer(services.RequestReplyService):
             self.process_event_subscription_queue()
         ))
         log.info('Peer services running on {}'.format(self.address))
+        log.info('Event services running on {}'.format(self.event_address))
 
     def stop(self):
         self.running = False
@@ -212,46 +213,47 @@ class Network:
         self.del_to_find = del_to_find
         self.ready = False
 
-    async def start(self):
+    async def start(self, discover=True):
         # Start the Peer Service and Discovery service
         asyncio.ensure_future(
             self.peer_service.start()
         )
 
-        if self.wallet.verifying_key().hex() in self.mn_to_find:
-            asyncio.ensure_future(
-                self.discovery_server.serve()
+        if discover:
+            if self.wallet.verifying_key().hex() in self.mn_to_find:
+                asyncio.ensure_future(
+                    self.discovery_server.serve()
+                )
+
+            discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.discovery_port)
+                                         for ip in self.bootnodes]
+
+            # Discover our bootnodes
+            await self.discover_bootnodes(discovery_bootnode_ids)
+
+            peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.peer_service_port)
+                                         for ip in self.bootnodes]
+
+            log.info('Peers now: {}'.format(self.bootnodes))
+
+            # Wait for the quorum to resolve
+            await self.wait_for_quorum(
+                self.initial_mn_quorum,
+                self.initial_del_quorum,
+                self.mn_to_find,
+                self.del_to_find,
+                peer_service_bootnode_ids
             )
 
-        discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.discovery_port)
-                                     for ip in self.bootnodes]
+            log.success('Network is ready.')
 
-        # Discover our bootnodes
-        await self.discover_bootnodes(discovery_bootnode_ids)
+            self.ready = True
 
-        peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.peer_service_port)
-                                     for ip in self.bootnodes]
+            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
 
-        log.info('Peers now: {}'.format(self.bootnodes))
+            await self.peer_service.event_publisher.send(ready_msg)
 
-        # Wait for the quorum to resolve
-        await self.wait_for_quorum(
-            self.initial_mn_quorum,
-            self.initial_del_quorum,
-            self.mn_to_find,
-            self.del_to_find,
-            peer_service_bootnode_ids
-        )
-
-        log.success('Network is ready.')
-
-        self.ready = True
-
-        ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
-
-        await self.peer_service.event_publisher.send(ready_msg)
-
-        log.success('Sent ready signal.')
+            log.success('Sent ready signal.')
         return
 
     async def discover_bootnodes(self, nodes):
@@ -369,3 +371,6 @@ class Network:
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
             return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries-1)
+
+    def stop(self):
+        self.peer_service.stop()

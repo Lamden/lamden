@@ -5,6 +5,8 @@ from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import SocketStruct, _socket
 from cilantro_ee.contracts import sync
+from cilantro_ee.services.overlay.sync_client import OverlayClientSync
+from cilantro_ee.services.overlay.server import OverlayServer
 
 import zmq
 import zmq.asyncio
@@ -77,19 +79,47 @@ class TestSocketBook(TestCase):
         PhoneBook = VKBook()
 
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+
+        #'tcp://127.0.0.1:10003'
+
+        s1 = OverlayClientSync(ctx=self.ctx)
+        o = OverlayServer(sk='0'*64, ctx=self.ctx, quorum=1, vkbook=PhoneBook, discover=False)
 
         expected = {
             'stu': '127.0.0.1',
             'raghu': '127.0.0.2'
         }
-        p1.peer_service.table.peers = expected
-        masternodes = SocketBook(network=p1, phonebook_function=PhoneBook.contract.get_masternodes)
+
+        o.network.peer_service.table.peers = expected
+
+        masternodes = SocketBook(client=s1, phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
 
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(masternodes.refresh())
+
+        async def slow_refresh():
+            await asyncio.sleep(0.3)
+            await masternodes.refresh()
+
+        async def start():
+            await s1.start()
+            await asyncio.sleep(1)
+
+        async def kill_server(p, t=0.5):
+            await asyncio.sleep(t)
+            p.stop()
+
+        tasks = asyncio.gather(
+            o.start(),
+            start(),
+            slow_refresh(),
+            kill_server(o)
+        )
+
+        res = loop.run_until_complete(tasks)
+
+        print(res)
 
         self.assertDictEqual(masternodes.sockets, expected)
 
