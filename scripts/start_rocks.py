@@ -5,6 +5,7 @@ import asyncio
 
 ROCKS_DIR = DATA_DIR + '/rocks'
 
+
 def start_rocks(reset=False):
     print("Starting Rocks server...")
     if not os.path.exists(ROCKS_DIR):
@@ -31,6 +32,10 @@ def start_rocks(reset=False):
 
     # os.system(cmd)
 
+
 if __name__ == '__main__':
-    start_rocks()
+    if len(sys.argv) > 1:
+        start_rocks(reset=bool(sys.argv[1]))
+    else:
+        start_rocks()
 
