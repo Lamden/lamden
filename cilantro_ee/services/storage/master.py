@@ -162,7 +162,7 @@ class MasterStorage:
 
 
 class DistributedMasterStorage(MasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=VKBook()):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=None):
         super().__init__(config_path=config_path)
 
         self.distribute_writes = distribute_writes

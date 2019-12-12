@@ -10,7 +10,7 @@ class TestWS(TestCase):
     def test_ping_api(self):
         _, response = app.test_client.get('/ping')
         self.assertEqual(response.status,200)
-        self.assertEqual(response.json, [True, 'Hello'])
+        self.assertListEqual(response.json, [True, 'Hello'])
 
     def test_id_api(self):
         _, response = app.test_client.get('/id')
