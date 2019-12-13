@@ -37,7 +37,8 @@ class BlockServer(AsyncInbox):
         self.top = top
 
     def sync_serve(self):
-        asyncio.ensure_future(self.serve())
+        asyncio.get_event_loop().run_until_complete(
+                           asyncio.ensure_future(self.serve()))
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
