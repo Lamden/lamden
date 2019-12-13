@@ -18,6 +18,7 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 
 # Provide a block blocks to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
+
 class BlockServer(AsyncInbox):
     def __init__(self, signing_key, ctx=None, port=BLOCK_SERVER,
                  linger=2000, poll_timeout=2000,
@@ -88,3 +89,9 @@ class BlockServer(AsyncInbox):
                                                         msg_type=MessageType.BAD_REQUEST,
                                                         timestamp=int(time.time()))
             await self.return_msg(_id, reply)
+
+
+class BlockServerProcess:
+    def __init__(self, **kwargs):
+        bs = BlockServer(**kwargs)
+        bs.sync_serve()

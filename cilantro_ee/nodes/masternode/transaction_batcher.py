@@ -212,7 +212,6 @@ class RateLimitingBatcher:
         return mtype, msg
 
 
-
 class TransactionBatcher(Worker):
     def __init__(self, ip, signing_key, queue=Queue(), ipc_ip=IPC_ID, ipc_port=IPC_PORT, *args, **kwargs):
         super().__init__(signing_key=signing_key, *args, **kwargs)
