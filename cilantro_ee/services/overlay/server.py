@@ -49,7 +49,7 @@ def async_reply(fn):
 
 
 class OverlayServer:
-    def __init__(self, sk, ctx, quorum, vkbook, discover=True):
+    def __init__(self, sk, ctx, quorum, vkbook=VKBook(), discover=True):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
         self.wallet = Wallet(seed=sk)
