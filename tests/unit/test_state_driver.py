@@ -52,9 +52,9 @@ class TestStateDriver(TestCase):
             # Put this hashmap as the state of the contract execution and contruct it into a capnp struct
             tx_data = transaction_capnp.TransactionData.new_message(
                 transaction=packed_tx,
-                status='SUCC',
+                status=0,
                 state=json.dumps(get_set),
-                contractType=0
+                stampsUsed=10000
             )
 
             # Append it to our list
@@ -71,7 +71,7 @@ class TestStateDriver(TestCase):
             merkleRoot=tree.root,
             signatures=[sig],
             merkleLeaves=tree.leaves,
-            subBlockIdx=0,
+            subBlockNum=0,
             inputHash=b'a' * 32,
             transactions=[tx for tx in transactions]
         )
@@ -134,8 +134,6 @@ class TestStateDriver(TestCase):
         update = {'123': 999,
                   'stu': b'555',
                   'something': [1, 2, 3]}
-
-        print(encoder.encode(update))
 
         encoded = encoder.encode(update)
         tx_data = transaction_capnp.TransactionData.new_message(

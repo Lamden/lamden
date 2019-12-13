@@ -108,8 +108,8 @@ class MetaDataStorage(RocksDriver):
         nonces = {}
 
         for sb in block['subBlocks']:
-            for tx in sb.transactions:
-                self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
+            for tx in sb['transactions']:
+                self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx['transaction']['payload'])
                 self.set_transaction_data(tx=tx)
 
         # Commit new nonces
