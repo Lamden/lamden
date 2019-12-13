@@ -5,6 +5,8 @@ from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.constants.ports import BLOCK_SERVER
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.sockets.services import _socket
 import os
 import capnp
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
@@ -12,6 +14,7 @@ import json
 import struct
 import time
 import asyncio
+import zmq, zmq.asyncio
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -25,7 +28,7 @@ class BlockServer(AsyncInbox):
                  driver: CilantroStorageDriver=None, top=TopBlockManager()):
         self.wallet = Wallet(signing_key)
         self.ctx = ctx or zmq.asyncio.Context()
-        super().__init__(socket_id=socket_id,
+        super().__init__(socket_id=_socket('tcp://*:{}'.format(port)),
                          wallet=self.wallet,
                          ctx=self.ctx,
                          linger=linger,
@@ -34,7 +37,8 @@ class BlockServer(AsyncInbox):
         self.top = top
 
     def sync_serve(self):
-        asyncio.ensure_future(self.serve())
+        asyncio.get_event_loop().run_until_complete(
+                           asyncio.ensure_future(self.serve()))
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
