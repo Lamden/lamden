@@ -17,6 +17,8 @@ class NonceManager:
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):
+        if type(tx_payload) != dict:
+            tx_payload = tx_payload.to_dict()
         # Modifies the provided dict
         k = (tx_payload['processor'], tx_payload['sender'])
         current_nonce = nonce_hash.get(k)
