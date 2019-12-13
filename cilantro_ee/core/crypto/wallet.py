@@ -92,6 +92,13 @@ class Wallet:
         self.curve_sk = z85.encode(self.sk.to_curve25519_private_key().encode())
         self.curve_vk = z85.encode(self.vk.to_curve25519_public_key().encode())
 
+    @classmethod
+    def from_sk(cls, sk):
+        if type(sk) == str:
+            sk = bytes.fromhex(sk)
+
+        return Wallet(seed=sk)
+
     @staticmethod
     def format_key(k, as_hex=False):
         fk = k.encode()

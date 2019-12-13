@@ -257,7 +257,7 @@ class AsyncInbox:
                     msg = await self.socket.recv()
                     asyncio.ensure_future(self.handle_msg(_id, msg))
 
-            except zmq.error.ZMQError:
+            except zmq.error.ZMQError as e:
                 self.socket.close()
                 self.setup_socket()
 
