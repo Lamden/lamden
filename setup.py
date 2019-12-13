@@ -44,7 +44,7 @@ setup(
 
         # DB
         'rocks',
-        'contracting',s
+        'contracting',
         'pymongo==3.9',
         'redis==3.2.0'
         
