@@ -9,6 +9,8 @@ from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.contracts.sync import sync_genesis_contracts
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.constants.ports import MN_PUB_PORT
+from cilantro_ee.core.crypto.wallet import Wallet
 
 import time
 import asyncio
@@ -154,9 +156,9 @@ class BlockAggregator:
 class BlockAggregatorController:
     def __init__(self,
                  signing_key: bytes,
-                 pub_port: int,
                  ipc_ip,
                  ipc_port,
+                 pub_port: int=MN_PUB_PORT,
                  masternode_sockets=None, 
                  delegate_sockets=None, 
                  ctx: zmq.asyncio.Context=None,
