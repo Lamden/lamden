@@ -7,7 +7,6 @@ import asyncio
 
 from tests import random_txs
 
-from cilantro_ee.constants.zmq_filters import TRANSACTION_FILTER
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 

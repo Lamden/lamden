@@ -12,6 +12,7 @@ from cilantro_ee.core.utils.transaction import transaction_is_valid, Transaction
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.sockets.services import AsyncInbox, SocketStruct, Protocols
 from multiprocessing import Queue
+
 import zmq.asyncio
 import asyncio
 import time
@@ -57,7 +58,7 @@ class NewTransactionBatcher:
         asyncio.ensure_future(self.compose_transactions())
 
     async def compose_transactions(self):
-        sub_filter = TRANSACTION_FILTER.encode()
+        sub_filter = TRANSACTION_FILTERS[0].encode()
 
         while self.running:
             mtype, msg = await self.batcher.get_next_batch_packed()

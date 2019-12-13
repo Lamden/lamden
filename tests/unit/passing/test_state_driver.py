@@ -126,7 +126,7 @@ class TestStateDriver(TestCase):
             state=encoded
         )
 
-        self.r.set_transaction_data(tx=tx_data)
+        self.r.set_transaction_data(tx=tx_data.to_dict())
 
         self.assertEqual(self.r.get('123'), 999)
 
@@ -140,7 +140,7 @@ class TestStateDriver(TestCase):
             state=encoded
         )
 
-        self.r.set_transaction_data(tx=tx_data)
+        self.r.set_transaction_data(tx=tx_data.to_dict())
         self.assertEqual(self.r.get('123'), 999)
         self.assertEqual(self.r.get('stu'), b'555')
         self.assertEqual(self.r.get('something'), [1, 2, 3])
@@ -150,7 +150,7 @@ class TestStateDriver(TestCase):
         tx_data = transaction_capnp.TransactionData.new_message(
             state=update
         )
-        self.r.set_transaction_data(tx=tx_data)
+        self.r.set_transaction_data(tx=tx_data.to_dict())
 
         # Won't write the data because it's not a valid JSON map
         self.assertEqual(len(self.r.keys()), 0)
@@ -161,7 +161,7 @@ class TestStateDriver(TestCase):
         tx_data = transaction_capnp.TransactionData.new_message(
             state=encoded
         )
-        self.r.set_transaction_data(tx=tx_data)
+        self.r.set_transaction_data(tx=tx_data.to_dict())
 
         # Won't write the data because it's not a valid JSON map
         self.assertEqual(len(self.r.keys()), 0)

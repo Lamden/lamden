@@ -81,9 +81,9 @@ class MetaDataStorage(RocksDriver):
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
     def set_transaction_data(self, tx):
-        if tx.state is not None and len(tx.state) > 0:
+        if tx['state'] is not None and len(tx['state']) > 0:
             with contextlib.suppress(json.JSONDecodeError):
-                sets = json.loads(tx.state)
+                sets = json.loads(tx['state'])
 
             if type(sets) != dict:
                 return
