@@ -275,8 +275,6 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        print(r)
-
         self.assertEqual(r[str(addresses[0])], wallets[0].verifying_key().hex())
         self.assertEqual(r[str(addresses[1])], wallets[1].verifying_key().hex())
         self.assertIsNone(r.get(str(addresses[2])))
@@ -311,6 +309,6 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        self.assertIsNone(r.get(addresses[0]))
-        self.assertIsNone(r.get(addresses[1]))
-        self.assertIsNone(r.get(addresses[2]))
+        self.assertIsNone(r.get(str(addresses[0])))
+        self.assertIsNone(r.get(str(addresses[1])))
+        self.assertIsNone(r.get(str(addresses[2])))
