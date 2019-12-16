@@ -8,12 +8,6 @@ with open("README.md", "r") as fh:
     long_desc = fh.read()
 
 
-class PostInstallCommand(install):
-    """ Triggers post installation boot script to startup node"""
-    def run(self):
-        # boot script here
-        install.run(self)
-
 setup(
     name='cilantro_ee',
     version=__version__,
@@ -26,43 +20,35 @@ setup(
         'checksumdir==1.1.7',
         'pathspec',
         'vprof',
-
         'Cython==0.29',
-
         # protocol
         'pycapnp==0.6.3',
         'pyzmq==17.0.0',
         'requests==2.20.0',
         'uvloop==0.9.1',
-
         # webserver
         'aiohttp',
         'sanic==19.6.3',
         'secure',
         'sanic-limiter==0.1.3',
         'Sanic-Cors==0.9.9.post1',
-
         # DB
         'rocks',
         'contracting',
         'pymongo==3.9',
-        'redis==3.2.0'
-        
+        'redis==3.2.0',
         # CLI
         'Click==7.0',
     ],
     entry_points={
         'console_scripts': [
-            'cilantro_ee=__main__:main'
+            'cilantro_ee=cilantro_ee.__main__:main'
         ],
     },
     zip_safe=False,
     package_data={
         '': [],
-        'cilantro_ee': ['cilantro_ee.conf'],
-    },
-    cmdclass ={
-      'install': PostInstallCommand,
+        'init': ['cilantro_ee.conf'],
     },
     description = "Lamden Blockchain",
     long_description= long_desc,
