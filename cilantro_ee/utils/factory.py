@@ -1,7 +1,7 @@
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.constants import conf
-from cilantro_ee.nodes.base import Node2
+from cilantro_ee.nodes.base import Node2, NewMasternode
 
 import time
 from pymongo import MongoClient
@@ -36,7 +36,7 @@ def start_node(signing_key, node_type):
         wait_for_mongo()
 
         ctx = zmq.asyncio.Context()
-        n = Node2(conf.HOST_IP, ctx=ctx, signing_key=signing_key, name='Masternode')
+        n = NewMasternode(conf.HOST_IP, ctx=ctx, signing_key=signing_key, name='Masternode')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(n.start())
 

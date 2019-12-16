@@ -56,6 +56,7 @@ class NewMasternode:
 
         self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
         self.server.start()
+
         while True:
             asyncio.sleep(0)
 
