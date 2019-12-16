@@ -50,6 +50,6 @@ class Node2:
         self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
 
     async def start(self):
-        await self.overlay_server.discover()
+        await self.overlay_server.start_discover()
         while True:
             asyncio.sleep(0)
