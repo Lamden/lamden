@@ -43,7 +43,7 @@ def start_node(signing_key, node_type):
 
         loop.run_until_complete(n.start())
 
-        Masternode(ip=conf.HOST_IP, name='Masternode', signing_key=signing_key)
+        # Masternode(ip=conf.HOST_IP, name='Masternode', signing_key=signing_key)
 
     elif node_type == DELEGATE:
         Delegate(ip=conf.HOST_IP, name='Delegate', signing_key=signing_key)
