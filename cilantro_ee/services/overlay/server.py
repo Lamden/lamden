@@ -86,7 +86,7 @@ class OverlayServer:
                                   mn_to_find=self.vkbook.masternodes,
                                   del_to_find=self.vkbook.delegates)
 
-    async def discover(self):
+    async def start_discover(self):
         await self.network.start()
         asyncio.ensure_future(self.command_listener())
 
