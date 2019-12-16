@@ -42,13 +42,13 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'cilantro_ee=cilantro_ee.__main__:main'
+            'node_start=cilantro_ee.__main__:main'
         ],
     },
     zip_safe=False,
     package_data={
         '': [],
-        'init': ['cilantro_ee.conf'],
+        'cilantro_ee': ['cilantro_ee.conf'],
     },
     description = "Lamden Blockchain",
     long_description= long_desc,
