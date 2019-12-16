@@ -31,6 +31,7 @@ def verify_vk_pepper(msg: bytes, pepper: bytes):
 
     if len(msg) < 32:
         return False
+
     vk, signed_pepper = unpack_pepper_msg(msg)
     return _verify(vk, pepper, signed_pepper)
 

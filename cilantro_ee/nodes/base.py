@@ -10,7 +10,7 @@ import asyncio
 import time
 from multiprocessing import Queue
 from cilantro_ee.nodes.masternode.webserver import start_webserver
-from cilantro_ee.services.block_server import BlockServerProcess
+from cilantro_ee.services.block_server import BlockServerProcess, BlockServer
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
 import random
@@ -66,13 +66,11 @@ class NewMasternode:
     async def start(self):
         await self.overlay_server.start_discover()
 
+        block_server = BlockServer(signing_key=self.signing_key)
+        asyncio.ensure_future(block_server.serve())
+
         self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
         self.server.start()
-
-        self.log.info("Masternode starting block server process")
-        self.blk_server = LProcess(target=BlockServerProcess, name='BlockServer',
-                                   kwargs={'signing_key': self.signing_key})
-        self.blk_server.start()
 
         self.log.info("Masternode starting transaction batcher process")
         self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
