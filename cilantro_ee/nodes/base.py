@@ -51,3 +51,5 @@ class Node2:
 
     async def start(self):
         await self.overlay_server.discover()
+        while True:
+            asyncio.sleep(0)
