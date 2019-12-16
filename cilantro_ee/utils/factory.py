@@ -36,14 +36,15 @@ def start_node(signing_key, node_type):
         wait_for_mongo()
 
         ctx = zmq.asyncio.Context()
-
         n = Node2(conf.HOST_IP, ctx=ctx, signing_key=signing_key, name='Masternode')
-
         loop = asyncio.get_event_loop()
-
         loop.run_until_complete(n.start())
 
         # Masternode(ip=conf.HOST_IP, name='Masternode', signing_key=signing_key)
 
     elif node_type == DELEGATE:
-        Delegate(ip=conf.HOST_IP, name='Delegate', signing_key=signing_key)
+        ctx = zmq.asyncio.Context()
+        n = Node2(conf.HOST_IP, ctx=ctx, signing_key=signing_key, name='Delegate')
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(n.start())
+        # Delegate(ip=conf.HOST_IP, name='Delegate', signing_key=signing_key)
