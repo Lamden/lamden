@@ -10,6 +10,11 @@ import asyncio
 import time
 from multiprocessing import Queue
 from cilantro_ee.nodes.masternode.webserver import start_webserver
+from cilantro_ee.services.block_server import BlockServerProcess
+from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
+from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
+import random
+import os
 
 class NodeBase(Context):
 
@@ -38,6 +43,7 @@ class NodeBase(Context):
     def start_node(self):
         pass
 
+
 class NewMasternode:
     def __init__(self, ip, ctx, signing_key, name):
         # stuff
@@ -47,15 +53,41 @@ class NewMasternode:
         self.zmq_ctx = ctx
         self.tx_queue = Queue()
 
+        self.signing_key = signing_key
+
         conf.HOST_VK = self.wallet.verifying_key()
 
         self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
+
+        self.ipc_ip = 'mn-ipc-sock-' + str(os.getpid()) + '-' \
+                      + str(random.randint(0, 2 ** 32))
+        self.ipc_port = 6967  # can be chosen randomly any open port
 
     async def start(self):
         await self.overlay_server.start_discover()
 
         self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
         self.server.start()
+
+        self.log.info("Masternode starting block server process")
+        self.blk_server = LProcess(target=BlockServerProcess, name='BlockServer',
+                                   kwargs={'signing_key': self.signing_key})
+        self.blk_server.start()
+
+        self.log.info("Masternode starting transaction batcher process")
+        self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
+                                kwargs={'queue': self.tx_queue, 'ip': self.ip,
+                                        'signing_key': self.signing_key,
+                                        'ipc_ip': self.ipc_ip, 'ipc_port': self.ipc_port})
+        self.batcher.start()
+
+        self.log.info("Masternode starting BlockAggregator Process")
+        self.block_agg = LProcess(target=BlockAggregatorController,
+                                  name='BlockAgg',
+                                  kwargs={'ipc_ip': self.ipc_ip,
+                                          'ipc_port': self.ipc_port,
+                                          'signing_key': self.signing_key})
+        self.block_agg.start()
 
         while True:
             asyncio.sleep(0)
