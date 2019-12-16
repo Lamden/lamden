@@ -23,7 +23,6 @@ class NodeBase(Context):
         conf.HOST_VK = self.wallet.verifying_key()
 
         self.log.info("Starting node components")
-        quorum = self.start_node()
 
         self.log.info("Starting overlay service")
         self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
@@ -32,7 +31,23 @@ class NodeBase(Context):
 
     def start(self):
         self.overlay_server.start()
+        self.start_node()
 
     def start_node(self):
         pass
 
+
+class Node2:
+    def __init__(self, ip, ctx, signing_key, name):
+        # stuff
+        self.log = get_logger(name)
+        self.ip = ip
+        self.wallet = Wallet(seed=signing_key)
+        self.zmq_ctx = ctx
+
+        conf.HOST_VK = self.wallet.verifying_key()
+
+        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
+
+    async def start(self):
+        await self.overlay_server.discover()
