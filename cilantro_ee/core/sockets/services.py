@@ -27,6 +27,26 @@ def _socket(s: str):
     return SocketStruct.from_string(s)
 
 
+class AbstractSocketBase:
+    def __init__(self, base):
+        self.base = base
+
+    def __radd__(self, other):
+        raise NotImplementedError
+
+
+class TCPSocketBase(AbstractSocketBase):
+    def __radd__(self, other):
+        port = int(other)
+        return _socket(f'tcp://{self.base}:{port}')
+
+
+class IPCSocketBase(AbstractSocketBase):
+    def __radd__(self, other):
+        dr = str(other)
+        return _socket(f'ipc://{self.base}/{dr}')
+
+
 class SocketStruct:
     def __init__(self, protocol: int, id: str, port: int=0):
         self.protocol = protocol

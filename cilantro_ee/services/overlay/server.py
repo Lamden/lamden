@@ -49,7 +49,7 @@ def async_reply(fn):
 
 
 class OverlayServer:
-    def __init__(self, sk, ctx, quorum, vkbook, discover=True):
+    def __init__(self, sk, ctx, quorum, vkbook, discover=True, bootnodes=conf.BOOTNODES):
         self.log = get_logger('Overlay.Server')
         self.sk = sk
         self.wallet = Wallet(seed=sk)
@@ -83,7 +83,7 @@ class OverlayServer:
                                   ip=conf.HOST_IP,
                                   peer_service_port=DHT_PORT,
                                   event_publisher_port=EVENT_PORT,
-                                  bootnodes=conf.BOOTNODES,
+                                  bootnodes=bootnodes,
                                   initial_mn_quorum=self.vkbook.masternode_quorum_min,
                                   initial_del_quorum=self.vkbook.delegate_quorum_min,
                                   mn_to_find=self.vkbook.masternodes,

@@ -25,7 +25,7 @@ import os
 
 
 class NewMasternode:
-    def __init__(self, ip, ctx, signing_key, name):
+    def __init__(self, ip, ctx, signing_key, name, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
         # stuff
         self.log = get_logger(name)
         self.ip = ip
@@ -38,6 +38,9 @@ class NewMasternode:
         conf.HOST_VK = self.wallet.verifying_key()
 
         self.overlay_server = None
+        self.bootnodes = bootnodes
+        self.constitution = constitution
+        self.overwrite = overwrite
 
         self.ipc_ip = 'mn-ipc-sock-' + str(os.getpid()) + '-' + str(random.randint(0, 2 ** 32))
         self.ipc_port = 6967  # can be chosen randomly any open port
@@ -60,15 +63,10 @@ class NewMasternode:
 
     async def start(self, exclude=('vkbook',)):
         # Discover other nodes
-        # masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
-        # sync.submit_vkbook({
-        #     'masternodes': masternodes,
-        #     'delegates': delegates
-        # })
+        sync.extract_vk_args(self.constitution)
+        sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
 
-        sync.seed_vkbook()
-
-        self.overlay_server = OverlayServer(sk=self.signing_key, ctx=self.zmq_ctx, quorum=1, vkbook=VKBook())
+        self.overlay_server = OverlayServer(sk=self.signing_key, ctx=self.zmq_ctx, quorum=1, vkbook=VKBook(), bootnodes=self.bootnodes)
         await self.overlay_server.start_discover()
 
         # Start block server to provide catchup to other nodes
@@ -76,8 +74,6 @@ class NewMasternode:
 
         # Sync contracts
         sync.sync_genesis_contracts(exclude=exclude)
-
-        # Make sure a VKBook exists in state
 
 
         # Run Catchup
