@@ -60,7 +60,7 @@ class BNKind:
 
 class Block:
     def __init__(self, min_quorum, max_quorum, current_quorum,
-                 subblocks_per_block, builders_per_block, contacts=VKBook()):
+                 subblocks_per_block, builders_per_block, contacts):
         self.contender = BlockContender(subblocks_per_block, builders_per_block, contacts=contacts)
         self.started = False
         self.current_quorum = current_quorum
@@ -83,7 +83,7 @@ class BlockAggregator:
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
-                 contacts=VKBook()):
+                 contacts=None):
 
         self.subblock_subscription_service = subscription
 
@@ -164,7 +164,7 @@ class BlockAggregatorController:
                  ctx: zmq.asyncio.Context=None,
                  driver: CilantroStorageDriver=None,
                  state: MetaDataStorage=MetaDataStorage(),
-                 contacts=VKBook()):
+                 contacts=None):
 
         self.wallet = Wallet(signing_key)
 

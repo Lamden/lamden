@@ -266,7 +266,7 @@ class SubBlockGroup:
 
 
 class BlockContender:
-    def __init__(self, subblocks_per_block, builders_per_block, contacts=VKBook()):
+    def __init__(self, subblocks_per_block, builders_per_block, contacts):
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
@@ -285,7 +285,6 @@ class BlockContender:
         self.contacts = contacts
 
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
-        self.vkbook = VKBook()
 
     def reset(self):
         # Set old_input_hashes before we reset all the data
