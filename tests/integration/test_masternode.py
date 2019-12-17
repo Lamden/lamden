@@ -16,3 +16,5 @@ class TestNewMasternode(TestCase):
 
     def test_init(self):
         mn = NewMasternode(ip='127.0.0.1', ctx=self.ctx, signing_key=b'\x00'*32, name='MasterTest')
+
+        self.loop.run_until_complete(mn.start())

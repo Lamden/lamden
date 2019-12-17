@@ -78,8 +78,8 @@ def submit_contract_with_construction_args(name, directory=os.path.dirname(__fil
 
 def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE):
     book = read_public_constitution(file)
-    masternodes = [node['vk'] for node in book['masternodes']]
-    delegates = [node['vk'] for node in book['delegates']]
+    masternodes = [node for node in book['masternodes']['vk_list']]
+    delegates = [node for node in book['delegates']['vk_list']]
     return masternodes, delegates
 
 
