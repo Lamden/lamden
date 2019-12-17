@@ -60,8 +60,13 @@ class NewMasternode:
 
     async def start(self, exclude=('vkbook',)):
         # Discover other nodes
-        masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(masternodes, delegates)
+        # masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
+        # sync.submit_vkbook({
+        #     'masternodes': masternodes,
+        #     'delegates': delegates
+        # })
+
+        sync.seed_vkbook()
 
         self.overlay_server = OverlayServer(sk=self.signing_key, ctx=self.zmq_ctx, quorum=1, vkbook=VKBook())
         await self.overlay_server.start_discover()
