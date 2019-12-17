@@ -59,6 +59,9 @@ class OverlayServer:
 
         self.vkbook = vkbook
 
+        if type(self.sk) == bytes:
+            self.sk = self.sk.hex()
+
         Keys.setup(sk_hex=self.sk)
 
         self.loop = asyncio.get_event_loop()
