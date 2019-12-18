@@ -59,7 +59,6 @@ class KTable:
 class PeerServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct,
                  event_port: int,
-                 discovery_port: int,
                  table: KTable, wallet: Wallet, ctx=zmq.Context,
                  linger=2000, poll_timeout=3000, pepper=PEPPER.encode()):
 
@@ -78,8 +77,6 @@ class PeerServer(services.RequestReplyService):
         self.event_publisher.bind(self.event_address)
 
         self.event_queue_loop_running = False
-
-        self.discovery_port = discovery_port
 
     def handle_msg(self, msg):
         msg = msg.decode()
@@ -164,6 +161,13 @@ class PeerServer(services.RequestReplyService):
         self.event_service.running = False
 
 
+class NetworkParameters:
+    def __init__(self,
+                 peer_port, peer_ipc,
+                 event_port, event_ipc,
+                 discovery_port, discovery_ipc):
+        pass
+
 class Network:
     def __init__(self, wallet,
                  peer_service_port: int=DHT_PORT,
@@ -175,7 +179,8 @@ class Network:
                  initial_mn_quorum=1,
                  initial_del_quorum=1,
                  mn_to_find=[],
-                 del_to_find=[]):
+                 del_to_find=[],
+                 socket_base='tcp://127.0.0.1'):
 
         # General Instance Variables
         self.wallet = wallet
@@ -198,7 +203,6 @@ class Network:
 
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_port=event_publisher_port,
-                                       discovery_port=discovery_port,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
         self.discovery_port = discovery_port

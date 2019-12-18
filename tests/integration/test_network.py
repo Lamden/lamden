@@ -95,7 +95,7 @@ class TestNetworkService(TestCase):
         w = Wallet()
         t = KTable(data={'woo': 'hoo'})
         p = PeerServer(socket_id=_socket('tcp://127.0.0.1:10999'), wallet=w, event_port=8888,
-                       table=t, ctx=self.ctx, linger=100, poll_timeout=100, discovery_port=9999)
+                       table=t, ctx=self.ctx, linger=100, poll_timeout=100)
 
         tasks = asyncio.gather(
             p.serve(),
