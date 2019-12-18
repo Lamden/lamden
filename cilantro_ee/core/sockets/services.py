@@ -75,11 +75,13 @@ class SocketStruct:
             self.port == other.port
 
 
-def resolve_tcp_or_ipc_base(base_string: str, tcp_port, ipc_dir):
+def resolve_tcp_or_ipc_base(base_string: str, tcp_port, ipc_dir, bind=False):
     if base_string.startswith('tcp://'):
+        if bind:
+            return SocketStruct.from_string(f'tcp://*:{tcp_port}')
         return SocketStruct.from_string(f'{base_string}:{tcp_port}')
     elif base_string.startswith('ipc://'):
-        return SocketStruct.from_string(f'{base_string}:{ipc_dir}')
+        return SocketStruct.from_string(f'{base_string}/{ipc_dir}')
 
 
 # Pushes current task to the back of the event loop
@@ -172,6 +174,7 @@ class RequestReplyService:
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.LINGER, self.linger)
+        print(self.address)
         self.socket.bind(self.address)
 
         self.running = True

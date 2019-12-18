@@ -161,18 +161,30 @@ class PeerServer(services.RequestReplyService):
         self.event_service.running = False
 
 
+class ServiceType:
+    PEER = 0
+    EVENT = 1
+    DISCOVERY = 2
+
+
 class NetworkParameters:
     def __init__(self,
-                 peer_port, peer_ipc,
-                 event_port, event_ipc,
-                 discovery_port, discovery_ipc):
-        pass
+                 peer_port=DHT_PORT, peer_ipc='peers',
+                 event_port=EVENT_PORT, event_ipc='events',
+                 discovery_port=DISCOVERY_PORT, discovery_ipc='discovery'):
+        self.params = {
+            ServiceType.PEER: (peer_port, peer_ipc),
+            ServiceType.EVENT: (event_port, event_ipc),
+            ServiceType.DISCOVERY: (discovery_port, discovery_ipc),
+        }
+
+    def resolve(self, socket_base, service_type, bind=False):
+        port, ipc = self.params[service_type]
+        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
 
 class Network:
     def __init__(self, wallet,
-                 peer_service_port: int=DHT_PORT,
-                 event_publisher_port: int=EVENT_PORT,
-                 discovery_port: int=DISCOVERY_PORT,
+                 params=NetworkParameters(),
                  ctx=zmq.asyncio.Context(),
                  ip=conf.HOST_IP,
                  bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
@@ -180,7 +192,7 @@ class Network:
                  initial_del_quorum=1,
                  mn_to_find=[],
                  del_to_find=[],
-                 socket_base='tcp://127.0.0.1'):
+                 socket_base='ipc:///tmp'):
 
         # General Instance Variables
         self.wallet = wallet
@@ -189,24 +201,21 @@ class Network:
         self.bootnodes = bootnodes
         self.ip = ip
 
-        # Peer Service Constants
-        self.peer_service_address = services.SocketStruct(services.Protocols.TCP, '*', peer_service_port)
-
         data = {
             self.wallet.verifying_key().hex(): ip
         }
+
         self.table = KTable(data=data)
 
-        self.event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
+        # Peer Service Constants
+        self.params = params
 
-        self.peer_service_port = peer_service_port
-
+        self.peer_service_address = self.params.resolve(socket_base, ServiceType.PEER, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
-                                       event_port=event_publisher_port,
+                                       event_port=self.params.params[ServiceType.EVENT][0],
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
-        self.discovery_port = discovery_port
-        self.discovery_server_address = services.SocketStruct(services.Protocols.TCP, '*', self.discovery_port)
+        self.discovery_server_address = self.params.resolve(socket_base, ServiceType.DISCOVERY, bind=True)
         self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
                                                           wallet=self.wallet,
                                                           pepper=PEPPER.encode(),

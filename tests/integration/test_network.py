@@ -268,8 +268,9 @@ class TestNetworkService(TestCase):
         self.assertDictEqual(expected_dict, response)
 
     def test_peer_table_updated_on_join_command(self):
+        # Network params issue
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         w2 = Wallet()
         d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10999'), pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
@@ -285,7 +286,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             d.serve(),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=join_message, ctx=self.ctx, timeout=1000),
             stop_server(p1.peer_service, 0.3),
             stop_server(d, 0.3)
         )
@@ -293,11 +294,13 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
+        print(p1.peer_service.table.peers)
+
         self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
 
     def test_event_service_publisher_starts_up_on_init(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         test_subscriber = self.ctx.socket(zmq.SUB)
         test_subscriber.setsockopt(zmq.SUBSCRIBE, b'')
@@ -326,7 +329,7 @@ class TestNetworkService(TestCase):
     def test_event_service_triggered_when_new_node_added(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         # Create Discovery Server
         w2 = Wallet()
