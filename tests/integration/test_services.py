@@ -146,3 +146,8 @@ class TestSubscriptionService(TestCase):
         s = SocketStruct.from_string('inproc://blahblahblah')
 
         self.assertEqual(str(s), 'inproc://blahblahblah')
+
+    def test_from_string_ipc(self):
+        s = SocketStruct.from_string('ipc:///tmp/something')
+
+        self.assertEqual(str(s), 'ipc:///tmp/something')

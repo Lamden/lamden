@@ -80,7 +80,7 @@ class SocketStruct:
                 protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
                 str = str.split(protocol_string)[1]
 
-        if protocol != Protocols.INPROC:
+        if protocol not in {Protocols.INPROC, Protocols.IPC}:
             _id, port = str.split(':')
             port = int(port)
 
