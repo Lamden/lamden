@@ -681,17 +681,15 @@ class TestNetworkService(TestCase):
     def test_other_peers_add_new_nodes_when_join_event_occurs(self):
         # Create Network service
         w1 = Wallet()
-        # p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002, discovery_port=10999)
-
-        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
+        n1 = NetworkParameters(peer_port=10001, event_port=10002, discovery_port=10999)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
 
         # Create Network service
         w2 = Wallet()
-        #p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
-        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp/2')
-
-        p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/discovery'))
+        p2.peer_service.event_service.add_subscription(_socket('tcp://127.0.0.1:10002'))
 
         # Create Discovery Server
         w3 = Wallet()
@@ -709,7 +707,47 @@ class TestNetworkService(TestCase):
             p1.peer_service.start(),
             p2.peer_service.start(),
             d.serve(),
-            services.get(_socket('ipc:///tmp/discovery'), msg=join_message, ctx=self.ctx, timeout=1000),
+            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),
+            stop_server(p1.peer_service, 2),
+            stop_server(p2.peer_service, 2),
+            stop_server(d, 2),
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertTrue(w3.verifying_key().hex() in p2.peer_service.table.peers)
+
+    def test_other_peers_add_new_nodes_when_join_event_occurs_ipc(self):
+        # Create Network service
+        w1 = Wallet()
+        n1 = NetworkParameters(peer_ipc='peers1', event_ipc='events1', discovery_ipc='discovery1')
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp', params=n1)
+
+        # Create Network service
+        w2 = Wallet()
+        n2 = NetworkParameters(peer_ipc='peers2', event_port='events2')
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp', params=n2)
+
+        p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/events1'))
+
+        # Create Discovery Server
+        w3 = Wallet()
+        d = DiscoveryServer(wallet=w3, socket_id=_socket('ipc:///tmp/discovery1'), pepper=PEPPER.encode(), ctx=self.ctx,
+                            poll_timeout=2000, linger=2000)
+
+        # TCP takes a bit longer to bind and is prone to dropping messages...
+        sleep(1)
+
+        # Construct the join RPC message
+        join_message = ['join', (w3.verifying_key().hex(), 'ipc:///tmp/discovery1')]
+        join_message = json.dumps(join_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+            p2.peer_service.start(),
+            d.serve(),
+            services.get(_socket('ipc:///tmp/peers1'), msg=join_message, ctx=self.ctx, timeout=1000),
             stop_server(p1.peer_service, 2),
             stop_server(p2.peer_service, 2),
             stop_server(d, 2),
@@ -723,11 +761,13 @@ class TestNetworkService(TestCase):
     def test_start_and_stopping_destroys_servers(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        n1 = NetworkParameters(peer_port=10001, event_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
 
         # Create Network service
         w2 = Wallet()
-        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
         async def stop(n: Network, s):
             await asyncio.sleep(s)
@@ -744,6 +784,33 @@ class TestNetworkService(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
+
+    # def test_start_and_stopping_destroys_servers(self):
+    #     # Create Network service
+    #     w1 = Wallet()
+    #     n1 = NetworkParameters(peer_port=10001, event_port=10002)
+    #     p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
+    #
+    #     # Create Network service
+    #     w2 = Wallet()
+    #     n2 = NetworkParameters(peer_port=10003, event_port=10004)
+    #     p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
+    #
+    #     async def stop(n: Network, s):
+    #         await asyncio.sleep(s)
+    #         n.peer_service.stop()
+    #
+    #     tasks = asyncio.gather(
+    #         p1.peer_service.start(),
+    #
+    #         p2.peer_service.start(),
+    #
+    #         stop(p1, 0.3),
+    #         stop(p2, 0.3)
+    #     )
+    #
+    #     loop = asyncio.get_event_loop()
+    #     loop.run_until_complete(tasks)
 
     def test_find_node_returns_self_if_asked_on_peer_address_and_self_is_the_value(self):
         # Create Network service
