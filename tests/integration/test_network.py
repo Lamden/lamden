@@ -634,6 +634,50 @@ class TestNetworkService(TestCase):
 
         self.assertListEqual(expected_list, got_list)
 
+    def test_event_service_triggered_when_new_node_added_ipc(self):
+        # Create Network service
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
+
+        # Create Discovery Server
+        w2 = Wallet()
+        d = DiscoveryServer(wallet=w2, socket_id=_socket('ipc:///tmp/xxx'), pepper=PEPPER.encode(), ctx=self.ctx,
+                            poll_timeout=2000, linger=200)
+
+        # Create raw subscriber
+        subscriber = self.ctx.socket(zmq.SUB)
+        subscriber.setsockopt(zmq.SUBSCRIBE, b'')
+        subscriber.connect('ipc:///tmp/events')
+
+        # TCP takes a bit longer to bind and is prone to dropping messages...
+        sleep(0.3)
+
+        # Construct the join RPC message
+        join_message = ['join', (w2.verifying_key().hex(), 'ipc:///tmp/xxx')]
+        join_message = json.dumps(join_message).encode()
+
+        # Wrap recv() in an async
+        async def recv():
+            msg = await subscriber.recv()
+            return msg
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),  # Start the PeerService which will process RPC and emit events
+            d.serve(),  # Start Discovery so PeerService can verify they are online
+            services.get(_socket('ipc:///tmp/peers'), msg=join_message, ctx=self.ctx, timeout=3000),  # Push out a join request
+            stop_server(p1.peer_service, 1),
+            stop_server(d, 1),
+            recv()  # Collect the subscription result
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        expected_list = ['join', [w2.verifying_key().hex(), 'ipc:///tmp/xxx']]
+        got_list = json.loads(res[-1].decode())
+
+        self.assertListEqual(expected_list, got_list)
+
     def test_other_peers_add_new_nodes_when_join_event_occurs(self):
         # Create Network service
         w1 = Wallet()
