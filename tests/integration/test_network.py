@@ -540,7 +540,7 @@ class TestNetworkService(TestCase):
 
         test_subscriber = self.ctx.socket(zmq.SUB)
         test_subscriber.setsockopt(zmq.SUBSCRIBE, b'')
-        test_subscriber.connect('tcp://127.0.0.1:10002')
+        test_subscriber.connect('tcp://127.0.0.1:10003')
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
         sleep(0.1)
