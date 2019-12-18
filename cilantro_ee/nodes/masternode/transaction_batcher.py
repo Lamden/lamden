@@ -33,7 +33,7 @@ class NewTransactionBatcher:
         self.queue = queue
         self.ctx = ctx
         self.publisher_ip = publisher_ip
-        self.ipc_id = SocketStruct(protocol=Protocols.ICP, id=ipc_id)
+        self.ipc_id = SocketStruct(protocol=Protocols.IPC, id=ipc_id)
 
         self.ready = False
         self.running = False

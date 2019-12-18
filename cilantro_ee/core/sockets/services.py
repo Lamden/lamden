@@ -18,7 +18,7 @@ log = get_logger("BaseServices")
 class Protocols:
     TCP = 0
     INPROC = 1
-    ICP = 2
+    IPC = 2
     PROTOCOL_STRINGS = ['tcp://', 'inproc://', 'ipc://']
 
 
@@ -27,24 +27,33 @@ def _socket(s: str):
     return SocketStruct.from_string(s)
 
 
-class AbstractSocketBase:
-    def __init__(self, base):
-        self.base = base
+def is_tcp_string(s):
+    try:
+        ip_comps = s.split('.')
+        i, port = ip_comps[2].split(':')
+        ip_comps[2] = i
 
-    def __radd__(self, other):
-        raise NotImplementedError
+        if int(ip_comps[0]) < 0 or int(ip_comps[1]) < 0 or int(ip_comps[2]) < 0:
+            return False
+
+        if int(ip_comps[0]) > 255 or int(ip_comps[1]) > 255 or int(ip_comps[2]) > 255:
+            return False
+
+        int(port)
+
+        return True
+    except:
+        return False
 
 
-class TCPSocketBase(AbstractSocketBase):
-    def __radd__(self, other):
-        port = int(other)
-        return _socket(f'tcp://{self.base}:{port}')
+def is_ipc_string(s):
+    try:
+        if len(s.split('/')) < 1:
+            return False
 
 
-class IPCSocketBase(AbstractSocketBase):
-    def __radd__(self, other):
-        dr = str(other)
-        return _socket(f'ipc://{self.base}/{dr}')
+    except:
+        return False
 
 
 class SocketStruct:

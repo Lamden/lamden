@@ -225,11 +225,23 @@ class Network:
                     self.discovery_server.serve()
                 )
 
-            discovery_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.discovery_port)
-                                         for ip in self.bootnodes]
-
             # Discover our bootnodes
-            await self.discover_bootnodes(discovery_bootnode_ids)
+            await self.discover_bootnodes(self.bootnodes)
+
+            # If bootnodes are IPC, append to the path 'peer-service'
+            # Otherwise, add the peer service port
+
+            peer_service_bootnode_ids = []
+
+            for bootnode in self.bootnodes:
+                if bootnode.protocol == services.Protocols.TCP:
+                    peer_service_bootnode_ids.append(
+                        services.SocketStruct(services.Protocols.TCP, bootnode.id, self.peer_service_port)
+                    )
+                elif bootnode.protocol == services.Protocols.IPC:
+                    pass
+                else:
+                    raise Exception('Unsupported ZMQ socket passed into bootnodes.')
 
             peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.peer_service_port)
                                          for ip in self.bootnodes]

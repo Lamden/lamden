@@ -714,3 +714,6 @@ class TestNetworkService(TestCase):
         self.assertIn(dw2.verifying_key().hex(), mn1.table.peers)
 
     # def test quorum made and another node wants to connect afterwards
+
+    def test_network_works_with_ipc_strings(self):
+        pass
