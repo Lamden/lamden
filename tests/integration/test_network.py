@@ -10,6 +10,7 @@ import zmq.asyncio
 from cilantro_ee.core.crypto.wallet import Wallet
 from time import sleep
 import json
+import os
 
 TIME_UNIT = 0.01
 
@@ -87,6 +88,50 @@ class TestNetworkService(TestCase):
             w2.verifying_key().hex(): 'tcp://127.0.0.1:11999',
             w3.verifying_key().hex(): 'tcp://127.0.0.1:12999',
             w4.verifying_key().hex(): 'tcp://127.0.0.1:13999'
+        }
+
+        self.assertDictEqual(n.table.peers, expected_dict)
+
+    def test_bootstrap_nodes_ipc(self):
+        w = Wallet()
+
+        w1 = Wallet()
+        w2 = Wallet()
+        w3 = Wallet()
+        w4 = Wallet()
+
+        bootnodes = [_socket('ipc:///tmp/one'),
+                     _socket('ipc:///tmp/two'),
+                     _socket('ipc:///tmp/three'),
+                     _socket('ipc:///tmp/four')]
+
+        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d3 = DiscoveryServer(bootnodes[2], w3, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d4 = DiscoveryServer(bootnodes[3], w4, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+
+        n = Network(wallet=w, ctx=self.ctx, bootnodes=bootnodes)
+
+        tasks = asyncio.gather(
+            d1.serve(),
+            d2.serve(),
+            d3.serve(),
+            d4.serve(),
+            stop_server(d1, 1),
+            stop_server(d2, 1),
+            stop_server(d3, 1),
+            stop_server(d4, 1),
+            n.discover_bootnodes(bootnodes)
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        expected_dict = {
+            w1.verifying_key().hex(): 'ipc:///tmp/one',
+            w2.verifying_key().hex(): 'ipc:///tmp/two',
+            w3.verifying_key().hex(): 'ipc:///tmp/three',
+            w4.verifying_key().hex(): 'ipc:///tmp/four'
         }
 
         self.assertDictEqual(n.table.peers, expected_dict)
@@ -379,7 +424,7 @@ class TestNetworkService(TestCase):
         w2 = Wallet()
         #p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
 
-        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp2')
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp/2')
 
         p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/discovery'))
 
