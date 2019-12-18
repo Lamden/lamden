@@ -1098,23 +1098,89 @@ class TestNetworkService(TestCase):
     def test_wait_for_quorum_to_succeed_only_one_master(self):
         # 0 tries
         mnw1 = Wallet()
-        mn1 = Network(wallet=mnw1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        n1 = NetworkParameters(peer_port=10001, event_port=10002)
+        mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
 
         # 1 try
         mnw2 = Wallet()
-        mn2 = Network(wallet=mnw2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        mn2 = Network(wallet=mnw2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
         dw1 = Wallet()
-        d1 = Network(wallet=dw1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10005, event_publisher_port=10006)
+        n3 = NetworkParameters(peer_port=10005, event_port=10006)
+        d1 = Network(wallet=dw1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n3)
 
         # 2 tries <- info in this node should be returned
         dw2 = Wallet()
-        d2 = Network(wallet=dw2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10007, event_publisher_port=10008)
+        n4 = NetworkParameters(peer_port=10007, event_port=10008)
+        d2 = Network(wallet=dw2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n4)
 
         async def get():
             return await mn1.wait_for_quorum(1, 0, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
                                              [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
                                              initial_peers=[_socket('tcp://127.0.0.1:10003')])
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        timeout = 0.3
+
+        tasks = asyncio.gather(
+            mn1.peer_service.start(),
+            mn2.peer_service.start(),
+            d1.peer_service.start(),
+            d2.peer_service.start(),
+            get(),
+            stop(mn1, timeout),
+            stop(mn2, timeout),
+            stop(d1, timeout),
+            stop(d1, timeout),
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertIn(mnw2.verifying_key().hex(), mn1.table.peers)
+
+    def test_wait_for_quorum_to_succeed_only_one_master_ipc(self):
+        # 0 tries
+        n1 = '/tmp/n1'
+        try:
+            os.mkdir('/tmp/n1')
+        except:
+            pass
+        mnw1 = Wallet()
+        mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
+
+        n2 = '/tmp/n2'
+        try:
+            os.mkdir('/tmp/n2')
+        except:
+            pass
+        mnw2 = Wallet()
+        mn2 = Network(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}')
+
+        n3 = '/tmp/n3'
+        try:
+            os.mkdir('/tmp/n3')
+        except:
+            pass
+        dw1 = Wallet()
+        d1 = Network(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}')
+
+        n4 = '/tmp/n4'
+        try:
+            os.mkdir('/tmp/n4')
+        except:
+            pass
+        dw2 = Wallet()
+        d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}')
+
+        async def get():
+            return await mn1.wait_for_quorum(1, 0, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+                                             [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+                                             initial_peers=[_socket('ipc:///tmp/n2/peers')])
 
         async def stop(n: Network, s):
             await asyncio.sleep(s)
