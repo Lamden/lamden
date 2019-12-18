@@ -220,7 +220,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_max_response_keys_many_keys(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         test_dict = {
             '0': 'value',
@@ -255,7 +255,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.2),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=find_message, ctx=self.ctx, timeout=200)
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=200)
         )
 
         loop = asyncio.get_event_loop()
