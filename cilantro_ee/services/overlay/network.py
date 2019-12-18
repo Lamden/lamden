@@ -172,6 +172,7 @@ class NetworkParameters:
                  peer_port=DHT_PORT, peer_ipc='peers',
                  event_port=EVENT_PORT, event_ipc='events',
                  discovery_port=DISCOVERY_PORT, discovery_ipc='discovery'):
+
         self.params = {
             ServiceType.PEER: (peer_port, peer_ipc),
             ServiceType.EVENT: (event_port, event_ipc),
@@ -181,6 +182,7 @@ class NetworkParameters:
     def resolve(self, socket_base, service_type, bind=False):
         port, ipc = self.params[service_type]
         return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
+
 
 class Network:
     def __init__(self, wallet,
@@ -192,7 +194,7 @@ class Network:
                  initial_del_quorum=1,
                  mn_to_find=[],
                  del_to_find=[],
-                 socket_base='ipc:///tmp'):
+                 socket_base='tcp://127.0.0.1'):
 
         # General Instance Variables
         self.wallet = wallet

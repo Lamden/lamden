@@ -107,7 +107,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_self_when_asked(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ip='127.0.0.1', ctx=self.ctx)
 
         find_message = ['find', w1.verifying_key().hex()]
         find_message = json.dumps(find_message).encode()
@@ -115,7 +115,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.3),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=find_message, ctx=self.ctx, timeout=300)
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
@@ -129,7 +129,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         w2 = Wallet()
 
@@ -141,7 +141,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.3),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=find_message, ctx=self.ctx, timeout=300)
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
@@ -155,7 +155,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_all_peers_if_doesnt_have_it_or_more_than_response_amount(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         test_dict = {
             'test': 'value',
@@ -171,7 +171,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.3),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=find_message, ctx=self.ctx, timeout=300)
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
@@ -185,7 +185,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_max_response_keys(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, ip='127.0.0.1', ctx=self.ctx, peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         test_dict = {
             'test': 'value',
@@ -206,7 +206,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.2),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=find_message, ctx=self.ctx, timeout=200)
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=200)
         )
 
         loop = asyncio.get_event_loop()
