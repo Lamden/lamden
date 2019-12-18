@@ -562,6 +562,34 @@ class TestNetworkService(TestCase):
 
         self.assertEqual(res[1], b'waaaa')
 
+    def test_event_service_publisher_starts_up_on_init_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
+
+        test_subscriber = self.ctx.socket(zmq.SUB)
+        test_subscriber.setsockopt(zmq.SUBSCRIBE, b'')
+        test_subscriber.connect('ipc:///tmp/events')
+
+        # TCP takes a bit longer to bind and is prone to dropping messages...
+        sleep(0.1)
+
+        async def send():
+            await p1.peer_service.event_publisher.send(b'waaaa')
+
+        async def recv():
+            return await test_subscriber.recv()
+
+        tasks = asyncio.gather(
+            send(),
+            recv(),
+            stop_server(p1.peer_service, 0.1)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[1], b'waaaa')
+
     def test_event_service_triggered_when_new_node_added(self):
         # Create Network service
         w1 = Wallet()
@@ -575,7 +603,7 @@ class TestNetworkService(TestCase):
         # Create raw subscriber
         subscriber = self.ctx.socket(zmq.SUB)
         subscriber.setsockopt(zmq.SUBSCRIBE, b'')
-        subscriber.connect('tcp://127.0.0.1:10002')
+        subscriber.connect('tcp://127.0.0.1:10003')
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
         sleep(0.3)
@@ -592,7 +620,7 @@ class TestNetworkService(TestCase):
         tasks = asyncio.gather(
             p1.peer_service.start(),  # Start the PeerService which will process RPC and emit events
             d.serve(),  # Start Discovery so PeerService can verify they are online
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=3000),  # Push out a join request
+            services.get(_socket('tcp://127.0.0.1:10002'), msg=join_message, ctx=self.ctx, timeout=3000),  # Push out a join request
             stop_server(p1.peer_service, 1),
             stop_server(d, 1),
             recv()  # Collect the subscription result
