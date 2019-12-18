@@ -193,7 +193,9 @@ class Network:
         self.table = KTable(data=data)
 
         self.event_publisher_address = 'tcp://*:{}'.format(event_publisher_port)
+
         self.peer_service_port = peer_service_port
+
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_port=event_publisher_port,
                                        discovery_port=discovery_port,
@@ -205,6 +207,8 @@ class Network:
                                                           wallet=self.wallet,
                                                           pepper=PEPPER.encode(),
                                                           ctx=self.ctx)
+
+
 
         # Quorum Constants
         self.initial_mn_quorum = initial_mn_quorum
@@ -239,14 +243,11 @@ class Network:
                         services.SocketStruct(services.Protocols.TCP, bootnode.id, self.peer_service_port)
                     )
                 elif bootnode.protocol == services.Protocols.IPC:
-                    pass
+                    services.SocketStruct.from_string(f'{bootnode.id}/{self.peer_service_ipc}')
                 else:
                     raise Exception('Unsupported ZMQ socket passed into bootnodes.')
 
-            peer_service_bootnode_ids = [services.SocketStruct(services.Protocols.TCP, ip, self.peer_service_port)
-                                         for ip in self.bootnodes]
-
-            log.info('Peers now: {}'.format(self.bootnodes))
+            log.info('Peers now: {}'.format(peer_service_bootnode_ids))
 
             # Wait for the quorum to resolve
             await self.wait_for_quorum(

@@ -27,35 +27,6 @@ def _socket(s: str):
     return SocketStruct.from_string(s)
 
 
-def is_tcp_string(s):
-    try:
-        ip_comps = s.split('.')
-        i, port = ip_comps[2].split(':')
-        ip_comps[2] = i
-
-        if int(ip_comps[0]) < 0 or int(ip_comps[1]) < 0 or int(ip_comps[2]) < 0:
-            return False
-
-        if int(ip_comps[0]) > 255 or int(ip_comps[1]) > 255 or int(ip_comps[2]) > 255:
-            return False
-
-        int(port)
-
-        return True
-    except:
-        return False
-
-
-def is_ipc_string(s):
-    try:
-        if len(s.split('/')) < 1:
-            return False
-
-
-    except:
-        return False
-
-
 class SocketStruct:
     def __init__(self, protocol: int, id: str, port: int=0):
         self.protocol = protocol
@@ -102,6 +73,13 @@ class SocketStruct:
         return self.protocol == other.protocol and \
             self.id == other.id and \
             self.port == other.port
+
+
+def resolve_tcp_or_ipc_base(base_string: str, tcp_port, ipc_dir):
+    if base_string.startswith('tcp://'):
+        return SocketStruct.from_string(f'{base_string}:{tcp_port}')
+    elif base_string.startswith('ipc://'):
+        return SocketStruct.from_string(f'{base_string}:{ipc_dir}')
 
 
 # Pushes current task to the back of the event loop
