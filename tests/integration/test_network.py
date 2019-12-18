@@ -105,10 +105,10 @@ class TestNetworkService(TestCase):
                      _socket('ipc:///tmp/three'),
                      _socket('ipc:///tmp/four')]
 
-        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
-        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
-        d3 = DiscoveryServer(bootnodes[2], w3, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
-        d4 = DiscoveryServer(bootnodes[3], w4, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=200, poll_timeout=200)
+        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=200, poll_timeout=200)
+        d3 = DiscoveryServer(bootnodes[2], w3, pepper=PEPPER.encode(), ctx=self.ctx, linger=200, poll_timeout=200)
+        d4 = DiscoveryServer(bootnodes[3], w4, pepper=PEPPER.encode(), ctx=self.ctx, linger=200, poll_timeout=200)
 
         n = Network(wallet=w, ctx=self.ctx, bootnodes=bootnodes)
 
@@ -174,6 +174,28 @@ class TestNetworkService(TestCase):
 
         self.assertEqual(response.get(w1.verifying_key().hex()), 'tcp://127.0.0.1')
 
+    def test_peer_server_returns_self_when_asked_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        find_message = ['find', w1.verifying_key().hex()]
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.3),
+            services.get(_socket('ipc:///tmp/peers'), msg=find_message, ctx=self.ctx, timeout=300)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertEqual(response.get(w1.verifying_key().hex()), 'ipc:///tmp')
+
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
         p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
@@ -189,6 +211,32 @@ class TestNetworkService(TestCase):
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.3),
             services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=300)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertEqual(response.get(w2.verifying_key().hex()), 'inproc://goodtimes')
+
+    def test_peer_server_returns_peer_when_asked_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        w2 = Wallet()
+
+        p1.peer_service.table.peers[w2.verifying_key().hex()] = 'inproc://goodtimes'
+
+        find_message = ['find', w2.verifying_key().hex()]
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.3),
+            services.get(_socket('ipc:///tmp/peers'), msg=find_message, ctx=self.ctx, timeout=300)
         )
 
         loop = asyncio.get_event_loop()
@@ -230,6 +278,36 @@ class TestNetworkService(TestCase):
 
         self.assertDictEqual(test_dict, response)
 
+    def test_peer_server_returns_all_peers_if_doesnt_have_it_or_more_than_response_amount_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        test_dict = {
+            'test': 'value',
+            'another': 'one',
+            'something': 'else'
+        }
+
+        p1.peer_service.table.peers = test_dict
+
+        find_message = ['find', 'baloney']
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.3),
+            services.get(_socket('ipc:///tmp/peers'), msg=find_message, ctx=self.ctx, timeout=300)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertDictEqual(test_dict, response)
+
     def test_peer_server_returns_max_response_keys(self):
         w1 = Wallet()
         p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
@@ -254,6 +332,41 @@ class TestNetworkService(TestCase):
             p1.peer_service.serve(),
             stop_server(p1.peer_service, 0.2),
             services.get(_socket('tcp://127.0.0.1:10002'), msg=find_message, ctx=self.ctx, timeout=200)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertDictEqual(expected_dict, response)
+
+    def test_peer_server_returns_max_response_keys_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        test_dict = {
+            'test': 'value',
+            'another': 'one',
+            'something': 'else'
+        }
+
+        expected_dict = {
+            'test': 'value'
+        }
+
+        p1.peer_service.table.peers = test_dict
+        p1.peer_service.table.response_size = 1
+
+        find_message = ['find', 'tesZ']
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.2),
+            services.get(_socket('ipc:////tmp/peers'), msg=find_message, ctx=self.ctx, timeout=200)
         )
 
         loop = asyncio.get_event_loop()
@@ -314,6 +427,55 @@ class TestNetworkService(TestCase):
 
         self.assertDictEqual(expected_dict, response)
 
+    def test_peer_server_returns_max_response_keys_many_keys_ipc(self):
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        test_dict = {
+            '0': 'value',
+            '1': 'one',
+            '2': 'else',
+            '3': 'value',
+            '4': 'one',
+            '5': 'else',
+            '7': 'one',
+            '8': 'else',
+            '9': 'value',
+            '10': 'one',
+            '11': 'else',
+            '12': 'value',
+            '13': 'one',
+            '14': 'else',
+        }
+
+        expected_dict = {
+            '4': 'one',
+            '5': 'else',
+            '7': 'one',
+            '2': 'else'
+        }
+
+        p1.peer_service.table.peers = test_dict
+        p1.peer_service.table.response_size = 4
+
+        find_message = ['find', '6']
+        find_message = json.dumps(find_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            stop_server(p1.peer_service, 0.2),
+            services.get(_socket('ipc:///tmp/peers'), msg=find_message, ctx=self.ctx, timeout=200)
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        response = res[-1]
+        response = response.decode()
+        response = json.loads(response)
+
+        self.assertDictEqual(expected_dict, response)
+
     def test_peer_table_updated_on_join_command(self):
         # Network params issue
         w1 = Wallet()
@@ -342,6 +504,35 @@ class TestNetworkService(TestCase):
         loop.run_until_complete(tasks)
 
         self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
+
+    def test_peer_table_updated_on_join_command_ipc(self):
+        # Network params issue
+        w1 = Wallet()
+        p1 = Network(wallet=w1, socket_base='ipc:///tmp', ctx=self.ctx)
+
+        w2 = Wallet()
+        d = DiscoveryServer(wallet=w2, socket_id=_socket('ipc:///tmp/xxx'), pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
+
+        # 1. start network
+        # 2. start discovery of other side
+        # 3. send join request
+        # 4. check to see if the data has been added
+
+        join_message = ['join', (w2.verifying_key().hex(), 'ipc:///tmp/xxx')]
+        join_message = json.dumps(join_message).encode()
+
+        tasks = asyncio.gather(
+            p1.peer_service.serve(),
+            d.serve(),
+            services.get(_socket('ipc:///tmp/peers'), msg=join_message, ctx=self.ctx, timeout=1000),
+            stop_server(p1.peer_service, 0.3),
+            stop_server(d, 0.3)
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'ipc:///tmp/xxx')
 
     def test_event_service_publisher_starts_up_on_init(self):
         w1 = Wallet()

@@ -192,7 +192,9 @@ class Network:
                  initial_del_quorum=1,
                  mn_to_find=[],
                  del_to_find=[],
-                 socket_base='tcp://127.0.0.1'):
+                 socket_base='tcp://127.0.0.1',
+                 poll_timeout=200,
+                 linger=3000):
 
         # General Instance Variables
         self.wallet = wallet
@@ -214,13 +216,14 @@ class Network:
         self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_address=self.event_server_address,
-                                       table=self.table, wallet=self.wallet, ctx=self.ctx)
+                                       table=self.table, wallet=self.wallet, ctx=self.ctx, poll_timeout=poll_timeout, linger=linger)
 
         self.discovery_server_address = self.params.resolve(socket_base, ServiceType.DISCOVERY, bind=True)
         self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
                                                           wallet=self.wallet,
                                                           pepper=PEPPER.encode(),
-                                                          ctx=self.ctx)
+                                                          ctx=self.ctx,
+                                                          poll_timeout=poll_timeout, linger=linger)
 
 
 
