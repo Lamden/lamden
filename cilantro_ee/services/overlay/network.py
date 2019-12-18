@@ -58,9 +58,9 @@ class KTable:
 
 class PeerServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct,
-                 event_port: int,
+                 event_address: services.SocketStruct,
                  table: KTable, wallet: Wallet, ctx=zmq.Context,
-                 linger=2000, poll_timeout=3000, pepper=PEPPER.encode()):
+                 linger=2000, poll_timeout=3000):
 
         super().__init__(socket_id=socket_id,
                          wallet=wallet,
@@ -70,11 +70,10 @@ class PeerServer(services.RequestReplyService):
 
         self.table = table
 
-        self.event_address = 'tcp://*:{}'.format(event_port)
         self.event_service = services.SubscriptionService(ctx=self.ctx)
-
+        self.event_address = event_address
         self.event_publisher = self.ctx.socket(zmq.PUB)
-        self.event_publisher.bind(self.event_address)
+        self.event_publisher.bind(str(self.event_address))
 
         self.event_queue_loop_running = False
 
@@ -188,7 +187,6 @@ class Network:
     def __init__(self, wallet,
                  params=NetworkParameters(),
                  ctx=zmq.asyncio.Context(),
-                 ip=conf.HOST_IP,
                  bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
                  initial_mn_quorum=1,
                  initial_del_quorum=1,
@@ -201,10 +199,10 @@ class Network:
         self.ctx = ctx
 
         self.bootnodes = bootnodes
-        self.ip = ip
+        self.ip = socket_base
 
         data = {
-            self.wallet.verifying_key().hex(): ip
+            self.wallet.verifying_key().hex(): socket_base
         }
 
         self.table = KTable(data=data)
@@ -213,8 +211,9 @@ class Network:
         self.params = params
 
         self.peer_service_address = self.params.resolve(socket_base, ServiceType.PEER, bind=True)
+        self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
-                                       event_port=self.params.params[ServiceType.EVENT][0],
+                                       event_address=self.event_server_address,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx)
 
         self.discovery_server_address = self.params.resolve(socket_base, ServiceType.DISCOVERY, bind=True)

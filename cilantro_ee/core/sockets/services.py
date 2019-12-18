@@ -174,7 +174,6 @@ class RequestReplyService:
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.LINGER, self.linger)
-        print(self.address)
         self.socket.bind(self.address)
 
         self.running = True

@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.services.overlay.discovery import *
-from cilantro_ee.services.overlay.network import Network, PeerServer, KTable
+from cilantro_ee.services.overlay.network import Network, PeerServer, KTable, NetworkParameters
 from cilantro_ee.services.overlay.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.core.sockets import services
@@ -107,7 +107,7 @@ class TestNetworkService(TestCase):
 
     def test_peer_server_returns_self_when_asked(self):
         w1 = Wallet()
-        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ip='127.0.0.1', ctx=self.ctx)
+        p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         find_message = ['find', w1.verifying_key().hex()]
         find_message = json.dumps(find_message).encode()
@@ -125,7 +125,7 @@ class TestNetworkService(TestCase):
         response = response.decode()
         response = json.loads(response)
 
-        self.assertEqual(response.get(w1.verifying_key().hex()), '127.0.0.1')
+        self.assertEqual(response.get(w1.verifying_key().hex()), 'tcp://127.0.0.1')
 
     def test_peer_server_returns_peer_when_asked(self):
         w1 = Wallet()
@@ -294,8 +294,6 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        print(p1.peer_service.table.peers)
-
         self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
 
     def test_event_service_publisher_starts_up_on_init(self):
@@ -373,13 +371,17 @@ class TestNetworkService(TestCase):
     def test_other_peers_add_new_nodes_when_join_event_occurs(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002, discovery_port=10999)
+        # p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002, discovery_port=10999)
+
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
 
         # Create Network service
         w2 = Wallet()
-        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        #p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
 
-        p2.peer_service.event_service.add_subscription(_socket('tcp://127.0.0.1:10002'))
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp2')
+
+        p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/discovery'))
 
         # Create Discovery Server
         w3 = Wallet()
@@ -397,7 +399,7 @@ class TestNetworkService(TestCase):
             p1.peer_service.start(),
             p2.peer_service.start(),
             d.serve(),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),
+            services.get(_socket('ipc:///tmp/discovery'), msg=join_message, ctx=self.ctx, timeout=1000),
             stop_server(p1.peer_service, 2),
             stop_server(p2.peer_service, 2),
             stop_server(d, 2),
@@ -436,7 +438,7 @@ class TestNetworkService(TestCase):
     def test_find_node_returns_self_if_asked_on_peer_address_and_self_is_the_value(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         async def get():
             return await p1.find_node(p1.peer_service_address, w1.verifying_key().hex())
@@ -444,12 +446,12 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(get())
 
-        self.assertEqual(res.get(w1.verifying_key().hex()), '127.0.0.1')
+        self.assertEqual(res.get(w1.verifying_key().hex()), 'tcp://127.0.0.1')
 
     def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         w2 = Wallet()
         p1.table.peers[w2.verifying_key().hex()] = '9.9.9.9'
