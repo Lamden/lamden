@@ -785,32 +785,32 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    # def test_start_and_stopping_destroys_servers(self):
-    #     # Create Network service
-    #     w1 = Wallet()
-    #     n1 = NetworkParameters(peer_port=10001, event_port=10002)
-    #     p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
-    #
-    #     # Create Network service
-    #     w2 = Wallet()
-    #     n2 = NetworkParameters(peer_port=10003, event_port=10004)
-    #     p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
-    #
-    #     async def stop(n: Network, s):
-    #         await asyncio.sleep(s)
-    #         n.peer_service.stop()
-    #
-    #     tasks = asyncio.gather(
-    #         p1.peer_service.start(),
-    #
-    #         p2.peer_service.start(),
-    #
-    #         stop(p1, 0.3),
-    #         stop(p2, 0.3)
-    #     )
-    #
-    #     loop = asyncio.get_event_loop()
-    #     loop.run_until_complete(tasks)
+    def test_start_and_stopping_destroys_servers_ipc(self):
+        # Create Network service
+        w1 = Wallet()
+        n1 = NetworkParameters(peer_ipc='peers1', event_ipc='events1', discovery_ipc='discovery1')
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp', params=n1)
+
+        # Create Network service
+        w2 = Wallet()
+        n2 = NetworkParameters(peer_ipc='peers2', event_port='events2')
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp', params=n2)
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+
+            p2.peer_service.start(),
+
+            stop(p1, 0.3),
+            stop(p2, 0.3)
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
 
     def test_find_node_returns_self_if_asked_on_peer_address_and_self_is_the_value(self):
         # Create Network service
@@ -824,6 +824,19 @@ class TestNetworkService(TestCase):
         res = loop.run_until_complete(get())
 
         self.assertEqual(res.get(w1.verifying_key().hex()), 'tcp://127.0.0.1')
+
+    def test_find_node_returns_self_if_asked_on_peer_address_and_self_is_the_value_ipc(self):
+        # Create Network service
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
+
+        async def get():
+            return await p1.find_node(p1.peer_service_address, w1.verifying_key().hex())
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(get())
+
+        self.assertEqual(res.get(w1.verifying_key().hex()), 'ipc:///tmp')
 
     def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer(self):
         # Create Network service
@@ -841,12 +854,32 @@ class TestNetworkService(TestCase):
 
         self.assertEqual(res.get(w2.verifying_key().hex()), '9.9.9.9')
 
-    def test_find_node_requests_from_others_and_returns_key_if_they_have_it(self):
+    def test_find_node_gets_node_from_self_if_asked_from_self_and_has_it_as_peer_ipc(self):
+        # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
 
         w2 = Wallet()
-        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        p1.table.peers[w2.verifying_key().hex()] = 'ipc:///tmp123'
+
+        async def get():
+            return await p1.find_node(p1.peer_service_address, w2.verifying_key().hex())
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(get())
+
+        self.assertEqual(res.get(w2.verifying_key().hex()), 'ipc:///tmp123')
+
+    def test_find_node_requests_from_others_and_returns_key_if_they_have_it(self):
+        # Create Network service
+        w1 = Wallet()
+        n1 = NetworkParameters(peer_port=10001, event_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
+
+        # Create Network service
+        w2 = Wallet()
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
         async def get():
             return await p1.find_node(_socket('tcp://127.0.0.1:10003'), w2.verifying_key().hex())
@@ -868,14 +901,51 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        self.assertEqual(res[2].get(w2.verifying_key().hex()), '127.0.0.1')
+        self.assertEqual(res[2].get(w2.verifying_key().hex()), 'tcp://127.0.0.1')
+
+    def test_find_node_requests_from_others_and_returns_key_if_they_have_it_ipc(self):
+        # Create Network service
+        w1 = Wallet()
+        n1 = NetworkParameters(peer_ipc='peers1', event_ipc='events1', discovery_ipc='discovery1')
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp', params=n1)
+
+        # Create Network service
+        w2 = Wallet()
+        n2 = NetworkParameters(peer_ipc='peers2', event_port='events2')
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp', params=n2)
+
+        async def get():
+            return await p1.find_node(_socket('ipc:///tmp/peers2'), w2.verifying_key().hex())
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+
+            p2.peer_service.start(),
+            get(),
+            stop(p1, 0.3),
+            stop(p2, 0.3),
+
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[2].get(w2.verifying_key().hex()), 'ipc:///tmp')
 
     def test_find_node_fails_if_cant_find_and_retries_are_up(self):
+        # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        n1 = NetworkParameters(peer_port=10001, event_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
 
+        # Create Network service
         w2 = Wallet()
-        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
         w3 = Wallet()
 
@@ -902,20 +972,25 @@ class TestNetworkService(TestCase):
         self.assertIsNone(res[2])
 
     def test_recursive_crawl_works_to_proper_depth(self):
-        # 0 tries
+        # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        n1 = NetworkParameters(peer_port=10001, event_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
 
-        # 1 try
+        # Create Network service
         w2 = Wallet()
-        p2 = Network(wallet=w2, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10003, event_publisher_port=10004)
+        n2 = NetworkParameters(peer_port=10003, event_port=10004)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
 
+        # Create Network service
         w3 = Wallet()
-        p3 = Network(wallet=w3, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10005, event_publisher_port=10006)
+        n3 = NetworkParameters(peer_port=10005, event_port=10006)
+        p3 = Network(wallet=w3, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n3)
 
-        # 2 tries <- info in this node should be returned
+        # Create Network service
         w4 = Wallet()
-        p4 = Network(wallet=w4, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10007, event_publisher_port=10008)
+        n4 = NetworkParameters(peer_port=10007, event_port=10008)
+        p4 = Network(wallet=w4, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n4)
 
         # 2 tries <- info in this node should be returned
         w5 = Wallet()
@@ -927,6 +1002,75 @@ class TestNetworkService(TestCase):
 
         async def get():
             return await p1.find_node(_socket('tcp://127.0.0.1:10003'), w5.verifying_key().hex(), retries=2)
+
+        async def stop(n: Network, s):
+            await asyncio.sleep(s)
+            n.peer_service.stop()
+
+        timeout = 0.3
+
+        tasks = asyncio.gather(
+            p1.peer_service.start(),
+            p2.peer_service.start(),
+            p3.peer_service.start(),
+            p4.peer_service.start(),
+            get(),
+            stop(p1, timeout),
+            stop(p2, timeout),
+            stop(p3, timeout),
+            stop(p4, timeout),
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        self.assertEqual(res[4].get(w5.verifying_key().hex()), 'you found me!')
+
+    def test_recursive_crawl_works_to_proper_depth_ipc(self):
+        # Create Network service
+        n1 = '/tmp/n1'
+        try:
+            os.mkdir('/tmp/n1')
+        except:
+            pass
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base=f'ipc://{n1}')
+
+        # Create Network service
+        n2 = '/tmp/n2'
+        try:
+            os.mkdir('/tmp/n2')
+        except:
+            pass
+        w2 = Wallet()
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base=f'ipc://{n2}')
+
+        n3 = '/tmp/n3'
+        try:
+            os.mkdir('/tmp/n3')
+        except:
+            pass
+        w3 = Wallet()
+        p3 = Network(wallet=w3, ctx=self.ctx, socket_base=f'ipc://{n3}')
+
+        n4 = '/tmp/n4'
+        try:
+            os.mkdir('/tmp/n4')
+        except:
+            pass
+        w4 = Wallet()
+        p4 = Network(wallet=w4, ctx=self.ctx, socket_base=f'ipc://{n4}')
+
+        # 2 tries <- info in this node should be returned
+        w5 = Wallet()
+
+        # Add node info in each peer service to 'chain' them together
+        p2.table.peers[w3.verifying_key().hex()] = 'ipc:///tmp/n3'
+        p3.table.peers[w4.verifying_key().hex()] = 'ipc:///tmp/n4'
+        p4.table.peers[w5.verifying_key().hex()] = 'you found me!'
+
+        async def get():
+            return await p1.find_node(_socket('ipc:///tmp/n2/peers'), w5.verifying_key().hex(), retries=2)
 
         async def stop(n: Network, s):
             await asyncio.sleep(s)
