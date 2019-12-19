@@ -84,7 +84,6 @@ class NewMasternode:
 
         await block_fetcher.sync()
 
-        print('done')
 
     def sync_genesis_contracts(self):
         pass
