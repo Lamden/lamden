@@ -333,22 +333,27 @@ class TestBlockFetcher(TestCase):
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()
+        sync.seed_vkbook()
 
         # Store 20 blocks
         self.store_blocks(c, 10)
 
         # Good one
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        m1 = BlockServer(socket_base=f'ipc://{n1}',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'),
                          driver=c)
 
         w2 = Wallet()
-        m2 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10001'),
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        m2 = BlockServer(socket_base=f'ipc://{n2}',
                          wallet=w2,
                          ctx=self.ctx,
                          linger=500,
@@ -357,7 +362,9 @@ class TestBlockFetcher(TestCase):
                          driver=c)
 
         w3 = Wallet()
-        m3 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10002'),
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        m3 = BlockServer(socket_base=f'ipc://{n3}',
                          wallet=w3,
                          ctx=self.ctx,
                          linger=500,
@@ -367,9 +374,9 @@ class TestBlockFetcher(TestCase):
 
         def get_sockets():
             return {
-                'b': services._socket('tcp://127.0.0.1:10001'),
-                'c': services._socket('tcp://127.0.0.1:10002'),
-                'a': services._socket('tcp://127.0.0.1:10000'),
+                'b': services._socket(f'ipc://{n1}/blocks'),
+                'c': services._socket(f'ipc://{n2}/blocks'),
+                'a': services._socket(f'ipc://{n3}/blocks'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
