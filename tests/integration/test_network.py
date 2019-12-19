@@ -1461,7 +1461,7 @@ class TestNetworkService(TestCase):
         # 2 bootnodes
         # 2 mns, 2 delegates
 
-        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n2']
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
 
         mnw1 = Wallet()
         mnw2 = Wallet()

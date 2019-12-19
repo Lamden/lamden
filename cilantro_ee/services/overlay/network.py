@@ -277,7 +277,6 @@ class Network:
             await self.peer_service.event_publisher.send(ready_msg)
 
             log.success('Sent ready signal.')
-        return
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
@@ -344,6 +343,11 @@ class Network:
 
         # At this point, start the discovery server if it's not already running because you are a masternode.
 
+        if not self.discovery_server.running:
+            asyncio.ensure_future(
+                self.discovery_server.serve()
+            )
+
         log.success('Quorum reached! Begin protocol services...')
 
         return results
@@ -361,7 +365,10 @@ class Network:
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():
-            all_nodes.remove(vk)
+            try:
+                all_nodes.remove(vk)
+            except:
+                pass
 
         # Return the number of nodes needed left
         return current_quorum - len(nodes)
