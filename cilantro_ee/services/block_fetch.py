@@ -34,7 +34,7 @@ class BlockFetcher:
 
         self.phone_book = VKBook()
         self.masternodes = masternode_sockets or \
-                           SocketBook(None, self.phone_book.contract.get_masternodes)
+                           SocketBook(None, self.phone_book.contract.get_masternodes, ctx=ctx)
         self.top = top
         self.wallet = wallet
         self.ctx = ctx
