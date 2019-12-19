@@ -26,50 +26,47 @@ class TestNewMasternode(TestCase):
         self.ctx.destroy()
         self.loop.close()
 
-    def test_init(self):
-        w1 = Wallet()
-        w2 = Wallet()
+    def test_network_start(self):
+        # 4 nodes
+        # 2 bootnodes
+        # 2 mns, 2 delegates
 
-        bootnodes = [_socket('tcp://127.0.0.1:10999'),
-                     _socket('tcp://127.0.0.1:13999')]
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
 
-        d1 = DiscoveryServer(bootnodes[0], w1, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
-        d2 = DiscoveryServer(bootnodes[1], w2, pepper=PEPPER.encode(), ctx=self.ctx, linger=1000, poll_timeout=1000)
+        mnw1 = Wallet()
+        mnw2 = Wallet()
+        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
 
-        const = {
-            "masternodes": {
-                "vk_list": [
-                    w1.verifying_key().hex(),
-                ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
-                    w2.verifying_key().hex(),
-                ],
-                "min_quorum": 1
-            },
-            "witnesses": {},
-            "schedulers": {},
-            "notifiers": {},
-            "enable_stamps": False,
-            "enable_nonces": False
-        }
+        dw1 = Wallet()
+        dw2 = Wallet()
+        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
-        mn = NewMasternode(ip='127.0.0.1',
-                           ctx=self.ctx,
-                           signing_key=b'\x00' * 32,
-                           name='MasterTest',
-                           constitution=const,
-                           bootnodes=bootnodes,
-                           overwrite=True)
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}',
+                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
 
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        mn2 = NewMasternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}',
+                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        d1 = Network(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
+                     bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        n4 = '/tmp/n4'
+        make_ipc(n4)
+        d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
+                     bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        # should test to see all ready signals are recieved
         tasks = asyncio.gather(
-            d1.serve(),
-            d2.serve(),
-            stop_server(d1, 1),
-            stop_server(d2, 1),
-            mn.start()
+            mn1.start(),
+            mn2.start(),
+            d1.start(),
+            d2.start()
         )
 
         loop = asyncio.get_event_loop()

@@ -8,10 +8,10 @@ from multiprocessing import Queue
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
-from cilantro_ee.services.overlay.server import OverlayServer
 from cilantro_ee.nodes.masternode.webserver import start_webserver
 
 from cilantro_ee.services.block_server import BlockServer
+from cilantro_ee.services.overlay.network import Network
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
@@ -20,17 +20,18 @@ from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 
-import random
-import os
+from contracting.client import ContractingClient
 
+cclient = ContractingClient()
 
 class NewMasternode:
-    def __init__(self, ip, ctx, signing_key, name, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
+    def __init__(self, ip, ctx, signing_key, name,
+                 constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
         # stuff
         self.log = get_logger(name)
         self.ip = ip
         self.wallet = Wallet(seed=signing_key)
-        self.zmq_ctx = ctx
+        self.ctx = ctx
         self.tx_queue = Queue()
 
         self.signing_key = signing_key
@@ -42,59 +43,34 @@ class NewMasternode:
         self.constitution = constitution
         self.overwrite = overwrite
 
-        self.ipc_ip = 'mn-ipc-sock-' + str(os.getpid()) + '-' + str(random.randint(0, 2 ** 32))
-        self.ipc_port = 6967  # can be chosen randomly any open port
-
         # Services
+        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=f'tcp://{self.ip}', bootnodes=self.bootnodes)
+
         self.block_server = BlockServer(signing_key=self.signing_key)
-
-        self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
-
-        self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                kwargs={'queue': self.tx_queue, 'ip': self.ip,
-                                        'signing_key': self.signing_key,
-                                        'ipc_ip': self.ipc_ip, 'ipc_port': self.ipc_port})
-
-        self.block_agg = LProcess(target=BlockAggregatorController,
-                                  name='BlockAgg',
-                                  kwargs={'ipc_ip': self.ipc_ip,
-                                          'ipc_port': self.ipc_port,
-                                          'signing_key': self.signing_key})
 
     async def start(self, exclude=('vkbook',)):
         # Discover other nodes
-        sync.extract_vk_args(self.constitution)
-        sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
 
-        self.overlay_server = OverlayServer(sk=self.signing_key, ctx=self.zmq_ctx, quorum=1, vkbook=VKBook(), bootnodes=self.bootnodes)
-        await self.overlay_server.start_discover()
+        if cclient.get_contract('vkbook') is None:
+            sync.extract_vk_args(self.constitution)
+            sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
 
-        # Start block server to provide catchup to other nodes
-        asyncio.ensure_future(self.block_server.serve())
+        # Set Network Parameters
+        vkbook = VKBook()
+
+        self.network.initial_mn_quorum = vkbook.masternode_quorum_min
+        self.network.initial_del_quorum = vkbook.delegate_quorum_min
+        self.network.mn_to_find = vkbook.masternodes
+        self.network.del_to_find = vkbook.delegates
+
+        await self.network.start()
 
         # Sync contracts
         sync.sync_genesis_contracts(exclude=exclude)
 
-
-        # Run Catchup
-        #block_fetcher = BlockFetcher()
-
-        self.server.start()
-
-        self.log.info("Masternode starting transaction batcher process")
-
-        self.batcher.start()
-
-        self.log.info("Masternode starting BlockAggregator Process")
-
-        self.block_agg.start()
-
-        while True:
-            asyncio.sleep(0)
+        # Start block server to provide catchup to other nodes
+        asyncio.ensure_future(self.block_server.serve())
 
     def stop(self):
         self.block_server.stop()
         self.overlay_server.stop()
-        self.server.terminate()
-        self.batcher.terminate()
-        self.block_agg.terminate()

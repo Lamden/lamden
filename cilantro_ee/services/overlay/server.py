@@ -80,9 +80,7 @@ class OverlayServer:
 
         self.network = Network(wallet=self.wallet,
                                   ctx=self.ctx,
-                                  ip=conf.HOST_IP,
-                                  peer_service_port=DHT_PORT,
-                                  event_publisher_port=EVENT_PORT,
+                                  socket_base=f'tcp://{conf.HOST_IP}',
                                   bootnodes=bootnodes,
                                   initial_mn_quorum=self.vkbook.masternode_quorum_min,
                                   initial_del_quorum=self.vkbook.delegate_quorum_min,

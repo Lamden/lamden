@@ -263,7 +263,6 @@ class TxnBagManager:
 
         return hash, bag
 
-
     def commit_nonces(self):
         self.nonce_manager.commit_nonces()
 
