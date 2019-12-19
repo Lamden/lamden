@@ -8,6 +8,7 @@ def main(mode = False):
     else:
         print("Debug Off")
 
+
     # setup Env
 
     os.environ['CIL_ROOT'] = ''
@@ -15,14 +16,21 @@ def main(mode = False):
     os.environ['NW_CONST'] = ''
     os.environ['BOOT_IP'] = ''
     os.environ['CONFIG_PATH'] = ''
+    os.environ['REDIS_CONF'] = ''
+    os.environ['LOGS_DIR'] = ''
+    os.environ[''] = ''
 
-    pass
+    # Run setup scripts
+
+
+
+    print("Done")
 
 
 if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser(description = 'Node Setup')
-    parser.add_argument('debug', type = bool,help = 'skip post install setup steps')
+    parser.add_argument('debug', type = bool, help = 'skip post install setup steps')
     parser.print_help()
     args = parser.parse_args()
     main(args.mode)
