@@ -24,12 +24,12 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 
 class BlockServer(AsyncInbox):
-    def __init__(self, signing_key, socket_base, ctx=None, network_parameters=NetworkParameters(),
+    def __init__(self, wallet, socket_base, ctx=None, network_parameters=NetworkParameters(),
                  linger=500, poll_timeout=200,
                  driver: CilantroStorageDriver=None, top=TopBlockManager()
                  ):
 
-        self.wallet = Wallet(signing_key)
+        self.wallet = wallet
         self.ctx = ctx or zmq.asyncio.Context()
         self.address = network_parameters.resolve(socket_base, ServiceType.BLOCK_SERVER, bind=True)
 
@@ -39,7 +39,7 @@ class BlockServer(AsyncInbox):
                          linger=linger,
                          poll_timeout=poll_timeout)
 
-        self.driver = driver or CilantroStorageDriver(key=signing_key)
+        self.driver = driver or CilantroStorageDriver(key=self.wallet.signing_key())
         self.top = top
 
     def sync_serve(self):

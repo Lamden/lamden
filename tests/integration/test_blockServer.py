@@ -151,11 +151,11 @@ class TestBlockServer(TestCase):
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode().hex())
         c.drop_collections()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500, driver=c)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=c)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 

@@ -18,6 +18,8 @@ from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.core.sockets.socket_book import SocketBook
+
 from cilantro_ee.contracts import sync
 
 from contracting.client import ContractingClient
@@ -73,6 +75,9 @@ class NewMasternode:
 
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
+
+        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx)
+        await block_fetcher.sync()
 
     def sync_genesis_contracts(self):
         pass
