@@ -11,7 +11,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.nodes.masternode.webserver import start_webserver
 
 from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.services.overlay.network import Network
+from cilantro_ee.services.overlay.network import Network, NetworkParameters
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
@@ -28,12 +28,14 @@ cclient = ContractingClient()
 
 
 class NewMasternode:
-    def __init__(self, socket_base, ctx, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
+    def __init__(self, socket_base, ctx, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES,
+                 network_parameters=NetworkParameters()):
         # stuff
         self.log = get_logger()
         self.socket_base = socket_base
         self.wallet = wallet
         self.ctx = ctx
+        self.network_parameters = NetworkParameters()
         #self.tx_queue = Queue()
 
         conf.HOST_VK = self.wallet.verifying_key()
@@ -43,11 +45,13 @@ class NewMasternode:
         self.overwrite = overwrite
 
         # Services
-        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=socket_base, bootnodes=self.bootnodes)
+        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=socket_base, bootnodes=self.bootnodes,
+                               params=self.network_parameters)
 
-        #self.block_server = BlockServer(signing_key=self.signing_key)
+        self.block_server = BlockServer(signing_key=self.wallet.signing_key(), socket_base=socket_base,
+                                        network_parameters=network_parameters)
 
-    async def start(self, exclude=('vkbook',)):
+    async def start(self):
         # Discover other nodes
 
         if cclient.get_contract('vkbook') is None:
@@ -68,7 +72,7 @@ class NewMasternode:
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
 
         # Start block server to provide catchup to other nodes
-        #asyncio.ensure_future(self.block_server.serve())
+        asyncio.ensure_future(self.block_server.serve())
 
     def sync_genesis_contracts(self):
         pass
