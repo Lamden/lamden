@@ -129,5 +129,19 @@ def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
     submit_vkbook(book, overwrite)
 
 
-def explicit_sync_genesis_contracts():
-    pass
+# Maintains order and a set of constructor args that can be included in the constitution file
+def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
+    with open(filename) as f:
+        genesis = json.load(f)
+
+    submission_file = root + '/submission.s.py'
+    client = ContractingClient(submission_filename=submission_file)
+
+    for contract in genesis['contracts']:
+        c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
+
+        with open(c_filepath) as f:
+            code = f.read()
+
+        client.submit(code, name=contract['name'], owner=contract['owner'],
+                      constructor_args=contract['constructor_args'])

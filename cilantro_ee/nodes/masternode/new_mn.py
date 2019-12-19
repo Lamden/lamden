@@ -22,6 +22,8 @@ from cilantro_ee.contracts import sync
 
 from contracting.client import ContractingClient
 
+import cilantro_ee
+
 cclient = ContractingClient()
 
 
@@ -63,10 +65,13 @@ class NewMasternode:
         await self.network.start()
 
         # Sync contracts
-        sync.sync_genesis_contracts(exclude=exclude)
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
 
         # Start block server to provide catchup to other nodes
         #asyncio.ensure_future(self.block_server.serve())
+
+    def sync_genesis_contracts(self):
+        pass
 
     def stop(self):
         #self.block_server.stop()
