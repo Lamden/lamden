@@ -18,6 +18,7 @@ import hashlib
 import secrets
 from tests import random_txs
 
+
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
     s.stop()
@@ -37,13 +38,13 @@ class TestBlockServer(TestCase):
 
     def test_get_latest_block_height(self):
         w = Wallet()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
 
         self.t.set_latest_block_number(555)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
@@ -70,13 +71,13 @@ class TestBlockServer(TestCase):
 
     def test_get_latest_block_hash(self):
         w = Wallet()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
 
         self.t.set_latest_block_hash(b'\xAA' * 32)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
@@ -116,11 +117,11 @@ class TestBlockServer(TestCase):
         del d['_id']
         del d['blockOwners']
 
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=2000, poll_timeout=500, driver=c)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=c)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
