@@ -47,13 +47,17 @@ class BlockFetcher:
 
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
+        print('refreshin')
         await self.masternodes.refresh()
-
+        print('ok now')
         responses = ConfirmationCounter()
+
+        confirmations = min(confirmations, len(self.masternodes.sockets.values())-1)
 
         futures = []
         # Fire off requests to masternodes on the network
         for master in self.masternodes.sockets.values():
+            print(master)
             f = asyncio.ensure_future(self.get_latest_block_height(master))
             futures.append(f)
 
@@ -63,11 +67,12 @@ class BlockFetcher:
             await defer()
             for f in futures:
                 if f.done():
+                    print('done')
                     responses.update([f.result()])
 
                     # Remove future
                     futures.remove(f)
-
+        print('done with that shit')
         return responses.top_item()
 
     async def get_latest_block_height(self, socket):
@@ -155,6 +160,7 @@ class BlockFetcher:
 
     # Main Catchup function. Called at launch of node
     async def sync(self):
+        print('fetchin')
         self.in_catchup = True
 
         current_height = await self.find_missing_block_indexes()

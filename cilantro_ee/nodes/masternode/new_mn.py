@@ -11,7 +11,7 @@ from cilantro_ee.constants import conf
 from cilantro_ee.nodes.masternode.webserver import start_webserver
 
 from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.services.overlay.network import Network, NetworkParameters
+from cilantro_ee.services.overlay.network import Network, NetworkParameters, ServiceType
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
@@ -50,7 +50,7 @@ class NewMasternode:
         self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=socket_base, bootnodes=self.bootnodes,
                                params=self.network_parameters)
 
-        self.block_server = BlockServer(signing_key=self.wallet.signing_key(), socket_base=socket_base,
+        self.block_server = BlockServer(wallet=self.wallet, socket_base=socket_base,
                                         network_parameters=network_parameters)
 
     async def start(self):
@@ -76,8 +76,15 @@ class NewMasternode:
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
 
-        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx)
+        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx,
+                                     masternode_sockets=SocketBook(socket_base=self.socket_base,
+                                                                   service_type=ServiceType.BLOCK_SERVER,
+                                                                   phonebook_function=vkbook.contract.get_masternodes,
+                                                                   ctx=self.ctx))
+
         await block_fetcher.sync()
+
+        print('done')
 
     def sync_genesis_contracts(self):
         pass
