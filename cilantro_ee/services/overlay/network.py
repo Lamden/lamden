@@ -236,9 +236,7 @@ class Network:
 
     async def start(self, discover=True):
         # Start the Peer Service and Discovery service
-        asyncio.ensure_future(
-            self.peer_service.start()
-        )
+        await self.peer_service.start()
 
         if discover:
             if self.wallet.verifying_key().hex() in self.mn_to_find:
@@ -247,24 +245,19 @@ class Network:
                 )
 
             # Discover our bootnodes
-            await self.discover_bootnodes(self.bootnodes)
+
+            discovery_sockets = \
+                [self.params.resolve(bootnode, ServiceType.DISCOVERY) for bootnode in self.bootnodes]
+
+            await self.discover_bootnodes(discovery_sockets)
 
             # If bootnodes are IPC, append to the path 'peer-service'
             # Otherwise, add the peer service port
 
-            peer_service_bootnode_ids = []
+            peer_sockets = \
+                [self.params.resolve(bootnode, ServiceType.PEER) for bootnode in self.bootnodes]
 
-            for bootnode in self.bootnodes:
-                if bootnode.protocol == services.Protocols.TCP:
-                    peer_service_bootnode_ids.append(
-                        services.SocketStruct(services.Protocols.TCP, bootnode.id, self.peer_service_port)
-                    )
-                elif bootnode.protocol == services.Protocols.IPC:
-                    services.SocketStruct.from_string(f'{bootnode.id}/{self.peer_service_ipc}')
-                else:
-                    raise Exception('Unsupported ZMQ socket passed into bootnodes.')
-
-            log.info('Peers now: {}'.format(peer_service_bootnode_ids))
+            log.info('Peers now: {}'.format(peer_sockets))
 
             # Wait for the quorum to resolve
             await self.wait_for_quorum(
@@ -272,7 +265,7 @@ class Network:
                 self.initial_del_quorum,
                 self.mn_to_find,
                 self.del_to_find,
-                peer_service_bootnode_ids
+                peer_sockets
             )
 
             log.success('Network is ready.')

@@ -33,6 +33,11 @@ async def timeout_bomb(s=TIME_UNIT*2):
     await asyncio.sleep(s)
     asyncio.get_event_loop().close()
 
+def make_ipc(p):
+    try:
+        os.mkdir(p)
+    except:
+        pass
 
 class TestNetworkService(TestCase):
     def setUp(self):
@@ -1386,35 +1391,28 @@ class TestNetworkService(TestCase):
 
     def test_wait_for_quorum_resolves_when_late_joiner_ipc(self):
         # 0 tries
+
         n1 = '/tmp/n1'
-        try:
-            os.mkdir('/tmp/n1')
-        except:
-            pass
+        make_ipc(n1)
+
         mnw1 = Wallet()
         mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
 
         n2 = '/tmp/n2'
-        try:
-            os.mkdir('/tmp/n2')
-        except:
-            pass
+        make_ipc(n2)
+
         mnw2 = Wallet()
         mn2 = Network(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}')
 
         n3 = '/tmp/n3'
-        try:
-            os.mkdir('/tmp/n3')
-        except:
-            pass
+        make_ipc(n3)
+
         dw1 = Wallet()
         d1 = Network(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}')
 
         n4 = '/tmp/n4'
-        try:
-            os.mkdir('/tmp/n4')
-        except:
-            pass
+        make_ipc(n4)
+
         dw2 = Wallet()
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}')
 
@@ -1458,3 +1456,48 @@ class TestNetworkService(TestCase):
 
     # def test quorum made and another node wants to connect afterwards
 
+    def test_network_start(self):
+        # 4 nodes
+        # 2 bootnodes
+        # 2 mns, 2 delegates
+
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n2']
+
+        mnw1 = Wallet()
+        mnw2 = Wallet()
+        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
+
+        dw1 = Wallet()
+        dw2 = Wallet()
+        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
+
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}',
+                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        mn2 = Network(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}',
+                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        d1 = Network(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
+                     bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        n4 = '/tmp/n4'
+        make_ipc(n4)
+        d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
+                     bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+
+        # should test to see all ready signals are recieved
+        tasks = asyncio.gather(
+            mn1.start(),
+            mn2.start(),
+            d1.start(),
+            d2.start()
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
