@@ -199,6 +199,7 @@ class TestBlockFetcher(TestCase):
 
     def test_fetch_block_from_master(self):
         # Setup Mongo
+        sync.seed_vkbook()
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()
@@ -207,17 +208,17 @@ class TestBlockFetcher(TestCase):
         self.store_blocks(c, 1)
 
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        m1 = BlockServer(socket_base='tcp://127.0.0.1',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'),
                          driver=c)
 
         def get_sockets():
             return {
-                'a': services._socket('tcp://127.0.0.1:10000'),
+                'a': services._socket('tcp://127.0.0.1:10004'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
@@ -226,7 +227,7 @@ class TestBlockFetcher(TestCase):
 
         tasks = asyncio.gather(
             m1.serve(),
-            f.get_block_from_master(0, services._socket('tcp://127.0.0.1:10000')),
+            f.get_block_from_master(0, services._socket('tcp://127.0.0.1:10004')),
             stop_server(m1, 0.3),
         )
 
