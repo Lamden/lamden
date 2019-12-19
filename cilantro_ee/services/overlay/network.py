@@ -243,7 +243,6 @@ class Network:
                 asyncio.ensure_future(
                     self.discovery_server.serve()
                 )
-
             # Discover our bootnodes
 
             discovery_sockets = \

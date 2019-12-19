@@ -24,29 +24,26 @@ from contracting.client import ContractingClient
 
 cclient = ContractingClient()
 
-class NewMasternode:
-    def __init__(self, ip, ctx, signing_key, name,
-                 constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
-        # stuff
-        self.log = get_logger(name)
-        self.ip = ip
-        self.wallet = Wallet(seed=signing_key)
-        self.ctx = ctx
-        self.tx_queue = Queue()
 
-        self.signing_key = signing_key
+class NewMasternode:
+    def __init__(self, socket_base, ctx, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES):
+        # stuff
+        self.log = get_logger()
+        self.socket_base = socket_base
+        self.wallet = wallet
+        self.ctx = ctx
+        #self.tx_queue = Queue()
 
         conf.HOST_VK = self.wallet.verifying_key()
 
-        self.overlay_server = None
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.overwrite = overwrite
 
         # Services
-        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=f'tcp://{self.ip}', bootnodes=self.bootnodes)
+        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=socket_base, bootnodes=self.bootnodes)
 
-        self.block_server = BlockServer(signing_key=self.signing_key)
+        #self.block_server = BlockServer(signing_key=self.signing_key)
 
     async def start(self, exclude=('vkbook',)):
         # Discover other nodes
@@ -69,8 +66,8 @@ class NewMasternode:
         sync.sync_genesis_contracts(exclude=exclude)
 
         # Start block server to provide catchup to other nodes
-        asyncio.ensure_future(self.block_server.serve())
+        #asyncio.ensure_future(self.block_server.serve())
 
     def stop(self):
-        self.block_server.stop()
-        self.overlay_server.stop()
+        #self.block_server.stop()
+        self.network.stop()

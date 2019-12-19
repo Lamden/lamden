@@ -2,13 +2,15 @@ from cilantro_ee.nodes.masternode.new_mn import NewMasternode
 from unittest import TestCase
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.services.overlay.discovery import *
-from cilantro_ee.services.overlay.discovery import DiscoveryServer
-from cilantro_ee.constants.overlay_network import PEPPER
 import zmq
 import zmq.asyncio
 from cilantro_ee.core.crypto.wallet import Wallet
 import zmq.asyncio
 import asyncio
+from cilantro_ee.services.overlay.network import Network
+from contracting.client import ContractingClient
+
+import os
 
 
 async def stop_server(s, timeout):
@@ -16,10 +18,18 @@ async def stop_server(s, timeout):
     s.stop()
 
 
+def make_ipc(p):
+    try:
+        os.mkdir(p)
+    except:
+        pass
+
+
 class TestNewMasternode(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
+        ContractingClient().flush()
         asyncio.set_event_loop(self.loop)
 
     def tearDown(self):
@@ -41,15 +51,37 @@ class TestNewMasternode(TestCase):
         dw2 = Wallet()
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
+        constitution = {
+            "masternodes": {
+                "vk_list": [
+                    mnw1.verifying_key().hex(),
+                    mnw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "delegates": {
+                "vk_list": [
+                    dw1.verifying_key().hex(),
+                    dw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "witnesses": {},
+            "schedulers": {},
+            "notifiers": {},
+            "enable_stamps": False,
+            "enable_nonces": False
+        }
+
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}',
-                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                            constitution=constitution)
 
         n2 = '/tmp/n2'
         make_ipc(n2)
-        mn2 = NewMasternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}',
-                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
+        mn2 = NewMasternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
+                            constitution=constitution)
 
         n3 = '/tmp/n3'
         make_ipc(n3)
