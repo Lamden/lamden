@@ -5,6 +5,7 @@ from tests.utils.constitution_builder import ConstitutionBuilder
 import zmq.asyncio
 import asyncio
 import secrets
+from cilantro_ee.services.storage.state import MetaDataStorage
 
 from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
 from cilantro_ee.core.messages.message import Message, MessageType
@@ -94,6 +95,8 @@ def random_wallets(n=10):
 
 class TestBlockAggregator(TestCase):
     def setUp(self):
+        self.driver = MetaDataStorage()
+        self.driver.flush()
         self.ctx = zmq.asyncio.Context()
 
     def tearDown(self):
@@ -102,7 +105,7 @@ class TestBlockAggregator(TestCase):
     def test_block_timeout_without_any_quorum_returns_failed_block(self):
         contacts = VKBook()
 
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10, contacts=VKBook())
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10, contacts=contacts)
 
         # Set this true so that it doesn't hang
         b.pending_block.started = True
