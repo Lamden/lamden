@@ -174,12 +174,8 @@ class DBHandler:
         self.is_db_updated = True
         return ret_code
 
-    def setup_catchup_mgr(self, wallet, ctx, driver, state):
-        self.fetcher = BlockFetcher(wallet=wallet,
-                                    ctx=ctx,
-                                    blocks=driver,
-                                    state=state)
-
+    def setup_catchup_mgr(self, wallet, ctx):
+        self.fetcher = BlockFetcher(wallet=wallet, ctx=ctx) 
 
     def start_catchup_process(self):
         assert self.catchup_mgr, "Expected catchup_mgr initialized at this point"
@@ -221,11 +217,8 @@ class SubBlockManager:
         self.bn_handler.reset(self.driver.latest_block_num)
         self.sb_handler.reset()
 
-    def setup_catchup_mgr(self, wallet, ctx, state):
-        self.db_handler.setup_catchup_mgr(wallet,
-                                          ctx,
-                                          self.driver,
-                                          router_sock)
+    def setup_catchup_mgr(self, wallet, ctx):
+        self.db_handler.setup_catchup_mgr(wallet, ctx)
 
     def start_catchup_process(self):
         self.log.info("Catching up...")
@@ -386,21 +379,14 @@ class SubBlockBuilderManager(Worker):
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
 
-        self.run()
-
-
-    def run(self):
         # sync set up
         self.create_sockets()
         self.build_task_list()
+        self.sb_mgr.setup_catchup_mgr(self.wallet, self.zmq_ctx)
 
-        self.sb_mgr.setup_catchup_mgr(self.wallet, self.ctx)
-
-        # self.log.info("Sub-block builder manager starting...")
+    def start(self):
         self.log.info("Sub-block builder manager starting...")
-
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
-
 
     def create_sockets(self):
         # Create a TCP Router socket for comm with other nodes
