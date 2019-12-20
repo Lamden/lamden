@@ -75,8 +75,7 @@ class BlockAggregator:
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
-                 contacts=None,
-                 gather_block_ejection_timeout=6*60*1000):
+                 contacts=None):
 
         self.subblock_subscription_service = subscription
 
@@ -86,8 +85,6 @@ class BlockAggregator:
         self.current_quorum = current_quorum
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
-
-        self.gather_block_ejection_timeout = gather_block_ejection_timeout
 
         self.block_sb_mapper = BlockSubBlockMapper(self.contacts.masternodes)
 
@@ -212,8 +209,7 @@ class BlockAggregatorController:
                                           min_quorum=self.min_quorum,
                                           max_quorum=self.max_quorum,
                                           current_quorum=self.max_quorum,
-                                          contacts=self.vkbook,
-                                          gather_block_ejection_timeout=gather_block_ejection_timeout)
+                                          contacts=self.vkbook)
 
         # Setup publisher socket for other masternodes to subscribe to
         self.pub_socket_address = self.network_parameters.resolve(socket_base=socket_base,
@@ -253,14 +249,12 @@ class BlockAggregatorController:
             if kind == BNKind.NEW:
                 self.driver.store_block(sub_blocks=block)
 
-            # # Burn input hashes if needed
-            # await self.informer.send_burn_input_hashes(
-            #     hashes=self.get_input_hashes_to_burn(block)
-            # )
-            #
-            # # Reset Block Contender on Aggregator
-            # self.aggregator.setup_new_block_contender()
-            #
+            # Burn input hashes if needed
+            if len(block) > 0:
+                await self.informer.send_burn_input_hashes(
+                    hashes=self.get_input_hashes_to_burn(block)
+                )
+
             # # Send block notification to where it has to go
             # block_notification = self.serialize_block(block, kind)
             # self.pub_socket.send(block_notification)
@@ -296,7 +290,7 @@ class BlockAggregatorController:
                 sb = sb.to_dict()
 
             if sb['subBlockNum'] in self.sb_numbers:
-                sbs.append(sb)
+                sbs.append(sb['inputHash'])
 
         return sbs
 

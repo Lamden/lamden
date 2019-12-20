@@ -14,6 +14,9 @@ from unittest import TestCase
 from tests import random_txs
 from copy import deepcopy
 
+from cilantro_ee.core.messages.message import Message
+from cilantro_ee.core.messages.message_type import MessageType
+
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
 
@@ -383,7 +386,58 @@ class TestBlockAggregatorController(TestCase):
         self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK), [])
 
     def test_process_block_sends_burn_input_hashes(self):
-        pass
+        s = MockSubscription()
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
+
+        wallets = wallets[:contacts.delegate_quorum_max]
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            s.received.append((msg, 0))
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5)
+
+        bc.driver.drop_collections()
+        bc.aggregator.subblock_subscription_service = s
+        bc.running = True
+
+        async def stop():
+            await asyncio.sleep(1)
+            bc.running = False
+            bc.aggregator.pending_block.started = True
+
+        async def recieve():
+            s = self.ctx.socket(zmq.PAIR)
+            s.connect('ipc:///tmp/tx_batch_informer')
+            m = await s.recv()
+            return m
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            stop(),
+            bc.process_blocks(),
+            recieve()
+        )
+
+        _, _, m = loop.run_until_complete(tasks)
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
+
+        self.assertEqual(msg_type, MessageType.BURN_INPUT_HASHES)
+        self.assertListEqual([i for i in msg.inputHashes], [input_hash])
 
     def test_process_block_publishes_new_block_notification(self):
         pass
