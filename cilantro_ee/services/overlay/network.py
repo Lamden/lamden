@@ -1,5 +1,5 @@
 from cilantro_ee.constants import conf
-from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT, BLOCK_SERVER
+from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT, BLOCK_SERVER, MN_PUB_PORT, DELEGATE_PUB_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.services.overlay import discovery
 from cilantro_ee.core.sockets import services
@@ -165,6 +165,9 @@ class ServiceType:
     EVENT = 1
     DISCOVERY = 2
     BLOCK_SERVER = 3
+    SUBBLOCK_BUILDER_PUBLISHER = 4
+    BLOCK_AGGREGATOR = 5
+    TX_BATCH_INFORMER = 6
 
 
 class NetworkParameters:
@@ -172,13 +175,20 @@ class NetworkParameters:
                  peer_port=DHT_PORT, peer_ipc='peers',
                  event_port=EVENT_PORT, event_ipc='events',
                  discovery_port=DISCOVERY_PORT, discovery_ipc='discovery',
-                 block_port=BLOCK_SERVER, block_ipc='blocks'):
+                 block_port=BLOCK_SERVER, block_ipc='blocks',
+                 sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
+                 block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
+                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer'
+                 ):
 
         self.params = {
             ServiceType.PEER: (peer_port, peer_ipc),
             ServiceType.EVENT: (event_port, event_ipc),
             ServiceType.DISCOVERY: (discovery_port, discovery_ipc),
-            ServiceType.BLOCK_SERVER: (block_port, block_ipc)
+            ServiceType.BLOCK_SERVER: (block_port, block_ipc),
+            ServiceType.SUBBLOCK_BUILDER_PUBLISHER: (sbb_pub_port, sbb_pub_ipc),
+            ServiceType.BLOCK_AGGREGATOR: (block_agg_port, block_agg_ipc),
+            ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc)
         }
 
     def resolve(self, socket_base, service_type, bind=False):

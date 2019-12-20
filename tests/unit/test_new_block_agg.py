@@ -6,22 +6,22 @@ import zmq.asyncio
 import asyncio
 import secrets
 
-ctx = zmq.asyncio.Context()
-const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
-book = const_builder.get_constitution()
-extract_vk_args(book)
-submit_vkbook(book, overwrite=True)
-
 from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
 from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.sockets.services import _socket
-from cilantro_ee.services.storage.vkbook import VKBook
 from unittest import TestCase
 from tests import random_txs
 from copy import deepcopy
 
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
+
+ctx = zmq.asyncio.Context()
+const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
+book = const_builder.get_constitution()
+extract_vk_args(book)
+submit_vkbook(book, overwrite=True)
+
 
 class TestTransactionBatcherInformer(TestCase):
     def setUp(self):
@@ -35,11 +35,11 @@ class TestTransactionBatcherInformer(TestCase):
 
     def test_send_ready(self):
         w = Wallet()
-        t = TransactionBatcherInformer(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=self.ctx, wallet=w)
+        t = TransactionBatcherInformer(ctx=self.ctx, wallet=w)
 
         async def recieve():
             s = self.ctx.socket(zmq.PAIR)
-            s.connect('tcp://127.0.0.1:8888')
+            s.connect('ipc:///tmp/tx_batch_informer')
             m = await s.recv()
             return m
 
@@ -57,11 +57,11 @@ class TestTransactionBatcherInformer(TestCase):
 
     def test_send_hashes_same_list_of_hashes(self):
         w = Wallet()
-        t = TransactionBatcherInformer(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=self.ctx, wallet=w)
+        t = TransactionBatcherInformer(ctx=self.ctx, wallet=w)
 
         async def recieve():
             s = self.ctx.socket(zmq.PAIR)
-            s.connect('tcp://127.0.0.1:8888')
+            s.connect('ipc:///tmp/tx_batch_informer')
             m = await s.recv()
             return m
 
@@ -100,7 +100,9 @@ class TestBlockAggregator(TestCase):
         self.ctx.destroy()
 
     def test_block_timeout_without_any_quorum_returns_failed_block(self):
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10)
+        contacts = VKBook()
+
+        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10, contacts=VKBook())
 
         # Set this true so that it doesn't hang
         b.pending_block.started = True
@@ -264,4 +266,32 @@ class TestBlockAggregator(TestCase):
 
 
 class TestBlockAggregatorController(TestCase):
-    pass
+    def test_process_blocks_new_block_stores(self):
+        pass
+
+    def test_process_block_not_new_does_not_store(self):
+        pass
+
+    def test_process_block_sends_burn_input_hashes(self):
+        pass
+
+    def test_process_block_publishes_new_block_notification(self):
+        pass
+
+    def test_start_starts_aggregator(self):
+        pass
+
+    def test_start_sends_ready_from_informer(self):
+        pass
+
+    def test_start_publishes_ready(self):
+        pass
+
+    def test_serialize_block_new_to_new_block_notification(self):
+        pass
+
+    def test_serialize_block_skip_to_new_block_notification(self):
+        pass
+
+    def test_serialize_block_fail_to_new_block_notification(self):
+        pass

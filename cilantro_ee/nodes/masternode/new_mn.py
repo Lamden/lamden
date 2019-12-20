@@ -88,7 +88,9 @@ class NewMasternode:
         # Catchup
         await block_fetcher.sync()
 
-
+        # Create socket books?
+        # Subscribe to other services?
+        #
 
     def stop(self):
         self.block_server.stop()
