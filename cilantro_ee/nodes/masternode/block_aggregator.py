@@ -153,9 +153,10 @@ class BlockAggregator:
                                    current_quorum=self.current_quorum)
 
 
+
 class BlockAggregatorController:
     def __init__(self,
-                 signing_key: bytes,
+                 wallet,
                  ipc_ip,
                  ipc_port,
                  pub_port: int=MN_PUB_PORT,
@@ -166,21 +167,22 @@ class BlockAggregatorController:
                  state: MetaDataStorage=MetaDataStorage(),
                  contacts=None):
 
-        self.wallet = Wallet(signing_key)
+        self.wallet = wallet
 
         self.masternode_sockets = masternode_sockets or \
                                   SocketBook(None, contacts.masternodes)
+
         self.delegate_sockets = delegate_sockets or \
                                 SocketBook(None, contacts.delegates)
         self.ctx = ctx or zmq.asyncio.Context()
-        self.driver = driver or CilantroStorageDriver(key=signing_key)
+        self.driver = driver or CilantroStorageDriver(key=self.wallet.signing_key())
 
 
         self.state = state
         self.contacts = contacts
 
-        self.sb_idx = sb_idx
-        self.mn_idx = mn_idx
+        #self.sb_idx = sb_idx
+        #self.mn_idx = mn_idx
 
         self.min_quorum = self.contacts.delegate_quorum_min
         self.max_quorum = self.contacts.delegate_quorum_max
@@ -196,7 +198,9 @@ class BlockAggregatorController:
                                     blocks=self.driver,
                                     state=self.state)
 
-        self.aggregator = None
+        self.aggregator = BlockAggregator(subscription=None,
+                                          min_quorum=self.min_quorum,
+                                          max_quorum=self.max_quorum)
 
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind('tcp://*:{}'.format(pub_port))
@@ -208,9 +212,6 @@ class BlockAggregatorController:
         self.running = False
 
     async def start(self):
-        sync_genesis_contracts()
-        await self.fetcher.sync()
-
         await self.start_aggregator()
 
         await self.informer.send_ready()
@@ -220,14 +221,13 @@ class BlockAggregatorController:
         subscription = SubscriptionService(ctx=self.ctx)
         current_quorum = 0
 
+        # From SubBlockBuilder?
         for delegate in self.delegate_sockets.sockets.values():
             subscription.add_subscription(delegate)
             current_quorum += 1
 
-        self.aggregator = BlockAggregator(subscription=subscription,
-                                          min_quorum=self.min_quorum,
-                                          max_quorum=self.max_quorum,
-                                          current_quorum=current_quorum)
+        self.aggregator.subblock_subscription_service = subscription
+        self.aggregator.current_quorum = current_quorum
 
     async def process_blocks(self):
         while self.running:

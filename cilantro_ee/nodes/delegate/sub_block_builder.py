@@ -79,7 +79,6 @@ class UnpackedContractTransaction:
                                kwargs=kwargs)
 
 
-
 # This is a convenience struct to hold all data related to a sub-block in one place.
 # Since we have more than one sub-block per process, SBB'er will hold an array of SBManager objects
 class TransactionBag:
@@ -134,7 +133,6 @@ class TransactionBag:
             if len(bag.transactions) > 0:
                 self.pending_txs.insert_front(ih, bag)
         return num_non_empty_bags
-          
 
 
 class TxnBagManager:
@@ -362,15 +360,12 @@ class SubBlockMaker:
                            subBlockNum=sb_num,
                            prevBlockHash=self.state.latest_block_hash)
 
-
-
     def create_sb_contender(self, sb_num: int, sb_data: SBData):
         if len(sb_data.tx_data) > 0:
             mtype, sbc = self._create_sbc_from_batch(sb_num, sb_data)
         else:
             mtype, sbc = self._create_empty_sbc(sb_num, sb_data)
         self.event_callbacks['sb_contender'](mtype, sbc)
-
 
     def execute_sb(self, input_hash: bytes, tx_batch: list,
                    timestamp: float, sb_num: int):
@@ -410,7 +405,6 @@ class SubBlockMaker:
                                         callback, environment=environment)
         self.log.success(f"Result for TX batch: {result}")
 
-
     async def make_next_sb(self):
         # now start next one
         bag_idx = self.tb_mgr.get_active_bag_idx()
@@ -422,7 +416,6 @@ class SubBlockMaker:
         self.log.info(f"Make next SB {sb_num} with input hash {input_hash}")
 
         self.execute_sb(input_hash, bag.transactions, bag.timestamp, sb_num)
-
 
     def inform_if_work(self):
         ne_bag_count = self.tb_mgr.get_non_empty_bag_count()

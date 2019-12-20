@@ -38,7 +38,6 @@ class NewMasternode:
         self.wallet = wallet
         self.ctx = ctx
         self.network_parameters = NetworkParameters()
-        #self.tx_queue = Queue()
 
         conf.HOST_VK = self.wallet.verifying_key()
 
@@ -52,6 +51,10 @@ class NewMasternode:
 
         self.block_server = BlockServer(wallet=self.wallet, socket_base=socket_base,
                                         network_parameters=network_parameters)
+
+        self.block_agg_controller = BlockAggregatorController(wallet=self.wallet)
+
+        self.tx_batcher = TransactionBatcher()
 
     async def start(self):
         # Discover other nodes
@@ -82,12 +85,11 @@ class NewMasternode:
                                                                    phonebook_function=vkbook.contract.get_masternodes,
                                                                    ctx=self.ctx))
 
+        # Catchup
         await block_fetcher.sync()
 
 
-    def sync_genesis_contracts(self):
-        pass
 
     def stop(self):
-        #self.block_server.stop()
+        self.block_server.stop()
         self.network.stop()
