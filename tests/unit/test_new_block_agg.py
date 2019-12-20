@@ -128,6 +128,7 @@ class TestBlockAggregator(TestCase):
         input_hash = secrets.token_bytes(32)
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash,  b'\x00' * 32, wallets=wallets)
+        sigs = [s.to_dict()['signature'] for s in sbcs]
 
         for i in range(13):
             b.pending_block.contender.add_sbc(wallets[i].verifying_key(), sbcs[i])
@@ -138,6 +139,7 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 0)
+        self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_timeout_without_any_quorum_returns_failed_but_use_subscription_service(self):
         s = MockSubscription()
@@ -148,6 +150,7 @@ class TestBlockAggregator(TestCase):
         input_hash = secrets.token_bytes(32)
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets[0:1], as_dict=True)
+        sigs = [s['signature'] for s in sbcs]
 
         msg = Message.get_signed_message_packed_2(wallet=wallets[0],
                                                   msg_type=MessageType.SUBBLOCK_CONTENDER,
@@ -166,7 +169,7 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 2)
-        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+        self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_new_if_all_sbc_are_in_sub_received(self):
         s = MockSubscription()
@@ -206,7 +209,6 @@ class TestBlockAggregator(TestCase):
 
         input_hash = secrets.token_bytes(32)
 
-
         for wallet in wallets:
             _, merkle_proof = Message.get_message_packed(
                 MessageType.MERKLE_PROOF,
@@ -236,8 +238,8 @@ class TestBlockAggregator(TestCase):
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
 
-        self.assertEqual(kind,1)
-        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+        self.assertEqual(kind, 1)
+        self.assertEqual(len(set(block[0].to_dict()['merkleLeaves'])), 0)
 
     def test_block_fail_if_consensus_not_possible_but_hash_sbcs(self):
         s = MockSubscription()
@@ -247,9 +249,12 @@ class TestBlockAggregator(TestCase):
 
         input_hash = secrets.token_bytes(32)
 
-        for wallet in wallets:
+        sigs = []
 
+        for wallet in wallets:
             sbc = random_txs.sbc_from_txs(input_hash, b'\x00' * 32, w=wallet)
+            sigs.append(sbc.to_dict()['signature'])
+
             msg = Message.get_signed_message_packed_2(wallet=wallet,
                                                       msg_type=MessageType.SUBBLOCK_CONTENDER,
                                                       **sbc.to_dict())
@@ -267,6 +272,7 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 2)
+        self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
 
 class TestBlockAggregatorController(TestCase):
