@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 
 def main(mode = False):
     if mode:
@@ -11,7 +12,10 @@ def main(mode = False):
 
     # setup Env
 
-    os.environ['CIL_ROOT'] = ''
+    os.environ['PKG_PATH'] = Path(os.getcwd())
+    os.environ['CIL_ROOT'] = os.getenv('PKG_PATH') + 'cilantro_ee'
+
+    # make data dir
     os.environ['DATADIR'] = ''
     os.environ['NW_CONST'] = ''
     os.environ['BOOT_IP'] = ''
@@ -22,9 +26,7 @@ def main(mode = False):
 
     # Run setup scripts
 
-
-
-    print("Done")
+    print(os.environ)
 
 
 if __name__ == "__main__":
