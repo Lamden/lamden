@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.services.storage.vkbook import VKBook
-
+from cilantro_ee.core.canonical import block_from_subblocks
 import hashlib
 
 REPLICATION = 3             # TODO hard coded for now needs to change
@@ -296,7 +296,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
 
         super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, **kwargs)
 
-    def store_block(self, sub_blocks):
+    def get_block_dict(self, sub_blocks):
         last_block = self.get_last_n(1, self.INDEX)
 
         if len(last_block) > 0:
@@ -307,35 +307,13 @@ class CilantroStorageDriver(DistributedMasterStorage):
             last_hash = GENESIS_HASH
             current_block_num = 1
 
-        hashes = [subblock.merkleRoot for subblock in sub_blocks]
+        block_dict = block_from_subblocks(subblocks=sub_blocks, previous_hash=last_hash, block_num=current_block_num)
+        block_dict['blockOwners'] = [m for m in self.vkbook.masternodes],
 
-        for s in sub_blocks:
-            self.log.success(type(s))
+        return block_dict
 
-        if type(last_hash) == str:
-            last_hash = bytes.fromhex(last_hash)
-
-        h = hashlib.sha3_256()
-        h.update(last_hash)
-
-        for _hash in hashes:
-            h.update(_hash)
-
-        block_hash = h.digest()
-
-        block_dict = {
-            'blockHash': block_hash,
-            'blockNum': current_block_num,
-            'blockOwners': [m for m in self.vkbook.masternodes],
-            'prevBlockHash': last_hash,
-            'subBlocks': [s for s in sub_blocks]
-        }
-
-        # Serialize the sub block for mongo
-        block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
-
-        #if not self.distribute_writes:
-        #    block_data = BlockData.create(block_hash, last_hash, self.vkbook.masternodes, current_block_num, sub_blocks)
+    def store_block(self, sub_blocks):
+        block_dict = self.get_block_dict(sub_blocks)
 
         successful_storage = self.evaluate_wr(entry=block_dict)
 

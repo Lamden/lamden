@@ -162,8 +162,7 @@ class BlockAggregatorController:
                  ctx: zmq.asyncio.Context,
                  network_parameters=NetworkParameters(),
                  state: MetaDataStorage=MetaDataStorage(),
-                 block_timeout=60*1000,
-                 gather_block_ejection_timeout=5*60*1000):
+                 block_timeout=60*1000):
 
         self.wallet = wallet
         self.vkbook = vkbook
@@ -245,19 +244,38 @@ class BlockAggregatorController:
         while self.running:
             block, kind = await self.aggregator.gather_block()
 
-            # if block type new block, store
-            if kind == BNKind.NEW:
-                self.driver.store_block(sub_blocks=block)
-
             # Burn input hashes if needed
             if len(block) > 0:
                 await self.informer.send_burn_input_hashes(
                     hashes=self.get_input_hashes_to_burn(block)
                 )
 
-            # # Send block notification to where it has to go
-            # block_notification = self.serialize_block(block, kind)
-            # self.pub_socket.send(block_notification)
+                notification = self.driver.get_block_dict(block)
+
+                del notification['prevBlockHash']
+                del notification['subBlocks']
+
+                owners = []
+                if kind == BNKind.NEW:
+                    self.driver.store_block(sub_blocks=block)
+                    owners = [m for m in self.vkbook.masternodes]
+                    notification['newBlock'] = None
+
+                notification['blockOwners'] = owners
+
+                if kind == BNKind.SKIP:
+                    notification['skipBlock'] = None
+
+                if kind == BNKind.FAIL:
+                    notification['failedBlock'] = None
+
+                block_notification = Message.get_signed_message_packed_2(
+                    wallet=self.wallet,
+                    msg_type=MessageType.BLOCK_NOTIFICATION,
+                    **notification
+                )
+
+                await self.pub_socket.send(block_notification)
 
     def forward_new_block_notifications(self, sender, msg):
         blocknum = msg.blockNum
@@ -265,21 +283,6 @@ class BlockAggregatorController:
         if (blocknum > self.state.latest_block_num + 1) and \
                 (msg.type.which() == "newBlock"):
             self.fetcher.intermediate_sync(msg)
-
-    def serialize_block(self, block, kind):
-        if kind == BNKind.NEW:
-            block['newBlock'] = None
-        elif kind == BNKind.SKIP:
-            block['emptyBlock'] = None
-        else:
-            block['failedBlock'] = None
-
-        block_notification = Message.get_signed_message_packed_2(
-            wallet=self.wallet,
-            msg_type=MessageType.BLOCK_NOTIFICATION,
-            **block)
-
-        return block_notification
 
     # raghu - ? is it sub_blocks
     def get_input_hashes_to_burn(self, sub_blocks):

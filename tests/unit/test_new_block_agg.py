@@ -8,7 +8,6 @@ import secrets
 from cilantro_ee.services.storage.state import MetaDataStorage
 
 from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
-from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.sockets.services import _socket
 from unittest import TestCase
 from tests import random_txs
@@ -19,6 +18,8 @@ from cilantro_ee.core.messages.message_type import MessageType
 
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
+
+from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
 
 ctx = zmq.asyncio.Context()
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
@@ -440,7 +441,66 @@ class TestBlockAggregatorController(TestCase):
         self.assertListEqual([i for i in msg.inputHashes], [input_hash])
 
     def test_process_block_publishes_new_block_notification(self):
-        pass
+        s = MockSubscription()
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
+
+        wallets = wallets[:contacts.delegate_quorum_max]
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            s.received.append((msg, 0))
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5)
+
+        bc.driver.drop_collections()
+        bc.aggregator.subblock_subscription_service = s
+        bc.running = True
+
+        async def stop():
+            await asyncio.sleep(1)
+            bc.running = False
+            bc.aggregator.pending_block.started = True
+
+        async def recieve():
+            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
+                                               service_type=ServiceType.BLOCK_AGGREGATOR)
+            s = self.ctx.socket(zmq.SUB)
+            s.connect(str(addr))
+            m = await s.recv()
+            return m
+
+        async def recieve2():
+            s = self.ctx.socket(zmq.PAIR)
+            s.connect('ipc:///tmp/tx_batch_informer')
+            m = await s.recv()
+            return m
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            stop(),
+            bc.process_blocks(),
+            recieve(),
+            recieve2()
+        )
+
+        _, _, m = loop.run_until_complete(tasks)
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
+
+        print(m)
 
     def test_start_starts_aggregator(self):
         pass
