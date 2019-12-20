@@ -98,7 +98,6 @@ class BlockAggregator:
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag
         while not self.pending_block.started and len(self.subblock_subscription_service.received) == 0:
-            print('halt')
             asyncio.sleep(0)
 
         self.pending_block.started = True
@@ -146,6 +145,7 @@ class BlockAggregator:
             return block, BNKind.FAIL
 
     def setup_new_block_contender(self):
+        self.pending_block.started = False
         self.pending_block = Block(min_quorum=self.min_quorum,
                                    max_quorum=self.max_quorum,
                                    current_quorum=self.current_quorum,
@@ -248,7 +248,10 @@ class BlockAggregatorController:
 
             # if block type new block, store
             if kind == BNKind.NEW:
+                print('succeed')
                 self.driver.store_block(sub_blocks=block)
+            else:
+                print(kind)
 
             # # Burn input hashes if needed
             # await self.informer.send_burn_input_hashes(

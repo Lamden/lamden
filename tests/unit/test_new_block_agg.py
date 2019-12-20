@@ -177,6 +177,7 @@ class TestBlockAggregator(TestCase):
         input_hash = secrets.token_bytes(32)
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+        sigs = [s['signature'] for s in sbcs]
 
         for i in range(len(sbcs)):
             msg = Message.get_signed_message_packed_2(wallet=wallets[i],
@@ -195,7 +196,7 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 0)
-        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
+        self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_skip_if_all_sbc_are_in_sub_received_and_empty(self):
         s = MockSubscription()
@@ -204,6 +205,7 @@ class TestBlockAggregator(TestCase):
         contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
+
 
         for wallet in wallets:
             _, merkle_proof = Message.get_message_packed(
@@ -265,7 +267,6 @@ class TestBlockAggregator(TestCase):
         block, kind = loop.run_until_complete(b.gather_block())
 
         self.assertEqual(kind, 2)
-        self.assertEqual(block[0].to_dict(), b.pending_block.contender.get_sb_data()[0].to_dict())
 
 
 class TestBlockAggregatorController(TestCase):
@@ -294,7 +295,7 @@ class TestBlockAggregatorController(TestCase):
             s.received.append((msg, 0))
 
         w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w, socket_base='tcp://127.0.0.1', vkbook=contacts, ctx=self.ctx)
+        bc = BlockAggregatorController(wallet=w, socket_base='tcp://127.0.0.1', vkbook=contacts, ctx=self.ctx, block_timeout=0.5)
 
         bc.aggregator.subblock_subscription_service = s
         bc.running = True
