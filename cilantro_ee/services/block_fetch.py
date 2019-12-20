@@ -7,7 +7,7 @@ from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.core.sockets.services import get, defer, _socket
 from cilantro_ee.services.storage.master import CilantroStorageDriver
-from cilantro_ee.constants.ports import BLOCK_SERVER
+from cilantro_ee.services.overlay.network import ServiceType, NetworkParameters
 import zmq.asyncio
 import asyncio
 from collections import Counter
@@ -16,7 +16,9 @@ import time
 
 class ConfirmationCounter(Counter):
     def top_item(self):
-        return self.most_common()[0][0]
+        if len(self.most_common()[0]) > 0:
+            return self.most_common()[0][0]
+        return None
 
     def top_count(self):
         if len(self.most_common()) == 0:
@@ -35,8 +37,9 @@ class BlockFetcher:
 
         self.phone_book = VKBook()
         self.masternodes = masternode_sockets or \
-                           SocketBook(_socket("tcp://127.0.0.1:10002"),
-                                      BLOCK_SERVER, ctx, 
+                           SocketBook("tcp://127.0.0.1",
+                                      ServiceType.BLOCK_SERVER, ctx, 
+                                      NetworkParameters(),
                                       self.phone_book.contract.get_masternodes)
         self.top = top
         self.wallet = wallet
@@ -51,8 +54,10 @@ class BlockFetcher:
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
         await self.masternodes.refresh()
-
         responses = ConfirmationCounter()
+
+        # In a 2 MN setup, a MN can only as one other MN
+        confirmations = min(confirmations, len(self.masternodes.sockets.values()) - 1)
 
         futures = []
         # Fire off requests to masternodes on the network
@@ -163,15 +168,10 @@ class BlockFetcher:
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.top.get_latest_block_number()
 
-        print('{} to {}'.format(current_height, latest_block_stored))
-
         while current_height < latest_block_stored:
 
             await self.fetch_blocks(current_height)
             current_height = await self.find_missing_block_indexes()
-            print('current height now: {}'.format(current_height))
-
-        print('done')
 
         self.in_catchup = False
 

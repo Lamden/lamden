@@ -1,5 +1,5 @@
 from cilantro_ee.constants import conf
-from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT
+from cilantro_ee.constants.ports import DHT_PORT, DISCOVERY_PORT, EVENT_PORT, BLOCK_SERVER
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.services.overlay import discovery
 from cilantro_ee.core.sockets import services
@@ -164,18 +164,21 @@ class ServiceType:
     PEER = 0
     EVENT = 1
     DISCOVERY = 2
+    BLOCK_SERVER = 3
 
 
 class NetworkParameters:
     def __init__(self,
                  peer_port=DHT_PORT, peer_ipc='peers',
                  event_port=EVENT_PORT, event_ipc='events',
-                 discovery_port=DISCOVERY_PORT, discovery_ipc='discovery'):
+                 discovery_port=DISCOVERY_PORT, discovery_ipc='discovery',
+                 block_port=BLOCK_SERVER, block_ipc='blocks'):
 
         self.params = {
             ServiceType.PEER: (peer_port, peer_ipc),
             ServiceType.EVENT: (event_port, event_ipc),
             ServiceType.DISCOVERY: (discovery_port, discovery_ipc),
+            ServiceType.BLOCK_SERVER: (block_port, block_ipc)
         }
 
     def resolve(self, socket_base, service_type, bind=False):
@@ -243,7 +246,6 @@ class Network:
                 asyncio.ensure_future(
                     self.discovery_server.serve()
                 )
-
             # Discover our bootnodes
 
             discovery_sockets = \

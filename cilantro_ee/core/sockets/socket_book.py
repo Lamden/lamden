@@ -1,5 +1,6 @@
 from cilantro_ee.services.overlay.sync_client import OverlayClientSync
 from cilantro_ee.core.sockets.services import SocketStruct, get, Protocols
+from cilantro_ee.services.overlay.network import ServiceType, NetworkParameters
 import asyncio
 import zmq.asyncio
 import json
@@ -11,11 +12,19 @@ import json
 
 
 class SocketBook:
-    def __init__(self, peer_service_address: SocketStruct, port: int, ctx: zmq.asyncio.Context, phonebook_function: callable=None):
-        self.peer_service_address = peer_service_address
+    def __init__(self, socket_base,
+                 service_type,
+                 ctx: zmq.asyncio.Context,
+                 network_parameters=NetworkParameters(),
+                 phonebook_function: callable=None):
+        # self.port = port
+        self.network_parameters = network_parameters
+
+        self.peer_service_address = self.network_parameters.resolve(socket_base, ServiceType.PEER)
+        self.service_type = service_type
+
         self.phonebook_function = phonebook_function
         self.sockets = {}
-        self.port = port
         self.ctx = ctx
 
     async def refresh(self):
@@ -45,9 +54,9 @@ class SocketBook:
             if r is not None:
                 _r = json.loads(r)
 
-                vk, tcp_str = [(k, v) for k, v in _r.items()][0]
+                vk, socket_base = [(k, v) for k, v in _r.items()][0]
 
-                self.sockets.update({vk: SocketStruct(protocol=Protocols.TCP, id=tcp_str, port=self.port)})
+                self.sockets.update({vk: self.network_parameters.resolve(socket_base, self.service_type)})
 
     async def find_node(self, node):
         find_message = ['find', node]

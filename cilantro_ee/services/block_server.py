@@ -7,6 +7,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.constants.ports import BLOCK_SERVER
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import _socket
+from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
 import os
 import capnp
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
@@ -23,17 +24,22 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 
 class BlockServer(AsyncInbox):
-    def __init__(self, signing_key, ctx=None, port=BLOCK_SERVER,
-                 linger=2000, poll_timeout=2000,
-                 driver: CilantroStorageDriver=None, top=TopBlockManager()):
-        self.wallet = Wallet(signing_key)
+    def __init__(self, wallet, socket_base, ctx=None, network_parameters=NetworkParameters(),
+                 linger=500, poll_timeout=200,
+                 driver: CilantroStorageDriver=None, top=TopBlockManager()
+                 ):
+
+        self.wallet = wallet
         self.ctx = ctx or zmq.asyncio.Context()
-        super().__init__(socket_id=_socket('tcp://*:{}'.format(port)),
+        self.address = network_parameters.resolve(socket_base, ServiceType.BLOCK_SERVER, bind=True)
+
+        super().__init__(socket_id=self.address,
                          wallet=self.wallet,
                          ctx=self.ctx,
                          linger=linger,
                          poll_timeout=poll_timeout)
-        self.driver = driver or CilantroStorageDriver(key=signing_key)
+
+        self.driver = driver or CilantroStorageDriver(key=self.wallet.signing_key())
         self.top = top
 
     def sync_serve(self):

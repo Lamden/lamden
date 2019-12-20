@@ -1,0 +1,26 @@
+{
+	"base_directory": "/genesis",
+	"extension": ".s.py",
+	"contracts": [
+		{
+			"name": "currency",
+			"owner": null,
+			"constructor_args": null
+		},
+		{
+			"name": "election_house",
+			"owner": null,
+			"constructor_args": null
+		},
+		{
+			"name": "stamp_cost",
+			"owner": "election_house",
+			"constructor_args": null
+		},
+		{
+			"name": "rewards",
+			"owner": "election_house",
+			"constructor_args": null
+		}
+	]
+}
