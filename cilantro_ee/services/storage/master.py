@@ -11,7 +11,7 @@ from cilantro_ee.services.storage.vkbook import VKBook
 import hashlib
 
 REPLICATION = 3             # TODO hard coded for now needs to change
-GENESIS_HASH = '0' * 64
+GENESIS_HASH = b'\x00' * 32
 OID = '5bef52cca4259d4ca5607661'
 
 
@@ -287,20 +287,25 @@ class DistributedMasterStorage(MasterStorage):
 
 
 class CilantroStorageDriver(DistributedMasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0]):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], **kwargs):
         self.state_id = ObjectId(OID)
         self.log = get_logger("StorageDriver")
 
         self.block_index_delta = defaultdict(dict)
         self.send_req_blk_num = 0
 
-        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path)
+        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, **kwargs)
 
     def store_block(self, sub_blocks):
-        last_block = self.get_last_n(1, self.INDEX)[0]
+        last_block = self.get_last_n(1, self.INDEX)
 
-        last_hash = last_block.get('blockHash')
-        current_block_num = last_block.get('blockNum') + 1
+        if len(last_block) > 0:
+            last_block = last_block[0]
+            last_hash = last_block.get('blockHash')
+            current_block_num = last_block.get('blockNum') + 1
+        else:
+            last_hash = GENESIS_HASH
+            current_block_num = 1
 
         hashes = [subblock.merkleRoot for subblock in sub_blocks]
 

@@ -269,7 +269,51 @@ class TestBlockAggregator(TestCase):
 
 
 class TestBlockAggregatorController(TestCase):
+    def setUp(self):
+        self.driver = MetaDataStorage()
+        self.driver.flush()
+        self.ctx = zmq.asyncio.Context()
+
+    def tearDown(self):
+        self.ctx.destroy()
+
     def test_process_blocks_new_block_stores(self):
+        # setup
+        s = MockSubscription()
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            s.received.append((msg, 0))
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w, socket_base='tcp://127.0.0.1', vkbook=contacts, ctx=self.ctx)
+
+        bc.aggregator.subblock_subscription_service = s
+        bc.running = True
+
+        async def stop():
+            await asyncio.sleep(1)
+            bc.running = False
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            bc.process_blocks(),
+            stop()
+        )
+
+        loop.run_until_complete(tasks)
+
+        # use driver to read the stored block
+        # compare it with the generated block
         pass
 
     def test_process_block_not_new_does_not_store(self):

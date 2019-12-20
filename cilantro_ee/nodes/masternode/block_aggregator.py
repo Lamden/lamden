@@ -93,11 +93,12 @@ class BlockAggregator:
                                    current_quorum=self.current_quorum,
                                    subblocks_per_block=self.block_sb_mapper.num_sb_per_block,
                                    builders_per_block=self.block_sb_mapper.num_sb_builders,
-                                   contacts=contacts)
+                                   contacts=self.contacts)
 
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag
         while not self.pending_block.started and len(self.subblock_subscription_service.received) == 0:
+            print('halt')
             asyncio.sleep(0)
 
         self.pending_block.started = True
@@ -117,14 +118,17 @@ class BlockAggregator:
                     block = self.pending_block.contender.get_sb_data()
                     if self.pending_block.contender.is_empty():
                         # SKIP!
+                        self.setup_new_block_contender()
                         return block, BNKind.SKIP
                     else:
                         # REGULAR
+                        self.setup_new_block_contender()
                         return block, BNKind.NEW
 
                 elif not self.pending_block.contender.is_consensus_possible():
                     # FAIL?
                     block = self.pending_block.contender.get_sb_data()
+                    self.setup_new_block_contender()
                     return block, BNKind.FAIL
 
         # This will be hit if timeout is reached
@@ -133,28 +137,33 @@ class BlockAggregator:
         if self.pending_block.can_adjust_quorum():
             self.pending_block.current_quorum = self.pending_block.contender.get_current_quorum_reached()
             # REGULAR!
+            self.setup_new_block_contender()
             return block, BNKind.NEW
         # Otherwise, fail the block
         else:
             # FAIL!
+            self.setup_new_block_contender()
             return block, BNKind.FAIL
 
     def setup_new_block_contender(self):
         self.pending_block = Block(min_quorum=self.min_quorum,
                                    max_quorum=self.max_quorum,
-                                   current_quorum=self.current_quorum)
+                                   current_quorum=self.current_quorum,
+                                   subblocks_per_block=self.block_sb_mapper.num_sb_per_block,
+                                   builders_per_block=self.block_sb_mapper.num_sb_builders,
+                                   contacts=self.contacts)
+
 
 # Create socket base
-
 class BlockAggregatorController:
     def __init__(self,
                  wallet,
                  socket_base,
                  vkbook,
-                 network_parameters: NetworkParameters,
-                 ctx: zmq.asyncio.Context=None,
-                 driver: CilantroStorageDriver=None,
-                 state: MetaDataStorage=MetaDataStorage()):
+                 ctx: zmq.asyncio.Context,
+                 network_parameters=NetworkParameters(),
+                 state: MetaDataStorage=MetaDataStorage(),
+                 block_timeout=60*1000):
 
         self.wallet = wallet
         self.vkbook = vkbook
@@ -173,12 +182,14 @@ class BlockAggregatorController:
                                            network_parameters=self.network_parameters,
                                            phonebook_function=self.vkbook.contract.get_delegates)
 
-        self.driver = driver or CilantroStorageDriver(key=self.wallet.signing_key())
+        self.driver = CilantroStorageDriver(key=self.wallet.signing_key(), vkbook=self.vkbook)
 
         self.state = state
 
         self.min_quorum = self.vkbook.delegate_quorum_min
         self.max_quorum = self.vkbook.delegate_quorum_max
+
+        print(f'min q: {self.min_quorum} / max q: {self.max_quorum}')
 
         block_sb_mapper = BlockSubBlockMapper(self.vkbook.masternodes)
         my_vk = self.wallet.verifying_key()
@@ -194,8 +205,11 @@ class BlockAggregatorController:
                                     state=self.state)
 
         self.aggregator = BlockAggregator(subscription=None,
+                                          block_timeout=block_timeout,
                                           min_quorum=self.min_quorum,
-                                          max_quorum=self.max_quorum)
+                                          max_quorum=self.max_quorum,
+                                          current_quorum=self.max_quorum,
+                                          contacts=self.vkbook)
 
         # Setup publisher socket for other masternodes to subscribe to
         self.pub_socket_address = self.network_parameters.resolve(socket_base=socket_base,
@@ -229,23 +243,24 @@ class BlockAggregatorController:
 
     async def process_blocks(self):
         while self.running:
+            print('yeehaw')
             block, kind = await self.aggregator.gather_block()
 
             # if block type new block, store
             if kind == BNKind.NEW:
                 self.driver.store_block(sub_blocks=block)
 
-            # Burn input hashes if needed
-            await self.informer.send_burn_input_hashes(
-                hashes=self.get_input_hashes_to_burn(block)
-            )
-
-            # Reset Block Contender on Aggregator
-            self.aggregator.setup_new_block_contender()
-
-            # Send block notification to where it has to go
-            block_notification = self.serialize_block(block, kind)
-            self.pub_socket.send(block_notification)
+            # # Burn input hashes if needed
+            # await self.informer.send_burn_input_hashes(
+            #     hashes=self.get_input_hashes_to_burn(block)
+            # )
+            #
+            # # Reset Block Contender on Aggregator
+            # self.aggregator.setup_new_block_contender()
+            #
+            # # Send block notification to where it has to go
+            # block_notification = self.serialize_block(block, kind)
+            # self.pub_socket.send(block_notification)
 
     def forward_new_block_notifications(self, sender, msg):
         blocknum = msg.blockNum
@@ -271,7 +286,18 @@ class BlockAggregatorController:
 
     # raghu - ? is it sub_blocks
     def get_input_hashes_to_burn(self, sub_blocks):
-        return [sub_blocks[i]['inputHash'] for i in self.sb_indices if sub_blocks[i]['subBlockNum'] in self.sb_numbers]
+        sbs = []
+        for i in self.sb_indices:
+            sb = sub_blocks[i]
+            if type(sb) != dict:
+                sb = sb.to_dict()
+
+            if sb['subBlockNum'] in self.sb_numbers:
+                sbs.append(sb)
+
+        return sbs
+
+        # return [sb_dicts[i]['inputHash'] for i in self.sb_indices if sb_dicts[i]['subBlockNum'] in self.sb_numbers]
 
     async def send_ready(self):
         ready = Message.get_signed_message_packed_2(
