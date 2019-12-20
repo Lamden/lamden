@@ -329,7 +329,58 @@ class TestBlockAggregatorController(TestCase):
         self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK)[0]['blockNum'], 1)
 
     def test_process_block_not_new_does_not_store(self):
-        pass
+        s = MockSubscription()
+
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
+
+        input_hash = secrets.token_bytes(32)
+
+        for wallet in wallets:
+            _, merkle_proof = Message.get_message_packed(
+                MessageType.MERKLE_PROOF,
+                hash=input_hash,
+                signer=wallet.verifying_key(),
+                signature=wallet.sign(input_hash))
+
+            msg = Message.get_signed_message_packed_2(wallet=wallet,
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      resultHash=input_hash,
+                                                      inputHash=input_hash,
+                                                      merkleLeaves=[],
+                                                      signature=merkle_proof,
+                                                      transactions=[],
+                                                      subBlockNum=0,
+                                                      prevBlockHash=b'\x00' * 32)
+
+            s.received.append((msg, 0))
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5)
+
+        bc.driver.drop_collections()
+        bc.aggregator.subblock_subscription_service = s
+        bc.running = True
+
+        async def stop():
+            await asyncio.sleep(1)
+            bc.running = False
+            bc.aggregator.pending_block.started = True
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            stop(),
+            bc.process_blocks()
+        )
+
+        loop.run_until_complete(tasks)
+
+        self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK), [])
 
     def test_process_block_sends_burn_input_hashes(self):
         pass
