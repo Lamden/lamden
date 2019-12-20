@@ -35,10 +35,8 @@ class TransactionBatcherInformer:
 
     async def send_burn_input_hashes(self, hashes):
         if len(hashes) > 0:
-            mtype, msg = Message.get_message_packed(msg_type=MessageType.BURN_INPUT_HASHES,
-                                                    inputHashes=hashes)
-
-            await self.socket.send_multipart([b'0', mtype, msg])
+            msg = Message.get_message_packed_2(msg_type=MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
+            await self.socket.send(msg)
 
 
 class BlockNotificationForwarder:
