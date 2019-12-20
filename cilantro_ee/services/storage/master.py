@@ -44,7 +44,7 @@ class MasterStorage:
         self.config_path = config_path
 
         self.config = ConfigParser()
-        self.config.read(self.config_path + '/services/storage/mn_db_conf.ini')
+        self.config.read(self.config_path + '/config/mn_db_conf.ini')
 
         user = self.config.get('MN_DB', 'username')
         password = self.config.get('MN_DB', 'password')
