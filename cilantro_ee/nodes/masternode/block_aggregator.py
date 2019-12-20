@@ -47,6 +47,7 @@ class BNKind:
     NEW = 0
     SKIP = 1
     FAIL = 2
+    EJECTION = 3
 
 
 class Block:
@@ -75,7 +76,8 @@ class BlockAggregator:
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
-                 contacts=None):
+                 contacts=None,
+                 gather_block_ejection_timeout=6*60*1000):
 
         self.subblock_subscription_service = subscription
 
@@ -85,6 +87,8 @@ class BlockAggregator:
         self.current_quorum = current_quorum
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
+
+        self.gather_block_ejection_timeout = gather_block_ejection_timeout
 
         self.block_sb_mapper = BlockSubBlockMapper(self.contacts.masternodes)
 
@@ -97,8 +101,14 @@ class BlockAggregator:
 
     async def gather_block(self):
         # Wait until queue has at least one then have some bool flag
+        start_time = time.time()
+
         while not self.pending_block.started and len(self.subblock_subscription_service.received) == 0:
-            asyncio.sleep(0)
+            await asyncio.sleep(0)
+
+            # Corner case in critical network state
+            if time.time() - start_time > self.gather_block_ejection_timeout:
+                return [], BNKind.EJECTION
 
         self.pending_block.started = True
 
@@ -163,7 +173,8 @@ class BlockAggregatorController:
                  ctx: zmq.asyncio.Context,
                  network_parameters=NetworkParameters(),
                  state: MetaDataStorage=MetaDataStorage(),
-                 block_timeout=60*1000):
+                 block_timeout=60*1000,
+                 gather_block_ejection_timeout=5*60*1000):
 
         self.wallet = wallet
         self.vkbook = vkbook
@@ -209,7 +220,8 @@ class BlockAggregatorController:
                                           min_quorum=self.min_quorum,
                                           max_quorum=self.max_quorum,
                                           current_quorum=self.max_quorum,
-                                          contacts=self.vkbook)
+                                          contacts=self.vkbook,
+                                          gather_block_ejection_timeout=gather_block_ejection_timeout)
 
         # Setup publisher socket for other masternodes to subscribe to
         self.pub_socket_address = self.network_parameters.resolve(socket_base=socket_base,
@@ -252,6 +264,7 @@ class BlockAggregatorController:
                 self.driver.store_block(sub_blocks=block)
             else:
                 print(kind)
+
 
             # # Burn input hashes if needed
             # await self.informer.send_burn_input_hashes(

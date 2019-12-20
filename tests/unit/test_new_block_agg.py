@@ -290,6 +290,8 @@ class TestBlockAggregatorController(TestCase):
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
+        wallets = wallets[:contacts.delegate_quorum_max]
+
         input_hash = secrets.token_bytes(32)
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
@@ -301,20 +303,26 @@ class TestBlockAggregatorController(TestCase):
             s.received.append((msg, 0))
 
         w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w, socket_base='tcp://127.0.0.1', vkbook=contacts, ctx=self.ctx, block_timeout=0.5)
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5,
+                                       gather_block_ejection_timeout=1)
 
         bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             bc.running = False
+            print('done')
 
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
-            bc.process_blocks(),
-            stop()
+            stop(),
+            bc.process_blocks()
         )
 
         loop.run_until_complete(tasks)
