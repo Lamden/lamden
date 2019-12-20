@@ -86,12 +86,24 @@ class TestSubBlocks(TestCase):
         self.assertListEqual(s.get_input_hashes_sorted(), expected)
 
 
-class MockBlock:
+class MockBaseBlock:
+    def __init__(self, block_num=1, block_hash='x'):
+        self.blockNum = block_num
+        self.blockHash = block_hash
+
+
+class MockBlock(MockBaseBlock):
+    def __init__(self, block_num=1, block_hash='x'):
+        super().__init__(block_num, block_hash)
+
     def which(self):
         return 'SomethingElse'
 
 
-class MockFailedBlock:
+class MockFailedBlock(MockBaseBlock):
+    def __init__(self, block_num=1, block_hash='x'):
+        super().__init__(block_num, block_hash)
+
     def which(self):
         return 'FailedBlock'
 
@@ -136,12 +148,12 @@ class TestNextBlockData(TestCase):
 
 class TestNextBlock(TestCase):
     def test_hard_reset_resets_state(self):
-        n = BlockNotifHandler()
-        n.next_block_data = {1, 2, 3}
+        n = BlockNotifHandler(num_masters=1)
+        n.block_notif_data = {1, 2, 3}
         n.quorum_block = 1
         n.hard_reset()
 
-        self.assertEqual(n.next_block_data, {})
+        self.assertEqual(n.block_notif_data, {})
         self.assertEqual(n.quorum_block, None)
 
     def test_reset_greater_than_existing_block_removes_block_from_set(self):
@@ -183,46 +195,44 @@ class TestNextBlock(TestCase):
         self.assertFalse(n.is_quorum())
 
     def test_add_notification_returns_false_if_quorum_block_and_block_num_matches_arg(self):
-        n = BlockNotifHandler(1)
+        n = BlockNotifHandler(3)
 
-        MockBlock = namedtuple('MockBlock', ['blockNum'])
+        n.quorum_block = MockBlock(3)
 
-        n.quorum_block = MockBlock(999)
-
-        self.assertFalse(n.add_notification(999, None))
+        self.assertFalse(n.add_notification(MockBlock(), None))
 
     def test_add_notification_makes_empty_hash_if_block_num_not_in_next_block_data_and_adds_data(self):
-        n = BlockNotifHandler()
+        n = BlockNotifHandler(1)
 
-        self.assertIsNone(n.block_notif_data.get(999))
+        self.assertIsNone(n.block_notif_data.get(1))
 
         m = MockBlock()
 
-        n.add_notification(m, None, 999, None)
+        n.add_notification(m, 1)
 
-        self.assertEqual(n.block_notif_data[999][None].block_notif, m)
+        self.assertEqual(n.block_notif_data[1]['x'].block_notif, m)
 
     def test_add_notification_returns_false_if_not_add_sender(self):
-        n = BlockNotifHandler()
+        n = BlockNotifHandler(3)
 
         m = MockBlock()
 
-        self.assertFalse(n.add_notification(m, None, 999, None))
+        self.assertFalse(n.add_notification(m, None))
 
     def test_add_notification_returns_true_if_add_sender_returns_true(self):
-        n = BlockNotifHandler()
+        n = BlockNotifHandler(3)
 
         m = MockBlock()
 
-        n.add_notification(m, 1, 999, None)
-        self.assertTrue(n.add_notification(m, 2, 999, None))
+        n.add_notification(m, 1)
+        self.assertTrue(n.add_notification(m, 2))
 
     def test_add_notification_returns_true_if_add_sender_true_and_sets_quorum_block_to_notif(self):
-        n = BlockNotifHandler()
+        n = BlockNotifHandler(1)
 
         m = MockBlock()
 
-        n.add_notification(m, 1, 999, None)
-        n.add_notification(m, 2, 999, None)
+        n.add_notification(m, 1)
+        n.add_notification(m, 2)
 
         self.assertEqual(n.quorum_block, m)

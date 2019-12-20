@@ -2,6 +2,7 @@ from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.core.utils.context import Context
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.services.overlay.server import OverlayServer
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.constants import ports
 from cilantro_ee.constants import conf
@@ -18,11 +19,9 @@ import os
 
 class NodeBase(Context):
 
-    def __init__(self, ip, signing_key, name='Node'):
+    def __init__(self, ip, signing_key, name='Node', bootnodes=conf.BOOTNODES):
         super().__init__(signing_key=signing_key, name=name)
         
-        SocketUtil.clear_domain_register()
-
         self.log = get_logger(name)
         self.ip = ip
         self.wallet = Wallet(seed=signing_key)
@@ -32,7 +31,9 @@ class NodeBase(Context):
         self.log.info("Starting node components")
 
         self.log.info("Starting overlay service")
-        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx, quorum=1)
+        self.overlay_server = OverlayServer(sk=signing_key, ctx=self.zmq_ctx,
+                                            quorum=1, vkbook=VKBook(),
+                                            bootnodes=bootnodes)
 
         self.start()
 

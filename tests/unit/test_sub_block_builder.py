@@ -1,49 +1,40 @@
-# from Deprecated.test import set_testnet_config
-# set_testnet_config('vk_dump.json')
-#
-# from cilantro_ee.constants.system_config import *
-from cilantro_ee.utils.hasher import Hasher
 #
 from contracting.db.cr.callback_data import ExecutionData, SBData
 #
-# from cilantro_ee.nodes.delegate.block_manager import IPC_IP, IPC_PORT
-from cilantro_ee.nodes.delegate.sub_block_builder import TransactionBag
-from cilantro_ee.nodes.delegate.sub_block_builder import TxnBagManager
-from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockMaker
-#
 from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
 from cilantro_ee.core.utils.transaction import TransactionBuilder
-# from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
+#
+from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
+from cilantro_ee.nodes.delegate.sub_block_builder import TransactionBag
+from cilantro_ee.nodes.delegate.sub_block_builder import TxnBagManager
+from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockMaker
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.utils.hasher import Hasher
 #
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
-from cilantro_ee.constants.testnet import *
-from cilantro_ee.services.storage.vkbook import PhoneBook
-import asyncio
-from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
-from cilantro_ee.core.crypto import wallet
+from tests.utils.constitution_builder import ConstitutionBuilder
 
+import asyncio
 import hashlib
+import secrets
+import time
+import zmq.asyncio
+
+ctx = zmq.asyncio.Context()
+const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
+book = const_builder.get_constitution()
+extract_vk_args(book)
+submit_vkbook(book, overwrite=True)
+
 #
 _log = get_logger("TestSubBlockBuilder")
 #
-TEST_IP = '127.0.0.1'
-# DELEGATE_SK = TESTNET_DELEGATES[0]['sk']
-DELEGATE_SK = PhoneBook.delegates[0]
-
-IPC_IP = 'block-manager-ipc-sock'
-IPC_PORT = 6967
-#
-# MN_SK1 = TESTNET_MASTERNODES[0]['sk']
-# MN_SK2 = TESTNET_MASTERNODES[1]['sk']
-MN_SK1 = PhoneBook.masternodes[0]
-MN_SK2 = PhoneBook.masternodes[1]
-MN_SK1 = TESTNET_MASTERNODES[0]['sk']
-MN_SK2 = TESTNET_MASTERNODES[1]['sk']
 
 SK = '11babaea921684a1710cd1f763285af52461d1add0d0caf31cec834ff420d46c'
 SK = bytes.fromhex(SK)
@@ -65,16 +56,6 @@ def get_transaction(amount=10, to='jeff', stamps=500000):
 #
 #
 class SBBTester:
-
-    @staticmethod
-    def test(func):
-        @mock.patch("cilantro_ee.core.utils.worker.asyncio")
-        @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
-        @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
-        @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder.run")
-        def _func(*args, **kwargs):
-            return func(*args, **kwargs)
-        return _func
 
     @staticmethod
     def get_bag(timestamp, num_txs):

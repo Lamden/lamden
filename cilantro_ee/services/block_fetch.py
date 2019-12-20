@@ -5,8 +5,9 @@ from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
-from cilantro_ee.core.sockets.services import get, defer
+from cilantro_ee.core.sockets.services import get, defer, _socket
 from cilantro_ee.services.storage.master import CilantroStorageDriver
+from cilantro_ee.constants.ports import BLOCK_SERVER
 import zmq.asyncio
 import asyncio
 from collections import Counter
@@ -26,7 +27,7 @@ class ConfirmationCounter(Counter):
 # Open a socket and to listen for new block notifications
 class BlockFetcher:
     def __init__(self, wallet: Wallet,
-                 ctx: zmq.Context,
+                 ctx: zmq.asyncio.Context,
                  blocks: CilantroStorageDriver=None,
                  top=TopBlockManager(),
                  state=MetaDataStorage(),
@@ -34,7 +35,9 @@ class BlockFetcher:
 
         self.phone_book = VKBook()
         self.masternodes = masternode_sockets or \
-                           SocketBook(None, self.phone_book.contract.get_masternodes)
+                           SocketBook(_socket("tcp://127.0.0.1:10002"),
+                                      BLOCK_SERVER, ctx, 
+                                      self.phone_book.contract.get_masternodes)
         self.top = top
         self.wallet = wallet
         self.ctx = ctx

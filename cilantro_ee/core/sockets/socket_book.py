@@ -12,7 +12,6 @@ import json
 
 class SocketBook:
     def __init__(self, peer_service_address: SocketStruct, port: int, ctx: zmq.asyncio.Context, phonebook_function: callable=None):
-        # self.port = port
         self.peer_service_address = peer_service_address
         self.phonebook_function = phonebook_function
         self.sockets = {}
