@@ -47,7 +47,6 @@ class BNKind:
     NEW = 0
     SKIP = 1
     FAIL = 2
-    EJECTION = 3
 
 
 class Block:
@@ -100,15 +99,8 @@ class BlockAggregator:
                                    contacts=self.contacts)
 
     async def gather_block(self):
-        # Wait until queue has at least one then have some bool flag
-        start_time = time.time()
-
         while not self.pending_block.started and len(self.subblock_subscription_service.received) == 0:
             await asyncio.sleep(0)
-
-            # Corner case in critical network state
-            if time.time() - start_time > self.gather_block_ejection_timeout:
-                return [], BNKind.EJECTION
 
         self.pending_block.started = True
 
@@ -255,16 +247,11 @@ class BlockAggregatorController:
 
     async def process_blocks(self):
         while self.running:
-            print('yeehaw')
             block, kind = await self.aggregator.gather_block()
 
             # if block type new block, store
             if kind == BNKind.NEW:
-                print('succeed')
                 self.driver.store_block(sub_blocks=block)
-            else:
-                print(kind)
-
 
             # # Burn input hashes if needed
             # await self.informer.send_burn_input_hashes(

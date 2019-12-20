@@ -285,7 +285,6 @@ class TestBlockAggregatorController(TestCase):
         self.ctx.destroy()
 
     def test_process_blocks_new_block_stores(self):
-        # setup
         s = MockSubscription()
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
@@ -307,16 +306,16 @@ class TestBlockAggregatorController(TestCase):
                                        socket_base='tcp://127.0.0.1',
                                        vkbook=contacts,
                                        ctx=self.ctx,
-                                       block_timeout=0.5,
-                                       gather_block_ejection_timeout=1)
+                                       block_timeout=0.5)
 
+        bc.driver.drop_collections()
         bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
             bc.running = False
-            print('done')
+            bc.aggregator.pending_block.started = True
 
         loop = asyncio.get_event_loop()
 
@@ -327,9 +326,7 @@ class TestBlockAggregatorController(TestCase):
 
         loop.run_until_complete(tasks)
 
-        # use driver to read the stored block
-        # compare it with the generated block
-        pass
+        self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK)[0]['blockNum'], 1)
 
     def test_process_block_not_new_does_not_store(self):
         pass
