@@ -168,6 +168,7 @@ class ServiceType:
     SUBBLOCK_BUILDER_PUBLISHER = 4
     BLOCK_AGGREGATOR = 5
     TX_BATCH_INFORMER = 6
+    BLOCK_NOTIFICATIONS = 7
 
 
 class NetworkParameters:
@@ -178,7 +179,8 @@ class NetworkParameters:
                  block_port=BLOCK_SERVER, block_ipc='blocks',
                  sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
                  block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
-                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer'
+                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
+                 block_notifications_port=9998, block_notifications_ipc='block_notifications',
                  ):
 
         self.params = {
@@ -188,7 +190,8 @@ class NetworkParameters:
             ServiceType.BLOCK_SERVER: (block_port, block_ipc),
             ServiceType.SUBBLOCK_BUILDER_PUBLISHER: (sbb_pub_port, sbb_pub_ipc),
             ServiceType.BLOCK_AGGREGATOR: (block_agg_port, block_agg_ipc),
-            ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc)
+            ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc),
+            ServiceType.BLOCK_NOTIFICATIONS: (block_notifications_port, block_notifications_ipc)
         }
 
     def resolve(self, socket_base, service_type, bind=False):

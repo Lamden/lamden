@@ -31,16 +31,18 @@ class BlockFetcher:
     def __init__(self, wallet: Wallet,
                  ctx: zmq.asyncio.Context,
                  blocks: CilantroStorageDriver=None,
+                 contacts=VKBook(),
+                 network_parameters=NetworkParameters(),
                  top=TopBlockManager(),
                  state=MetaDataStorage(),
                  masternode_sockets=None):
 
-        self.phone_book = VKBook()
+        self.contacts = contacts
+        self.network_parameters = network_parameters
         self.masternodes = masternode_sockets or \
                            SocketBook("tcp://127.0.0.1",
-                                      ServiceType.BLOCK_SERVER, ctx, 
-                                      NetworkParameters(),
-                                      self.phone_book.contract.get_masternodes)
+                                      ServiceType.BLOCK_SERVER, ctx, self.network_parameters,
+                                      self.contacts.contract.get_masternodes)
         self.top = top
         self.wallet = wallet
         self.ctx = ctx

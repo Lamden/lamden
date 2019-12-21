@@ -7,7 +7,8 @@ import asyncio
 import secrets
 from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.nodes.masternode.block_aggregator import TransactionBatcherInformer, Block, BlockAggregator, BlockAggregatorController
+from cilantro_ee.nodes.masternode.block_aggregator import Block, BlockAggregator
+from cilantro_ee.nodes.masternode.block_aggregator_controller import TransactionBatcherInformer, BlockAggregatorController
 from cilantro_ee.core.sockets.services import _socket
 from unittest import TestCase
 from tests import random_txs
@@ -91,6 +92,9 @@ class TestBlock(TestCase):
 class MockSubscription:
     def __init__(self):
         self.received = []
+
+    def stop(self):
+        pass
 
 
 def random_wallets(n=10):
@@ -318,14 +322,31 @@ class TestBlockAggregatorController(TestCase):
 
         async def stop():
             await asyncio.sleep(1)
-            bc.running = False
-            bc.aggregator.pending_block.started = True
+            bc.stop()
+
+        async def recieve():
+            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
+                                               service_type=ServiceType.BLOCK_AGGREGATOR)
+            s = self.ctx.socket(zmq.SUB)
+            s.setsockopt(zmq.SUBSCRIBE, b'')
+            s.connect(str(addr))
+            m = await s.recv()
+            return m
+
+        async def recieve2():
+            s = self.ctx.socket(zmq.PAIR)
+
+            s.connect('ipc:///tmp/tx_batch_informer')
+            m = await s.recv()
+            return m
 
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
-            bc.process_blocks()
+            bc.process_blocks(),
+            recieve2(),
+            recieve()
         )
 
         loop.run_until_complete(tasks)
@@ -372,14 +393,31 @@ class TestBlockAggregatorController(TestCase):
 
         async def stop():
             await asyncio.sleep(1)
-            bc.running = False
-            bc.aggregator.pending_block.started = True
+            bc.stop()
+
+        async def recieve():
+            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
+                                               service_type=ServiceType.BLOCK_AGGREGATOR)
+            s = self.ctx.socket(zmq.SUB)
+            s.setsockopt(zmq.SUBSCRIBE, b'')
+            s.connect(str(addr))
+            m = await s.recv()
+            return m
+
+        async def recieve2():
+            s = self.ctx.socket(zmq.PAIR)
+
+            s.connect('ipc:///tmp/tx_batch_informer')
+            m = await s.recv()
+            return m
 
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
-            bc.process_blocks()
+            bc.process_blocks(),
+            recieve(),
+            recieve2()
         )
 
         loop.run_until_complete(tasks)
@@ -416,11 +454,20 @@ class TestBlockAggregatorController(TestCase):
 
         async def stop():
             await asyncio.sleep(1)
-            bc.running = False
-            bc.aggregator.pending_block.started = True
+            bc.stop()
 
         async def recieve():
+            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
+                                               service_type=ServiceType.BLOCK_AGGREGATOR)
+            s = self.ctx.socket(zmq.SUB)
+            s.setsockopt(zmq.SUBSCRIBE, b'')
+            s.connect(str(addr))
+            m = await s.recv()
+            return m
+
+        async def recieve2():
             s = self.ctx.socket(zmq.PAIR)
+
             s.connect('ipc:///tmp/tx_batch_informer')
             m = await s.recv()
             return m
@@ -430,10 +477,11 @@ class TestBlockAggregatorController(TestCase):
         tasks = asyncio.gather(
             stop(),
             bc.process_blocks(),
-            recieve()
+            recieve(),
+            recieve2()
         )
 
-        _, _, m = loop.run_until_complete(tasks)
+        _, _, _, m = loop.run_until_complete(tasks)
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
 
@@ -470,8 +518,7 @@ class TestBlockAggregatorController(TestCase):
 
         async def stop():
             await asyncio.sleep(1)
-            bc.running = False
-            bc.aggregator.pending_block.started = True
+            bc.stop()
 
         async def recieve():
             addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
@@ -547,8 +594,7 @@ class TestBlockAggregatorController(TestCase):
 
         async def stop():
             await asyncio.sleep(1)
-            bc.running = False
-            bc.aggregator.pending_block.started = True
+            bc.stop()
 
         async def recieve():
             addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
