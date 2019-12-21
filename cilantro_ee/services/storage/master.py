@@ -296,16 +296,19 @@ class CilantroStorageDriver(DistributedMasterStorage):
 
         super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, **kwargs)
 
-    def get_block_dict(self, sub_blocks):
+    def get_block_dict(self, sub_blocks, kind):
         last_block = self.get_last_n(1, self.INDEX)
 
         if len(last_block) > 0:
             last_block = last_block[0]
             last_hash = last_block.get('blockHash')
-            current_block_num = last_block.get('blockNum') + 1
+            current_block_num = last_block.get('blockNum')
         else:
             last_hash = GENESIS_HASH
-            current_block_num = 1
+            current_block_num = 0
+
+        if kind == 0:
+            current_block_num += 1
 
         block_dict = block_from_subblocks(subblocks=sub_blocks, previous_hash=last_hash, block_num=current_block_num)
         block_dict['blockOwners'] = [m for m in self.vkbook.masternodes],

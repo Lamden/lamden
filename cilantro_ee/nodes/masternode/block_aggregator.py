@@ -250,7 +250,7 @@ class BlockAggregatorController:
                     hashes=self.get_input_hashes_to_burn(block)
                 )
 
-                notification = self.driver.get_block_dict(block)
+                notification = self.driver.get_block_dict(block, kind)
 
                 del notification['prevBlockHash']
                 del notification['subBlocks']
@@ -264,7 +264,7 @@ class BlockAggregatorController:
                 notification['blockOwners'] = owners
 
                 if kind == BNKind.SKIP:
-                    notification['skipBlock'] = None
+                    notification['emptyBlock'] = None
 
                 if kind == BNKind.FAIL:
                     notification['failedBlock'] = None

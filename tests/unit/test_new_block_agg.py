@@ -504,6 +504,83 @@ class TestBlockAggregatorController(TestCase):
 
         self.assertEqual(msg.blockNum, 1)
 
+    def test_process_block_publishes_skip_block_notification(self):
+        s = MockSubscription()
+        wallets = const_builder.get_del_wallets()
+        contacts = VKBook()
+
+        wallets = wallets[:contacts.delegate_quorum_max]
+
+        input_hash = secrets.token_bytes(32)
+
+        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
+
+        for wallet in wallets:
+            _, merkle_proof = Message.get_message_packed(
+                MessageType.MERKLE_PROOF,
+                hash=input_hash,
+                signer=wallet.verifying_key(),
+                signature=wallet.sign(input_hash))
+
+            msg = Message.get_signed_message_packed_2(wallet=wallet,
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      resultHash=input_hash,
+                                                      inputHash=input_hash,
+                                                      merkleLeaves=[],
+                                                      signature=merkle_proof,
+                                                      transactions=[],
+                                                      subBlockNum=0,
+                                                      prevBlockHash=b'\x00' * 32)
+
+            s.received.append((msg, 0))
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5)
+
+        bc.driver.drop_collections()
+        bc.aggregator.subblock_subscription_service = s
+        bc.running = True
+
+        async def stop():
+            await asyncio.sleep(1)
+            bc.running = False
+            bc.aggregator.pending_block.started = True
+
+        async def recieve():
+            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
+                                               service_type=ServiceType.BLOCK_AGGREGATOR)
+            s = self.ctx.socket(zmq.SUB)
+            s.setsockopt(zmq.SUBSCRIBE, b'')
+            s.connect(str(addr))
+            m = await s.recv()
+            return m
+
+        async def recieve2():
+            s = self.ctx.socket(zmq.PAIR)
+
+            s.connect('ipc:///tmp/tx_batch_informer')
+            m = await s.recv()
+            return m
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            stop(),
+            bc.process_blocks(),
+            recieve(),
+            recieve2()
+        )
+
+        _, _, m, _ = loop.run_until_complete(tasks)
+
+        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
+
+        self.assertEqual(msg.blockNum, 0)
+
     def test_start_starts_aggregator(self):
         pass
 
@@ -511,13 +588,4 @@ class TestBlockAggregatorController(TestCase):
         pass
 
     def test_start_publishes_ready(self):
-        pass
-
-    def test_serialize_block_new_to_new_block_notification(self):
-        pass
-
-    def test_serialize_block_skip_to_new_block_notification(self):
-        pass
-
-    def test_serialize_block_fail_to_new_block_notification(self):
         pass
