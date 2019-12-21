@@ -477,12 +477,14 @@ class TestBlockAggregatorController(TestCase):
             addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
                                                service_type=ServiceType.BLOCK_AGGREGATOR)
             s = self.ctx.socket(zmq.SUB)
+            s.setsockopt(zmq.SUBSCRIBE, b'')
             s.connect(str(addr))
             m = await s.recv()
             return m
 
         async def recieve2():
             s = self.ctx.socket(zmq.PAIR)
+
             s.connect('ipc:///tmp/tx_batch_informer')
             m = await s.recv()
             return m
@@ -496,11 +498,11 @@ class TestBlockAggregatorController(TestCase):
             recieve2()
         )
 
-        _, _, m = loop.run_until_complete(tasks)
+        _, _, m, _ = loop.run_until_complete(tasks)
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
 
-        print(m)
+        self.assertEqual(msg.blockNum, 1)
 
     def test_start_starts_aggregator(self):
         pass
