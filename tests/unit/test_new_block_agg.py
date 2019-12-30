@@ -7,20 +7,18 @@ import asyncio
 import secrets
 from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.nodes.masternode.block_aggregator import Block, BlockAggregator
+from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
 from cilantro_ee.nodes.masternode.block_aggregator_controller import TransactionBatcherInformer, BlockAggregatorController
 from cilantro_ee.core.sockets.services import _socket
 from unittest import TestCase
 from tests import random_txs
-from copy import deepcopy
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
 
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
+from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType, Network
 
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
 book = const_builder.get_constitution()
@@ -631,8 +629,42 @@ class TestBlockAggregatorController(TestCase):
 
         self.assertEqual(msg.blockNum, 0)
 
-    def test_start_starts_aggregator(self):
-        pass
+    def test_start_starts_aggregator_subscribes_to_all_delegates_in_socket_book(self):
+        # Start several mock delegates
+        w = Wallet()
+
+        # Set the network peers to the current delegates and mock a fake port
+        wallets = [w.verifying_key().hex() for w in const_builder.get_del_wallets()]
+        contacts = VKBook()
+
+        peers = {}
+
+        for i in range(len(wallets)):
+            peers[wallets[i]] = 'tcp://127.0.0.{}'.format(i + 2)
+
+        # Build network to start and serve peer data
+        n = Network(wallet=w, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+        n.table.peers = peers
+
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=1)
+
+        async def run():
+            asyncio.ensure_future(n.start(discover=False))
+            await bc.start()
+            bc.stop()
+            n.stop()
+
+        loop = asyncio.get_event_loop()
+
+        loop.run_until_complete(run())
+
+        # Test that all peers are now in the subscription service
+        self.assertSetEqual(set(['{}:{}'.format(v, 10011) for v in peers.values()]),
+                            set(bc.aggregator.subblock_subscription_service.subscriptions.keys()))
 
     def test_start_sends_ready_from_informer(self):
         pass

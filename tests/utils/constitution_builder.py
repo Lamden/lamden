@@ -21,9 +21,9 @@ class ConstitutionBuilder:
         const[key] = sub_node
 
     def add_nodes(self, key, wallets, min_quorum):
-        sk_list = [w.signing_key() for w in wallets]
+        sk_list = [w.signing_key().hex() for w in wallets]
         self.add_node(self.sk_dict, key, 'sk_list', sk_list)
-        vk_list = [w.verifying_key() for w in wallets]
+        vk_list = [w.verifying_key().hex() for w in wallets]
         self.add_node(self.const, key, 'vk_list', vk_list)
         self.const[key]['min_quorum'] = min_quorum
 

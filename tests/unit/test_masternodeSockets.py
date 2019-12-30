@@ -8,8 +8,15 @@ from cilantro_ee.contracts import sync
 from cilantro_ee.constants.ports import EVENT_PORT
 import zmq
 import zmq.asyncio
-
+import os
 import asyncio
+
+
+def make_ipc(p):
+    try:
+        os.mkdir(p)
+    except:
+        pass
 
 
 class TestSocketBook(TestCase):

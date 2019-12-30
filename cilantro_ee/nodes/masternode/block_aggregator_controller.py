@@ -30,7 +30,7 @@ class TransactionBatcherInformer:
 
     async def send_ready(self):
         msg = Message.get_message_packed_2(msg_type=MessageType.READY)
-        await self.socket.send(msg)
+        await self.socket.send(msg, flags=zmq.NOBLOCK)
 
     async def send_burn_input_hashes(self, hashes):
         if len(hashes) > 0:
@@ -133,7 +133,8 @@ class BlockAggregatorController:
 
         # Setup publisher socket for other masternodes to subscribe to
         self.pub_socket_address = self.network_parameters.resolve(socket_base=socket_base,
-                                                                  service_type=ServiceType.BLOCK_AGGREGATOR, bind=True)
+                                                                  service_type=ServiceType.BLOCK_AGGREGATOR,
+                                                                  bind=True)
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind(str(self.pub_socket_address))
 
@@ -143,23 +144,30 @@ class BlockAggregatorController:
 
     async def start(self):
         await self.start_aggregator()
+        self.running = True
+        asyncio.ensure_future(self.process_blocks())
 
-        await self.informer.send_ready()
+        # await self.informer.send_ready()
         await self.send_ready()
 
     async def start_aggregator(self):
+        # Initialize a Subscription for the Delegate Block Builders
         subscription = SubscriptionService(ctx=self.ctx)
         current_quorum = 0
 
-        # From SubBlockBuilderManager?
+        # Refresh the sockets for the delegate block builders
         await self.delegate_sockets.refresh()
+
+        # Connect to each delegate we have and note the quorum
         for delegate in self.delegate_sockets.sockets.values():
             subscription.add_subscription(delegate)
             current_quorum += 1
 
+        # Set the subscription and quorum on the aggregator
         self.aggregator.subblock_subscription_service = subscription
         self.aggregator.current_quorum = current_quorum
 
+        # Start the subscription service
         asyncio.ensure_future(self.aggregator.subblock_subscription_service.serve())
 
     async def process_blocks(self):
