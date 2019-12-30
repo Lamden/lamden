@@ -28,7 +28,7 @@ worry about DDOS attacked or TX flooding.
 
 
 class NewTransactionBatcher:
-    def __init__(self, publisher_ip: str, wallet: Wallet, ctx: zmq.asyncio.Context, queue: Queue=Queue(),ipc_id: str=IPC_ID):
+    def __init__(self, publisher_ip: str, wallet: Wallet, ctx: zmq.asyncio.Context, queue: Queue=Queue(), ipc_id: str=IPC_ID):
         self.wallet = wallet
         self.queue = queue
         self.ctx = ctx

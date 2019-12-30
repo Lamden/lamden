@@ -1,4 +1,4 @@
-from cilantro_ee.nodes.masternode.new_mn import NewMasternode
+from cilantro_ee.nodes.masternode.masternode import NewMasternode
 from unittest import TestCase
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.services.overlay.discovery import *

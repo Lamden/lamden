@@ -1,5 +1,3 @@
-from cilantro_ee.nodes.masternode.masternode import Masternode
-from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.constants import conf
 from cilantro_ee.nodes.base import Node2, NewMasternode
 
