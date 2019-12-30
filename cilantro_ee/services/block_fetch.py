@@ -16,6 +16,7 @@ import time
 
 class ConfirmationCounter(Counter):
     def top_item(self):
+        print(self.most_common())
         if len(self.most_common()[0]) > 0:
             return self.most_common()[0][0]
         return None

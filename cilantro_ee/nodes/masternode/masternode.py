@@ -19,19 +19,20 @@ from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggreg
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.sockets.socket_book import SocketBook
-
+from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync
 
 from contracting.client import ContractingClient
 
 import cilantro_ee
+from multiprocessing import Process
 
 cclient = ContractingClient()
 
 
 class NewMasternode:
     def __init__(self, socket_base, ctx, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES,
-                 network_parameters=NetworkParameters()):
+                 network_parameters=NetworkParameters(), webserver_port=8080):
         # stuff
         self.log = get_logger()
         self.socket_base = socket_base
@@ -58,6 +59,9 @@ class NewMasternode:
                                              ctx=self.ctx,
                                              socket_base=socket_base,
                                              network_parameters=network_parameters)
+
+        self.webserver = WebServer(wallet=wallet, port=webserver_port)
+        self.webserver_process = Process(target=self.webserver.start)
 
         self.vkbook = None
 
@@ -103,11 +107,11 @@ class NewMasternode:
 
         await self.tx_batcher.start()
 
-        # Create socket books?
-        # Subscribe to other services?
-        #
+        self.webserver_process.start()
 
     def stop(self):
         self.block_server.stop()
         self.network.stop()
         self.block_agg_controller.stop()
+        self.tx_batcher.stop()
+        self.webserver_process.terminate()

@@ -72,6 +72,9 @@ class BlockAggregator:
         start_time = time.time()
 
         while time.time() - start_time < self.block_timeout:
+            if not self.running:
+                return None, None
+
             if len(self.subblock_subscription_service.received) > 0:
                 # Pop the next SBC off of the subscription LIFO queue
                 sbc, _ = self.subblock_subscription_service.received.pop(0)
