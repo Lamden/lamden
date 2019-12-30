@@ -52,8 +52,6 @@ class BlockAggregator:
         self.min_quorum = min_quorum
         self.max_quorum = max_quorum
 
-        print(self.contacts.masternodes)
-
         self.block_sb_mapper = BlockSubBlockMapper(self.contacts.masternodes)
 
         self.pending_block = Block(min_quorum=self.min_quorum,

@@ -287,6 +287,9 @@ class TestBlockAggregatorController(TestCase):
     def setUp(self):
         self.driver = MetaDataStorage()
         self.driver.flush()
+
+        submit_vkbook(book, overwrite=True)
+
         self.ctx = zmq.asyncio.Context()
 
     def tearDown(self):
@@ -296,9 +299,7 @@ class TestBlockAggregatorController(TestCase):
         s = MockSubscription()
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
-        book = const_builder.get_constitution()
-        extract_vk_args(book)
-        submit_vkbook(book, overwrite=True)
+
         wallets = wallets[:contacts.delegate_quorum_max]
 
         input_hash = secrets.token_bytes(32)
@@ -316,7 +317,7 @@ class TestBlockAggregatorController(TestCase):
                                        socket_base='tcp://127.0.0.1',
                                        vkbook=contacts,
                                        ctx=self.ctx,
-                                       block_timeout=0.5)
+                                       block_timeout=1)
 
         bc.driver.drop_collections()
         bc.aggregator.subblock_subscription_service = s
@@ -387,14 +388,14 @@ class TestBlockAggregatorController(TestCase):
                                        socket_base='tcp://127.0.0.1',
                                        vkbook=contacts,
                                        ctx=self.ctx,
-                                       block_timeout=0.5)
+                                       block_timeout=1)
 
         bc.driver.drop_collections()
         bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             bc.stop()
 
         async def recieve():
@@ -429,6 +430,7 @@ class TestBlockAggregatorController(TestCase):
     def test_process_block_sends_burn_input_hashes(self):
         s = MockSubscription()
         wallets = const_builder.get_del_wallets()
+        print(wallets)
         contacts = VKBook()
 
         wallets = wallets[:contacts.delegate_quorum_max]
@@ -448,7 +450,7 @@ class TestBlockAggregatorController(TestCase):
                                        socket_base='tcp://127.0.0.1',
                                        vkbook=contacts,
                                        ctx=self.ctx,
-                                       block_timeout=0.5)
+                                       block_timeout=1)
 
         bc.driver.drop_collections()
         bc.aggregator.subblock_subscription_service = s
