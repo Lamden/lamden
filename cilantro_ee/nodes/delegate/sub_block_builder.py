@@ -504,9 +504,7 @@ class SubBlockBuilder(Worker):
         self.log.notice(f"sbb_index {sbb_index} num_sb_blders {num_sb_builders}")
 
 
-        self.run()
-
-    def run(self):
+    def start(self):
         self.log.notice("SBB {} starting...".format(self.sb_blder_idx))
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
 
