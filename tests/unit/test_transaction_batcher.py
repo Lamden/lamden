@@ -41,41 +41,13 @@ class TestNewTransactionBatcher(TestCase):
 
         self.loop.run_until_complete(tasks)
 
-    def test_input_hash_inbox_ready_sets_ready_on_tx_batcher(self):
-        w1 = Wallet()
-        t = NewTransactionBatcher(publisher_ip='127.0.0.1', wallet=w1, ctx=self.ctx)
-
-        self.assertFalse(t.ready)
-
-        w2 = Wallet()
-
-        message = Message.get_signed_message_packed_2(wallet=w2,
-                                                      msg_type=MessageType.READY)
-
-        async def get(msg):
-            await asyncio.sleep(0.1)
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/masternode-input-hash-inbox')
-
-            await socket.send(msg)
-
-        tasks = asyncio.gather(
-            t.input_hash_inbox.serve(),
-            get(message),
-            stop_server(t.input_hash_inbox, 0.2),
-        )
-
-        self.loop.run_until_complete(tasks)
-
-        self.assertTrue(t.ready)
-
     def test_input_hash_inbox_burn_input_hashes_removes_batch_ids_from_rate_limiter(self):
         w1 = Wallet()
-        t = NewTransactionBatcher(publisher_ip='127.0.0.1', wallet=w1, ctx=self.ctx)
+        t = TransactionBatcher(socket_base='tcp://127.0.0.1', wallet=w1, ctx=self.ctx)
 
-        t.batcher.add_batch_id(b'hello_there')
+        t.rate_limiter.add_batch_id(b'hello_there')
 
-        self.assertListEqual(t.batcher.sent_batch_ids, [b'hello_there'])
+        self.assertListEqual(t.rate_limiter.sent_batch_ids, [b'hello_there'])
 
         w2 = Wallet()
         message = Message.get_signed_message_packed_2(wallet=w2,
@@ -84,20 +56,20 @@ class TestNewTransactionBatcher(TestCase):
 
         async def get(msg):
             await asyncio.sleep(0.1)
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/masternode-input-hash-inbox')
+            socket = self.ctx.socket(zmq.PAIR)
+            socket.bind('ipc:///tmp/tx_batch_informer')
 
             await socket.send(msg)
 
         tasks = asyncio.gather(
-            t.input_hash_inbox.serve(),
+            t.start(),
             get(message),
-            stop_server(t.input_hash_inbox, 0.2),
+            stop_server(t, 0.2),
         )
 
         self.loop.run_until_complete(tasks)
 
-        self.assertListEqual(t.batcher.sent_batch_ids, [])
+        self.assertListEqual(t.rate_limiter.sent_batch_ids, [])
 
     def test_compose_transactions_publishes_to_subscriber(self):
         class MockQueue:
