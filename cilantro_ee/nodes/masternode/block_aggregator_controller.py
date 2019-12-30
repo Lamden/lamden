@@ -17,6 +17,7 @@ from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator, BNKind
 
+
 # Sends this to Transaction Batcher
 class TransactionBatcherInformer:
     def __init__(self, ctx: zmq.asyncio.Context, wallet, ipc='ipc:///tmp/tx_batch_informer', linger=2000):

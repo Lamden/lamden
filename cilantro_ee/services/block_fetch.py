@@ -30,8 +30,8 @@ class ConfirmationCounter(Counter):
 class BlockFetcher:
     def __init__(self, wallet: Wallet,
                  ctx: zmq.asyncio.Context,
+                 contacts: VKBook,
                  blocks: CilantroStorageDriver=None,
-                 contacts=VKBook(),
                  network_parameters=NetworkParameters(),
                  top=TopBlockManager(),
                  state=MetaDataStorage(),

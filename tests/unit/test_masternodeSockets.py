@@ -1,11 +1,11 @@
 from unittest import TestCase
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.services.overlay.network import Network
+from cilantro_ee.services.overlay.network import Network, NetworkParameters, ServiceType
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.sockets.services import SocketStruct, _socket
 from cilantro_ee.contracts import sync
-
+from cilantro_ee.constants.ports import EVENT_PORT
 import zmq
 import zmq.asyncio
 
@@ -52,7 +52,7 @@ class TestSocketBook(TestCase):
 
     def test_remove_node(self):
         ctx = zmq.Context()
-        m = SocketBook(None, ctx=ctx, port=9999)
+        m = SocketBook(socket_base='tcp://127.0.0.1', ctx=ctx, service_type=ServiceType.BLOCK_NOTIFICATIONS)
 
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
@@ -63,7 +63,7 @@ class TestSocketBook(TestCase):
 
     def test_remove_node_doesnt_exist_does_nothing(self):
         ctx = zmq.Context()
-        m = SocketBook(None, ctx=ctx, port=9999)
+        m = SocketBook(socket_base='tcp://127.0.0.1', ctx=ctx, service_type=ServiceType.BLOCK_NOTIFICATIONS)
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
         m.remove_node('c')
@@ -79,24 +79,24 @@ class TestSocketBook(TestCase):
 
         w1 = Wallet()
 
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10003)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         #'tcp://127.0.0.1:10003'
 
         raw = {
-            'stu': '127.0.0.1',
-            'raghu': '127.0.0.2'
+            'stu': 'tcp://127.0.0.1',
+            'raghu': 'tcp://127.0.0.2'
         }
         p1.peer_service.table.peers = raw
 
         expected = {
-            'stu': _socket('tcp://127.0.0.1:9999'),
-            'raghu': _socket('tcp://127.0.0.2:9999')
+            'stu': _socket('tcp://127.0.0.1:{}'.format(EVENT_PORT)),
+            'raghu': _socket('tcp://127.0.0.2:{}'.format(EVENT_PORT))
         }
 
         # CHANGE CLIENT TO SOCKET
-        masternodes = SocketBook(peer_service_address=_socket('tcp://127.0.0.1:10001'),
-                                 port=9999,
+        masternodes = SocketBook(socket_base='tcp://127.0.0.1',
+                                 service_type=ServiceType.EVENT,
                                  ctx=self.ctx,
                                  phonebook_function=PhoneBook.contract.get_masternodes)
 
@@ -127,20 +127,22 @@ class TestSocketBook(TestCase):
         PhoneBook = VKBook()
 
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, ip='127.0.0.1', peer_service_port=10001, event_publisher_port=10002)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         peeps = {
-            'stu': '127.0.0.1',
-            'raghu': '127.0.0.8',
-            'tejas': '127.0.2.1',
-            'steve': '127.0.54.6'
+            'stu': 'tcp://127.0.0.1',
+            'raghu': 'tcp://127.0.0.8',
+            'tejas': 'tcp://127.0.2.1',
+            'steve': 'tcp://127.0.54.6'
         }
 
         p1.peer_service.table.peers = peeps
 
-        masternodes = SocketBook(peer_service_address=_socket('tcp://127.0.0.1:10001'),
-                                 port=9999,
-                                 ctx=self.ctx,
+        ctx2 = zmq.asyncio.Context()
+
+        masternodes = SocketBook(socket_base='tcp://127.0.0.1',
+                                 service_type=ServiceType.EVENT,
+                                 ctx=ctx2,
                                  phonebook_function=PhoneBook.contract.get_masternodes)
 
         self.assertDictEqual(masternodes.sockets, {})
@@ -162,16 +164,30 @@ class TestSocketBook(TestCase):
         self.loop.run_until_complete(tasks)
 
         expected = {
-            'stu': _socket('tcp://127.0.0.1:9999'),
-            'raghu': _socket('tcp://127.0.0.8:9999')
+            'stu': _socket('tcp://127.0.0.1:{}'.format(EVENT_PORT)),
+            'raghu': _socket('tcp://127.0.0.8:{}'.format(EVENT_PORT))
         }
 
         self.assertDictEqual(masternodes.sockets, expected)
 
         self.ctx.destroy()
-        self.ctx = zmq.asyncio.Context()
+        self.loop.close()
 
-        p1.ctx = self.ctx
+        self.ctx = zmq.asyncio.Context()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        w1 = Wallet()
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        peeps = {
+            'stu': 'tcp://127.0.2.1',
+            'raghu': 'tcp://127.0.0.8',
+            'tejas': 'tcp://127.0.2.1',
+            'steve': 'tcp://127.0.54.6'
+        }
+
+        p1.peer_service.table.peers = peeps
 
         vkbook_args = self.get_vkbook_args(mns=['stu', 'tejas'])
         sync.submit_vkbook(vkbook_args, overwrite=True)
@@ -181,7 +197,7 @@ class TestSocketBook(TestCase):
             await masternodes.refresh()
 
         async def stop():
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             p1.stop()
 
         tasks = asyncio.gather(
@@ -193,8 +209,8 @@ class TestSocketBook(TestCase):
         self.loop.run_until_complete(tasks)
 
         expected = {
-            'stu': _socket('tcp://127.0.0.1:9999'),
-            'tejas': _socket('tcp://127.0.2.1:9999'),
+            'stu': _socket('tcp://127.0.2.1:{}'.format(EVENT_PORT)),
+            'tejas': _socket('tcp://127.0.2.1:{}'.format(EVENT_PORT)),
         }
 
         self.assertDictEqual(masternodes.sockets, expected)

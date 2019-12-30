@@ -22,12 +22,9 @@ from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockCon
 
 from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
 
-ctx = zmq.asyncio.Context()
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
 book = const_builder.get_constitution()
 extract_vk_args(book)
-submit_vkbook(book, overwrite=True)
-
 
 class TestTransactionBatcherInformer(TestCase):
     def setUp(self):
@@ -105,7 +102,10 @@ class TestBlockAggregator(TestCase):
     def setUp(self):
         self.driver = MetaDataStorage()
         self.driver.flush()
+
         self.ctx = zmq.asyncio.Context()
+
+        submit_vkbook(book, overwrite=True)
 
     def tearDown(self):
         self.ctx.destroy()
@@ -296,7 +296,9 @@ class TestBlockAggregatorController(TestCase):
         s = MockSubscription()
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
-
+        book = const_builder.get_constitution()
+        extract_vk_args(book)
+        submit_vkbook(book, overwrite=True)
         wallets = wallets[:contacts.delegate_quorum_max]
 
         input_hash = secrets.token_bytes(32)

@@ -38,9 +38,9 @@ class SocketBook:
             self.remove_node(node)
 
         # Add new nodes
-        to_add = self.new_nodes(pb_nodes, current_nodes)
+        # to_add = self.new_nodes(pb_nodes, current_nodes)
 
-        coroutines = [self.find_node(m) for m in to_add]
+        coroutines = [self.find_node(m) for m in pb_nodes]
 
         tasks = asyncio.gather(*coroutines)
         loop = asyncio.get_event_loop()
