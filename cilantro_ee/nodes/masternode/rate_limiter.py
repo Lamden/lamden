@@ -10,7 +10,8 @@ import time
 
 
 class RateLimiter:
-    def __init__(self, queue, wallet,
+    def __init__(self, wallet,
+                 queue=[],
                  sleep_interval=BATCHER_SLEEP_INTERVAL,
                  max_batch_size=MAX_TXNS_PER_SUB_BLOCK,
                  max_txn_delay=MAX_TXN_SUBMISSION_DELAY):
@@ -47,7 +48,7 @@ class RateLimiter:
             self.num_batches_sent = list_len
 
     def ready_for_next_batch(self):
-        num_txns = self.queue.qsize()
+        num_txns = len(self.queue)
 
         if num_txns > 0:
             self.txn_delay += 1
@@ -60,7 +61,7 @@ class RateLimiter:
         return True
 
     def get_next_batch_size(self):
-        num_txns = self.queue.qsize()
+        num_txns = len(self.queue)
 
         if (num_txns >= self.max_batch_size) or \
            (self.txn_delay >= self.max_txn_submission_delay):
@@ -74,7 +75,7 @@ class RateLimiter:
         tx_list = []
         for _ in range(batch_size):
             # Get a transaction from the queue
-            tx = self.queue.get()
+            tx = self.queue.pop(0)
 
 
             # Make sure that the transaction is valid

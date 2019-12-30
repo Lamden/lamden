@@ -6,7 +6,6 @@ from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
 import zmq.asyncio
-from multiprocessing import Queue
 import asyncio
 
 
@@ -17,7 +16,7 @@ class TransactionBatcher:
                  socket_base,
                  ipc='ipc:///tmp/tx_batch_informer',
                  network_parameters=NetworkParameters(),
-                 queue: Queue=Queue(),
+                 queue=[],
                  poll_timeout=250):
 
         self.wallet = wallet
@@ -30,9 +29,10 @@ class TransactionBatcher:
 
         # Create publisher socket for delegates to listen to as new transaction batches come in
         self.pub = self.ctx.socket(zmq.PUB)
-        self.pub.bind(self.network_parameters.resolve(socket_base=socket_base,
-                                                      service_type=ServiceType.TX_BATCHER,
-                                                      bind=True))
+        pub_sock = self.network_parameters.resolve(socket_base=socket_base,
+                                                   service_type=ServiceType.TX_BATCHER,
+                                                   bind=True)
+        self.pub.bind(str(pub_sock))
 
         self.pair = self.ctx.socket(zmq.PAIR)
         self.pair.connect(ipc)
@@ -62,3 +62,5 @@ class TransactionBatcher:
             mtype, msg = await self.rate_limiter.get_next_batch_packed()
             self.pub.send(mtype + msg)
 
+    def stop(self):
+        self.running = False
