@@ -107,11 +107,15 @@ class NewMasternode:
 
         await self.tx_batcher.start()
 
-        self.webserver_process.start()
+        #self.webserver.app.loop = asyncio.get_event_loop()
+        await self.webserver.start()
+
+        # self.webserver_process.start()
 
     def stop(self):
         self.block_server.stop()
         self.network.stop()
         self.block_agg_controller.stop()
         self.tx_batcher.stop()
-        self.webserver_process.terminate()
+        self.webserver.app.stop()
+        # self.webserver_process.terminate()

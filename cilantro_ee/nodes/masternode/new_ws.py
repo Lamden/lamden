@@ -16,6 +16,7 @@ from cilantro_ee.core.messages.message import Message
 import ast
 import ssl
 import hashlib
+import asyncio
 
 log = get_logger("MN-WebServer")
 
@@ -61,7 +62,7 @@ class WebServer:
         self.debug = debug
         self.access_log = access_log
 
-    def start(self):
+    async def start(self):
         # Transaction Routes
         self.app.add_route(self.submit_transaction, '/', methods=['POST', 'OPTIONS'])
         self.app.add_route(self.ping, '/ping', methods=['GET', 'OPTIONS'])
@@ -80,11 +81,12 @@ class WebServer:
 
         # Start server with SSL enabled or not
         if self.ssl_enabled:
-            self.app.run(host='127.0.0.1', port=self.ssl_port, workers=self.workers, debug=self.debug,
-                         access_log=self.access_log, ssl=self.context)
+            asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.ssl_port, debug=self.debug,
+                         access_log=self.access_log, ssl=self.context))
         else:
-            self.app.run(host='127.0.0.1', port=self.port, workers=self.workers, debug=self.debug,
-                         access_log=self.access_log)
+            asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
+                         access_log=self.access_log))
+
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
