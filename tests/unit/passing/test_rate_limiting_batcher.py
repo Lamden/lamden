@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.transaction_batcher import RateLimitingBatcher
+from cilantro_ee.nodes.masternode.rate_limiter import RateLimiter
 from cilantro_ee.core.crypto.wallet import Wallet, _verify
 from cilantro_ee.services.storage.state import NonceManager
 from cilantro_ee.core.utils.transaction import TransactionBuilder, transaction_is_valid
@@ -68,9 +68,9 @@ def make_bad_tx():
     return tx_struct
 
 
-class TestRateLimitingBatcher(TestCase):
+class TestRateLimiter(TestCase):
     def test_add_batch_id_adds_properly(self):
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=MockQueue(),
             wallet=Wallet(),
             sleep_interval=0,
@@ -84,7 +84,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.num_batches_sent, 1)
 
     def test_adding_multiple_batches_adjusts_accordingly(self):
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=MockQueue(),
             wallet=Wallet(),
             sleep_interval=0,
@@ -109,7 +109,7 @@ class TestRateLimitingBatcher(TestCase):
     def test_ready_for_next_batch_batches_sent_greater_than_2_returns_false(self):
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -126,7 +126,7 @@ class TestRateLimitingBatcher(TestCase):
         queue = MockQueue()
         queue.q.append('tx!')
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -144,7 +144,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q.extend(['1', '2'])
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -160,7 +160,7 @@ class TestRateLimitingBatcher(TestCase):
     def test_ready_for_next_batch_lt_2_num_batches_tx_delay_lt_max_txn_submission_delay_returns_false(self):
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -177,7 +177,7 @@ class TestRateLimitingBatcher(TestCase):
         queue = MockQueue()
         queue.q.extend(['1', '2'])
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -194,7 +194,7 @@ class TestRateLimitingBatcher(TestCase):
         queue = MockQueue()
         queue.q.extend([1, 2, 3, 4, 5, 6, 7])
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -211,7 +211,7 @@ class TestRateLimitingBatcher(TestCase):
     def test_remove_batch_ids_removes_id(self):
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -230,7 +230,7 @@ class TestRateLimitingBatcher(TestCase):
     def test_remove_batch_ids_decrements_num_batches_sent(self):
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -251,7 +251,7 @@ class TestRateLimitingBatcher(TestCase):
     def test_remove_batch_ids_sets_sent_batch_ids_to_new_id_list_if_corruption_occurs(self):
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -274,7 +274,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -289,7 +289,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -308,7 +308,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q = [1]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -323,7 +323,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q = [1]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -340,7 +340,7 @@ class TestRateLimitingBatcher(TestCase):
 
         queue.q = [1]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -354,7 +354,7 @@ class TestRateLimitingBatcher(TestCase):
         w = Wallet()
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=w,
             sleep_interval=0,
@@ -377,7 +377,7 @@ class TestRateLimitingBatcher(TestCase):
         w = Wallet()
         queue = MockQueue()
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=w,
             sleep_interval=0,
