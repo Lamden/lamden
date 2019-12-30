@@ -9,8 +9,7 @@ from tests import random_txs
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
-
-
+from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
 
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
@@ -72,38 +71,24 @@ class TestNewTransactionBatcher(TestCase):
         self.assertListEqual(t.rate_limiter.sent_batch_ids, [])
 
     def test_compose_transactions_publishes_to_subscriber(self):
-        class MockQueue:
-            def __init__(self):
-                self.q = []
-
-            def get(self):
-                return self.q.pop(0)
-
-            def put_nowait(self, obj):
-                self.q.append(obj)
-
-            def qsize(self):
-                return len(self.q)
-
         w1 = Wallet()
         tx = random_txs.random_packed_tx(0, processor=w1.verifying_key(), give_stamps=True)
-        t = NewTransactionBatcher(publisher_ip='127.0.0.1', wallet=w1, ctx=self.ctx, queue=MockQueue())
+        t = TransactionBatcher(socket_base='tcp://127.0.0.1', wallet=w1, ctx=self.ctx)
 
-        t.queue.put_nowait((0, tx))
-        t.batcher.max_txn_submission_delay = 0
+        t.queue.append((0, tx))
+        t.rate_limiter.max_txn_submission_delay = 0
 
         sub_socket = self.ctx.socket(zmq.SUB)
-        sub_socket.connect(f'tcp://{t.publisher_ip}:{MN_TX_PUB_PORT}')
+        sub_sock = t.network_parameters.resolve('tcp://127.0.0.1', ServiceType.TX_BATCHER)
+        sub_socket.connect(str(sub_sock))
         sub_socket.setsockopt_string(zmq.SUBSCRIBE, '')
-
-        t.running = True
 
         async def get(socket):
             msg = await socket.recv()
             return msg
 
         tasks = asyncio.gather(
-            t.compose_transactions(),
+            t.start(),
             get(sub_socket),
             stop_server(t, 0.3),
         )
