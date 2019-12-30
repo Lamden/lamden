@@ -1,12 +1,10 @@
 from sanic import Sanic
 from sanic import response
-#from secure import SecureHeaders
 from cilantro_ee.core.logger import get_logger
 from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
 
-from cilantro_ee.utils.hasher import Hasher
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
 from cilantro_ee.services.storage.master import MasterStorage
 from cilantro_ee.services.storage.state import MetaDataStorage
@@ -17,7 +15,6 @@ from cilantro_ee.core.messages.message import Message
 
 import ast
 import ssl
-import time
 import hashlib
 
 log = get_logger("MN-WebServer")

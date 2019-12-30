@@ -101,7 +101,7 @@ class NewMasternode:
 
         await self.block_agg_controller.start()
 
-
+        await self.tx_batcher.start()
 
         # Create socket books?
         # Subscribe to other services?
