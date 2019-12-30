@@ -37,7 +37,7 @@ class NewMasternode:
         self.socket_base = socket_base
         self.wallet = wallet
         self.ctx = ctx
-        self.network_parameters = NetworkParameters()
+        self.network_parameters = network_parameters
 
         conf.HOST_VK = self.wallet.verifying_key()
 
@@ -52,9 +52,11 @@ class NewMasternode:
         self.block_server = BlockServer(wallet=self.wallet, socket_base=socket_base,
                                         network_parameters=network_parameters)
 
-        self.block_agg_controller = BlockAggregatorController(wallet=self.wallet)
+        self.block_agg_controller = None
 
-        self.tx_batcher = TransactionBatcher()
+        #self.tx_batcher = TransactionBatcher()
+
+        self.vkbook = None
 
     async def start(self):
         # Discover other nodes
@@ -64,12 +66,12 @@ class NewMasternode:
             sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
 
         # Set Network Parameters
-        vkbook = VKBook()
+        self.vkbook = VKBook()
 
-        self.network.initial_mn_quorum = vkbook.masternode_quorum_min
-        self.network.initial_del_quorum = vkbook.delegate_quorum_min
-        self.network.mn_to_find = vkbook.masternodes
-        self.network.del_to_find = vkbook.delegates
+        self.network.initial_mn_quorum = self.vkbook.masternode_quorum_min
+        self.network.initial_del_quorum = self.vkbook.delegate_quorum_min
+        self.network.mn_to_find = self.vkbook.masternodes
+        self.network.del_to_find = self.vkbook.delegates
 
         await self.network.start()
 
@@ -79,14 +81,22 @@ class NewMasternode:
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
 
-        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx,
+        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx, contacts=self.vkbook,
                                      masternode_sockets=SocketBook(socket_base=self.socket_base,
                                                                    service_type=ServiceType.BLOCK_SERVER,
-                                                                   phonebook_function=vkbook.contract.get_masternodes,
+                                                                   phonebook_function=self.vkbook.contract.get_masternodes,
                                                                    ctx=self.ctx))
 
         # Catchup
         await block_fetcher.sync()
+
+        self.block_agg_controller = BlockAggregatorController(wallet=self.wallet,
+                                                              ctx=self.ctx,
+                                                              socket_base=self.socket_base,
+                                                              network_parameters=self.network_parameters,
+                                                              vkbook=self.vkbook)
+
+        await self.block_agg_controller.start()
 
         # Create socket books?
         # Subscribe to other services?
