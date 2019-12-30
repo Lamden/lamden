@@ -15,7 +15,7 @@ from cilantro_ee.services.overlay.network import Network, NetworkParameters, Ser
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
+from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
 from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.sockets.socket_book import SocketBook
@@ -59,7 +59,7 @@ class NewMasternode:
     async def start(self):
         # Discover other nodes
 
-        if cclient.get_contract('vkbook') is None:
+        if cclient.get_contract('vkbook') is None or self.overwrite:
             sync.extract_vk_args(self.constitution)
             sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
 
