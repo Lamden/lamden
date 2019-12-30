@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.new_tb import TransactionBatcher
+from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.core.crypto.wallet import Wallet
 import zmq
 import zmq.asyncio
