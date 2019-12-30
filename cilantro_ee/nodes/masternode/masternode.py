@@ -54,7 +54,10 @@ class NewMasternode:
 
         self.block_agg_controller = None
 
-        #self.tx_batcher = TransactionBatcher()
+        self.tx_batcher = TransactionBatcher(wallet=wallet,
+                                             ctx=self.ctx,
+                                             socket_base=socket_base,
+                                             network_parameters=network_parameters)
 
         self.vkbook = None
 
