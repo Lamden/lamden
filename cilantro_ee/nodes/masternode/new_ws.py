@@ -5,17 +5,17 @@ from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
 
-from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
 from cilantro_ee.services.storage.master import MasterStorage
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.nonces import NonceManager
 
-from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.core.messages.message import Message
-
 from cilantro_ee.core.utils.transaction import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
     TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
+
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+import os
+import capnp
 
 import ast
 import ssl
@@ -23,6 +23,7 @@ import hashlib
 import asyncio
 
 log = get_logger("MN-WebServer")
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class WebServer:
@@ -94,13 +95,12 @@ class WebServer:
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
-        if len(self.queue) > self.max_queue_len:
+        if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503)
 
         # Try to deserialize transaction.
         try:
-            tx_bytes = request.body
-            tx = Message.unpack_message(pack(int(MessageType.TRANSACTION)), tx_bytes)
+            tx = transaction_capnp.Transaction.from_bytes_packed(request.body)
 
         except Exception as e:
             return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
@@ -113,25 +113,25 @@ class WebServer:
 
         # These exceptions are tested to work in the transaction_is_valid tests
         except TransactionNonceInvalid:
-            return {'error': 'Transaction nonce is invalid.'}
+            return response.json({'error': 'Transaction nonce is invalid.'})
         except TransactionProcessorInvalid:
-            return {'error': 'Transaction processor does not match expected processor.'}
+            return response.json({'error': 'Transaction processor does not match expected processor.'})
         except TransactionTooManyPendingException:
-            return {'error': 'Too many pending transactions currently in the block.'}
+            return response.json({'error': 'Too many pending transactions currently in the block.'})
         except TransactionSenderTooFewStamps:
-            return {'error': 'Transaction sender has too few stamps for this transaction.'}
+            return response.json({'error': 'Transaction sender has too few stamps for this transaction.'})
         except TransactionPOWProofInvalid:
-            return {'error': 'Transaction proof of work is invalid.'}
+            return response.json({'error': 'Transaction proof of work is invalid.'})
         except TransactionSignatureInvalid:
-            return {'error': 'Transaction is not signed by the sender.'}
+            return response.json({'error': 'Transaction is not signed by the sender.'})
         except TransactionStampsNegative:
-            return {'error': 'Transaction has negative stamps supplied.'}
+            return response.json({'error': 'Transaction has negative stamps supplied.'})
 
         # Put it in the rate limiter queue.
         self.queue.append(tx)
 
         h = hashlib.sha3_256()
-        h.update(tx_bytes)
+        h.update(request.body)
         tx_hash = h.digest()
 
         return response.json({'success': 'Transaction successfully submitted to the network.',

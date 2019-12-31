@@ -4,6 +4,60 @@ from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.core.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 
+from cilantro_ee.services.storage.state import NonceManager
+from cilantro_ee.core.utils.transaction import TransactionBuilder, TransactionException
+from contracting import config
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+import os
+import capnp
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+n = NonceManager()
+
+
+def make_good_tx(processor):
+    w = Wallet()
+    balances_key = '{}{}{}{}{}'.format('currency',
+                                       config.INDEX_SEPARATOR,
+                                       'balances',
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+    n.driver.set(balances_key, 500000)
+    tx = TransactionBuilder(w.verifying_key(),
+                            contract='currency',
+                            function='transfer',
+                            kwargs={'amount': 10, 'to': 'jeff'},
+                            stamps=500000,
+                            processor=processor,
+                            nonce=0)
+
+    tx.sign(w.signing_key())
+    tx_bytes = tx.serialize()
+    return tx_bytes
+
+
+def make_bad_tx():
+    w = Wallet()
+    balances_key = '{}{}{}{}{}'.format('currency',
+                                       config.INDEX_SEPARATOR,
+                                       'balances',
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+    n.driver.set(balances_key, 500000)
+    tx = TransactionBuilder(w.verifying_key(),
+                            contract='currency',
+                            function='transfer',
+                            kwargs={'amount': 10, 'to': 'jeff'},
+                            stamps=500000,
+                            processor=b'\x00' * 32,
+                            nonce=0)
+
+    tx.sign(w.signing_key())
+    tx_bytes = tx.serialize()
+    #tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+    return tx_bytes
+
 
 class TestClassWebserver(TestCase):
     def setUp(self):
@@ -203,5 +257,25 @@ def get():
         pass
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
+        pass
+
+    def test_bad_transaction_returns_a_TransactionException(self):
+        _, response = self.ws.app.test_client.post('/', data=make_bad_tx())
+        self.assertDictEqual(response.json, {'error': 'Transaction processor does not match expected processor.'})
+
+    def test_good_transaction_is_put_into_queue(self):
+        self.assertEqual(len(self.ws.queue), 0)
+
+        _, response = self.ws.app.test_client.post('/', data=make_good_tx(self.w.verifying_key()))
+
+        self.assertEqual(len(self.ws.queue), 1)
+
+    def test_submit_transaction_error_if_queue_full(self):
+        self.ws.queue.extend(range(10_000))
+        _, response = self.ws.app.test_client.post('/', data=make_good_tx(self.w.verifying_key()))
+
+        self.assertDictEqual(response.json, {'error': 'Queue full. Resubmit shortly.'})
+
+    def test_submit_transaction_error_if_tx_malformed(self):
         pass
 
