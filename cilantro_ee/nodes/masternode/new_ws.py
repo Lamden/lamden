@@ -25,7 +25,8 @@ class WebServer:
     def __init__(self, wallet, queue=[], port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
-                 workers=2, debug=False, access_log=False, max_queue_len=10_000):
+                 workers=2, debug=False, access_log=False,
+                 max_queue_len=10_000, contracting_client=ContractingClient()):
 
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
@@ -36,7 +37,7 @@ class WebServer:
         self.cors = CORS(self.app, automatic_options=True)
 
         # Initialize the backend data interfaces
-        self.client = ContractingClient()
+        self.client = contracting_client
         self.metadata_driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
 
@@ -62,8 +63,7 @@ class WebServer:
         self.debug = debug
         self.access_log = access_log
 
-    async def start(self):
-        # Transaction Routes
+        # Add Routes
         self.app.add_route(self.submit_transaction, '/', methods=['POST', 'OPTIONS'])
         self.app.add_route(self.ping, '/ping', methods=['GET', 'OPTIONS'])
         self.app.add_route(self.get_id, '/id', methods=['GET'])
@@ -79,13 +79,14 @@ class WebServer:
         self.app.add_route(self.get_latest_block, '/latest_block', methods=['GET', 'OPTIONS', ])
         self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
 
+    async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.ssl_port, debug=self.debug,
-                         access_log=self.access_log, ssl=self.context))
+                                  access_log=self.access_log, ssl=self.context))
         else:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
-                         access_log=self.access_log))
+                                  access_log=self.access_log))
 
 
     # Main Endpoint to Submit TXs
@@ -179,12 +180,12 @@ class WebServer:
         key = request.args.get('key')
 
         k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
-        response = self.client.raw_driver.get(k)
+        value = self.client.raw_driver.get(k)
 
         if response is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': response}, status=200)
+            return response.json({'value': value}, status=200)
 
     async def get_latest_block(self, request):
         index = MasterStorage.get_last_n(1)

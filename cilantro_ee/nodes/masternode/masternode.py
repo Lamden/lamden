@@ -4,11 +4,9 @@
 # Start Block Man
 # Start Webserver
 import asyncio
-from multiprocessing import Queue
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
-from cilantro_ee.nodes.masternode.webserver import start_webserver
 
 from cilantro_ee.services.block_server import BlockServer
 from cilantro_ee.services.overlay.network import Network, NetworkParameters, ServiceType
@@ -16,7 +14,6 @@ from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
-from cilantro_ee.utils.lprocess import LProcess
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer
@@ -107,10 +104,9 @@ class NewMasternode:
 
         await self.tx_batcher.start()
 
-        #self.webserver.app.loop = asyncio.get_event_loop()
-        await self.webserver.start()
+        self.webserver.queue = self.tx_batcher.rate_limiter.queue
 
-        # self.webserver_process.start()
+        await self.webserver.start()
 
     def stop(self):
         self.block_server.stop()
@@ -118,4 +114,3 @@ class NewMasternode:
         self.block_agg_controller.stop()
         self.tx_batcher.stop()
         self.webserver.app.stop()
-        # self.webserver_process.terminate()
