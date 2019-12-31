@@ -1,6 +1,5 @@
 from cilantro_ee.core.crypto import wallet
 from cilantro_ee.core.sockets.socket import SocketUtil
-from cilantro_ee.utils.keys import Keys
 from cilantro_ee.utils import is_valid_hex
 from cilantro_ee.core.crypto.wallet import Wallet
 import asyncio, zmq, zmq.asyncio
@@ -23,7 +22,6 @@ class Context:
         signing_key = bytes.fromhex(signing_key)
         self.wallet = Wallet(seed=signing_key)
 
-        Keys.setup(sk_hex=self.signing_key)
-        SocketUtil.setup(Keys.public_key.hex())
+        # SocketUtil.setup(Keys.public_key.hex())
 
 

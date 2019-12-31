@@ -1,4 +1,3 @@
-from cilantro_ee.core.sockets.socket import SocketUtil
 from cilantro_ee.core.utils.context import Context
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.services.overlay.server import OverlayServer
@@ -24,7 +23,6 @@ class NodeBase(Context):
         
         self.log = get_logger(name)
         self.ip = ip
-        self.wallet = Wallet(seed=signing_key)
 
         conf.HOST_VK = self.wallet.verifying_key()
 
