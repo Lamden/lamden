@@ -45,6 +45,7 @@ class WebServer:
         self.client = contracting_client
         self.metadata_driver = MetaDataStorage()
         self.nonce_manager = NonceManager()
+        self.blocks = MasterStorage()
 
         self.static_headers = {}
 
@@ -215,19 +216,24 @@ class WebServer:
             return response.json({'value': value}, status=200)
 
     async def get_latest_block(self, request):
-        index = MasterStorage.get_last_n(1)
-        latest_block_hash = index.get('blockHash')
-        return response.json({'hash': '{}'.format(latest_block_hash)})
+        index = self.blocks.get_last_n(n=1, collection=MasterStorage.BLOCK)
+        return response.json(index[0])
+
+    async def get_latest_block_number(self, request):
+        pass
+
+    async def get_latest_block_hash(self, request):
+        pass
 
     async def get_block(self, request):
         if 'number' in request.json:
             num = request.json['number']
-            block = MasterStorage.get_block(num)
+            block = self.blocks.get_block(num)
             if block is None:
                 return response.json({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
         else:
             _hash = request.json['hash']
-            block = MasterStorage.get_block(_hash)
+            block = self.blocks.get_block(_hash)
             if block is None:
                 return response.json({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
 

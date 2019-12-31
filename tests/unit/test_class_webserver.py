@@ -64,9 +64,11 @@ class TestClassWebserver(TestCase):
         self.w = Wallet()
         self.ws = WebServer(wallet=self.w, contracting_client=ContractingClient())
         self.ws.client.flush()
+        self.ws.blocks.drop_collections()
 
     def tearDown(self):
         self.ws.client.flush()
+        self.ws.blocks.drop_collections()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -245,7 +247,24 @@ def get():
         self.assertDictEqual(response.json, {'value': None})
 
     def test_get_latest_block(self):
-        pass
+        block = {
+            'blockHash': 'a',
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        self.ws.blocks.put(block)
+
+        block2 = {
+            'blockHash': 'abb',
+            'blockNum': 1000,
+            'data': 'woop2'
+        }
+
+        self.ws.blocks.put(block2)
+
+        _, response = self.ws.app.test_client.get('/latest_block')
+        self.assertDictEqual(response.json, {'blockHash': 'abb', 'blockNum': 1000, 'data': 'woop2'})
 
     def test_get_block_by_num_that_exists(self):
         pass

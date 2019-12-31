@@ -59,14 +59,14 @@ class MasterStorage:
         if self.get_block(0) is None:
             self.put({
                 'blockNum': 0,
-                'blockHash': '0' * 64,
-                'blockOwners': ['0' * 64]
+                'blockHash': b'\x00' * 64,
+                'blockOwners': [b'\x00' * 64]
             }, MasterStorage.BLOCK)
 
             self.put({
                 'blockNum': 0,
-                'blockHash': '0' * 64,
-                'blockOwners': ['0' * 64]
+                'blockHash': b'\x00' * 64,
+                'blockOwners': [b'\x00' * 64]
             }, MasterStorage.INDEX)
 
     def q(self, v):
