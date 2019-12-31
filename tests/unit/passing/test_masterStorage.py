@@ -27,8 +27,8 @@ class TestMasterStorage(TestCase):
 
         expected = {
                 'blockNum': 0,
-                'blockHash': '0' * 64,
-                'blockOwners': ['0' * 64]
+                'blockHash': b'\x00' * 64,
+                'blockOwners': [b'\x00' * 64]
             }
 
         self.assertEqual(block, expected)

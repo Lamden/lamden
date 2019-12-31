@@ -1,4 +1,4 @@
-from cilantro_ee.nodes.masternode.new_mn import NewMasternode
+from cilantro_ee.nodes.masternode.masternode import NewMasternode
 from unittest import TestCase
 from cilantro_ee.core.sockets.services import _socket
 from cilantro_ee.services.overlay.discovery import *
@@ -76,12 +76,12 @@ class TestNewMasternode(TestCase):
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                            constitution=constitution)
+                            constitution=constitution, webserver_port=8080)
 
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = NewMasternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                            constitution=constitution)
+                            constitution=constitution, webserver_port=8081)
 
         n3 = '/tmp/n3'
         make_ipc(n3)
@@ -93,6 +93,7 @@ class TestNewMasternode(TestCase):
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
                      bootnodes=bootnodes, mn_to_find=masternodes, del_to_find=delegates)
 
+
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(
             mn1.start(),
@@ -101,5 +102,13 @@ class TestNewMasternode(TestCase):
             d2.start()
         )
 
+        async def run():
+            await tasks
+            await asyncio.sleep(5)
+            mn1.stop()
+            mn2.stop()
+            d1.stop()
+            d2.stop()
+
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(run())

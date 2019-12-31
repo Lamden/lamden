@@ -1,60 +1,116 @@
-from multiprocessing import Queue
-from cilantro_ee.utils.lprocess import LProcess
+# Start Overlay Server / Discover
+# Run Catchup
+# Start Block Agg
+# Start Block Man
+# Start Webserver
+import asyncio
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.logger import get_logger
+from cilantro_ee.constants import conf
 
-from cilantro_ee.nodes.base import NodeBase
+from cilantro_ee.services.block_server import BlockServer
+from cilantro_ee.services.overlay.network import Network, NetworkParameters, ServiceType
+from cilantro_ee.services.block_fetch import BlockFetcher
+
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
-from cilantro_ee.nodes.masternode.webserver import start_webserver
-from cilantro_ee.services.block_server import BlockServerProcess
+from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.core.sockets.socket_book import SocketBook
+from cilantro_ee.nodes.masternode.new_ws import WebServer
+from cilantro_ee.contracts import sync
 
-import os, random
+from contracting.client import ContractingClient
 
-class Masternode(NodeBase):
+import cilantro_ee
+from multiprocessing import Process
 
-    # This call should not block!
-    def start_node(self):
-        self.tx_queue = Queue()
-        self.ipc_ip = 'mn-ipc-sock-' + str(os.getpid()) + '-' \
-                       + str(random.randint(0, 2**32))
-        self.ipc_port = 6967     # can be chosen randomly any open port
-
-        self._start_web_server()
-        if not os.getenv('MN_MOCK'):  # TODO @stu do we need this still? --davis
-            self._start_batcher()
-            self._start_block_server()
-            self._start_block_agg()
-            return 1
-        else:
-            self.log.warning("MN_MOCK env var is set! Not starting block aggregator or tx batcher.")
-            return 0
-
-    def _start_web_server(self):
-        self.log.debug("Masternode starting REST server on port 8080")
-        self.server = LProcess(target=start_webserver, name='WebServerProc', args=(self.tx_queue,))
-        self.server.start()
-
-    def _start_block_server(self):
-        self.log.info("Masternode starting block server process")
-        self.blk_server = LProcess(target=BlockServerProcess, name='BlockServer',
-                                   kwargs={'signing_key': self.signing_key})
-        self.blk_server.start()
-        # todo - complete this - do we need socket_id? or just a port?
-
-    def _start_batcher(self):
-        # Create a worker to do transaction batching
-        self.log.info("Masternode starting transaction batcher process")
-        self.batcher = LProcess(target=TransactionBatcher, name='TxBatcherProc',
-                                kwargs={'queue': self.tx_queue, 'ip': self.ip,
-                                        'signing_key': self.signing_key,
-                                        'ipc_ip': self.ipc_ip, 'ipc_port': self.ipc_port})
-        self.batcher.start()
+cclient = ContractingClient()
 
 
-    def _start_block_agg(self):
-        self.log.info("Masternode starting BlockAggregator Process")
-        self.block_agg = LProcess(target=BlockAggregatorController,
-                                  name='BlockAgg',
-                                  kwargs={'ipc_ip': self.ipc_ip,
-                                          'ipc_port': self.ipc_port,
-                                          'signing_key': self.signing_key})
-        self.block_agg.start()
+class NewMasternode:
+    def __init__(self, socket_base, ctx, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES,
+                 network_parameters=NetworkParameters(), webserver_port=8080):
+        # stuff
+        self.log = get_logger()
+        self.socket_base = socket_base
+        self.wallet = wallet
+        self.ctx = ctx
+        self.network_parameters = network_parameters
+
+        conf.HOST_VK = self.wallet.verifying_key()
+
+        self.bootnodes = bootnodes
+        self.constitution = constitution
+        self.overwrite = overwrite
+
+        # Services
+        self.network = Network(wallet=self.wallet, ctx=self.ctx, socket_base=socket_base, bootnodes=self.bootnodes,
+                               params=self.network_parameters)
+
+        self.block_server = BlockServer(wallet=self.wallet, socket_base=socket_base,
+                                        network_parameters=network_parameters)
+
+        self.block_agg_controller = None
+
+        self.tx_batcher = TransactionBatcher(wallet=wallet,
+                                             ctx=self.ctx,
+                                             socket_base=socket_base,
+                                             network_parameters=network_parameters)
+
+        self.webserver = WebServer(wallet=wallet, port=webserver_port)
+        self.webserver_process = Process(target=self.webserver.start)
+
+        self.vkbook = None
+
+    async def start(self):
+        # Discover other nodes
+
+        if cclient.get_contract('vkbook') is None or self.overwrite:
+            sync.extract_vk_args(self.constitution)
+            sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
+
+        # Set Network Parameters
+        self.vkbook = VKBook()
+
+        self.network.initial_mn_quorum = self.vkbook.masternode_quorum_min
+        self.network.initial_del_quorum = self.vkbook.delegate_quorum_min
+        self.network.mn_to_find = self.vkbook.masternodes
+        self.network.del_to_find = self.vkbook.delegates
+
+        await self.network.start()
+
+        # Sync contracts
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+
+        # Start block server to provide catchup to other nodes
+        asyncio.ensure_future(self.block_server.serve())
+
+        block_fetcher = BlockFetcher(wallet=self.wallet, ctx=self.ctx, contacts=self.vkbook,
+                                     masternode_sockets=SocketBook(socket_base=self.socket_base,
+                                                                   service_type=ServiceType.BLOCK_SERVER,
+                                                                   phonebook_function=self.vkbook.contract.get_masternodes,
+                                                                   ctx=self.ctx))
+
+        # Catchup
+        await block_fetcher.sync()
+
+        self.block_agg_controller = BlockAggregatorController(wallet=self.wallet,
+                                                              ctx=self.ctx,
+                                                              socket_base=self.socket_base,
+                                                              network_parameters=self.network_parameters,
+                                                              vkbook=self.vkbook)
+
+        await self.block_agg_controller.start()
+
+        await self.tx_batcher.start()
+
+        self.webserver.queue = self.tx_batcher.rate_limiter.queue
+
+        await self.webserver.start()
+
+    def stop(self):
+        self.block_server.stop()
+        self.network.stop()
+        self.block_agg_controller.stop()
+        self.tx_batcher.stop()
+        self.webserver.app.stop()

@@ -7,11 +7,11 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from typing import List
 from cilantro_ee.services.storage.vkbook import VKBook
-
+from cilantro_ee.core.canonical import block_from_subblocks
 import hashlib
 
 REPLICATION = 3             # TODO hard coded for now needs to change
-GENESIS_HASH = '0' * 64
+GENESIS_HASH = b'\x00' * 32
 OID = '5bef52cca4259d4ca5607661'
 
 
@@ -59,14 +59,14 @@ class MasterStorage:
         if self.get_block(0) is None:
             self.put({
                 'blockNum': 0,
-                'blockHash': '0' * 64,
-                'blockOwners': ['0' * 64]
+                'blockHash': b'\x00' * 64,
+                'blockOwners': [b'\x00' * 64]
             }, MasterStorage.BLOCK)
 
             self.put({
                 'blockNum': 0,
-                'blockHash': '0' * 64,
-                'blockOwners': ['0' * 64]
+                'blockHash': b'\x00' * 64,
+                'blockOwners': [b'\x00' * 64]
             }, MasterStorage.INDEX)
 
     def q(self, v):
@@ -287,50 +287,36 @@ class DistributedMasterStorage(MasterStorage):
 
 
 class CilantroStorageDriver(DistributedMasterStorage):
-    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0]):
+    def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], **kwargs):
         self.state_id = ObjectId(OID)
         self.log = get_logger("StorageDriver")
 
         self.block_index_delta = defaultdict(dict)
         self.send_req_blk_num = 0
 
-        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path)
+        super().__init__(key, distribute_writes=distribute_writes, config_path=config_path, **kwargs)
+
+    def get_block_dict(self, sub_blocks, kind):
+        last_block = self.get_last_n(1, self.INDEX)
+
+        if len(last_block) > 0:
+            last_block = last_block[0]
+            last_hash = last_block.get('blockHash')
+            current_block_num = last_block.get('blockNum')
+        else:
+            last_hash = GENESIS_HASH
+            current_block_num = 0
+
+        if kind == 0:
+            current_block_num += 1
+
+        block_dict = block_from_subblocks(subblocks=sub_blocks, previous_hash=last_hash, block_num=current_block_num)
+        block_dict['blockOwners'] = [m for m in self.vkbook.masternodes],
+
+        return block_dict
 
     def store_block(self, sub_blocks):
-        last_block = self.get_last_n(1, self.INDEX)[0]
-
-        last_hash = last_block.get('blockHash')
-        current_block_num = last_block.get('blockNum') + 1
-
-        hashes = [subblock.merkleRoot for subblock in sub_blocks]
-
-        for s in sub_blocks:
-            self.log.success(type(s))
-
-        if type(last_hash) == str:
-            last_hash = bytes.fromhex(last_hash)
-
-        h = hashlib.sha3_256()
-        h.update(last_hash)
-
-        for _hash in hashes:
-            h.update(_hash)
-
-        block_hash = h.digest()
-
-        block_dict = {
-            'blockHash': block_hash,
-            'blockNum': current_block_num,
-            'blockOwners': [m for m in self.vkbook.masternodes],
-            'prevBlockHash': last_hash,
-            'subBlocks': [s for s in sub_blocks]
-        }
-
-        # Serialize the sub block for mongo
-        block_dict['subBlocks'] = [s.to_bytes_packed() for s in block_dict['subBlocks']]
-
-        #if not self.distribute_writes:
-        #    block_data = BlockData.create(block_hash, last_hash, self.vkbook.masternodes, current_block_num, sub_blocks)
+        block_dict = self.get_block_dict(sub_blocks, kind=0)
 
         successful_storage = self.evaluate_wr(entry=block_dict)
 
