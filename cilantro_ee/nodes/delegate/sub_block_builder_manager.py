@@ -158,57 +158,15 @@ class BlockNotifHandler:
         return False
 
 
-class DBHandler:
-    def __init__(self):
-        self.is_db_updated = False
-        self.fetcher = None
-
-    def is_ready_for_next_sb(self):
-        return self.is_db_updated
-
-    def set_catchup_needed(self):
-        self.is_db_updated = False
-
-    def set_catchup_done(self):
-        ret_code = not self.is_db_updated
-        self.is_db_updated = True
-        return ret_code
-
-    def setup_catchup_mgr(self, wallet, ctx):
-        self.fetcher = BlockFetcher(wallet=wallet, ctx=ctx) 
-
-    def start_catchup_process(self):
-        assert self.catchup_mgr, "Expected catchup_mgr initialized at this point"
-
-        self.catchup_mgr.run_catchup()
-
-    def recv_block_data_reply(self, reply):
-        if self.catchup_mgr.recv_block_data_reply(reply) and \
-           self.set_catchup_done():
-            return True
-        return False
-
-    def recv_block_idx_reply(self, sender, reply):
-        if self.catchup_mgr.recv_block_idx_reply(sender, reply) and \
-           self.set_catchup_done():
-            return True
-        return False
-
-    def recv_block_notif(self, block):
-        self.set_catchup_needed()
-        self.catchup_mgr.recv_new_blk_notif(block) 
-
-
 class SubBlockManager:
-    def __init__(self, sk, vk, sb_builder_requests,
+    def __init__(self, wallet, zmq_ctx, log, sb_builder_requests,
                  min_mn_quorum, num_masters, num_sb_builders):
-        self.signing_key = sk
-        self.verifying_key = vk
+        self.log = log
         self.sbb_requests = sb_builder_requests
         self.num_sb_builders = num_sb_builders
         self.sb_handler = SubBlockHandler(num_sb_builders)
         self.bn_handler = BlockNotifHandler(num_masters)
-        self.db_handler = DBHandler()
+        self.fetcher = BlockFetcher(wallet=wallet, ctx=zmq_ctx) 
         self.driver = MetaDataStorage()
 
 
@@ -217,42 +175,29 @@ class SubBlockManager:
         self.bn_handler.reset(self.driver.latest_block_num)
         self.sb_handler.reset()
 
-    def setup_catchup_mgr(self, wallet, ctx):
-        self.db_handler.setup_catchup_mgr(wallet, ctx)
 
-    def start_catchup_process(self):
+    async def start_catchup_process(self):
         self.log.info("Catching up...")
 
         # Add genesis contracts to state db if needed
         sync.sync_genesis_contracts()
 
-        # Make sure a VKBook exists in state
-        masternodes, delegates = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook(masternodes, delegates)
+        # start catchup process
+        await self.fetcher.sync()
+        self.make_next_sb()
 
-        self.db_handler.start_catchup_process()
 
-    # is passing callbacks better way
-    def recv_block_data_reply(self, reply):
-        if self.db_handler.recv_block_data_reply(reply):
-            self.make_next_sb()
-
-    # is passing callbacks better way
-    def recv_block_idx_reply(self, sender, reply):
-        if self.db_handler.recv_block_idx_reply(sender, reply):
-            self.make_next_sb()
-
-    # todo - make sure it is called when only current state is behind this block
-    def recv_block_notif(self, block):
-        self.db_handler.recv_block_notif(block)
+    # called only when block-notif is more than one block ahead of state
+    async def catchup_block_notif(self, block):
+        await self.db_handler.catchup_block_notif(block)
 
 
 
-    # rpc todo
+    # todo
     # seems like driver goes with bn-handler, perhaps at manager level which is passing
     # need to move this to blk notif handler
     # make sure block aggregator adds block_num for all notifications?
-    def handle_block_notification(self, frames, block, sender: bytes):
+    async def handle_block_notification(self, block, sender: bytes):
 
         # todo - convert this to string hex for audit purposes ?
         self.log.notice('BM with sender {} being handled'.format(sender))
@@ -278,8 +223,8 @@ class SubBlockManager:
                                  "Need to run catchup!"
                                  .format(cur_block_num, block.blockNum))
 
-            my_new_block_hash = self.sb_handler.get_new_block_hash()
-            self.log.info('New hash {}, recieved hash {}'.format(my_new_block_hash, block.blockHash.hex()))
+            my_new_block_hash = self.sb_handler.get_new_block_hash(self.driver.latest_block_hash)
+            self.log.info('New hash {}, received hash {}'.format(my_new_block_hash, block.blockHash.hex()))
 
             if my_new_block_hash == block.blockHash:
                 if block.which() == "newBlock":
@@ -299,21 +244,18 @@ class SubBlockManager:
                         my_new_block_hash, block.blockHash))
 
                 # simply forward the block notification. it is input align on sbb
-                # self.discord_cur_db(block.inputHashes)
-                self.discord_cur_db(frames)
+                self.discord_cur_db(block.subBlockNum, block.inputHashes)
                 if block.which() == "newBlock":
-                    self.sb_mgr.reset()
-                    self.recv_block_notif(block)
-                    return
+                    self.reset()
+                    await self.fetcher.intermediate_sync(block) 
             self.make_next_sb()
 
     def commit_cur_db(self):
         self.sbb_requests['commit_cur_sb']()
 
 
-    # def discord_cur_db(self, input_hashes):
-    def discord_cur_db(self, frames):
-        self.sbb_requests['discord_cur_sb_and_align'](frames)
+    def discord_cur_db(self, sb_numbers, input_hashes):
+        self.sbb_requests['discord_cur_sb_and_align'](sb_numbers, input_hashes)
 
     def make_next_sb(self):
         self.sbb_requests['make_next_sb']()
@@ -372,21 +314,24 @@ class SubBlockBuilderManager(Worker):
                 'make_next_sb': self.send_make_next_sb,
                 'commit_cur_sb': self.send_commit_cur_sb,
                 'discord_cur_sb_and_align': self.send_discord_cur_sb_and_align}
-        self.sb_mgr = SubBlockManager(self.signing_key, self.verifying_key,
-                                      self.sbb_requests, self.mn_quorum_min,
-                                      num_masters, self.sb_mapper.num_sb_builders)
+
+        self.sb_mgr = None
 
         # Define Sockets (these get set in build_task_list)
         self.router, self.ipc_router, self.pub, self.sub = None, None, None, None
 
-        # sync set up
-        self.create_sockets()
-        self.build_task_list()
-        self.sb_mgr.setup_catchup_mgr(self.wallet, self.zmq_ctx)
 
     def start(self):
         self.log.info("Sub-block builder manager starting...")
+        self.sync_setup()
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+
+    def sync_setup(self):
+        self.sb_mgr = SubBlockManager(self.wallet, self.zmq_ctx, self.log,
+                                      self.sbb_requests, self.mn_quorum_min,
+                                      num_masters, self.sb_mapper.num_sb_builders)
+        self.create_sockets()
+        self.build_task_list()
 
     def create_sockets(self):
         # Create a TCP Router socket for comm with other nodes
@@ -400,7 +345,8 @@ class SubBlockBuilderManager(Worker):
         self.router.bind(port=DELEGATE_ROUTER_PORT, protocol='tcp', ip=self.ip)
 
         # Create ROUTER socket for bidirectional communication with SBBs over IPC
-        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER, name="SBBM-IPC-Router")
+        self.ipc_router = self.manager.create_socket(socket_type=zmq.ROUTER,
+                                                     name="SBBM-IPC-Router")
         self.ipc_router.setsockopt(zmq.ROUTER_MANDATORY, 1)  # FOR DEBUG ONLY
         self.ipc_router.bind(port=self.ipc_port, protocol='ipc', ip=self.ipc_ip)
 
@@ -463,7 +409,6 @@ class SubBlockBuilderManager(Worker):
         for vk in self.masternodes:
             self.sub.connect(vk=vk, port=MN_PUB_PORT)
             self.router.connect(vk=vk, port=MN_ROUTER_PORT)
-        # let's wait a bit so connections are established properly
 
         # need to wait for 6 secs to let connections form as well as
         # sub-block builders and min number of master nodes ready
@@ -474,7 +419,7 @@ class SubBlockBuilderManager(Worker):
             asyncio.sleep(1)
 
         # now start the catchup
-        self.sb_mgr.start_catchup_process()
+        await self.sb_mgr.start_catchup_process()
 
 
     async def handle_ipc_msg(self, frames):
@@ -531,7 +476,7 @@ class SubBlockBuilderManager(Worker):
                                 .format(sender, msg.blockHash.hex()))
 
             # Process accordingly
-            self.sb_mgr.handle_block_notification(msg, sender)
+            await self.sb_mgr.handle_block_notification(msg, sender)
 
 
     async def handle_router_msg(self, frames):
@@ -542,12 +487,6 @@ class SubBlockBuilderManager(Worker):
             self.log.error("Failed to verify the message of type {} from {} at {}. Ignoring it .."
                           .format(msg_type, signer, timestamp))
             return
-
-        if msg_type == MessageType.BLOCK_INDEX_REPLY:
-            self.sb_mgr.recv_block_idx_reply(sender, msg)
-
-        elif msg_type == MessageType.BLOCK_DATA:
-            self.sb_mgr.recv_block_data_reply(msg)
 
 
     # todo
@@ -591,7 +530,7 @@ class SubBlockBuilderManager(Worker):
             await asyncio.sleep(1)
             wait_time += 1
         if wait_time > 0:
-            blk_str = "block" if wait_time < BLOCK_HEART_BEAT_INTERVAL \
+            blk_str = "block" if self.sbb_state.is_ready_for_next_sb() \
                       else "empty block"
             self.log.info("Waited for {} secs to make next {}"
                           .format(wait_time, blk_str))

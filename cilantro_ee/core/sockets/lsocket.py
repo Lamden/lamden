@@ -1,5 +1,4 @@
 from cilantro_ee.core.sockets.socket import SocketUtil
-from cilantro_ee.utils.keys import Keys
 from cilantro_ee.core.logger.base import get_logger
 import zmq.asyncio, asyncio
 
@@ -50,17 +49,18 @@ class LSocketBase:
         self.log, self.name = get_logger(name), name
         self.secure, self.socket, self.domain, self.manager = secure, socket, domain, manager
 
-        # DEBUG -- TODO DELETE
+        # DEBUG -- TODO Enable secure socket flows
         self.secure = False
-        # END DEBUG
 
-        if secure:
-            self.socket = SocketUtil.secure_socket(
-                self.socket,
-                Keys.private_key,
-                Keys.public_key,
-                self.domain
-            )
+        # if secure:
+            # self.socket = SocketUtil.secure_socket(
+                # self.socket,
+                # Keys.private_key,
+                # Keys.public_key,
+                # self.domain
+            # )
+
+        # END DEBUG
 
         # NOTE: A command execution is represented by a tuple of form (func_name: str, args: list, kwargs: dict)
         self.pending_commands = deque()  # A list of defered commands that are flushed once this socket is ready
@@ -246,14 +246,14 @@ class LSocketBase:
         self.log.socket("{} to URL {}".format('CONNECTING' if should_connect else 'BINDING', url))
 
         if should_connect:
-            if self.secure:
-                self.socket.curve_serverkey = Keys.vk2pk(vk)
-                self.manager.configure_auth(self.domain)
+            # if self.secure:
+                # self.socket.curve_serverkey = Keys.vk2pk(vk)
+                # self.manager.configure_auth(self.domain)
             self.socket.connect(url)
         else:
-            if self.secure:
-                self.socket.curve_server = True
-                self.manager.configure_auth(self.domain)
+            # if self.secure:
+                # self.socket.curve_server = True
+                # self.manager.configure_auth(self.domain)
             self.socket.bind(url)
 
     def __getattr__(self, item):

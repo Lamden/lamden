@@ -12,8 +12,6 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 class Worker(Context):
 
     def __init__(self, signing_key, name=''):
-
-        name = name or type(self).__name__
         super().__init__(signing_key=signing_key, name=name)
         self.log = get_logger(name)
 

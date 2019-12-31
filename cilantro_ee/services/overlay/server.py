@@ -2,7 +2,6 @@ import zmq
 import zmq.asyncio
 import asyncio
 import json
-from cilantro_ee.utils.keys import Keys
 from cilantro_ee.services.overlay.interface import OverlayInterface
 from cilantro_ee.constants.overlay_network import CMD_URL
 from cilantro_ee.core.logger.base import get_logger
@@ -51,21 +50,15 @@ def async_reply(fn):
 class OverlayServer:
     def __init__(self, sk, ctx, quorum, vkbook, discover=True, bootnodes=conf.BOOTNODES):
         self.log = get_logger('Overlay.Server')
-        self.sk = sk
+        self.sk = sk.hex()
         self.wallet = Wallet(seed=sk)
+        self.ctx = ctx
         self.loop = asyncio.get_event_loop()
 
         self.discover = discover
 
         self.vkbook = vkbook
 
-        if type(self.sk) == bytes:
-            self.sk = self.sk.hex()
-
-        Keys.setup(sk_hex=self.sk)
-
-        self.loop = asyncio.get_event_loop()
-        self.ctx = ctx
         if quorum <= 0:
             self.log.critical("quorum value should be greater than 0 for overlay server to properly synchronize!")
 
