@@ -309,29 +309,6 @@ class TestRateLimiter(TestCase):
 
         self.assertEqual(r.get_next_batch_size(), 0)
 
-    def test_get_txn_list_filters_bad_txs(self):
-        w = Wallet()
-        queue = []
-
-        r = RateLimiter(
-            queue=queue,
-            wallet=w,
-            sleep_interval=0,
-            max_batch_size=3,
-            max_txn_delay=1
-        )
-
-        a = make_good_tx(w.vk.encode())
-        b = make_bad_tx()
-        c = make_bad_tx()
-        d = make_good_tx(w.vk.encode())
-
-        expected = [a, d]
-
-        queue.extend([(1, a), (1, b), (1, c), (1, d)])
-
-        self.assertListEqual(r.get_txn_list(4), expected)
-
     def test_get_txn_list_all_if_all_good(self):
         w = Wallet()
         queue = []

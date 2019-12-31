@@ -13,6 +13,10 @@ from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
+from cilantro_ee.core.utils.transaction import transaction_is_valid, \
+    TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
+    TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
+
 import ast
 import ssl
 import hashlib
@@ -101,6 +105,28 @@ class WebServer:
         except Exception as e:
             return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
+        try:
+            transaction_is_valid(tx=tx,
+                                 expected_processor=self.wallet.verifying_key(),
+                                 driver=self.nonce_manager,
+                                 strict=True)
+
+        # These exceptions are tested to work in the transaction_is_valid tests
+        except TransactionNonceInvalid:
+            return {'error': 'Transaction nonce is invalid.'}
+        except TransactionProcessorInvalid:
+            return {'error': 'Transaction processor does not match expected processor.'}
+        except TransactionTooManyPendingException:
+            return {'error': 'Too many pending transactions currently in the block.'}
+        except TransactionSenderTooFewStamps:
+            return {'error': 'Transaction sender has too few stamps for this transaction.'}
+        except TransactionPOWProofInvalid:
+            return {'error': 'Transaction proof of work is invalid.'}
+        except TransactionSignatureInvalid:
+            return {'error': 'Transaction is not signed by the sender.'}
+        except TransactionStampsNegative:
+            return {'error': 'Transaction has negative stamps supplied.'}
+
         # Put it in the rate limiter queue.
         self.queue.append(tx)
 
@@ -176,7 +202,9 @@ class WebServer:
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404)
 
-        key = request.args.get('key').split(',')
+        key = request.args.get('key')
+        if key is not None:
+            key = key.split(',')
 
         k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
         value = self.client.raw_driver.get(k)

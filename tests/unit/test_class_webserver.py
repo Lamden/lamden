@@ -165,3 +165,43 @@ def get():
         _, response = self.ws.app.test_client.get('/contracts/testing/h?key=stu,hello,jabroni')
 
         self.assertDictEqual(response.json, {'value': 77777})
+
+    def test_get_variable_multihash_returns_none(self):
+        code = '''
+h = Hash()
+
+@construct
+def seed():
+    h['stu'] = 99999
+    h['stu', 'hello', 'jabroni'] = 77777
+
+@export
+def get():
+    return h['stu']
+        '''
+
+        self.ws.client.submit(f=code, name='testing')
+
+        _, response = self.ws.app.test_client.get('/contracts/testing/h?key=notstu,hello,jabroni')
+
+        self.assertDictEqual(response.json, {'value': None})
+
+        _, response = self.ws.app.test_client.get('/contracts/testing/h?key=notstu')
+
+        self.assertDictEqual(response.json, {'value': None})
+
+    def test_get_latest_block(self):
+        pass
+
+    def test_get_block_by_num_that_exists(self):
+        pass
+
+    def test_get_block_by_num_that_doesnt_exist_returns_error(self):
+        pass
+
+    def test_get_block_by_hash_that_exists(self):
+        pass
+
+    def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
+        pass
+

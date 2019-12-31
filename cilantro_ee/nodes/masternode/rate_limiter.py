@@ -76,18 +76,6 @@ class RateLimiter:
         for _ in range(batch_size):
             # Get a transaction from the queue
             tx = self.queue.pop(0)
-
-
-            # Make sure that the transaction is valid
-            # this is better done at webserver level before packing and putting it into the queue - raghu todo
-            try:
-                transaction_is_valid(tx=tx[1],
-                                     expected_processor=self.wallet.verifying_key(),
-                                     driver=self.driver,
-                                     strict=True)
-            except TransactionException as e:
-                continue
-
             tx_list.append(tx[1])
 
         return tx_list
