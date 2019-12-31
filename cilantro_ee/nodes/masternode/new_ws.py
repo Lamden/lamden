@@ -220,10 +220,10 @@ class WebServer:
         return response.json(index[0])
 
     async def get_latest_block_number(self, request):
-        pass
+        return response.json({'latest_block_number': self.metadata_driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        pass
+        return response.json({'latest_block_hash': self.metadata_driver.get_latest_block_hash()})
 
     async def get_block(self, request):
         if 'number' in request.json:
