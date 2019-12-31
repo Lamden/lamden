@@ -88,7 +88,6 @@ class WebServer:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
                                   access_log=self.access_log))
 
-
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
         if len(self.queue) > self.max_queue_len:
@@ -177,12 +176,12 @@ class WebServer:
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404)
 
-        key = request.args.get('key')
+        key = request.args.get('key').split(',')
 
         k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
         value = self.client.raw_driver.get(k)
 
-        if response is None:
+        if value is None:
             return response.json({'value': None}, status=404)
         else:
             return response.json({'value': value}, status=200)

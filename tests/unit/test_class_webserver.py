@@ -127,5 +127,41 @@ def get():
 
         self.assertDictEqual(response.json, {'value': None})
 
+    def test_get_variable_works_for_single_key(self):
+        code = '''
+h = Hash()
+
+@construct
+def seed():
+    h['stu'] = 99999
+
+@export
+def get():
+    return h['stu']
+        '''
+
+        self.ws.client.submit(f=code, name='testing')
+
+        _, response = self.ws.app.test_client.get('/contracts/testing/h?key=stu')
+
+        self.assertDictEqual(response.json, {'value': 99999})
+
     def test_get_variable_works_for_multihashes(self):
-        pass
+        code = '''
+h = Hash()
+
+@construct
+def seed():
+    h['stu'] = 99999
+    h['stu', 'hello', 'jabroni'] = 77777
+
+@export
+def get():
+    return h['stu']
+        '''
+
+        self.ws.client.submit(f=code, name='testing')
+
+        _, response = self.ws.app.test_client.get('/contracts/testing/h?key=stu,hello,jabroni')
+
+        self.assertDictEqual(response.json, {'value': 77777})
