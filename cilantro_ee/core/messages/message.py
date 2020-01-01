@@ -4,8 +4,8 @@ from cilantro_ee.core.messages.capnp_impl.capnp_impl import CapnpImpl
 from cilantro_ee.core.crypto.wallet import Wallet
 import struct
 
-class Message:
 
+class Message:
     _msg_impl = CapnpImpl()   # currently only capnp implementation is available
 
 

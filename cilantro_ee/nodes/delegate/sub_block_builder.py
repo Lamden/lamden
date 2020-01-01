@@ -50,6 +50,7 @@ from decimal import Decimal
 
 from cilantro_ee.core.nonces import NonceManager
 
+
 class Payload:
     def __init__(self, sender, nonce, processor, stamps_supplied, contract_name, function_name, kwargs):
         self.sender = sender
@@ -120,18 +121,25 @@ class TransactionBag:
         return True
 
     # returns the number of non-empty bags thrown away in the process
+
     def pop_to_align_bag(self, input_hash):
         num_non_empty_bags = 0
-        if input_hash in self.pending_txs:
-            ih, bag = self.pending_txs.pop_front()
+        if input_hash in self.pending_txs: # If the input hash is in the pending_txs (which should be bags)
+
+            ih, bag = self.pending_txs.pop_front() # Pop the first one
+
             while input_hash != ih:
                 if len(bag.transactions) > 0:
                     num_non_empty_bags += 1
+
                 ih, bag = self.pending_txs.pop_front()
+
             # now top one in pending_txs is with input_hash
             # throw it away if is empty bag otherwise keep it
+
             if len(bag.transactions) > 0:
                 self.pending_txs.insert_front(ih, bag)
+
         return num_non_empty_bags
 
 
@@ -268,10 +276,8 @@ class TxnBagManager:
         # Toss all pending nonces
         self.nonce_manager.delete_pending_nonces()
 
-  
 
 class SubBlockMaker:
-
     def __init__(self, wallet: Wallet, sbb_index: int, num_sb_builders: int, 
                  num_sub_blocks: int, log: logging.getLoggerClass(),
                  event_callbacks: dict, loop: asyncio.AbstractEventLoop):
@@ -286,7 +292,6 @@ class SubBlockMaker:
         self.state = MetaDataStorage()
         self.client = SubBlockClient(sbb_idx=sbb_index, 
                                      num_sbb=num_sb_builders, loop=loop)
-
 
     def _create_empty_sbc(self, sb_num: int, sb_data: SBData):
         """
@@ -403,6 +408,7 @@ class SubBlockMaker:
 
         result = self.client.execute_sb(input_hash, transactions, sb_num,
                                         callback, environment=environment)
+
         self.log.success(f"Result for TX batch: {result}")
 
     async def make_next_sb(self):
@@ -451,7 +457,6 @@ class SubBlockMaker:
             self.tb_mgr.discord_nonces()
         self.tb_mgr.align_bags(sb_numbers, input_hashes)
         self.inform_if_no_work()
-
 
 
 class SubBlockBuilder(Worker):

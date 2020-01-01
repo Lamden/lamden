@@ -215,6 +215,24 @@ class WebServer:
         else:
             return response.json({'value': value}, status=200)
 
+    async def iterate_variable(self, request, contract, variable):
+        contract_code = self.client.raw_driver.get_contract(contract)
+
+        if contract_code is None:
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404)
+
+        key = request.args.get('key')
+        if key is not None:
+            key = key.split(',')
+
+        k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
+
+        values = self.client.raw_driver.iter(k, length=500)
+
+        if len(values) == 0:
+            return response.json({'values': None}, status=404)
+        return response.json({'values': values, 'next': values[-1][0]}, status=200)
+
     async def get_latest_block(self, request):
         index = self.blocks.get_last_n(n=1, collection=MasterStorage.BLOCK)
         return response.json(index[0])
@@ -225,16 +243,14 @@ class WebServer:
     async def get_latest_block_hash(self, request):
         return response.json({'latest_block_hash': self.metadata_driver.get_latest_block_hash()})
 
-    async def get_block(self, request):
-        if 'number' in request.json:
-            num = request.json['number']
-            block = self.blocks.get_block(num)
-            if block is None:
-                return response.json({'error': 'Block at number {} does not exist.'.format(num)}, status=400)
-        else:
-            _hash = request.json['hash']
-            block = self.blocks.get_block(_hash)
-            if block is None:
-                return response.json({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
+    async def get_block_by_number(self, request, number):
+        block = self.blocks.get_block(number)
+        if block is None:
+            return response.json({'error': 'Block at number {} does not exist.'.format(number)}, status=400)
+        return response.json(_json.dumps(block))
 
+    async def get_block_by_hash(self, request, _hash):
+        block = self.blocks.get_block(_hash)
+        if block is None:
+            return response.json({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
         return response.json(_json.dumps(block))

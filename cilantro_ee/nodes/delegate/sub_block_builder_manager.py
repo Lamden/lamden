@@ -231,10 +231,6 @@ class SubBlockManager:
                     self.driver.latest_block_num = block.blockNum
                     self.driver.latest_block_hash = my_new_block_hash
 
-                    # Set the epoch hash if a new epoch has begun
-                    if block.blockNum % conf.EPOCH_INTERVAL == 0:
-                        self.driver.latest_epoch_hash = my_new_block_hash
-
                 # todo - nonce commit is removed. need to fix this
                 self.commit_cur_db()
 
@@ -388,6 +384,7 @@ class SubBlockBuilderManager(Worker):
         kwargs={'signing_key': self.signing_key, 
                 'num_sb_builders': self.sb_mapper.num_sb_builders,
                 'ipc_ip': ipc_ip, 'ipc_port': ipc_port}
+
         for i in range(self.sb_mapper.num_sb_builders):
             kwargs['sbb_index'] = i
             kwargs['sub_list'] = sub_list[i]
