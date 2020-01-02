@@ -100,9 +100,7 @@ class TestBlockAggregator(TestCase):
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets[0:1], as_dict=True)
         sigs = [s['signature'] for s in sbcs]
 
-        msg = Message.get_signed_message_packed_2(wallet=wallets[0],
-                                                  msg_type=MessageType.SUBBLOCK_CONTENDER,
-                                                  **sbcs[0])
+
 
         b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
                             ctx=self.ctx,
@@ -111,6 +109,11 @@ class TestBlockAggregator(TestCase):
                             min_quorum=10,
                             max_quorum=20,
                             contacts=contacts)
+
+        msg = Message.get_signed_message_packed_2(wallet=wallets[0],
+                                                  msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                  **sbcs[0])
+        b.async_queue.q.append((msg, 0))
 
 
 
