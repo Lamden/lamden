@@ -15,7 +15,7 @@ class BNKind:
     FAIL = 2
 
 
-class Inbox(AsyncInbox):
+class AsyncQueue(AsyncInbox):
     def __init__(self, *args, **kwargs):
         self.q = []
         super().__init__(*args, **kwargs)
@@ -45,14 +45,14 @@ class Block:
 
 
 class BlockAggregator:
-    def __init__(self, subscription: SubscriptionService,
+    def __init__(self, socket_id,
                  block_timeout=60*1000,
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
                  contacts=None):
 
-        self.subblock_subscription_service = subscription
+        self.async_queue = AsyncQueue(socket_id)
 
         self.block_timeout = block_timeout
         self.contacts = contacts
@@ -73,7 +73,7 @@ class BlockAggregator:
         self.running = True
 
     async def gather_block(self):
-        while not self.pending_block.started and len(self.subblock_subscription_service.received) == 0 and self.running:
+        while not self.pending_block.started and len(self.async_queue.q) == 0 and self.running:
             await asyncio.sleep(0)
 
         self.pending_block.started = True
@@ -84,9 +84,9 @@ class BlockAggregator:
             if not self.running:
                 return [], BNKind.FAIL
 
-            if len(self.subblock_subscription_service.received) > 0:
+            if len(self.async_queue.q) > 0:
                 # Pop the next SBC off of the subscription LIFO queue
-                sbc, _ = self.subblock_subscription_service.received.pop(0)
+                sbc, _ = self.async_queue.q.pop(0)
                 msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(sbc)
 
                 # Deserialize it and add it to the pending block

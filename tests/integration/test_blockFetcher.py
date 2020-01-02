@@ -9,7 +9,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core import canonical
 import secrets
 from cilantro_ee.services.storage.master import CilantroStorageDriver
-
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.contracts import sync
 from cilantro_ee.core.sockets.socket_book import SocketBook
@@ -98,7 +98,7 @@ class TestBlockFetcher(TestCase):
                         poll_timeout=500,
                         top=FakeTopBlockManager(101, 'abcd'))
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
 
         tasks = asyncio.gather(
             m.serve(),
@@ -163,7 +163,7 @@ class TestBlockFetcher(TestCase):
 
         sock_book = FakeSocketBook(None, get_sockets)
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),
@@ -223,7 +223,7 @@ class TestBlockFetcher(TestCase):
 
         sock_book = FakeSocketBook(None, get_sockets)
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), contacts=VKBook(), ctx=self.ctx, masternode_sockets=sock_book)
 
         tasks = asyncio.gather(
             m1.serve(),
@@ -304,7 +304,7 @@ class TestBlockFetcher(TestCase):
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),
@@ -381,7 +381,7 @@ class TestBlockFetcher(TestCase):
 
         sock_book = FakeSocketBook(None, get_sockets)
         fake_driver = FakeBlockReciever()
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, blocks=fake_driver)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, blocks=fake_driver, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),

@@ -237,13 +237,13 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
 
 
 class AsyncInbox:
-    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+    def __init__(self, socket_id: SocketStruct, ctx: zmq.Context, wallet=None, linger=2000, poll_timeout=2000):
         if socket_id.protocol == Protocols.TCP:
             socket_id.id = '*'
 
         self.address = str(socket_id)
-
         self.wallet = wallet
+
         self.ctx = ctx
 
         self.socket = None
