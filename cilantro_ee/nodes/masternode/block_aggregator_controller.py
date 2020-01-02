@@ -160,7 +160,7 @@ class BlockAggregatorController:
 
                 await self.pub_socket.send(block_notification)
 
-    async def process_block(self):
+    async def process_sbcs_from_delegates(self):
         block, kind = await self.aggregator.gather_block()
 
         # Burn input hashes if needed

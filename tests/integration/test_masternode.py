@@ -1,6 +1,6 @@
 from cilantro_ee.nodes.masternode.masternode import NewMasternode
 from unittest import TestCase
-from cilantro_ee.services.overlay.discovery import *
+from cilantro_ee.core.networking.discovery import *
 import zmq
 import zmq.asyncio
 from cilantro_ee.core.crypto.wallet import Wallet

@@ -28,6 +28,7 @@ from multiprocessing import Process
 
 cclient = ContractingClient()
 
+
 class NewMasternode:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES,
                  network_parameters=NetworkParameters(), webserver_port=8080):
@@ -157,15 +158,14 @@ class NewMasternode:
 
                     await asyncio.gather(*tasks)
 
+                    break
 
                     # Send previous nbn
 
                     # Different logic if the first block of the blockchain...
 
             # BLOCK AGGREGATOR!
-
-            block = await self.block_agg_controller.
-            pass
+            block = await self.block_agg_controller.process_sbcs_from_delegates()
 
 
     def stop(self):

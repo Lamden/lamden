@@ -2,7 +2,6 @@ import zmq.asyncio
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.crypto.wallet import Wallet, _verify
 from cilantro_ee.core.sockets import services
-from cilantro_ee.constants.ports import DISCOVERY_PORT
 import asyncio
 log = get_logger('DiscoveryService')
 

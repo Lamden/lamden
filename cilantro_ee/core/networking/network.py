@@ -3,7 +3,7 @@ from cilantro_ee.constants.ports import DHT_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.core.networking.peers import KTable, PeerServer
-from cilantro_ee.services.overlay import discovery
+from cilantro_ee.core.networking import discovery
 from cilantro_ee.core.sockets import services
 
 from copy import deepcopy

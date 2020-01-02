@@ -7,7 +7,7 @@ from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.networking.network import log
 from cilantro_ee.core.sockets import services
-from cilantro_ee.services.overlay import discovery
+from cilantro_ee.core.networking import discovery
 
 
 class KTable:
@@ -85,7 +85,7 @@ class PeerServer(services.RequestReplyService):
         if vk not in result or result[vk] != ip:
             # Ping discovery server
             _, responded_vk = await discovery.ping(services._socket(ip),
-                                    pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
+                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
             await asyncio.sleep(0)
             if responded_vk is None:
