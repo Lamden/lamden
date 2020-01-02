@@ -30,9 +30,6 @@ class BlockManager:
         # Number of core / processes we push to
         self.parallelism = parallelism
 
-        # Work Queue
-        self.queue = []
-
         # Hashes of Subblocks we're expecting in the next NBN
         self.pending_subblock_hashes = set()
 
@@ -55,25 +52,35 @@ class BlockManager:
     async def run(self):
         while self.running:
             # wait for NBN
+            block = await self.get_new_block_notification()
             # Catchup with block
 
+            self.catchup_with_new_block(block, sender=b'')
+
+            # Request work. Use async / dealers to block until it's done?
             work = await asyncio.gather(
                 get(master, msg=b'XXX', ctx=self.ctx, timeout=500, linger=500, retries=0)
                 for master in self.masternode_sockets.sockets.values()
             )
 
+            filtered_work = []
             for tx_batch in work:
                 # Filter out None responses
                 if tx_batch is None:
                     continue
 
                 # Add the rest to a priority queue based on their timestamp
-                heapq.heappush(self.queue, (tx_batch.timestamp, tx_batch))
+                heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
 
             # Execute work
+            output = await self.execute_work(filtered_work)
+
             # Package as SBCs
             # Send SBCs
             pass
+
+    async def get_new_block_notification(self):
+        pass
 
     def catchup_with_new_block(self, block, sender: bytes):
         if block.blockNum < self.driver.latest_block_num + 1:
@@ -95,9 +102,6 @@ class BlockManager:
 
             # if you're not in the signatures, run catchup
             # if you are in the signatures, commit db
-
-
-        # Send work request
 
     async def request_work_from_master(self, master):
         msg = await get(master, msg=b'XXX', ctx=self.ctx, timeout=500, linger=500, retries=0)
@@ -122,8 +126,12 @@ class BlockManager:
 
     async def execute_work(self, work):
         # Assume single threaded, single process for now.
-        while len(self.queue) > 0:
-            tx_batch = heapq.heappop(self.queue)
+        stamps_used = 0
+        writes = {}
+        deletes = set()
+
+        while len(work) > 0:
+            tx_batch = heapq.heappop(work)
             transactions = [tx for tx in tx_batch.transactions]
 
             now = Datetime._from_datetime(
@@ -147,7 +155,7 @@ class BlockManager:
                     else:
                         kwargs[entry.key] = getattr(entry.value, entry.value.which())
 
-                self.client.executor.execute(sender=transaction.payload.sender.hex(),
+                output = self.client.executor.execute(sender=transaction.payload.sender.hex(),
                                              contract_name=transaction.payload.contractName,
                                              function_name=transaction.payload.functionName,
                                              stamps=transaction.payload.stampsSupplied,
@@ -155,8 +163,19 @@ class BlockManager:
                                              environment=environment,
                                              auto_commit=False)
 
+                stamps_used += output['stamps_used']
+                writes.update(output['writes'])
+                deletes.intersection(output['deletes'])
+
+        return {
+            'stamps_used': stamps_used,
+            'writes': writes,
+            'deletes': deletes
+        }
+
     def build_sbc(self):
-        pass
+        writes, deletes = self.client.executor.driver.get_current_modifications()
+
 
     def send_sbc_to_master(self):
         pass

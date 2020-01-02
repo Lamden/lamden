@@ -1,66 +1,49 @@
 from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
-from cilantro_ee.nodes.masternode.rate_limiter import RateLimiter
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
-import zmq.asyncio
-import asyncio
+from cilantro_ee.services.overlay.network import NetworkParameters
+from cilantro_ee.services.storage.vkbook import VKBook
+
+import hashlib
+import time
 
 
 class TransactionBatcher:
     def __init__(self,
                  wallet: Wallet,
-                 ctx: zmq.asyncio.Context,
-                 socket_base,
-                 ipc='ipc:///tmp/tx_batch_informer',
-                 network_parameters=NetworkParameters(),
-                 queue=[],
-                 poll_timeout=250):
+                 queue):
 
         self.wallet = wallet
-        self.ctx = ctx
         self.queue = queue
-        self.poll_timeout = poll_timeout
 
-        self.socket_base = socket_base
-        self.network_parameters = network_parameters
+    def pack_current_queue(self, tx_number=100):
+        # Pop elements off into a list
+        tx_list = []
+        while len(tx_list) < tx_number or len(self.queue) > 0:
+            tx_list.append(self.queue.pop(0))
 
-        # Create publisher socket for delegates to listen to as new transaction batches come in
-        self.pub = self.ctx.socket(zmq.PUB)
-        pub_sock = self.network_parameters.resolve(socket_base=socket_base,
-                                                   service_type=ServiceType.TX_BATCHER,
-                                                   bind=True)
-        self.pub.bind(str(pub_sock))
+        h = hashlib.sha3_256()
+        for tx in tx_list:
+            # Hash it
+            tx_bytes = tx.as_builder().to_bytes_packed()
+            h.update(tx_bytes)
 
-        self.pair = self.ctx.socket(zmq.PAIR)
-        self.pair.connect(ipc)
+        # Add a timestamp
+        timestamp = time.time()
+        h.update('{}'.format(timestamp).encode())
+        inputHash = h.digest()
 
-        self.rate_limiter = RateLimiter(queue=self.queue, wallet=self.wallet)
+        # Sign the message for verification
+        signature = self.wallet.sign(inputHash)
 
-        self.running = False
+        msg = Message.get_signed_message_packed_2(
+            wallet=self.wallet,
+            msg_type=MessageType.TRANSACTION_BATCH,
+            transactions=[t for t in tx_list], timestamp=timestamp,
+            signature=signature, inputHash=inputHash,
+            sender=self.wallet.verifying_key()
+        )
 
-    async def start(self):
-        asyncio.ensure_future(self.get_burn_input_hashes())
-        asyncio.ensure_future(self.compose_transactions())
-        self.running = True
-
-    async def get_burn_input_hashes(self):
-        while self.running:
-            event = await self.pair.poll(timeout=self.poll_timeout, flags=zmq.POLLIN)
-            await asyncio.sleep(0)
-            if event:
-                msg = await self.pair.recv()
-                msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
-
-                if msg_type == MessageType.BURN_INPUT_HASHES:
-                    self.rate_limiter.remove_batch_ids(msg.inputHashes)
-
-    async def compose_transactions(self):
-        while self.running:
-            mtype, msg = await self.rate_limiter.get_next_batch_packed()
-            self.pub.send(mtype + msg)
-
-    def stop(self):
-        self.running = False
+        return msg

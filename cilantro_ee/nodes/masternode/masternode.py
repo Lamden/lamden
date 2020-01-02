@@ -52,15 +52,14 @@ class NewMasternode:
 
         self.block_agg_controller = None
 
-        self.tx_batcher = TransactionBatcher(wallet=wallet,
-                                             ctx=self.ctx,
-                                             socket_base=socket_base,
-                                             network_parameters=network_parameters)
+        self.tx_batcher = TransactionBatcher(wallet=wallet, queue=[])
 
         self.webserver = WebServer(wallet=wallet, port=webserver_port)
         self.webserver_process = Process(target=self.webserver.start)
 
         self.vkbook = None
+
+        self.running = True
 
     async def start(self):
         # Discover other nodes
@@ -102,15 +101,16 @@ class NewMasternode:
 
         await self.block_agg_controller.start()
 
-        await self.tx_batcher.start()
-
-        self.webserver.queue = self.tx_batcher.rate_limiter.queue
+        self.webserver.queue = self.tx_batcher.queue
 
         await self.webserver.start()
+
+    async def process_blocks(self):
+        while self.running:
+            pass
 
     def stop(self):
         self.block_server.stop()
         self.network.stop()
         self.block_agg_controller.stop()
-        self.tx_batcher.stop()
         self.webserver.app.stop()
