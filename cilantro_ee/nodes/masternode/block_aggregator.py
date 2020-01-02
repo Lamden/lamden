@@ -46,13 +46,14 @@ class Block:
 
 class BlockAggregator:
     def __init__(self, socket_id,
+                 ctx,
                  block_timeout=60*1000,
                  current_quorum=0,
                  min_quorum=0,
                  max_quorum=1,
                  contacts=None):
 
-        self.async_queue = AsyncQueue(socket_id)
+        self.async_queue = AsyncQueue(socket_id, ctx=ctx)
 
         self.block_timeout = block_timeout
         self.contacts = contacts
@@ -73,6 +74,9 @@ class BlockAggregator:
         self.running = True
 
     async def gather_block(self):
+        if not self.async_queue.running:
+            asyncio.ensure_future(self.async_queue.serve())
+
         while not self.pending_block.started and len(self.async_queue.q) == 0 and self.running:
             await asyncio.sleep(0)
 

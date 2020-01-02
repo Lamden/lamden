@@ -8,7 +8,7 @@ import secrets
 from cilantro_ee.services.storage.state import MetaDataStorage
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro_ee.nodes.masternode.block_aggregator_controller import TransactionBatcherInformer, BlockAggregatorController
+from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
 from cilantro_ee.core.sockets.services import _socket
 from unittest import TestCase
 from tests import random_txs
@@ -23,65 +23,6 @@ from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType,
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
 book = const_builder.get_constitution()
 extract_vk_args(book)
-
-class TestTransactionBatcherInformer(TestCase):
-    def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        # self.const_builder = ConstitutionBuilder(3, 3, False, False)
-        # submit_vkbook(self.const_builder.get_constitution())
-        # self.ctx = ctx
-
-    def tearDown(self):
-        self.ctx.destroy()
-
-    def test_send_ready(self):
-        w = Wallet()
-        t = TransactionBatcherInformer(ctx=self.ctx, wallet=w)
-
-        async def recieve():
-            s = self.ctx.socket(zmq.PAIR)
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
-        tasks = asyncio.gather(
-            recieve(),
-            t.send_ready(),
-        )
-
-        loop = asyncio.get_event_loop()
-        blob, _ = loop.run_until_complete(tasks)
-
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(blob)
-
-        self.assertEqual(MessageType.READY, msg_type)
-
-    def test_send_hashes_same_list_of_hashes(self):
-        w = Wallet()
-        t = TransactionBatcherInformer(ctx=self.ctx, wallet=w)
-
-        async def recieve():
-            s = self.ctx.socket(zmq.PAIR)
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
-        tasks = asyncio.gather(
-            recieve(),
-            t.send_burn_input_hashes([b'a', b'b', b'c', b'd']),
-        )
-
-        loop = asyncio.get_event_loop()
-        blob, _ = loop.run_until_complete(tasks)
-
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(blob)
-
-        self.assertEqual(msg_type, MessageType.BURN_INPUT_HASHES)
-        self.assertListEqual([i for i in msg.inputHashes], [b'a', b'b', b'c', b'd'])
-
-
-class TestBlock(TestCase):
-    pass
 
 
 class MockSubscription:
@@ -111,7 +52,9 @@ class TestBlockAggregator(TestCase):
     def test_block_timeout_without_any_quorum_returns_failed_block(self):
         contacts = VKBook()
 
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=5, max_quorum=10, contacts=contacts)
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx,
+                            block_timeout=0.5, min_quorum=5, max_quorum=10, contacts=contacts)
 
         # Set this true so that it doesn't hang
         b.pending_block.started = True
@@ -126,7 +69,8 @@ class TestBlockAggregator(TestCase):
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
-        b = BlockAggregator(subscription=MockSubscription(), block_timeout=0.5, min_quorum=10, max_quorum=20,
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx, block_timeout=0.5, min_quorum=10, max_quorum=20,
                             current_quorum=14, contacts=contacts)
 
         b.pending_block.started = True
@@ -148,8 +92,6 @@ class TestBlockAggregator(TestCase):
         self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_timeout_without_any_quorum_returns_failed_but_use_subscription_service(self):
-        s = MockSubscription()
-
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
@@ -162,14 +104,15 @@ class TestBlockAggregator(TestCase):
                                                   msg_type=MessageType.SUBBLOCK_CONTENDER,
                                                   **sbcs[0])
 
-        s.received.append((msg, 0))
-
-        b = BlockAggregator(subscription=s,
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx,
                             block_timeout=0.5,
                             current_quorum=12,
                             min_quorum=10,
                             max_quorum=20,
                             contacts=contacts)
+
+
 
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
@@ -178,8 +121,6 @@ class TestBlockAggregator(TestCase):
         self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_new_if_all_sbc_are_in_sub_received(self):
-        s = MockSubscription()
-
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
@@ -188,18 +129,19 @@ class TestBlockAggregator(TestCase):
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
         sigs = [s['signature'] for s in sbcs]
 
-        for i in range(len(sbcs)):
-            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
-                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
-                                                      **sbcs[i])
-            s.received.append((msg, 0))
-
-        b = BlockAggregator(subscription=s,
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx,
                             block_timeout=0.5,
                             current_quorum=20,
                             min_quorum=10,
                             max_quorum=20,
                             contacts=contacts)
+
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            b.async_queue.q.append((msg, 0))
 
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
@@ -208,12 +150,18 @@ class TestBlockAggregator(TestCase):
         self.assertTrue(set(sigs).issuperset(set(block[0].to_dict()['signatures'])))
 
     def test_block_skip_if_all_sbc_are_in_sub_received_and_empty(self):
-        s = MockSubscription()
-
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
+
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx,
+                            block_timeout=0.5,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=20,
+                            contacts=contacts)
 
         for wallet in wallets:
             _, merkle_proof = Message.get_message_packed(
@@ -232,14 +180,7 @@ class TestBlockAggregator(TestCase):
                                                       subBlockNum=0,
                                                       prevBlockHash=b'\x00' * 32)
 
-            s.received.append((msg, 0))
-
-        b = BlockAggregator(subscription=s,
-                            block_timeout=0.5,
-                            min_quorum=10,
-                            max_quorum=20,
-                            current_quorum=20,
-                            contacts=contacts)
+            b.async_queue.q.append((msg, 0))
 
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
@@ -248,14 +189,20 @@ class TestBlockAggregator(TestCase):
         self.assertEqual(len(set(block[0].to_dict()['merkleLeaves'])), 0)
 
     def test_block_fail_if_consensus_not_possible_but_hash_sbcs(self):
-        s = MockSubscription()
-
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
 
         sigs = []
+
+        b = BlockAggregator(socket_id=_socket('tcp://127.0.0.1:8080'),
+                            ctx=self.ctx,
+                            block_timeout=0.5,
+                            min_quorum=10,
+                            max_quorum=20,
+                            current_quorum=20,
+                            contacts=contacts)
 
         for wallet in wallets:
             sbc = random_txs.sbc_from_txs(input_hash, b'\x00' * 32, w=wallet)
@@ -265,14 +212,7 @@ class TestBlockAggregator(TestCase):
                                                       msg_type=MessageType.SUBBLOCK_CONTENDER,
                                                       **sbc.to_dict())
 
-            s.received.append((msg, 0))
-
-        b = BlockAggregator(subscription=s,
-                            block_timeout=0.5,
-                            min_quorum=10,
-                            max_quorum=20,
-                            current_quorum=20,
-                            contacts=contacts)
+            b.async_queue.q.append((msg, 0))
 
         loop = asyncio.get_event_loop()
         block, kind = loop.run_until_complete(b.gather_block())
@@ -665,9 +605,3 @@ class TestBlockAggregatorController(TestCase):
         # Test that all peers are now in the subscription service
         self.assertSetEqual(set(['{}:{}'.format(v, 10011) for v in peers.values()]),
                             set(bc.aggregator.subblock_subscription_service.subscriptions.keys()))
-
-    def test_start_sends_ready_from_informer(self):
-        pass
-
-    def test_start_publishes_ready(self):
-        pass
