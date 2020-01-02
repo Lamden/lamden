@@ -81,7 +81,3 @@ class SocketBook:
 
     def get_socket_for_vk(self, vk):
         return self.sockets.get(vk)
-
-class NewSocketBook:
-    def __init__(self):
-        pass

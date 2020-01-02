@@ -18,26 +18,6 @@ from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator, BNKind
 
 
-# Sends this to Transaction Batcher
-class TransactionBatcherInformer:
-    def __init__(self, ctx: zmq.asyncio.Context, wallet, ipc='ipc:///tmp/tx_batch_informer', linger=2000):
-        self.wallet = wallet
-        self.ctx = ctx
-
-        self.socket = self.ctx.socket(zmq.PAIR)
-        self.socket.setsockopt(zmq.LINGER, linger)
-        self.socket.bind(ipc)
-
-    async def send_ready(self):
-        msg = Message.get_message_packed_2(msg_type=MessageType.READY)
-        await self.socket.send(msg, flags=zmq.NOBLOCK)
-
-    async def send_burn_input_hashes(self, hashes):
-        if len(hashes) > 0:
-            msg = Message.get_message_packed_2(msg_type=MessageType.BURN_INPUT_HASHES, inputHashes=hashes)
-            await self.socket.send(msg)
-
-
 class BlockNotificationForwarder(SubscriptionService):
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, network_parameters, contacts: VKBook,
                  driver: CilantroStorageDriver, state=MetaDataStorage()):
@@ -124,6 +104,7 @@ class BlockAggregatorController:
         self.sb_numbers = sb_nums
         self.sb_indices = block_sb_mapper.get_set_of_sb_indices(sb_nums)
 
+        # Modify block agg to take an async inbox instead
         self.aggregator = BlockAggregator(subscription=None,
                                           block_timeout=block_timeout,
                                           min_quorum=self.min_quorum,
@@ -137,8 +118,6 @@ class BlockAggregatorController:
                                                                   bind=True)
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind(str(self.pub_socket_address))
-
-        self.informer = TransactionBatcherInformer(ctx=self.ctx, wallet=self.wallet)
 
         self.running = False
 
@@ -207,27 +186,42 @@ class BlockAggregatorController:
 
                 await self.pub_socket.send(block_notification)
 
-    # raghu - ? is it sub_blocks
-    def get_input_hashes_to_burn(self, sub_blocks):
-        sbs = []
-        for i in self.sb_indices:
-            sb = sub_blocks[i]
-            if type(sb) != dict:
-                sb = sb.to_dict()
+    async def process_block(self):
+        block, kind = await self.aggregator.gather_block()
 
-            if sb['subBlockNum'] in self.sb_numbers:
-                sbs.append(sb['inputHash'])
+        # Burn input hashes if needed
+        if len(block) > 0:
+            await self.informer.send_burn_input_hashes(
+                hashes=self.get_input_hashes_to_burn(block)
+            )
 
-        return sbs
+            notification = self.driver.get_block_dict(block, kind)
 
-        # return [sb_dicts[i]['inputHash'] for i in self.sb_indices if sb_dicts[i]['subBlockNum'] in self.sb_numbers]
+            del notification['prevBlockHash']
+            del notification['subBlocks']
 
-    async def send_ready(self):
-        ready = Message.get_signed_message_packed_2(
-            wallet=self.wallet,
-            msg_type=MessageType.READY)
+            owners = []
+            if kind == BNKind.NEW:
+                self.driver.store_block(sub_blocks=block)
+                owners = [m for m in self.vkbook.masternodes]
+                notification['newBlock'] = None
 
-        await self.pub_socket.send(ready)
+            notification['blockOwners'] = owners
+
+            if kind == BNKind.SKIP:
+                notification['emptyBlock'] = None
+
+            if kind == BNKind.FAIL:
+                notification['failedBlock'] = None
+
+            block_notification = Message.get_signed_message_packed_2(
+                wallet=self.wallet,
+                msg_type=MessageType.BLOCK_NOTIFICATION,
+                **notification
+            )
+
+            await self.pub_socket.send(block_notification)
+
 
     def stop(self):
         # Order matters here

@@ -1,4 +1,4 @@
-from cilantro_ee.core.sockets.services import SubscriptionService, SocketStruct, Protocols
+from cilantro_ee.core.sockets.services import SubscriptionService, AsyncInbox
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 from cilantro_ee.core.messages.message import Message
 
@@ -13,6 +13,15 @@ class BNKind:
     NEW = 0
     SKIP = 1
     FAIL = 2
+
+
+class Inbox(AsyncInbox):
+    def __init__(self, *args, **kwargs):
+        self.q = []
+        super().__init__(*args, **kwargs)
+
+    def handle_msg(self, _id, msg):
+        self.q.append(msg)
 
 
 class Block:
