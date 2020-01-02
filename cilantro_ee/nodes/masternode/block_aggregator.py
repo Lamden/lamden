@@ -1,9 +1,8 @@
-from cilantro_ee.core.sockets.services import SubscriptionService, AsyncInbox
+from cilantro_ee.core.sockets.services import AsyncInbox
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 from cilantro_ee.core.messages.message import Message
 
 from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
-
 
 import time
 import asyncio
@@ -21,6 +20,7 @@ class AsyncQueue(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     def handle_msg(self, _id, msg):
+        # Probably want to verify the SBC here?
         self.q.append(msg)
 
 
@@ -73,10 +73,10 @@ class BlockAggregator:
 
         self.running = True
 
-    async def gather_block(self):
-        if not self.async_queue.running:
-            asyncio.ensure_future(self.async_queue.serve())
+    async def start(self):
+        asyncio.ensure_future(self.async_queue.serve())
 
+    async def gather_block(self):
         while not self.pending_block.started and len(self.async_queue.q) == 0 and self.running:
             await asyncio.sleep(0)
 

@@ -105,7 +105,8 @@ class BlockAggregatorController:
         self.sb_indices = block_sb_mapper.get_set_of_sb_indices(sb_nums)
 
         # Modify block agg to take an async inbox instead
-        self.aggregator = BlockAggregator(subscription=None,
+        self.aggregator = BlockAggregator(socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_AGGREGATOR_CONTROLLER),
+                                          ctx=self.ctx,
                                           block_timeout=block_timeout,
                                           min_quorum=self.min_quorum,
                                           max_quorum=self.max_quorum,
@@ -118,16 +119,12 @@ class BlockAggregatorController:
                                                                   bind=True)
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind(str(self.pub_socket_address))
-
         self.running = False
 
     async def start(self):
         await self.start_aggregator()
         self.running = True
         asyncio.ensure_future(self.process_blocks())
-
-        # await self.informer.send_ready()
-        await self.send_ready()
 
     async def start_aggregator(self):
         # Initialize a Subscription for the Delegate Block Builders
@@ -153,12 +150,7 @@ class BlockAggregatorController:
         while self.running:
             block, kind = await self.aggregator.gather_block()
 
-            # Burn input hashes if needed
             if len(block) > 0:
-                await self.informer.send_burn_input_hashes(
-                    hashes=self.get_input_hashes_to_burn(block)
-                )
-
                 notification = self.driver.get_block_dict(block, kind)
 
                 del notification['prevBlockHash']
@@ -185,6 +177,7 @@ class BlockAggregatorController:
                 )
 
                 await self.pub_socket.send(block_notification)
+                print('cool')
 
     async def process_block(self):
         block, kind = await self.aggregator.gather_block()
@@ -222,10 +215,9 @@ class BlockAggregatorController:
 
             await self.pub_socket.send(block_notification)
 
-
     def stop(self):
         # Order matters here
         self.running = False
         self.aggregator.running = False
         self.aggregator.pending_block.started = True
-        self.aggregator.subblock_subscription_service.stop()
+        self.aggregator.async_queue.stop()

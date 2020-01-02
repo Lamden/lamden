@@ -237,11 +237,17 @@ class TestBlockAggregatorController(TestCase):
         self.ctx.destroy()
 
     def test_process_blocks_new_block_stores(self):
-        s = MockSubscription()
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
         wallets = wallets[:contacts.delegate_quorum_max]
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=1)
 
         input_hash = secrets.token_bytes(32)
 
@@ -251,17 +257,9 @@ class TestBlockAggregatorController(TestCase):
             msg = Message.get_signed_message_packed_2(wallet=wallets[i],
                                                       msg_type=MessageType.SUBBLOCK_CONTENDER,
                                                       **sbcs[i])
-            s.received.append((msg, 0))
-
-        w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w,
-                                       socket_base='tcp://127.0.0.1',
-                                       vkbook=contacts,
-                                       ctx=self.ctx,
-                                       block_timeout=1)
+            bc.aggregator.async_queue.q.append((msg, 0))
 
         bc.driver.drop_collections()
-        bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
@@ -277,19 +275,12 @@ class TestBlockAggregatorController(TestCase):
             m = await s.recv()
             return m
 
-        async def recieve2():
-            s = self.ctx.socket(zmq.PAIR)
-
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
+            bc.aggregator.start(),
             bc.process_blocks(),
-            recieve2(),
             recieve()
         )
 
@@ -298,12 +289,17 @@ class TestBlockAggregatorController(TestCase):
         self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK)[0]['blockNum'], 1)
 
     def test_process_block_not_new_does_not_store(self):
-        s = MockSubscription()
-
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
         input_hash = secrets.token_bytes(32)
+
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=1)
 
         for wallet in wallets:
             _, merkle_proof = Message.get_message_packed(
@@ -322,17 +318,9 @@ class TestBlockAggregatorController(TestCase):
                                                       subBlockNum=0,
                                                       prevBlockHash=b'\x00' * 32)
 
-            s.received.append((msg, 0))
-
-        w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w,
-                                       socket_base='tcp://127.0.0.1',
-                                       vkbook=contacts,
-                                       ctx=self.ctx,
-                                       block_timeout=1)
+            bc.aggregator.async_queue.q.append((msg, 0))
 
         bc.driver.drop_collections()
-        bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
@@ -348,93 +336,20 @@ class TestBlockAggregatorController(TestCase):
             m = await s.recv()
             return m
 
-        async def recieve2():
-            s = self.ctx.socket(zmq.PAIR)
-
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
             bc.process_blocks(),
+            bc.aggregator.start(),
             recieve(),
-            recieve2()
         )
 
         loop.run_until_complete(tasks)
 
         self.assertEqual(bc.driver.get_last_n(1, bc.driver.BLOCK), [])
 
-    def test_process_block_sends_burn_input_hashes(self):
-        s = MockSubscription()
-        wallets = const_builder.get_del_wallets()
-        print(wallets)
-        contacts = VKBook()
-
-        wallets = wallets[:contacts.delegate_quorum_max]
-
-        input_hash = secrets.token_bytes(32)
-
-        sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
-
-        for i in range(len(sbcs)):
-            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
-                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
-                                                      **sbcs[i])
-            s.received.append((msg, 0))
-
-        w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w,
-                                       socket_base='tcp://127.0.0.1',
-                                       vkbook=contacts,
-                                       ctx=self.ctx,
-                                       block_timeout=1)
-
-        bc.driver.drop_collections()
-        bc.aggregator.subblock_subscription_service = s
-        bc.running = True
-
-        async def stop():
-            await asyncio.sleep(1)
-            bc.stop()
-
-        async def recieve():
-            addr = NetworkParameters().resolve(socket_base='tcp://127.0.0.1',
-                                               service_type=ServiceType.BLOCK_AGGREGATOR)
-            s = self.ctx.socket(zmq.SUB)
-            s.setsockopt(zmq.SUBSCRIBE, b'')
-            s.connect(str(addr))
-            m = await s.recv()
-            return m
-
-        async def recieve2():
-            s = self.ctx.socket(zmq.PAIR)
-
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
-        loop = asyncio.get_event_loop()
-
-        tasks = asyncio.gather(
-            stop(),
-            bc.process_blocks(),
-            recieve(),
-            recieve2()
-        )
-
-        _, _, _, m = loop.run_until_complete(tasks)
-
-        msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
-
-        self.assertEqual(msg_type, MessageType.BURN_INPUT_HASHES)
-        self.assertListEqual([i for i in msg.inputHashes], [input_hash])
-
     def test_process_block_publishes_new_block_notification(self):
-        s = MockSubscription()
         wallets = const_builder.get_del_wallets()
         contacts = VKBook()
 
@@ -443,12 +358,6 @@ class TestBlockAggregatorController(TestCase):
         input_hash = secrets.token_bytes(32)
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
-
-        for i in range(len(sbcs)):
-            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
-                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
-                                                      **sbcs[i])
-            s.received.append((msg, 0))
 
         w = const_builder.get_mn_wallets()[0]
         bc = BlockAggregatorController(wallet=w,
@@ -457,8 +366,13 @@ class TestBlockAggregatorController(TestCase):
                                        ctx=self.ctx,
                                        block_timeout=0.5)
 
+        for i in range(len(sbcs)):
+            msg = Message.get_signed_message_packed_2(wallet=wallets[i],
+                                                      msg_type=MessageType.SUBBLOCK_CONTENDER,
+                                                      **sbcs[i])
+            bc.aggregator.async_queue.q.append((msg, 0))
+
         bc.driver.drop_collections()
-        bc.aggregator.subblock_subscription_service = s
         bc.running = True
 
         async def stop():
@@ -474,23 +388,16 @@ class TestBlockAggregatorController(TestCase):
             m = await s.recv()
             return m
 
-        async def recieve2():
-            s = self.ctx.socket(zmq.PAIR)
-
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
             bc.process_blocks(),
+            bc.aggregator.start(),
             recieve(),
-            recieve2()
         )
 
-        _, _, m, _ = loop.run_until_complete(tasks)
+        _, _, _, m = loop.run_until_complete(tasks)
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(m)
 
@@ -507,6 +414,13 @@ class TestBlockAggregatorController(TestCase):
 
         sbcs = random_txs.x_sbcs_from_tx(input_hash, b'\x00' * 32, wallets=wallets, as_dict=True)
 
+        w = const_builder.get_mn_wallets()[0]
+        bc = BlockAggregatorController(wallet=w,
+                                       socket_base='tcp://127.0.0.1',
+                                       vkbook=contacts,
+                                       ctx=self.ctx,
+                                       block_timeout=0.5)
+
         for wallet in wallets:
             _, merkle_proof = Message.get_message_packed(
                 MessageType.MERKLE_PROOF,
@@ -524,14 +438,7 @@ class TestBlockAggregatorController(TestCase):
                                                       subBlockNum=0,
                                                       prevBlockHash=b'\x00' * 32)
 
-            s.received.append((msg, 0))
-
-        w = const_builder.get_mn_wallets()[0]
-        bc = BlockAggregatorController(wallet=w,
-                                       socket_base='tcp://127.0.0.1',
-                                       vkbook=contacts,
-                                       ctx=self.ctx,
-                                       block_timeout=0.5)
+            bc.aggregator.async_queue.q.append((msg, 0))
 
         bc.driver.drop_collections()
         bc.aggregator.subblock_subscription_service = s
@@ -550,20 +457,13 @@ class TestBlockAggregatorController(TestCase):
             m = await s.recv()
             return m
 
-        async def recieve2():
-            s = self.ctx.socket(zmq.PAIR)
-
-            s.connect('ipc:///tmp/tx_batch_informer')
-            m = await s.recv()
-            return m
-
         loop = asyncio.get_event_loop()
 
         tasks = asyncio.gather(
             stop(),
             bc.process_blocks(),
             recieve(),
-            recieve2()
+            bc.aggregator.start()
         )
 
         _, _, m, _ = loop.run_until_complete(tasks)
