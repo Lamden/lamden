@@ -1,8 +1,7 @@
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.sockets.socket_book import SocketBook
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
+from cilantro_ee.core.networking.network import NetworkParameters, ServiceType
 from cilantro_ee.core.sockets.services import get
 
 from cilantro_ee.core.messages.message import Message

@@ -4,9 +4,8 @@
 # Start Rocks?
 # Start Mongo?
 
-from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.services.overlay.network import Network
+from cilantro_ee.core.networking.network import Network
 from cilantro_ee.core.crypto.wallet import Wallet
 import zmq.asyncio
 

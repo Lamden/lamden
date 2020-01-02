@@ -1,6 +1,5 @@
-from cilantro_ee.services.overlay.sync_client import OverlayClientSync
-from cilantro_ee.core.sockets.services import SocketStruct, get, Protocols
-from cilantro_ee.services.overlay.network import ServiceType, NetworkParameters
+from cilantro_ee.core.sockets.services import get
+from cilantro_ee.core.networking.network import ServiceType, NetworkParameters
 import asyncio
 import zmq.asyncio
 import json

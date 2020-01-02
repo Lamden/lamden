@@ -5,11 +5,10 @@ from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.services.storage.vkbook import VKBook
 
-from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
+from cilantro_ee.core.networking.network import NetworkParameters, ServiceType
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.core.sockets.services import SubscriptionService
 from cilantro_ee.services.block_fetch import BlockFetcher
@@ -83,12 +82,6 @@ class BlockAggregatorController:
         self.ctx = ctx
         self.network_parameters = network_parameters
 
-        self.delegate_sockets = SocketBook(socket_base=socket_base,
-                                           service_type=ServiceType.SUBBLOCK_BUILDER_PUBLISHER,
-                                           ctx=self.ctx,
-                                           network_parameters=self.network_parameters,
-                                           phonebook_function=self.vkbook.contract.get_delegates)
-
         self.driver = CilantroStorageDriver(key=self.wallet.signing_key(), vkbook=self.vkbook)
 
         self.state = state
@@ -97,26 +90,30 @@ class BlockAggregatorController:
         self.max_quorum = self.vkbook.delegate_quorum_max
 
         block_sb_mapper = BlockSubBlockMapper(self.vkbook.masternodes)
-        my_vk = self.wallet.verifying_key()
 
-        sb_nums = block_sb_mapper.get_list_of_sb_numbers(my_vk)
+        sb_nums = block_sb_mapper.get_list_of_sb_numbers(self.wallet.verifying_key())
 
         self.sb_numbers = sb_nums
         self.sb_indices = block_sb_mapper.get_set_of_sb_indices(sb_nums)
 
         # Modify block agg to take an async inbox instead
-        self.aggregator = BlockAggregator(socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_AGGREGATOR_CONTROLLER),
-                                          ctx=self.ctx,
-                                          block_timeout=block_timeout,
-                                          min_quorum=self.min_quorum,
-                                          max_quorum=self.max_quorum,
-                                          current_quorum=self.max_quorum,
-                                          contacts=self.vkbook)
+        self.aggregator = BlockAggregator(
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_AGGREGATOR_CONTROLLER),
+            ctx=self.ctx,
+            block_timeout=block_timeout,
+            min_quorum=self.min_quorum,
+            max_quorum=self.max_quorum,
+            current_quorum=self.max_quorum,
+            contacts=self.vkbook
+        )
 
         # Setup publisher socket for other masternodes to subscribe to
-        self.pub_socket_address = self.network_parameters.resolve(socket_base=socket_base,
-                                                                  service_type=ServiceType.BLOCK_AGGREGATOR,
-                                                                  bind=True)
+        self.pub_socket_address = self.network_parameters.resolve(
+            socket_base=socket_base,
+            service_type=ServiceType.BLOCK_AGGREGATOR,
+            bind=True
+        )
+
         self.pub_socket = self.ctx.socket(zmq.PUB)
         self.pub_socket.bind(str(self.pub_socket_address))
         self.running = False
@@ -127,24 +124,9 @@ class BlockAggregatorController:
         asyncio.ensure_future(self.process_blocks())
 
     async def start_aggregator(self):
-        # Initialize a Subscription for the Delegate Block Builders
-        subscription = SubscriptionService(ctx=self.ctx)
         current_quorum = 0
-
-        # Refresh the sockets for the delegate block builders
-        await self.delegate_sockets.refresh()
-
-        # Connect to each delegate we have and note the quorum
-        for delegate in self.delegate_sockets.sockets.values():
-            subscription.add_subscription(delegate)
-            current_quorum += 1
-
         # Set the subscription and quorum on the aggregator
-        self.aggregator.subblock_subscription_service = subscription
         self.aggregator.current_quorum = current_quorum
-
-        # Start the subscription service
-        asyncio.ensure_future(self.aggregator.subblock_subscription_service.serve())
 
     async def process_blocks(self):
         while self.running:
@@ -177,17 +159,12 @@ class BlockAggregatorController:
                 )
 
                 await self.pub_socket.send(block_notification)
-                print('cool')
 
     async def process_block(self):
         block, kind = await self.aggregator.gather_block()
 
         # Burn input hashes if needed
         if len(block) > 0:
-            await self.informer.send_burn_input_hashes(
-                hashes=self.get_input_hashes_to_burn(block)
-            )
-
             notification = self.driver.get_block_dict(block, kind)
 
             del notification['prevBlockHash']
@@ -213,7 +190,7 @@ class BlockAggregatorController:
                 **notification
             )
 
-            await self.pub_socket.send(block_notification)
+            return block_notification
 
     def stop(self):
         # Order matters here

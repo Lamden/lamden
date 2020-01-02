@@ -18,7 +18,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 
 from cilantro_ee.services.storage.vkbook import VKBook
 
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType, Network
+from cilantro_ee.core.networking.network import NetworkParameters, ServiceType, Network
 
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)
 book = const_builder.get_constitution()

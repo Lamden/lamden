@@ -9,7 +9,7 @@ from tests import random_txs
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
+from cilantro_ee.core.networking.network import ServiceType
 
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)

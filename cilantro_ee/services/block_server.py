@@ -4,15 +4,10 @@ from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.constants.ports import BLOCK_SERVER
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.sockets.services import _socket
-from cilantro_ee.services.overlay.network import NetworkParameters, ServiceType
+from cilantro_ee.core.networking.network import NetworkParameters, ServiceType
 import os
 import capnp
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
-import json
-import struct
 import time
 import asyncio
 import zmq, zmq.asyncio
