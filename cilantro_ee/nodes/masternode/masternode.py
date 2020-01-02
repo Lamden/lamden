@@ -8,7 +8,7 @@ from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 
 from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.core.networking.network import Network, NetworkParameters, ServiceType
+from cilantro_ee.core.networking.network import Network
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
@@ -18,7 +18,7 @@ from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync
 
-from cilantro_ee.core.parameters import Parameters
+from cilantro_ee.core.networking.parameters import Parameters, ServiceType, NetworkParameters
 
 from contracting.client import ContractingClient
 

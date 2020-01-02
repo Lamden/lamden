@@ -8,7 +8,7 @@ from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
-from cilantro_ee.core.networking.network import NetworkParameters, ServiceType
+from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.core.sockets.services import SubscriptionService
 from cilantro_ee.services.block_fetch import BlockFetcher

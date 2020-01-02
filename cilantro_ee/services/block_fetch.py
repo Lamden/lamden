@@ -7,7 +7,7 @@ from cilantro_ee.core.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.core.sockets.services import get, defer
 from cilantro_ee.services.storage.master import CilantroStorageDriver
-from cilantro_ee.core.networking.network import ServiceType, NetworkParameters
+from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
 import zmq.asyncio
 import asyncio
 from collections import Counter

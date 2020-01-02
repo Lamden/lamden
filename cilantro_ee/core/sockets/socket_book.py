@@ -1,5 +1,5 @@
 from cilantro_ee.core.sockets.services import get
-from cilantro_ee.core.networking.network import ServiceType, NetworkParameters
+from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
 import asyncio
 import zmq.asyncio
 import json
