@@ -12,7 +12,7 @@ from cilantro_ee.core.networking.network import Network
 from cilantro_ee.services.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
+from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController, BNKind
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer
@@ -72,7 +72,7 @@ class NewMasternode:
         self.vkbook = None
 
         self.parameters = Parameters(socket_base, ctx, wallet, network_parameters, None)
-
+        self.current_nbn = None
         self.running = True
 
     async def start(self):
@@ -142,30 +142,31 @@ class NewMasternode:
         pass
 
     async def process_blocks(self):
+        # Do something different here because we're just joining the network
+        # Basically hang out as if it was a skip block notification
+
         while self.running:
+            if len(self.tx_batcher.queue) > 0:
+                tx_batch = self.tx_batcher.pack_current_queue()
 
-            # Await State
-            while True:
-                if len(self.tx_batcher.queue) > 0:
-                    tx_batch = self.tx_batcher.pack_current_queue()
+                await self.parameters.refresh()
 
-                    await self.parameters.refresh()
+                # Send out messages to everyone
+                tasks = []
+                for k, v in self.parameters.get_all_sockets(service=ServiceType.TX_BATCHER):
+                    tasks.append(self.send_out(tx_batch, v))
 
-                    # Send out messages to everyone
-                    tasks = []
-                    for k, v in self.parameters.get_all_sockets(service=ServiceType.TX_BATCHER):
-                        tasks.append(self.send_out(tx_batch, v))
+                await asyncio.gather(*tasks)
 
-                    await asyncio.gather(*tasks)
-
-                    break
-
-                    # Send previous nbn
-
-                    # Different logic if the first block of the blockchain...
 
             # BLOCK AGGREGATOR!
-            block = await self.block_agg_controller.process_sbcs_from_delegates()
+            block, kind = await self.block_agg_controller.process_sbcs_from_delegates()
+
+            if kind == BNKind.SKIP:
+                # If empty block, go to waiting state
+                # Basically just sit here. If you recieve a NBN from a masternode, then push an empty one out
+
+            # Else, batch some more txs
 
 
     def stop(self):
