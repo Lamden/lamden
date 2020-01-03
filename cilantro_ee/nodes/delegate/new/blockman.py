@@ -150,23 +150,15 @@ class BlockManager:
             results = await self.execute_work(filtered_work)
 
             # Package as SBCs
-            sbcs = []
-            i = 0
-            for tx_data in results:
-                input_hash, results = tx_data
-                sbcs.append(
-                    self.build_sbc_from_work_results(
-                        input_hash=input_hash,
-                        results=results,
-                        sb_num=i % self.parallelism
-                    )
-                )
-                i += 1
+            sbcs_msg_blob = Message.get_message_packed_2(
+                msg_type=MessageType.SUBBLOCK_CONTENDERS,
+                contenders=[sb for sb in results]
+            )
 
             # Send SBCs to masternodes
             tasks = []
             for k, v in self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR):
-                tasks.append(self.send_out(tx_batch, v))
+                tasks.append(self.send_out(sbcs_msg_blob, v))
 
             await asyncio.gather(*tasks)
 
@@ -190,6 +182,7 @@ class BlockManager:
     async def execute_work(self, work):
         # Assume single threaded, single process for now.
         results = []
+        i = 0
 
         while len(work) > 0:
             tx_batch = heapq.heappop(work)
@@ -230,15 +223,22 @@ class BlockManager:
                 # If we keep a running total, we just have to do a single update per subblock in the case of overlapping keys
                 # This would save time
                 tx_data.append(
-                    Message.get_signed_message_packed_2(
-                        wallet=self.wallet,
+                    Message.get_message(
                         msg_type=MessageType.TRANSACTION_DATA,
                         transaction=transaction,
                         status=output['status_code'],
                         state=encode(output['writes'])
                     )
                 )
-            results.append((tx_batch.inputHash, tx_data))
+
+            sbc = self.build_sbc_from_work_results(
+                input_hash=tx_batch.inputHash,
+                results=tx_data,
+                sb_num=i % self.parallelism
+            )
+
+            results.append(sbc)
+            i += 1
 
         return results
 
@@ -246,13 +246,13 @@ class BlockManager:
         # build sbc
         merkle = MerkleTree.from_raw_transactions(results)
 
-        _, merkle_proof = Message.get_message_packed(
+        _, merkle_proof = Message.get_message(
             MessageType.MERKLE_PROOF,
             hash=merkle.root,
             signer=self.wallet.verifying_key(),
             signature=self.wallet.sign(merkle.root))
 
-        sbc = Message.get_message_packed(
+        sbc = Message.get_message(
             MessageType.SUBBLOCK_CONTENDER,
             resultHash=merkle.root,
             inputHash=input_hash,
