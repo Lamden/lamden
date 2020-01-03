@@ -140,6 +140,7 @@ class ServiceType:
     BLOCK_NOTIFICATIONS = 7
     TX_BATCHER = 8
     BLOCK_AGGREGATOR_CONTROLLER = 9
+    INCOMING_WORK = 10
 
 
 class NetworkParameters:
@@ -153,7 +154,8 @@ class NetworkParameters:
                  tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
                  block_notifications_port=9998, block_notifications_ipc='block_notifications',
                  tx_batcher_port=9997, tx_batcher_ipc='tx_batcher',
-                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller'
+                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller',
+                 incoming_work_port=9995, incoming_work_ipc='incoming_work'
                  ):
 
         self.params = {
@@ -166,7 +168,8 @@ class NetworkParameters:
             ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc),
             ServiceType.BLOCK_NOTIFICATIONS: (block_notifications_port, block_notifications_ipc),
             ServiceType.TX_BATCHER: (tx_batcher_port, tx_batcher_ipc),
-            ServiceType.BLOCK_AGGREGATOR_CONTROLLER: (block_agg_controller_port, block_agg_controller_ipc)
+            ServiceType.BLOCK_AGGREGATOR_CONTROLLER: (block_agg_controller_port, block_agg_controller_ipc),
+            ServiceType.INCOMING_WORK: (incoming_work_port, incoming_work_ipc)
         }
 
     def resolve(self, socket_base, service_type, bind=False):

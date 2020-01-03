@@ -1,8 +1,7 @@
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.core.sockets.socket_book import SocketBook
 from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
-from cilantro_ee.core.sockets.services import get
+from cilantro_ee.core.sockets.services import AsyncInbox
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
@@ -19,6 +18,64 @@ import heapq
 from datetime import datetime
 
 
+class NBNInbox(AsyncInbox):
+    def __init__(self, *args, **kwargs):
+        self.q = []
+        super().__init__(*args, **kwargs)
+
+    def handle_msg(self, _id, msg):
+        # Make sure it's legit
+
+        # See if you can store it in the backend?
+        pass
+
+    async def wait_for_next_nbn(self):
+        while len(self.q) <= 0:
+            await asyncio.sleep(0)
+
+        nbn = self.q.pop(0)
+        self.q.clear()
+
+        return nbn
+
+
+class WorkInbox(AsyncInbox):
+    def __init__(self, validity_timeout, *args, **kwargs):
+        self.q = []
+        self.validity_timeout = validity_timeout
+        super().__init__(*args, **kwargs)
+
+    def handle_msg(self, _id, msg):
+        msg_type, msg_struct = Message.unpack_message_2(msg)
+
+        # Ignore everything except TX Batches
+        if msg_type != MessageType.TRANSACTION_BATCH:
+            return
+
+        # Ignore if the tx batch is too old
+        if time.time() - msg_struct.timestamp > self.validity_timeout:
+            return
+
+        # Ignore if the tx batch is not signed by the right sender
+        if not _verify(vk=msg_struct.sender,
+                       signature=msg_struct.signature,
+                       msg=msg_struct.inputHash):
+            return
+
+        self.q.append(msg_struct)
+
+    async def wait_for_next_batch_of_work(self):
+        # Wait for work from all masternodes that are currently online
+        # How do we test if they are online? idk.
+        while len(self.q) <= 0:
+            await asyncio.sleep(0)
+
+        work = self.q.pop(0)
+        self.q.clear()
+
+        return work
+
+
 class BlockManager:
     def __init__(self, socket_base, ctx, network_parameters: NetworkParameters,
                   contacts: VKBook, validity_timeout=1000, parallelism=4, client=ContractingClient(), driver=MetaDataStorage()):
@@ -28,39 +85,35 @@ class BlockManager:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-
-        # Hashes of Subblocks we're expecting in the next NBN
-        self.pending_subblock_hashes = set()
-
+        self.network_parameters = network_parameters
         self.ctx = ctx
 
         # How long until a tx batch is 'stale' and no longer valid
         self.validity_timeout = validity_timeout
 
-        # Masternode sockets
-        self.masternode_sockets = SocketBook(socket_base=socket_base,
-                                             service_type=ServiceType.TX_BATCHER,
-                                             network_parameters=network_parameters,
-                                             ctx=ctx,
-                                             phonebook_function=self.contacts.contract.get_masternodes)
-
         self.client = client
         self.driver = driver
+
+        self.nbn_inbox = NBNInbox(
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_NOTIFICATIONS, bind=True)
+        )
+        self.work_inbox = WorkInbox(
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True)
+        )
+
         self.running = False
 
     async def run(self):
         while self.running:
             # wait for NBN
-            block = await self.get_new_block_notification()
+            block = await self.nbn_inbox.wait_for_next_nbn()
             # Catchup with block
 
             self.catchup_with_new_block(block, sender=b'')
 
             # Request work. Use async / dealers to block until it's done?
-            work = await asyncio.gather(
-                get(master, msg=b'XXX', ctx=self.ctx, timeout=500, linger=500, retries=0)
-                for master in self.masternode_sockets.sockets.values()
-            )
+            # Refresh sockets here
+            work = await self.work_inbox.wait_for_next_batch_of_work()
 
             filtered_work = []
             for tx_batch in work:
@@ -77,9 +130,6 @@ class BlockManager:
             # Package as SBCs
             # Send SBCs
             pass
-
-    async def get_new_block_notification(self):
-        pass
 
     def catchup_with_new_block(self, block, sender: bytes):
         if block.blockNum < self.driver.latest_block_num + 1:
@@ -101,27 +151,6 @@ class BlockManager:
 
             # if you're not in the signatures, run catchup
             # if you are in the signatures, commit db
-
-    async def request_work_from_master(self, master):
-        msg = await get(master, msg=b'XXX', ctx=self.ctx, timeout=500, linger=500, retries=0)
-
-        msg_type, msg_struct = Message.unpack_message_2(msg)
-
-        # Ignore everything except TX Batches
-        if msg_type != MessageType.TRANSACTION_BATCH:
-            return
-
-        # Ignore if the tx batch is too old
-        if time.time() - msg_struct.timestamp > self.validity_timeout:
-            return
-
-        # Ignore if the tx batch is not signed by the right sender
-        if not _verify(vk=msg_struct.sender,
-                       signature=msg_struct.signature,
-                       msg=msg_struct.inputHash):
-            return
-
-        return msg_struct
 
     async def execute_work(self, work):
         # Assume single threaded, single process for now.
@@ -154,13 +183,14 @@ class BlockManager:
                     else:
                         kwargs[entry.key] = getattr(entry.value, entry.value.which())
 
-                output = self.client.executor.execute(sender=transaction.payload.sender.hex(),
-                                             contract_name=transaction.payload.contractName,
-                                             function_name=transaction.payload.functionName,
-                                             stamps=transaction.payload.stampsSupplied,
-                                             kwargs=kwargs,
-                                             environment=environment,
-                                             auto_commit=False)
+                output = self.client.executor.execute(
+                    sender=transaction.payload.sender.hex(),
+                    contract_name=transaction.payload.contractName,
+                    function_name=transaction.payload.functionName,
+                    stamps=transaction.payload.stampsSupplied,
+                    kwargs=kwargs,
+                    environment=environment,
+                    auto_commit=False)
 
                 stamps_used += output['stamps_used']
                 writes.update(output['writes'])
