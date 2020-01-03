@@ -29,27 +29,27 @@ class NBNInbox(AsyncInbox):
         self.driver = driver
         super().__init__(*args, **kwargs)
 
-    def handle_msg(self, _id, msg):
-        msg_type, msg_blob = Message.unpack_message_2(msg)
+    async def handle_msg(self, _id, msg):
+        #msg_type, msg_blob = Message.unpack_message_2(msg)
 
-        if msg_type != MessageType.BLOCK_NOTIFICATION:
-            return
+        #if msg_type != MessageType.BLOCK_NOTIFICATION:
+        #    return
 
         # Make sure it's legit
-        if block.blockNum < self.driver.latest_block_num + 1:
-            return
+        #if msg_blob.blockNum < self.driver.latest_block_num + 1:
+        #    return
 
         # If sender isnt a masternode, return
-        if sender.hex() not in self.contacts.masternodes:
-            return
+        #if sender.hex() not in self.contacts.masternodes:
+        #    return
 
         # if 2 / 3 didnt sign, return
-        sub_blocks = [sb for sb in block.subBlocks]
-        for sb in sub_blocks:
-            if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
-                return
+        #sub_blocks = [sb for sb in block.subBlocks]
+        #for sb in sub_blocks:
+        #    if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
+        #        return
 
-        self.q.append(msg_blob)
+        self.q.append(msg)
 
     async def wait_for_next_nbn(self):
         while len(self.q) <= 0:
