@@ -22,6 +22,18 @@ from datetime import datetime
 import zmq.asyncio
 
 
+class BlockNotificationException(Exception):
+    pass
+
+
+class BlockNumberMismatch(BlockNotificationException):
+    pass
+
+
+class InvalidMessageType(BlockNotificationException):
+    pass
+
+
 class NBNInbox(AsyncInbox):
     def __init__(self, contacts, driver, *args, **kwargs):
         self.q = []
@@ -50,6 +62,15 @@ class NBNInbox(AsyncInbox):
         #        return
 
         self.q.append(msg)
+
+    def block_notification_is_valid(self, msg):
+        msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+
+        if msg_type != MessageType.BLOCK_NOTIFICATION:
+            raise InvalidMessageType
+
+        if msg_blob.blockNum < self.driver.latest_block_num + 1:
+            raise BlockNumberMismatch
 
     async def wait_for_next_nbn(self):
         while len(self.q) <= 0:
