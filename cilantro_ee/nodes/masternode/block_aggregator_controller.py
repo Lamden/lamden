@@ -44,7 +44,7 @@ class BlockAggregatorController:
 
         # Modify block agg to take an async inbox instead
         self.aggregator = BlockAggregator(
-            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_AGGREGATOR_CONTROLLER),
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_AGGREGATOR_CONTROLLER, bind=True),
             ctx=self.ctx,
             block_timeout=block_timeout,
             min_quorum=self.min_quorum,

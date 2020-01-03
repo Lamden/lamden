@@ -45,8 +45,8 @@ class NBNInbox(AsyncInbox):
 
 
 class NewMasternode:
-    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False, bootnodes=conf.BOOTNODES,
-                 network_parameters=NetworkParameters(), webserver_port=8080):
+    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
+                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), webserver_port=8080):
         # stuff
         self.log = get_logger()
         self.socket_base = socket_base

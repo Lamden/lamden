@@ -1,10 +1,5 @@
-from cilantro_ee.utils import is_valid_hex
 from cilantro_ee.utils import Hasher, lazy_property
 from typing import List
-from cilantro_ee.core.logger import get_logger
-
-
-log = get_logger("MerkleTree")
 
 
 class MerkleTree:
@@ -205,5 +200,4 @@ class MerkleTree:
 
     @staticmethod
     def hash_nodes(nodes: list):
-        log.warning("HASH LEAVES API SHOULD BE DEPRECATED")
         return Hasher.hash_iterable(nodes, algorithm=Hasher.Alg.SHA3_256, return_bytes=True)

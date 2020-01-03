@@ -1,21 +1,25 @@
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
+from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters, Parameters
 from cilantro_ee.core.sockets.services import AsyncInbox
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
-from cilantro_ee.core.crypto.wallet import _verify
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
+
+from cilantro_ee.core.crypto.wallet import _verify, Wallet
 
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
+from contracting.db.encoder import encode
 
 import time
 import asyncio
 import heapq
 from datetime import datetime
+import zmq.asyncio
 
 
 class NBNInbox(AsyncInbox):
@@ -77,16 +81,24 @@ class WorkInbox(AsyncInbox):
 
 
 class BlockManager:
-    def __init__(self, socket_base, ctx, network_parameters: NetworkParameters,
-                  contacts: VKBook, validity_timeout=1000, parallelism=4, client=ContractingClient(), driver=MetaDataStorage()):
+    def __init__(self, socket_base, ctx, wallet: Wallet, network_parameters: NetworkParameters,
+                 contacts: VKBook, validity_timeout=1000, parallelism=4, client=ContractingClient(),
+                 driver=MetaDataStorage()):
 
         # VKBook, essentially
         self.contacts = contacts
+        self.parameters = Parameters(
+            socket_base=socket_base,
+            ctx=ctx,
+            wallet=wallet,
+            network_parameters=network_parameters,
+            contacts=self.contacts)
 
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.network_parameters = network_parameters
         self.ctx = ctx
+        self.wallet = wallet
 
         # How long until a tx batch is 'stale' and no longer valid
         self.validity_timeout = validity_timeout
@@ -102,6 +114,16 @@ class BlockManager:
         )
 
         self.running = False
+
+    async def send_out(self, msg, socket_id):
+        socket = self.ctx.socket(zmq.DEALER)
+        socket.connect(str(socket_id))
+
+        try:
+            socket.send(msg, zmq.NOBLOCK)
+            return True
+        except zmq.ZMQError:
+            return False
 
     async def run(self):
         while self.running:
@@ -125,11 +147,28 @@ class BlockManager:
                 heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
 
             # Execute work
-            output = await self.execute_work(filtered_work)
+            results = await self.execute_work(filtered_work)
 
             # Package as SBCs
-            # Send SBCs
-            pass
+            sbcs = []
+            i = 0
+            for tx_data in results:
+                input_hash, results = tx_data
+                sbcs.append(
+                    self.build_sbc_from_work_results(
+                        input_hash=input_hash,
+                        results=results,
+                        sb_num=i % self.parallelism
+                    )
+                )
+                i += 1
+
+            # Send SBCs to masternodes
+            tasks = []
+            for k, v in self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR):
+                tasks.append(self.send_out(tx_batch, v))
+
+            await asyncio.gather(*tasks)
 
     def catchup_with_new_block(self, block, sender: bytes):
         if block.blockNum < self.driver.latest_block_num + 1:
@@ -142,10 +181,6 @@ class BlockManager:
         # if 2 / 3 didnt sign, return
         sub_blocks = [sb for sb in block.subBlocks]
         for sb in sub_blocks:
-            if sb.inputHash in self.pending_subblock_hashes:
-                # Commit partially? Don't think you can...
-                continue
-
             if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
                 return
 
@@ -154,9 +189,7 @@ class BlockManager:
 
     async def execute_work(self, work):
         # Assume single threaded, single process for now.
-        stamps_used = 0
-        writes = {}
-        deletes = set()
+        results = []
 
         while len(work) > 0:
             tx_batch = heapq.heappop(work)
@@ -173,8 +206,9 @@ class BlockManager:
                 'now': now
             }
 
+            # Each TX Batch is basically a subblock from this point of view and probably for the near future
+            tx_data = []
             for transaction in transactions:
-
                 # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
                 kwargs = {}
                 for entry in transaction.payload.kwargs.entries:
@@ -190,24 +224,46 @@ class BlockManager:
                     stamps=transaction.payload.stampsSupplied,
                     kwargs=kwargs,
                     environment=environment,
-                    auto_commit=False)
+                    auto_commit=False
+                )
 
-                stamps_used += output['stamps_used']
-                writes.update(output['writes'])
-                deletes.intersection(output['deletes'])
+                # If we keep a running total, we just have to do a single update per subblock in the case of overlapping keys
+                # This would save time
+                tx_data.append(
+                    Message.get_signed_message_packed_2(
+                        wallet=self.wallet,
+                        msg_type=MessageType.TRANSACTION_DATA,
+                        transaction=transaction,
+                        status=output['status_code'],
+                        state=encode(output['writes'])
+                    )
+                )
+            results.append((tx_batch.inputHash, tx_data))
 
-        return {
-            'stamps_used': stamps_used,
-            'writes': writes,
-            'deletes': deletes
-        }
+        return results
 
-    def build_sbc(self):
-        writes, deletes = self.client.executor.driver.get_current_modifications()
+    def build_sbc_from_work_results(self, input_hash, results, sb_num=0):
+        # build sbc
+        merkle = MerkleTree.from_raw_transactions(results)
 
+        _, merkle_proof = Message.get_message_packed(
+            MessageType.MERKLE_PROOF,
+            hash=merkle.root,
+            signer=self.wallet.verifying_key(),
+            signature=self.wallet.sign(merkle.root))
 
-    def send_sbc_to_master(self):
-        pass
+        sbc = Message.get_message_packed(
+            MessageType.SUBBLOCK_CONTENDER,
+            resultHash=merkle.root,
+            inputHash=input_hash,
+            merkleLeaves=[leaf for leaf in merkle.leaves],
+            signature=merkle_proof,
+            transactions=[tx for tx in results],
+            subBlockNum=sb_num,
+            prevBlockHash=self.driver.latest_block_hash
+        )
+
+        return sbc
 
 # struct TransactionBatch {
 #     transactions @0 :List(Transaction);
@@ -238,4 +294,11 @@ class BlockManager:
 # struct Transaction {
 #     metadata @0: MetaData;
 #     payload @1: TransactionPayload;
+# }
+
+# struct TransactionData {
+#     transaction @0 :Transaction;
+#     status @1: UInt8;
+#     state @2: Data;
+#     stampsUsed @3: UInt64;
 # }

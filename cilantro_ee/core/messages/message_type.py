@@ -19,6 +19,8 @@ class MessageType(MessageBaseType):
     READY = auto()
 
     SUBBLOCK_CONTENDER = auto()
+    SUBBLOCK_CONTENDERS = auto()
+
     BLOCK_INDEX_REQUEST = auto()
     BLOCK_INDEX_REPLY = auto()
     BLOCK_DATA_REQUEST = auto()

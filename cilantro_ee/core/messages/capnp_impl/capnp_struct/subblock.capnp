@@ -31,3 +31,7 @@ struct SubBlockContender {
     subBlockNum @5: UInt8;
     prevBlockHash @6: Data;
 }
+
+struct SubBlockContenders {
+    contenders @0 :List(SubBlockContender);
+}
