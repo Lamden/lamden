@@ -1,124 +1,25 @@
+from cilantro_ee.nodes.delegate.new.new_block_inbox import NBNInbox
+from cilantro_ee.nodes.delegate.new.work_inbox import WorkInbox
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters, Parameters
-from cilantro_ee.core.sockets.services import AsyncInbox
 
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
 from cilantro_ee.core.containers.merkle_tree import MerkleTree
 
-from cilantro_ee.core.crypto.wallet import _verify, Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode
 
-import time
 import asyncio
 import heapq
 from datetime import datetime
 import zmq.asyncio
-
-
-class BlockNotificationException(Exception):
-    pass
-
-
-class BlockNumberMismatch(BlockNotificationException):
-    pass
-
-
-class InvalidMessageType(BlockNotificationException):
-    pass
-
-
-class NBNInbox(AsyncInbox):
-    def __init__(self, contacts, driver, *args, **kwargs):
-        self.q = []
-        self.contacts = contacts
-        self.driver = driver
-        super().__init__(*args, **kwargs)
-
-    async def handle_msg(self, _id, msg):
-        #msg_type, msg_blob = Message.unpack_message_2(msg)
-
-        #if msg_type != MessageType.BLOCK_NOTIFICATION:
-        #    return
-
-        # Make sure it's legit
-        #if msg_blob.blockNum < self.driver.latest_block_num + 1:
-        #    return
-
-        # If sender isnt a masternode, return
-        #if sender.hex() not in self.contacts.masternodes:
-        #    return
-
-        # if 2 / 3 didnt sign, return
-        #sub_blocks = [sb for sb in block.subBlocks]
-        #for sb in sub_blocks:
-        #    if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
-        #        return
-
-        self.q.append(msg)
-
-    def block_notification_is_valid(self, msg):
-        msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
-
-        if msg_type != MessageType.BLOCK_NOTIFICATION:
-            raise InvalidMessageType
-
-        if msg_blob.blockNum < self.driver.latest_block_num + 1:
-            raise BlockNumberMismatch
-
-    async def wait_for_next_nbn(self):
-        while len(self.q) <= 0:
-            await asyncio.sleep(0)
-
-        nbn = self.q.pop(0)
-        self.q.clear()
-
-        return nbn
-
-
-class WorkInbox(AsyncInbox):
-    def __init__(self, validity_timeout, contacts: VKBook, *args, **kwargs):
-        self.work = {}
-        self.validity_timeout = validity_timeout
-        self.contacts = contacts
-
-        self.current_masternodes = self.contacts.masternodes
-        super().__init__(*args, **kwargs)
-
-    def handle_msg(self, _id, msg):
-        msg_type, msg_struct = Message.unpack_message_2(msg)
-
-        # Ignore everything except TX Batches
-        if msg_type != MessageType.TRANSACTION_BATCH:
-            return
-
-        # Ignore if the tx batch is too old
-        if time.time() - msg_struct.timestamp > self.validity_timeout:
-            return
-
-        # Ignore if the tx batch is not signed by the right sender
-        if not _verify(vk=msg_struct.sender,
-                       signature=msg_struct.signature,
-                       msg=msg_struct.inputHash):
-            return
-
-        self.work[msg_struct.sender.hex()] = msg_struct
-
-    async def wait_for_next_batch_of_work(self):
-        self.work.clear()
-        self.current_masternodes = self.contacts.masternodes
-        # Wait for work from all masternodes that are currently online
-        # How do we test if they are online? idk.
-        while len(set(self.current_masternodes) - set(self.work.keys())) > 0:
-            await asyncio.sleep(0)
-
-        return self.work
 
 
 class BlockManager:
@@ -170,7 +71,6 @@ class BlockManager:
         while self.running:
             # wait for NBN
             block = await self.nbn_inbox.wait_for_next_nbn()
-
 
             # If its the block that you worked on, commit the db
             # AKA if you signed the block

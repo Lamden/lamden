@@ -1,4 +1,4 @@
-from cilantro_ee.core.utils.transaction import TransactionBuilder, verify_packed_tx
+from cilantro_ee.core.crypto.transaction import TransactionBuilder, verify_packed_tx
 from unittest import TestCase
 from cilantro_ee.core.crypto.wallet import Wallet
 import os

@@ -9,7 +9,7 @@ from cilantro_ee.services.storage.master import MasterStorage
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.nonces import NonceManager
 
-from cilantro_ee.core.utils.transaction import transaction_is_valid, \
+from cilantro_ee.core.crypto.transaction import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
     TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
 

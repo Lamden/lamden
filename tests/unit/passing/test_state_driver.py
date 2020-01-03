@@ -1,9 +1,8 @@
 from unittest import TestCase
-import unittest
 from cilantro_ee.services.storage.state import MetaDataStorage
 import json
 from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.utils.transaction import TransactionBuilder
+from cilantro_ee.core.crypto.transaction import TransactionBuilder
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp

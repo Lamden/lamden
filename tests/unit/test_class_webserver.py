@@ -5,7 +5,7 @@ from cilantro_ee.core.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 
 from cilantro_ee.services.storage.state import NonceManager
-from cilantro_ee.core.utils.transaction import TransactionBuilder, TransactionException
+from cilantro_ee.core.crypto.transaction import TransactionBuilder
 from contracting import config
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os

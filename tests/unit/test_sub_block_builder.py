@@ -1,18 +1,16 @@
 #
-from contracting.db.cr.callback_data import ExecutionData, SBData
 #
 from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.logger.base import get_logger
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.capnp_impl.capnp_impl import pack
-from cilantro_ee.core.utils.transaction import TransactionBuilder
+from cilantro_ee.core.crypto.transaction import TransactionBuilder
 #
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
 from cilantro_ee.nodes.delegate.sub_block_builder import TransactionBag
 from cilantro_ee.nodes.delegate.sub_block_builder import TxnBagManager
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockMaker
-from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.utils.hasher import Hasher
 #
 from unittest import TestCase

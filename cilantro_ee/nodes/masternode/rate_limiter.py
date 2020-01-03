@@ -1,4 +1,3 @@
-from cilantro_ee.core.utils.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
