@@ -81,23 +81,43 @@ class BlockFetcher:
         return responses.top_item()
 
     async def get_latest_block_height(self, socket):
-        request = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                      msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
-                                                      timestamp=int(time.time()))
+        # Build a signed request
+        request = Message.get_signed_message_packed_2(
+            wallet=self.wallet,
+            msg_type=MessageType.LATEST_BLOCK_HEIGHT_REQUEST,
+            timestamp=int(time.time()))
 
-        response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
+        # Send it to the socket provided and wait for a response
+        response = await get(
+            socket_id=socket,
+            msg=request,
+            ctx=self.ctx,
+            timeout=3000,
+            retries=0,
+            dealer=True
+        )
 
+        # If it's not none, aka a success, unpack it and return the result
         if response is not None:
             _, unpacked, _, _, _ = Message.unpack_message_2(response)
 
             return unpacked.blockHeight
 
     async def get_block_from_master(self, i: int, socket):
-        request = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                      msg_type=MessageType.BLOCK_DATA_REQUEST,
-                                                      blockNum=i)
+        request = Message.get_signed_message_packed_2(
+            wallet=self.wallet,
+            msg_type=MessageType.BLOCK_DATA_REQUEST,
+            blockNum=i
+        )
 
-        response = await get(socket_id=socket, msg=request, ctx=self.ctx, timeout=3000, retries=0, dealer=True)
+        response = await get(
+            socket_id=socket,
+            msg=request,
+            ctx=self.ctx,
+            timeout=3000,
+            retries=0,
+            dealer=True
+        )
 
         if response is not None:
             msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
@@ -209,11 +229,3 @@ class BlockFetcher:
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.top.get_latest_block_number()
         return current_height >= latest_block_stored
-
-# struct BlockData {
-#     blockHash @0 :Data;
-#     blockNum @1 :UInt32;
-#     blockOwners @2 :List(Data);
-#     prevBlockHash @3 :Data;
-#     subBlocks @4 :List(SB.SubBlock);
-# }

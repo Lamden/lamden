@@ -1,8 +1,3 @@
-# Start Overlay Server / Discover
-# Run Catchup
-# Start Block Agg
-# Start Block Man
-# Start Webserver
 import asyncio
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
@@ -19,14 +14,34 @@ from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync
 
 from cilantro_ee.core.networking.parameters import Parameters, ServiceType, NetworkParameters
-
+from cilantro_ee.core.sockets.services import AsyncInbox
 from contracting.client import ContractingClient
 
 import zmq.asyncio
 import cilantro_ee
-from multiprocessing import Process
 
 cclient = ContractingClient()
+
+
+class NBNInbox(AsyncInbox):
+    def __init__(self, *args, **kwargs):
+        self.q = []
+        super().__init__(*args, **kwargs)
+
+    def handle_msg(self, _id, msg):
+        # Make sure it's legit
+
+        # See if you can store it in the backend?
+        pass
+
+    async def wait_for_next_nbn(self):
+        while len(self.q) <= 0:
+            await asyncio.sleep(0)
+
+        nbn = self.q.pop(0)
+        self.q.clear()
+
+        # Store block
 
 
 class NewMasternode:
@@ -44,8 +59,6 @@ class NewMasternode:
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.overwrite = overwrite
-
-
 
         # Services
         self.network = Network(
@@ -67,13 +80,14 @@ class NewMasternode:
         self.tx_batcher = TransactionBatcher(wallet=wallet, queue=[])
 
         self.webserver = WebServer(wallet=wallet, port=webserver_port)
-        self.webserver_process = Process(target=self.webserver.start)
 
         self.vkbook = None
 
         self.parameters = Parameters(socket_base, ctx, wallet, network_parameters, None)
         self.current_nbn = None
         self.running = True
+
+        self.nbn_inbox = NBNInbox()
 
     async def start(self):
         # Discover other nodes
@@ -138,36 +152,43 @@ class NewMasternode:
         except zmq.ZMQError:
             return False
 
-    async def wait_state(self):
-        pass
+    async def send_batch_to_delegates(self):
+        tx_batch = self.tx_batcher.pack_current_queue()
+
+        await self.parameters.refresh()
+
+        # Send out messages to delegates
+        tasks = []
+        for k, v in self.parameters.get_delegate_sockets(service=ServiceType.TX_BATCHER):
+            tasks.append(self.send_out(tx_batch, v))
+
+        await asyncio.gather(*tasks)
+
+    async def send_nbn_to_everyone(self):
+        # Send out current NBN to everyone
+        tasks = []
+        for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS):
+            tasks.append(self.send_out(self.current_nbn, v))
+
+        await asyncio.gather(*tasks)
+
+        self.current_nbn = None
 
     async def process_blocks(self):
-        # Do something different here because we're just joining the network
-        # Basically hang out as if it was a skip block notification
+        await self.nbn_inbox.wait_for_next_nbn()
 
         while self.running:
-            if len(self.tx_batcher.queue) > 0:
-                tx_batch = self.tx_batcher.pack_current_queue()
+            # Else, batch some more txs
+            await self.send_batch_to_delegates()
 
-                await self.parameters.refresh()
-
-                # Send out messages to everyone
-                tasks = []
-                for k, v in self.parameters.get_all_sockets(service=ServiceType.TX_BATCHER):
-                    tasks.append(self.send_out(tx_batch, v))
-
-                await asyncio.gather(*tasks)
-
-
-            # BLOCK AGGREGATOR!
+            # Get's next block from block agg. Block agg will take care of storing new blocks automatically
             block, kind = await self.block_agg_controller.process_sbcs_from_delegates()
+            self.current_nbn = block
 
             if kind == BNKind.SKIP:
-                # If empty block, go to waiting state
-                # Basically just sit here. If you recieve a NBN from a masternode, then push an empty one out
+                await self.nbn_inbox.wait_for_next_nbn()
 
-            # Else, batch some more txs
-
+            await self.send_nbn_to_everyone()
 
     def stop(self):
         self.block_server.stop()
