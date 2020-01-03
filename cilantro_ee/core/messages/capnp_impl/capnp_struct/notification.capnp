@@ -1,17 +1,21 @@
 @0xc9b01417cf45e892;
 
+using S = import "subblock.capnp";
+
 struct BlockNotification {
     blockNum @0 :UInt32;
     blockHash @1 :Data;
-    blockOwners @2 :List(Text);
-    subBlockNum @3 :List(List(UInt32));
-    inputHashes @4 :List(List(Data));
+    prevBlockHash @2 :Data;
+    blockOwners @3 :List(Text);
+    subBlockNum @4 :List(List(UInt32));
+    inputHashes @5 :List(List(Data));
     union {
-      failedBlock @5 :Void;
-      newBlock @6 :Void;
-      emptyBlock @7 :Void;
-      partialBlock @8 :Void;
+      failedBlock @6 :Void;
+      newBlock @7 :Void;
+      emptyBlock @8 :Void;
+      partialBlock @9 :Void;
     }
+    subBlocks @10 :List(S.SubBlock);
 }
 
 struct BurnInputHashes {

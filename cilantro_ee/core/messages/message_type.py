@@ -29,6 +29,8 @@ class MessageType(MessageBaseType):
     BLOCK_NOTIFICATION = auto()
     BURN_INPUT_HASHES = auto()
 
+    NEW_BLOCK_AND_WORK = auto()
+
     TRANSACTION_BATCH = auto()
     # todo - need a better way to handle internal messages inside another message
     TRANSACTION_DATA = auto()

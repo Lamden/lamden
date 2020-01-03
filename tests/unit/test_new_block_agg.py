@@ -393,7 +393,7 @@ class TestBlockAggregatorController(TestCase):
 
         tasks = asyncio.gather(
             stop(),
-            bc.process_blocks(),
+            bc.process_sbcs_from_delegates(),
             bc.aggregator.start(),
             recieve(),
         )

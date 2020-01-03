@@ -23,15 +23,33 @@ import zmq.asyncio
 
 
 class NBNInbox(AsyncInbox):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, contacts, driver, *args, **kwargs):
         self.q = []
+        self.contacts = contacts
+        self.driver = driver
         super().__init__(*args, **kwargs)
 
     def handle_msg(self, _id, msg):
-        # Make sure it's legit
+        msg_type, msg_blob = Message.unpack_message_2(msg)
 
-        # See if you can store it in the backend?
-        pass
+        if msg_type != MessageType.BLOCK_NOTIFICATION:
+            return
+
+        # Make sure it's legit
+        if block.blockNum < self.driver.latest_block_num + 1:
+            return
+
+        # If sender isnt a masternode, return
+        if sender.hex() not in self.contacts.masternodes:
+            return
+
+        # if 2 / 3 didnt sign, return
+        sub_blocks = [sb for sb in block.subBlocks]
+        for sb in sub_blocks:
+            if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
+                return
+
+        self.q.append(msg_blob)
 
     async def wait_for_next_nbn(self):
         while len(self.q) <= 0:
@@ -44,9 +62,12 @@ class NBNInbox(AsyncInbox):
 
 
 class WorkInbox(AsyncInbox):
-    def __init__(self, validity_timeout, *args, **kwargs):
-        self.q = []
+    def __init__(self, validity_timeout, contacts: VKBook, *args, **kwargs):
+        self.work = {}
         self.validity_timeout = validity_timeout
+        self.contacts = contacts
+
+        self.current_masternodes = self.contacts.masternodes
         super().__init__(*args, **kwargs)
 
     def handle_msg(self, _id, msg):
@@ -66,18 +87,17 @@ class WorkInbox(AsyncInbox):
                        msg=msg_struct.inputHash):
             return
 
-        self.q.append(msg_struct)
+        self.work[msg_struct.sender.hex()] = msg_struct
 
     async def wait_for_next_batch_of_work(self):
+        self.work.clear()
+        self.current_masternodes = self.contacts.masternodes
         # Wait for work from all masternodes that are currently online
         # How do we test if they are online? idk.
-        while len(self.q) <= 0:
+        while len(set(self.current_masternodes) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
 
-        work = self.q.pop(0)
-        self.q.clear()
-
-        return work
+        return self.work
 
 
 class BlockManager:
@@ -112,7 +132,7 @@ class BlockManager:
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True)
         )
-
+        self.pending_sbc = None
         self.running = False
 
     async def send_out(self, msg, socket_id):
@@ -129,12 +149,18 @@ class BlockManager:
         while self.running:
             # wait for NBN
             block = await self.nbn_inbox.wait_for_next_nbn()
-            # Catchup with block
 
+
+            # If its the block that you worked on, commit the db
+            # AKA if you signed the block
+
+            # Else, revert the db and Catchup with block
+            # Block has already been verified to be in 2/3 consensus at this point
             self.catchup_with_new_block(block, sender=b'')
 
             # Request work. Use async / dealers to block until it's done?
             # Refresh sockets here
+            # Turn this into a new message type
             work = await self.work_inbox.wait_for_next_batch_of_work()
 
             filtered_work = []
@@ -162,22 +188,12 @@ class BlockManager:
 
             await asyncio.gather(*tasks)
 
+    # Do this verification shit in the NBN inbox
     def catchup_with_new_block(self, block, sender: bytes):
-        if block.blockNum < self.driver.latest_block_num + 1:
-            return
-
-        # If sender isnt a masternode, return
-        if sender.hex() not in self.contacts.masternodes:
-            return
-
-        # if 2 / 3 didnt sign, return
-        sub_blocks = [sb for sb in block.subBlocks]
-        for sb in sub_blocks:
-            if len(sb.signatures) < len(self.contacts.delegates) * 2 // 3:
-                return
 
             # if you're not in the signatures, run catchup
             # if you are in the signatures, commit db
+        pass
 
     async def execute_work(self, work):
         # Assume single threaded, single process for now.
@@ -264,41 +280,3 @@ class BlockManager:
         )
 
         return sbc
-
-# struct TransactionBatch {
-#     transactions @0 :List(Transaction);
-#     timestamp @1: Float64;
-#     signature @2: Data;
-#     sender @3: Data;
-#     inputHash @4: Data;  # hash of transactions + timestamp
-# }
-
-# struct MetaData {
-#     proof @0 :Data;         # raghu - can be eliminated
-#     signature @1 :Data;
-#     timestamp @2 :Float32;
-# }
-#
-# struct TransactionPayload {
-#     sender @0 :Data;
-#     processor @1: Data;
-#     nonce @2 :UInt64;
-#
-#     stampsSupplied @3 :UInt64;
-#
-#     contractName @4 :Text;
-#     functionName @5 :Text;
-#     kwargs @6 :V.Map(Text, V.Value);
-# }
-#
-# struct Transaction {
-#     metadata @0: MetaData;
-#     payload @1: TransactionPayload;
-# }
-
-# struct TransactionData {
-#     transaction @0 :Transaction;
-#     status @1: UInt8;
-#     state @2: Data;
-#     stampsUsed @3: UInt64;
-# }

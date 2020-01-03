@@ -66,8 +66,7 @@ class BlockAggregatorController:
         if len(block) > 0:
             notification = self.driver.get_block_dict(block, kind)
 
-            del notification['prevBlockHash']
-            del notification['subBlocks']
+            print(notification)
 
             owners = []
             if kind == BNKind.NEW:
@@ -83,8 +82,7 @@ class BlockAggregatorController:
             if kind == BNKind.FAIL:
                 notification['failedBlock'] = None
 
-            block_notification = Message.get_signed_message_packed_2(
-                wallet=self.wallet,
+            block_notification = Message.get_message_packed_2(
                 msg_type=MessageType.BLOCK_NOTIFICATION,
                 **notification
             )

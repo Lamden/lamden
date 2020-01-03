@@ -14,13 +14,22 @@ from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync
 
 from cilantro_ee.core.networking.parameters import Parameters, ServiceType, NetworkParameters
-from cilantro_ee.core.sockets.services import AsyncInbox
+from cilantro_ee.core.sockets.services import AsyncInbox, RequestReplyService
 from contracting.client import ContractingClient
 
 import zmq.asyncio
 import cilantro_ee
 
 cclient = ContractingClient()
+
+
+class PingServer(RequestReplyService):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def handle_msg(self, msg):
+
+        pass
 
 
 class NBNInbox(AsyncInbox):

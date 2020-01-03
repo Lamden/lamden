@@ -5,7 +5,6 @@ from functools import partial
 import zmq
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.networking.network import log
 from cilantro_ee.core.sockets import services
 from cilantro_ee.core.networking import discovery
 
@@ -138,8 +137,8 @@ class PeerServer(services.RequestReplyService):
             self.event_service.serve(),
             self.process_event_subscription_queue()
         ))
-        log.info('Peer services running on {}'.format(self.address))
-        log.info('Event services running on {}'.format(self.event_address))
+        #log.info('Peer services running on {}'.format(self.address))
+        #log.info('Event services running on {}'.format(self.event_address))
 
     def stop(self):
         self.running = False
