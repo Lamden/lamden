@@ -54,7 +54,7 @@ class BlockManager:
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True)
         )
-        self.pending_sbc = None
+        self.pending_sbcs = {}
         self.running = False
 
     async def send_out(self, msg, socket_id):
@@ -67,6 +67,19 @@ class BlockManager:
         except zmq.ZMQError:
             return False
 
+    def did_sign_block(self, block):
+        if len(self.pending_sbcs) == 0:
+            return False
+
+        # We only care if we have the signature at this point
+        # 2/3 consensus was determined in NBN Inbox
+        # Our signature might not have made it into the block, but it's still a valid block
+        for sub_block in block.subBlocks:
+            if self.pending_sbcs.get(sub_block.merkleRoot) is None:
+                return False
+
+        return True
+
     async def run(self):
         while self.running:
             # wait for NBN
@@ -74,10 +87,13 @@ class BlockManager:
 
             # If its the block that you worked on, commit the db
             # AKA if you signed the block
-
-            # Else, revert the db and Catchup with block
-            # Block has already been verified to be in 2/3 consensus at this point
-            self.catchup_with_new_block(block, sender=b'')
+            if self.did_sign_block(block):
+                self.client.commit()
+            else:
+                # Else, revert the db and Catchup with block
+                # Block has already been verified to be in 2/3 consensus at this point
+                self.client.revert()
+                self.catchup_with_new_block(block, sender=b'')
 
             # Request work. Use async / dealers to block until it's done?
             # Refresh sockets here
@@ -188,6 +204,8 @@ class BlockManager:
             hash=merkle.root,
             signer=self.wallet.verifying_key(),
             signature=self.wallet.sign(merkle.root))
+
+        self.pending_sbcs[merkle.root] = merkle_proof
 
         sbc = Message.get_message(
             MessageType.SUBBLOCK_CONTENDER,
