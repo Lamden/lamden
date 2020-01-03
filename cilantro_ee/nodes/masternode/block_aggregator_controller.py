@@ -7,7 +7,7 @@ from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
 from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
-from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
+from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
 
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator, BNKind
 

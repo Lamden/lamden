@@ -2,6 +2,7 @@ from cilantro_ee.nodes.delegate.new.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.delegate.new.work_inbox import WorkInbox
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.services.storage.state import NonceManager
 from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters, Parameters
 
 from cilantro_ee.core.messages.message import Message
@@ -23,9 +24,8 @@ import zmq.asyncio
 
 
 class BlockManager:
-    def __init__(self, socket_base, ctx, wallet: Wallet, network_parameters: NetworkParameters,
-                 contacts: VKBook, validity_timeout=1000, parallelism=4, client=ContractingClient(),
-                 driver=MetaDataStorage()):
+    def __init__(self, socket_base, ctx, wallet: Wallet, contacts: VKBook, network_parameters=NetworkParameters(),
+                 validity_timeout=1000, parallelism=4, client=ContractingClient(), driver=MetaDataStorage(), nonces=NonceManager()):
 
         # VKBook, essentially
         self.contacts = contacts
@@ -47,12 +47,20 @@ class BlockManager:
 
         self.client = client
         self.driver = driver
+        self.nonces = nonces
 
         self.nbn_inbox = NBNInbox(
-            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_NOTIFICATIONS, bind=True)
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_NOTIFICATIONS, bind=True),
+            contacts=self.contacts,
+            driver=self.driver,
+            ctx=self.ctx
         )
         self.work_inbox = WorkInbox(
-            socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True)
+            socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True),
+            nonces=self.nonces,
+            validity_timeout=1000,
+            contacts=self.contacts,
+            ctx=self.ctx
         )
         self.pending_sbcs = {}
         self.running = False

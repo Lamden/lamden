@@ -1,6 +1,5 @@
 from unittest import TestCase
 from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.utils.pow import SHA3POWBytes
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.core.messages.message_type import MessageType

@@ -26,7 +26,7 @@ from cilantro_ee.core.crypto.wallet import Wallet
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
 
-from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
+from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.crypto.transaction import transaction_is_valid, TransactionException
 from cilantro_ee.core.utils.worker import Worker
 

@@ -16,24 +16,21 @@ from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.core.utils.worker import Worker
 
 from cilantro_ee.utils.lprocess import LProcess
 
-from cilantro_ee.constants.block import BLOCK_HEART_BEAT_INTERVAL, MAX_SUB_BLOCK_BUILDERS
+from cilantro_ee.constants.block import BLOCK_HEART_BEAT_INTERVAL
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
-from cilantro_ee.constants import conf
 
 from cilantro_ee.core.messages.message_type import MessageType
 from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.utils.block_sub_block_mapper import BlockSubBlockMapper
-from cilantro_ee.core.crypto.wallet import _verify
+from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 import hashlib
-import asyncio, zmq, time, random
+import asyncio, zmq, random
 import os
 
 

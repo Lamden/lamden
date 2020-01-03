@@ -1,14 +1,12 @@
 from decimal import Decimal
 from cilantro_ee.core.crypto import wallet
-from cilantro_ee.core.utils.pow import SHA3POW, SHA3POWBytes
+from cilantro_ee.core.crypto.pow import SHA3POW, SHA3POWBytes
 from contracting import config
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import time
 import os
 import capnp
-from cilantro_ee.constants import conf
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
