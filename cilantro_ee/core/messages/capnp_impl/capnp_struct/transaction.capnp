@@ -2,6 +2,11 @@
 
 using V = import "values.capnp";
 
+struct Delta {
+    key @0 :Data;
+    value @1 :Data;
+}
+
 struct MetaData {
     proof @0 :Data;         # raghu - can be eliminated
     signature @1 :Data;
@@ -28,7 +33,7 @@ struct Transaction {
 struct TransactionData {
     transaction @0 :Transaction;
     status @1: UInt8;
-    state @2: Data;
+    state @2: List(Delta);
     stampsUsed @3: UInt64;
 }
 

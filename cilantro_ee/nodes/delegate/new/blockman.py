@@ -8,19 +8,23 @@ from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameter
 from cilantro_ee.core.messages.message import Message
 from cilantro_ee.core.messages.message_type import MessageType
 
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree, merklize
 
 from cilantro_ee.core.crypto.wallet import Wallet
 
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
-from contracting.db.encoder import encode
 
 import asyncio
 import heapq
 from datetime import datetime
 import zmq.asyncio
+import os
+import capnp
+import cilantro_ee.core.messages.capnp_impl.capnp_struct as schemas
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class BlockManager:
@@ -145,10 +149,8 @@ class BlockManager:
         results = []
         i = 0
 
-        print(work)
-
         while len(work) > 0:
-            tx_batch = heapq.heappop(work)
+            _, tx_batch = heapq.heappop(work)
             transactions = [tx for tx in tx_batch.transactions]
 
             now = Datetime._from_datetime(
@@ -183,17 +185,15 @@ class BlockManager:
                     auto_commit=False
                 )
 
-                print(output)
-
-                # If we keep a running total, we just have to do a single update per subblock in the case of overlapping keys
-                # This would save time
+                # Encode deltas into a Capnp struct
+                deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
                 tx_data.append(
-                    Message.get_message(
-                        msg_type=MessageType.TRANSACTION_DATA,
+                    transaction_capnp.TransactionData.new_message(
                         transaction=transaction,
                         status=output['status_code'],
-                        state=encode(output['writes'])
-                    )
+                        state=deltas,
+                        stampsUsed=output['stamps_used']
+                    ).to_bytes_packed()
                 )
 
             sbc = self.build_sbc_from_work_results(
@@ -209,7 +209,10 @@ class BlockManager:
 
     def build_sbc_from_work_results(self, input_hash, results, sb_num=0):
         # build sbc
-        merkle = MerkleTree.from_raw_transactions(results)
+        print(results)
+        merkle = merklize(results)
+
+        print(merkle)
 
         _, merkle_proof = Message.get_message(
             MessageType.MERKLE_PROOF,

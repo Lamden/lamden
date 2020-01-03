@@ -13,6 +13,7 @@ struct MerkleProof {
     signature @2: Data;
 }
 
+
 struct SubBlock {
     merkleRoot @0 :Data;
     signatures @1 :List(Data);
