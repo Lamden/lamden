@@ -13,6 +13,10 @@ struct MerkleProof {
     signature @2: Data;
 }
 
+struct MerkleTree {
+    leaves @0 :List(Data);
+    signature @1 :Data;
+}
 
 struct SubBlock {
     merkleRoot @0 :Data;
@@ -24,13 +28,12 @@ struct SubBlock {
 }
 
 struct SubBlockContender {
-    resultHash @0 :Data;
-    inputHash @1 :Data;
-    merkleLeaves @2: List(Data);
-    signature @3 :Data;
-    transactions @4: List(Data);
-    subBlockNum @5: UInt8;
-    prevBlockHash @6: Data;
+    inputHash @0 :Data;
+    transactions @1: List(T.TransactionData);
+    merkleTree @2 :MerkleTree;
+    signer @3 :Data;
+    subBlockNum @4: UInt8;
+    prevBlockHash @5: Data;
 }
 
 struct SubBlockContenders {

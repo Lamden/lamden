@@ -25,6 +25,7 @@ import capnp
 import cilantro_ee.core.messages.capnp_impl.capnp_struct as schemas
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
 class BlockManager:
@@ -193,7 +194,7 @@ class BlockManager:
                         status=output['status_code'],
                         state=deltas,
                         stampsUsed=output['stamps_used']
-                    ).to_bytes_packed()
+                    )
                 )
 
             sbc = self.build_sbc_from_work_results(
@@ -209,28 +210,33 @@ class BlockManager:
 
     def build_sbc_from_work_results(self, input_hash, results, sb_num=0):
         # build sbc
-        print(results)
-        merkle = merklize(results)
+        merkle = merklize([r.to_bytes_packed() for r in results])
+        proof = self.wallet.sign(merkle[0])
 
-        print(merkle)
+        merkle_tree = subblock_capnp.MerkleTree.new_message(
+            leaves=[leaf for leaf in merkle],
+            signature=proof
+        )
 
-        _, merkle_proof = Message.get_message(
-            MessageType.MERKLE_PROOF,
-            hash=merkle.root,
-            signer=self.wallet.verifying_key(),
-            signature=self.wallet.sign(merkle.root))
-
-        self.pending_sbcs[merkle.root] = merkle_proof
-
-        sbc = Message.get_message(
-            MessageType.SUBBLOCK_CONTENDER,
-            resultHash=merkle.root,
+        sbc = subblock_capnp.SubBlockContender.new_message(
             inputHash=input_hash,
-            merkleLeaves=[leaf for leaf in merkle.leaves],
-            signature=merkle_proof,
-            transactions=[tx for tx in results],
+            transactions=[r for r in results],
+            merkleTree=merkle_tree,
+            signer=self.wallet.verifying_key(),
             subBlockNum=sb_num,
             prevBlockHash=self.driver.latest_block_hash
         )
 
+        self.pending_sbcs[merkle[0]] = proof
+
         return sbc
+
+
+# struct SubBlockContender {
+#     inputHash @1 :Data;
+#     transactions @4: List(T.TransactionData);
+#     merkleTree @0 :MerkleTree;
+#     signer @1 :Data;
+#     subBlockNum @5: UInt8;
+#     prevBlockHash @6: Data;
+# }
