@@ -118,7 +118,7 @@ class BlockManager:
                 heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
 
             # Execute work
-            results = await self.execute_work(filtered_work)
+            results = self.execute_work(filtered_work)
 
             # Package as SBCs
             sbcs_msg_blob = Message.get_message_packed_2(
@@ -144,6 +144,8 @@ class BlockManager:
         # Assume single threaded, single process for now.
         results = []
         i = 0
+
+        print(work)
 
         while len(work) > 0:
             tx_batch = heapq.heappop(work)

@@ -11,7 +11,6 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
         # Hash it
         tx_bytes = tx.to_bytes_packed()
         h.update(tx_bytes)
-
     # Add a timestamp
     timestamp = time.time()
     h.update('{}'.format(timestamp).encode())
