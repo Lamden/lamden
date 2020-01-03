@@ -140,7 +140,7 @@ class BlockManager:
             # if you are in the signatures, commit db
         pass
 
-    async def execute_work(self, work):
+    def execute_work(self, work):
         # Assume single threaded, single process for now.
         results = []
         i = 0
@@ -180,6 +180,8 @@ class BlockManager:
                     environment=environment,
                     auto_commit=False
                 )
+
+                print(output)
 
                 # If we keep a running total, we just have to do a single update per subblock in the case of overlapping keys
                 # This would save time

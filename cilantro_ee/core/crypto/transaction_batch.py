@@ -9,7 +9,7 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     h = hashlib.sha3_256()
     for tx in tx_list:
         # Hash it
-        tx_bytes = tx.as_builder().to_bytes_packed()
+        tx_bytes = tx.to_bytes_packed()
         h.update(tx_bytes)
 
     # Add a timestamp
@@ -19,7 +19,7 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
 
     signature = wallet.sign(input_hash)
 
-    msg = Message.get_message_packed_2(
+    msg = Message.get_message(
         msg_type=MessageType.TRANSACTION_BATCH,
         transactions=[t for t in tx_list],
         timestamp=timestamp,
@@ -28,4 +28,4 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
         sender=wallet.verifying_key()
     )
 
-    return msg
+    return msg[1]
