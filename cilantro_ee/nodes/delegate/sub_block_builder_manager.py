@@ -9,9 +9,9 @@
 
 """
 
-from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.core.logger import get_logger
 
-from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.core.block_fetch import BlockFetcher
 from cilantro_ee.nodes.delegate.sub_block_builder import SubBlockBuilder
 
 from cilantro_ee.services.storage.state import MetaDataStorage
@@ -24,9 +24,9 @@ from cilantro_ee.constants.block import BLOCK_HEART_BEAT_INTERVAL
 from cilantro_ee.constants.zmq_filters import DEFAULT_FILTER, NEW_BLK_NOTIF_FILTER
 from cilantro_ee.constants.ports import *
 
-from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
+from cilantro_ee.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
+from cilantro_ee.crypto import BlockSubBlockMapper
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 import hashlib

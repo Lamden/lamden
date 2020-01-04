@@ -1,7 +1,7 @@
 import glob
 import os
 from contracting.client import ContractingClient
-from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 import cilantro_ee
 import json

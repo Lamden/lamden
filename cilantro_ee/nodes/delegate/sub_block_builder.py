@@ -18,16 +18,16 @@ from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.constants.ports import MN_TX_PUB_PORT
 from cilantro_ee.constants.block import INPUT_BAG_TIMEOUT
 
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
-from cilantro_ee.core.containers.linked_hashtable import LinkedHashTable
+from cilantro_ee.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.linked_hashtable import LinkedHashTable
 
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 
-from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.core.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
 
-from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
-from cilantro_ee.core.crypto.transaction import transaction_is_valid, TransactionException
+from cilantro_ee.crypto import BlockSubBlockMapper
+from cilantro_ee.crypto import transaction_is_valid, TransactionException
 from cilantro_ee.core.utils.worker import Worker
 
 # we need to have our own constant that can override
@@ -36,7 +36,7 @@ from contracting.db.cr.client import SubBlockClient
 from contracting.db.cr.callback_data import SBData
 
 from cilantro_ee.utils.hasher import Hasher
-from cilantro_ee.core.crypto.wallet import _verify
+from cilantro_ee.crypto import _verify
 import asyncio, zmq.asyncio
 from datetime import datetime
 import hashlib

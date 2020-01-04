@@ -2,55 +2,24 @@ import asyncio
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 
-from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.core.networking.network import Network
-from cilantro_ee.services.block_fetch import BlockFetcher
+from cilantro_ee.core.block_server import BlockServer
+from cilantro_ee.networking import Network
+from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController, BNKind
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.sockets.socket_book import SocketBook
+from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync
 
-from cilantro_ee.core.networking.parameters import Parameters, ServiceType, NetworkParameters
-from cilantro_ee.core.sockets.services import AsyncInbox, RequestReplyService
+from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
 from contracting.client import ContractingClient
 
 import zmq.asyncio
 import cilantro_ee
 
 cclient = ContractingClient()
-
-
-class PingServer(RequestReplyService):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def handle_msg(self, msg):
-
-        pass
-
-
-class NBNInbox(AsyncInbox):
-    def __init__(self, *args, **kwargs):
-        self.q = []
-        super().__init__(*args, **kwargs)
-
-    def handle_msg(self, _id, msg):
-        # Make sure it's legit
-
-        # See if you can store it in the backend?
-        pass
-
-    async def wait_for_next_nbn(self):
-        while len(self.q) <= 0:
-            await asyncio.sleep(0)
-
-        nbn = self.q.pop(0)
-        self.q.clear()
-
-        # Store block
 
 
 class NewMasternode:

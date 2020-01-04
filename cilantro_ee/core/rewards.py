@@ -3,7 +3,7 @@ from contracting.db.driver import ContractDriver
 from cilantro_ee.services.storage.vkbook import VKBook
 import capnp
 import os
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 

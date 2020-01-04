@@ -5,7 +5,7 @@ from cilantro_ee.nodes.base import NodeBase
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
 from cilantro_ee.nodes.masternode.webserver import start_webserver
-from cilantro_ee.services.block_server import BlockServerProcess
+from cilantro_ee.core.block_server import BlockServerProcess
 
 import os, random
 

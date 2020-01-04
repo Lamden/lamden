@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.utils import Hasher
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import MerkleTree
 import secrets
 
 

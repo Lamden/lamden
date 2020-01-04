@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.core.crypto.block_sub_block_mapper import BlockSubBlockMapper
+from cilantro_ee.crypto import BlockSubBlockMapper
 
 
 class TestBlockSubBlockMapper(TestCase):

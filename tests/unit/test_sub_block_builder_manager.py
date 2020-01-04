@@ -1,19 +1,17 @@
 
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.logger.base import get_logger
-from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.core.messages.message import Message
+from cilantro_ee.crypto import Wallet
+from cilantro_ee.core.logger import get_logger
+from cilantro_ee.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
 
 from cilantro_ee.nodes.delegate.sub_block_builder_manager import SubBlockHandler
 from cilantro_ee.nodes.delegate.sub_block_builder_manager import SubBlockManager
 from cilantro_ee.nodes.delegate.sub_block_builder_manager import SubBlockBuilderManager
 
-from cilantro_ee.services.storage.vkbook import VKBook
 from tests.utils.constitution_builder import ConstitutionBuilder
 
 from unittest import TestCase
-from unittest import mock
 from unittest.mock import MagicMock
 
 import hashlib

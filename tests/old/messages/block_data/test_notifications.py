@@ -1,4 +1,4 @@
-from cilantro_ee.core.messages.notification import *
+from cilantro_ee.messages.notification import *
 # import unittest
 from unittest import TestCase
 import hashlib

@@ -1,10 +1,9 @@
 from unittest import TestCase
 import zmq.asyncio
 import asyncio
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.sockets.authentication import SocketAuthenticator
+from cilantro_ee.crypto import Wallet
+from cilantro_ee.sockets.authentication import SocketAuthenticator
 import os
-from zmq.utils import z85
 from cilantro_ee.services.storage.vkbook import PhoneBook
 from nacl.signing import SigningKey
 

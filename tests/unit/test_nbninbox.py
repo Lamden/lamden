@@ -8,10 +8,10 @@ from contracting.client import ContractingClient
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.core.sockets.services import _socket
+from cilantro_ee.sockets.services import _socket
 
 import zmq.asyncio
 import asyncio

@@ -1,6 +1,6 @@
 from cilantro_ee.messages.transaction.data import TransactionDataBuilder
 from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import MerkleTree
 from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
 from cilantro_ee.messages.consensus.merkle_signature import MerkleSignature
 

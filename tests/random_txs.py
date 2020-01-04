@@ -1,10 +1,10 @@
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.crypto.transaction import TransactionBuilder
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto import TransactionBuilder
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import MerkleTree
 import random
 import json
 import hashlib

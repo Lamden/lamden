@@ -3,14 +3,14 @@ from cilantro_ee.nodes.delegate.new.work_inbox import WorkInbox
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.state import NonceManager
-from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters, Parameters
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, Parameters
 
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.core.containers.merkle_tree import MerkleTree, merklize
+from cilantro_ee.containers.merkle_tree import merklize
 
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.decimal import ContractingDecimal
@@ -22,7 +22,7 @@ from datetime import datetime
 import zmq.asyncio
 import os
 import capnp
-import cilantro_ee.core.messages.capnp_impl.capnp_struct as schemas
+import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -84,9 +84,6 @@ class BlockManager:
         if len(self.pending_sbcs) == 0:
             return False
 
-        # We only care if we have the signature at this point
-        # 2/3 consensus was determined in NBN Inbox
-        # Our signature might not have made it into the block, but it's still a valid block
         for sub_block in block.subBlocks:
             if self.pending_sbcs.get(sub_block.merkleRoot) is None:
                 return False
@@ -138,7 +135,6 @@ class BlockManager:
 
             await asyncio.gather(*tasks)
 
-    # Do this verification shit in the NBN inbox
     def catchup_with_new_block(self, block, sender: bytes):
 
             # if you're not in the signatures, run catchup

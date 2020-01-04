@@ -1,13 +1,13 @@
-from cilantro_ee.core.sockets.socket_book import SocketBook
+from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.messages.message import Message, MessageType
+from cilantro_ee.crypto import Wallet
+from cilantro_ee.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
-from cilantro_ee.core.sockets.services import get, defer
+from cilantro_ee.sockets.services import get, defer
 from cilantro_ee.services.storage.master import CilantroStorageDriver
-from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 import zmq.asyncio
 import asyncio
 from collections import Counter

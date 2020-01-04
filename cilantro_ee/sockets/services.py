@@ -1,4 +1,4 @@
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from cilantro_ee.core.logger import get_logger
 import zmq
 import asyncio

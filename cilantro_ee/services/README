@@ -1,8 +1,0 @@
-level 3 Services
-- storage
-- multithread seneca client
-- webserver
-- block minter
-- scheduler
-- overlay
-- lookup/explorer

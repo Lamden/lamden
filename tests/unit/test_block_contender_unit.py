@@ -2,12 +2,12 @@ from unittest import TestCase
 from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 import secrets
 from tests import random_txs
 from collections import namedtuple
 import hashlib
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 #from cilantro_ee.constants.system_config import NUM_SB_PER_BLOCK, NUM_SB_BUILDERS
 import os
 import capnp

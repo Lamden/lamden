@@ -1,15 +1,15 @@
 from unittest import TestCase
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 import zmq
 import zmq.asyncio
 import asyncio
 
 from tests import random_txs
 
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
-from cilantro_ee.core.networking.parameters import ServiceType
+from cilantro_ee.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
+from cilantro_ee.networking.parameters import ServiceType
 
 
 async def stop_server(s, timeout):

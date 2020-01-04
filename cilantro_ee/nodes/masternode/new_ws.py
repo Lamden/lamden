@@ -9,11 +9,11 @@ from cilantro_ee.services.storage.master import MasterStorage
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.core.nonces import NonceManager
 
-from cilantro_ee.core.crypto.transaction import transaction_is_valid, \
+from cilantro_ee.crypto import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
     TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
 
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 

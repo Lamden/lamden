@@ -1,5 +1,5 @@
 from contracting.db.driver import ContractDriver
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 

@@ -1,8 +1,8 @@
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT, DISCOVERY_PORT, BLOCK_SERVER, MN_PUB_PORT, \
     DELEGATE_PUB_PORT
-from cilantro_ee.core.sockets import services
+from cilantro_ee.sockets import services
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.sockets.services import get
+from cilantro_ee.sockets.services import get
 
 import json
 import zmq.asyncio

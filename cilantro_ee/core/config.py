@@ -1,8 +1,8 @@
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.master import CilantroStorageDriver
-from cilantro_ee.core.networking.parameters import NetworkParameters
+from cilantro_ee.networking.parameters import NetworkParameters
 from contracting.client import ContractingClient
 
 import zmq.asyncio

@@ -1,16 +1,16 @@
 from cilantro_ee.constants import conf
 from cilantro_ee.constants.ports import DHT_PORT
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.core.networking.parameters import ServiceType, NetworkParameters
-from cilantro_ee.core.networking.peers import KTable, PeerServer
-from cilantro_ee.core.networking import discovery
-from cilantro_ee.core.sockets import services
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
+from cilantro_ee.networking import KTable, PeerServer
+from cilantro_ee.networking import discovery
+from cilantro_ee.sockets import services
 
 from copy import deepcopy
 import asyncio
 import json
 import zmq
-from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 
 import random
 
@@ -232,7 +232,7 @@ class Network:
 
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
-            return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries-1)
+            return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1)
 
     def stop(self):
         self.peer_service.stop()

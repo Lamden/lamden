@@ -1,7 +1,6 @@
-from .top import TopBlockManager
 import os
 import capnp
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import bson
 import hashlib
 

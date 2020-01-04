@@ -1,17 +1,8 @@
 import asyncio
-from multiprocessing import Queue
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 from cilantro_ee.services.overlay.server import OverlayServer
-from cilantro_ee.nodes.masternode.webserver import start_webserver
-from cilantro_ee.services.block_server import BlockServerProcess, BlockServer
-from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregatorController
-from cilantro_ee.utils.lprocess import LProcess
-
-import random
-import os
 
 
 class NewDelegate:

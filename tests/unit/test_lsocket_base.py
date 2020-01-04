@@ -1,11 +1,10 @@
 from unittest import TestCase
-from unittest import mock
 from unittest.mock import MagicMock
 
-import zmq, zmq.asyncio, asyncio
+import zmq, zmq.asyncio
 from cilantro_ee.core.sockets.lsocket import *
 from cilantro_ee.core.sockets.socket_manager import *
-from cilantro_ee.core.crypto import wallet
+from cilantro_ee.crypto import wallet
 from cilantro_ee.messages.base.base_signal import SignalBase
 
 

@@ -1,24 +1,19 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets import services
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.sockets import services
+from cilantro_ee.crypto import Wallet
 
-from cilantro_ee.services.block_fetch import BlockFetcher
-from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.block_fetch import BlockFetcher
+from cilantro_ee.core.block_server import BlockServer
 from cilantro_ee.core import canonical
 import secrets
 from cilantro_ee.services.storage.master import CilantroStorageDriver
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.contracts import sync
-from cilantro_ee.core.sockets.socket_book import SocketBook
 
-import time
 import zmq.asyncio
 import zmq
 import asyncio
-import hashlib
 from tests import random_txs
 import os
 

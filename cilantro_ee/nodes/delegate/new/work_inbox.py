@@ -1,12 +1,12 @@
 import asyncio
 import hashlib
 
-from cilantro_ee.core.crypto.transaction import transaction_is_valid, TransactionException
-from cilantro_ee.core.crypto.wallet import _verify
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.crypto import transaction_is_valid, TransactionException
+from cilantro_ee.crypto import _verify
+from cilantro_ee.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.core.nonces import NonceManager
-from cilantro_ee.core.sockets.services import AsyncInbox
+from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.services.storage.vkbook import VKBook
 
 

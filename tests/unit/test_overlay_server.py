@@ -2,10 +2,10 @@ from cilantro_ee.services.overlay.new_server import OverlayServer, OverlayClient
 from unittest import TestCase
 import zmq
 import zmq.asyncio
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 import asyncio
-from cilantro_ee.core.sockets.services import _socket, get
-from cilantro_ee.core.messages.message import MessageType, Message
+from cilantro_ee.sockets.services import _socket, get
+from cilantro_ee.messages.message import MessageType, Message
 from cilantro_ee.contracts import sync
 from cilantro_ee.services.storage.vkbook import VKBook
 

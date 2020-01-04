@@ -4,7 +4,6 @@ import nacl.signing
 from zmq.utils import z85
 import secrets
 from . import zbase
-from nacl.bindings import crypto_sign_ed25519_sk_to_curve25519
 
 
 def generate_keys(seed=None) -> tuple:

@@ -1,19 +1,19 @@
 from unittest import TestCase
 from cilantro_ee.nodes.delegate.new.blockman import BlockManager
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from tests.utils.constitution_builder import ConstitutionBuilder
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
 from contracting.client import ContractingClient
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.crypto.transaction_batch import transaction_list_to_transaction_batch
-from cilantro_ee.core.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto import transaction_list_to_transaction_batch
+from cilantro_ee.crypto import TransactionBuilder
 import zmq.asyncio
 import asyncio
 
 from contracting.stdlib.bridge.time import Datetime
 from datetime import datetime
 from contracting.db.encoder import encode
-import json
+
 
 class TestBlockManager(TestCase):
     def setUp(self):

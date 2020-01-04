@@ -6,7 +6,7 @@ from cilantro_ee.messages.consensus.sub_block_contender import SubBlockContender
 from cilantro_ee.messages.consensus.merkle_signature import build_test_merkle_sig
 from cilantro_ee.messages.transaction.data import TransactionDataBuilder
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES, TESTNET_DELEGATES
-from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import MerkleTree
 from unittest import TestCase
 from cilantro_ee.services.storage.vkbook import VKBook
 import unittest

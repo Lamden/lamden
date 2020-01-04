@@ -1,10 +1,10 @@
 from unittest import TestCase
 from cilantro_ee.nodes.masternode.rate_limiter import RateLimiter
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from cilantro_ee.services.storage.state import NonceManager
-from cilantro_ee.core.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto import TransactionBuilder
 from contracting import config
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 

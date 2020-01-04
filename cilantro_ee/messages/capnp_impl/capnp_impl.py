@@ -2,11 +2,9 @@ import os
 import time
 import capnp
 
-from cilantro_ee.core.messages.message_type import MessageType
 import struct
-from cilantro_ee.core.crypto.wallet import _sign
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.crypto import Wallet
+from cilantro_ee.messages.message_type import MessageType
 
 
 def pack(i: int):
@@ -19,7 +17,7 @@ def unpack(b: bytes):
 
 class CapnpImpl:
     def __init__(self):
-        from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+        from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 
         self.blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
         self.notification_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/notification.capnp')

@@ -1,6 +1,6 @@
-from cilantro_ee.core.sockets import services
+from cilantro_ee.sockets import services
 import zmq.asyncio
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 from unittest import TestCase
 import asyncio
 

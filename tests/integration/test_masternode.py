@@ -1,12 +1,12 @@
 from cilantro_ee.nodes.masternode.masternode import NewMasternode
 from unittest import TestCase
-from cilantro_ee.core.networking.discovery import *
+from cilantro_ee.networking.discovery import *
 import zmq
 import zmq.asyncio
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto import Wallet
 import zmq.asyncio
 import asyncio
-from cilantro_ee.core.networking.network import Network
+from cilantro_ee.networking import Network
 from contracting.client import ContractingClient
 
 import os
