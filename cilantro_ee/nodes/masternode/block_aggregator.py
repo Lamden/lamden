@@ -2,7 +2,7 @@ from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.nodes.masternode.block_contender import BlockContender
 from cilantro_ee.messages.message import Message
 
-from cilantro_ee.crypto import BlockSubBlockMapper
+from cilantro_ee.crypto.block_sub_block_mapper import BlockSubBlockMapper
 
 import time
 import asyncio

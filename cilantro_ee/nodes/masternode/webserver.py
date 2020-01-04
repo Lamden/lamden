@@ -1,15 +1,15 @@
 from sanic import Sanic
 from sanic import response
 #from secure import SecureHeaders
-from cilantro_ee.core.logger import get_logger
+from cilantro_ee.logger import get_logger
 from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
 
 from cilantro_ee.constants import conf
 from cilantro_ee.messages.capnp_impl.capnp_impl import pack
-from cilantro_ee.services.storage.master import MasterStorage
-from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.storage.master import MasterStorage
+from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.core.nonces import NonceManager
 
 from cilantro_ee.messages.message_type import MessageType

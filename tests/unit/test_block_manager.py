@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.delegate.new.blockman import BlockManager
+from cilantro_ee.nodes.delegate.blockman import BlockManager
 from cilantro_ee.crypto import Wallet
 from tests.utils.constitution_builder import ConstitutionBuilder
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook

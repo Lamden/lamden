@@ -1,4 +1,4 @@
-from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.logger.base import get_logger
 import json
 from cilantro_ee.constants import conf
 from contracting.db.driver import RocksDriver

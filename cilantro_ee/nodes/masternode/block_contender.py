@@ -1,11 +1,11 @@
-from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.core.logger import get_logger
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.state import MetaDataStorage
+from cilantro_ee.logger.base import get_logger
 from cilantro_ee.containers.merkle_tree import MerkleTree
 
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.messages.message import Message
-from cilantro_ee.crypto import _verify
+from cilantro_ee.crypto.wallet import _verify
 
 from collections import defaultdict
 from typing import List

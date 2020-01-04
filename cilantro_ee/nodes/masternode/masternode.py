@@ -1,14 +1,14 @@
 import asyncio
-from cilantro_ee.core.logger import get_logger
+from cilantro_ee.logger.base import get_logger
 from cilantro_ee.constants import conf
 
 from cilantro_ee.core.block_server import BlockServer
-from cilantro_ee.networking import Network
+from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController, BNKind
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer
 from cilantro_ee.contracts import sync

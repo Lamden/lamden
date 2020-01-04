@@ -1,7 +1,7 @@
 from unittest import TestCase
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
-from cilantro_ee.nodes.delegate.new.work_inbox import WorkInbox
-from cilantro_ee.nodes.delegate.new.new_block_inbox import NBNInbox, BlockNumberMismatch, NotBlockNotificationMessageType
+from cilantro_ee.nodes.delegate.work_inbox import WorkInbox
+from cilantro_ee.nodes.delegate.new_block_inbox import NBNInbox, BlockNumberMismatch, NotBlockNotificationMessageType
 from tests.utils.constitution_builder import ConstitutionBuilder
 
 from contracting.client import ContractingClient
