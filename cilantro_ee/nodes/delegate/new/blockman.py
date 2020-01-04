@@ -188,14 +188,14 @@ class BlockManager:
 
                 # Encode deltas into a Capnp struct
                 deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
-                tx_data.append(
-                    transaction_capnp.TransactionData.new_message(
+                tx_output = transaction_capnp.TransactionData.new_message(
                         transaction=transaction,
                         status=output['status_code'],
                         state=deltas,
                         stampsUsed=output['stamps_used']
                     )
-                )
+
+                tx_data.append(tx_output)
 
             sbc = self.build_sbc_from_work_results(
                 input_hash=tx_batch.inputHash,
@@ -209,7 +209,6 @@ class BlockManager:
         return results
 
     def build_sbc_from_work_results(self, input_hash, results, sb_num=0):
-        # build sbc
         merkle = merklize([r.to_bytes_packed() for r in results])
         proof = self.wallet.sign(merkle[0])
 
@@ -230,13 +229,3 @@ class BlockManager:
         self.pending_sbcs[merkle[0]] = proof
 
         return sbc
-
-
-# struct SubBlockContender {
-#     inputHash @1 :Data;
-#     transactions @4: List(T.TransactionData);
-#     merkleTree @0 :MerkleTree;
-#     signer @1 :Data;
-#     subBlockNum @5: UInt8;
-#     prevBlockHash @6: Data;
-# }
