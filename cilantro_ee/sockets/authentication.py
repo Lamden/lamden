@@ -2,13 +2,11 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.error import ZMQBaseError
 from zmq.auth.certs import _write_key_file, _cert_public_banner, load_certificate
 from zmq.utils import z85
-import os
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 import shutil
 import zmq.asyncio
 import asyncio
 import pathlib
-from nacl.signing import VerifyKey
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 class SocketAuthenticator:

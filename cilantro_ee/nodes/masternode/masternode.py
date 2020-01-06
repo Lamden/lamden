@@ -9,6 +9,7 @@ from cilantro_ee.core.block_fetch import BlockFetcher
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.sockets.socket_book import SocketBook
+from cilantro_ee.sockets.services import send_out
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.contracts import sync
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
@@ -32,8 +33,6 @@ class NewMasternode:
         self.ctx = ctx
         self.network_parameters = network_parameters
 
-        conf.HOST_VK = self.wallet.verifying_key()
-
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.overwrite = overwrite
@@ -53,11 +52,9 @@ class NewMasternode:
             network_parameters=network_parameters
         )
 
-        self.block_agg_controller = None
+        self.webserver = WebServer(wallet=wallet, port=webserver_port)
 
         self.tx_batcher = TransactionBatcher(wallet=wallet, queue=[])
-
-        self.webserver = WebServer(wallet=wallet, port=webserver_port)
 
         self.vkbook = None
 
@@ -112,25 +109,13 @@ class NewMasternode:
 
         await self.webserver.start()
 
-    async def send_out(self, msg, socket_id):
-        socket = self.ctx.socket(zmq.DEALER)
-        socket.connect(str(socket_id))
-
-        try:
-            socket.send(msg, zmq.NOBLOCK)
-            return True
-        except zmq.ZMQError:
-            return False
-
     async def send_batch_to_delegates(self):
         tx_batch = self.tx_batcher.pack_current_queue()
-
-        await self.parameters.refresh()
 
         # Send out messages to delegates
         tasks = []
         for k, v in self.parameters.get_delegate_sockets(service=ServiceType.TX_BATCHER):
-            tasks.append(self.send_out(tx_batch, v))
+            tasks.append(send_out(tx_batch, v))
 
         await asyncio.gather(*tasks)
 
@@ -138,7 +123,7 @@ class NewMasternode:
         # Send out current NBN to everyone
         tasks = []
         for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS):
-            tasks.append(self.send_out(self.current_nbn, v))
+            tasks.append(send_out(self.current_nbn, v))
 
         await asyncio.gather(*tasks)
 
@@ -149,15 +134,24 @@ class NewMasternode:
 
         while self.running:
             # Else, batch some more txs
+            await self.parameters.refresh()
             await self.send_batch_to_delegates()
 
-            subblocks = await self.aggregator.gather_subblocks(quorum=1)
+            subblocks = await self.aggregator.gather_subblocks(quorum=self.vkbook.delegate_quorum_max)
             block = subblock_contender_list_to_block(subblocks)
 
             self.current_nbn = block
 
-            # If entire block is empty
-            if kind == BNKind.SKIP:
+            # Check to see if this is a skip block
+            skip_block = True
+            for sb in block.subBlocks:
+                # A skip block has no transactions in any of the sub blocks
+                if len(sb.transactions):
+                    skip_block = False
+                    break
+
+            # If so, hang until you get a new block or some work
+            if skip_block and len(self.tx_batcher.queue) == 0:
                 await self.nbn_inbox.wait_for_next_nbn()
 
             await self.send_nbn_to_everyone()
@@ -165,5 +159,4 @@ class NewMasternode:
     def stop(self):
         self.block_server.stop()
         self.network.stop()
-        self.block_agg_controller.stop()
         self.webserver.app.stop()

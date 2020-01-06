@@ -1,5 +1,5 @@
-from cilantro_ee.crypto import Wallet
-from cilantro_ee.core.logger import get_logger
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.logger.base import get_logger
 import zmq
 import asyncio
 import json
@@ -308,3 +308,18 @@ class AsyncOutbox:
 
     def send(self, _id, msg_type, msg_payload):
         pass
+
+
+async def send_out(self, msg, socket_id):
+    socket = self.ctx.socket(zmq.DEALER)
+    socket.connect(str(socket_id))
+
+    try:
+        socket.send(msg, zmq.NOBLOCK)
+        return True
+    except zmq.ZMQError:
+        return False
+
+
+async def multicast():
+    pass

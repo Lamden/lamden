@@ -7,6 +7,7 @@ import os
 
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
+from cilantro_ee.containers.merkle_tree import verify_merkle_tree
 
 import asyncio
 import hashlib
@@ -76,8 +77,8 @@ class SBCInbox(AsyncInbox):
             raise SBCBlockHashMismatchError
 
         # idk
-        if len(sbc.merkleLeaves) > 0:
-            if not MerkleTree.verify_tree_from_bytes(leaves=sbc.merkleLeaves, root=sbc.resultHash):
+        if len(sbc.merkleTree.leaves) > 0:
+            if not verify_merkle_tree(leaves=sbc.merkleTree.leaves, expected_root=sbc.merkleTree.leaves[0]):
                 return False
 
         for tx in sbc.transactions:

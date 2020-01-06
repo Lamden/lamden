@@ -1,10 +1,10 @@
-from cilantro_ee.crypto import Wallet
-from cilantro_ee.crypto import TransactionBuilder
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import merklize
 import random
 import json
 import hashlib
@@ -53,11 +53,13 @@ def random_packed_tx(nonce=0, processor=None, give_stamps=False):
 def random_tx_data(tx:transaction_capnp.Transaction):
     get_set = {secrets.token_hex(8): secrets.token_hex(8)}
 
+    deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in get_set.items()]
+
     # Put this hashmap as the state of the contract execution and contruct it into a capnp struct
     tx_data = transaction_capnp.TransactionData.new_message(
         transaction=tx,
         status=1,
-        state=json.dumps(get_set),
+        state=deltas,
         stampsUsed=random.randint(100_000, 1_000_000)
     )
     return tx_data
@@ -65,7 +67,7 @@ def random_tx_data(tx:transaction_capnp.Transaction):
 
 def subblock_from_txs(txs, idx=0):
     # Build a subblock. One will do
-    tree = MerkleTree.from_raw_transactions([tx.to_bytes_packed() for tx in txs])
+    tree = merklize([tx.to_bytes_packed() for tx in txs])
 
     w = Wallet()
 
@@ -92,35 +94,38 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisone
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)
         tx_data = random_tx_data(packed_tx)
-        transactions.append(tx_data.to_bytes_packed())
+        transactions.append(tx_data)
 
-    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+    tree = merklize([tx.to_bytes_packed() for tx in transactions])
 
     if poisoned_sig is not None:
         sig = poisoned_sig
     else:
-        sig = w.sign(tree.root)
-
-    proof = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w.verifying_key(), signature=sig)
+        sig = w.sign(tree[0])
 
     if poison_result_hash:
         result_hash = secrets.token_bytes(32)
     else:
-        result_hash = tree.root
+        result_hash = tree[0]
 
     if poison_tx:
         packed_tx = random_packed_tx(nonce=0)
         tx_data = random_tx_data(packed_tx)
         transactions[0] = tx_data.to_bytes_packed()
 
+    merkle_tree = subblock_capnp.MerkleTree.new_message(
+        leaves=[leaf for leaf in tree],
+        signature=sig
+    )
+
     sb = subblock_capnp.SubBlockContender.new_message(
-        resultHash=result_hash,
         inputHash=input_hash,
-        merkleLeaves=[leaf for leaf in tree.leaves],
-        signature=proof.to_bytes_packed(),
-        transactions=[tx for tx in transactions],
+        transactions=[r for r in transactions],
+        merkleTree=merkle_tree,
+        signer=w.verifying_key(),
         subBlockNum=idx,
-        prevBlockHash=prev_block_hash)
+        prevBlockHash=prev_block_hash
+    )
 
     return sb
 
@@ -132,7 +137,7 @@ def double_sbc_from_tx(input_hash, prev_block_hash, txs=20, idx=0, w1=Wallet(), 
         tx_data = random_tx_data(packed_tx)
         transactions.append(tx_data.to_bytes_packed())
 
-    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+    tree = merklize([tx for tx in transactions])
 
     sig_1 = w1.sign(tree.root)
     proof_1 = subblock_capnp.MerkleProof.new_message(hash=tree.root, signer=w1.verifying_key(), signature=sig_1)
@@ -168,7 +173,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
         tx_data = random_tx_data(packed_tx)
         transactions.append(tx_data.to_bytes_packed())
 
-    tree = MerkleTree.from_raw_transactions([tx for tx in transactions])
+    tree = merklize([tx for tx in transactions])
 
     sbcs = []
 
