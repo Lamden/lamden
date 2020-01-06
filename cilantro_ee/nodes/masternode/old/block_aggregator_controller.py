@@ -9,7 +9,7 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.crypto.block_sub_block_mapper import BlockSubBlockMapper
 
-from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator, BNKind
+from cilantro_ee.nodes.masternode.old.block_aggregator import BlockAggregator, BNKind
 
 
 # Create socket base

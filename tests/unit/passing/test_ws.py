@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.webserver import app, client
-import json
+from cilantro_ee.nodes.masternode.old.webserver import app
+
 
 class TestWS(TestCase):
     def test_app(self):

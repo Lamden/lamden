@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.block_contender import SubBlockGroup, BlockContender
+from cilantro_ee.nodes.masternode.old.block_contender import SubBlockGroup, BlockContender
 from cilantro_ee.services.storage.state import MetaDataStorage
 from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.crypto import Wallet

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.rate_limiter import RateLimiter
+from cilantro_ee.nodes.masternode.old.rate_limiter import RateLimiter
 from cilantro_ee.crypto import Wallet
 from cilantro_ee.services.storage.state import NonceManager
 from cilantro_ee.crypto import TransactionBuilder

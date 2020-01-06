@@ -7,8 +7,8 @@ import asyncio
 import secrets
 from cilantro_ee.services.storage.state import MetaDataStorage
 
-from cilantro_ee.nodes.masternode.block_aggregator import BlockAggregator
-from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController
+from cilantro_ee.nodes.masternode.old.block_aggregator import BlockAggregator
+from cilantro_ee.nodes.masternode.old.block_aggregator_controller import BlockAggregatorController
 from cilantro_ee.sockets.services import _socket
 from unittest import TestCase
 from tests import random_txs

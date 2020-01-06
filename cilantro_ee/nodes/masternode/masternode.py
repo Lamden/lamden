@@ -7,7 +7,7 @@ from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.block_aggregator_controller import BlockAggregatorController, BNKind
+from cilantro_ee.nodes.masternode.old.block_aggregator_controller import BlockAggregatorController, BNKind
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.nodes.masternode.new_ws import WebServer

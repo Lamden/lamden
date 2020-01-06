@@ -1,6 +1,5 @@
 from cilantro_ee.core.nonces import NonceManager
-from cilantro_ee.messages.message_type import MessageType
-from cilantro_ee.messages.message import Message
+from cilantro_ee.messages import Message, MessageType
 from cilantro_ee.constants.batcher import BATCHER_SLEEP_INTERVAL, MAX_TXN_SUBMISSION_DELAY, MAX_TXNS_PER_SUB_BLOCK
 
 import hashlib

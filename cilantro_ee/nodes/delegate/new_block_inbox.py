@@ -1,10 +1,8 @@
 import asyncio
 
-from cilantro_ee.messages.message import Message
-from cilantro_ee.messages.message_type import MessageType
+from cilantro_ee.messages import MessageType, Message
 from cilantro_ee.sockets.services import AsyncInbox
-from cilantro_ee.services.storage.state import MetaDataStorage
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage import MetaDataStorage, VKBook
 
 
 class BlockNotificationException(Exception):
