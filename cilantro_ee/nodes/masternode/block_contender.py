@@ -132,7 +132,7 @@ class CurrentContenders:
             pass
 
 
-class BlockAgg:
+class Aggregator:
     def __init__(self):
         self.sbc_inbox = SBCInbox()
 

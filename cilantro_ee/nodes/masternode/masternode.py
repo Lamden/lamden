@@ -7,13 +7,13 @@ from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.nodes.masternode.old.block_aggregator_controller import BlockAggregatorController, BNKind
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.sockets.socket_book import SocketBook
-from cilantro_ee.nodes.masternode.new_ws import WebServer
+from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.contracts import sync
-
+from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
+from cilantro_ee.crypto.transforms import subblock_contender_list_to_block
 from contracting.client import ContractingClient
 
 import zmq.asyncio
@@ -65,6 +65,8 @@ class NewMasternode:
         self.current_nbn = None
         self.running = True
 
+        self.aggregator = Aggregator()
+
         self.nbn_inbox = NBNInbox()
 
     async def start(self):
@@ -105,16 +107,6 @@ class NewMasternode:
 
         # Catchup
         await block_fetcher.sync()
-
-        self.block_agg_controller = BlockAggregatorController(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            socket_base=self.socket_base,
-            network_parameters=self.network_parameters,
-            vkbook=self.vkbook
-        )
-
-        await self.block_agg_controller.start()
 
         self.webserver.queue = self.tx_batcher.queue
 
@@ -159,10 +151,12 @@ class NewMasternode:
             # Else, batch some more txs
             await self.send_batch_to_delegates()
 
-            # Get's next block from block agg. Block agg will take care of storing new blocks automatically
-            block, kind = await self.block_agg_controller.process_sbcs_from_delegates()
+            subblocks = await self.aggregator.gather_subblocks(quorum=1)
+            block = subblock_contender_list_to_block(subblocks)
+
             self.current_nbn = block
 
+            # If entire block is empty
             if kind == BNKind.SKIP:
                 await self.nbn_inbox.wait_for_next_nbn()
 
