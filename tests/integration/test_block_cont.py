@@ -329,3 +329,30 @@ class TestAggregator(TestCase):
         self.assertEqual(res[1].merkleTree.leaves[0], 'res_2')
         self.assertEqual(res[2].merkleTree.leaves[0], 'res_3')
         self.assertEqual(res[3].merkleTree.leaves[0], 'res_4')
+
+    def test_block_dropped_failed_consenus_returns_none(self):
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+
+        c1 = MockContenders([MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)])
+
+        c2 = MockContenders([MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_X', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)])
+
+        c3 = MockContenders([MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_i', 'res_X', 2),
+                             MockSBC('input_4', 'res_X', 3)])
+
+        a.sbc_inbox.q = [c1, c2, c3]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        self.assertEqual(res[0].merkleTree.leaves[0], 'res_1')
+        self.assertEqual(res[1].merkleTree.leaves[0], 'res_2')
+        self.assertEqual(res[2].merkleTree.leaves[0], 'res_3')
+        self.assertEqual(res[3], None)

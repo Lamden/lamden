@@ -100,6 +100,9 @@ class SBCInbox(AsyncInbox):
                 if expected_tree[i] != sbc.merkleTree.leaves[i]:
                     raise SBCMerkleLeafVerificationError
 
+    def has_sbc(self):
+        return len(self.q) > 0
+
     async def receive_sbc(self):
         while len(self.q) <= 0:
             await asyncio.sleep(0)
@@ -143,6 +146,10 @@ class CurrentContenders:
                 self.finished[sbc.subBlockNum] = None
 
 
+def now_in_ms():
+    return int(time.time() * 1000)
+
+
 class Aggregator:
     def __init__(self, socket_id, ctx, driver, expected_subblocks=4):
         self.expected_subblocks = expected_subblocks
@@ -155,11 +162,14 @@ class Aggregator:
 
     async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=1000):
         self.sbc_inbox.expected_subblocks = expected_subblocks
+
         contenders = CurrentContenders(total_contacts, expected_subblocks=expected_subblocks)
-        now = time.time()
-        while time.time() - now < timeout and len(contenders.finished) < contenders.expected:
-            sbcs = await self.sbc_inbox.receive_sbc()
-            contenders.add_sbcs(sbcs)
+        now = now_in_ms()
+
+        while now_in_ms() - now < timeout and len(contenders.finished) < expected_subblocks:
+            if self.sbc_inbox.has_sbc():
+                sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
+                contenders.add_sbcs(sbcs)
 
         subblocks = deepcopy(contenders.finished)
         del contenders
