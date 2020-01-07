@@ -9,8 +9,56 @@ import zmq.asyncio
 import asyncio
 
 
+class ServiceType:
+    PEER = 0
+    EVENT = 1
+    DISCOVERY = 2
+    BLOCK_SERVER = 3
+    SUBBLOCK_BUILDER_PUBLISHER = 4
+    BLOCK_AGGREGATOR = 5
+    TX_BATCH_INFORMER = 6
+    BLOCK_NOTIFICATIONS = 7
+    TX_BATCHER = 8
+    BLOCK_AGGREGATOR_CONTROLLER = 9
+    INCOMING_WORK = 10
+
+
+class NetworkParameters:
+    def __init__(self,
+                 peer_port=DHT_PORT, peer_ipc='peers',
+                 event_port=EVENT_PORT, event_ipc='events',
+                 discovery_port=DISCOVERY_PORT, discovery_ipc='discovery',
+                 block_port=BLOCK_SERVER, block_ipc='blocks',
+                 sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
+                 block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
+                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
+                 block_notifications_port=9998, block_notifications_ipc='block_notifications',
+                 tx_batcher_port=9997, tx_batcher_ipc='tx_batcher',
+                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller',
+                 incoming_work_port=9995, incoming_work_ipc='incoming_work'
+                 ):
+
+        self.params = {
+            ServiceType.PEER: (peer_port, peer_ipc),
+            ServiceType.EVENT: (event_port, event_ipc),
+            ServiceType.DISCOVERY: (discovery_port, discovery_ipc),
+            ServiceType.BLOCK_SERVER: (block_port, block_ipc),
+            ServiceType.SUBBLOCK_BUILDER_PUBLISHER: (sbb_pub_port, sbb_pub_ipc),
+            ServiceType.BLOCK_AGGREGATOR: (block_agg_port, block_agg_ipc),
+            ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc),
+            ServiceType.BLOCK_NOTIFICATIONS: (block_notifications_port, block_notifications_ipc),
+            ServiceType.TX_BATCHER: (tx_batcher_port, tx_batcher_ipc),
+            ServiceType.BLOCK_AGGREGATOR_CONTROLLER: (block_agg_controller_port, block_agg_controller_ipc),
+            ServiceType.INCOMING_WORK: (incoming_work_port, incoming_work_ipc)
+        }
+
+    def resolve(self, socket_base, service_type, bind=False):
+        port, ipc = self.params[service_type]
+        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
+
+
 class Parameters:
-    def __init__(self, socket_base: str, ctx: zmq.asyncio.Context, wallet, network_parameters, contacts: VKBook):
+    def __init__(self, socket_base: str, ctx: zmq.asyncio.Context, wallet, contacts: VKBook, network_parameters:NetworkParameters=NetworkParameters()):
         self.socket_base = socket_base
         self.ctx = ctx
         self.wallet = wallet
@@ -128,50 +176,3 @@ class Parameters:
             #entry.close()
             del self.sockets[vk]
 
-
-class ServiceType:
-    PEER = 0
-    EVENT = 1
-    DISCOVERY = 2
-    BLOCK_SERVER = 3
-    SUBBLOCK_BUILDER_PUBLISHER = 4
-    BLOCK_AGGREGATOR = 5
-    TX_BATCH_INFORMER = 6
-    BLOCK_NOTIFICATIONS = 7
-    TX_BATCHER = 8
-    BLOCK_AGGREGATOR_CONTROLLER = 9
-    INCOMING_WORK = 10
-
-
-class NetworkParameters:
-    def __init__(self,
-                 peer_port=DHT_PORT, peer_ipc='peers',
-                 event_port=EVENT_PORT, event_ipc='events',
-                 discovery_port=DISCOVERY_PORT, discovery_ipc='discovery',
-                 block_port=BLOCK_SERVER, block_ipc='blocks',
-                 sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
-                 block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
-                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
-                 block_notifications_port=9998, block_notifications_ipc='block_notifications',
-                 tx_batcher_port=9997, tx_batcher_ipc='tx_batcher',
-                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller',
-                 incoming_work_port=9995, incoming_work_ipc='incoming_work'
-                 ):
-
-        self.params = {
-            ServiceType.PEER: (peer_port, peer_ipc),
-            ServiceType.EVENT: (event_port, event_ipc),
-            ServiceType.DISCOVERY: (discovery_port, discovery_ipc),
-            ServiceType.BLOCK_SERVER: (block_port, block_ipc),
-            ServiceType.SUBBLOCK_BUILDER_PUBLISHER: (sbb_pub_port, sbb_pub_ipc),
-            ServiceType.BLOCK_AGGREGATOR: (block_agg_port, block_agg_ipc),
-            ServiceType.TX_BATCH_INFORMER: (tx_batch_informer_port, tx_batch_informer_ipc),
-            ServiceType.BLOCK_NOTIFICATIONS: (block_notifications_port, block_notifications_ipc),
-            ServiceType.TX_BATCHER: (tx_batcher_port, tx_batcher_ipc),
-            ServiceType.BLOCK_AGGREGATOR_CONTROLLER: (block_agg_controller_port, block_agg_controller_ipc),
-            ServiceType.INCOMING_WORK: (incoming_work_port, incoming_work_ipc)
-        }
-
-    def resolve(self, socket_base, service_type, bind=False):
-        port, ipc = self.params[service_type]
-        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
