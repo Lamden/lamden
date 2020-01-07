@@ -6,6 +6,7 @@ from cilantro_ee.core.block_server import BlockServer
 from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
+from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import VKBook, MetaDataStorage, CilantroStorageDriver
 from cilantro_ee.sockets.socket_book import SocketBook
@@ -20,12 +21,18 @@ from contracting.client import ContractingClient
 import zmq.asyncio
 import cilantro_ee
 
-cclient = ContractingClient()
-
-
 class NewMasternode:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), webserver_port=8080):
+                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), webserver_port=8080, client=ContractingClient()):
+        # Seed state initially
+        if client.get_contract('vkbook') is None or overwrite:
+            sync.extract_vk_args(constitution)
+            sync.submit_vkbook(constitution, overwrite=overwrite)
+
+        self.contacts = VKBook()
+
+        self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
+
         # stuff
         self.log = get_logger()
         self.socket_base = socket_base
@@ -39,52 +46,66 @@ class NewMasternode:
 
         self.driver = MetaDataStorage()
         self.blocks = CilantroStorageDriver(key=self.wallet.verifying_key())
+        self.client = client
 
         # Services
-        self.network = Network(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            socket_base=socket_base,
-            bootnodes=self.bootnodes,
-            params=self.network_parameters
-        )
-
         self.block_server = BlockServer(
             wallet=self.wallet,
             socket_base=socket_base,
             network_parameters=network_parameters
         )
 
+        self.block_fetcher = BlockFetcher(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            contacts=self.contacts,
+            masternode_sockets=SocketBook(
+                socket_base=self.socket_base,
+                service_type=ServiceType.BLOCK_SERVER,
+                phonebook_function=self.contacts.contract.get_masternodes,
+                ctx=self.ctx
+            )
+        )
+
         self.webserver = WebServer(wallet=wallet, port=webserver_port)
 
         self.tx_batcher = TransactionBatcher(wallet=wallet, queue=[])
 
-        self.vkbook = None
+        self.network = Network(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            socket_base=socket_base,
+            bootnodes=self.bootnodes,
+            params=self.network_parameters,
+            initial_del_quorum=self.contacts.delegate_quorum_min,
+            initial_mn_quorum=self.contacts.masternode_quorum_min,
+            mn_to_find=self.contacts.masternodes,
+            del_to_find=self.contacts.delegates,
+        )
 
-        self.parameters = Parameters(socket_base, ctx, wallet, network_parameters, None)
         self.current_nbn = None
         self.running = True
 
-        self.aggregator = Aggregator()
+        self.aggregator = Aggregator(
+            socket_id=self.network_parameters.resolve(
+                self.socket_base,
+                service_type=ServiceType.BLOCK_AGGREGATOR,
+                bind=True),
+            ctx=self.ctx,
+            driver=self.driver
+        )
 
-        self.nbn_inbox = NBNInbox()
+        self.nbn_inbox = NBNInbox(
+            socket_id=self.network_parameters.resolve(
+                self.socket_base,
+                service_type=ServiceType.BLOCK_NOTIFICATIONS,
+                bind=True),
+            ctx=self.ctx,
+            driver=self.driver,
+            contacts=self.contacts
+        )
 
     async def start(self):
-        # Discover other nodes
-
-        if cclient.get_contract('vkbook') is None or self.overwrite:
-            sync.extract_vk_args(self.constitution)
-            sync.submit_vkbook(self.constitution, overwrite=self.overwrite)
-
-        # Set Network Parameters
-        self.vkbook = VKBook()
-        self.parameters.contacts = self.vkbook
-
-        self.network.initial_mn_quorum = self.vkbook.masternode_quorum_min
-        self.network.initial_del_quorum = self.vkbook.delegate_quorum_min
-        self.network.mn_to_find = self.vkbook.masternodes
-        self.network.del_to_find = self.vkbook.delegates
-
         await self.network.start()
 
         # Sync contracts
@@ -93,24 +114,14 @@ class NewMasternode:
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
 
-        block_fetcher = BlockFetcher(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            contacts=self.vkbook,
-            masternode_sockets=SocketBook(
-                socket_base=self.socket_base,
-                service_type=ServiceType.BLOCK_SERVER,
-                phonebook_function=self.vkbook.contract.get_masternodes,
-                ctx=self.ctx
-            )
-        )
-
         # Catchup
-        await block_fetcher.sync()
+        await self.block_fetcher.sync()
 
         self.webserver.queue = self.tx_batcher.queue
 
         await self.webserver.start()
+
+        await self.process_blocks()
 
     async def send_batch_to_delegates(self):
         tx_batch = self.tx_batcher.pack_current_queue()
@@ -141,7 +152,7 @@ class NewMasternode:
             await self.send_batch_to_delegates()
 
             # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none
-            subblocks = await self.aggregator.gather_subblocks(total_contacts=len(self.vkbook.delegates))
+            subblocks = await self.aggregator.gather_subblocks(total_contacts=len(self.contacts.delegates))
 
             block = canonical.block_from_subblocks(
                 subblocks,

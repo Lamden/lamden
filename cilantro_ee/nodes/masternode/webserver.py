@@ -82,7 +82,7 @@ class WebServer:
 
         # Block Explorer / Blockchain Routes
         self.app.add_route(self.get_latest_block, '/latest_block', methods=['GET', 'OPTIONS', ])
-        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
+#        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
 
     async def start(self):
         # Start server with SSL enabled or not

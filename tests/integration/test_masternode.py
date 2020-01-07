@@ -3,10 +3,10 @@ from unittest import TestCase
 from cilantro_ee.networking.discovery import *
 import zmq
 import zmq.asyncio
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 import zmq.asyncio
 import asyncio
-from cilantro_ee.networking import Network
+from cilantro_ee.networking.network import Network
 from contracting.client import ContractingClient
 
 import os
@@ -111,3 +111,39 @@ class TestNewMasternode(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run())
+
+    def test_send_batch_to_delegates(self):
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
+
+        mnw1 = Wallet()
+        mnw2 = Wallet()
+
+        dw1 = Wallet()
+        dw2 = Wallet()
+
+        constitution = {
+            "masternodes": {
+                "vk_list": [
+                    mnw1.verifying_key().hex(),
+                    mnw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "delegates": {
+                "vk_list": [
+                    dw1.verifying_key().hex(),
+                    dw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "witnesses": {},
+            "schedulers": {},
+            "notifiers": {},
+            "enable_stamps": False,
+            "enable_nonces": False
+        }
+
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                            constitution=constitution, webserver_port=8080, overwrite=True)

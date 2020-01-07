@@ -1,5 +1,5 @@
-from cilantro_ee.nodes.delegate.new_block_inbox import NBNInbox
-from cilantro_ee.nodes.delegate.work_inbox import WorkInbox
+from cilantro_ee.nodes.new_block_inbox import NBNInbox
+from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.state import NonceManager

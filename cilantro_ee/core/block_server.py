@@ -1,11 +1,10 @@
 from cilantro_ee.sockets.services import AsyncInbox
 
-from cilantro_ee.services.storage.master import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
-from cilantro_ee.networking import NetworkParameters
-from cilantro_ee.networking.parameters import ServiceType
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 import os
 import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
