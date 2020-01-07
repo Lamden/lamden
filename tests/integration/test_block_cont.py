@@ -10,7 +10,7 @@ from cilantro_ee.sockets.services import _socket
 import secrets
 
 import zmq.asyncio
-
+import asyncio
 
 def random_wallets(n=10):
     return [secrets.token_hex(32) for _ in range(n)]
@@ -209,7 +209,7 @@ class TestCurrentContenders(TestCase):
         self.assertDictEqual(con.finished, {4: b})
 
     def test_none_added_if_quorum_cannot_be_reached(self):
-        con = CurrentContenders()
+        con = CurrentContenders(3)
 
         a = MockSBC(1, 2, 1)
 
@@ -228,3 +228,40 @@ class TestCurrentContenders(TestCase):
         con.add_sbcs(MockContenders([aa]))
 
         self.assertDictEqual(con.finished, {1: None})
+
+
+class TestAggregator(TestCase):
+    def setUp(self):
+        self.loop = asyncio.get_event_loop()
+
+    def test_gather_subblocks_all_same_blocks(self):
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+
+        c1 = MockContenders([MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 3),
+                             MockSBC('input_4', 'res_4', 4)])
+
+        c2 = MockContenders([MockSBC('input_1', 'res_1', 1),
+                             MockSBC('input_2', 'res_2', 2),
+                             MockSBC('input_3', 'res_3', 4),
+                             MockSBC('input_4', 'res_4', 5)])
+
+        c3 = MockContenders([MockSBC('input_1', 'res_1', 2),
+                             MockSBC('input_2', 'res_2', 3),
+                             MockSBC('input_3', 'res_3', 5),
+                             MockSBC('input_4', 'res_4', 6)])
+
+        c4 = MockContenders([MockSBC('input_1', 'res_1', 3),
+                             MockSBC('input_2', 'res_2', 4),
+                             MockSBC('input_3', 'res_3', 6),
+                             MockSBC('input_4', 'res_4', 7)])
+
+        a.sbc_inbox.q = [c1, c2, c3, c4]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        self.assertEqual(res[2].merkleTree.leaves[0], 'res_1')
+        self.assertEqual(res[3].merkleTree.leaves[0], 'res_2')
+        self.assertEqual(res[5].merkleTree.leaves[0], 'res_3')
+        self.assertEqual(res[6].merkleTree.leaves[0], 'res_4')

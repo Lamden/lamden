@@ -108,9 +108,9 @@ class SBCInbox(AsyncInbox):
 
 
 class CurrentContenders:
-    def __init__(self, total_contacts=2, expected_subblocks=4):
+    def __init__(self, total_contacts=2, quorum_ratio=0.66, expected_subblocks=4):
         self.total_contacts = total_contacts
-        self.consensus = math.ceil(total_contacts * 2 / 3)
+        self.consensus = math.ceil(total_contacts * quorum_ratio)
 
         self.sbcs = defaultdict(lambda: defaultdict(set))
 
@@ -127,9 +127,7 @@ class CurrentContenders:
 
     def add_sbcs(self, sbcs):
         for sbc in sbcs.contenders:
-            print(self.consensus)
             self.votes_left[sbc.inputHash] -= 1
-            print(f'left {self.votes_left[sbc.inputHash]}')
             result_hash = sbc.merkleTree.leaves[0]
             self.sbcs[sbc.inputHash][result_hash].add(sbc)
 
@@ -140,20 +138,24 @@ class CurrentContenders:
             # Update the top vote for this hash
             self.top_votes[sbc.inputHash] = max(self.top_votes[sbc.inputHash], len(self.sbcs[sbc.inputHash][result_hash]))
 
-            print(f'top {self.top_votes[sbc.inputHash]}')
-
             # Check if consensus possible
             if self.votes_left[sbc.inputHash] + self.top_votes[sbc.inputHash] < self.consensus:
                 self.finished[sbc.subBlockNum] = None
 
 
 class Aggregator:
-    def __init__(self, expected_subblocks):
-        self.sbc_inbox = SBCInbox(expected_subblocks=expected_subblocks)
+    def __init__(self, socket_id, ctx, driver, expected_subblocks=4):
+        self.expected_subblocks = expected_subblocks
+        self.sbc_inbox = SBCInbox(
+            socket_id=socket_id,
+            ctx=ctx,
+            driver=driver,
+            expected_subblocks=self.expected_subblocks
+        )
 
-    async def gather_subblocks(self, quorum, expected_subblocks=4, timeout=1000):
+    async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=1000):
         self.sbc_inbox.expected_subblocks = expected_subblocks
-        contenders = CurrentContenders(quorum, expected_subblocks)
+        contenders = CurrentContenders(total_contacts, expected_subblocks=expected_subblocks)
         now = time.time()
         while time.time() - now < timeout and len(contenders.finished) < contenders.expected:
             sbcs = await self.sbc_inbox.receive_sbc()
