@@ -7,12 +7,12 @@ import os
 
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
-from cilantro_ee.containers.merkle_tree import verify_merkle_tree, merklize
+from cilantro_ee.containers.merkle_tree import merklize
 
 import asyncio
-import hashlib
 import time
 from copy import deepcopy
+import math
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -57,20 +57,22 @@ class SBCInbox(AsyncInbox):
 
         # Ignore bad message types
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
-            raise SBCBadMessage
+            return
 
         if len(msg_blob.contenders) != self.expected_subblocks:
-            pass
+            return
 
         # Make sure all the contenders are valid
+        all_valid = True
         for i in range(len(msg_blob.contenders)):
             try:
                 self.sbc_is_valid(msg_blob.contenders[i], i)
             except SBCException:
-                pass
+                all_valid = False
 
         # Add the whole contender
-        self.q.append(msg_blob.contenders)
+        if all_valid:
+            self.q.append(msg_blob.contenders)
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc.subBlockNum != sb_idx:
@@ -94,9 +96,6 @@ class SBCInbox(AsyncInbox):
             txs = [tx.copy().to_bytes_packed() for tx in sbc.transactions]
             expected_tree = merklize(txs)
 
-            print(expected_tree)
-            print(sbc.merkleTree.leaves)
-
             for i in range(len(expected_tree)):
                 if expected_tree[i] != sbc.merkleTree.leaves[i]:
                     raise SBCMerkleLeafVerificationError
@@ -109,49 +108,56 @@ class SBCInbox(AsyncInbox):
 
 
 class CurrentContenders:
-    def __init__(self, max_quorum=1, expected_subblocks=4):
-        self.max_quorum = max_quorum
-        self.sbcs = defaultdict(lambda: defaultdict(set))
+    def __init__(self, total_contacts=2, expected_subblocks=4):
+        self.total_contacts = total_contacts
+        self.consensus = math.ceil(total_contacts * 2 / 3)
 
-        # Number of SBCs recieved for an input hash
-        self.received = defaultdict(int)
+        self.sbcs = defaultdict(lambda: defaultdict(set))
 
         # Number of votes for most popular SBC. Used for consensus failure checking
         self.top_votes = defaultdict(int)
 
         # Finished SBCs
-        self.finished = set()
+        self.finished = {}
 
         # Number of different input hashes we expect to recieve
         self.expected = expected_subblocks
 
-    def add_sbc(self, sbc):
-        result_hash = sbc.merkleTree.leaves[0]
-        self.sbcs[sbc.inputHash][result_hash].add(sbc)
-        self.received[sbc.inputHash] += 1
+        self.votes_left = defaultdict(lambda: total_contacts)
 
-        # If its done, put it in the list
-        if len(self.sbcs[sbc.inputHash][result_hash]) >= self.max_quorum:
-            self.finished.add(sbc)
+    def add_sbcs(self, sbcs):
+        for sbc in sbcs.contenders:
+            print(self.consensus)
+            self.votes_left[sbc.inputHash] -= 1
+            print(f'left {self.votes_left[sbc.inputHash]}')
+            result_hash = sbc.merkleTree.leaves[0]
+            self.sbcs[sbc.inputHash][result_hash].add(sbc)
 
-        # Update the top vote for this hash
-        self.top_votes[sbc.inputHash] = max(self.top_votes[sbc.inputHash], len(self.sbcs[sbc.inputHash][result_hash]))
+            # If its done, put it in the list
+            if len(self.sbcs[sbc.inputHash][result_hash]) >= self.consensus:
+                self.finished[sbc.subBlockNum] = sbc
 
-        # Check if consensus possible
-        if self.received[sbc.inputHash] + (self.max_quorum - self.received[sbc.inputHash]) < self.max_quorum:
-            pass
+            # Update the top vote for this hash
+            self.top_votes[sbc.inputHash] = max(self.top_votes[sbc.inputHash], len(self.sbcs[sbc.inputHash][result_hash]))
+
+            print(f'top {self.top_votes[sbc.inputHash]}')
+
+            # Check if consensus possible
+            if self.votes_left[sbc.inputHash] + self.top_votes[sbc.inputHash] < self.consensus:
+                self.finished[sbc.subBlockNum] = None
 
 
 class Aggregator:
-    def __init__(self):
-        self.sbc_inbox = SBCInbox()
+    def __init__(self, expected_subblocks):
+        self.sbc_inbox = SBCInbox(expected_subblocks=expected_subblocks)
 
     async def gather_subblocks(self, quorum, expected_subblocks=4, timeout=1000):
+        self.sbc_inbox.expected_subblocks = expected_subblocks
         contenders = CurrentContenders(quorum, expected_subblocks)
         now = time.time()
         while time.time() - now < timeout and len(contenders.finished) < contenders.expected:
-            sbc = await self.sbc_inbox.receive_sbc()
-            contenders.add_sbc(sbc)
+            sbcs = await self.sbc_inbox.receive_sbc()
+            contenders.add_sbcs(sbcs)
 
         subblocks = deepcopy(contenders.finished)
         del contenders
