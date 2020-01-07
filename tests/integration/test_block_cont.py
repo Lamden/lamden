@@ -339,13 +339,13 @@ class TestAggregator(TestCase):
                              MockSBC('input_4', 'res_4', 3)])
 
         c2 = MockContenders([MockSBC('input_1', 'res_1', 0),
-                             MockSBC('input_2', 'res_X', 1),
+                             MockSBC('input_2', 'res_2', 1),
                              MockSBC('input_3', 'res_3', 2),
                              MockSBC('input_4', 'res_4', 3)])
 
         c3 = MockContenders([MockSBC('input_1', 'res_1', 0),
                              MockSBC('input_2', 'res_2', 1),
-                             MockSBC('input_i', 'res_X', 2),
+                             MockSBC('input_3', 'res_3', 2),
                              MockSBC('input_4', 'res_X', 3)])
 
         a.sbc_inbox.q = [c1, c2, c3]

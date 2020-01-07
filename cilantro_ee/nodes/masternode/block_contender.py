@@ -171,6 +171,10 @@ class Aggregator:
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 contenders.add_sbcs(sbcs)
 
+        for i in range(expected_subblocks):
+            if contenders.finished.get(i) is None:
+                contenders.finished[i] = None
+
         subblocks = deepcopy(contenders.finished)
         del contenders
         return subblocks
