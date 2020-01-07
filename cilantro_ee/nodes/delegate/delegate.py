@@ -103,7 +103,9 @@ class BlockManager:
                 # Else, revert the db and Catchup with block
                 # Block has already been verified to be in 2/3 consensus at this point
                 self.client.raw_driver.revert()
-                self.catchup_with_new_block(block, sender=b'')
+                self.catchup_with_new_block(block)
+
+            self.pending_sbcs.clear()
 
             # Request work. Use async / dealers to block until it's done?
             # Refresh sockets here
@@ -135,7 +137,7 @@ class BlockManager:
 
             await asyncio.gather(*tasks)
 
-    def catchup_with_new_block(self, block, sender: bytes):
+    def catchup_with_new_block(self, block):
 
             # if you're not in the signatures, run catchup
             # if you are in the signatures, commit db

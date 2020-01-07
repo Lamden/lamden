@@ -164,13 +164,3 @@ class Aggregator:
         subblocks = deepcopy(contenders.finished)
         del contenders
         return subblocks
-
-
-# struct SubBlockContender {
-#     inputHash @0 :Data;
-#     transactions @1: List(T.TransactionData);
-#     merkleTree @2 :MerkleTree;
-#     signer @3 :Data;
-#     subBlockNum @4: UInt8;
-#     prevBlockHash @5: Data;
-# }
