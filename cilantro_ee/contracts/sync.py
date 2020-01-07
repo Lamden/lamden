@@ -1,12 +1,10 @@
 import glob
 import os
 from contracting.client import ContractingClient
-from cilantro_ee.core.logger import get_logger
 from cilantro_ee.constants import conf
 import cilantro_ee
 import json
 
-log = get_logger("sync")
 
 # need to refactor this code of vkbook
 PUBLIC_JSON_DIR = os.path.dirname(cilantro_ee.__path__[-1]) + '/constitutions/public'

@@ -26,7 +26,10 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
     deserialized_subblocks = []
 
     for subblock in subblocks:
-        sb = subblock.to_dict()
+        if subblock is None:
+            sb = {}
+        else:
+            sb = subblock.to_dict()
 
         sb = format_dictionary(sb)
         deserialized_subblocks.append(sb)
@@ -64,3 +67,10 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
         return True
 
     return False
+
+
+def block_is_skip_block(block: dict):
+    for subblock in block['subBlocks']:
+        if len(subblock.transactions):
+            return False
+    return True

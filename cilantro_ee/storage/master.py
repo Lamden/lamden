@@ -314,6 +314,10 @@ class CilantroStorageDriver(DistributedMasterStorage):
 
         return block_dict
 
+    def store_new_block(self, block):
+        block['blockOwners'] = self.vkbook.masternodes
+        self.evaluate_wr(entry=block)
+
     def store_block(self, sub_blocks):
         block_dict = self.get_block_dict(sub_blocks, kind=0)
 

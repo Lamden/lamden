@@ -7,14 +7,14 @@ from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage import VKBook, MetaDataStorage, CilantroStorageDriver
 from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.sockets.services import send_out
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.contracts import sync
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
-from cilantro_ee.crypto.transforms import subblock_contender_list_to_block
+from cilantro_ee.core import canonical
 from contracting.client import ContractingClient
 
 import zmq.asyncio
@@ -36,6 +36,9 @@ class NewMasternode:
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.overwrite = overwrite
+
+        self.driver = MetaDataStorage()
+        self.blocks = CilantroStorageDriver(key=self.wallet.verifying_key())
 
         # Services
         self.network = Network(
@@ -137,21 +140,27 @@ class NewMasternode:
             await self.parameters.refresh()
             await self.send_batch_to_delegates()
 
-            subblocks = await self.aggregator.gather_subblocks(quorum=self.vkbook.delegate_quorum_max)
-            block = subblock_contender_list_to_block(subblocks)
+            # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none
+            subblocks = await self.aggregator.gather_subblocks(total_contacts=len(self.vkbook.delegates))
+
+            block = canonical.block_from_subblocks(
+                subblocks,
+                previous_hash=self.driver.latest_block_hash,
+                block_num=self.driver.latest_block_num + 1
+            )
+
+            # Update with state
+            self.driver.update_with_block(block)
+
+            # Store
+            self.blocks.store_new_block(block)
+
+            is_skip_block = canonical.block_is_skip_block(block)
 
             self.current_nbn = block
 
-            # Check to see if this is a skip block
-            skip_block = True
-            for sb in block.subBlocks:
-                # A skip block has no transactions in any of the sub blocks
-                if len(sb.transactions):
-                    skip_block = False
-                    break
-
             # If so, hang until you get a new block or some work
-            if skip_block and len(self.tx_batcher.queue) == 0:
+            if is_skip_block and len(self.tx_batcher.queue) == 0:
                 await self.nbn_inbox.wait_for_next_nbn()
 
             await self.send_nbn_to_everyone()

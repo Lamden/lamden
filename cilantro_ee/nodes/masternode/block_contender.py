@@ -163,7 +163,7 @@ class Aggregator:
     async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=1000):
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
-        contenders = CurrentContenders(total_contacts, expected_subblocks=expected_subblocks)
+        contenders = CurrentContenders(total_contacts, quorum_ratio=quorum_ratio, expected_subblocks=expected_subblocks)
         now = now_in_ms()
 
         while now_in_ms() - now < timeout and len(contenders.finished) < expected_subblocks:

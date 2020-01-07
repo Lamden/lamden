@@ -1,6 +1,8 @@
-def subblock_contender_list_to_block(sbcs):
+# If a subblock fails, how do we serialize it?
+# For now, fuck it. It's going to be a strange format
+# In the future, as long as everyone agrees upon the tx inputs, then the block should include these and note it was a
+# failure. Then the masternode can try sending it again.
 
-    pass
 
 # struct SubBlock {
 #     merkleRoot @0 :Data;
