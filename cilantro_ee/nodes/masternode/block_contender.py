@@ -7,7 +7,7 @@ import os
 
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
-from cilantro_ee.containers.merkle_tree import verify_merkle_tree
+from cilantro_ee.containers.merkle_tree import verify_merkle_tree, merklize
 
 import asyncio
 import hashlib
@@ -37,14 +37,19 @@ class SBCMerkleLeafVerificationError(SBCException):
     pass
 
 
+class SBCIndexMismatchError(SBCException):
+    pass
+
+
 class SBCIndexGreaterThanPossibleError(SBCException):
     pass
 
 
 class SBCInbox(AsyncInbox):
-    def __init__(self, driver: MetaDataStorage, *args, **kwargs):
+    def __init__(self, driver: MetaDataStorage, expected_subblocks=4, *args, **kwargs):
         self.q = []
         self.driver = driver
+        self.expected_subblocks = expected_subblocks
         super().__init__(*args, **kwargs)
 
     def handle_msg(self, _id, msg):
@@ -54,15 +59,23 @@ class SBCInbox(AsyncInbox):
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
             raise SBCBadMessage
 
+        if len(msg_blob.contenders) != self.expected_subblocks:
+            pass
+
         # Make sure all the contenders are valid
-        for sbc in msg_blob.contenders:
+        for i in range(len(msg_blob.contenders)):
             try:
-                self.sbc_is_valid(sbc)
-                self.q.append(sbc)
+                self.sbc_is_valid(msg_blob.contenders[i], i)
             except SBCException:
                 pass
 
-    def sbc_is_valid(self, sbc):
+        # Add the whole contender
+        self.q.append(msg_blob.contenders)
+
+    def sbc_is_valid(self, sbc, sb_idx=0):
+        if sbc.subBlockNum != sb_idx:
+            raise SBCIndexMismatchError
+
         # Make sure signer is in the delegates
         valid_sig = _verify(
             vk=sbc.signer,
@@ -78,19 +91,15 @@ class SBCInbox(AsyncInbox):
 
         # idk
         if len(sbc.merkleTree.leaves) > 0:
-            if not verify_merkle_tree(leaves=sbc.merkleTree.leaves, expected_root=sbc.merkleTree.leaves[0]):
-                return False
+            txs = [tx.copy().to_bytes_packed() for tx in sbc.transactions]
+            expected_tree = merklize(txs)
 
-        for tx in sbc.transactions:
-            # Make sure you can generate the merkle tree provided given the transaction data
-            h = hashlib.sha3_256()
-            h.update(tx)
-            _hash = h.digest()
+            print(expected_tree)
+            print(sbc.merkleTree.leaves)
 
-            if _hash not in sbc.merkleLeaves:
-                return False
-
-        return True
+            for i in range(len(expected_tree)):
+                if expected_tree[i] != sbc.merkleTree.leaves[i]:
+                    raise SBCMerkleLeafVerificationError
 
     async def receive_sbc(self):
         while len(self.q) <= 0:

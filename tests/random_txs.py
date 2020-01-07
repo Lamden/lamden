@@ -98,20 +98,18 @@ def sbc_from_txs(input_hash, prev_block_hash, txs=20, idx=0, w=Wallet(), poisone
 
     tree = merklize([tx.to_bytes_packed() for tx in transactions])
 
+    if poison_result_hash:
+        tree[0] = secrets.token_bytes(32)
+
     if poisoned_sig is not None:
         sig = poisoned_sig
     else:
         sig = w.sign(tree[0])
 
-    if poison_result_hash:
-        result_hash = secrets.token_bytes(32)
-    else:
-        result_hash = tree[0]
-
     if poison_tx:
         packed_tx = random_packed_tx(nonce=0)
         tx_data = random_tx_data(packed_tx)
-        transactions[0] = tx_data.to_bytes_packed()
+        transactions[0] = tx_data
 
     merkle_tree = subblock_capnp.MerkleTree.new_message(
         leaves=[leaf for leaf in tree],
