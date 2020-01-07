@@ -133,5 +133,5 @@ class Wallet:
 
     @property
     def sk_pretty(self):
-        key = zbase.bytes_to_zbase32(self.vk.encode())
+        key = zbase.bytes_to_zbase32(self.sk.encode())
         return 'priv_{}'.format(key[:-4])
