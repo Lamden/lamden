@@ -136,8 +136,8 @@ class NewMasternode:
     async def send_nbn_to_everyone(self):
         # Send out current NBN to everyone
         tasks = []
-        for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS):
-            tasks.append(send_out(self.current_nbn, v))
+        for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).items():
+            tasks.append(send_out(self.ctx, self.current_nbn, v))
 
         await asyncio.gather(*tasks)
 
@@ -149,6 +149,8 @@ class NewMasternode:
         while self.running:
             # Else, batch some more txs
             await self.parameters.refresh()
+
+            # Do stuff with the results if anyone was offline
             await self.send_batch_to_delegates()
 
             # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none

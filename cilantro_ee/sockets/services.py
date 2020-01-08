@@ -294,22 +294,6 @@ class AsyncInbox:
         self.running = False
 
 
-class AsyncOutbox:
-    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
-        self.ctx = ctx
-        self.wallet = wallet
-        self.address = str(socket_id)
-
-        self.linger = linger
-        self.poll_timeout = poll_timeout
-
-        self.socket = self.ctx.socket(zmq.DEALER)
-        self.socket.setsockopt(zmq.LINGER, self.linger)
-
-    def send(self, _id, msg_type, msg_payload):
-        pass
-
-
 async def send_out(ctx, msg, socket_id):
     # Setup a socket and its monitor
     socket = ctx.socket(zmq.DEALER)

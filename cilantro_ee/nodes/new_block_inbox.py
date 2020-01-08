@@ -18,13 +18,18 @@ class NotBlockNotificationMessageType(BlockNotificationException):
 
 
 class NBNInbox(AsyncInbox):
-    def __init__(self, contacts: VKBook, driver: MetaDataStorage, *args, **kwargs):
+    def __init__(self, contacts: VKBook, driver: MetaDataStorage=MetaDataStorage(), verify=True, *args, **kwargs):
         self.q = []
         self.contacts = contacts
         self.driver = driver
+        self.verify = verify
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+        if not self.verify:
+            self.q.append(msg)
+            return
+
         try:
             self.block_notification_is_valid(msg)
             self.q.append(msg)

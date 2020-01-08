@@ -295,8 +295,15 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                            constitution=constitution, webserver_port=8080, overwrite=True)
+        mn1 = NewMasternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base=f'ipc://{n1}',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
 
         masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex(), dw3.verifying_key().hex(),
@@ -309,19 +316,66 @@ class TestNewMasternode(TestCase):
 
         d1 = '/tmp/d1'
         make_ipc(d1)
-        wi1 = NBNInbox(socket_id=_socket(f'ipc://{d1}/incoming_work'), ctx=self.ctx, contacts=contacts, verify=False)
+        wi1 = NBNInbox(socket_id=_socket(f'ipc://{d1}/block_notifications'), ctx=self.ctx, contacts=contacts, verify=False)
 
         d2 = '/tmp/d2'
         make_ipc(d2)
-        wi2 = NBNInbox(socket_id=_socket(f'ipc://{d2}/incoming_work'), ctx=self.ctx, contacts=contacts, verify=False)
+        wi2 = NBNInbox(socket_id=_socket(f'ipc://{d2}/block_notifications'), ctx=self.ctx, contacts=contacts, verify=False)
 
         d3 = '/tmp/d3'
         make_ipc(d3)
-        wi3 = NBNInbox(socket_id=_socket(f'ipc://{d3}/incoming_work'), ctx=self.ctx, contacts=contacts, verify=False)
+        wi3 = NBNInbox(socket_id=_socket(f'ipc://{d3}/block_notifications'), ctx=self.ctx, contacts=contacts, verify=False)
 
         d4 = '/tmp/d4'
         make_ipc(d4)
-        wi4 = NBNInbox(socket_id=_socket(f'ipc://{d4}/incoming_work'), ctx=self.ctx, contacts=contacts, verify=False)
+        wi4 = NBNInbox(socket_id=_socket(f'ipc://{d4}/block_notifications'), ctx=self.ctx, contacts=contacts, verify=False)
+
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        mn2 = NBNInbox(socket_id=_socket(f'ipc://{n2}/block_notifications'), ctx=self.ctx, contacts=contacts, verify=False)
+
+        mn1.network.peer_service.table.peers = {
+            dw1.verifying_key().hex(): f'ipc://{d1}',
+            dw2.verifying_key().hex(): f'ipc://{d2}',
+            dw3.verifying_key().hex(): f'ipc://{d3}',
+            dw4.verifying_key().hex(): f'ipc://{d4}',
+            mnw2.verifying_key().hex(): f'ipc://{n2}'
+        }
+
+        mn1.current_nbn = b'hello'
+
+        async def late_send():
+            await asyncio.sleep(0.3)
+            await mn1.parameters.refresh()
+            await mn1.send_nbn_to_everyone()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            wi1.stop()
+            wi2.stop()
+            wi3.stop()
+            wi4.stop()
+            mn2.stop()
+            mn1.network.stop()
+
+        tasks = asyncio.gather(
+            mn1.network.start(False),
+            wi1.serve(),
+            wi2.serve(),
+            wi3.serve(),
+            wi4.serve(),
+            mn2.serve(),
+            late_send(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        self.assertEqual(wi1.q[0], b'hello')
+        self.assertEqual(wi2.q[0], b'hello')
+        self.assertEqual(wi3.q[0], b'hello')
+        self.assertEqual(wi4.q[0], b'hello')
+        self.assertEqual(mn2.q[0], b'hello')
 
     def test_send_to_delegates_doesnt_hang_if_one_is_not_online(self):
         bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
@@ -455,5 +509,4 @@ class TestNewMasternode(TestCase):
 
         self.assertTrue(wi1.work[mnw1.verifying_key().hex()])
         self.assertTrue(wi2.work[mnw1.verifying_key().hex()])
-        #self.assertTrue(wi3.work[mnw1.verifying_key().hex()])
         self.assertTrue(wi4.work[mnw1.verifying_key().hex()])
