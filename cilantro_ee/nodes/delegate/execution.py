@@ -2,6 +2,8 @@ from contracting.client import ContractingClient
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
 
+from cilantro_ee.core.canonical import build_sbc_from_work_results
+
 import os
 import capnp
 from datetime import datetime

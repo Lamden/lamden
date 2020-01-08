@@ -1,31 +1,24 @@
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.work_inbox import WorkInbox
+
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.state import NonceManager
+from cilantro_ee.core.nonces import NonceManager
+
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, Parameters
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.containers.merkle_tree import merklize
-
 from cilantro_ee.crypto.wallet import Wallet
 
 from contracting.client import ContractingClient
-from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.stdlib.bridge.time import Datetime
+
+from cilantro_ee.nodes.delegate import execution
 
 import asyncio
 import heapq
-from datetime import datetime
 import zmq.asyncio
-import os
-import capnp
-import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
 class BlockManager:
@@ -68,16 +61,6 @@ class BlockManager:
         self.pending_sbcs = {}
         self.running = False
 
-    async def send_out(self, msg, socket_id):
-        socket = self.ctx.socket(zmq.DEALER)
-        socket.connect(str(socket_id))
-
-        try:
-            socket.send(msg, zmq.NOBLOCK)
-            return True
-        except zmq.ZMQError:
-            return False
-
     def did_sign_block(self, block):
         if len(self.pending_sbcs) == 0:
             return False
@@ -88,48 +71,54 @@ class BlockManager:
 
         return True
 
-    async def process_expected_nbn(self):
+    async def process_nbn(self, nbn):
         # wait for NBN
-        block = await self.nbn_inbox.wait_for_next_nbn()
-
         # If its the block that you worked on, commit the db
         # AKA if you signed the block
-        if self.did_sign_block(block):
+        if self.did_sign_block(nbn):
             self.client.raw_driver.commit()
         else:
             # Else, revert the db and Catchup with block
             # Block has already been verified to be in 2/3 consensus at this point
             self.client.raw_driver.revert()
-            self.catchup_with_new_block(block)
+            self.catchup_with_new_block(nbn)
 
         self.pending_sbcs.clear()
+
+    def filter_tx_batches(self, work):
+        filtered_work = []
+        for tx_batch in work:
+            # Filter out None responses
+            if tx_batch is None:
+                continue
+
+            # Add the rest to a priority queue based on their timestamp
+            heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
+        return filtered_work
 
     async def run(self):
         while self.running:
             # If first block, just wait for masters
             if self.driver.latest_block_num > 0:
-                await self.process_expected_nbn()
+                nbn = await self.nbn_inbox.wait_for_next_nbn()
+                await self.process_expected_nbn(nbn)
 
             # Request work. Use async / dealers to block until it's done?
             # Refresh sockets here
             # Turn this into a new message type
             work = await self.work_inbox.wait_for_next_batch_of_work()
 
-            filtered_work = []
-            for tx_batch in work:
-                # Filter out None responses
-                if tx_batch is None:
-                    continue
-
-                # Add the rest to a priority queue based on their timestamp
-                heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
+            filtered_work = self.filter_tx_batches(work)
 
             # Execute work
-            results = self.execute_work(filtered_work)
+            results = execution.execute_work(filtered_work)
 
             await self.send_out_sbcs(results)
-            await self.process_expected_nbn()
 
+            nbn = await self.nbn_inbox.wait_for_next_nbn()
+            await self.process_expected_nbn(nbn)
+
+    # Move this functionality somewhere else
     async def send_out_sbcs(self, results):
         # Package as SBCs
         sbcs_msg_blob = Message.get_message_packed_2(
@@ -149,96 +138,3 @@ class BlockManager:
             # if you're not in the signatures, run catchup
             # if you are in the signatures, commit db
         pass
-
-    def execute_tx(self, transaction, environment):
-        # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
-        kwargs = {}
-        for entry in transaction.payload.kwargs.entries:
-            if entry.value.which() == 'fixedPoint':
-                kwargs[entry.key] = ContractingDecimal(entry.value.fixedPoint)  # ContractingDecimal!
-            else:
-                kwargs[entry.key] = getattr(entry.value, entry.value.which())
-
-        output = self.client.executor.execute(
-            sender=transaction.payload.sender.hex(),
-            contract_name=transaction.payload.contractName,
-            function_name=transaction.payload.functionName,
-            stamps=transaction.payload.stampsSupplied,
-            kwargs=kwargs,
-            environment=environment,
-            auto_commit=False
-        )
-
-        # Encode deltas into a Capnp struct
-        deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
-        tx_output = transaction_capnp.TransactionData.new_message(
-            transaction=transaction,
-            status=output['status_code'],
-            state=deltas,
-            stampsUsed=output['stamps_used']
-        )
-
-        return tx_output
-
-    def execute_tx_batch(self, batch, timestamp, input_hash):
-        now = Datetime._from_datetime(
-            datetime.utcfromtimestamp(timestamp)
-        )
-
-        environment = {
-            'block_hash': self.driver.latest_block_hash.hex(),
-            'block_num': self.driver.latest_block_num,
-            '__input_hash': input_hash,  # Used for deterministic entropy for random games
-            'now': now
-        }
-
-        # Each TX Batch is basically a subblock from this point of view and probably for the near future
-        tx_data = []
-        for transaction in batch:
-            tx_data.append(self.execute_tx(transaction, environment))
-
-        return tx_data
-
-    def execute_work(self, work):
-        # Assume single threaded, single process for now.
-        results = []
-        i = 0
-
-        while len(work) > 0:
-            _, tx_batch = heapq.heappop(work)
-            transactions = [tx for tx in tx_batch.transactions]
-
-            results = self.execute_tx_batch(transactions, tx_batch.timestamp, tx_batch.inputHash)
-
-            sbc = self.build_sbc_from_work_results(
-                input_hash=tx_batch.inputHash,
-                results=results,
-                sb_num=i % self.parallelism
-            )
-
-            results.append(sbc)
-            i += 1
-
-        return results
-
-    def build_sbc_from_work_results(self, input_hash, results, sb_num=0):
-        merkle = merklize([r.to_bytes_packed() for r in results])
-        proof = self.wallet.sign(merkle[0])
-
-        merkle_tree = subblock_capnp.MerkleTree.new_message(
-            leaves=[leaf for leaf in merkle],
-            signature=proof
-        )
-
-        sbc = subblock_capnp.SubBlockContender.new_message(
-            inputHash=input_hash,
-            transactions=[r for r in results],
-            merkleTree=merkle_tree,
-            signer=self.wallet.verifying_key(),
-            subBlockNum=sb_num,
-            prevBlockHash=self.driver.latest_block_hash
-        )
-
-        self.pending_sbcs[merkle[0]] = proof
-
-        return sbc

@@ -10,7 +10,7 @@ from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import VKBook, MetaDataStorage, CilantroStorageDriver
 from cilantro_ee.sockets.socket_book import SocketBook
-from cilantro_ee.sockets.services import send_out
+from cilantro_ee.sockets.services import send_out, multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.contracts import sync
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
@@ -127,13 +127,8 @@ class NewMasternode:
 
     async def send_batch_to_delegates(self):
         tx_batch = self.tx_batcher.pack_current_queue()
-
-        # Send out messages to delegates
-        tasks = []
-        for k, v in self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items():
-            tasks.append(send_out(self.ctx, tx_batch, v))
-
-        return await asyncio.gather(*tasks)
+        peers = list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
+        return await multicast(self.ctx, tx_batch, peers)
 
     async def send_nbn_to_everyone(self):
         # Send out current NBN to everyone

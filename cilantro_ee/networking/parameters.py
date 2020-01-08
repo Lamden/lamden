@@ -58,7 +58,14 @@ class NetworkParameters:
 
 
 class Parameters:
-    def __init__(self, socket_base: str, ctx: zmq.asyncio.Context, wallet, contacts: VKBook, network_parameters:NetworkParameters=NetworkParameters()):
+    def __init__(self,
+                 socket_base: str,
+                 ctx: zmq.asyncio.Context,
+                 wallet,
+                 contacts: VKBook,
+                 network_parameters:NetworkParameters=NetworkParameters()
+                 ):
+
         self.socket_base = socket_base
         self.ctx = ctx
         self.wallet = wallet

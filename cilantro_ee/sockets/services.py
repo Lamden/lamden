@@ -315,3 +315,7 @@ async def send_out(ctx, msg, socket_id):
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
     socket.close()
     return False, evnt_dict['endpoint'].decode()
+
+
+async def multicast(ctx, msg: bytes, peers: list):
+    return await asyncio.gather(*[send_out(ctx, msg, p) for p in peers])

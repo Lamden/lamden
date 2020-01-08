@@ -3,6 +3,7 @@ import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import bson
 import hashlib
+from cilantro_ee.containers.merkle_tree import merklize
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -109,3 +110,24 @@ def message_blob_to_dict_block(block):
 
 def capnp_to_dict_block(block):
     return block_capnp.BlockData.to_dict(block)
+
+
+def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash, sb_num=0):
+    merkle = merklize([r.to_bytes_packed() for r in results])
+    proof = wallet.sign(merkle[0])
+
+    merkle_tree = subblock_capnp.MerkleTree.new_message(
+        leaves=[leaf for leaf in merkle],
+        signature=proof
+    )
+
+    sbc = subblock_capnp.SubBlockContender.new_message(
+        inputHash=input_hash,
+        transactions=[r for r in results],
+        merkleTree=merkle_tree,
+        signer=wallet.verifying_key(),
+        subBlockNum=sb_num,
+        prevBlockHash=previous_block_hash
+    )
+
+    return sbc
