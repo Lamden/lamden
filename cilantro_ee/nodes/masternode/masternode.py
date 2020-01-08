@@ -131,8 +131,7 @@ class NewMasternode:
         for k, v in self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items():
             tasks.append(send_out(self.ctx, tx_batch, v))
 
-        await asyncio.gather(*tasks)
-        print('cool')
+        return await asyncio.gather(*tasks)
 
     async def send_nbn_to_everyone(self):
         # Send out current NBN to everyone

@@ -38,7 +38,6 @@ class WorkInbox(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
-        print('got')
         if not self.verify:
             msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
             self.work[msg_blob.sender.hex()] = msg_blob

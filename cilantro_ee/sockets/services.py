@@ -326,12 +326,8 @@ async def send_out(ctx, msg, socket_id):
     if evnt_dict['event'] == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
         socket.close()
-        return True, evnt_dict['endpoint'].encode()
+        return True, evnt_dict['endpoint'].decode()
 
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
     socket.close()
-    return False, evnt_dict['endpoint'].encode()
-
-
-async def multicast():
-    pass
+    return False, evnt_dict['endpoint'].decode()

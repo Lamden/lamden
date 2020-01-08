@@ -428,30 +428,30 @@ class TestNewMasternode(TestCase):
         async def late_send():
             await asyncio.sleep(0.3)
             await mn1.parameters.refresh()
-            print(mn1.parameters.get_delegate_sockets())
-            await mn1.send_batch_to_delegates()
-            print('neat')
+            return await mn1.send_batch_to_delegates()
 
         async def stop():
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             wi1.stop()
             wi2.stop()
-            #wi3.stop()
             wi4.stop()
-            print('stopping')
-            mn1.stop()
+            mn1.network.stop()
 
         tasks = asyncio.gather(
             mn1.network.start(False),
             wi1.serve(),
             wi2.serve(),
-            #wi3.serve(),
             wi4.serve(),
             late_send(),
             stop()
         )
 
-        self.loop.run_until_complete(tasks)
+        _, _, _, _, r, _ = self.loop.run_until_complete(tasks)
+
+        # Make sure the right socket failed
+        for rr in r:
+            if not rr[0]:
+                self.assertEqual(rr[1], f'ipc://{d3}/incoming_work')
 
         self.assertTrue(wi1.work[mnw1.verifying_key().hex()])
         self.assertTrue(wi2.work[mnw1.verifying_key().hex()])
