@@ -83,3 +83,8 @@ class Node:
         # Catchup
         if len(self.contacts.masternodes) > 1:
             await self.block_fetcher.sync()
+
+    def stop(self):
+        self.network.stop()
+        self.nbn_inbox.stop()
+        self.running = False

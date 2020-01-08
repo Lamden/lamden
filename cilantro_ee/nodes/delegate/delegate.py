@@ -1,65 +1,35 @@
-from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.work_inbox import WorkInbox
-
-from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.core.nonces import NonceManager
-
-from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, Parameters
+from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
-
-from cilantro_ee.crypto.wallet import Wallet
-
-from contracting.client import ContractingClient
 
 from cilantro_ee.nodes.delegate import execution
 from cilantro_ee.sockets.services import multicast
 import heapq
 
+from cilantro_ee.nodes.base import Node
 
-class Delegate:
-    def __init__(self, socket_base, ctx, wallet: Wallet, contacts: VKBook, network_parameters=NetworkParameters(),
-                 parallelism=4, client=ContractingClient(), driver=MetaDataStorage(), nonces=NonceManager()):
 
-        # VKBook, essentially
-        self.contacts = contacts
-        self.parameters = Parameters(
-            socket_base=socket_base,
-            ctx=ctx,
-            wallet=wallet,
-            network_parameters=network_parameters,
-            contacts=self.contacts)
+class Delegate(Node):
+    def __init__(self, parallelism=4, nonces=NonceManager(), *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.network_parameters = network_parameters
-        self.ctx = ctx
-        self.wallet = wallet
 
-        # How long until a tx batch is 'stale' and no longer valid
-
-        self.client = client
-        self.driver = driver
         self.nonces = nonces
 
-        self.nbn_inbox = NBNInbox(
-            socket_id=self.network_parameters.resolve(socket_base, ServiceType.BLOCK_NOTIFICATIONS, bind=True),
-            contacts=self.contacts,
-            driver=self.driver,
-            ctx=self.ctx
-        )
-
         self.work_inbox = WorkInbox(
-            socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True),
+            socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
             nonces=self.nonces,
             contacts=self.contacts,
             ctx=self.ctx
         )
 
         self.pending_sbcs = {}
-        self.running = False
 
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
@@ -84,7 +54,7 @@ class Delegate:
             # Else, revert the db and Catchup with block
             # Block has already been verified to be in 2/3 consensus at this point
             self.client.raw_driver.revert()
-            self.catchup_with_new_block(nbn)
+            self.driver.update_with_block(nbn)
 
         self.pending_sbcs.clear()
 
@@ -126,8 +96,3 @@ class Delegate:
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             await self.process_nbn(nbn)
 
-    def catchup_with_new_block(self, block):
-
-            # if you're not in the signatures, run catchup
-            # if you are in the signatures, commit db
-        pass

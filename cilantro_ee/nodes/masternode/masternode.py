@@ -131,6 +131,7 @@ class Masternode(Node):
             self.current_nbn = None
 
     def stop(self):
+        super().stop()
+
         self.block_server.stop()
-        self.network.stop()
         self.webserver.app.stop()
