@@ -82,15 +82,8 @@ class MetaDataStorage(RocksDriver):
 
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
-            with contextlib.suppress(json.JSONDecodeError):
-                sets = json.loads(tx['state'])
-
-            if type(sets) != dict:
-                return
-
-            # For each KV in the JSON, set the key to the value
-            for k, v in sets.items():
-                self.set(k, v)
+            for delta in tx['state']:
+                self.set(delta['key'], delta['value'])
 
     def update_with_block(self, block):
         self.log.success('UPDATING STATE')
