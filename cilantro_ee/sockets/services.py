@@ -311,19 +311,26 @@ class AsyncOutbox:
 
 
 async def send_out(ctx, msg, socket_id):
+    # Setup a socket and its monitor
     socket = ctx.socket(zmq.DEALER)
     s = socket.get_monitor_socket()
+
+    # Try to connect
     socket.connect(str(socket_id))
 
+    # See if the connection was successful
     evnt = await s.recv_multipart()
+    evnt_dict = monitor.parse_monitor_message(evnt)
 
-    if monitor.parse_monitor_message(evnt)['event'] == 1:
+    # If so, shoot out the message
+    if evnt_dict['event'] == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
         socket.close()
-        return True
+        return True, evnt_dict['endpoint'].encode()
 
+    # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
     socket.close()
-    return False
+    return False, evnt_dict['endpoint'].encode()
 
 
 async def multicast():
