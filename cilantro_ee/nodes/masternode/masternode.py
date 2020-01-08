@@ -128,10 +128,11 @@ class NewMasternode:
 
         # Send out messages to delegates
         tasks = []
-        for k, v in self.parameters.get_delegate_sockets(service=ServiceType.TX_BATCHER):
-            tasks.append(send_out(tx_batch, v))
+        for k, v in self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items():
+            tasks.append(send_out(self.ctx, tx_batch, v))
 
         await asyncio.gather(*tasks)
+        print('cool')
 
     async def send_nbn_to_everyone(self):
         # Send out current NBN to everyone

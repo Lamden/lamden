@@ -86,7 +86,6 @@ def submit_vkbook(vkbook_args: dict, overwrite=False):
         c = ContractingClient()
         contract = c.get_contract('vkbook')
         if contract is not None:
-            print('already exists')
             return
 
     submit_contract_with_construction_args('vkbook', args=vkbook_args)
@@ -99,8 +98,6 @@ def extract_sub_dict_values(book, key):
         num_vks = len(vk_list)
         min_quorum = sb['min_quorum'] if 'min_quorum' in sb else num_vks
         if min_quorum > num_vks:
-            log.warning(f"min quorum {min_quorum} is larger than number of vks"
-                        f" {num_vks} for {key}. Reducing it to num of vks")
             min_quorum = num_vks
     else:
         vk_list = []

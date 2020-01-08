@@ -1,13 +1,13 @@
 import asyncio
 import hashlib
 
-from cilantro_ee.crypto import transaction_is_valid, TransactionException
-from cilantro_ee.crypto import _verify
+from cilantro_ee.crypto.transaction import transaction_is_valid, TransactionException
+from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.sockets.services import AsyncInbox
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 
 
 class DelegateWorkInboxException(Exception):
@@ -27,17 +27,22 @@ class InvalidSignature(DelegateWorkInboxException):
 
 
 class WorkInbox(AsyncInbox):
-    def __init__(self, validity_timeout, nonces: NonceManager, contacts: VKBook, *args, **kwargs):
+    def __init__(self, contacts: VKBook, nonces: NonceManager=NonceManager(), verify=True, *args, **kwargs):
         self.work = {}
-        self.validity_timeout = validity_timeout
 
         self.contacts = contacts
         self.nonces = nonces
         self.current_masternodes = self.contacts.masternodes
+        self.verify = verify
 
         super().__init__(*args, **kwargs)
 
-    def handle_msg(self, _id, msg):
+    async def handle_msg(self, _id, msg):
+        print('got')
+        if not self.verify:
+            msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+            self.work[msg_blob.sender.hex()] = msg_blob
+
         try:
             msg_struct = self.verify_transaction_bag(msg)
             self.work[msg_struct.sender.hex()] = msg_struct
@@ -61,7 +66,7 @@ class WorkInbox(AsyncInbox):
                                      expected_processor=msg_blob.sender,
                                      driver=self.nonces,
                                      strict=False)
-            except TransactionException:
+            except TransactionException as e:
                 raise DelegateWorkInboxException
 
             h.update(tx.as_builder().to_bytes_packed())

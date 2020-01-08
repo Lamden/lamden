@@ -3,7 +3,7 @@ from cilantro_ee.logger.base import get_logger
 import zmq
 import asyncio
 import json
-
+from zmq.utils import monitor
 
 class SocketEncoder(json.JSONEncoder):
     def default(self, o):
@@ -310,15 +310,20 @@ class AsyncOutbox:
         pass
 
 
-async def send_out(self, msg, socket_id):
-    socket = self.ctx.socket(zmq.DEALER)
+async def send_out(ctx, msg, socket_id):
+    socket = ctx.socket(zmq.DEALER)
+    s = socket.get_monitor_socket()
     socket.connect(str(socket_id))
 
-    try:
-        socket.send(msg, zmq.NOBLOCK)
+    evnt = await s.recv_multipart()
+
+    if monitor.parse_monitor_message(evnt)['event'] == 1:
+        socket.send(msg, flags=zmq.NOBLOCK)
+        socket.close()
         return True
-    except zmq.ZMQError:
-        return False
+
+    socket.close()
+    return False
 
 
 async def multicast():
