@@ -126,6 +126,12 @@ class Parameters:
 
     async def refresh(self):
         pb_nodes = set(self.contacts.delegates + self.contacts.masternodes)
+
+        try:
+            pb_nodes.remove(self.wallet.verifying_key().hex())
+        except KeyError:
+            pass
+
         current_nodes = set(self.sockets.keys())
 
         # Delete / remove old nodes

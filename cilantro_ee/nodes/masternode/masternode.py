@@ -139,9 +139,7 @@ class NewMasternode:
         for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).items():
             tasks.append(send_out(self.ctx, self.current_nbn, v))
 
-        await asyncio.gather(*tasks)
-
-        self.current_nbn = None
+        return await asyncio.gather(*tasks)
 
     async def process_blocks(self):
         await self.nbn_inbox.wait_for_next_nbn()
@@ -177,6 +175,7 @@ class NewMasternode:
                 await self.nbn_inbox.wait_for_next_nbn()
 
             await self.send_nbn_to_everyone()
+            self.current_nbn = None
 
     def stop(self):
         self.block_server.stop()
