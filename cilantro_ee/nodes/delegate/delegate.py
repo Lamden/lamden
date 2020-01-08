@@ -15,13 +15,11 @@ from cilantro_ee.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 
 from cilantro_ee.nodes.delegate import execution
-
-import asyncio
+from cilantro_ee.sockets.services import multicast
 import heapq
-import zmq.asyncio
 
 
-class BlockManager:
+class Delegate:
     def __init__(self, socket_base, ctx, wallet: Wallet, contacts: VKBook, network_parameters=NetworkParameters(),
                  parallelism=4, client=ContractingClient(), driver=MetaDataStorage(), nonces=NonceManager()):
 
@@ -52,14 +50,19 @@ class BlockManager:
             driver=self.driver,
             ctx=self.ctx
         )
+
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(socket_base, ServiceType.INCOMING_WORK, bind=True),
             nonces=self.nonces,
             contacts=self.contacts,
             ctx=self.ctx
         )
+
         self.pending_sbcs = {}
         self.running = False
+
+    def masternode_aggregator_sockets(self):
+        return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
     def did_sign_block(self, block):
         if len(self.pending_sbcs) == 0:
@@ -101,7 +104,7 @@ class BlockManager:
             # If first block, just wait for masters
             if self.driver.latest_block_num > 0:
                 nbn = await self.nbn_inbox.wait_for_next_nbn()
-                await self.process_expected_nbn(nbn)
+                await self.process_nbn(nbn)
 
             # Request work. Use async / dealers to block until it's done?
             # Refresh sockets here
@@ -113,25 +116,15 @@ class BlockManager:
             # Execute work
             results = execution.execute_work(filtered_work)
 
-            await self.send_out_sbcs(results)
+            sbcs_msg_blob = Message.get_message_packed_2(
+                msg_type=MessageType.SUBBLOCK_CONTENDERS,
+                contenders=[sb for sb in results]
+            )
+
+            await multicast(self.ctx, sbcs_msg_blob, self.masternode_aggregator_sockets())
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            await self.process_expected_nbn(nbn)
-
-    # Move this functionality somewhere else
-    async def send_out_sbcs(self, results):
-        # Package as SBCs
-        sbcs_msg_blob = Message.get_message_packed_2(
-            msg_type=MessageType.SUBBLOCK_CONTENDERS,
-            contenders=[sb for sb in results]
-        )
-
-        # Send SBCs to masternodes
-        tasks = []
-        for k, v in self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).items():
-            tasks.append(self.send_out(sbcs_msg_blob, v))
-
-        await asyncio.gather(*tasks)
+            await self.process_nbn(nbn)
 
     def catchup_with_new_block(self, block):
 

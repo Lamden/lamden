@@ -1,4 +1,4 @@
-from cilantro_ee.nodes.masternode.masternode import NewMasternode
+from cilantro_ee.nodes.masternode.masternode import Masternode
 from unittest import TestCase
 from cilantro_ee.networking.discovery import *
 import zmq
@@ -121,13 +121,13 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                            constitution=constitution, webserver_port=8080)
+        mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8080)
 
         n2 = '/tmp/n2'
         make_ipc(n2)
-        mn2 = NewMasternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                            constitution=constitution, webserver_port=8081)
+        mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8081)
 
         n3 = '/tmp/n3'
         make_ipc(n3)
@@ -196,8 +196,8 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                            constitution=constitution, webserver_port=8080, overwrite=True)
+        mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8080, overwrite=True)
 
         masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex(), dw3.verifying_key().hex(), dw4.verifying_key().hex()]
@@ -327,7 +327,7 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(
+        mn1 = Masternode(
             wallet=mnw1,
             ctx=self.ctx,
             socket_base=f'ipc://{n1}',
@@ -446,7 +446,7 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(
+        mn1 = Masternode(
             wallet=mnw1,
             ctx=self.ctx,
             socket_base=f'ipc://{n1}',
@@ -570,8 +570,8 @@ class TestNewMasternode(TestCase):
 
         n1 = '/tmp/n1'
         make_ipc(n1)
-        mn1 = NewMasternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                            constitution=constitution, webserver_port=8080, overwrite=True)
+        mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8080, overwrite=True)
 
         masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex(), dw3.verifying_key().hex(),
@@ -719,7 +719,7 @@ class TestNewMasternode(TestCase):
         n1 = '/tmp/n1'
         make_ipc(n1)
 
-        m = NewMasternode(
+        m = Masternode(
             wallet=mnw1,
             ctx=self.ctx,
             socket_base=f'ipc://{n1}',
@@ -776,7 +776,7 @@ class TestNewMasternode(TestCase):
         n1 = '/tmp/n1'
         make_ipc(n1)
 
-        m = NewMasternode(
+        m = Masternode(
             wallet=mnw1,
             ctx=self.ctx,
             socket_base=f'ipc://{n1}',

@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.nodes.delegate.delegate import BlockManager
+from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.crypto.wallet import Wallet
 from tests.utils.constitution_builder import ConstitutionBuilder
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
@@ -31,7 +31,7 @@ class TestBlockManager(TestCase):
         self.client.flush()
 
     def test_init(self):
-        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
 
     def test_execute_work_single_transaction(self):
         test_contract = '''
@@ -66,7 +66,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
 
-        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
 
         b.execute_work([(1, tx_batch)])
 
@@ -115,7 +115,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
         w = Wallet()
-        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
 
         results = b.execute_work([(tx_batch.timestamp, tx_batch)])
 
@@ -157,7 +157,7 @@ def capture():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
         w = Wallet()
-        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
 
         now = Datetime._from_datetime(
             datetime.utcfromtimestamp(tx_batch.timestamp)
@@ -211,7 +211,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
 
-        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
 
 
         print(sbc)

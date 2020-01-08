@@ -1,91 +1,37 @@
 import asyncio
-from cilantro_ee.logger.base import get_logger
-from cilantro_ee.constants import conf
-
 from cilantro_ee.core.block_server import BlockServer
-from cilantro_ee.networking.network import Network
-from cilantro_ee.core.block_fetch import BlockFetcher
 
-from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.storage import VKBook, MetaDataStorage, CilantroStorageDriver
-from cilantro_ee.sockets.socket_book import SocketBook
-from cilantro_ee.sockets.services import send_out, multicast
+from cilantro_ee.storage import CilantroStorageDriver
+from cilantro_ee.sockets.services import multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
-from cilantro_ee.contracts import sync
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
-from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
+from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.core import canonical
-from contracting.client import ContractingClient
-
-import zmq.asyncio
-import cilantro_ee
 
 
-class NewMasternode:
-    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), webserver_port=8080, client=ContractingClient()):
-        # Seed state initially
-        if client.get_contract('vkbook') is None or overwrite:
-            sync.extract_vk_args(constitution)
-            sync.submit_vkbook(constitution, overwrite=overwrite)
+from cilantro_ee.nodes.base import Node
 
-        self.contacts = VKBook()
 
-        self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
+class Masternode(Node):
+    def __init__(self, webserver_port=8080, *args, **kwargs):
 
-        # stuff
-        self.log = get_logger()
-        self.socket_base = socket_base
-        self.wallet = wallet
-        self.ctx = ctx
-        self.network_parameters = network_parameters
+        super().__init__(*args, **kwargs)
 
-        self.bootnodes = bootnodes
-        self.constitution = constitution
-        self.overwrite = overwrite
-
-        self.driver = MetaDataStorage()
         self.blocks = CilantroStorageDriver(key=self.wallet.verifying_key())
-        self.client = client
 
         # Services
         self.block_server = BlockServer(
             wallet=self.wallet,
-            socket_base=socket_base,
-            network_parameters=network_parameters
+            socket_base=self.socket_base,
+            network_parameters=self.network_parameters
         )
 
-        self.block_fetcher = BlockFetcher(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            contacts=self.contacts,
-            masternode_sockets=SocketBook(
-                socket_base=self.socket_base,
-                service_type=ServiceType.BLOCK_SERVER,
-                phonebook_function=self.contacts.contract.get_masternodes,
-                ctx=self.ctx
-            )
-        )
+        self.webserver = WebServer(wallet=self.wallet, port=webserver_port)
 
-        self.webserver = WebServer(wallet=wallet, port=webserver_port)
-
-        self.tx_batcher = TransactionBatcher(wallet=wallet, queue=[])
-
-        self.network = Network(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            socket_base=socket_base,
-            bootnodes=self.bootnodes,
-            params=self.network_parameters,
-            initial_del_quorum=self.contacts.delegate_quorum_min,
-            initial_mn_quorum=self.contacts.masternode_quorum_min,
-            mn_to_find=self.contacts.masternodes,
-            del_to_find=self.contacts.delegates,
-        )
+        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
 
         self.current_nbn = None
-        self.running = True
 
         self.aggregator = Aggregator(
             socket_id=self.network_parameters.resolve(
@@ -96,47 +42,21 @@ class NewMasternode:
             driver=self.driver
         )
 
-        self.nbn_inbox = NBNInbox(
-            socket_id=self.network_parameters.resolve(
-                self.socket_base,
-                service_type=ServiceType.BLOCK_NOTIFICATIONS,
-                bind=True),
-            ctx=self.ctx,
-            driver=self.driver,
-            contacts=self.contacts
-        )
-
     async def start(self):
-        await self.network.start()
-
-        # Sync contracts
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        await super().start()
 
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
-
-        # Catchup
-        if len(self.contacts.masternodes) > 1:
-            await self.block_fetcher.sync()
 
         self.webserver.queue = self.tx_batcher.queue
 
         await self.webserver.start()
 
-        await self.process_blocks()
+    def delegate_work_sockets(self):
+        return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
 
-    async def send_batch_to_delegates(self):
-        tx_batch = self.tx_batcher.pack_current_queue()
-        peers = list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
-        return await multicast(self.ctx, tx_batch, peers)
-
-    async def send_nbn_to_everyone(self):
-        # Send out current NBN to everyone
-        tasks = []
-        for k, v in self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).items():
-            tasks.append(send_out(self.ctx, self.current_nbn, v))
-
-        return await asyncio.gather(*tasks)
+    def nbn_sockets(self):
+        return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
     def sbcs_to_block(self, subblocks):
         block = canonical.block_from_subblocks(
@@ -152,7 +72,7 @@ class NewMasternode:
             while not done:
                 if len(self.tx_batcher.queue) > 0:
                     print('tx in q')
-                    await self.send_nbn_to_everyone()
+                    await multicast(self.ctx, self.current_nbn, self.nbn_sockets())
                     done = True
                 if len(self.nbn_inbox.q) > 0:
                     done = True
@@ -161,15 +81,14 @@ class NewMasternode:
 
     async def process_blocks(self):
         # Someone just joining the network should wait until the next block to join
-        print('howdy')
         await self.process_first_block()
 
         while self.running:
             # Else, batch some more txs
-            await self.parameters.refresh() # Works
+            tx_batch = self.tx_batcher.pack_current_queue()
 
-            # Do stuff with the results if anyone was offline
-            await self.send_batch_to_delegates() # Works
+            await self.parameters.refresh() # Works
+            await multicast(self.ctx, tx_batch, self.delegate_work_sockets()) # Works
 
             # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none
             subblocks = await self.aggregator.gather_subblocks(
@@ -208,7 +127,7 @@ class NewMasternode:
             while is_skip_block or len(self.tx_batcher.queue) <= 0:
                 await asyncio.sleep(0)
 
-            await self.send_nbn_to_everyone()
+            await multicast(self.ctx, self.current_nbn, self.nbn_sockets())
             self.current_nbn = None
 
     def stop(self):
