@@ -1,10 +1,7 @@
 from cilantro_ee.logger.base import get_logger
-import json
 from cilantro_ee.constants import conf
 from contracting.db.driver import RocksDriver
 from contracting.db import encoder
-
-import contextlib
 
 from cilantro_ee.core.nonces import NonceManager
 

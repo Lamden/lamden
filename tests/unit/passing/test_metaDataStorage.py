@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage
 import json
 
 

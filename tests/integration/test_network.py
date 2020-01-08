@@ -1,15 +1,15 @@
 from unittest import TestCase
 from cilantro_ee.sockets.services import _socket
 from cilantro_ee.networking.discovery import *
-from cilantro_ee.networking import Network
+from cilantro_ee.networking.network import Network
 from cilantro_ee.networking.parameters import NetworkParameters
-from cilantro_ee.networking import KTable, PeerServer
+from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
 from cilantro_ee.sockets import services
 import zmq
 import zmq.asyncio
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 from time import sleep
 import json
 import os
@@ -44,12 +44,12 @@ def make_ipc(p):
 class TestNetworkService(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        self.loop = asyncio.get_event_loop()
+        #asyncio.set_event_loop(self.loop)
 
     def tearDown(self):
         self.ctx.destroy()
-        self.loop.close()
+        #self.loop.close()
 
     def test_setup(self):
         w = Wallet()

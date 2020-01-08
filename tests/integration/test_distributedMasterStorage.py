@@ -1,14 +1,22 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.master import DistributedMasterStorage
+from cilantro_ee.storage.master import DistributedMasterStorage
 from cilantro_ee.crypto import wallet
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 
 
 class TestDistributedMasterStorage(TestCase):
     def setUp(self):
+        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook({'masternodes': m,
+                            'delegates': d,
+                            'masternode_min_quorum': 1,
+                            'enable_stamps': True,
+                            'enable_nonces': True},
+                           overwrite=True)
+
         sk, vk = wallet.new()
-        self.db = DistributedMasterStorage(key=sk)
+        self.db = DistributedMasterStorage(key=sk, vkbook=VKBook())
 
     def tearDown(self):
         self.db.drop_collections()
@@ -19,17 +27,7 @@ class TestDistributedMasterStorage(TestCase):
     def test_get_masterset_test_hook_false(self):
         self.db.test_hook = False
 
-        m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook({'masternodes': m,
-                            'delegates': d,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
-
-        PhoneBook = VKBook()
-
-        self.assertEqual(len(PhoneBook.masternodes), self.db.get_master_set())
+        self.assertEqual(len(self.db.vkbook.masternodes), self.db.get_master_set())
 
     def test_get_masterset_test_hook_true(self):
         am = self.db.active_masters

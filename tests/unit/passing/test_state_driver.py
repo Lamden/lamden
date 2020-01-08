@@ -1,13 +1,13 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage
 import json
-from cilantro_ee.crypto import Wallet
-from cilantro_ee.crypto import TransactionBuilder
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.containers.merkle_tree import MerkleTree
+from cilantro_ee.containers.merkle_tree import merklize
 from contracting.db import encoder
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -60,7 +60,7 @@ class TestStateDriver(TestCase):
             transactions.append(tx_data)
 
         # Build a subblock. One will do
-        tree = MerkleTree.from_raw_transactions([tx.to_bytes_packed() for tx in transactions])
+        tree = merklize([tx.to_bytes_packed() for tx in transactions])
 
         w = Wallet()
 

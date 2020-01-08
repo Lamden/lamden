@@ -1,11 +1,11 @@
 from unittest import TestCase
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.core.block_server import BlockServer
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.services.storage.master import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core import canonical
 from cilantro_ee.core.top import TopBlockManager
 import time

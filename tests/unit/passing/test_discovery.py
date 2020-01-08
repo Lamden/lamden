@@ -2,7 +2,7 @@ from unittest import TestCase
 from cilantro_ee.networking.discovery import *
 import zmq
 import zmq.asyncio
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import _socket
 from time import sleep
 

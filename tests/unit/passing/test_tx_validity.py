@@ -1,7 +1,8 @@
 from unittest import TestCase
 from cilantro_ee.core.nonces import NonceManager
-from cilantro_ee.crypto import TransactionBuilder, transaction_is_valid, transaction
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.transaction import TransactionBuilder, transaction_is_valid
+from cilantro_ee.crypto import transaction
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from contracting import config
 import secrets

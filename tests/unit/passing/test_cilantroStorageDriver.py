@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.master import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.crypto import wallet
 
 
