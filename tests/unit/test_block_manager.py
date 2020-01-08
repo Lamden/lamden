@@ -1,12 +1,12 @@
 from unittest import TestCase
-from cilantro_ee.nodes.delegate.blockman import BlockManager
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.nodes.delegate.delegate import BlockManager
+from cilantro_ee.crypto.wallet import Wallet
 from tests.utils.constitution_builder import ConstitutionBuilder
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
 from contracting.client import ContractingClient
-from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.crypto import transaction_list_to_transaction_batch
-from cilantro_ee.crypto import TransactionBuilder
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
+from cilantro_ee.crypto.transaction import TransactionBuilder
 import zmq.asyncio
 import asyncio
 
@@ -177,3 +177,41 @@ def capture():
 
         self.assertEqual(c.key, b'testing.c')
         self.assertEqual(c.value, encode(now).encode())
+
+    def test_build_sbc_from_work_results(self):
+        test_contract = '''
+v = Variable()
+
+@construct
+def seed():
+    v.set('hello')
+
+@export
+def set(var):
+    v.set(var)
+
+@export
+def get():
+    return v.get()
+        '''
+
+        self.client.submit(test_contract, name='testing')
+
+        tx = TransactionBuilder(
+            sender='stu',
+            contract='testing',
+            function='set',
+            kwargs={'var': 'jeff'},
+            stamps=100_000,
+            processor=b'\x00' * 32,
+            nonce=0
+        )
+        tx.sign(Wallet().signing_key())
+        tx.serialize()
+
+        tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
+
+        b = BlockManager(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+
+
+        print(sbc)

@@ -5,6 +5,7 @@ import bson
 import hashlib
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
+block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 
 def format_dictionary(d: dict) -> dict:
@@ -74,3 +75,37 @@ def block_is_skip_block(block: dict):
         if len(subblock.transactions):
             return False
     return True
+
+
+def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
+    block = {
+        'blockHash': b'\x00' * 32,
+        'blockNum': block_num,
+        'prevBlockHash': previous_hash,
+        'subBlocks': None
+    }
+    return block
+
+
+def block_is_failed(block, previous_hash: bytes, block_num: int):
+    if block['blockHash'] != b'\x00' * 32:
+        return False
+
+    if block['subBlocks'] is not None:
+        return False
+
+    if block['blockNum'] != block_num:
+        return False
+
+    if block['prevBlockHash'] != previous_hash:
+        return False
+
+    return True
+
+
+def message_blob_to_dict_block(block):
+    pass
+
+
+def capnp_to_dict_block(block):
+    return block_capnp.BlockData.to_dict(block)

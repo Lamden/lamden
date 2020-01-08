@@ -21,6 +21,7 @@ from contracting.client import ContractingClient
 import zmq.asyncio
 import cilantro_ee
 
+
 class NewMasternode:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), webserver_port=8080, client=ContractingClient()):
@@ -115,7 +116,8 @@ class NewMasternode:
         asyncio.ensure_future(self.block_server.serve())
 
         # Catchup
-        await self.block_fetcher.sync()
+        if len(self.contacts.masternodes) > 1:
+            await self.block_fetcher.sync()
 
         self.webserver.queue = self.tx_batcher.queue
 
@@ -141,13 +143,6 @@ class NewMasternode:
 
         return await asyncio.gather(*tasks)
 
-    def boot_up_start_blocks(self):
-        # Check to see if you have blocks (catch up before this)
-        # If not, hang until you have transactions in the batch or a NBN comes through
-        # Send the genesis NBN and your work
-        # Flip a bool to never do this again after this.
-        pass
-
     def sbcs_to_block(self, subblocks):
         block = canonical.block_from_subblocks(
             subblocks,
@@ -156,9 +151,23 @@ class NewMasternode:
         )
         return block
 
+    async def process_first_block(self):
+        if self.driver.latest_block_num == 0:
+            done = False
+            while not done:
+                if len(self.tx_batcher.queue) > 0:
+                    print('tx in q')
+                    await self.send_nbn_to_everyone()
+                    done = True
+                if len(self.nbn_inbox.q) > 0:
+                    done = True
+        else:
+            await self.nbn_inbox.wait_for_next_nbn()
+
     async def process_blocks(self):
         # Someone just joining the network should wait until the next block to join
-        await self.nbn_inbox.wait_for_next_nbn()
+        print('howdy')
+        await self.process_first_block()
 
         while self.running:
             # Else, batch some more txs
@@ -168,28 +177,40 @@ class NewMasternode:
             await self.send_batch_to_delegates() # Works
 
             # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none
-            subblocks = await self.aggregator.gather_subblocks(total_contacts=len(self.contacts.delegates)) # Works
+            subblocks = await self.aggregator.gather_subblocks(
+                total_contacts=len(self.contacts.delegates),
+                expected_subblocks=len(self.contacts.masternodes)
+            ) # Works
 
-            # Must
-            block = canonical.block_from_subblocks(
-                subblocks,
-                previous_hash=self.driver.latest_block_hash,
-                block_num=self.driver.latest_block_num + 1
-            ) # Idk
+            is_skip_block = False
+            # Block is not failed block
+            if None not in subblocks.values():
+                # Must
+                block = canonical.block_from_subblocks(
+                    [v for _, v in sorted(subblocks.items())],
+                    previous_hash=self.driver.latest_block_hash,
+                    block_num=self.driver.latest_block_num + 1
+                ) # Idk
 
-            # Update with state
-            self.driver.update_with_block(block)
+                # Update with state
+                self.driver.update_with_block(block)
 
-            # Store
-            self.blocks.store_new_block(block)
+                # Store
+                self.blocks.store_new_block(block)
 
-            is_skip_block = canonical.block_is_skip_block(block)
+                is_skip_block = canonical.block_is_skip_block(block)
+            else:
+                print('failed')
+                block = canonical.get_failed_block(
+                    previous_hash=self.driver.latest_block_hash,
+                    block_num=self.driver.latest_block_num + 1
+                )
 
             # Serialize as Capnp again
             self.current_nbn = block
 
             # If so, hang until you get a new block or some work
-            while is_skip_block and len(self.tx_batcher.queue) <= 0:
+            while is_skip_block or len(self.tx_batcher.queue) <= 0:
                 await asyncio.sleep(0)
 
             await self.send_nbn_to_everyone()

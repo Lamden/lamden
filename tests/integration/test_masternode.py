@@ -34,6 +34,36 @@ def make_ipc(p):
     except:
         pass
 
+def make_tx(processor):
+    w = Wallet()
+    batch = TransactionBuilder(
+        sender=w.verifying_key(),
+        contract='test',
+        function='testing',
+        kwargs={},
+        stamps=1_000_000,
+        processor=processor,
+        nonce=0
+    )
+
+    batch.sign(w.signing_key())
+    b = batch.serialize()
+
+    tx = transaction_capnp.Transaction.from_bytes_packed(b)
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = MetaDataStorage()
+    driver.set(balances_key, 1_000_000)
+
+    return tx
 
 class MockContacts:
     def __init__(self, masters, delegates):
@@ -651,7 +681,7 @@ class TestNewMasternode(TestCase):
         pass
 
     def test_process_blocks_works(self):
-        bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
 
         mnw1 = Wallet()
 
@@ -677,6 +707,15 @@ class TestNewMasternode(TestCase):
             "enable_nonces": False
         }
 
+
+        # Delegate like thing
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        d1 = Network(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
+                     bootnodes=bootnodes, mn_to_find=[mnw1.verifying_key().hex()], del_to_find=[dw1.verifying_key().hex()])
+
+
+
         n1 = '/tmp/n1'
         make_ipc(n1)
 
@@ -690,6 +729,21 @@ class TestNewMasternode(TestCase):
             overwrite=True
         )
 
+        async def add_tx():
+            await asyncio.sleep(0.4)
+            m.tx_batcher.queue.append(make_tx(mnw1.verifying_key()))
+
+        async def boot():
+            await m.start()
+            await m.process_blocks()
+
+        tasks = asyncio.gather(
+            boot(),
+            d1.start(),
+            add_tx()
+        )
+
+        self.loop.run_until_complete(tasks)
 
 
     def test_retreived_subblocks_serialize_to_block_properly_single_block(self):
