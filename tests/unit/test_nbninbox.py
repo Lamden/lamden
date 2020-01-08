@@ -5,8 +5,8 @@ from cilantro_ee.nodes.new_block_inbox import NBNInbox, BlockNumberMismatch, Not
 from tests.utils.constitution_builder import ConstitutionBuilder
 
 from contracting.client import ContractingClient
-from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.storage.state import MetaDataStorage
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
@@ -33,15 +33,22 @@ class TestNBNInbox(TestCase):
 
     def tearDown(self):
         self.ctx.destroy()
-        self.loop.stop()
+        #self.loop.close()
         ContractingClient().flush()
 
     def test_init(self):
         n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=self.ctx)
 
     def test_nbn_puts_messages_on_q(self):
-        n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
-                     ctx=self.ctx, linger=50, poll_timeout=50)
+        n = NBNInbox(
+            contacts=VKBook(),
+            driver=MetaDataStorage(),
+            socket_id=_socket('tcp://127.0.0.1:8888'),
+            ctx=self.ctx,
+            linger=500,
+            poll_timeout=500,
+            verify=False
+        )
 
         async def send():
             socket = self.ctx.socket(zmq.DEALER)
@@ -49,7 +56,7 @@ class TestNBNInbox(TestCase):
             await socket.send(b'')
 
         async def stop():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
             n.stop()
 
         tasks = asyncio.gather(
@@ -64,7 +71,7 @@ class TestNBNInbox(TestCase):
 
     def test_nbn_wait_for_next_nbn_returns_first_on_q(self):
         n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
-                     ctx=self.ctx, linger=50, poll_timeout=50)
+                     ctx=self.ctx, linger=50, poll_timeout=50, verify=False)
 
         async def send():
             socket = self.ctx.socket(zmq.DEALER)
@@ -72,7 +79,7 @@ class TestNBNInbox(TestCase):
             await socket.send(b'\x00')
 
         async def stop():
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
             n.stop()
 
         tasks = asyncio.gather(
@@ -105,31 +112,31 @@ class TestNBNInbox(TestCase):
             n.block_notification_is_valid(msg)
 
 
-class TestWorkInbox(TestCase):
-    def setUp(self):
-        self.loop = asyncio.get_event_loop()
-        self.ctx = zmq.asyncio.Context()
-        self.const_builder = ConstitutionBuilder(10, 10, 10, 10, False, False)
-        book = self.const_builder.get_constitution()
-        extract_vk_args(book)
-        submit_vkbook(book, overwrite=True)
-
-    def tearDown(self):
-        self.ctx.destroy()
-        self.loop.stop()
-        ContractingClient().flush()
-
-    def test_init(self):
-        w = WorkInbox(contacts=VKBook(), validity_timeout=1000, socket_id=_socket('tcp://127.0.0.1:8888'),
-                      ctx=self.ctx, linger=50, poll_timeout=50)
-
-        wallets = self.const_builder.get_mn_wallets()
-
-        for wallet in wallets:
-            mtype, msg = Message.get_message_packed(
-                MessageType.TRANSACTION_BATCH,
-                transactions=[t for t in tx_list], timestamp=timestamp,
-                signature=signature, inputHash=inputHash,
-                sender=self.wallet.verifying_key())
-
-        print(wallets)
+# class TestWorkInbox(TestCase):
+#     def setUp(self):
+#         self.loop = asyncio.get_event_loop()
+#         self.ctx = zmq.asyncio.Context()
+#         self.const_builder = ConstitutionBuilder(10, 10, 10, 10, False, False)
+#         book = self.const_builder.get_constitution()
+#         extract_vk_args(book)
+#         submit_vkbook(book, overwrite=True)
+#
+#     def tearDown(self):
+#         self.ctx.destroy()
+#         self.loop.stop()
+#         ContractingClient().flush()
+#
+#     def test_init(self):
+#         w = WorkInbox(contacts=VKBook(), validity_timeout=1000, socket_id=_socket('tcp://127.0.0.1:8888'),
+#                       ctx=self.ctx, linger=50, poll_timeout=50)
+#
+#         wallets = self.const_builder.get_mn_wallets()
+#
+#         for wallet in wallets:
+#             mtype, msg = Message.get_message_packed(
+#                 MessageType.TRANSACTION_BATCH,
+#                 transactions=[t for t in tx_list], timestamp=timestamp,
+#                 signature=signature, inputHash=inputHash,
+#                 sender=self.wallet.verifying_key())
+#
+#         print(wallets)

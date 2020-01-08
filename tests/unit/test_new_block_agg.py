@@ -1,11 +1,11 @@
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 from tests.utils.constitution_builder import ConstitutionBuilder
 
 import zmq.asyncio
 import asyncio
 import secrets
-from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.storage.state import MetaDataStorage
 
 from cilantro_ee.nodes.masternode.old.block_aggregator import BlockAggregator
 from cilantro_ee.nodes.masternode.old.block_aggregator_controller import BlockAggregatorController
@@ -16,9 +16,9 @@ from tests import random_txs
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 
-from cilantro_ee.networking import Network
+from cilantro_ee.networking.network import Network
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 
 const_builder = ConstitutionBuilder(1, 20, 1, 10, False, False)

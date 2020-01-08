@@ -650,6 +650,48 @@ class TestNewMasternode(TestCase):
         #
         pass
 
+    def test_process_blocks_works(self):
+        bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+
+        mnw1 = Wallet()
+
+        dw1 = Wallet()
+
+        constitution = {
+            "masternodes": {
+                "vk_list": [
+                    mnw1.verifying_key().hex(),
+                ],
+                "min_quorum": 1
+            },
+            "delegates": {
+                "vk_list": [
+                    dw1.verifying_key().hex(),
+                ],
+                "min_quorum": 1
+            },
+            "witnesses": {},
+            "schedulers": {},
+            "notifiers": {},
+            "enable_stamps": False,
+            "enable_nonces": False
+        }
+
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+
+        m = NewMasternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base=f'ipc://{n1}',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+
+
     def test_retreived_subblocks_serialize_to_block_properly_single_block(self):
         bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
 

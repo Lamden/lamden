@@ -35,6 +35,7 @@ class NBNInbox(AsyncInbox):
             self.q.append(msg)
         except BlockNotificationException:
             # This would be where the audit layer would take over
+            print('bad')
             pass
 
     def block_notification_is_valid(self, msg):
