@@ -17,6 +17,8 @@ from contracting import config
 import os
 import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+import secrets
+from tests import random_txs
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -634,3 +636,62 @@ class TestNewMasternode(TestCase):
         self.assertTrue(wi1.work[mnw1.verifying_key().hex()])
         self.assertTrue(wi2.work[mnw1.verifying_key().hex()])
         self.assertTrue(wi4.work[mnw1.verifying_key().hex()])
+
+    def test_process_blocks_single_contact_updates_correctly(self):
+        # Setup masternode
+        # Setup a socket to send finished work to
+        # Execute real transaction on delegate that just isnt started?
+
+        # Somehow calculate what the block should be after processing
+        # Check that the driver updates the state with the block T1
+        # Check that the blocks updates the blocks with the block (ha) T2
+
+        # Test to see that a NBN gets sent out because the block is finished T3
+        #
+        pass
+
+    def test_retreived_subblocks_serialize_to_block_properly_single_block(self):
+        bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+
+        mnw1 = Wallet()
+
+        dw1 = Wallet()
+
+        constitution = {
+            "masternodes": {
+                "vk_list": [
+                    mnw1.verifying_key().hex(),
+                ],
+                "min_quorum": 1
+            },
+            "delegates": {
+                "vk_list": [
+                    dw1.verifying_key().hex(),
+                ],
+                "min_quorum": 1
+            },
+            "witnesses": {},
+            "schedulers": {},
+            "notifiers": {},
+            "enable_stamps": False,
+            "enable_nonces": False
+        }
+
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+
+        m = NewMasternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base=f'ipc://{n1}',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        input_hash = secrets.token_bytes(32)
+        sbc = random_txs.sbc_from_txs(input_hash, b'\x00' * 32, w=dw1, idx=0, poisoned_sig=b'\x00' * 64)
+        b = m.sbcs_to_block([sbc])
+
+        print(b)

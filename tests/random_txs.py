@@ -71,16 +71,16 @@ def subblock_from_txs(txs, idx=0):
 
     w = Wallet()
 
-    sig = w.sign(tree.root)
+    sig = w.sign(tree[0])
     h = hashlib.sha3_256()
-    h.update(tree.root)
+    h.update(tree[0])
 
     proof = subblock_capnp.MerkleProof.new_message(hash=h.digest(), signer=w.vk.encode(), signature=sig)
 
     sb = subblock_capnp.SubBlock.new_message(
-        merkleRoot=tree.root,
+        merkleRoot=tree[0],
         signatures=[proof.to_bytes_packed()],
-        merkleLeaves=tree.leaves,
+        merkleLeaves=tree,
         subBlockNum=0,
         inputHash=secrets.token_bytes(32),
         transactions=[tx for tx in txs]
