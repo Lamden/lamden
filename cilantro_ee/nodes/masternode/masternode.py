@@ -75,17 +75,13 @@ class Masternode(Node):
             await multicast(self.ctx, msg, self.nbn_sockets())
 
     async def join_quorum(self):
-        nbn = await self.nbn_inbox.wait_for_next_nbn()
+        # Catchup with NBNs until you have work, the join the quorum
+        while len(self.tx_batcher.queue) == 0 or len(self.nbn_inbox.q) == 0:
+            nbn = await self.nbn_inbox.wait_for_next_nbn()
 
-        # Update with state
-        self.driver.update_with_block(nbn)
-        self.blocks.store_new_block(nbn)
-
-        is_skip_block = canonical.block_is_skip_block(nbn)
-        while is_skip_block or len(self.tx_batcher.queue) <= 0:
-            await asyncio.sleep(0)
-
-        await multicast(self.ctx, nbn, self.nbn_sockets())
+            # Update with state
+            self.driver.update_with_block(nbn)
+            self.blocks.store_new_block(nbn)
 
         await self.process_blocks()
 
@@ -103,17 +99,10 @@ class Masternode(Node):
             await self.parameters.refresh() # Works
             await multicast(self.ctx, tx_batch, self.delegate_work_sockets()) # Works
 
-            # Subblocks is a mapping between subblock index and subblock. If the subblock failed, it will be none
-            subblocks = await self.aggregator.gather_subblocks(
+            # this really should just give us a block straight up
+            block = await self.aggregator.gather_subblocks(
                 total_contacts=len(self.contacts.delegates),
                 expected_subblocks=len(self.contacts.masternodes)
-            ) # Works
-
-
-            block = canonical.block_from_subblocks(
-                [v for _, v in sorted(subblocks.items())],
-                previous_hash=self.driver.latest_block_hash,
-                block_num=self.driver.latest_block_num + 1
             )
 
             # Update with state
@@ -127,7 +116,7 @@ class Masternode(Node):
                 await asyncio.sleep(0)
 
             # Pack current NBN into message
-            await multicast(self.ctx, block, self.nbn_sockets())
+            await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
 
     def stop(self):
         super().stop()

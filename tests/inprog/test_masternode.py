@@ -908,3 +908,4 @@ class TestNewMasternode(TestCase):
         _, _, msg = self.loop.run_until_complete(tasks)
 
         self.assertEqual(msg, canonical.dict_to_msg_block(canonical.get_genesis_block()))
+

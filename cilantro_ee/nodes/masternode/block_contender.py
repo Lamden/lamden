@@ -5,6 +5,7 @@ from cilantro_ee.storage import MetaDataStorage
 import capnp
 import os
 
+from cilantro_ee.core import canonical
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.containers.merkle_tree import merklize
@@ -160,6 +161,7 @@ class Aggregator:
             driver=driver,
             expected_subblocks=self.expected_subblocks
         )
+        self.driver = driver
 
     async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=1000):
         self.sbc_inbox.expected_subblocks = expected_subblocks
@@ -178,4 +180,9 @@ class Aggregator:
 
         subblocks = deepcopy(contenders.finished)
         del contenders
-        return subblocks
+
+        return canonical.block_from_subblocks(
+            [v for _, v in sorted(subblocks.items())],
+            previous_hash=self.driver.latest_block_hash,
+            block_num=self.driver.latest_block_num + 1
+        )
