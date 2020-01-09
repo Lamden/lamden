@@ -88,6 +88,32 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     return block
 
 
+def get_genesis_block():
+    block = {
+        'blockHash': b'\x00' * 32,
+        'blockNum': 0,
+        'prevBlockHash': b'\x00' * 32,
+        'subBlocks': []
+    }
+    return block
+
+
+def block_is_genesis(block):
+    if block['blockHash'] != b'\x00' * 32:
+        return False
+
+    if block['subBlocks'] is not None:
+        return False
+
+    if block['blockNum'] != 0:
+        return False
+
+    if block['prevBlockHash'] != b'\x00' * 32:
+        return False
+
+    return True
+
+
 def block_is_failed(block, previous_hash: bytes, block_num: int):
     if block['blockHash'] != b'\x00' * 32:
         return False
@@ -110,6 +136,10 @@ def message_blob_to_dict_block(block):
 
 def capnp_to_dict_block(block):
     return block_capnp.BlockData.to_dict(block)
+
+
+def dict_to_capnp_block(block):
+    return block_capnp.BlockData.from_dict(block)
 
 
 def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash, sb_num=0):

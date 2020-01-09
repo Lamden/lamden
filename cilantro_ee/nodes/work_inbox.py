@@ -79,11 +79,10 @@ class WorkInbox(AsyncInbox):
         return msg_blob
 
     async def wait_for_next_batch_of_work(self):
-        self.work.clear()
         self.current_masternodes = self.contacts.masternodes
         # Wait for work from all masternodes that are currently online
         # How do we test if they are online? idk.
         while len(set(self.current_masternodes) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
 
-        return self.work
+        return list(self.work.values())

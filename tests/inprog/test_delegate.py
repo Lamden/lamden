@@ -1,10 +1,13 @@
 from unittest import TestCase
 from cilantro_ee.nodes.delegate.delegate import Delegate
+from cilantro_ee.storage import MetaDataStorage
 from cilantro_ee.nodes.delegate import execution
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.core import canonical
+from contracting import config
 import time
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 import zmq.asyncio
@@ -12,14 +15,90 @@ import datetime
 from tests.random_txs import random_block
 import os
 import capnp
+import asyncio
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-
+def make_ipc(p):
+    try:
+        os.mkdir(p)
+    except:
+        pass
 class MockDriver:
     def __init__(self):
         self.latest_block_hash = b'\x00' * 32
         self.latest_block_num = 999
 
+def put_test_contract(client):
+    test_contract = '''
+v = Variable()
+
+@construct
+def seed():
+    v.set('hello')
+
+@export
+def set(var):
+    v.set(var)
+
+@export
+def get():
+    return v.get()
+        '''
+
+    client.submit(test_contract, name='testing')
+
+def get_tx_batch():
+    w = Wallet()
+    tx = TransactionBuilder(
+        sender='stu',
+        contract='testing',
+        function='set',
+        kwargs={'var': 'howdy'},
+        stamps=100_000,
+        processor=b'\x00' * 32,
+        nonce=0
+    )
+    tx.sign(w.signing_key())
+    tx.serialize()
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = MetaDataStorage()
+    driver.set(balances_key, 1_000_000)
+
+    w = Wallet()
+    tx2 = TransactionBuilder(
+        sender='stu',
+        contract='testing',
+        function='get',
+        kwargs={},
+        stamps=100_000,
+        processor=b'\x00' * 32,
+        nonce=0
+    )
+    tx2.sign(Wallet().signing_key())
+    tx2.serialize()
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = MetaDataStorage()
+    driver.set(balances_key, 1_000_000)
+
+    return transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
 
 class TestExecution(TestCase):
     def setUp(self):
@@ -275,27 +354,20 @@ def get():
 bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
 
 mnw1 = Wallet()
-mnw2 = Wallet()
 
 dw1 = Wallet()
-dw2 = Wallet()
-dw3 = Wallet()
-dw4 = Wallet()
+
 
 constitution = {
     "masternodes": {
         "vk_list": [
             mnw1.verifying_key().hex(),
-            mnw2.verifying_key().hex()
         ],
         "min_quorum": 1
     },
     "delegates": {
         "vk_list": [
             dw1.verifying_key().hex(),
-            dw2.verifying_key().hex(),
-            dw3.verifying_key().hex(),
-            dw4.verifying_key().hex()
         ],
         "min_quorum": 1
     },
@@ -381,3 +453,37 @@ class TestDelegate(TestCase):
 
         self.assertEqual(b.client.raw_driver.get_direct(k), v)
 
+    def test_run_single_block_mock(self):
+        b = Delegate(socket_base='ipc:///tmp/n2', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        gb = canonical.get_genesis_block()
+        gb = canonical.dict_to_capnp_block(gb)
+
+        # Put the genesis block in here so we start immediately
+        b.nbn_inbox.q.append(gb)
+
+        b.running = True
+
+        # Add a single peer that we control
+        b.parameters.sockets = {
+            mnw1.verifying_key().hex(): 'ipc:///tmp/n1'
+        }
+
+        put_test_contract(self.client)
+
+        b.work_inbox.work[mnw1.verifying_key().hex()] = get_tx_batch()
+
+        async def stop():
+            await asyncio.sleep(1)
+            b.running = False
+            b.nbn_inbox.q.append(gb)
+
+        loop = asyncio.get_event_loop()
+
+        tasks = asyncio.gather(
+            b.run(),
+            stop()
+        )
+
+        loop.run_until_complete(tasks)

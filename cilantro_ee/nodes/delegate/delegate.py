@@ -47,9 +47,6 @@ class Delegate(Node):
         return True
 
     def process_nbn(self, nbn):
-        # wait for NBN
-        # If its the block that you worked on, commit the db
-        # AKA if you signed the block
         if not self.did_sign_block(nbn):
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
@@ -57,7 +54,7 @@ class Delegate(Node):
         self.client.raw_driver.commit()
         self.pending_sbcs.clear()
 
-    def filter_tx_batches(self, work):
+    def filter_work(self, work):
         filtered_work = []
         for tx_batch in work:
             # Filter out None responses
@@ -66,22 +63,31 @@ class Delegate(Node):
 
             # Add the rest to a priority queue based on their timestamp
             heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
+
         return filtered_work
 
     async def run(self):
         while self.running:
             # If first block, just wait for masters to send the genesis NBN
-            if self.driver.latest_block_num > 0:
+            if self.driver.latest_block_num == 0:
                 nbn = await self.nbn_inbox.wait_for_next_nbn()
                 self.process_nbn(nbn)
 
             await self.parameters.refresh()
-            work = await self.work_inbox.wait_for_next_batch_of_work()
 
-            filtered_work = self.filter_tx_batches(work)
+            work = await self.work_inbox.wait_for_next_batch_of_work()
+            self.work_inbox.work.clear()
+
+            filtered_work = self.filter_work(work)
 
             # Execute work
-            results = execution.execute_work(filtered_work)
+            results = execution.execute_work(
+                client=self.client,
+                driver=self.driver,
+                work=filtered_work,
+                wallet=self.wallet,
+                previous_block_hash=self.driver.latest_block_hash
+            )
 
             # Add merkle roots to track successful sbcs
             for sb in results:
