@@ -67,12 +67,12 @@ class Delegate(Node):
         return filtered_work
 
     async def run(self):
-        while self.running:
-            # If first block, just wait for masters to send the genesis NBN
-            if self.driver.latest_block_num == 0:
-                nbn = await self.nbn_inbox.wait_for_next_nbn()
-                self.process_nbn(nbn)
+        # If first block, just wait for masters to send the genesis NBN
+        if self.driver.latest_block_num == 0:
+            nbn = await self.nbn_inbox.wait_for_next_nbn()
+            self.process_nbn(nbn)
 
+        while self.running:
             await self.parameters.refresh()
 
             work = await self.work_inbox.wait_for_next_batch_of_work()

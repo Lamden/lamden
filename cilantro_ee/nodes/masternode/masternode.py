@@ -31,7 +31,7 @@ class Masternode(Node):
 
         self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
 
-        self.current_nbn = None
+        self.current_nbn = canonical.get_genesis_block()
 
         self.aggregator = Aggregator(
             socket_id=self.network_parameters.resolve(
@@ -66,23 +66,35 @@ class Masternode(Node):
         )
         return block
 
-    async def process_first_block(self):
+    async def new_blockchain_boot(self):
+        while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
+            asyncio.sleep(0)
+
+        if len(self.tx_batcher.queue) > 0:
+            await multicast(self.ctx, canonical.get_genesis_block(), self.nbn_sockets())
+
+    async def join_quorum(self):
+        nbn = await self.nbn_inbox.wait_for_next_nbn()
+
+        # Update with state
+        self.driver.update_with_block(nbn)
+        self.blocks.store_new_block(nbn)
+
+        is_skip_block = canonical.block_is_skip_block(nbn)
+        while is_skip_block or len(self.tx_batcher.queue) <= 0:
+            await asyncio.sleep(0)
+
+        await multicast(self.ctx, nbn, self.nbn_sockets())
+
+        await self.process_blocks()
+
+    async def run(self):
         if self.driver.latest_block_num == 0:
-            done = False
-            while not done:
-                if len(self.tx_batcher.queue) > 0:
-                    print('tx in q')
-                    await multicast(self.ctx, self.current_nbn, self.nbn_sockets())
-                    done = True
-                if len(self.nbn_inbox.q) > 0:
-                    done = True
+            await self.new_blockchain_boot()
         else:
-            await self.nbn_inbox.wait_for_next_nbn()
+            await self.join_quorum()
 
     async def process_blocks(self):
-        # Someone just joining the network should wait until the next block to join
-        await self.process_first_block()
-
         while self.running:
             # Else, batch some more txs
             tx_batch = self.tx_batcher.pack_current_queue()
@@ -96,39 +108,25 @@ class Masternode(Node):
                 expected_subblocks=len(self.contacts.masternodes)
             ) # Works
 
-            is_skip_block = False
-            # Block is not failed block
-            if None not in subblocks.values():
-                # Must
-                block = canonical.block_from_subblocks(
-                    [v for _, v in sorted(subblocks.items())],
-                    previous_hash=self.driver.latest_block_hash,
-                    block_num=self.driver.latest_block_num + 1
-                ) # Idk
 
-                # Update with state
-                self.driver.update_with_block(block)
+            block = canonical.block_from_subblocks(
+                [v for _, v in sorted(subblocks.items())],
+                previous_hash=self.driver.latest_block_hash,
+                block_num=self.driver.latest_block_num + 1
+            )
 
-                # Store
-                self.blocks.store_new_block(block)
+            # Update with state
+            self.driver.update_with_block(block)
+            self.blocks.store_new_block(block)
 
-                is_skip_block = canonical.block_is_skip_block(block)
-            else:
-                print('failed')
-                block = canonical.get_failed_block(
-                    previous_hash=self.driver.latest_block_hash,
-                    block_num=self.driver.latest_block_num + 1
-                )
-
-            # Serialize as Capnp again
-            self.current_nbn = block
+            is_skip_block = canonical.block_is_skip_block(block)
 
             # If so, hang until you get a new block or some work
             while is_skip_block or len(self.tx_batcher.queue) <= 0:
                 await asyncio.sleep(0)
 
-            await multicast(self.ctx, self.current_nbn, self.nbn_sockets())
-            self.current_nbn = None
+            # Pack current NBN into message
+            await multicast(self.ctx, block, self.nbn_sockets())
 
     def stop(self):
         super().stop()

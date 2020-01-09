@@ -128,6 +128,7 @@ class CurrentContenders:
 
         self.votes_left = defaultdict(lambda: total_contacts)
 
+    # Should be dict. push Capnp away from protocol as much as possible
     def add_sbcs(self, sbcs):
         for sbc in sbcs.contenders:
             self.votes_left[sbc.inputHash] -= 1

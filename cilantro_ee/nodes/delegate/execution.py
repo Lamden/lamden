@@ -76,9 +76,6 @@ def execute_work(client, driver, work, wallet, previous_block_hash, parallelism=
     while len(work) > 0:
         _, tx_batch = heapq.heappop(work)
 
-        print('howdy')
-        print(tx_batch)
-
         results = execute_tx_batch(
             client=client,
             driver=driver,

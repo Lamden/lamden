@@ -31,14 +31,14 @@ class NBNInbox(AsyncInbox):
             return
 
         try:
-            self.block_notification_is_valid(msg)
-            self.q.append(msg)
+            nbn = self.validate_nbn(msg)
+            self.q.append(nbn)
         except BlockNotificationException:
             # This would be where the audit layer would take over
             print('bad')
             pass
 
-    def block_notification_is_valid(self, msg):
+    def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
         if msg_type != MessageType.BLOCK_NOTIFICATION:
@@ -46,6 +46,9 @@ class NBNInbox(AsyncInbox):
 
         if msg_blob.blockNum != self.driver.latest_block_num + 1:
             raise BlockNumberMismatch
+
+        # Deserialize off the socket
+        return msg_blob.to_dict()
 
     async def wait_for_next_nbn(self):
         while len(self.q) <= 0:

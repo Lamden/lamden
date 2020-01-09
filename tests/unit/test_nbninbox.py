@@ -99,7 +99,7 @@ class TestNBNInbox(TestCase):
 
         msg = Message.get_message_packed_2(MessageType.BURN_INPUT_HASHES)
         with self.assertRaises(NotBlockNotificationMessageType):
-            n.block_notification_is_valid(msg)
+            n.validate_nbn(msg)
 
     def test_block_notification_invalid_block_num_throws_exception(self):
         n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
@@ -109,7 +109,7 @@ class TestNBNInbox(TestCase):
         msg = Message.get_message_packed_2(MessageType.BLOCK_NOTIFICATION, blockNum=100)
 
         with self.assertRaises(BlockNumberMismatch):
-            n.block_notification_is_valid(msg)
+            n.validate_nbn(msg)
 
 
 # class TestWorkInbox(TestCase):

@@ -29,7 +29,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
 
     for subblock in subblocks:
         if subblock is None:
-            sb = {}
+            return get_failed_block()
         else:
             sb = subblock.to_dict()
 
@@ -161,3 +161,4 @@ def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash
     )
 
     return sbc
+
