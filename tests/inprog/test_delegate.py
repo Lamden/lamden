@@ -214,7 +214,7 @@ def get():
         tx2 = TransactionBuilder(
             sender='jeff',
             contract='testing',
-            function='get',
+            function='set',
             kwargs={'var': 'poo'},
             stamps=100_000,
             processor=b'\x00' * 32,
@@ -232,4 +232,33 @@ def get():
 
         sbc = execution.execute_work(self.client, MockDriver(), work, Wallet(), b'B'*32)
 
-        print(sbc[0])
+        sb1, sb2 = sbc
+
+        td1, td2 = sb1.transactions
+        self.assertEqual(td1.status, 0)
+        self.assertEqual(td1.state[0].key, b'testing.v')
+        self.assertEqual(td1.state[0].value, b'"howdy"')
+        self.assertEqual(td1.stampsUsed, 0)
+
+        self.assertEqual(td2.status, 0)
+        self.assertEqual(len(td2.state), 0)
+        self.assertEqual(td2.stampsUsed, 0)
+
+        self.assertEqual(sb1.inputHash, tx_batch_1.inputHash)
+        self.assertEqual(sb1.subBlockNum, 0)
+        self.assertEqual(sb1.prevBlockHash, b'B'*32)
+
+        td1, td2 = sb2.transactions
+        self.assertEqual(td1.status, 0)
+        self.assertEqual(td1.state[0].key, b'testing.v')
+        self.assertEqual(td1.state[0].value, b'"123"')
+        self.assertEqual(td1.stampsUsed, 0)
+
+        self.assertEqual(td2.status, 0)
+        self.assertEqual(td2.state[0].key, b'testing.v')
+        self.assertEqual(td2.state[0].value, b'"poo"')
+        self.assertEqual(td2.stampsUsed, 0)
+
+        self.assertEqual(sb2.inputHash, tx_batch_2.inputHash)
+        self.assertEqual(sb2.subBlockNum, 1)
+        self.assertEqual(sb2.prevBlockHash, b'B' * 32)
