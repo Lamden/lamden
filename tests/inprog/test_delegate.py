@@ -7,7 +7,8 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
 import time
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
-
+import zmq.asyncio
+import datetime
 
 class MockDriver:
     def __init__(self):
@@ -262,3 +263,52 @@ def get():
         self.assertEqual(sb2.inputHash, tx_batch_2.inputHash)
         self.assertEqual(sb2.subBlockNum, 1)
         self.assertEqual(sb2.prevBlockHash, b'B' * 32)
+
+
+bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+
+mnw1 = Wallet()
+mnw2 = Wallet()
+
+dw1 = Wallet()
+dw2 = Wallet()
+dw3 = Wallet()
+dw4 = Wallet()
+
+constitution = {
+    "masternodes": {
+        "vk_list": [
+            mnw1.verifying_key().hex(),
+            mnw2.verifying_key().hex()
+        ],
+        "min_quorum": 1
+    },
+    "delegates": {
+        "vk_list": [
+            dw1.verifying_key().hex(),
+            dw2.verifying_key().hex(),
+            dw3.verifying_key().hex(),
+            dw4.verifying_key().hex()
+        ],
+        "min_quorum": 1
+    },
+    "witnesses": {},
+    "schedulers": {},
+    "notifiers": {},
+    "enable_stamps": False,
+    "enable_nonces": False
+}
+
+class TestDelegate(TestCase):
+    def setUp(self):
+        self.ctx = zmq.asyncio.Context()
+        self.client = ContractingClient()
+
+    def tearDown(self):
+        self.ctx.destroy()
+        self.client.flush()
+
+    def test_init(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes, constitution=constitution)
+
+

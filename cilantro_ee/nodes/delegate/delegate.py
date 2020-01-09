@@ -38,6 +38,8 @@ class Delegate(Node):
         if len(self.pending_sbcs) == 0:
             return False
 
+        # Throws a failure if even one of the subblocks isnt signed.
+        # This can be fixed in the future with partial blocks.
         for sub_block in block.subBlocks:
             if self.pending_sbcs.get(sub_block.merkleRoot) is None:
                 return False
