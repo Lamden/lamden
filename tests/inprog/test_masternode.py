@@ -850,3 +850,26 @@ class TestNewMasternode(TestCase):
         )
 
         self.loop.run_until_complete(tasks)
+
+    def test_new_blockchain_boot_completes_if_tx_batch_filled(self):
+        m = Masternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base='ipc:///tmp/n1',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        # For mocking
+        async def add_tx_batch():
+            m.tx_batcher.queue.append(b'123')
+
+        tasks = asyncio.gather(
+            m.new_blockchain_boot(),
+            add_tx_batch()
+        )
+
+        self.loop.run_until_complete(tasks)
+
