@@ -336,3 +336,15 @@ class TestDelegate(TestCase):
 
         self.assertFalse(b.did_sign_block(block))
 
+    def test_did_sign_block_true_if_all_merkle_roots_in_pending(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        block = random_block()
+
+        # Add one root but not the other
+        b.pending_sbcs.add(block.subBlocks[0].merkleRoot)
+        b.pending_sbcs.add(block.subBlocks[1].merkleRoot)
+
+        self.assertTrue(b.did_sign_block(block))
+
