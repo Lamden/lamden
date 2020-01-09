@@ -310,6 +310,7 @@ class TestDelegate(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.client = ContractingClient()
+        self.client.flush()
 
     def tearDown(self):
         self.ctx.destroy()
@@ -347,4 +348,36 @@ class TestDelegate(TestCase):
         b.pending_sbcs.add(block.subBlocks[1].merkleRoot)
 
         self.assertTrue(b.did_sign_block(block))
+
+    def test_process_nbn_commits_changes_if_did_sign_block(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        block = random_block()
+
+        # Add one root but not the other
+        b.pending_sbcs.add(block.subBlocks[0].merkleRoot)
+        b.pending_sbcs.add(block.subBlocks[1].merkleRoot)
+
+        b.client.raw_driver.set('A', 'B')
+        self.assertIsNone(b.client.raw_driver.get_direct('A'))
+
+        b.process_nbn(block)
+
+        self.assertEqual(b.client.raw_driver.get(b'A'), 'B')
+
+    def test_process_nbn_updates_state_with_block_if_did_not_sign_block(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        block = random_block()
+
+        k = block.subBlocks[0].transactions[0].state[0].key
+        v = block.subBlocks[0].transactions[0].state[0].value
+
+        self.assertIsNone(b.client.raw_driver.get_direct(k))
+
+        b.process_nbn(block)
+
+        self.assertEqual(b.client.raw_driver.get_direct(k), v)
 

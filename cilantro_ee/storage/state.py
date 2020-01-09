@@ -32,8 +32,7 @@ class MetaDataStorage(RocksDriver):
         return encoder.decode(value)
 
     def set(self, key, value):
-        v = encoder.encode(value)
-        super().set(key, v)
+        super().set(key, value)
 
     def get_latest_block_hash(self):
         block_hash = super().get(self.block_hash_key)

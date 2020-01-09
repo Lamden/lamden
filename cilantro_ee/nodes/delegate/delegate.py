@@ -46,18 +46,15 @@ class Delegate(Node):
 
         return True
 
-    async def process_nbn(self, nbn):
+    def process_nbn(self, nbn):
         # wait for NBN
         # If its the block that you worked on, commit the db
         # AKA if you signed the block
-        if self.did_sign_block(nbn):
-            self.client.raw_driver.commit()
-        else:
-            # Else, revert the db and Catchup with block
-            # Block has already been verified to be in 2/3 consensus at this point
+        if not self.did_sign_block(nbn):
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
 
+        self.client.raw_driver.commit()
         self.pending_sbcs.clear()
 
     def filter_tx_batches(self, work):
@@ -76,7 +73,7 @@ class Delegate(Node):
             # If first block, just wait for masters to send the genesis NBN
             if self.driver.latest_block_num > 0:
                 nbn = await self.nbn_inbox.wait_for_next_nbn()
-                await self.process_nbn(nbn)
+                self.process_nbn(nbn)
 
             await self.parameters.refresh()
             work = await self.work_inbox.wait_for_next_batch_of_work()
@@ -100,5 +97,4 @@ class Delegate(Node):
 
             # Wait for a response and process the new block
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            await self.process_nbn(nbn)
-
+            self.process_nbn(nbn)
