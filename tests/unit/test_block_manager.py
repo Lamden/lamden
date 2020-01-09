@@ -14,6 +14,39 @@ from contracting.stdlib.bridge.time import Datetime
 from datetime import datetime
 from contracting.db.encoder import encode
 
+bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+
+mnw1 = Wallet()
+mnw2 = Wallet()
+
+dw1 = Wallet()
+dw2 = Wallet()
+dw3 = Wallet()
+dw4 = Wallet()
+
+constitution = {
+    "masternodes": {
+        "vk_list": [
+            mnw1.verifying_key().hex(),
+            mnw2.verifying_key().hex()
+        ],
+        "min_quorum": 1
+    },
+    "delegates": {
+        "vk_list": [
+            dw1.verifying_key().hex(),
+            dw2.verifying_key().hex(),
+            dw3.verifying_key().hex(),
+            dw4.verifying_key().hex()
+        ],
+        "min_quorum": 1
+    },
+    "witnesses": {},
+    "schedulers": {},
+    "notifiers": {},
+    "enable_stamps": False,
+    "enable_nonces": False
+}
 
 class TestBlockManager(TestCase):
     def setUp(self):
@@ -31,7 +64,7 @@ class TestBlockManager(TestCase):
         self.client.flush()
 
     def test_init(self):
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes, constitution=constitution)
 
     def test_execute_work_single_transaction(self):
         test_contract = '''
@@ -66,7 +99,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
 
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes, constitution=constitution)
 
         b.execute_work([(1, tx_batch)])
 
@@ -115,7 +148,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
         w = Wallet()
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx)
 
         results = b.execute_work([(tx_batch.timestamp, tx_batch)])
 
@@ -157,7 +190,7 @@ def capture():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
         w = Wallet()
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=w, ctx=self.ctx)
 
         now = Datetime._from_datetime(
             datetime.utcfromtimestamp(tx_batch.timestamp)
@@ -211,7 +244,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
 
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx)
 
 
         print(sbc)

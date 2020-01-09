@@ -1,18 +1,33 @@
 from unittest import TestCase
 import zmq.asyncio
 import asyncio
-from cilantro_ee.crypto import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.authentication import SocketAuthenticator
 import os
-from cilantro_ee.services.storage.vkbook import PhoneBook
+from cilantro_ee.storage.vkbook import VKBook
 from nacl.signing import SigningKey
+from cilantro_ee.contracts import sync
 
 
 class TestAuthenticator(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.w = Wallet()
-        self.s = SocketAuthenticator(wallet=self.w, contacts=PhoneBook, ctx=self.ctx)
+
+        masternodes = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
+        delegates = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
+        stamps = False
+        nonces = False
+
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=True)
+
+        self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(), ctx=self.ctx)
 
     def tearDown(self):
         self.ctx.destroy()

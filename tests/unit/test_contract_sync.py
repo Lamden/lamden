@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.contracts import sync
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 import cilantro_ee

@@ -13,7 +13,7 @@ import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
-def execute_tx(client: ContractingClient, transaction, environment: dict):
+def execute_tx(client: ContractingClient, transaction, environment: dict={}):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
     kwargs = {}
     for entry in transaction.payload.kwargs.entries:
@@ -44,44 +44,55 @@ def execute_tx(client: ContractingClient, transaction, environment: dict):
     return tx_output
 
 
-def execute_tx_batch(driver, batch, timestamp, input_hash):
+def generate_environment(driver, timestamp, input_hash):
     now = Datetime._from_datetime(
         datetime.utcfromtimestamp(timestamp)
     )
 
-    environment = {
+    return {
         'block_hash': driver.latest_block_hash.hex(),
         'block_num': driver.latest_block_num,
         '__input_hash': input_hash,  # Used for deterministic entropy for random games
         'now': now
     }
 
+
+def execute_tx_batch(client, driver, batch, timestamp, input_hash):
+    environment = generate_environment(driver, timestamp, input_hash)
+
     # Each TX Batch is basically a subblock from this point of view and probably for the near future
     tx_data = []
-    for transaction in batch:
-        tx_data.append(execute_tx(transaction, environment))
+    for transaction in batch.transactions:
+        tx_data.append(execute_tx(client, transaction, environment))
 
     return tx_data
 
 
-def execute_work(work, parallelism=4):
+def execute_work(client, driver, work, wallet, previous_block_hash, parallelism=4):
     # Assume single threaded, single process for now.
-    results = []
+    subblocks = []
     i = 0
 
     while len(work) > 0:
         _, tx_batch = heapq.heappop(work)
-        transactions = [tx for tx in tx_batch.transactions]
 
-        results = execute_tx_batch(transactions, tx_batch.timestamp, tx_batch.inputHash)
+        results = execute_tx_batch(
+            client=client,
+            driver=driver,
+            batch=tx_batch,
+            timestamp=tx_batch.timestamp,
+            input_hash=tx_batch.inputHash
+        )
 
         sbc = build_sbc_from_work_results(
             input_hash=tx_batch.inputHash,
             results=results,
-            sb_num=i % parallelism
+            sb_num=i % parallelism,
+            wallet=wallet,
+            previous_block_hash=previous_block_hash
         )
 
-        results.append(sbc)
+        subblocks.append(sbc)
         i += 1
 
-    return results
+    return subblocks
