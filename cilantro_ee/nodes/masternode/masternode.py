@@ -71,8 +71,8 @@ class Masternode(Node):
             await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
-            await multicast(self.ctx, canonical.get_genesis_block(), self.nbn_sockets())
-
+            msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
+            await multicast(self.ctx, msg, self.nbn_sockets())
 
     async def join_quorum(self):
         nbn = await self.nbn_inbox.wait_for_next_nbn()

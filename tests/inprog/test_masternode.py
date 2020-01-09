@@ -7,6 +7,7 @@ from cilantro_ee.crypto.wallet import Wallet
 import zmq.asyncio
 import asyncio
 from cilantro_ee.networking.network import Network
+from cilantro_ee.core import canonical
 from contracting.client import ContractingClient
 from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
@@ -873,3 +874,37 @@ class TestNewMasternode(TestCase):
 
         self.loop.run_until_complete(tasks)
 
+    def test_new_blockchain_boot_sends_genesis_block_if_tx_batch(self):
+        m = Masternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base='ipc:///tmp/n1',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        m.parameters.sockets = {
+            dw1.verifying_key().hex(): 'ipc:///tmp/n2'
+        }
+
+        # For mocking
+        async def add_tx_batch():
+            m.tx_batcher.queue.append(b'123')
+
+        async def recv_tx_batch():
+            socket = self.ctx.socket(zmq.ROUTER)
+            socket.bind('ipc:///tmp/n2/block_notifications')
+            _id, msg = await socket.recv_multipart()
+            return msg
+
+        tasks = asyncio.gather(
+            m.new_blockchain_boot(),
+            add_tx_batch(),
+            recv_tx_batch()
+        )
+
+        _, _, msg = self.loop.run_until_complete(tasks)
+
+        self.assertEqual(msg, canonical.dict_to_msg_block(canonical.get_genesis_block()))
