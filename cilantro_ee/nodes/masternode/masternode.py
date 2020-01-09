@@ -68,10 +68,11 @@ class Masternode(Node):
 
     async def new_blockchain_boot(self):
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
-            asyncio.sleep(0)
+            await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
             await multicast(self.ctx, canonical.get_genesis_block(), self.nbn_sockets())
+
 
     async def join_quorum(self):
         nbn = await self.nbn_inbox.wait_for_next_nbn()

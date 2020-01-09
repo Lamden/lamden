@@ -34,6 +34,35 @@ def make_ipc(p):
     except:
         pass
 
+bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
+
+mnw1 = Wallet()
+
+dw1 = Wallet()
+
+constitution = {
+    "masternodes": {
+        "vk_list": [
+            mnw1.verifying_key().hex(),
+        ],
+        "min_quorum": 1
+    },
+    "delegates": {
+        "vk_list": [
+            dw1.verifying_key().hex(),
+        ],
+        "min_quorum": 1
+    },
+    "witnesses": {},
+    "schedulers": {},
+    "notifiers": {},
+    "enable_stamps": False,
+    "enable_nonces": False
+}
+
+n1 = '/tmp/n1'
+make_ipc(n1)
+
 def make_tx(processor):
     w = Wallet()
     batch = TransactionBuilder(
@@ -791,3 +820,33 @@ class TestNewMasternode(TestCase):
         b = m.sbcs_to_block([sbc])
 
         print(b)
+
+    def test_new_blockchain_boot_completes_if_nbn_inbox_recieved(self):
+        m = Masternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base='ipc:///tmp/n1',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        # For mocking
+        m.nbn_inbox.verify = False
+
+        async def send_nbn():
+            await asyncio.sleep(0.3)
+            socket = self.ctx.socket(zmq.DEALER)
+            socket.connect('ipc:///tmp/n1/block_notifications')
+            await socket.send(b'123')
+            await asyncio.sleep(0.3)
+            m.nbn_inbox.stop()
+
+        tasks = asyncio.gather(
+            m.nbn_inbox.serve(),
+            m.new_blockchain_boot(),
+            send_nbn()
+        )
+
+        self.loop.run_until_complete(tasks)
