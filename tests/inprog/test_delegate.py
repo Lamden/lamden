@@ -9,6 +9,11 @@ import time
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 import zmq.asyncio
 import datetime
+from tests.random_txs import random_block
+import os
+import capnp
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 class MockDriver:
     def __init__(self):
@@ -55,6 +60,8 @@ def get():
         tx.serialize()
 
         result = execution.execute_tx(self.client, tx.struct)
+
+        print(result)
 
         self.assertEqual(result.status, 0)
         self.assertEqual(result.state[0].key, b'testing.v')
@@ -309,6 +316,23 @@ class TestDelegate(TestCase):
         self.client.flush()
 
     def test_init(self):
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes, constitution=constitution)
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
 
+    def test_did_sign_block_false_if_no_pending_sbcs(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        self.assertFalse(b.did_sign_block(None))
+
+    def test_did_sign_block_false_if_missing_any_merkle_roots(self):
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
+                     constitution=constitution)
+
+        block = random_block()
+
+        # Add one root but not the other
+        b.pending_sbcs.add(block.subBlocks[0].merkleRoot)
+
+        self.assertFalse(b.did_sign_block(block))
 

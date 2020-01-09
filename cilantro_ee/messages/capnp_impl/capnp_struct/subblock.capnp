@@ -13,6 +13,11 @@ struct MerkleProof {
     signature @2: Data;
 }
 
+struct Signature {
+    signer @0: Data;
+    signature @1 :Data;
+}
+
 struct MerkleTree {
     leaves @0 :List(Data);
     signature @1 :Data;
@@ -25,6 +30,15 @@ struct SubBlock {
     subBlockNum @3 :UInt8;
     inputHash @4 :Data;
     transactions @5 :List(T.TransactionData);
+}
+
+struct NewSubBlock {
+    inputHash @0: Data;
+    transactions @1: List(T.TransactionData);
+    merkleTree @2: MerkleTree;
+    signatures @3: List(Signature);
+    subBlockNum @4: UInt8;
+    prevBlockHash @5: Data;
 }
 
 struct SubBlockContender {

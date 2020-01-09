@@ -1,11 +1,5 @@
 from contracting.db.driver import ContractDriver
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
-import os
-import capnp
 
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 PENDING_NONCE_KEY = '__pn'
 NONCE_KEY = '__n'

@@ -29,7 +29,7 @@ class Delegate(Node):
             ctx=self.ctx
         )
 
-        self.pending_sbcs = {}
+        self.pending_sbcs = set()
 
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
@@ -41,7 +41,7 @@ class Delegate(Node):
         # Throws a failure if even one of the subblocks isnt signed.
         # This can be fixed in the future with partial blocks.
         for sub_block in block.subBlocks:
-            if self.pending_sbcs.get(sub_block.merkleRoot) is None:
+            if sub_block.merkleRoot not in self.pending_sbcs:
                 return False
 
         return True
@@ -73,14 +73,12 @@ class Delegate(Node):
 
     async def run(self):
         while self.running:
-            # If first block, just wait for masters
+            # If first block, just wait for masters to send the genesis NBN
             if self.driver.latest_block_num > 0:
                 nbn = await self.nbn_inbox.wait_for_next_nbn()
                 await self.process_nbn(nbn)
 
-            # Request work. Use async / dealers to block until it's done?
-            # Refresh sockets here
-            # Turn this into a new message type
+            await self.parameters.refresh()
             work = await self.work_inbox.wait_for_next_batch_of_work()
 
             filtered_work = self.filter_tx_batches(work)
@@ -88,6 +86,11 @@ class Delegate(Node):
             # Execute work
             results = execution.execute_work(filtered_work)
 
+            # Add merkle roots to track successful sbcs
+            for sb in results:
+                self.pending_sbcs.add(sb.merkleTree.leaves[0])
+
+            # Send out the contenders to masternodes
             sbcs_msg_blob = Message.get_message_packed_2(
                 msg_type=MessageType.SUBBLOCK_CONTENDERS,
                 contenders=[sb for sb in results]
@@ -95,6 +98,7 @@ class Delegate(Node):
 
             await multicast(self.ctx, sbcs_msg_blob, self.masternode_aggregator_sockets())
 
+            # Wait for a response and process the new block
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             await self.process_nbn(nbn)
 
