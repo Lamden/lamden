@@ -1005,7 +1005,6 @@ class TestNewMasternode(TestCase):
         self.assertIsNone(m.client.raw_driver.get_direct(k))
 
         async def add_tx_queue():
-            print('yeet')
             await asyncio.sleep(0.3)
             m.tx_batcher.queue.append(b'blah')
             m.nbn_inbox.q.append(block.to_dict())
@@ -1018,3 +1017,20 @@ class TestNewMasternode(TestCase):
         self.loop.run_until_complete(tasks)
 
         self.assertEqual(m.client.raw_driver.get_direct(k), v)
+
+    def test_process_block_mock(self):
+        m = Masternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base='ipc:///tmp/n1',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        m.running = True
+
+
+
+        self.loop.run_until_complete(m.process_blocks())

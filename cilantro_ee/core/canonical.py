@@ -9,6 +9,8 @@ from cilantro_ee.messages import Message, MessageType
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
+GENESIS_HASH = b'\x00' * 32
+
 
 def format_dictionary(d: dict) -> dict:
     for k, v in d.items():
@@ -30,7 +32,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
 
     for subblock in subblocks:
         if subblock is None:
-            return get_failed_block()
+            return get_failed_block(previous_hash=previous_hash, block_num=block_num)
         else:
             sb = subblock.to_dict()
 
@@ -73,9 +75,13 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
 
 
 def block_is_skip_block(block: dict):
+    if len(block['subBlocks']) == 0:
+        return False
+
     for subblock in block['subBlocks']:
-        if len(subblock.transactions):
+        if len(subblock['transactions']):
             return False
+
     return True
 
 
@@ -84,7 +90,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
         'blockHash': b'\x00' * 32,
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
-        'subBlocks': None
+        'subBlocks': []
     }
     return block
 
@@ -100,35 +106,11 @@ def get_genesis_block():
 
 
 def block_is_genesis(block):
-    if block['blockHash'] != b'\x00' * 32:
-        return False
-
-    if block['subBlocks'] is not None:
-        return False
-
-    if block['blockNum'] != 0:
-        return False
-
-    if block['prevBlockHash'] != b'\x00' * 32:
-        return False
-
-    return True
+    return block == get_genesis_block()
 
 
 def block_is_failed(block, previous_hash: bytes, block_num: int):
-    if block['blockHash'] != b'\x00' * 32:
-        return False
-
-    if block['subBlocks'] is not None:
-        return False
-
-    if block['blockNum'] != block_num:
-        return False
-
-    if block['prevBlockHash'] != previous_hash:
-        return False
-
-    return True
+    return block == get_failed_block(previous_hash, block_num)
 
 
 def message_blob_to_dict_block(block):
@@ -142,8 +124,10 @@ def capnp_to_dict_block(block):
 def dict_to_capnp_block(block):
     return block_capnp.BlockData.from_dict(block)
 
+
 def dict_to_msg_block(block):
     return Message.get_message_packed_2(MessageType.BLOCK_DATA, **block)
+
 
 def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash, sb_num=0):
     merkle = merklize([r.to_bytes_packed() for r in results])

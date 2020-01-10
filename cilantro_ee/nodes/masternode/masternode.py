@@ -72,8 +72,6 @@ class Masternode(Node):
             if len(self.nbn_inbox.q) > 0:
                 nbn = self.nbn_inbox.q.pop(0)
 
-                print('mmhmm')
-
                 self.driver.update_with_block(nbn)
                 self.blocks.put(nbn, self.blocks.BLOCK)
 
@@ -86,7 +84,6 @@ class Masternode(Node):
             await self.join_quorum()
 
     async def process_blocks(self):
-        print('ok')
         while self.running:
             # Else, batch some more txs
             tx_batch = self.tx_batcher.pack_current_queue()
@@ -100,14 +97,25 @@ class Masternode(Node):
                 expected_subblocks=len(self.contacts.masternodes)
             )
 
-            # Update with state
-            self.driver.update_with_block(block)
-            self.blocks.store_new_block(block)
+            do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
+            do_not_store |= canonical.block_is_skip_block(block)
+
+            print(do_not_store)
+
+            if not do_not_store:
+                self.driver.update_with_block(block)
+                self.blocks.put(block, self.blocks.BLOCK)
+                del block['_id']
 
             is_skip_block = canonical.block_is_skip_block(block)
 
-            # If so, hang until you get a new block or some work
-            while is_skip_block or len(self.tx_batcher.queue) <= 0:
+            # If so, hang until you get a new block or some work OR NBN
+            self.nbn_inbox.clean()
+
+            while is_skip_block and len(self.tx_batcher.queue) <= 0:
+                if len(self.nbn_inbox.q) > 0:
+                    break
+
                 await asyncio.sleep(0)
 
             # Pack current NBN into message
