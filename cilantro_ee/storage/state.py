@@ -90,8 +90,8 @@ class MetaDataStorage(RocksDriver):
 
         # self.log.info("block {}".format(block))
 
-        assert self.latest_block_hash == block['prevBlockHash'], \
-            "StateUpdate failed! Latest block hash {} does not match block data {}".format(self.latest_block_hash, block)
+        if self.latest_block_hash != block['prevBlockHash']:
+            return
 
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}

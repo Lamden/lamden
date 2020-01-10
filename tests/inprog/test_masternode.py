@@ -13,6 +13,7 @@ from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.sockets.services import _socket
 from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 from cilantro_ee.storage import MetaDataStorage
 from contracting import config
 import os
@@ -22,6 +23,80 @@ import secrets
 from tests import random_txs
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+
+def put_test_contract(client):
+    test_contract = '''
+v = Variable()
+
+@construct
+def seed():
+    v.set('hello')
+
+@export
+def set(var):
+    v.set(var)
+
+@export
+def get():
+    return v.get()
+        '''
+
+    client.submit(test_contract, name='testing')
+
+
+def get_tx_batch():
+    w = Wallet()
+    tx = TransactionBuilder(
+        sender='stu',
+        contract='testing',
+        function='set',
+        kwargs={'var': 'howdy'},
+        stamps=100_000,
+        processor=b'\x00' * 32,
+        nonce=0
+    )
+    tx.sign(w.signing_key())
+    tx.serialize()
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = MetaDataStorage()
+    driver.set(balances_key, 1_000_000)
+
+    w = Wallet()
+    tx2 = TransactionBuilder(
+        sender='stu',
+        contract='testing',
+        function='get',
+        kwargs={},
+        stamps=100_000,
+        processor=b'\x00' * 32,
+        nonce=0
+    )
+    tx2.sign(Wallet().signing_key())
+    tx2.serialize()
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = MetaDataStorage()
+    driver.set(balances_key, 1_000_000)
+
+    return transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
 
 
 async def stop_server(s, timeout):
@@ -909,3 +984,37 @@ class TestNewMasternode(TestCase):
 
         self.assertEqual(msg, canonical.dict_to_msg_block(canonical.get_genesis_block()))
 
+    def test_join_quorum_updates_with_block_if_nbn_has_block(self):
+        m = Masternode(
+            wallet=mnw1,
+            ctx=self.ctx,
+            socket_base='ipc:///tmp/n1',
+            bootnodes=bootnodes,
+            constitution=constitution,
+            webserver_port=8080,
+            overwrite=True
+        )
+
+        block = random_txs.random_block()
+
+        m.nbn_inbox.q.append(block.to_dict())
+
+        k = block.subBlocks[0].transactions[0].state[0].key
+        v = block.subBlocks[0].transactions[0].state[0].value
+
+        self.assertIsNone(m.client.raw_driver.get_direct(k))
+
+        async def add_tx_queue():
+            print('yeet')
+            await asyncio.sleep(0.3)
+            m.tx_batcher.queue.append(b'blah')
+            m.nbn_inbox.q.append(block.to_dict())
+
+        tasks = asyncio.gather(
+            m.join_quorum(),
+            add_tx_queue()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        self.assertEqual(m.client.raw_driver.get_direct(k), v)

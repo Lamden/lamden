@@ -72,7 +72,7 @@ class Node:
             contacts=self.contacts
         )
 
-        self.running = True
+        self.running = False
 
     async def start(self):
         await self.network.start()
@@ -83,6 +83,8 @@ class Node:
         # Catchup
         if len(self.contacts.masternodes) > 1:
             await self.block_fetcher.sync()
+
+        self.running = True
 
     def stop(self):
         self.network.stop()

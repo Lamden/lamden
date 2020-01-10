@@ -18,6 +18,7 @@ import capnp
 import asyncio
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
+
 def make_ipc(p):
     try:
         os.mkdir(p)

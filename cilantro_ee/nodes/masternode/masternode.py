@@ -9,13 +9,11 @@ from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.core import canonical
 
-
 from cilantro_ee.nodes.base import Node
 
 
 class Masternode(Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
-
         super().__init__(*args, **kwargs)
 
         self.blocks = CilantroStorageDriver(key=self.wallet.verifying_key())
@@ -28,9 +26,7 @@ class Masternode(Node):
         )
 
         self.webserver = WebServer(wallet=self.wallet, port=webserver_port)
-
         self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
-
         self.current_nbn = canonical.get_genesis_block()
 
         self.aggregator = Aggregator(
@@ -44,12 +40,9 @@ class Masternode(Node):
 
     async def start(self):
         await super().start()
-
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
-
         self.webserver.queue = self.tx_batcher.queue
-
         await self.webserver.start()
 
     def delegate_work_sockets(self):
@@ -57,14 +50,6 @@ class Masternode(Node):
 
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
-
-    def sbcs_to_block(self, subblocks):
-        block = canonical.block_from_subblocks(
-            subblocks,
-            previous_hash=self.driver.latest_block_hash,
-            block_num=self.driver.latest_block_num + 1
-        )
-        return block
 
     async def new_blockchain_boot(self):
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
@@ -76,12 +61,21 @@ class Masternode(Node):
 
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
-        while len(self.tx_batcher.queue) == 0 or len(self.nbn_inbox.q) == 0:
-            nbn = await self.nbn_inbox.wait_for_next_nbn()
+        nbn = await self.nbn_inbox.wait_for_next_nbn()
 
-            # Update with state
-            self.driver.update_with_block(nbn)
-            self.blocks.store_new_block(nbn)
+        # Update with state
+        self.driver.update_with_block(nbn)
+        self.blocks.put(nbn, self.blocks.BLOCK)
+
+        while len(self.tx_batcher.queue) == 0:
+            await asyncio.sleep(0)
+            if len(self.nbn_inbox.q) > 0:
+                nbn = self.nbn_inbox.q.pop(0)
+
+                print('mmhmm')
+
+                self.driver.update_with_block(nbn)
+                self.blocks.put(nbn, self.blocks.BLOCK)
 
         await self.process_blocks()
 
@@ -92,6 +86,7 @@ class Masternode(Node):
             await self.join_quorum()
 
     async def process_blocks(self):
+        print('ok')
         while self.running:
             # Else, batch some more txs
             tx_batch = self.tx_batcher.pack_current_queue()
