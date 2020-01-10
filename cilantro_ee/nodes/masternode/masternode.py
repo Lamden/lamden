@@ -89,7 +89,14 @@ class Masternode(Node):
             tx_batch = self.tx_batcher.pack_current_queue()
 
             await self.parameters.refresh() # Works
-            await multicast(self.ctx, tx_batch, self.delegate_work_sockets()) # Works
+
+            # No one is online
+            if len(self.delegate_work_sockets()) == 0:
+                return
+
+            sends = await multicast(self.ctx, tx_batch, self.delegate_work_sockets()) # Works
+
+            print(sends)
 
             # this really should just give us a block straight up
             block = await self.aggregator.gather_subblocks(
