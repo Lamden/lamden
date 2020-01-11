@@ -48,20 +48,6 @@ class MetaDataStorage(RocksDriver):
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
-    def get_latest_epoch_hash(self):
-        epoch_hash = super().get(self.epoch_hash_key)
-        if epoch_hash is None:
-            return b'\x00' * 32
-        return epoch_hash
-
-    def set_latest_epoch_hash(self, v: bytes):
-        if type(v) == str:
-            v = bytes.fromhex(v)
-        assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        super().set(self.epoch_hash_key, v)
-
-    latest_epoch_hash = property(get_latest_epoch_hash, set_latest_epoch_hash)
-
     def get_latest_block_num(self):
         num = self.get(self.block_num_key)
 
@@ -87,7 +73,7 @@ class MetaDataStorage(RocksDriver):
             for delta in tx['state']:
                 self.set(delta['key'], delta['value'])
 
-    def update_with_block(self, block):
+    def update_with_block(self, block, commit_tx=True):
         self.log.success('UPDATING STATE')
 
         # Capnp proto shim until we remove it completely from storage
@@ -107,7 +93,8 @@ class MetaDataStorage(RocksDriver):
                 sb = sb.to_dict()
             for tx in sb['transactions']:
                 self.nonce_manager.update_nonce_hash(nonce_hash=nonces, tx_payload=tx['transaction']['payload'])
-                self.set_transaction_data(tx=tx)
+                if commit_tx:
+                    self.set_transaction_data(tx=tx)
 
         # Commit new nonces
         self.nonce_manager.commit_nonces(nonce_hash=nonces)
@@ -116,5 +103,3 @@ class MetaDataStorage(RocksDriver):
         # Update our block hash and block num
         self.set_latest_block_hash(block['blockHash'])
         self.set_latest_block_num(block['blockNum'])
-
-        # Update the epoch hash if it is time

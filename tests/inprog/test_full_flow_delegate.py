@@ -4,6 +4,7 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.core import canonical
+from cilantro_ee.storage import MetaDataStorage
 
 import zmq.asyncio
 import asyncio
@@ -61,8 +62,11 @@ class ComplexMockMasternode:
     async def send_to_work_socket(self, work=None):
         await self.delegate_work.send(self.tx_batcher.make_empty_batch())
 
-    async def send_new_block_to_socket(self):
-        await self.delegate_nbn.send(canonical.dict_to_msg_block(canonical.get_genesis_block()))
+    async def send_new_block_to_socket(self, b=None):
+        if b is None:
+            b = canonical.get_genesis_block()
+
+        await self.delegate_nbn.send(canonical.dict_to_msg_block(b))
 
     async def process_blocks(self):
         #
@@ -76,6 +80,8 @@ class ComplexMockMasternode:
 class TestDelegateFullFlow(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
+        driver = MetaDataStorage()
+        driver.flush()
 
     def tearDown(self):
         self.ctx.destroy()
@@ -114,7 +120,10 @@ class TestDelegateFullFlow(TestCase):
             w = await mock_master.mn_agg.recv_multipart()
             print(w)
 
-            await mock_master.send_new_block_to_socket()
+            b = canonical.get_genesis_block()
+            b['blockNum'] = 2
+
+            await mock_master.send_new_block_to_socket(b)
             print('sent block')
 
         tasks = asyncio.gather(

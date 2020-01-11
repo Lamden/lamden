@@ -49,15 +49,15 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         if not self.did_sign_block(nbn):
-            print('revert')
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
+        else:
+            self.client.raw_driver.commit()
+            self.driver.update_with_block(nbn, commit_tx=False)
+
+        self.pending_sbcs.clear()
 
         print(self.driver.latest_block_num)
-
-        print('gucci')
-        self.client.raw_driver.commit()
-        self.pending_sbcs.clear()
 
     def filter_work(self, work):
         filtered_work = []
