@@ -6,6 +6,7 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.core import canonical
 from cilantro_ee.storage import MetaDataStorage
 
+from contextlib import suppress
 import zmq.asyncio
 import asyncio
 
@@ -80,13 +81,14 @@ class ComplexMockMasternode:
 class TestDelegateFullFlow(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
+        self.loop = asyncio.get_event_loop()
         driver = MetaDataStorage()
         driver.flush()
 
     def tearDown(self):
         self.ctx.destroy()
 
-    def test_init(self):
+    def test_block_number_increments_properly(self):
         mock_master = ComplexMockMasternode(
             ctx=self.ctx,
             delegate_nbn='ipc:///tmp/n1/block_notifications',
@@ -111,20 +113,33 @@ class TestDelegateFullFlow(TestCase):
         }
 
         async def run():
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.3)
+            self.assertEqual(d.driver.latest_block_num, 0)
+
             await mock_master.send_new_block_to_socket()
-            print('sent block 0')
+
+            # Assert Block num 1
+            await asyncio.sleep(0.3)
+            self.assertEqual(d.driver.latest_block_num, 1)
 
             await mock_master.send_to_work_socket()
 
             w = await mock_master.mn_agg.recv_multipart()
-            print(w)
 
             b = canonical.get_genesis_block()
             b['blockNum'] = 2
 
             await mock_master.send_new_block_to_socket(b)
-            print('sent block')
+
+            # Assert Block num 2
+            await asyncio.sleep(0.3)
+            self.assertEqual(d.driver.latest_block_num, 2)
+
+            d.nbn_inbox.stop()
+            d.work_inbox.stop()
+            d.stop()
+
+            self.loop.stop()
 
         tasks = asyncio.gather(
             d.work_inbox.serve(),
@@ -133,10 +148,5 @@ class TestDelegateFullFlow(TestCase):
             run()
         )
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
-
-
-        # send nbn (first block)
-        # send work
-        # send nbn
+        with suppress(RuntimeError):
+            self.loop.run_until_complete(tasks)
