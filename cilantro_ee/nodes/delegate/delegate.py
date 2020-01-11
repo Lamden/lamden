@@ -40,17 +40,22 @@ class Delegate(Node):
 
         # Throws a failure if even one of the subblocks isnt signed.
         # This can be fixed in the future with partial blocks.
-        for sub_block in block.subBlocks:
-            if sub_block.merkleRoot not in self.pending_sbcs:
+        for sub_block in block['subBlocks']:
+            if sub_block['merkleRoot'] not in self.pending_sbcs:
                 return False
 
+        # Returns true if its an empty block. Not sure if that is intended?
         return True
 
     def process_nbn(self, nbn):
         if not self.did_sign_block(nbn):
+            print('revert')
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
 
+        print(self.driver.latest_block_num)
+
+        print('gucci')
         self.client.raw_driver.commit()
         self.pending_sbcs.clear()
 
@@ -75,6 +80,10 @@ class Delegate(Node):
         while self.running:
             await self.parameters.refresh()
 
+            if len(self.parameters.sockets) == 0:
+                return
+
+            print('waiting for work')
             work = await self.work_inbox.wait_for_next_batch_of_work()
             self.work_inbox.work.clear()
 

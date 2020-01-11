@@ -4,6 +4,8 @@ from cilantro_ee.messages import MessageType, Message
 from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.storage import MetaDataStorage, VKBook
 
+import math
+
 
 class BlockNotificationException(Exception):
     pass
@@ -17,12 +19,17 @@ class NotBlockNotificationMessageType(BlockNotificationException):
     pass
 
 
+class BadConsensusBlock(BlockNotificationException):
+    pass
+
+
 class NBNInbox(AsyncInbox):
     def __init__(self, contacts: VKBook, driver: MetaDataStorage=MetaDataStorage(), verify=True, *args, **kwargs):
         self.q = []
         self.contacts = contacts
         self.driver = driver
         self.verify = verify
+        self.quorum_ratio = 0.66
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
@@ -30,21 +37,31 @@ class NBNInbox(AsyncInbox):
             self.q.append(msg)
             return
 
+        print('got msg')
+
         try:
             nbn = self.validate_nbn(msg)
             self.q.append(nbn)
-        except BlockNotificationException:
+        except BlockNotificationException as e:
             # This would be where the audit layer would take over
+            print(type(e))
             pass
 
     def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
-        if msg_type != MessageType.BLOCK_NOTIFICATION:
+        print(msg_blob)
+
+        if msg_type != MessageType.BLOCK_DATA:
             raise NotBlockNotificationMessageType
 
         if msg_blob.blockNum != self.driver.latest_block_num + 1:
             raise BlockNumberMismatch
+
+        # Check if signed by quorum amount
+        for sub_block in msg_blob.subBlocks:
+            if len(sub_block.signatures) < math.ceil(len(self.contacts.delegates) * self.quorum_ratio):
+                raise BadConsensusBlock
 
         # Deserialize off the socket
         return msg_blob.to_dict()

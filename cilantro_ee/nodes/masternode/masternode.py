@@ -45,6 +45,8 @@ class Masternode(Node):
         self.webserver.queue = self.tx_batcher.queue
         await self.webserver.start()
 
+        await self.run()
+
     def delegate_work_sockets(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
 
@@ -96,8 +98,6 @@ class Masternode(Node):
 
             sends = await multicast(self.ctx, tx_batch, self.delegate_work_sockets()) # Works
 
-            print(sends)
-
             # this really should just give us a block straight up
             block = await self.aggregator.gather_subblocks(
                 total_contacts=len(self.contacts.delegates),
@@ -106,8 +106,6 @@ class Masternode(Node):
 
             do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
             do_not_store |= canonical.block_is_skip_block(block)
-
-            print(do_not_store)
 
             if not do_not_store:
                 self.driver.update_with_block(block)

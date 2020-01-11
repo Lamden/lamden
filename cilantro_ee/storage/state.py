@@ -64,14 +64,20 @@ class MetaDataStorage(RocksDriver):
 
     def get_latest_block_num(self):
         num = self.get(self.block_num_key)
+
         if num is None:
             return 0
+
+        num = int(num)
 
         return num
 
     def set_latest_block_num(self, v):
         v = int(v)
         assert v >= 0, 'Block number must be positive integer.'
+
+        v = str(v).encode()
+
         self.set(self.block_num_key, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
@@ -108,11 +114,7 @@ class MetaDataStorage(RocksDriver):
         self.nonce_manager.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.latest_block_hash = block['blockHash']
-        self.latest_block_num = block['blockNum']
+        self.set_latest_block_hash(block['blockHash'])
+        self.set_latest_block_num(block['blockNum'])
 
         # Update the epoch hash if it is time
-        if self.latest_block_num % conf.EPOCH_INTERVAL == 0:
-            self.latest_epoch_hash = self.latest_block_hash
-
-            # Update rewards

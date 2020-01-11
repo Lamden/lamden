@@ -98,7 +98,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
 def get_genesis_block():
     block = {
         'blockHash': b'\x00' * 32,
-        'blockNum': 0,
+        'blockNum': 1,
         'prevBlockHash': b'\x00' * 32,
         'subBlocks': []
     }
@@ -130,8 +130,13 @@ def dict_to_msg_block(block):
 
 
 def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash, sb_num=0):
-    merkle = merklize([r.to_bytes_packed() for r in results])
-    proof = wallet.sign(merkle[0])
+    print(results)
+    if len(results) > 0:
+        merkle = merklize([r.to_bytes_packed() for r in results])
+        proof = wallet.sign(merkle[0])
+    else:
+        merkle = merklize([input_hash])
+        proof = wallet.sign(input_hash)
 
     merkle_tree = subblock_capnp.MerkleTree.new_message(
         leaves=[leaf for leaf in merkle],

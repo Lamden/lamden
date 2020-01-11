@@ -1029,8 +1029,4 @@ class TestNewMasternode(TestCase):
             overwrite=True
         )
 
-        m.running = True
-
-
-
-        self.loop.run_until_complete(m.process_blocks())
+        self.loop.run_until_complete(m.start())
