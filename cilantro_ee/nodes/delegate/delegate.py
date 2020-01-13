@@ -1,5 +1,6 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.core.canonical import block_is_failed
 from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message
@@ -49,15 +50,14 @@ class Delegate(Node):
         return True
 
     def process_nbn(self, nbn):
-        # If it's failed, ignore
-        # If it's empty, ignore
-        # Otherwise...
         if not self.did_sign_block(nbn):
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
-        else:
+        elif not block_is_failed(nbn):
             self.client.raw_driver.commit()
             self.driver.update_with_block(nbn, commit_tx=False)
+        else:
+            self.client.raw_driver.revert()
 
         self.pending_sbcs.clear()
 
@@ -115,6 +115,7 @@ class Delegate(Node):
 
         while self.running:
             filtered_work = await self.acquire_work()
+
             sbc_msg = self.process_work(filtered_work)
 
             await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
