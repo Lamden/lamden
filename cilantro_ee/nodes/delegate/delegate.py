@@ -79,8 +79,6 @@ class Delegate(Node):
         if len(self.parameters.sockets) == 0:
             return
 
-        print(self.parameters.get_masternode_vks())
-
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
@@ -122,3 +120,9 @@ class Delegate(Node):
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
+
+    def stop(self):
+        self.running = False
+        self.network.stop()
+        self.work_inbox.stop()
+        self.nbn_inbox.stop()

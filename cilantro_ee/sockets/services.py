@@ -90,7 +90,7 @@ async def defer():
 
 
 class SubscriptionService:
-    def __init__(self, ctx: zmq.Context, timeout=100, linger=2000):
+    def __init__(self, ctx: zmq.Context, timeout=100, linger=500):
         # Socket constants
         self.ctx = ctx
         self.timeout = timeout
@@ -156,6 +156,8 @@ class SubscriptionService:
 
     def stop(self):
         self.running = False
+        for address in self.subscriptions.values():
+            self._destroy_socket(address)
 
 
 class RequestReplyService:

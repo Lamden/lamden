@@ -45,7 +45,7 @@ class Masternode(Node):
         self.webserver.queue = self.tx_batcher.queue
         await self.webserver.start()
 
-        await self.run()
+        asyncio.ensure_future(self.run())
 
     def delegate_work_sockets(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
@@ -55,6 +55,9 @@ class Masternode(Node):
 
     async def new_blockchain_boot(self):
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
+            if not self.running:
+                return
+
             await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
@@ -140,6 +143,5 @@ class Masternode(Node):
 
     def stop(self):
         super().stop()
-
         self.block_server.stop()
         self.webserver.app.stop()

@@ -46,7 +46,7 @@ class PeerServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct,
                  event_address: services.SocketStruct,
                  table: KTable, wallet: Wallet, ctx=zmq.Context,
-                 linger=2000, poll_timeout=3000):
+                 linger=500, poll_timeout=10):
 
         super().__init__(socket_id=socket_id,
                          wallet=wallet,
@@ -144,3 +144,4 @@ class PeerServer(services.RequestReplyService):
         self.running = False
         self.event_queue_loop_running = False
         self.event_service.running = False
+        self.event_service.stop()

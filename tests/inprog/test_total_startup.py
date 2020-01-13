@@ -95,6 +95,7 @@ class TestTotalEndToEnd(TestCase):
         async def run():
             await tasks
             await asyncio.sleep(5)
+            print('STOP')
             mn1.stop()
             mn2.stop()
             d1.stop()
