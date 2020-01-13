@@ -74,7 +74,7 @@ class MetaDataStorage(RocksDriver):
                 self.set(delta['key'], delta['value'])
 
     def update_with_block(self, block, commit_tx=True):
-        self.log.success('UPDATING STATE')
+        self.log.info('UPDATING STATE')
 
         # Capnp proto shim until we remove it completely from storage
         if type(block) != dict:

@@ -139,6 +139,7 @@ constitution = {
 n1 = '/tmp/n1'
 make_ipc(n1)
 
+
 def make_tx(processor):
     w = Wallet()
     batch = TransactionBuilder(

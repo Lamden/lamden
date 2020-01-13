@@ -48,6 +48,9 @@ class Delegate(Node):
         return True
 
     def process_nbn(self, nbn):
+        # If it's failed, ignore
+        # If it's empty, ignore
+        # Otherwise...
         if not self.did_sign_block(nbn):
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
@@ -56,8 +59,6 @@ class Delegate(Node):
             self.driver.update_with_block(nbn, commit_tx=False)
 
         self.pending_sbcs.clear()
-
-        print(self.driver.latest_block_num)
 
     def filter_work(self, work):
         filtered_work = []
@@ -71,6 +72,36 @@ class Delegate(Node):
 
         return filtered_work
 
+    async def acquire_work(self):
+        await self.parameters.refresh()
+
+        if len(self.parameters.sockets) == 0:
+            return
+
+        work = await self.work_inbox.wait_for_next_batch_of_work(current_contacts=self.parameters.)
+        self.work_inbox.work.clear()
+
+        return self.filter_work(work)
+
+    def process_work(self, filtered_work):
+        results = execution.execute_work(
+            client=self.client,
+            driver=self.driver,
+            work=filtered_work,
+            wallet=self.wallet,
+            previous_block_hash=self.driver.latest_block_hash
+        )
+
+        # Add merkle roots to track successful sbcs
+        for sb in results:
+            self.pending_sbcs.add(sb.merkleTree.leaves[0])
+
+        # Send out the contenders to masternodes
+        return Message.get_message_packed_2(
+            msg_type=MessageType.SUBBLOCK_CONTENDERS,
+            contenders=[sb for sb in results]
+        )
+
     async def run(self):
         # If first block, just wait for masters to send the genesis NBN
         if self.driver.latest_block_num == 0:
@@ -78,38 +109,10 @@ class Delegate(Node):
             self.process_nbn(nbn)
 
         while self.running:
-            await self.parameters.refresh()
+            filtered_work = await self.acquire_work()
+            sbc_msg = self.process_work(filtered_work)
 
-            if len(self.parameters.sockets) == 0:
-                return
+            await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 
-            print('waiting for work')
-            work = await self.work_inbox.wait_for_next_batch_of_work()
-            self.work_inbox.work.clear()
-
-            filtered_work = self.filter_work(work)
-
-            # Execute work
-            results = execution.execute_work(
-                client=self.client,
-                driver=self.driver,
-                work=filtered_work,
-                wallet=self.wallet,
-                previous_block_hash=self.driver.latest_block_hash
-            )
-
-            # Add merkle roots to track successful sbcs
-            for sb in results:
-                self.pending_sbcs.add(sb.merkleTree.leaves[0])
-
-            # Send out the contenders to masternodes
-            sbcs_msg_blob = Message.get_message_packed_2(
-                msg_type=MessageType.SUBBLOCK_CONTENDERS,
-                contenders=[sb for sb in results]
-            )
-
-            await multicast(self.ctx, sbcs_msg_blob, self.masternode_aggregator_sockets())
-
-            # Wait for a response and process the new block
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)

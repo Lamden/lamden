@@ -92,6 +92,11 @@ class Parameters:
 
         return masternodes
 
+    def get_masternode_vks(self):
+        vks = set(self.contacts.masternodes)
+        online_nodes = set(self.sockets.keys())
+        return vks.intersection(online_nodes)
+
     def get_delegate_sockets(self, service=None):
         delegates = {}
         vks = set(self.contacts.delegates)

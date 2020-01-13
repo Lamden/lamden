@@ -1,9 +1,29 @@
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.crypto.wallet import Wallet, _verify
 import time
 import hashlib
+from .transaction import transaction_is_valid, TransactionException
 
+
+class TXBatchInvalidError(Exception):
+    pass
+
+
+class NotTransactionBatchMessageType(TXBatchInvalidError):
+    pass
+
+
+class ReceivedInvalidWork(TXBatchInvalidError):
+    pass
+
+
+class InvalidSignature(TXBatchInvalidError):
+    pass
+
+
+class NotMasternode(TXBatchInvalidError):
+    pass
 
 def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     h = hashlib.sha3_256()
@@ -28,3 +48,31 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     )
 
     return msg[1]
+
+
+def tx_batch_is_valid(tx_batch, masternodes, latest_block_hash, latest_block_num, timeout=1000):
+    if tx_batch.sender.hex() not in masternodes:
+        raise NotMasternode
+
+    # Set up a hasher for input hash and a list for valid txs
+    h = hashlib.sha3_256()
+
+    for tx in tx_batch.transactions:
+        # Double check to make sure all transactions are valid
+        try:
+            transaction_is_valid(tx=tx,
+                                 expected_processor=tx_batch.sender,
+                                 driver=self.nonces,
+                                 strict=False)
+        except TransactionException as e:
+            raise e
+
+        h.update(tx.as_builder().to_bytes_packed())
+
+    h.update('{}'.format(tx_batch.timestamp).encode())
+    input_hash = h.digest()
+    if input_hash != tx_batch.inputHash or \
+            not _verify(tx_batch.sender, h.digest(), tx_batch.signature):
+        raise InvalidSignature
+
+

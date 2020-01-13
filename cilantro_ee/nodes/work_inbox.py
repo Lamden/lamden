@@ -8,7 +8,14 @@ from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 
+from cilantro_ee.logger.base import get_logger
+import logging
+
+import time
+
+delegate_logger = get_logger('Delegate')
 
 class DelegateWorkInboxException(Exception):
     pass
@@ -26,13 +33,16 @@ class InvalidSignature(DelegateWorkInboxException):
     pass
 
 
+class NotMasternode(DelegateWorkInboxException):
+    pass
+
+
 class WorkInbox(AsyncInbox):
-    def __init__(self, contacts: VKBook, nonces: NonceManager=NonceManager(), verify=True, *args, **kwargs):
+    def __init__(self, contacts, nonces: NonceManager=NonceManager(), verify=True, *args, **kwargs):
         self.work = {}
 
-        self.contacts = contacts
         self.nonces = nonces
-        self.current_masternodes = self.contacts.masternodes
+        self.current_contacts = contacts
         self.verify = verify
 
         super().__init__(*args, **kwargs)
@@ -45,15 +55,22 @@ class WorkInbox(AsyncInbox):
         try:
             msg_struct = self.verify_transaction_bag(msg)
             self.work[msg_struct.sender.hex()] = msg_struct
-        except DelegateWorkInboxException:
+            delegate_logger.info('Work added.')
+        except DelegateWorkInboxException as e:
             # Audit trigger
-            pass
+            delegate_logger.log(level=logging.ERROR, msg=type(e))
+        except TransactionException as e:
+            delegate_logger.log(level=logging.ERROR, msg=type(e))
 
     def verify_transaction_bag(self, msg):
+        # What is the valid signature
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType
+
+        if msg_blob.sender.hex() not in self.current_masternodes:
+            raise NotMasternode
 
         # Set up a hasher for input hash and a list for valid txs
         h = hashlib.sha3_256()
@@ -66,7 +83,7 @@ class WorkInbox(AsyncInbox):
                                      driver=self.nonces,
                                      strict=False)
             except TransactionException as e:
-                raise DelegateWorkInboxException
+                raise e
 
             h.update(tx.as_builder().to_bytes_packed())
 
@@ -78,11 +95,19 @@ class WorkInbox(AsyncInbox):
 
         return msg_blob
 
-    async def wait_for_next_batch_of_work(self):
-        self.current_masternodes = self.contacts.masternodes
+    async def wait_for_next_batch_of_work(self, current_contacts, timeout=1000):
+        self.current_contacts = current_contacts
         # Wait for work from all masternodes that are currently online
-        # How do we test if they are online? idk.
-        while len(set(self.current_masternodes) - set(self.work.keys())) > 0:
+        start = time.time() * 1000
+        while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
+            now = time.time() * 1000
+
+            if now - start > timeout:
+                break
+
+        # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
+        for masternode in set(current_contacts) - set(self.work.keys()):
+            self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
 
         return list(self.work.values())
