@@ -1033,9 +1033,3 @@ class TestNewMasternode(TestCase):
 
         self.assertIsNone(r)
 
-    # test_send_work_returns_sends_if_successful
-    # test_send_work_sends_tx_batch_properly
-    # test_wait_for_work_does_not_block_if_not_skip_block
-    # test_wait_for_work_blocks_if_skip_block_and_tx_batcher_empty
-    # test_wait_for_work_does_not_block_if_skip_block_and_tx_batcher_not_empty
-    # test_wait_for_work_deletes_all_old_nbns

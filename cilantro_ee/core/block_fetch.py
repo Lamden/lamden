@@ -76,7 +76,7 @@ class BlockFetcher:
                     # Remove future
                     futures.remove(f)
 
-        return responses.top_item()
+        return responses.top_item() or 0
 
     async def get_latest_block_height(self, socket):
         # Build a signed request
