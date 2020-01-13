@@ -28,6 +28,7 @@ bootnodes = ['ipc:///tmp/n2', 'ipc:///tmp/n3']
 
 mnw1 = Wallet()
 mnw2 = Wallet()
+mnw3 = Wallet()
 
 dw1 = Wallet()
 
@@ -35,6 +36,28 @@ constitution = {
     "masternodes": {
         "vk_list": [
             mnw1.verifying_key().hex(),
+        ],
+        "min_quorum": 1
+    },
+    "delegates": {
+        "vk_list": [
+            dw1.verifying_key().hex(),
+        ],
+        "min_quorum": 1
+    },
+    "witnesses": {},
+    "schedulers": {},
+    "notifiers": {},
+    "enable_stamps": False,
+    "enable_nonces": False
+}
+
+constitution2 = {
+    "masternodes": {
+        "vk_list": [
+            mnw1.verifying_key().hex(),
+            mnw2.verifying_key().hex(),
+            mnw3.verifying_key().hex()
         ],
         "min_quorum": 1
     },
@@ -354,7 +377,7 @@ class TestDelegateFullFlow(TestCase):
         d = Delegate(
             ctx=self.ctx,
             socket_base='ipc:///tmp/n1',
-            constitution=constitution,
+            constitution=constitution2,
             wallet=dw1,
             overwrite=True
         )
@@ -364,10 +387,8 @@ class TestDelegateFullFlow(TestCase):
         d.parameters.sockets = {
             mnw1.verifying_key().hex(): 'ipc:///tmp/n2',
             mnw2.verifying_key().hex(): 'ipc:///tmp/n3',
-            Wallet().verifying_key().hex(): 'ipc:///'
+            mnw3.verifying_key().hex(): 'ipc:///'
         }
-
-        mock_master.send_to_work_socket()
 
         args_1 = ('hi', 'hello')
         args_2 = ('howdy', 'yo')
@@ -405,3 +426,4 @@ class TestDelegateFullFlow(TestCase):
         _, _, _, r, _ = self.loop.run_until_complete(tasks)
         print(r[0])
         print(r[1])
+        print(r[2])
