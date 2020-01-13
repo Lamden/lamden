@@ -89,7 +89,7 @@ class Masternode(Node):
         # Else, batch some more txs
         tx_batch = self.tx_batcher.pack_current_queue()
 
-        await self.parameters.refresh()  # Works
+        await self.parameters.refresh()
 
         # No one is online
         if len(self.delegate_work_sockets()) == 0:

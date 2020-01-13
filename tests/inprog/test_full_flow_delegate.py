@@ -15,10 +15,6 @@ import os
 import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.crypto.transaction import TransactionBuilder
-from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
-
-from cilantro_ee.messages import MessageType, Message
-import struct
 
 from contracting.db.driver import ContractDriver
 
@@ -115,6 +111,7 @@ def make_tx(processor, contract_name, function_name, kwargs={}):
     driver.commit()
 
     return tx
+
 
 class ComplexMockMasternode:
     def __init__(self, ctx: zmq.asyncio.Context, delegate_work, delegate_nbn, wallet=Wallet(),

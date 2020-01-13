@@ -159,7 +159,7 @@ class SubscriptionService:
 
 
 class RequestReplyService:
-    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=2000, poll_timeout=2000):
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=500, poll_timeout=10):
         self.address = str(socket_id)
         self.wallet = wallet
         self.ctx = ctx
@@ -205,7 +205,7 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=2000, retries=10, dealer=False):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=500, retries=10, dealer=False):
     if retries < 0:
         return None
 
