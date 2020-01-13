@@ -241,8 +241,6 @@ class TestDelegateFullFlow(TestCase):
             mnw1.verifying_key().hex(): 'ipc:///tmp/n2'
         }
 
-        mock_master.send_to_work_socket()
-
         args_1 = ('hi', 'hello')
         args_2 = ('howdy', 'yo')
         args_3 = ('yeehaw', 'p')

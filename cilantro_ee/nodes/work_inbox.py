@@ -45,9 +45,16 @@ class WorkInbox(AsyncInbox):
         self.current_contacts = contacts
         self.verify = verify
 
+        self.todo = []
+        self.accepting_work = False
+
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+        if not self.accepting_work:
+            self.todo.append(msg)
+            return
+
         if not self.verify:
             msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
             self.work[msg_blob.sender.hex()] = msg_blob
@@ -69,7 +76,7 @@ class WorkInbox(AsyncInbox):
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType
 
-        if msg_blob.sender.hex() not in self.current_masternodes:
+        if msg_blob.sender.hex() not in self.current_contacts:
             raise NotMasternode
 
         # Set up a hasher for input hash and a list for valid txs
@@ -96,7 +103,12 @@ class WorkInbox(AsyncInbox):
         return msg_blob
 
     async def wait_for_next_batch_of_work(self, current_contacts, timeout=1000):
+        self.accepting_work = True
         self.current_contacts = current_contacts
+
+        for work in self.todo:
+            await self.handle_msg(None, work)
+
         # Wait for work from all masternodes that are currently online
         start = time.time() * 1000
         while len(set(current_contacts) - set(self.work.keys())) > 0:
@@ -110,4 +122,5 @@ class WorkInbox(AsyncInbox):
         for masternode in set(current_contacts) - set(self.work.keys()):
             self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
 
+        self.accepting_work = False
         return list(self.work.values())

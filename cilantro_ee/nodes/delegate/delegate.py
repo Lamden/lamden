@@ -25,8 +25,9 @@ class Delegate(Node):
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
             nonces=self.nonces,
-            contacts=self.contacts,
-            ctx=self.ctx
+            ctx=self.ctx,
+            contacts=self.parameters.get_masternode_vks(),
+            wallet=self.wallet
         )
 
         self.pending_sbcs = set()
@@ -78,7 +79,11 @@ class Delegate(Node):
         if len(self.parameters.sockets) == 0:
             return
 
-        work = await self.work_inbox.wait_for_next_batch_of_work(current_contacts=self.parameters.)
+        print(self.parameters.get_masternode_vks())
+
+        work = await self.work_inbox.wait_for_next_batch_of_work(
+            current_contacts=self.parameters.get_masternode_vks()
+        )
         self.work_inbox.work.clear()
 
         return self.filter_work(work)
