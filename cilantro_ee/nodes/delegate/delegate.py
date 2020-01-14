@@ -35,6 +35,7 @@ class Delegate(Node):
 
     async def start(self):
         await super().start()
+        asyncio.ensure_future(self.work_inbox.serve())
         asyncio.ensure_future(self.run())
 
     def masternode_aggregator_sockets(self):

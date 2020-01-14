@@ -51,6 +51,7 @@ class WorkInbox(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+        delegate_logger.info('Delegate Got Work.')
         if not self.accepting_work:
             self.todo.append(msg)
             return

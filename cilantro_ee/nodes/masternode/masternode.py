@@ -10,7 +10,7 @@ from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.core import canonical
 
 from cilantro_ee.nodes.base import Node
-
+from cilantro_ee.logger.base import get_logger
 
 class Masternode(Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
@@ -38,6 +38,8 @@ class Masternode(Node):
             driver=self.driver
         )
 
+        self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
+
     async def start(self):
         await super().start()
         # Start block server to provide catchup to other nodes
@@ -53,6 +55,12 @@ class Masternode(Node):
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
+    async def run(self):
+        if self.driver.latest_block_num == 0:
+            await self.new_blockchain_boot()
+        else:
+            await self.join_quorum()
+
     async def new_blockchain_boot(self):
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
             if not self.running:
@@ -63,6 +71,8 @@ class Masternode(Node):
             await self.parameters.refresh()
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
             sent = await multicast(self.ctx, msg, self.nbn_sockets())
+
+        await self.process_blocks()
 
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
@@ -82,14 +92,9 @@ class Masternode(Node):
 
         await self.process_blocks()
 
-    async def run(self):
-        if self.driver.latest_block_num == 0:
-            await self.new_blockchain_boot()
-        else:
-            await self.join_quorum()
-
     async def send_work(self):
         # Else, batch some more txs
+        self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
         tx_batch = self.tx_batcher.pack_current_queue()
 
         await self.parameters.refresh()
@@ -125,6 +130,8 @@ class Masternode(Node):
         while self.running:
             sends = await self.send_work()
 
+            self.log.info(sends)
+
             if sends is None:
                 return
 
@@ -140,6 +147,7 @@ class Masternode(Node):
 
             # Pack current NBN into message
             await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
+            self.log.info('NEXT')
 
     def stop(self):
         super().stop()

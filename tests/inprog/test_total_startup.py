@@ -400,7 +400,7 @@ class TestTotalEndToEnd(TestCase):
 
             res = await r.json()
             self.assertEqual(res['success'], 'Transaction successfully submitted to the network.')
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             mn1.stop()
             mn2.stop()
             d1.stop()
