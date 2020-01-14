@@ -1,30 +1,30 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.old.webserver import app
+from cilantro_ee.nodes.masternode.webserver import WebServer
+from cilantro_ee.crypto.wallet import Wallet
 
 
 class TestWS(TestCase):
+    def setUp(self):
+        self.server = WebServer(Wallet())
+
     def test_app(self):
-        _, response = app.test_client.get('/')
+        _, response = self.server.app.test_client.get('/ping')
         self.assertEqual(response.status, 200)
 
     def test_ping_api(self):
-        _, response = app.test_client.get('/ping')
-        self.assertEqual(response.status,200)
-        self.assertListEqual(response.json, [True, 'Hello'])
+        _, response = self.server.app.test_client.get('/ping')
+        self.assertEqual(response.status, 200)
+        self.assertDictEqual(response.json, {
+            'status': 'online'
+        })
 
     def test_id_api(self):
-        _, response = app.test_client.get('/id')
-        self.assertEqual(response.json, {'verifying_key': None})
+        _, response = self.server.app.test_client.get('/id')
+        self.assertEqual(response.json, {'verifying_key': self.server.wallet.verifying_key().hex()})
 
-    def test_epoch_api(self):
-        _, response = app.test_client.get('/epoch')
-        print(response.json)
-        self.assertEqual(response.json,
-                         {'epoch_hash': '0000000000000000000000000000000000000000000000000000000000000000',
-                          'blocks_until_next_epoch': 1})
 
     def test_get_submission_methods(self):
-        _, response = app.test_client.get('/contracts/submission/methods')
+        _, response = self.server.app.test_client.get('/contracts/submission/methods')
 
         method = 'submit_contract'
         kwargs = ['name', 'code', 'owner', 'constructor_args']
@@ -40,7 +40,7 @@ class TestWS(TestCase):
         self.assertEqual(response.status, 200)
 
     def test_get_non_existent_contract_methods(self):
-        _, response = app.test_client.get('/contracts/huuuuuuuuupluh/methods')
+        _, response = self.server.app.test_client.get('/contracts/huuuuuuuuupluh/methods')
 
         self.assertEqual(response.status, 404)
 
@@ -49,10 +49,10 @@ class TestWS(TestCase):
         self.assertEqual(error_message, 'huuuuuuuuupluh does not exist')
 
     def test_contracts_api(self):
-        _, response = app.test_client.get('/contracts/vkbook')
+        _, response = self.server.app.test_client.get('/contracts/vkbook')
         pass
 
     def test_blocks_api(self):
-        _, response = app.test_client.get('/latest_block')
+        _, response = self.server.app.test_client.get('/latest_block')
         print(response.json)
         pass

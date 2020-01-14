@@ -6,8 +6,15 @@ from cilantro_ee.crypto.wallet import Wallet
 
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
-
 import os
+import capnp
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.crypto.transaction import TransactionBuilder
+from contracting.db.driver import ContractDriver
+import requests
+from contracting import config
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 def make_ipc(p):
@@ -15,6 +22,37 @@ def make_ipc(p):
         os.mkdir(p)
     except:
         pass
+
+
+def make_tx_packed(processor, contract_name, function_name, kwargs={}):
+    w = Wallet()
+    batch = TransactionBuilder(
+        sender=w.verifying_key(),
+        contract=contract_name,
+        function=function_name,
+        kwargs=kwargs,
+        stamps=10000,
+        processor=processor,
+        nonce=0
+    )
+
+    batch.sign(w.signing_key())
+    b = batch.serialize()
+
+    currency_contract = 'currency'
+    balances_hash = 'balances'
+
+    balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                       config.INDEX_SEPARATOR,
+                                       balances_hash,
+                                       config.DELIMITER,
+                                       w.verifying_key().hex())
+
+    driver = ContractDriver()
+    driver.set(balances_key, 1_000_000)
+    driver.commit()
+
+    return b
 
 
 class TestTotalEndToEnd(TestCase):
@@ -28,10 +66,10 @@ class TestTotalEndToEnd(TestCase):
         self.ctx.destroy()
         self.loop.close()
 
-    def test_network_start(self):
-        # 4 nodes
+    def test_network_start_large(self):
+        # 16 nodes
         # 2 bootnodes
-        # 2 mns, 2 delegates
+        # 8 mns, 8 delegates
 
         bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
 
@@ -211,7 +249,7 @@ class TestTotalEndToEnd(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run())
 
-    def test_large_network_bootup(self):
+    def test_network_bootup(self):
         bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
 
         mnw1 = Wallet()
@@ -274,6 +312,83 @@ class TestTotalEndToEnd(TestCase):
 
         async def run():
             await tasks
+            await asyncio.sleep(5)
+            mn1.stop()
+            mn2.stop()
+            d1.stop()
+            d2.stop()
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(run())
+
+    def test_tx_network_bootup(self):
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
+
+        mnw1 = Wallet()
+        mnw2 = Wallet()
+        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
+
+        dw1 = Wallet()
+        dw2 = Wallet()
+        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
+
+        constitution = {
+            "masternodes": {
+                "vk_list": [
+                    mnw1.verifying_key().hex(),
+                    mnw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "delegates": {
+                "vk_list": [
+                    dw1.verifying_key().hex(),
+                    dw2.verifying_key().hex()
+                ],
+                "min_quorum": 1
+            },
+            "witnesses": {},
+            "schedulers": {},
+            "notifiers": {},
+            "enable_stamps": False,
+            "enable_nonces": False
+        }
+
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8080)
+
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
+                         constitution=constitution, webserver_port=8081)
+
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
+                      constitution=constitution, bootnodes=bootnodes)
+
+        n4 = '/tmp/n4'
+        make_ipc(n4)
+        d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
+                      constitution=constitution, bootnodes=bootnodes)
+
+        # should test to see all ready signals are recieved
+        tasks = asyncio.gather(
+            mn1.start(),
+            mn2.start(),
+            d1.start(),
+            d2.start()
+        )
+
+        async def run():
+            await tasks
+            await asyncio.sleep(1)
+            print('sending')
+            r = requests.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'test', 'testing'))
+
+            print(r.text)
             await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()
