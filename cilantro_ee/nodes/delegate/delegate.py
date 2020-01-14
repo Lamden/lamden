@@ -11,6 +11,7 @@ from cilantro_ee.sockets.services import multicast
 import heapq
 
 from cilantro_ee.nodes.base import Node
+from cilantro_ee.logger.base import get_logger
 import asyncio
 
 class Delegate(Node):
@@ -32,6 +33,8 @@ class Delegate(Node):
         )
 
         self.pending_sbcs = set()
+
+        self.log = get_logger(f'DEL {self.wallet.vk_pretty}')
 
     async def start(self):
         await super().start()
@@ -56,12 +59,15 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         if not self.did_sign_block(nbn):
+            self.log.info('Did not sign block. Processing.')
             self.client.raw_driver.revert()
             self.driver.update_with_block(nbn)
         elif not block_is_failed(nbn):
+            self.log.info('Received failed block. Reverting')
             self.client.raw_driver.commit()
             self.driver.update_with_block(nbn, commit_tx=False)
         else:
+            self.log.info('Skip block. Reverting')
             self.client.raw_driver.revert()
 
         self.pending_sbcs.clear()
@@ -120,6 +126,8 @@ class Delegate(Node):
             filtered_work = await self.acquire_work()
 
             sbc_msg = self.process_work(filtered_work)
+
+            self.log.info(sbc_msg)
 
             await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 

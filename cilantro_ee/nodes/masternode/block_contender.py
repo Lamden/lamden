@@ -53,7 +53,7 @@ class SBCInbox(AsyncInbox):
         self.expected_subblocks = expected_subblocks
         super().__init__(*args, **kwargs)
 
-    def handle_msg(self, _id, msg):
+    async def handle_msg(self, _id, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
         # Ignore bad message types
@@ -186,3 +186,9 @@ class Aggregator:
             previous_hash=self.driver.latest_block_hash,
             block_num=self.driver.latest_block_num + 1
         )
+
+    async def start(self):
+        asyncio.ensure_future(self.sbc_inbox.serve())
+
+    def stop(self):
+        self.sbc_inbox.stop()

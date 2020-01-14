@@ -46,7 +46,7 @@ class Masternode(Node):
         asyncio.ensure_future(self.block_server.serve())
         self.webserver.queue = self.tx_batcher.queue
         await self.webserver.start()
-
+        asyncio.ensure_future(self.aggregator.start())
         asyncio.ensure_future(self.run())
 
     def delegate_work_sockets(self):
@@ -140,6 +140,9 @@ class Masternode(Node):
                 total_contacts=len(self.contacts.delegates),
                 expected_subblocks=len(self.contacts.masternodes)
             )
+
+            self.log.info('Got block!')
+            self.log.info(block)
 
             self.process_block(block)
 
