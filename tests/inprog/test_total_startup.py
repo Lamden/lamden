@@ -389,10 +389,9 @@ class TestTotalEndToEnd(TestCase):
             print('sending')
 
             async with aiohttp.ClientSession() as session:
-                async with session.get('http://127.0.0.1:8081/ping') as response:
-                    r = await response.text()
+                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test'))
 
-            print(r)
+            print(await r.json())
             await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()
