@@ -26,8 +26,8 @@ class Network:
                  mn_to_find=[],
                  del_to_find=[],
                  socket_base='tcp://127.0.0.1',
-                 poll_timeout=200,
-                 linger=3000):
+                 poll_timeout=10,
+                 linger=500):
 
         # General Instance Variables
         self.wallet = wallet
@@ -112,7 +112,7 @@ class Network:
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
-                                                   ctx=self.ctx, timeout=3000)
+                                                   ctx=self.ctx, timeout=500)
 
         log.info(responses)
 
@@ -130,7 +130,7 @@ class Network:
             join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
 
             peer = services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
-            await services.get(peer, msg=join_message, ctx=self.ctx, timeout=3000)
+            await services.get(peer, msg=join_message, ctx=self.ctx, timeout=500)
 
     async def wait_for_quorum(self, masternode_quorum_required: int,
                                     delegate_quorum_required: int,
@@ -217,7 +217,7 @@ class Network:
         else:
             find_message = ['find', vk_to_find]
             find_message = json.dumps(find_message, cls=services.SocketEncoder).encode()
-            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=3000)
+            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=500)
 
             if response is None:
                 return None

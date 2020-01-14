@@ -84,7 +84,7 @@ class PeerServer(services.RequestReplyService):
         if vk not in result or result[vk] != ip:
             # Ping discovery server
             _, responded_vk = await discovery.ping(services._socket(ip),
-                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=1000)
+                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
 
             await asyncio.sleep(0)
             if responded_vk is None:
@@ -123,7 +123,7 @@ class PeerServer(services.RequestReplyService):
                 elif command == 'leave':
                     # Ping to make sure the node is actually offline
                     _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(),
-                                                           ctx=self.ctx, timeout=1000)
+                                                           ctx=self.ctx, timeout=500)
 
                     # If so, remove it from our table
                     if responded_vk is None:

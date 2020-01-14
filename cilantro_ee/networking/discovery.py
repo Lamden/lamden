@@ -13,7 +13,7 @@ Returns a message of the signed pepper and VK
 
 class DiscoveryServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(),
-                 linger=2000, poll_timeout=500):
+                 linger=500, poll_timeout=500):
 
         super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
 
@@ -53,7 +53,7 @@ async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context
     return str(socket_id).rstrip('discovery'), None
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000, retries=10):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=500, retries=10):
     nodes_found = {}
     one_found = False
     retries_left = retries

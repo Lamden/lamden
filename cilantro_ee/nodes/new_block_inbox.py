@@ -37,11 +37,10 @@ class NBNInbox(AsyncInbox):
             self.q.append(msg)
             return
 
-        print('got msg')
-
         try:
             nbn = self.validate_nbn(msg)
             self.q.append(nbn)
+            print('appended')
         except BlockNotificationException as e:
             # This would be where the audit layer would take over
             print(type(e))
@@ -49,8 +48,6 @@ class NBNInbox(AsyncInbox):
 
     def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
-
-        print(msg_blob)
 
         if msg_type != MessageType.BLOCK_DATA:
             raise NotBlockNotificationMessageType
@@ -67,9 +64,10 @@ class NBNInbox(AsyncInbox):
         return msg_blob.to_dict()
 
     async def wait_for_next_nbn(self):
+        print('called')
         while len(self.q) <= 0:
             await asyncio.sleep(0)
-
+        print('kewl')
         nbn = self.q.pop(0)
         self.q.clear()
 

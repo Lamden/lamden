@@ -33,6 +33,10 @@ class Delegate(Node):
 
         self.pending_sbcs = set()
 
+    async def start(self):
+        await super().start()
+        await self.run()
+
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 

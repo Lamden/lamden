@@ -56,7 +56,7 @@ class BlockFetcher:
         self.in_catchup = False
 
     # Change to max received
-    async def find_missing_block_indexes(self, confirmations=3, timeout=3000):
+    async def find_missing_block_indexes(self, confirmations=3, timeout=500):
         await self.masternodes.refresh()
         responses = ConfirmationCounter()
 
@@ -94,7 +94,7 @@ class BlockFetcher:
             socket_id=socket,
             msg=request,
             ctx=self.ctx,
-            timeout=3000,
+            timeout=500,
             retries=0,
             dealer=True
         )
@@ -116,7 +116,7 @@ class BlockFetcher:
             socket_id=socket,
             msg=request,
             ctx=self.ctx,
-            timeout=3000,
+            timeout=500,
             retries=0,
             dealer=True
         )
@@ -127,7 +127,7 @@ class BlockFetcher:
             if msg_type == MessageType.BLOCK_DATA:
                 return unpacked
 
-    async def find_valid_block(self, i, latest_hash, timeout=3000):
+    async def find_valid_block(self, i, latest_hash, timeout=500):
         await self.masternodes.refresh()
 
         block_found = False
