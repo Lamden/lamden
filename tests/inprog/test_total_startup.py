@@ -1,18 +1,19 @@
-from unittest import TestCase
-import zmq.asyncio
+import aiohttp
 import asyncio
-from contracting.client import ContractingClient
-from cilantro_ee.crypto.wallet import Wallet
-
-from cilantro_ee.nodes.masternode.masternode import Masternode
-from cilantro_ee.nodes.delegate.delegate import Delegate
 import os
+from unittest import TestCase
+
 import capnp
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
-from cilantro_ee.crypto.transaction import TransactionBuilder
-from contracting.db.driver import ContractDriver
 import requests
+import zmq.asyncio
+from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.nodes.delegate.delegate import Delegate
+from cilantro_ee.nodes.masternode.masternode import Masternode
 from contracting import config
+from contracting.client import ContractingClient
+from contracting.db.driver import ContractDriver
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -386,9 +387,12 @@ class TestTotalEndToEnd(TestCase):
             await tasks
             await asyncio.sleep(1)
             print('sending')
-            r = requests.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'test', 'testing'))
 
-            print(r.text)
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://127.0.0.1:8081/ping') as response:
+                    r = await response.text()
+
+            print(r)
             await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()

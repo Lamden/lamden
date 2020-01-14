@@ -57,10 +57,10 @@ class Masternode(Node):
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
             if not self.running:
                 return
-
             await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
+            print('hoopla')
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
             await multicast(self.ctx, msg, self.nbn_sockets())
 
