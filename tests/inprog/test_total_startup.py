@@ -13,6 +13,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from contracting import config
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
+from cilantro_ee.storage import MetaDataStorage
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -53,6 +54,18 @@ def make_tx_packed(processor, contract_name, function_name, kwargs={}):
     driver.commit()
 
     return b
+
+
+class IsolatedDriver(MetaDataStorage):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.d = {}
+
+    def get(self, key):
+        return self.d.get(key)
+
+    def set(self, key, value):
+        self.d[key] = value
 
 
 class TestTotalEndToEnd(TestCase):
@@ -355,22 +368,22 @@ class TestTotalEndToEnd(TestCase):
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8080)
+                         constitution=constitution, webserver_port=8080, driver=IsolatedDriver())
 
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8081)
+                         constitution=constitution, webserver_port=8081, driver=IsolatedDriver())
 
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
-                      constitution=constitution, bootnodes=bootnodes)
+                      constitution=constitution, bootnodes=bootnodes, driver=IsolatedDriver())
 
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
-                      constitution=constitution, bootnodes=bootnodes)
+                      constitution=constitution, bootnodes=bootnodes, driver=IsolatedDriver())
 
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(

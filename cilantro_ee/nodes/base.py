@@ -16,7 +16,7 @@ import asyncio
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), client=ContractingClient()):
+                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), client=ContractingClient(), driver=MetaDataStorage()):
         # Seed state initially
         if client.get_contract('vkbook') is None or overwrite:
             sync.extract_vk_args(constitution)
@@ -36,7 +36,7 @@ class Node:
         self.constitution = constitution
         self.overwrite = overwrite
 
-        self.driver = MetaDataStorage()
+        self.driver = driver
         self.client = client
 
         self.block_fetcher = BlockFetcher(
