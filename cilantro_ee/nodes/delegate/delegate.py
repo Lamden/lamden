@@ -11,7 +11,7 @@ from cilantro_ee.sockets.services import multicast
 import heapq
 
 from cilantro_ee.nodes.base import Node
-
+import asyncio
 
 class Delegate(Node):
     def __init__(self, parallelism=4, nonces=NonceManager(), *args, **kwargs):
@@ -35,7 +35,7 @@ class Delegate(Node):
 
     async def start(self):
         await super().start()
-        await self.run()
+        asyncio.ensure_future(self.run())
 
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
