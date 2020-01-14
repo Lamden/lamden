@@ -60,9 +60,10 @@ class Masternode(Node):
             await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
-            print('hoopla')
+            await self.parameters.refresh()
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
-            await multicast(self.ctx, msg, self.nbn_sockets())
+            sent = await multicast(self.ctx, msg, self.nbn_sockets())
+            print(sent)
 
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum

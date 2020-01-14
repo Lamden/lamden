@@ -4,7 +4,6 @@ import os
 from unittest import TestCase
 
 import capnp
-import requests
 import zmq.asyncio
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.crypto.wallet import Wallet
@@ -229,7 +228,6 @@ class TestTotalEndToEnd(TestCase):
 
         async def run():
             await tasks
-            await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()
             mn3.stop()
@@ -313,7 +311,6 @@ class TestTotalEndToEnd(TestCase):
 
         async def run():
             await tasks
-            await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()
             d1.stop()
@@ -385,13 +382,12 @@ class TestTotalEndToEnd(TestCase):
 
         async def run():
             await tasks
-            await asyncio.sleep(1)
-            print('sending')
 
             async with aiohttp.ClientSession() as session:
                 r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test'))
 
-            print(await r.json())
+            res = await r.json()
+            self.assertEqual(res['success'], 'Transaction successfully submitted to the network.')
             await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()

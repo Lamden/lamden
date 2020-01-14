@@ -11,6 +11,7 @@ from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkPa
 from contracting.client import ContractingClient
 import cilantro_ee
 import zmq.asyncio
+import asyncio
 
 
 class Node:
@@ -83,6 +84,8 @@ class Node:
         # Catchup
         if len(self.contacts.masternodes) > 1:
             await self.block_fetcher.sync()
+
+        asyncio.ensure_future(self.nbn_inbox.serve())
 
         self.running = True
 
