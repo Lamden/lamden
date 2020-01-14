@@ -382,7 +382,7 @@ class TestTotalEndToEnd(TestCase):
 
         async def run():
             await tasks
-
+            await asyncio.sleep(2)
             async with aiohttp.ClientSession() as session:
                 r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test'))
 

@@ -48,9 +48,9 @@ async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
         vk, _ = unpack_pepper_msg(response)
-        return str(socket_id), vk
+        return str(socket_id).rstrip('discovery'), vk
 
-    return str(socket_id), None
+    return str(socket_id).rstrip('discovery'), None
 
 
 async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=3000, retries=10):

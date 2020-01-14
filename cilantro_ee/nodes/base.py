@@ -85,9 +85,9 @@ class Node:
         if len(self.contacts.masternodes) > 1:
             await self.block_fetcher.sync()
 
-        asyncio.ensure_future(self.nbn_inbox.serve())
-
         self.running = True
+
+        asyncio.ensure_future(self.nbn_inbox.serve())
 
     def stop(self):
         self.network.stop()
