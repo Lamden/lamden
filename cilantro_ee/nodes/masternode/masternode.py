@@ -96,10 +96,9 @@ class Masternode(Node):
     async def send_work(self):
         # Else, batch some more txs
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
-        if len(self.tx_batcher.queue) == 0:
-            tx_batch = self.tx_batcher.make_empty_batch()
-        else:
-            tx_batch = self.tx_batcher.pack_current_queue()
+        tx_batch = self.tx_batcher.pack_current_queue()
+
+        self.log.info(tx_batch)
 
         await self.parameters.refresh()
 
@@ -148,11 +147,7 @@ class Masternode(Node):
                 expected_subblocks=len(self.contacts.masternodes)
             )
 
-            self.log.info('Got block!')
-
             self.process_block(block)
-
-            self.log.info('done processing')
 
             await self.wait_for_work(block)
 

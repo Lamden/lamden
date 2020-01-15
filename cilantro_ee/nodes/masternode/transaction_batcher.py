@@ -31,8 +31,8 @@ class TransactionBatcher:
         )
 
     def pack_current_queue(self, tx_number=100):
-        if len(self.queue) == 0:
-            return self.make_empty_batch()
+        # if len(self.queue) == 0:
+        #     return self.make_empty_batch()
 
         # Pop elements off into a list
         tx_list = []

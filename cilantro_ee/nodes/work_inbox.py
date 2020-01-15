@@ -125,4 +125,8 @@ class WorkInbox(AsyncInbox):
             self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
 
         self.accepting_work = False
-        return list(self.work.values())
+
+        returned_work = deepcopy(list(self.work.values()))
+        self.work.clear()
+
+        return returned_work
