@@ -67,11 +67,12 @@ class Delegate(Node):
         elif not block_is_failed(nbn, nbn['prevBlockHash'], nbn['blockNum']):
             self.log.info('Received successful block')
             self.driver.commit()
-            self.driver.update_with_block(nbn, commit_tx=True)
+            self.driver.update_with_block(nbn, commit_tx=False)
         else:
             self.log.info('Skip block. Reverting')
             self.driver.revert()
 
+        self.nbn_inbox.clean()
         self.pending_sbcs.clear()
 
     def filter_work(self, work):

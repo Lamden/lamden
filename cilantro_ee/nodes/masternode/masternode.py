@@ -98,8 +98,6 @@ class Masternode(Node):
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
         tx_batch = self.tx_batcher.pack_current_queue()
 
-        self.log.info(tx_batch)
-
         await self.parameters.refresh()
 
         # No one is online
@@ -128,15 +126,14 @@ class Masternode(Node):
         do_not_store |= canonical.block_is_skip_block(block)
 
         #if not do_not_store:
-        self.driver.update_with_block(block)
-        self.blocks.put(block, self.blocks.BLOCK)
-        del block['_id']
+        if block['blockNum'] != self.driver.latest_block_num:
+            self.driver.update_with_block(block)
+            self.blocks.put(block, self.blocks.BLOCK)
+            del block['_id']
 
     async def process_blocks(self):
         while self.running:
             sends = await self.send_work()
-
-            self.log.info(sends)
 
             if sends is None:
                 return

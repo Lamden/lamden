@@ -66,7 +66,6 @@ class WorkInbox(AsyncInbox):
             try:
                 msg_struct = self.verify_transaction_bag(msg)
                 self.work[msg_struct.sender.hex()] = msg_struct
-                self.log.info('Work added.')
             except DelegateWorkInboxException as e:
                 # Audit trigger
                 self.log.error(type(e))
@@ -77,7 +76,7 @@ class WorkInbox(AsyncInbox):
         # What is the valid signature
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
-        self.log.info(msg_blob)
+        self.log.info(f'{len(msg_blob.transactions)} transactions of work')
 
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType

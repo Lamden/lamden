@@ -9,9 +9,10 @@ from cilantro_ee.logger.base import get_logger
 
 log = get_logger('STATE')
 
+
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
-        block_hash = super().get(BLOCK_HASH_KEY)
+        block_hash = super().get_direct(BLOCK_HASH_KEY)
         if block_hash is None:
             return b'\x00' * 32
         return block_hash
@@ -20,7 +21,7 @@ class BlockchainDriver(ContractDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        super().set(BLOCK_HASH_KEY, v)
+        super().set_direct(BLOCK_HASH_KEY, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 

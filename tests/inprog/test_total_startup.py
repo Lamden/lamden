@@ -51,7 +51,6 @@ def make_tx_packed(processor, contract_name, function_name, kwargs={}, drivers=[
 
     for driver in drivers:
         driver.set(balances_key, 1_000_000)
-        print(driver.get(balances_key))
         driver.commit()
 
     return b

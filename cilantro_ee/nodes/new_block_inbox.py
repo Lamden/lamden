@@ -52,8 +52,8 @@ class NBNInbox(AsyncInbox):
         if msg_type != MessageType.BLOCK_DATA:
             raise NotBlockNotificationMessageType
 
-        if msg_blob.blockNum != self.driver.latest_block_num + 1:
-            raise BlockNumberMismatch
+        #if msg_blob.blockNum != self.driver.latest_block_num + 1:
+        #    raise BlockNumberMismatch
 
         # Check if signed by quorum amount
         for sub_block in msg_blob.subBlocks:
@@ -68,9 +68,12 @@ class NBNInbox(AsyncInbox):
             await asyncio.sleep(0)
 
         nbn = self.q.pop(0)
+        if nbn['blockNum'] < self.driver.latest_block_num:
+            self.log.error('you found it')
+
         self.q.clear()
 
         return nbn
 
     def clean(self):
-        self.q = [nbn for nbn in self.q if nbn['blockNum'] == self.driver.latest_block_num + 1]
+        self.q = [nbn for nbn in self.q if nbn['blockNum'] > self.driver.latest_block_num]
