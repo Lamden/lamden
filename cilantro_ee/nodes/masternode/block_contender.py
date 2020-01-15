@@ -77,7 +77,7 @@ class SBCInbox(AsyncInbox):
 
         # Add the whole contender
         if all_valid:
-            self.q.append(msg_blob.contenders.to_dict())
+            self.q.append(msg_blob.contenders)
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc.subBlockNum != sb_idx:
@@ -103,7 +103,7 @@ class SBCInbox(AsyncInbox):
 
         # idk
         if len(sbc.merkleTree.leaves) > 0:
-            txs = [tx.to_bytes_packed() for tx in sbc.transactions]
+            txs = [tx.as_builder().to_bytes_packed() for tx in sbc.transactions]
             expected_tree = merklize(txs)
 
             for i in range(len(expected_tree)):
