@@ -1,6 +1,6 @@
 from cilantro_ee.sockets.services import AsyncInbox
 from collections import defaultdict
-from cilantro_ee.storage import MetaDataStorage
+from cilantro_ee.storage import BlockchainDriver
 
 import capnp
 import os
@@ -49,7 +49,7 @@ class SBCIndexGreaterThanPossibleError(SBCException):
 
 
 class SBCInbox(AsyncInbox):
-    def __init__(self, driver: MetaDataStorage, expected_subblocks=4, *args, **kwargs):
+    def __init__(self, driver: BlockchainDriver, expected_subblocks=4, *args, **kwargs):
         self.q = []
         self.driver = driver
         self.expected_subblocks = expected_subblocks
@@ -77,7 +77,7 @@ class SBCInbox(AsyncInbox):
 
         # Add the whole contender
         if all_valid:
-            self.q.append(msg_blob.contenders)
+            self.q.append(msg_blob.contenders.to_dict())
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc.subBlockNum != sb_idx:

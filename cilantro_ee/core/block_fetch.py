@@ -1,5 +1,5 @@
 from cilantro_ee.sockets.socket_book import SocketBook
-from cilantro_ee.storage import VKBook, MetaDataStorage, CilantroStorageDriver
+from cilantro_ee.storage import VKBook, BlockchainDriver, CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.messages.message import Message, MessageType
@@ -36,7 +36,7 @@ class BlockFetcher:
                  blocks: CilantroStorageDriver=None,
                  network_parameters=NetworkParameters(),
                  top=TopBlockManager(),
-                 state=MetaDataStorage(),
+                 state=BlockchainDriver(),
                  masternode_sockets=None):
 
         self.contacts = contacts

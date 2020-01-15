@@ -5,7 +5,7 @@ from cilantro_ee.nodes.masternode.block_contender import Aggregator, CurrentCont
 
 from cilantro_ee.crypto.wallet import Wallet
 from tests import random_txs
-from cilantro_ee.storage import MetaDataStorage
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.sockets.services import _socket
 import secrets
 
@@ -18,7 +18,7 @@ def random_wallets(n=10):
 
 class TestSBCInbox(TestCase):
     def test_verify_sbc_false_sender_ne_merkle_proof_signer(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -29,7 +29,7 @@ class TestSBCInbox(TestCase):
         self.assertFalse(s.sbc_is_valid(sbc))
 
     def test_verify_sbc_false_invalid_sig(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -41,7 +41,7 @@ class TestSBCInbox(TestCase):
             s.sbc_is_valid(sbc)
 
     def test_verify_sbc_false_prev_block_hash_ne_curr_block_hash(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -53,7 +53,7 @@ class TestSBCInbox(TestCase):
             s.sbc_is_valid(sbc=sbc)
 
     def test_verify_sbc_false_sbc_merkle_leave_does_not_verify(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -65,7 +65,7 @@ class TestSBCInbox(TestCase):
             s.sbc_is_valid(sbc=sbc)
 
     def test_verify_sbc_false_tx_hash_not_in_merkle_leaves(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -77,7 +77,7 @@ class TestSBCInbox(TestCase):
             s.sbc_is_valid(sbc=sbc)
 
     def test_verify_sbc_true_if_no_failures(self):
-        s = SBCInbox(MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
+        s = SBCInbox(BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context())
 
         input_hash = secrets.token_bytes(32)
 
@@ -110,7 +110,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 1)
         b = MockSBC(1, 2, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con = CurrentContenders()
 
@@ -122,7 +122,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 1)
         b = MockSBC(2, 2, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con = CurrentContenders()
 
@@ -135,7 +135,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 1)
         b = MockSBC(2, 2, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con = CurrentContenders()
 
@@ -147,7 +147,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 3, 1)
         b = MockSBC(2, 3, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con.add_sbcs(c)
 
@@ -158,7 +158,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 1)
         b = MockSBC(2, 2, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con = CurrentContenders()
 
@@ -170,7 +170,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 3, 1)
         b = MockSBC(2, 3, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con.add_sbcs(c)
 
@@ -180,7 +180,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 2)
         b = MockSBC(2, 2, 4)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con.add_sbcs(c)
 
@@ -193,7 +193,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 2, 1)
         b = MockSBC(2, 2, 3)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con.add_sbcs(c)
 
@@ -202,7 +202,7 @@ class TestCurrentContenders(TestCase):
         a = MockSBC(1, 1, 1)
         b = MockSBC(2, 2, 4)
 
-        c = MockContenders([a, b])
+        c = [a, b]
 
         con.add_sbcs(c)
 
@@ -213,19 +213,19 @@ class TestCurrentContenders(TestCase):
 
         a = MockSBC(1, 2, 1)
 
-        con.add_sbcs(MockContenders([a]))
+        con.add_sbcs([a])
 
         self.assertDictEqual(con.finished, {})
 
         b = MockSBC(1, 3, 1)
 
-        con.add_sbcs(MockContenders([b]))
+        con.add_sbcs([b])
 
         self.assertDictEqual(con.finished, {})
 
         aa = MockSBC(1, 4, 1)
 
-        con.add_sbcs(MockContenders([aa]))
+        con.add_sbcs([aa])
 
         self.assertDictEqual(con.finished, {1: None})
 
@@ -235,27 +235,27 @@ class TestAggregator(TestCase):
         self.loop = asyncio.get_event_loop()
 
     def test_gather_subblocks_all_same_blocks(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
-        c1 = MockContenders([MockSBC('input_1', 'res_1', 0),
-                             MockSBC('input_2', 'res_2', 1),
-                             MockSBC('input_3', 'res_3', 2),
-                             MockSBC('input_4', 'res_4', 3)])
+        c1 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
 
-        c2 = MockContenders([MockSBC('input_1', 'res_1', 0),
-                             MockSBC('input_2', 'res_2', 1),
-                             MockSBC('input_3', 'res_3', 2),
-                             MockSBC('input_4', 'res_4', 3)])
+        c2 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
 
-        c3 = MockContenders([MockSBC('input_1', 'res_1', 0),
-                             MockSBC('input_2', 'res_2', 1),
-                             MockSBC('input_3', 'res_3', 2),
-                             MockSBC('input_4', 'res_4', 3)])
+        c3 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
 
-        c4 = MockContenders([MockSBC('input_1', 'res_1', 0),
-                             MockSBC('input_2', 'res_2', 1),
-                             MockSBC('input_3', 'res_3', 2),
-                             MockSBC('input_4', 'res_4', 3)])
+        c4 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
 
         a.sbc_inbox.q = [c1, c2, c3, c4]
 
@@ -267,7 +267,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res[3].merkleTree.leaves[0], 'res_4')
 
     def test_mixed_results_still_makes_quorum(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = MockContenders([MockSBC('input_1', 'res_X', 0),
                              MockSBC('input_2', 'res_2', 1),
@@ -299,7 +299,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res[3].merkleTree.leaves[0], 'res_4')
 
     def test_failed_block_on_one_returns_none(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = MockContenders([MockSBC('input_1', 'res_X', 0),
                              MockSBC('input_2', 'res_2', 1),
@@ -331,7 +331,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res[3].merkleTree.leaves[0], 'res_4')
 
     def test_block_dropped_failed_consenus_returns_none(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=MetaDataStorage())
+        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = MockContenders([MockSBC('input_1', 'res_1', 0),
                              MockSBC('input_2', 'res_2', 1),
