@@ -35,7 +35,7 @@ struct SubBlock {
 struct NewSubBlock {
     inputHash @0: Data;
     transactions @1: List(T.TransactionData);
-    merkleTree @2: MerkleTree;
+    merkleLeaves @2: List(Data);
     signatures @3: List(Signature);
     subBlockNum @4: UInt8;
     prevBlockHash @5: Data;

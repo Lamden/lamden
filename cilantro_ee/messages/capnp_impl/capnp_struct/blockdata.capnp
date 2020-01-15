@@ -19,7 +19,7 @@ struct BlockData {
     blockNum @1 :UInt32;
     blockOwners @2 :List(Data);
     prevBlockHash @3 :Data;
-    subBlocks @4 :List(SB.SubBlock);
+    subBlocks @4 :List(SB.NewSubBlock);
 }
 
 struct BlockIndexRequest {
