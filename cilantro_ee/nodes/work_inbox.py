@@ -109,7 +109,6 @@ class WorkInbox(AsyncInbox):
         self.current_contacts = current_contacts
 
         for work in self.todo:
-            print('processing')
             await self.handle_msg(None, work)
 
         # Wait for work from all masternodes that are currently online
@@ -120,8 +119,6 @@ class WorkInbox(AsyncInbox):
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         for masternode in set(current_contacts) - set(self.work.keys()):
             self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
-
-        self.log.info(self.work)
 
         self.accepting_work = False
         return list(self.work.values())

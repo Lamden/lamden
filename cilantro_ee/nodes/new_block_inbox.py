@@ -3,7 +3,7 @@ import asyncio
 from cilantro_ee.messages import MessageType, Message
 from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.storage import BlockchainDriver, VKBook
-
+from cilantro_ee.logger.base import get_logger
 import math
 
 
@@ -30,6 +30,7 @@ class NBNInbox(AsyncInbox):
         self.driver = driver
         self.verify = verify
         self.quorum_ratio = 0.66
+        self.log = get_logger('NBN')
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
@@ -47,6 +48,8 @@ class NBNInbox(AsyncInbox):
 
     def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+
+        self.log.info(msg_blob)
 
         if msg_type != MessageType.BLOCK_DATA:
             raise NotBlockNotificationMessageType

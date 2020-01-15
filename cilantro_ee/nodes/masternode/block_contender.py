@@ -78,6 +78,7 @@ class SBCInbox(AsyncInbox):
         # Add the whole contender
         if all_valid:
             self.q.append(msg_blob.contenders)
+            self.log.info('Added new SBC')
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc.subBlockNum != sb_idx:
@@ -171,6 +172,7 @@ class Aggregator:
             expected_subblocks=self.expected_subblocks
         )
         self.driver = driver
+        self.log = get_logger('AGG')
 
     async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=1000):
         self.sbc_inbox.expected_subblocks = expected_subblocks
@@ -178,10 +180,11 @@ class Aggregator:
         contenders = CurrentContenders(total_contacts, quorum_ratio=quorum_ratio, expected_subblocks=expected_subblocks)
         now = now_in_ms()
 
-        while now_in_ms() - now < timeout and len(contenders.finished) < expected_subblocks:
+        while len(contenders.finished) < expected_subblocks:
             if self.sbc_inbox.has_sbc():
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 contenders.add_sbcs(sbcs)
+            await asyncio.sleep(0)
 
         for i in range(expected_subblocks):
             if contenders.finished.get(i) is None:
