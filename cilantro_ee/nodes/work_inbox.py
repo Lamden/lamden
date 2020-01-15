@@ -5,7 +5,7 @@ from cilantro_ee.crypto.transaction import transaction_is_valid, TransactionExce
 from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.sockets.services import AsyncInbox
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
@@ -15,8 +15,7 @@ import logging
 
 import time
 
-delegate_logger = get_logger('Delegate')
-
+from copy import deepcopy
 
 class DelegateWorkInboxException(Exception):
     pass
@@ -39,21 +38,22 @@ class NotMasternode(DelegateWorkInboxException):
 
 
 class WorkInbox(AsyncInbox):
-    def __init__(self, contacts, nonces: NonceManager=NonceManager(), verify=True, *args, **kwargs):
+    def __init__(self, contacts, driver: BlockchainDriver=BlockchainDriver(), verify=True, *args, **kwargs):
         self.work = {}
 
-        self.nonces = nonces
+        self.driver = driver
         self.current_contacts = contacts
         self.verify = verify
 
         self.todo = []
         self.accepting_work = False
 
+        self.log = get_logger('DEL WI')
+
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
         if not self.accepting_work:
-            print('todo')
             self.todo.append(msg)
 
         else:
@@ -64,18 +64,16 @@ class WorkInbox(AsyncInbox):
             try:
                 msg_struct = self.verify_transaction_bag(msg)
                 self.work[msg_struct.sender.hex()] = msg_struct
-                delegate_logger.info('Work added.')
+                self.log.info('Work added.')
             except DelegateWorkInboxException as e:
                 # Audit trigger
-                delegate_logger.error(type(e))
+                self.log.error(type(e))
             except TransactionException as e:
-                delegate_logger.error(type(e))
+                self.log.error(type(e))
 
     def verify_transaction_bag(self, msg):
         # What is the valid signature
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
-
-        delegate_logger.info(msg_blob)
 
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType
@@ -91,7 +89,7 @@ class WorkInbox(AsyncInbox):
             try:
                 transaction_is_valid(tx=tx,
                                      expected_processor=msg_blob.sender,
-                                     driver=self.nonces,
+                                     driver=self.driver,
                                      strict=False)
             except TransactionException as e:
                 raise e
@@ -118,15 +116,12 @@ class WorkInbox(AsyncInbox):
         # start = time.time() * 1000
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
-            # now = time.time() * 1000
-
-            # if now - start > timeout:
-            #     delegate_logger.info('Bye bye')
-            #     break
 
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         for masternode in set(current_contacts) - set(self.work.keys()):
             self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
+
+        self.log.info(self.work)
 
         self.accepting_work = False
         return list(self.work.values())

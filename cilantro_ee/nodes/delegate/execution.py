@@ -1,4 +1,4 @@
-from contracting.client import ContractingClient
+from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
 
@@ -13,7 +13,7 @@ import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
-def execute_tx(client: ContractingClient, transaction, environment: dict={}):
+def execute_tx(executor: Executor, transaction, environment: dict={}):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
     kwargs = {}
     for entry in transaction.payload.kwargs.entries:
@@ -22,7 +22,7 @@ def execute_tx(client: ContractingClient, transaction, environment: dict={}):
         else:
             kwargs[entry.key] = getattr(entry.value, entry.value.which())
 
-    output = client.executor.execute(
+    output = executor.execute(
         sender=transaction.payload.sender.hex(),
         contract_name=transaction.payload.contractName,
         function_name=transaction.payload.functionName,
@@ -57,18 +57,18 @@ def generate_environment(driver, timestamp, input_hash):
     }
 
 
-def execute_tx_batch(client, driver, batch, timestamp, input_hash):
+def execute_tx_batch(executor, driver, batch, timestamp, input_hash):
     environment = generate_environment(driver, timestamp, input_hash)
 
     # Each TX Batch is basically a subblock from this point of view and probably for the near future
     tx_data = []
     for transaction in batch.transactions:
-        tx_data.append(execute_tx(client, transaction, environment))
+        tx_data.append(execute_tx(executor, transaction, environment))
 
     return tx_data
 
 
-def execute_work(client, driver, work, wallet, previous_block_hash, parallelism=4):
+def execute_work(executor, driver, work, wallet, previous_block_hash, parallelism=4):
     # Assume single threaded, single process for now.
     subblocks = []
     i = 0
@@ -77,7 +77,7 @@ def execute_work(client, driver, work, wallet, previous_block_hash, parallelism=
         _, tx_batch = heapq.heappop(work)
 
         results = execute_tx_batch(
-            client=client,
+            executor=executor,
             driver=driver,
             batch=tx_batch,
             timestamp=tx_batch.timestamp,

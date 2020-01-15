@@ -194,7 +194,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
                                        config.DELIMITER,
                                        tx.payload.sender.hex())
 
-    balance = driver.driver.get(balances_key) or 0
+    balance = driver.get(balances_key) or 0
 
     if balance < tx.payload.stampsSupplied:
         raise TransactionSenderTooFewStamps

@@ -1,5 +1,4 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
-from cilantro_ee.core.nonces import NonceManager
 from cilantro_ee.core.canonical import block_is_failed
 from cilantro_ee.networking.parameters import ServiceType
 
@@ -14,7 +13,8 @@ from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
 import asyncio
 
-from cilantro_ee.storage.contract import BlockchainDriver
+from contracting.execution.executor import Executor
+
 
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
@@ -23,10 +23,11 @@ class Delegate(Node):
 
         # Number of core / processes we push to
         self.parallelism = parallelism
+        self.executor = Executor(driver=self.driver)
 
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
-            nonces=self.driver,
+            driver=self.driver,
             ctx=self.ctx,
             contacts=self.parameters.get_masternode_vks(),
             wallet=self.wallet
@@ -61,15 +62,15 @@ class Delegate(Node):
     def process_nbn(self, nbn):
         if not self.did_sign_block(nbn):
             self.log.info('Did not sign block. Processing.')
-            self.client.raw_driver.revert()
+            self.driver.revert()
             self.driver.update_with_block(nbn)
         elif not block_is_failed(nbn):
             self.log.info('Received failed block. Reverting')
-            self.client.raw_driver.commit()
+            self.driver.commit()
             self.driver.update_with_block(nbn, commit_tx=False)
         else:
             self.log.info('Skip block. Reverting')
-            self.client.raw_driver.revert()
+            self.driver.revert()
 
         self.pending_sbcs.clear()
 
@@ -94,14 +95,13 @@ class Delegate(Node):
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
-        self.log.info(work)
-        #self.work_inbox.work.clear()
+        self.log.info(f'Got {len(work)} batch(es) of work')
 
         return self.filter_work(work)
 
     def process_work(self, filtered_work):
         results = execution.execute_work(
-            client=self.client,
+            executor=self.executor,
             driver=self.driver,
             work=filtered_work,
             wallet=self.wallet,
