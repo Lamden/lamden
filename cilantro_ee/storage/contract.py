@@ -1,8 +1,8 @@
 from contracting.db.driver import ContractDriver
 
-BLOCK_HASH_KEY = '_current_block_hash',
-BLOCK_NUM_KEY = '_current_block_num',
-NONCE_KEY = '__n',
+BLOCK_HASH_KEY = '_current_block_hash'
+BLOCK_NUM_KEY = '_current_block_num'
+NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
 
