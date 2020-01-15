@@ -5,8 +5,7 @@ from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
 
-from cilantro_ee.storage import MasterStorage, MetaDataStorage
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import MasterStorage, BlockchainDriver
 
 from cilantro_ee.crypto.transaction import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
@@ -32,8 +31,7 @@ class WebServer:
                  workers=2, debug=False, access_log=False,
                  max_queue_len=10_000,
                  contracting_client=ContractingClient(),
-                 driver=MetaDataStorage(),
-                 nonces=NonceManager(),
+                 driver=BlockchainDriver(),
                  blocks=MasterStorage()
                  ):
 
@@ -47,8 +45,7 @@ class WebServer:
 
         # Initialize the backend data interfaces
         self.client = contracting_client
-        self.metadata_driver = driver
-        self.nonce_manager = driver.nonce_manager
+        self.driver = driver
         self.blocks = blocks
 
         self.static_headers = {}
@@ -113,7 +110,7 @@ class WebServer:
         try:
             transaction_is_valid(tx=tx,
                                  expected_processor=self.wallet.verifying_key(),
-                                 driver=self.nonce_manager,
+                                 driver=self.driver,
                                  strict=True)
 
         # These exceptions are tested to work in the transaction_is_valid tests
@@ -153,12 +150,12 @@ class WebServer:
     # Get the Nonce of a VK
     async def get_nonce(self, request, vk):
         # Might have to change this sucker from hex to bytes.
-        pending_nonce = self.nonce_manager.get_pending_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
+        pending_nonce = self.driver.get_pending_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
 
         log.info('Pending nonce: {}'.format(pending_nonce))
 
         if pending_nonce is None:
-            nonce = self.nonce_manager.get_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
+            nonce = self.driver.get_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
             log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
             if nonce is None:
                 pending_nonce = 0
@@ -242,10 +239,10 @@ class WebServer:
         return response.json(index[0])
 
     async def get_latest_block_number(self, request):
-        return response.json({'latest_block_number': self.metadata_driver.get_latest_block_num()})
+        return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.metadata_driver.get_latest_block_hash()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
 
     async def get_block_by_number(self, request, number):
         block = self.blocks.get_block(number)

@@ -4,11 +4,10 @@ from cilantro_ee.networking.network import Network
 from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
-from cilantro_ee.storage import VKBook, MetaDataStorage
+from cilantro_ee.storage import VKBook
 from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.contracts import sync
 from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
-from contracting.client import ContractingClient
 import cilantro_ee
 import zmq.asyncio
 import asyncio
@@ -19,7 +18,7 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
         # Seed state initially
-        if client.get_contract('vkbook') is None or overwrite:
+        if driver.get_contract('vkbook') is None or overwrite:
             sync.extract_vk_args(constitution)
             sync.submit_vkbook(constitution, overwrite=overwrite)
 

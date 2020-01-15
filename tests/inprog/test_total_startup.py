@@ -13,8 +13,7 @@ from cilantro_ee.nodes.masternode.masternode import Masternode
 from contracting import config
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, DictDriver
-from cilantro_ee.storage import MetaDataStorage
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -58,7 +57,7 @@ def make_tx_packed(processor, contract_name, function_name, kwargs={}, drivers=[
     return b
 
 
-class IsolatedDriver(MetaDataStorage):
+class IsolatedDriver(BlockchainDriver):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.d = {}
@@ -72,15 +71,6 @@ class IsolatedDriver(MetaDataStorage):
     def commit(self):
         pass
 
-
-def make_isolated_nonces():
-    c = ContractDriver()
-    c.db = DictDriver()
-
-    n = NonceManager()
-    n.driver = c
-
-    return n
 
 def get_drivers():
     c = ContractDriver()
@@ -399,13 +389,13 @@ class TestTotalEndToEnd(TestCase):
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
-                      constitution=constitution, bootnodes=bootnodes, driver=dd1, nonces=make_isolated_nonces())
+                      constitution=constitution, bootnodes=bootnodes, driver=dd1)
 
         dd2 = IsolatedDriver()
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
-                      constitution=constitution, bootnodes=bootnodes, driver=dd2, nonces=make_isolated_nonces())
+                      constitution=constitution, bootnodes=bootnodes, driver=dd2)
 
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(

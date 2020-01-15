@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.storage import MetaDataStorage
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.nodes.delegate import execution
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
@@ -71,8 +71,9 @@ def get_tx_batch():
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = MetaDataStorage()
+    driver = BlockchainDriver()
     driver.set(balances_key, 1_000_000)
+    driver.commit()
 
     w = Wallet()
     tx2 = TransactionBuilder(
@@ -96,8 +97,9 @@ def get_tx_batch():
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = MetaDataStorage()
+    driver = BlockchainDriver()
     driver.set(balances_key, 1_000_000)
+    driver.commit()
 
     return transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
 

@@ -1,12 +1,9 @@
 from unittest import TestCase
 from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
-from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.nodes.new_block_inbox import NBNInbox, BlockNumberMismatch, NotBlockNotificationMessageType
 from tests.utils.constitution_builder import ConstitutionBuilder
 
-from contracting.client import ContractingClient
 from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.storage.state import MetaDataStorage
 from cilantro_ee.storage.contract import BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType

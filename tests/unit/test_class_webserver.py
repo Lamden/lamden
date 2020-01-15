@@ -3,8 +3,7 @@ from unittest import TestCase
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.crypto.wallet import Wallet
 from contracting.client import ContractingClient
-
-from cilantro_ee.storage.state import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting import config
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
@@ -13,7 +12,7 @@ import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
-n = NonceManager()
+n = BlockchainDriver()
 
 
 def make_good_tx(processor):
@@ -23,7 +22,7 @@ def make_good_tx(processor):
                                        'balances',
                                        config.DELIMITER,
                                        w.verifying_key().hex())
-    n.driver.set(balances_key, 500000)
+    n.set(balances_key, 500000)
     tx = TransactionBuilder(w.verifying_key(),
                             contract='currency',
                             function='transfer',
@@ -44,7 +43,7 @@ def make_bad_tx():
                                        'balances',
                                        config.DELIMITER,
                                        w.verifying_key().hex())
-    n.driver.set(balances_key, 500000)
+    n.set(balances_key, 500000)
     tx = TransactionBuilder(w.verifying_key(),
                             contract='currency',
                             function='transfer',
@@ -89,7 +88,7 @@ class TestClassWebserver(TestCase):
     def test_get_nonce_pending_nonce_is_not_none_returns_pending_nonce(self):
         w2 = Wallet()
 
-        self.ws.nonce_manager.set_pending_nonce(self.w.verifying_key(), w2.verifying_key(), 123)
+        self.ws.driver.set_pending_nonce(self.w.verifying_key(), w2.verifying_key(), 123)
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key().hex()))
 
@@ -100,7 +99,7 @@ class TestClassWebserver(TestCase):
     def test_get_nonce_pending_nonce_is_none_but_nonce_is_not_returns_nonce(self):
         w2 = Wallet()
 
-        self.ws.nonce_manager.set_nonce(self.w.verifying_key(), w2.verifying_key(), 555)
+        self.ws.driver.set_nonce(self.w.verifying_key(), w2.verifying_key(), 555)
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key().hex()))
 

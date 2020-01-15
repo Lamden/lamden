@@ -13,7 +13,7 @@ from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.sockets.services import _socket
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
-from cilantro_ee.storage import MetaDataStorage
+from cilantro_ee.storage import BlockchainDriver
 from contracting import config
 import os
 import capnp
@@ -67,8 +67,9 @@ def get_tx_batch():
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = MetaDataStorage()
+    driver = BlockchainDriver()
     driver.set(balances_key, 1_000_000)
+    driver.commit()
 
     w = Wallet()
     tx2 = TransactionBuilder(
@@ -92,8 +93,9 @@ def get_tx_batch():
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = MetaDataStorage()
+    driver = BlockchainDriver()
     driver.set(balances_key, 1_000_000)
+    driver.commit()
 
     return transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
 
@@ -165,7 +167,7 @@ def make_tx(processor):
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = MetaDataStorage()
+    driver = BlockchainDriver()
     driver.set(balances_key, 1_000_000)
 
     return tx
@@ -353,8 +355,9 @@ class TestNewMasternode(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        driver = MetaDataStorage()
+        driver = BlockchainDriver()
         driver.set(balances_key, 1_000_000)
+        driver.commit()
 
         mn1.tx_batcher.queue.append(tx)
 
@@ -728,8 +731,9 @@ class TestNewMasternode(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        driver = MetaDataStorage()
+        driver = BlockchainDriver()
         driver.set(balances_key, 1_000_000)
+        driver.commit()
 
         mn1.tx_batcher.queue.append(tx)
 

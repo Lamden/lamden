@@ -4,7 +4,7 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.core import canonical
-from cilantro_ee.storage import MetaDataStorage
+from cilantro_ee.storage import BlockchainDriver
 
 from contextlib import suppress
 import zmq.asyncio
@@ -159,7 +159,7 @@ class TestDelegateFullFlow(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.get_event_loop()
-        driver = MetaDataStorage()
+        driver = BlockchainDriver()
         driver.flush()
 
     def tearDown(self):
