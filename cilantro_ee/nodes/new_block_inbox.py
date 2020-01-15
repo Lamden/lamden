@@ -49,8 +49,6 @@ class NBNInbox(AsyncInbox):
     def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
-        self.log.info(msg_blob)
-
         if msg_type != MessageType.BLOCK_DATA:
             raise NotBlockNotificationMessageType
 

@@ -155,8 +155,6 @@ class Masternode(Node):
 
             # Pack current NBN into message
             await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
-            self.log.info('NEXT')
-            self.running = False
 
     def stop(self):
         super().stop()
