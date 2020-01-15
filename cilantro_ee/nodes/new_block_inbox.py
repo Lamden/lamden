@@ -2,7 +2,7 @@ import asyncio
 
 from cilantro_ee.messages import MessageType, Message
 from cilantro_ee.sockets.services import AsyncInbox
-from cilantro_ee.storage import MetaDataStorage, VKBook
+from cilantro_ee.storage import BlockchainDriver, VKBook
 
 import math
 
@@ -24,7 +24,7 @@ class BadConsensusBlock(BlockNotificationException):
 
 
 class NBNInbox(AsyncInbox):
-    def __init__(self, contacts: VKBook, driver: MetaDataStorage=MetaDataStorage(), verify=True, *args, **kwargs):
+    def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, *args, **kwargs):
         self.q = []
         self.contacts = contacts
         self.driver = driver

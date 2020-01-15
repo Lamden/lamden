@@ -14,19 +14,19 @@ from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
 import asyncio
 
+from cilantro_ee.storage.contract import BlockchainDriver
+
 class Delegate(Node):
-    def __init__(self, parallelism=4, nonces=NonceManager(), *args, **kwargs):
+    def __init__(self, parallelism=4, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
         # Number of core / processes we push to
         self.parallelism = parallelism
 
-        self.nonces = nonces
-
         self.work_inbox = WorkInbox(
             socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
-            nonces=self.nonces,
+            nonces=self.driver,
             ctx=self.ctx,
             contacts=self.parameters.get_masternode_vks(),
             wallet=self.wallet

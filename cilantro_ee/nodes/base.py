@@ -13,10 +13,11 @@ import cilantro_ee
 import zmq.asyncio
 import asyncio
 
+from cilantro_ee.storage.contract import BlockchainDriver
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), client=ContractingClient(), driver=MetaDataStorage()):
+                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
         # Seed state initially
         if client.get_contract('vkbook') is None or overwrite:
             sync.extract_vk_args(constitution)
@@ -37,7 +38,6 @@ class Node:
         self.overwrite = overwrite
 
         self.driver = driver
-        self.client = client
 
         self.block_fetcher = BlockFetcher(
             wallet=self.wallet,

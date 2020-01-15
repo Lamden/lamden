@@ -7,7 +7,7 @@ from tests.utils.constitution_builder import ConstitutionBuilder
 from contracting.client import ContractingClient
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.state import MetaDataStorage
-
+from cilantro_ee.storage.contract import BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
@@ -34,15 +34,15 @@ class TestNBNInbox(TestCase):
     def tearDown(self):
         self.ctx.destroy()
         #self.loop.close()
-        ContractingClient().flush()
+        BlockchainDriver().flush()
 
     def test_init(self):
-        n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=self.ctx)
+        n = NBNInbox(contacts=VKBook(), driver=BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=self.ctx)
 
     def test_nbn_puts_messages_on_q(self):
         n = NBNInbox(
             contacts=VKBook(),
-            driver=MetaDataStorage(),
+            driver=BlockchainDriver(),
             socket_id=_socket('tcp://127.0.0.1:8888'),
             ctx=self.ctx,
             linger=500,
@@ -70,7 +70,7 @@ class TestNBNInbox(TestCase):
         self.assertEqual(len(n.q), 1)
 
     def test_nbn_wait_for_next_nbn_returns_first_on_q(self):
-        n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
+        n = NBNInbox(contacts=VKBook(), driver=BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'),
                      ctx=self.ctx, linger=50, poll_timeout=50, verify=False)
 
         async def send():
@@ -94,7 +94,7 @@ class TestNBNInbox(TestCase):
         self.assertEqual(a, b'\x00')
 
     def test_block_notification_wrong_type_throws_exception(self):
-        n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
+        n = NBNInbox(contacts=VKBook(), driver=BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'),
                      ctx=self.ctx, linger=50, poll_timeout=50)
 
         msg = Message.get_message_packed_2(MessageType.BURN_INPUT_HASHES)
@@ -102,7 +102,7 @@ class TestNBNInbox(TestCase):
             n.validate_nbn(msg)
 
     def test_block_notification_invalid_block_num_throws_exception(self):
-        n = NBNInbox(contacts=VKBook(), driver=MetaDataStorage(), socket_id=_socket('tcp://127.0.0.1:8888'),
+        n = NBNInbox(contacts=VKBook(), driver=BlockchainDriver(), socket_id=_socket('tcp://127.0.0.1:8888'),
                      ctx=self.ctx, linger=50, poll_timeout=50)
 
         n.driver.set_latest_block_num(1)
@@ -112,31 +112,3 @@ class TestNBNInbox(TestCase):
             n.validate_nbn(msg)
 
 
-# class TestWorkInbox(TestCase):
-#     def setUp(self):
-#         self.loop = asyncio.get_event_loop()
-#         self.ctx = zmq.asyncio.Context()
-#         self.const_builder = ConstitutionBuilder(10, 10, 10, 10, False, False)
-#         book = self.const_builder.get_constitution()
-#         extract_vk_args(book)
-#         submit_vkbook(book, overwrite=True)
-#
-#     def tearDown(self):
-#         self.ctx.destroy()
-#         self.loop.stop()
-#         ContractingClient().flush()
-#
-#     def test_init(self):
-#         w = WorkInbox(contacts=VKBook(), validity_timeout=1000, socket_id=_socket('tcp://127.0.0.1:8888'),
-#                       ctx=self.ctx, linger=50, poll_timeout=50)
-#
-#         wallets = self.const_builder.get_mn_wallets()
-#
-#         for wallet in wallets:
-#             mtype, msg = Message.get_message_packed(
-#                 MessageType.TRANSACTION_BATCH,
-#                 transactions=[t for t in tx_list], timestamp=timestamp,
-#                 signature=signature, inputHash=inputHash,
-#                 sender=self.wallet.verifying_key())
-#
-#         print(wallets)
