@@ -100,6 +100,8 @@ class SBCInbox(AsyncInbox):
             raise SBCInvalidSignatureError
 
         if sbc.prevBlockHash != self.driver.latest_block_hash:
+            self.log.info(sbc.prevBlockHash)
+            self.log.info(self.driver.latest_block_hash)
             raise SBCBlockHashMismatchError
 
         # idk
