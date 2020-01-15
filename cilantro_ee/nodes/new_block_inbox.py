@@ -24,12 +24,13 @@ class BadConsensusBlock(BlockNotificationException):
 
 
 class NBNInbox(AsyncInbox):
-    def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, *args, **kwargs):
+    def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, allow_current_block_num=False, *args, **kwargs):
         self.q = []
         self.contacts = contacts
         self.driver = driver
         self.verify = verify
         self.quorum_ratio = 0.66
+        self.allow_current_block_num = allow_current_block_num
         self.log = get_logger('NBN')
         super().__init__(*args, **kwargs)
 
@@ -43,8 +44,7 @@ class NBNInbox(AsyncInbox):
             self.q.append(nbn)
         except BlockNotificationException as e:
             # This would be where the audit layer would take over
-            print(type(e))
-            pass
+            self.log.error(type(e))
 
     def validate_nbn(self, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)

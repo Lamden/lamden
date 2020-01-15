@@ -53,7 +53,7 @@ class Delegate(Node):
         # Throws a failure if even one of the subblocks isnt signed.
         # This can be fixed in the future with partial blocks.
         for sub_block in block['subBlocks']:
-            if sub_block['merkleRoot'] not in self.pending_sbcs:
+            if sub_block['merkleLeaves'][0] not in self.pending_sbcs:
                 return False
 
         # Returns true if its an empty block. Not sure if that is intended?
@@ -64,8 +64,8 @@ class Delegate(Node):
             self.log.info('Did not sign block. Processing.')
             self.driver.revert()
             self.driver.update_with_block(nbn)
-        elif not block_is_failed(nbn):
-            self.log.info('Received failed block. Reverting')
+        elif not block_is_failed(nbn, nbn['prevBlockHash'], nbn['blockNum']):
+            self.log.info('Received successful block')
             self.driver.commit()
             self.driver.update_with_block(nbn, commit_tx=False)
         else:

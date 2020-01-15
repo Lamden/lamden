@@ -190,6 +190,7 @@ class CurrentContenders:
 def now_in_ms():
     return int(time.time() * 1000)
 
+
 class Aggregator:
     def __init__(self, socket_id, ctx, driver, expected_subblocks=4):
         self.expected_subblocks = expected_subblocks
@@ -217,7 +218,9 @@ class Aggregator:
             if contenders.finished.get(i) is None:
                 contenders.finished[i] = None
 
-        self.log.info(contenders.finished)
+        self.log.info('Done aggregating new block.')
+        self.log.info(self.driver.latest_block_num)
+
         subblocks = deepcopy(contenders.finished)
         del contenders
 

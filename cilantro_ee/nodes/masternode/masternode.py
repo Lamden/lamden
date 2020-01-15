@@ -71,8 +71,9 @@ class Masternode(Node):
         if len(self.tx_batcher.queue) > 0:
             await self.parameters.refresh()
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
-            sent = await multicast(self.ctx, msg, self.nbn_sockets())
+            await multicast(self.ctx, msg, self.nbn_sockets())
 
+        self.driver.set_latest_block_num(1)
         await self.process_blocks()
 
     async def join_quorum(self):
@@ -87,7 +88,6 @@ class Masternode(Node):
             await asyncio.sleep(0)
             if len(self.nbn_inbox.q) > 0:
                 nbn = self.nbn_inbox.q.pop(0)
-
                 self.driver.update_with_block(nbn)
                 self.blocks.put(nbn, self.blocks.BLOCK)
 
@@ -146,9 +146,10 @@ class Masternode(Node):
             )
 
             self.log.info('Got block!')
-            self.log.info(block)
 
             self.process_block(block)
+
+            self.log.info('done processing')
 
             await self.wait_for_work(block)
 

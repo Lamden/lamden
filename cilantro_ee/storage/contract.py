@@ -5,6 +5,9 @@ BLOCK_NUM_KEY = '_current_block_num'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
+from cilantro_ee.logger.base import get_logger
+
+log = get_logger('STATE')
 
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
@@ -45,11 +48,14 @@ class BlockchainDriver(ContractDriver):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
                 self.set(delta['key'], delta['value'])
+                log.info(f"{delta['key']} -> {delta['value']}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage
         if type(block) != dict:
             block = block.to_dict()
+
+        self.set_latest_block_num(block['blockNum'])
 
         # self.log.info("block {}".format(block))
 
@@ -73,7 +79,6 @@ class BlockchainDriver(ContractDriver):
 
         # Update our block hash and block num
         self.set_latest_block_hash(block['blockHash'])
-        self.set_latest_block_num(block['blockNum'])
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):

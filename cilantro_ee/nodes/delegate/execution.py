@@ -51,7 +51,7 @@ def generate_environment(driver, timestamp, input_hash):
 
     return {
         'block_hash': driver.latest_block_hash.hex(),
-        'block_num': driver.latest_block_num,
+        'block_num': driver.latest_block_num + 1,
         '__input_hash': input_hash,  # Used for deterministic entropy for random games
         'now': now
     }
