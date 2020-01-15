@@ -53,7 +53,9 @@ class WorkInbox(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+
         if not self.accepting_work:
+            self.log.info('TODO')
             self.todo.append(msg)
 
         else:
@@ -74,6 +76,8 @@ class WorkInbox(AsyncInbox):
     def verify_transaction_bag(self, msg):
         # What is the valid signature
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+
+        self.log.info(msg_blob)
 
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType

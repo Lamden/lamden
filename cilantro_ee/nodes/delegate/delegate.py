@@ -137,7 +137,6 @@ class Delegate(Node):
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
-            self.running = False
 
     def stop(self):
         self.running = False

@@ -112,6 +112,9 @@ class Masternode(Node):
     async def wait_for_work(self, block):
         is_skip_block = canonical.block_is_skip_block(block)
 
+        if is_skip_block:
+            self.log.info('SKIP. Going to hang now...')
+
         # If so, hang until you get a new block or some work OR NBN
         self.nbn_inbox.clean()
 
