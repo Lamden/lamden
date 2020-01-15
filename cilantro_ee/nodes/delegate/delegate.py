@@ -34,10 +34,11 @@ class Delegate(Node):
 
         self.pending_sbcs = set()
 
-        self.log = get_logger(f'DEL {self.wallet.vk_pretty}')
+        self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
 
     async def start(self):
         await super().start()
+
         asyncio.ensure_future(self.work_inbox.serve())
         asyncio.ensure_future(self.run())
 
@@ -93,7 +94,8 @@ class Delegate(Node):
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
-        self.work_inbox.work.clear()
+        self.log.info(work)
+        #self.work_inbox.work.clear()
 
         return self.filter_work(work)
 
@@ -110,6 +112,8 @@ class Delegate(Node):
         for sb in results:
             self.pending_sbcs.add(sb.merkleTree.leaves[0])
 
+        self.log.info(results)
+
         # Send out the contenders to masternodes
         return Message.get_message_packed_2(
             msg_type=MessageType.SUBBLOCK_CONTENDERS,
@@ -125,14 +129,15 @@ class Delegate(Node):
         while self.running:
             filtered_work = await self.acquire_work()
 
-            sbc_msg = self.process_work(filtered_work)
+            self.log.info(filtered_work)
 
-            self.log.info(sbc_msg)
+            sbc_msg = self.process_work(filtered_work)
 
             await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
+            self.running = False
 
     def stop(self):
         self.running = False

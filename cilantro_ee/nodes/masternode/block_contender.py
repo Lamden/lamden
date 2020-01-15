@@ -15,6 +15,8 @@ import time
 from copy import deepcopy
 import math
 
+from cilantro_ee.logger.base import get_logger
+
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
@@ -51,6 +53,7 @@ class SBCInbox(AsyncInbox):
         self.q = []
         self.driver = driver
         self.expected_subblocks = expected_subblocks
+        self.log = get_logger('SBC')
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
@@ -68,7 +71,8 @@ class SBCInbox(AsyncInbox):
         for i in range(len(msg_blob.contenders)):
             try:
                 self.sbc_is_valid(msg_blob.contenders[i], i)
-            except SBCException:
+            except SBCException as e:
+                self.log.error(type(e))
                 all_valid = False
 
         # Add the whole contender
@@ -80,9 +84,14 @@ class SBCInbox(AsyncInbox):
             raise SBCIndexMismatchError
 
         # Make sure signer is in the delegates
+        if len(sbc.transactions) == 0:
+            msg = sbc.inputHash
+        else:
+            msg = sbc.merkleTree.leaves[0]
+
         valid_sig = _verify(
             vk=sbc.signer,
-            msg=sbc.merkleTree.leaves[0],
+            msg=msg,
             signature=sbc.merkleTree.signature
         )
 
@@ -94,7 +103,7 @@ class SBCInbox(AsyncInbox):
 
         # idk
         if len(sbc.merkleTree.leaves) > 0:
-            txs = [tx.copy().to_bytes_packed() for tx in sbc.transactions]
+            txs = [tx.to_bytes_packed() for tx in sbc.transactions]
             expected_tree = merklize(txs)
 
             for i in range(len(expected_tree)):
@@ -131,7 +140,7 @@ class CurrentContenders:
 
     # Should be dict. push Capnp away from protocol as much as possible
     def add_sbcs(self, sbcs):
-        for sbc in sbcs.contenders:
+        for sbc in sbcs:
             self.votes_left[sbc.inputHash] -= 1
             result_hash = sbc.merkleTree.leaves[0]
             self.sbcs[sbc.inputHash][result_hash].add(sbc)

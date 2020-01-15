@@ -130,7 +130,6 @@ def dict_to_msg_block(block):
 
 
 def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash, sb_num=0):
-    print(results)
     if len(results) > 0:
         merkle = merklize([r.to_bytes_packed() for r in results])
         proof = wallet.sign(merkle[0])

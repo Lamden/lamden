@@ -95,7 +95,10 @@ class Masternode(Node):
     async def send_work(self):
         # Else, batch some more txs
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
-        tx_batch = self.tx_batcher.pack_current_queue()
+        if len(self.tx_batcher.queue) == 0:
+            tx_batch = self.tx_batcher.make_empty_batch()
+        else:
+            tx_batch = self.tx_batcher.pack_current_queue()
 
         await self.parameters.refresh()
 
@@ -151,6 +154,7 @@ class Masternode(Node):
             # Pack current NBN into message
             await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
             self.log.info('NEXT')
+            self.running = False
 
     def stop(self):
         super().stop()

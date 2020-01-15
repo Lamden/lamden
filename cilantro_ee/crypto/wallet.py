@@ -72,7 +72,6 @@ def _verify(vk: bytes, msg: bytes, signature: bytes):
     try:
         vk.verify(msg, signature)
     except nacl.exceptions.BadSignatureError:
-        print('error!')
         return False
     return True
 

@@ -17,6 +17,7 @@ import time
 
 delegate_logger = get_logger('Delegate')
 
+
 class DelegateWorkInboxException(Exception):
     pass
 
@@ -51,28 +52,30 @@ class WorkInbox(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
-        delegate_logger.info('Delegate Got Work.')
         if not self.accepting_work:
+            print('todo')
             self.todo.append(msg)
-            return
 
-        if not self.verify:
-            msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
-            self.work[msg_blob.sender.hex()] = msg_blob
+        else:
+            if not self.verify:
+                msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+                self.work[msg_blob.sender.hex()] = msg_blob
 
-        try:
-            msg_struct = self.verify_transaction_bag(msg)
-            self.work[msg_struct.sender.hex()] = msg_struct
-            delegate_logger.info('Work added.')
-        except DelegateWorkInboxException as e:
-            # Audit trigger
-            delegate_logger.log(level=logging.ERROR, msg=type(e))
-        except TransactionException as e:
-            delegate_logger.log(level=logging.ERROR, msg=type(e))
+            try:
+                msg_struct = self.verify_transaction_bag(msg)
+                self.work[msg_struct.sender.hex()] = msg_struct
+                delegate_logger.info('Work added.')
+            except DelegateWorkInboxException as e:
+                # Audit trigger
+                delegate_logger.error(type(e))
+            except TransactionException as e:
+                delegate_logger.error(type(e))
 
     def verify_transaction_bag(self, msg):
         # What is the valid signature
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+
+        delegate_logger.info(msg_blob)
 
         if msg_type != MessageType.TRANSACTION_BATCH:
             raise NotTransactionBatchMessageType
@@ -108,16 +111,18 @@ class WorkInbox(AsyncInbox):
         self.current_contacts = current_contacts
 
         for work in self.todo:
+            print('processing')
             await self.handle_msg(None, work)
 
         # Wait for work from all masternodes that are currently online
-        start = time.time() * 1000
+        # start = time.time() * 1000
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
-            now = time.time() * 1000
+            # now = time.time() * 1000
 
-            if now - start > timeout:
-                break
+            # if now - start > timeout:
+            #     delegate_logger.info('Bye bye')
+            #     break
 
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         for masternode in set(current_contacts) - set(self.work.keys()):
