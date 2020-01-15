@@ -12,6 +12,7 @@ from cilantro_ee.core import canonical
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
 
+
 class Masternode(Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -25,7 +26,7 @@ class Masternode(Node):
             network_parameters=self.network_parameters
         )
 
-        self.webserver = WebServer(wallet=self.wallet, port=webserver_port)
+        self.webserver = WebServer(wallet=self.wallet, port=webserver_port, driver=self.driver)
         self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
         self.current_nbn = canonical.get_genesis_block()
 

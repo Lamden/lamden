@@ -18,7 +18,6 @@ class MetaDataStorage(RocksDriver):
         self.epoch_hash_key = epoch_hash_key
         self.block_num_key = block_num_key
         self.log = get_logger('StateDriver')
-        self.interface = None
 
         self.nonce_key = nonce_key
         self.pending_nonce_key = pending_nonce_key

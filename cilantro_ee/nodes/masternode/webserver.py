@@ -30,7 +30,12 @@ class WebServer:
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=False, access_log=False,
-                 max_queue_len=10_000, contracting_client=ContractingClient()):
+                 max_queue_len=10_000,
+                 contracting_client=ContractingClient(),
+                 driver=MetaDataStorage(),
+                 nonces=NonceManager(),
+                 blocks=MasterStorage()
+                 ):
 
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
@@ -42,9 +47,9 @@ class WebServer:
 
         # Initialize the backend data interfaces
         self.client = contracting_client
-        self.metadata_driver = MetaDataStorage()
-        self.nonce_manager = NonceManager()
-        self.blocks = MasterStorage()
+        self.metadata_driver = driver
+        self.nonce_manager = driver.nonce_manager
+        self.blocks = blocks
 
         self.static_headers = {}
 

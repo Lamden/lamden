@@ -26,7 +26,7 @@ def make_ipc(p):
         pass
 
 
-def make_tx_packed(processor, contract_name, function_name, kwargs={}):
+def make_tx_packed(processor, contract_name, function_name, kwargs={}, drivers=[]):
     w = Wallet()
     batch = TransactionBuilder(
         sender=w.verifying_key(),
@@ -50,9 +50,10 @@ def make_tx_packed(processor, contract_name, function_name, kwargs={}):
                                        config.DELIMITER,
                                        w.verifying_key().hex())
 
-    driver = ContractDriver()
-    driver.set(balances_key, 1_000_000)
-    driver.commit()
+    for driver in drivers:
+        driver.set(balances_key, 1_000_000)
+        print(driver.get(balances_key))
+        driver.commit()
 
     return b
 
@@ -68,6 +69,10 @@ class IsolatedDriver(MetaDataStorage):
     def set(self, key, value):
         self.d[key] = value
 
+    def commit(self):
+        pass
+
+
 def make_isolated_nonces():
     c = ContractDriver()
     c.db = DictDriver()
@@ -76,6 +81,10 @@ def make_isolated_nonces():
     n.driver = c
 
     return n
+
+def get_drivers():
+    c = ContractDriver()
+
 
 class TestTotalEndToEnd(TestCase):
     def setUp(self):
@@ -374,26 +383,29 @@ class TestTotalEndToEnd(TestCase):
             "enable_nonces": False
         }
 
+        md1 = IsolatedDriver()
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8080, driver=IsolatedDriver())
+                         constitution=constitution, webserver_port=8080, driver=md1)
 
+        md2 = IsolatedDriver()
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8081, driver=IsolatedDriver())
+                         constitution=constitution, webserver_port=8081, driver=md2)
 
-
+        dd1 = IsolatedDriver()
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
-                      constitution=constitution, bootnodes=bootnodes, driver=IsolatedDriver(), nonces=make_isolated_nonces())
+                      constitution=constitution, bootnodes=bootnodes, driver=dd1, nonces=make_isolated_nonces())
 
+        dd2 = IsolatedDriver()
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
-                      constitution=constitution, bootnodes=bootnodes, driver=IsolatedDriver(), nonces=make_isolated_nonces())
+                      constitution=constitution, bootnodes=bootnodes, driver=dd2, nonces=make_isolated_nonces())
 
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(
@@ -406,10 +418,11 @@ class TestTotalEndToEnd(TestCase):
         async def run():
             await tasks
             async with aiohttp.ClientSession() as session:
-                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test'))
+                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
 
             res = await r.json()
-            self.assertEqual(res['success'], 'Transaction successfully submitted to the network.')
+            print(res)
+            #self.assertEqual(res['success'], 'Transaction successfully submitted to the network.')
             await asyncio.sleep(3)
             mn1.stop()
             mn2.stop()
