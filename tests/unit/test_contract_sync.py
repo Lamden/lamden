@@ -1,9 +1,9 @@
 from unittest import TestCase
 from cilantro_ee.contracts import sync
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
-
+import cilantro_ee
 
 class TestContractSync(TestCase):
     def setup(self):
@@ -99,3 +99,6 @@ class TestContractSync(TestCase):
 
         self.assertEqual(vkbook.get_masternodes(), ['stu', 'raghu'])
         self.assertEqual(vkbook.get_delegates(), ['tejas', 'monica'])
+
+    def test_submit_from_genesis_file(self):
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')

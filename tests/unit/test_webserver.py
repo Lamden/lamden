@@ -5,6 +5,9 @@ import aiohttp
 import cilantro_ee
 
 class TestWebserver(TestCase):
+    def setUp(self):
+        client.flush()
+
     def tearDown(self):
         client.flush()
 

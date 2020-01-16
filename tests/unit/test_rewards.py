@@ -5,9 +5,9 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from cilantro_ee.contracts import genesis
 import os
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
-
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 
 class TestRewards(TestCase):
     def setUp(self):
@@ -33,13 +33,13 @@ class TestRewards(TestCase):
             c = f.read()
             self.client.submit(c, name='rewards', owner='election_house')
 
-        sync.submit_vkbook(masternodes=['stu', 'raghu'],
-                           delegates=['tejas', 'alex', 'steve'],
-                           num_boot_mns=2,
-                           num_boot_del=3,
-                           stamps=True,
-                           nonces=True,
-                           overwrite=True)
+        sync.submit_vkbook({'masternodes': ['stu', 'raghu', 'steve'],
+          'delegates': ['tejas', 'alex'],
+          'masternode_min_quorum': 2,
+          'delegate_min_quorum': 3,
+          'enable_stamps': True,
+          'enable_nonces': True},
+         overwrite=True)
 
         PhoneBook = VKBook()
 
@@ -101,13 +101,13 @@ class TestRewards(TestCase):
         for tx in block.subBlocks[0].transactions:
             total += tx.stampsUsed
 
-        expected = total / 1_000_000
+        expected = ContractingDecimal(total / 1_000_000)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
 
         self.r.add_pending_rewards(block.subBlocks[0])
 
-        self.assertEqual(float(self.r.get_pending_rewards()), expected)
+        self.assertEqual(self.r.get_pending_rewards(), expected)
 
     def test_reward_ratio_works(self):
         self.assertEqual(self.r.reward_ratio, [0.5, 0.5, 0, 0])
@@ -121,9 +121,9 @@ class TestRewards(TestCase):
         self.r.add_to_balance('raghu', 1000)
         self.r.add_to_balance('steve', 10000)
 
-        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='stu')), 166.66666666666666)
-        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='raghu')), 1166.66666666666666)
-        self.assertEqual(float(currency_contract.quick_read(variable='balances', key='steve')), 10166.66666666666666)
+        self.assertEqual(currency_contract.quick_read(variable='balances', key='stu'), ContractingDecimal(166.66666666666666))
+        self.assertEqual(currency_contract.quick_read(variable='balances', key='raghu'), ContractingDecimal(1166.66666666666666))
+        self.assertEqual(currency_contract.quick_read(variable='balances', key='steve'), ContractingDecimal(10166.66666666666666))
 
         self.assertEqual(currency_contract.quick_read(variable='balances', key='tejas'), 250)
         self.assertEqual(currency_contract.quick_read(variable='balances', key='alex'), 250)

@@ -1,9 +1,9 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 import capnp
 import os
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
@@ -44,11 +44,20 @@ class RewardManager:
         self.set_pending_rewards(0)
 
     def add_to_balance(self, vk, amount):
-        current_balance = self.currency_contract.quick_read(variable='balances', key=vk) or 0
+        current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
+
+        if current_balance is None:
+            current_balance = 0
+
         self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
 
     def get_pending_rewards(self):
-        return self.driver.get(PENDING_REWARDS_KEY) or 0
+        key = self.driver.get(PENDING_REWARDS_KEY)
+
+        if key is None:
+            key = 0
+
+        return key
 
     def set_pending_rewards(self, value):
         self.driver.set(PENDING_REWARDS_KEY, value=value)

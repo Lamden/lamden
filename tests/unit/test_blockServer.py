@@ -1,22 +1,20 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets import services
-from cilantro_ee.core.crypto.wallet import Wallet
-from cilantro_ee.core.crypto import wallet
-from cilantro_ee.services.block_server import BlockServer
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.core.block_server import BlockServer
 
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.messages.message import Message
+from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.services.storage.master import CilantroStorageDriver
+from cilantro_ee.storage.master import CilantroStorageDriver
 from cilantro_ee.core import canonical
 from cilantro_ee.core.top import TopBlockManager
 import time
 import zmq.asyncio
 import zmq
 import asyncio
-import hashlib
 import secrets
 from tests import random_txs
+
 
 async def stop_server(s, timeout):
     await asyncio.sleep(timeout)
@@ -25,22 +23,25 @@ async def stop_server(s, timeout):
 
 class TestBlockServer(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.ctx = zmq.asyncio.Context()
         self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
         self.t.driver.flush()
+        self.loop.close()
 
     def test_get_latest_block_height(self):
         w = Wallet()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
 
         self.t.set_latest_block_number(555)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
@@ -67,13 +68,13 @@ class TestBlockServer(TestCase):
 
     def test_get_latest_block_hash(self):
         w = Wallet()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
 
         self.t.set_latest_block_hash(b'\xAA' * 32)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
@@ -113,11 +114,11 @@ class TestBlockServer(TestCase):
         del d['_id']
         del d['blockOwners']
 
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=2000, poll_timeout=500, driver=c)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=c)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 
@@ -148,11 +149,11 @@ class TestBlockServer(TestCase):
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode().hex())
         c.drop_collections()
-        m = BlockServer(services._socket('tcp://127.0.0.1:10000'), w, self.ctx, linger=500, poll_timeout=500, driver=c)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=c)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
+            socket.connect('tcp://127.0.0.1:10004')
 
             await socket.send(msg)
 

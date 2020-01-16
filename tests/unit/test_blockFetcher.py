@@ -1,24 +1,28 @@
 from unittest import TestCase
-from cilantro_ee.core.sockets import services
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.sockets import services
+from cilantro_ee.crypto.wallet import Wallet
 
-from cilantro_ee.services.block_fetch import BlockFetcher
-from cilantro_ee.services.block_server import BlockServer
-from cilantro_ee.core.messages.message import Message
-from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.block_fetch import BlockFetcher
+from cilantro_ee.core.block_server import BlockServer
 from cilantro_ee.core import canonical
 import secrets
-from cilantro_ee.services.storage.master import CilantroStorageDriver
-
+from cilantro_ee.storage.master import CilantroStorageDriver
+from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.core.top import TopBlockManager
-from cilantro_ee.core.sockets.socket_book import SocketBook
+from cilantro_ee.contracts import sync
 
-import time
 import zmq.asyncio
 import zmq
 import asyncio
-import hashlib
 from tests import random_txs
+import os
+
+def make_ipc(p):
+    try:
+        os.mkdir(p)
+    except:
+        pass
+
 
 
 class FakeTopBlockManager:
@@ -69,27 +73,31 @@ async def pause(f, time):
 
 class TestBlockFetcher(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.ctx = zmq.asyncio.Context()
         self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
         self.t.driver.flush()
+        self.loop.close()
 
     def test_get_latest_block_height(self):
         w = Wallet()
-        m = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        sync.seed_vkbook()
+        m = BlockServer(socket_base='tcp://127.0.0.1',
                         wallet=w,
                         ctx=self.ctx,
                         linger=500,
-                        poll_timeout=100,
+                        poll_timeout=500,
                         top=FakeTopBlockManager(101, 'abcd'))
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, contacts=VKBook())
 
         tasks = asyncio.gather(
             m.serve(),
-            f.get_latest_block_height(services._socket('tcp://127.0.0.1:10000')),
+            f.get_latest_block_height(services._socket('tcp://127.0.0.1:10004')),
             stop_server(m, 0.1),
         )
 
@@ -99,16 +107,21 @@ class TestBlockFetcher(TestCase):
         self.assertEqual(res[1], 101)
 
     def test_get_consensus_on_block_height(self):
+        sync.seed_vkbook()
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        m1 = BlockServer(socket_base=f'ipc://{n1}',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'))
 
         w2 = Wallet()
-        m2 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10001'),
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        m2 = BlockServer(socket_base=f'ipc://{n2}',
                          wallet=w2,
                          ctx=self.ctx,
                          linger=500,
@@ -116,7 +129,9 @@ class TestBlockFetcher(TestCase):
                          top=FakeTopBlockManager(101, 'abcd'))
 
         w3 = Wallet()
-        m3 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10002'),
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        m3 = BlockServer(socket_base=f'ipc://{n3}',
                          wallet=w3,
                          ctx=self.ctx,
                          linger=500,
@@ -124,7 +139,9 @@ class TestBlockFetcher(TestCase):
                          top=FakeTopBlockManager(101, 'abcd'))
 
         w4 = Wallet()
-        m4 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10003'),
+        n4 = '/tmp/n4'
+        make_ipc(n4)
+        m4 = BlockServer(socket_base=f'ipc://{n4}',
                          wallet=w4,
                          ctx=self.ctx,
                          linger=500,
@@ -133,15 +150,15 @@ class TestBlockFetcher(TestCase):
 
         def get_sockets():
             return {
-                'a': services._socket('tcp://127.0.0.1:10000'),
-                'b': services._socket('tcp://127.0.0.1:10001'),
-                'c': services._socket('tcp://127.0.0.1:10002'),
-                'd': services._socket('tcp://127.0.0.1:10003'),
+                'a': services._socket(f'ipc://{n1}/blocks'),
+                'b': services._socket(f'ipc://{n2}/blocks'),
+                'c': services._socket(f'ipc://{n3}/blocks'),
+                'd': services._socket(f'ipc://{n4}/blocks'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),
@@ -177,6 +194,7 @@ class TestBlockFetcher(TestCase):
 
     def test_fetch_block_from_master(self):
         # Setup Mongo
+        sync.seed_vkbook()
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()
@@ -185,26 +203,26 @@ class TestBlockFetcher(TestCase):
         self.store_blocks(c, 1)
 
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        m1 = BlockServer(socket_base='tcp://127.0.0.1',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'),
                          driver=c)
 
         def get_sockets():
             return {
-                'a': services._socket('tcp://127.0.0.1:10000'),
+                'a': services._socket('tcp://127.0.0.1:10004'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
 
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), contacts=VKBook(), ctx=self.ctx, masternode_sockets=sock_book)
 
         tasks = asyncio.gather(
             m1.serve(),
-            f.get_block_from_master(0, services._socket('tcp://127.0.0.1:10000')),
+            f.get_block_from_master(0, services._socket('tcp://127.0.0.1:10004')),
             stop_server(m1, 0.3),
         )
 
@@ -229,13 +247,17 @@ class TestBlockFetcher(TestCase):
         # Store 20 blocks
         self.store_blocks(c, 1)
 
+        sync.seed_vkbook()
+
         # Good one
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        m1 = BlockServer(socket_base=f'ipc://{n1}',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'),
                          driver=c)
 
@@ -248,7 +270,9 @@ class TestBlockFetcher(TestCase):
 
         d = FakeBlockDriver(bad_block)
         w2 = Wallet()
-        m2 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10001'),
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        m2 = BlockServer(socket_base=f'ipc://{n2}',
                          wallet=w2,
                          ctx=self.ctx,
                          linger=500,
@@ -257,7 +281,9 @@ class TestBlockFetcher(TestCase):
                          driver=d)
 
         w3 = Wallet()
-        m3 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10002'),
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        m3 = BlockServer(socket_base=f'ipc://{n3}',
                          wallet=w3,
                          ctx=self.ctx,
                          linger=500,
@@ -267,13 +293,13 @@ class TestBlockFetcher(TestCase):
 
         def get_sockets():
             return {
-                'b': services._socket('tcp://127.0.0.1:10001'),
-                'c': services._socket('tcp://127.0.0.1:10002'),
-                'a': services._socket('tcp://127.0.0.1:10000'),
+                'b': services._socket(f'ipc://{n1}/blocks'),
+                'c': services._socket(f'ipc://{n2}/blocks'),
+                'a': services._socket(f'ipc://{n3}/blocks'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),
@@ -302,22 +328,27 @@ class TestBlockFetcher(TestCase):
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()
+        sync.seed_vkbook()
 
         # Store 20 blocks
         self.store_blocks(c, 10)
 
         # Good one
         w1 = Wallet()
-        m1 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10000'),
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        m1 = BlockServer(socket_base=f'ipc://{n1}',
                          wallet=w1,
                          ctx=self.ctx,
                          linger=500,
-                         poll_timeout=100,
+                         poll_timeout=500,
                          top=FakeTopBlockManager(101, 'abcd'),
                          driver=c)
 
         w2 = Wallet()
-        m2 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10001'),
+        n2 = '/tmp/n2'
+        make_ipc(n2)
+        m2 = BlockServer(socket_base=f'ipc://{n2}',
                          wallet=w2,
                          ctx=self.ctx,
                          linger=500,
@@ -326,7 +357,9 @@ class TestBlockFetcher(TestCase):
                          driver=c)
 
         w3 = Wallet()
-        m3 = BlockServer(socket_id=services._socket('tcp://127.0.0.1:10002'),
+        n3 = '/tmp/n3'
+        make_ipc(n3)
+        m3 = BlockServer(socket_base=f'ipc://{n3}',
                          wallet=w3,
                          ctx=self.ctx,
                          linger=500,
@@ -336,14 +369,14 @@ class TestBlockFetcher(TestCase):
 
         def get_sockets():
             return {
-                'b': services._socket('tcp://127.0.0.1:10001'),
-                'c': services._socket('tcp://127.0.0.1:10002'),
-                'a': services._socket('tcp://127.0.0.1:10000'),
+                'b': services._socket(f'ipc://{n1}/blocks'),
+                'c': services._socket(f'ipc://{n2}/blocks'),
+                'a': services._socket(f'ipc://{n3}/blocks'),
             }
 
         sock_book = FakeSocketBook(None, get_sockets)
         fake_driver = FakeBlockReciever()
-        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, blocks=fake_driver)
+        f = BlockFetcher(wallet=Wallet(), ctx=self.ctx, masternode_sockets=sock_book, blocks=fake_driver, contacts=VKBook())
 
         tasks = asyncio.gather(
             m1.serve(),

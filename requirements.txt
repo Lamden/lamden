@@ -1,3 +1,4 @@
+sanic
 pyzmq
 requests
 # -e git+https://github.com/Lamden/contracting.git@dev#egg=contracting

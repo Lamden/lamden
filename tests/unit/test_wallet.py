@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 
 
 class TestWallet(TestCase):

@@ -1,6 +1,5 @@
 from cilantro_ee.core.logger import get_logger
-import time, os
-
+import time
 
 log = get_logger("MN_URL_GETTER")
 

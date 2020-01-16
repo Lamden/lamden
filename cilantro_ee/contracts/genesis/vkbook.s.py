@@ -19,7 +19,7 @@ nonces_enabled = Variable()
 def seed(masternodes,
          masternode_min_quorum,
          delegates,
-         delegate_min_quorum,
+         delegate_min_quorum=1,
          witnesses=[],
          witness_min_quorum=0,
          notifiers=[],

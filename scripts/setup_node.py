@@ -2,7 +2,7 @@ import configparser
 import json
 import sys
 import requests
-from cilantro_ee.core.crypto import wallet
+from cilantro_ee.crypto import wallet
 import cilantro_ee
 
 config = configparser.ConfigParser()

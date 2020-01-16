@@ -19,7 +19,7 @@ SETUP = False
 
 if not SETUP:
     # Logger is just for debugging
-    from cilantro_ee.core.logger.base import get_logger
+    from cilantro_ee.logger.base import get_logger
 
     log = get_logger("CilantroConf")
 

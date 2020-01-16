@@ -11,10 +11,10 @@ seed_vkbook(conf.CONSTITUTION_FILE)
 
 from cilantro_ee.utils.factory import MASTERNODE, DELEGATE, start_node
 from cilantro_ee.services.storage.vkbook import VKBook
-from cilantro_ee.core.logger.base import overwrite_logger_level
+from cilantro_ee.core.logger import overwrite_logger_level
 import sys, time
-from cilantro_ee.core.crypto import wallet
-import requests
+from cilantro_ee.crypto import wallet
+
 
 def boot(delay):
     # Determine what type the node is based on VK

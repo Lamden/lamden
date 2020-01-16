@@ -80,13 +80,12 @@ class TestCanonicalCoding(TestCase):
     def test_block_from_subblocks_verify_works(self):
         sbs = random_txs.random_block().subBlocks
 
-        block = canonical.block_from_subblocks(subblocks=sbs)
+        block = canonical.block_from_subblocks(subblocks=sbs, previous_hash=b'\x00'*32, block_num=0)
 
         prev_hash = block['prevBlockHash']
         prop_hash = block['blockHash']
-        subblocks = block['subBlocks']
 
-        valid = canonical.verify_block(subblocks, prev_hash, prop_hash)
+        valid = canonical.verify_block(sbs, prev_hash, prop_hash)
 
         self.assertTrue(valid)
 

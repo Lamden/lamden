@@ -1,27 +1,17 @@
 from unittest import TestCase
-from cilantro_ee.nodes.masternode.transaction_batcher import RateLimitingBatcher
-from cilantro_ee.core.crypto.wallet import Wallet, _verify
-from cilantro_ee.services.storage.state import NonceManager
-from cilantro_ee.core.utils.transaction import TransactionBuilder, transaction_is_valid
+from cilantro_ee.nodes.masternode.old.rate_limiter import RateLimiter
+from cilantro_ee.crypto.wallet import Wallet
+from cilantro_ee.storage import BlockchainDriver
+from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting import config
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
-n = NonceManager()
+n = BlockchainDriver()
 
-
-class MockQueue:
-    def __init__(self):
-        self.q = []
-
-    def get(self):
-        return self.q.pop(0)
-
-    def qsize(self):
-        return len(self.q)
 
 
 def make_good_tx(processor):
@@ -68,10 +58,9 @@ def make_bad_tx():
     return tx_struct
 
 
-class TestRateLimitingBatcher(TestCase):
+class TestRateLimiter(TestCase):
     def test_add_batch_id_adds_properly(self):
-        r = RateLimitingBatcher(
-            queue=MockQueue(),
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=1,
@@ -84,8 +73,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.num_batches_sent, 1)
 
     def test_adding_multiple_batches_adjusts_accordingly(self):
-        r = RateLimitingBatcher(
-            queue=MockQueue(),
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=1,
@@ -107,10 +95,8 @@ class TestRateLimitingBatcher(TestCase):
         pass
 
     def test_ready_for_next_batch_batches_sent_greater_than_2_returns_false(self):
-        queue = MockQueue()
 
-        r = RateLimitingBatcher(
-            queue=queue,
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=1,
@@ -123,10 +109,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 0)
 
     def test_ready_for_next_batch_batches_sent_greater_than_2_returns_false_and_increments_if_tx_exists(self):
-        queue = MockQueue()
-        queue.q.append('tx!')
+        queue = ['tx!']
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -140,11 +125,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 1)
 
     def test_ready_for_next_batch_less_than_2_num_batches_sent_1_q_greater_than_max_batches_returns_false_and_increments(self):
-        queue = MockQueue()
+        queue = ['1', '2']
 
-        queue.q.extend(['1', '2'])
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -158,10 +141,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 1)
 
     def test_ready_for_next_batch_lt_2_num_batches_tx_delay_lt_max_txn_submission_delay_returns_false(self):
-        queue = MockQueue()
-
-        r = RateLimitingBatcher(
-            queue=queue,
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=3,
@@ -174,10 +154,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 0)
 
     def test_ready_for_next_batch_lt_2_num_batches_tx_delay_lt_max_txn_submission_delay_returns_false_and_increments(self):
-        queue = MockQueue()
-        queue.q.extend(['1', '2'])
+        queue = ['1', '2']
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -191,10 +170,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 1)
 
     def test_num_batches_lt_2_num_batches_sent_gt_0_and_q_gt_mx_batches_and_tx_delay_gt_max_delay_returns_true(self):
-        queue = MockQueue()
-        queue.q.extend([1, 2, 3, 4, 5, 6, 7])
+        queue = [1, 2, 3, 4, 5, 6, 7]
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -209,10 +187,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 101)
 
     def test_remove_batch_ids_removes_id(self):
-        queue = MockQueue()
-
-        r = RateLimitingBatcher(
-            queue=queue,
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=3,
@@ -228,10 +203,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertListEqual(r.sent_batch_ids, ['3'])
 
     def test_remove_batch_ids_decrements_num_batches_sent(self):
-        queue = MockQueue()
-
-        r = RateLimitingBatcher(
-            queue=queue,
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=3,
@@ -249,10 +221,7 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.num_batches_sent, 1)
 
     def test_remove_batch_ids_sets_sent_batch_ids_to_new_id_list_if_corruption_occurs(self):
-        queue = MockQueue()
-
-        r = RateLimitingBatcher(
-            queue=queue,
+        r = RateLimiter(
             wallet=Wallet(),
             sleep_interval=0,
             max_batch_size=3,
@@ -270,11 +239,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.num_batches_sent, 1)
 
     def test_get_next_batch_size_num_tx_gte_max_batch_size_returns_smaller_size(self):
-        queue = MockQueue()
+        queue = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 
-        queue.q = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -285,11 +252,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.get_next_batch_size(), 3)
 
     def test_get_next_batch_size_num_tx_gte_max_batch_size_resets_txn_delay(self):
-        queue = MockQueue()
+        queue = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
 
-        queue.q = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -304,11 +269,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 0)
 
     def test_get_next_batch_size_txn_delay_gte_max_returns_smaller_size(self):
-        queue = MockQueue()
+        queue = [1]
 
-        queue.q = [1]
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -319,11 +282,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.get_next_batch_size(), 1)
 
     def test_get_next_batch_size_txn_delay_gte_max_returns_resets_txn_delay(self):
-        queue = MockQueue()
+        queue = [1]
 
-        queue.q = [1]
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -336,11 +297,9 @@ class TestRateLimitingBatcher(TestCase):
         self.assertEqual(r.txn_delay, 0)
 
     def test_get_next_batch_num_txn_lt_max_batch_txn_delay_lt_max_returns_0(self):
-        queue = MockQueue()
+        queue = [1]
 
-        queue.q = [1]
-
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=Wallet(),
             sleep_interval=0,
@@ -350,34 +309,11 @@ class TestRateLimitingBatcher(TestCase):
 
         self.assertEqual(r.get_next_batch_size(), 0)
 
-    def test_get_txn_list_filters_bad_txs(self):
-        w = Wallet()
-        queue = MockQueue()
-
-        r = RateLimitingBatcher(
-            queue=queue,
-            wallet=w,
-            sleep_interval=0,
-            max_batch_size=3,
-            max_txn_delay=1
-        )
-
-        a = make_good_tx(w.vk.encode())
-        b = make_bad_tx()
-        c = make_bad_tx()
-        d = make_good_tx(w.vk.encode())
-
-        expected = [a, d]
-
-        queue.q.extend([(1, a), (1, b), (1, c), (1, d)])
-
-        self.assertListEqual(r.get_txn_list(4), expected)
-
     def test_get_txn_list_all_if_all_good(self):
         w = Wallet()
-        queue = MockQueue()
+        queue = []
 
-        r = RateLimitingBatcher(
+        r = RateLimiter(
             queue=queue,
             wallet=w,
             sleep_interval=0,
@@ -392,7 +328,7 @@ class TestRateLimitingBatcher(TestCase):
 
         expected = [a, b, c, d]
 
-        queue.q.extend([(1, a), (1, b), (1, c), (1, d)])
+        queue.extend([(1, a), (1, b), (1, c), (1, d)])
 
         self.assertListEqual(r.get_txn_list(4), expected)
 

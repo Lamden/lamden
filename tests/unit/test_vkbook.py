@@ -1,6 +1,7 @@
 from unittest import TestCase
-from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.storage.vkbook import VKBook
 from contracting.client import ContractingClient
+from cilantro_ee.contracts import sync
 
 
 class TestVKBook(TestCase):
@@ -17,7 +18,15 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=True)
+
+        v = VKBook()
 
         self.assertEqual(v.masternodes, masternodes)
         self.assertEqual(v.delegates, delegates)
@@ -30,14 +39,30 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=True)
+
+        v = VKBook()
 
         new_masternodes = ['d', 'e', 'f']
         new_delegates = ['a', 'b', 'c']
         new_stamps = True
         new_nonces = True
 
-        v = VKBook(new_masternodes, new_delegates, stamps=new_stamps, nonces=new_nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': new_masternodes,
+            'delegates': new_delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': new_stamps,
+            'enable_nonces': new_nonces
+        }, overwrite=False)
+
+        v = VKBook()
 
         self.assertEqual(v.masternodes, masternodes)
         self.assertEqual(v.delegates, delegates)
@@ -50,7 +75,15 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
 
         self.assertEqual(v.witnesses, [])
 
@@ -60,7 +93,15 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
 
         self.assertEqual(v.notifiers, [])
 
@@ -70,7 +111,15 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
 
         self.assertEqual(v.schedulers, [])
 
@@ -80,9 +129,17 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
 
-        self.assertEqual(v.state_sync, masternodes + delegates)
+        v = VKBook()
+
+        self.assertEqual(v.core_nodes, masternodes + delegates)
 
     def test_all_returns_masternodes_delegates_and_witnesses(self):
         masternodes = ['a', 'b', 'c']
@@ -90,9 +147,17 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
 
-        self.assertEqual(v.all, masternodes + delegates + [])
+        v = VKBook()
+
+        self.assertEqual(v.core_nodes, masternodes + delegates + [])
 
     def test_check_master(self):
         masternodes = ['a', 'b', 'c']
@@ -103,7 +168,15 @@ class TestVKBook(TestCase):
 
         mn = 'a'
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
         self.assertEqual(v.masternodes[0], mn)
 
     def test_check_delegate(self):
@@ -115,7 +188,15 @@ class TestVKBook(TestCase):
 
         dl = 'd'
 
-        v = VKBook(masternodes, delegates, stamps = stamps, nonces = nonces, debug = False)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
         self.assertEqual(v.delegates[0], dl)
 
     def test_vkbook(self):
@@ -124,15 +205,18 @@ class TestVKBook(TestCase):
         stamps = False
         nonces = False
 
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces)
+        sync.submit_vkbook({
+            'masternodes': masternodes,
+            'delegates': delegates,
+            'masternode_min_quorum': 1,
+            'enable_stamps': stamps,
+            'enable_nonces': nonces
+        }, overwrite=False)
+
+        v = VKBook()
 
         self.assertEqual(1, v.masternode_quorum_min)
         self.assertEqual(v.masternodes, masternodes)
-
-
-    def test_phonebook(self):
-        self.assertEqual(2, PhoneBook.masternode_quorum_min)
-        self.assertNotEqual(PhoneBook.masternodes, None)
 
 
 

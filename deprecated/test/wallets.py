@@ -1,6 +1,6 @@
 from deprecated.test.utils import *
 from cilantro_ee.constants.system_config import *
-from cilantro_ee.core.crypto import wallet
+from cilantro_ee.crypto import wallet
 
 
 STU = ('db929395f15937f023b4682995634b9dc19b1a2b32799f1f67d6f080b742cdb1',

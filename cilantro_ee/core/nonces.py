@@ -1,11 +1,5 @@
 from contracting.db.driver import ContractDriver
-from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
-import os
-import capnp
 
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 PENDING_NONCE_KEY = '__pn'
 NONCE_KEY = '__n'
@@ -16,13 +10,15 @@ class NonceManager:
         self.driver = driver
 
     @staticmethod
-    def update_nonce_hash(nonce_hash: dict, tx_payload: transaction_capnp.TransactionPayload):
+    def update_nonce_hash(nonce_hash: dict, tx_payload):
+        if type(tx_payload) != dict:
+            tx_payload = tx_payload.to_dict()
         # Modifies the provided dict
-        k = (tx_payload.processor, tx_payload.sender)
+        k = (tx_payload['processor'], tx_payload['sender'])
         current_nonce = nonce_hash.get(k)
 
-        if current_nonce is None or current_nonce == tx_payload.nonce:
-            nonce_hash[k] = tx_payload.nonce + 1
+        if current_nonce is None or current_nonce == tx_payload['nonce']:
+            nonce_hash[k] = tx_payload['nonce'] + 1
 
     @staticmethod
     def n_key(key, processor, sender):
