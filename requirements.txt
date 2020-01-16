@@ -1,10 +1,9 @@
 pyzmq
 requests
--e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
+# -e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
+-e git+https://github.com/Lamden/contracting.git@dev-rocks-rc1#egg=contracting
 # contracting==0.1.1
 # henlo
-# henlo
-# henlo
-# henlo
-# henlo
-# henlo
+# xxxx
+# xxxx
+# xxxx

@@ -5,7 +5,7 @@ import cilantro_ee
 settings = configparser.ConfigParser()
 settings._interpolation = configparser.ExtendedInterpolation()
 this_dir = os.path.dirname(__file__)
-db_conf_path = os.path.join(cilantro_ee.__path__[0], 'mn_db_conf.ini')
+db_conf_path = os.path.join(cilantro_ee.__path__[0], '/config/mn_db_conf.ini')
 
 settings.read(db_conf_path)
 

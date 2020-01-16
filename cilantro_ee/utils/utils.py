@@ -1,3 +1,7 @@
+import random
+import string
+
+
 def is_valid_hex(hex_str: str, length=0) -> bool:
     """
     Returns true if hex_str is valid hex. False otherwise
@@ -19,5 +23,11 @@ def int_to_bytes(x):
     return x.to_bytes((x.bit_length() + 7) // 8, 'big')
 
 
-def bytes_to_int(xbytes):
-    return int.from_bytes(xbytes, 'big')
+def random_str(len=10):
+    # TODO temp place holder file to generate secure pwd for end users to
+    # https://github.com/Lamden/cilantro-enterprise/issues/108
+
+    letter = string.ascii_lowercase
+    return ''.join(random.choice(letter) for i in range(len))
+
+

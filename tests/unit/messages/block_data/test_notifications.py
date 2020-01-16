@@ -1,5 +1,4 @@
-from cilantro_ee.messages.block_data.notification import *
-from cilantro_ee.utils.utils import int_to_bytes, bytes_to_int
+from cilantro_ee.core.messages.notification import *
 # import unittest
 from unittest import TestCase
 import hashlib

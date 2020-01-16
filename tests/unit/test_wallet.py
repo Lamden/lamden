@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 
 
 class TestWallet(TestCase):
@@ -13,7 +13,6 @@ class TestWallet(TestCase):
 
         self.assertEqual(w.vk, a.vk)
         self.assertEqual(w.sk, a.sk)
-        self.assertEqual(w.zmq_key, a.zmq_key)
 
     def test_signing_key_as_bytes(self):
         w = Wallet()

@@ -6,7 +6,7 @@ import sys
 import time
 import os
 import re
-from cilantro_ee.logger import get_logger, overwrite_logger_level
+from cilantro_ee.core.logger import get_logger, overwrite_logger_level
 import argparse
 from cilantro_ee.utils.factory import _wait_for_mongo, _wait_for_redis
 

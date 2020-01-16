@@ -1,4 +1,4 @@
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 from multiprocessing import Process
 import traceback, os, cProfile, pkg_resources, json
 from vprof import runner

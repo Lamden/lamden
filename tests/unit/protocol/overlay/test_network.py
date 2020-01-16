@@ -1,13 +1,13 @@
 from unittest import TestCase
-from cilantro_ee.protocol.comm.services import _socket
-from cilantro_ee.protocol.overlay.discovery import *
-from cilantro_ee.protocol.overlay.network import Network, PeerServer, KTable
-from cilantro_ee.protocol.overlay.discovery import DiscoveryServer
+from cilantro_ee.core.sockets.services import _socket
+from cilantro_ee.services.overlay.discovery import *
+from cilantro_ee.services.overlay.network import Network, PeerServer, KTable
+from cilantro_ee.services.overlay.discovery import DiscoveryServer
 from cilantro_ee.constants.overlay_network import PEPPER
-from cilantro_ee.protocol.comm import services
+from cilantro_ee.core.sockets import services
 import zmq
 import zmq.asyncio
-from cilantro_ee.protocol.wallet import Wallet
+from cilantro_ee.core.crypto.wallet import Wallet
 from time import sleep
 import json
 
@@ -713,3 +713,4 @@ class TestNetworkService(TestCase):
         self.assertIn(dw1.verifying_key().hex(), mn1.table.peers)
         self.assertIn(dw2.verifying_key().hex(), mn1.table.peers)
 
+    # def test quorum made and another node wants to connect afterwards

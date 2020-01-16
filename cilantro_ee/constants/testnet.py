@@ -1,29 +1,6 @@
-from cilantro_ee.logger import get_logger
-import json, math, os
-from cilantro_ee.utils.test.testnet_config import get_testnet_json_path
-
-"""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-TO THE POOR SOUL WHO IS LOOKING AT THIS FILE:
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-I'm sorry. I really am. I am tempted to shift blame here, but really I must accept responsibility for the utter
-catastrophe that you about to witness below. Buckle up for this bumpy ride down jank code lane. 
-
-If you are reading this code thinking "tf is he doing?" --the answer
-is it's all a massive hack. This entire "constitution seeding" business needs to be completely refactored. 
-Only tricky bit is the solution must allow for tests (unit tests) to use different constitution files for difference 
-situations. This is probably best achieved using Mock objects, and maybe some kind of helper to orchestrate the VK
-mocking.
-
-Proposal for proper way to do it:
-Fuck off with all these global variables, and just use the class variables on VKBook. Have a helper function to
-seed VKBook with different data, which sets the class variables on VKBook to whatever you need for your testing
-environment.
-
-Best wishes, 
-Davis
-"""
+from cilantro_ee.core.logger import get_logger
+import json
+from deprecated.test import get_testnet_json_path
 
 TESTNET_JSON_PATH = get_testnet_json_path()
 log = get_logger("TestnetBuilder")

@@ -4,7 +4,7 @@ from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
 from cilantro_ee.messages.block_data.block_data import BlockData, GENESIS_BLOCK_HASH, BlockDataBuilder
 from cilantro_ee.messages.block_data.state_update import BlockDataReply
 from cilantro_ee.messages.block_data.sub_block import SubBlock, SubBlockBuilder
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from unittest import TestCase
 import unittest
 from cilantro_ee.constants.testnet import TESTNET_MASTERNODES

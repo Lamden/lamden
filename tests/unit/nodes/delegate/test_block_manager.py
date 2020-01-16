@@ -1,22 +1,22 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+import asyncio
+from deprecated.test import set_testnet_config
+set_testnet_config('vk_dump.json')
 
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 from cilantro_ee.nodes.delegate.block_manager import BlockManager, IPC_PORT
-from cilantro_ee.utils import int_to_bytes
 
 from unittest import TestCase
 from unittest import mock
 from unittest.mock import MagicMock
 
-from cilantro_ee.messages.base.base import MessageBase
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
 
 _log = get_logger("TestBlockManager")
 
-from cilantro_ee.constants.testnet import TESTNET_DELEGATES, TESTNET_MASTERNODES
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.constants.testnet import TESTNET_MASTERNODES
+from cilantro_ee.services.storage.vkbook import VKBook
 from cilantro_ee.constants.testnet import TESTNET_DELEGATES
 TEST_IP = '127.0.0.1'
 TEST_SK = TESTNET_DELEGATES[0]['sk']
@@ -25,8 +25,8 @@ TEST_SK = TESTNET_DELEGATES[0]['sk']
 class TestBlockManager(TestCase):
 
     # TODO we can probly DRY all this patching/setup code in a setup method or something
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+    @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+    @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
@@ -66,8 +66,8 @@ class TestBlockManager(TestCase):
         mock_ipc_router.add_handler.assert_called()
         self.assertTrue(mock_router_handler_task in bm.tasks)
 
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-    @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+    @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+    @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio")
     @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run")
@@ -82,20 +82,25 @@ class TestBlockManager(TestCase):
         bm.start_sbb_procs()
 
         num_sbb = len(bm.sb_builders)
-        message = Ready.create()
-        message_type = MessageBase.registry[type(message)]
+        mtype, message = Message.get_message_packed(MessageType.READY)
 
+        futs = []
         for i in range(num_sbb):
             self.assertFalse(bm.is_sbb_ready())
-            frames = [str(i).encode(), int_to_bytes(message_type), message.serialize()]
-            bm.handle_ipc_msg(frames)
+            frames = [str(i).encode(), mtype, message]
+            futs.append(asyncio.ensure_future(bm.handle_ipc_msg(frames)))
 
+        while len(futs) > 0:
+            fut = futs.pop(0)
+            if not fut.done():
+                futs.append(fut)
+            
         self.assertTrue(bm.is_sbb_ready())
 
 
     # TODO comment this back in when catchup is fixed
-    # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio", autospec=True)
-    # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager", autospec=True)
+    # @mock.patch("cilantro_ee.core.utils.worker.asyncio", autospec=True)
+    # @mock.patch("cilantro_ee.core.utils.worker.SocketManager", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.SubBlockBuilder", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.asyncio", autospec=True)
     # @mock.patch("cilantro_ee.nodes.delegate.block_manager.BlockManager.run", autospec=True)

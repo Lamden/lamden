@@ -4,21 +4,21 @@
 # import zmq, zmq.asyncio
 # from os.path import join, dirname
 # from cilantro_ee.utils.test.mp_test_case import vmnet_test, wrap_func
-# from cilantro_ee.logger.base import get_logger
+# from cilantro_ee.core.logger.base import get_logger
 #
 # def run_node(node_type, idx, addr_idxs):
 #     # NOTE: addr_idxs represents what each node has already discovered
 #     from vmnet.comm import send_to_file
-#     from cilantro_ee.protocol.overlay.kademlia.network import Network
-#     from cilantro_ee.protocol.overlay.kademlia.utils import digest
-#     from cilantro_ee.protocol.overlay.kademlia.node import Node
+#     from cilantro_ee.services.overlay.kademlia.network import Network
+#     from cilantro_ee.services.overlay.kademlia.utils import digest
+#     from cilantro_ee.services.overlay.kademlia.node import Node
 #     from cilantro_ee.constants.ports import DHT_PORT
 #     from cilantro_ee.constants.overlay_network import MIN_DISCOVERY_NODES
 #     from cilantro_ee.utils.keys import Keys
 #     import asyncio, os, ujson as json
 #     import zmq, zmq.asyncio
 #     from os import getenv as env
-#     from cilantro_ee.storage.vkbook import VKBook
+#     from cilantro_ee.services.storage.vkbook import VKBook
 #     VKBook.setup()
 #
 #     # NOTE: This logic should be improved. There are no utilities for this right now
@@ -42,7 +42,7 @@
 #         if len(n.routing_table.get_my_neighbors()) >= MIN_DISCOVERY_NODES:
 #             send_to_file(env('HOST_NAME'))
 #
-#     from cilantro_ee.logger import get_logger
+#     from cilantro_ee.core.logger import get_logger
 #     log = get_logger('{}_{}'.format(node_type, idx))
 #     loop = asyncio.new_event_loop()
 #     asyncio.set_event_loop(loop)
@@ -60,7 +60,7 @@
 # class TestBootstrap(BaseTestCase):
 #     log = get_logger(__name__)
 #     config_file = join(dirname(cilantro.__path__[0]), 'vmnet_configs', 'cilantro-nodes-4.json')
-#     environment = {'CONSTITUTION_FILE': '2-2-2.json'}
+#     environment = {'CONSTITUTION_FILE': 'vk_dump.json'}
 #     enable_ui = False
 #
 # ################################################################################

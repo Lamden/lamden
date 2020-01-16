@@ -1,24 +1,18 @@
 coloredlogs
-coverage
-numpy
-scipy
+checksumdir==1.1.7
 vprof
-paramiko
 redis==3.2.0
-simple-crypt==4.1.7
+Cython==0.29
 
 requests==2.20.0
 uvloop==0.9.1
-#u-msgpack-python==2.5.0
-yarl==1.1.0
 Click==7.0
-sanic
+
+
+sanic==19.6.3
 sanic-limiter==0.1.3
-Sanic-Cors==0.9.7
+Sanic-Cors==0.9.9.post1
 secure
 
 pathspec
-umsgpack
 aiohttp
-
-transitions

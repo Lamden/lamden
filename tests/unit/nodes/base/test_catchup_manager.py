@@ -1,20 +1,18 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
+from deprecated.test import set_testnet_config
 set_testnet_config('4-4-4.json')
 
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from cilantro_ee.nodes.catchup import CatchupManager
-from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.storage.master import DistributedMasterStorage
+from cilantro_ee.services.storage.state import MetaDataStorage
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.block_data.notification import *
 import asyncio, time
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 
-from cilantro_ee.storage.vkbook import VKBook
+from cilantro_ee.services.storage.vkbook import VKBook
 
 SK = 'A' * 64
 VK = wallet.get_vk(SK)

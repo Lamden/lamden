@@ -1,11 +1,14 @@
-delegate_list = Variable()
 masternode_list = Variable()
+delegate_list = Variable()
 witness_list = Variable()
 notifier_list = Variable()
 scheduler_list = Variable()
 
-num_boot_masternodes = Variable()
-num_boot_delegates = Variable()
+masternode_quorum_min = Variable()
+delegate_quorum_min = Variable()
+witness_quorum_min = Variable()
+notifier_quorum_min = Variable()
+scheduler_quorum_min = Variable()
 
 stamps_enabled = Variable()
 nonces_enabled = Variable()
@@ -14,23 +17,32 @@ nonces_enabled = Variable()
 
 @construct
 def seed(masternodes,
+         masternode_min_quorum,
          delegates,
-         num_boot_mns,
-         num_boot_del,
-         stamps=True,
-         nonces=False):
+         delegate_min_quorum,
+         witnesses=[],
+         witness_min_quorum=0,
+         notifiers=[],
+         notifier_min_quorum=0,
+         schedulers=[],
+         scheduler_min_quorum=0,
+         enable_stamps=True,
+         enable_nonces=False):
 
     masternode_list.set(masternodes)
     delegate_list.set(delegates)
-    witness_list.set([])
-    notifier_list.set([])
-    scheduler_list.set([])
+    witness_list.set(witnesses)
+    notifier_list.set(notifiers)
+    scheduler_list.set(schedulers)
 
-    num_boot_masternodes.set(num_boot_mns)
-    num_boot_delegates.set(num_boot_del)
+    masternode_quorum_min.set(masternode_min_quorum)
+    delegate_quorum_min.set(delegate_min_quorum)
+    witness_quorum_min.set(witness_min_quorum)
+    notifier_quorum_min.set(notifier_min_quorum)
+    scheduler_quorum_min.set(scheduler_min_quorum)
 
-    stamps_enabled.set(stamps)
-    nonces_enabled.set(nonces)
+    stamps_enabled.set(enable_stamps)
+    nonces_enabled.set(enable_nonces)
 
 @export
 def get_delegates():
@@ -41,6 +53,13 @@ def get_delegates():
 def get_masternodes():
     return masternode_list.get()
 
+@export
+def check_master(vk):
+    return vk in masternode_list.get()
+
+@export
+def check_delegate(vk):
+    return vk in delegate_list.get()
 
 @export
 def get_witnesses():
@@ -55,14 +74,25 @@ def get_notifiers():
 def get_schedulers():
     return scheduler_list.get()
 
+@export
+def get_masternode_quorum_min():
+    return masternode_quorum_min.get()
 
 @export
-def get_num_boot_masternodes():
-    return num_boot_masternodes.get()
+def get_delegate_quorum_min():
+    return delegate_quorum_min.get()
 
 @export
-def get_num_boot_delegates():
-    return num_boot_delegates.get()
+def get_witness_quorum_min():
+    return witness_quorum_min.get()
+
+@export
+def get_notifier_quorum_min():
+    return notifier_quorum_min.get()
+
+@export
+def get_scheduler_quorum_min():
+    return scheduler_quorum_min.get()
 
 
 @export
@@ -73,5 +103,3 @@ def get_stamps_enabled():
 @export
 def get_nonces_enabled():
     return nonces_enabled.get()
-
-

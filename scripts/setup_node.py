@@ -2,7 +2,7 @@ import configparser
 import json
 import sys
 import requests
-from cilantro_ee.protocol import wallet
+from cilantro_ee.core.crypto import wallet
 import cilantro_ee
 
 config = configparser.ConfigParser()
@@ -70,11 +70,9 @@ config['DEFAULT']['boot_masternode_ips'] = ','.join(const['boot_masternode_ips']
 config['DEFAULT']['boot_delegate_ips'] = ','.join(const['boot_delegate_ips'])
 config['DEFAULT']['node_type'] = role
 config['DEFAULT']['sk'] = keys[0]
-config['DEFAULT']['vk'] = keys[1]
 config['DEFAULT']['reset_db'] = 'True'
 config['DEFAULT']['constitution_file'] = c_name
 config['DEFAULT']['ssl_enabled'] = 'False'
-config['DEFAULT']['metering'] = 'True'
 config['DEFAULT']['log_lvl'] = '13'
 config['DEFAULT']['seneca_log_lvl'] = '13'
 

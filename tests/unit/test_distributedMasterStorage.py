@@ -1,7 +1,8 @@
 from unittest import TestCase
-from cilantro_ee.storage.master import DistributedMasterStorage
-from cilantro_ee.protocol import wallet
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.services.storage.master import DistributedMasterStorage
+from cilantro_ee.core.crypto import wallet
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.contracts import sync
 
 
 class TestDistributedMasterStorage(TestCase):
@@ -17,6 +18,11 @@ class TestDistributedMasterStorage(TestCase):
 
     def test_get_masterset_test_hook_false(self):
         self.db.test_hook = False
+
+        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(m, d)
+
+        PhoneBook = VKBook()
 
         self.assertEqual(len(PhoneBook.masternodes), self.db.get_master_set())
 
@@ -45,6 +51,11 @@ class TestDistributedMasterStorage(TestCase):
         self.assertFalse(success)
 
     def test_set_mn_id_test_hook_false_master_in_active_masters(self):
+        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(m, d)
+
+        PhoneBook = VKBook()
+
         vk = PhoneBook.masternodes[0]
 
         self.db.test_hook = False
@@ -66,6 +77,11 @@ class TestDistributedMasterStorage(TestCase):
         self.assertEqual(self.db.rep_pool_sz(), pool)
 
     def test_build_write_list_returns_all_mns_when_jump_idx_0(self):
+        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        sync.submit_vkbook(m, d)
+
+        PhoneBook = VKBook()
+
         mns = PhoneBook.masternodes
 
         self.assertEqual(mns, self.db.build_wr_list(None, 0))
@@ -73,7 +89,10 @@ class TestDistributedMasterStorage(TestCase):
     def test_build_write_list_curr_node_0_jump_idx_1_returns_all(self):
         masternodes = list(range(100))
         delegates = list(range(10))
-        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+
+        big_vkbook = VKBook()
 
         self.db.vkbook = big_vkbook
 
@@ -83,7 +102,10 @@ class TestDistributedMasterStorage(TestCase):
     def test_build_write_list_curr_node_20_jump_idx_1_returns_subset(self):
         masternodes = list(range(100))
         delegates = list(range(10))
-        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+
+        big_vkbook = VKBook()
 
         self.db.vkbook = big_vkbook
 
@@ -136,7 +158,10 @@ class TestDistributedMasterStorage(TestCase):
     def test_build_write_list_jump_idx_2_skips(self):
         masternodes = list(range(100))
         delegates = list(range(10))
-        big_vkbook = VKBook(masternodes, delegates, stamps=True, nonces=True, debug=True)
+
+        sync.submit_vkbook(masternodes, delegates, stamps=True, nonces=True, overwrite=True)
+
+        big_vkbook = VKBook()
 
         self.db.vkbook = big_vkbook
 

@@ -31,7 +31,13 @@ clean-temps:
 clean-db:
 	bash ./scripts/clean-dbs.sh
 
-clean: clean-logs clean-temps clean-db
+clean-bld:
+	bash ./scripts/clean-bld.sh
+
+clean: clean-logs clean-temps clean-db clean-bld
+
+pybuild:
+	python3 setup.py sdist bdist_wheel
 
 dockerbuild:
 	./ops/tools/docker_build_push.sh

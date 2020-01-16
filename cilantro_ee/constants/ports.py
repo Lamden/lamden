@@ -9,6 +9,7 @@ DISCOVERY_PORT = 10000
 AUTH_PORT = 10001
 DHT_PORT = 10002
 EVENT_PORT = 10003
+BLOCK_SERVER = 10004
 
 # ---------------------------------------------------------------
 # Masternode Ports :10010-10019
@@ -29,3 +30,5 @@ SBB_PORT_START = 10022   # only in use when witnesses are present in system (not
 # ---------------------------------------------------------------
 SS_ROUTER_PORT = 10030
 SS_PUB_PORT = 10031
+
+OVERLAY_SERVER = 10777

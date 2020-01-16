@@ -1,5 +1,5 @@
-from cilantro_ee.utils.test.testnet_config import set_testnet_config
-set_testnet_config('2-2-2.json')
+from deprecated.test import set_testnet_config
+set_testnet_config('vk_dump.json')
 from cilantro_ee.constants.testnet import set_testnet_nodes
 set_testnet_nodes()
 
@@ -18,16 +18,15 @@ from cilantro_ee.messages.transaction.contract import ContractTransactionBuilder
 
 from cilantro_ee.messages.block_data.block_data import *
 from cilantro_ee.messages.block_data.state_update import *
-from cilantro_ee.messages.block_data.notification import *
 from cilantro_ee.messages.block_data.block_metadata import *
 from cilantro_ee.messages.consensus.merkle_signature import *
 
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
-from cilantro_ee.storage.driver import SafeDriver
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
+from cilantro_ee.services.storage.driver import SafeDriver
+from cilantro_ee.services.storage.vkbook import PhoneBook, VKBook
 
 # time and logger are for debugging
-from cilantro_ee.logger.base import get_logger
+from cilantro_ee.core.logger.base import get_logger
 
 
 class BlockAggTester:
@@ -36,8 +35,8 @@ class BlockAggTester:
         @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.messages.block_data.block_metadata.NUM_SB_PER_BLOCK", 2)
         @mock.patch("cilantro_ee.nodes.masternode.block_contender.NUM_SB_PER_BLOCK", 2)
-        # @mock.patch("cilantro_ee.protocol.multiprocessing.worker.asyncio")
-        @mock.patch("cilantro_ee.protocol.multiprocessing.worker.SocketManager")
+        # @mock.patch("cilantro_ee.core.utils.worker.asyncio")
+        @mock.patch("cilantro_ee.core.utils.worker.SocketManager")
         @mock.patch("cilantro_ee.nodes.masternode.block_aggregator.BlockAggregator.run")
         def _func(*args, **kwargs):
             return func(*args, **kwargs)
@@ -318,15 +317,16 @@ class TestBlockAggregator(TestCase):
         ba.catchup_manager.is_catchup_done = MagicMock(return_value=True)
 
         PhoneBook = VKBook(delegates=TEST_DELEGATES, masternodes=TEST_MASTERS)
+        num_delegates = len(TEST_DELEGATES)
 
         # Sub block 0
-        for i in range(NUM_DELEGATES):
+        for i in range(num_delegates):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH1), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH1, INPUT_HASH1, MERKLE_LEAVES1, signature, TXS1, 0, GENESIS_BLOCK_HASH)
             ba.recv_sub_block_contender(TESTNET_DELEGATES[i]['vk'], sbc)
 
         # Sub block 1
-        for i in range(NUM_DELEGATES):
+        for i in range(num_delegates):
             signature = build_test_merkle_sig(msg=bytes.fromhex(RESULT_HASH2), sk=TESTNET_DELEGATES[i]['sk'], vk=TESTNET_DELEGATES[i]['vk'])
             sbc = SubBlockContender.create(RESULT_HASH2, INPUT_HASH2, MERKLE_LEAVES2, signature, TXS2, 1, GENESIS_BLOCK_HASH)
             ba.recv_sub_block_contender(TESTNET_DELEGATES[i]['vk'], sbc)

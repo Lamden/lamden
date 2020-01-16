@@ -1,34 +1,55 @@
-from cilantro_ee.storage.vkbook import PhoneBook, VKBook
-from cilantro_ee.storage.state import MetaDataStorage
-from cilantro_ee.logger.base import get_logger
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.services.storage.vkbook import VKBook
+from cilantro_ee.services.storage.state import MetaDataStorage
+from cilantro_ee.core.logger.base import get_logger
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from cilantro_ee.constants.system_config import *
 from cilantro_ee.utils.hasher import Hasher
 
-from cilantro_ee.messages.block_data.sub_block import SubBlock
-from cilantro_ee.messages.block_data.notification import BlockNotification
-from cilantro_ee.protocol.wallet import _verify
+from cilantro_ee.core.messages.message_type import MessageType
+from cilantro_ee.core.messages.message import Message
+from cilantro_ee.core.crypto.wallet import _verify
 
 from collections import defaultdict
 from typing import List
 import time
 import hashlib
-from cilantro_ee.messages import capnp as schemas
-import os
-import capnp
 
-blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
+
+class SBCSenderSignerMismatchError(Exception):
+    pass
+
+
+class SBCIndexMismatchError(Exception):
+    pass
+
+
+class SBCInvalidSignatureError(Exception):
+    pass
+
+
+class SBCTransactionNotInContenderError(Exception):
+    pass
+
+
+class SBCBlockHashMismatchError(Exception):
+    pass
+
+
+class SBCMerkleLeafVerificationError(Exception):
+    pass
+
+
+class SBCIndexGreaterThanPossibleError(Exception):
+    pass
 
 
 class SubBlockGroup:
+    def __init__(self, sb_idx: int, curr_block_hash: str,
+                 contacts: VKBook, subblocks_per_block=NUM_SB_PER_BLOCK):
 
-    def __init__(self, sb_idx: int, curr_block_hash: str, contacts: VKBook=PhoneBook):
         self.sb_idx, self.curr_block_hash = sb_idx, curr_block_hash
         self.log = get_logger("SBGroup[{}]".format(self.sb_idx))
+        self.subblocks_per_block = subblocks_per_block
 
         self.rh = defaultdict(set)  # mapping of result_hash: set of SubBlockContenders
 
@@ -61,8 +82,8 @@ class SubBlockGroup:
 
         return True
 
-    def get_sb(self) -> SubBlock:
-        assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
+    def get_sb(self):
+        #assert self.is_consensus_reached(), "Consensus must be reached to get a SubBlock!"
 
         # Paranoid dev checks
         # TODO make sure all merkle leaves are the same, and all result hashes are the same for self.rh[merkle_root],
@@ -74,6 +95,7 @@ class SubBlockGroup:
         sigs = [c.signature for c in contenders]
 
         # Get a contender from the set. This presumes that the contenders have identical data, which they should.
+        # contenders should be grouped based on prevBlockHash and resultHash equality - then they will have identical data - raghu
         contender = contenders.pop()
         contenders.add(contender)
 
@@ -81,16 +103,15 @@ class SubBlockGroup:
         input_hash = contender.inputHash
 
         txs = self._get_ordered_transactions()
+        transactions = [Message.unpack_message_internal(MessageType.TRANSACTION_DATA, tx) for tx in txs]
 
-        sb = subblock_capnp.SubBlock.new_message(
-            merkleRoot=merkle_root,
-            signatures=sigs,
-            merkleLeaves=[leaf for leaf in leaves],
-            subBlockIdx=self.sb_idx,
-            inputHash=input_hash,
-            transactions=[transaction_capnp.TransactionData.from_bytes_packed(tx) for tx in txs]
-        )
-
+        # looks like sbc has txns packed while sb will have them as unpacked. Need to eliminate these inconsistencies for better performance - raghu
+        _, sb = Message.get_message(
+                   MessageType.SUBBLOCK, merkleRoot=merkle_root,
+                   signatures=sigs, merkleLeaves=[leaf for leaf in leaves],
+                   subBlockIdx=self.sb_idx, inputHash=input_hash,
+                   transactions=transactions)
+   
         return sb
 
     def is_consensus_reached(self) -> bool:
@@ -128,6 +149,7 @@ class SubBlockGroup:
 
         for sbc in self.sender_to_sbc.values():
             s.add(sbc.inputHash)
+
         return list(s)
 
     def is_empty(self):
@@ -141,12 +163,13 @@ class SubBlockGroup:
         return next(iter(self.rh[self.best_rh])).merkleLeaves
 
     def _get_ordered_transactions(self):
-        assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
+        #assert self.is_consensus_reached(), "Must be in consensus to get ordered transactions"  # TODO remove
 
         # ... Doesn't this return tx's for ALL SBC? WTF IS GOING ON HERE....
-        return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
+        # return [self.transactions[tx_hash] for tx_hash in self._get_merkle_leaves()]
+        return next(iter(self.rh[self.best_rh])).transactions
 
-    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender):
+    def add_sbc(self, sender_vk: bytes, sbc):
         # Verify that the SubBlockContender message is validly constructured
         if not self._verify_sbc(sender_vk, sbc):
             self.log.error("Could not verify SBC from sender {}".format(sender_vk))
@@ -182,9 +205,9 @@ class SubBlockGroup:
 
         self.log.info("Added SBC")
 
-    def _verify_sbc(self, sender_vk: bytes, sbc: subblock_capnp.SubBlockContender) -> bool:
+    def _verify_sbc(self, sender_vk: bytes, sbc) -> bool:
         # Dev sanity checks
-        merkle_proof = subblock_capnp.MerkleProof.from_bytes_packed(sbc.signature)
+        merkle_proof = Message.unpack_message_internal(MessageType.MERKLE_PROOF, sbc.signature)
 
         if not merkle_proof.signer == sender_vk:
             self.log.error('{} != {}'.format(merkle_proof.signer, sender_vk))
@@ -196,12 +219,13 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate signature
+
         valid_sig = _verify(vk=merkle_proof.signer,
                             msg=merkle_proof.hash,
                             signature=merkle_proof.signature)
 
         if not valid_sig:
-            self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
+            #self.log.error('SubBlockContender does not have a valid signature! SBC: {}'.format(sbc))
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
@@ -209,6 +233,7 @@ class SubBlockGroup:
         if sbc.prevBlockHash != self.curr_block_hash:
             self.log.error("SBC prev block hash {} does not match our current block hash {}!\nSBC: {}"
                            .format(sbc.prevBlockHash, self.curr_block_hash, sbc))
+            # raghu todo - need to fix this
             return False
 
         # TODO move this validation to the SubBlockCotender objects instead
@@ -232,7 +257,7 @@ class SubBlockGroup:
 
         # TODO move this validation to the SubBlockCotender objects instead
         # Validate sub block index is in range
-        if sbc.subBlockIdx >= NUM_SB_PER_BLOCK:
+        if sbc.subBlockIdx >= self.subblocks_per_block:
             self.log.error("Got SBC with out of range sb_index {}!\nSBC: {}".format(sbc.subBlockIdx, sbc))
             return False
 
@@ -240,17 +265,26 @@ class SubBlockGroup:
 
 
 class BlockContender:
-
-    def __init__(self):
+    def __init__(self, subblocks_per_block=NUM_SB_PER_BLOCK, builders_per_block=NUM_SB_BUILDERS, contacts=PhoneBook):
         self.log = get_logger("BlockContender")
         self.committed = False
         self.consensus_reached = False
+
         self.state = MetaDataStorage()
         self.curr_block_hash = self.state.get_latest_block_hash()
+
         self.time_created = time.time()
+
         self.sb_groups = {}  # Mapping of sb indices to SubBlockGroup objects
         self.old_input_hashes = set()  # A set of input hashes from the last block.
+
+        self.subblocks_per_block = subblocks_per_block
+        self.builders_per_block = builders_per_block
+
+        self.contacts = contacts
+
         self.log.debug("BlockContender created with curr_block_hash={}".format(self.curr_block_hash))
+        self.vkbook = VKBook()
 
     def reset(self):
         # Set old_input_hashes before we reset all the data
@@ -269,9 +303,9 @@ class BlockContender:
         self.log.info("BlockContender reset with curr_block_hash={}".format(self.curr_block_hash))
 
     def is_consensus_reached(self) -> bool:
-        assert len(self.sb_groups) <= NUM_SB_PER_BLOCK, "Got more sub block indices than SB_PER_BLOCK!"
+        assert len(self.sb_groups) <= self.subblocks_per_block, "Got more sub block indices than SB_PER_BLOCK!"
 
-        if len(self.sb_groups) != NUM_SB_PER_BLOCK:
+        if len(self.sb_groups) != self.subblocks_per_block:
             return False
 
         for sb_idx, sb_group in self.sb_groups.items():
@@ -293,16 +327,17 @@ class BlockContender:
         return True
 
     def get_current_quorum_reached(self) -> int:
-        if len(self.sb_groups) < NUM_SB_PER_BLOCK:
+        if len(self.sb_groups) < self.subblocks_per_block:
             return 0
-        cur_quorum = PhoneBook.delegate_quorum_max
+
+        cur_quorum = self.sb_groups[0].contacts.delegate_quorum_max
         for sb_idx, sb_group in self.sb_groups.items():
             cur_quorum = min(cur_quorum, sb_group.get_current_quorum_reached())
 
         return cur_quorum
 
     def is_empty(self):
-        assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
+        # assert self.is_consensus_reached(), "Consensus must be reached to check if this block is empty!"
 
         for sb_group in self.sb_groups.values():
             if not sb_group.is_empty():
@@ -310,9 +345,9 @@ class BlockContender:
 
         return True
 
-    def get_sb_data(self) -> List[SubBlock]:
-        assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
-        assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
+    def get_sb_data(self):
+        #assert self.is_consensus_reached(), "Cannot get block data if consensus is not reached!"
+        #assert len(self.sb_groups) == NUM_SB_PER_BLOCK, "More sb_groups than subblocks! sb_groups={}".format(self.sb_groups)
 
         # Build the sub-blocks
         sb_data = []
@@ -321,21 +356,21 @@ class BlockContender:
 
         sb_data = sorted(sb_data, key=lambda sb: sb.subBlockIdx)
 
-        assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
-                                                 .format(len(sb_data), NUM_SB_PER_BLOCK)
+        #assert len(sb_data) == NUM_SB_PER_BLOCK, "Block has {} sub blocks but there are {} SBs/per/block" \
+                                                 #.format(len(sb_data), NUM_SB_PER_BLOCK)
 
         return sb_data
 
-    def get_failed_block_notif(self) -> BlockNotification:
+    def get_failed_block_notif(self):
         input_hashes = self._get_input_hashes()
         first_sb_idx = self._get_first_sb_idx()
-        block_hash = Hasher.hash(str(input_hashes))
         block_num = self.state.latest_block_num + 1
-        return BlockNotification.get_failed_block_notification(block_owners=[], \
-                                              block_hash=block_hash, block_num=block_num, \
-                                              first_sb_idx=first_sb_idx, input_hashes=input_hashes)
+        last_hash = self.state.latest_block_hash
+        return BlockNotification.get_failed_block_notification(
+                                  block_num=block_num, prev_block_hash=last_hash,
+                                  first_sb_idx=first_sb_idx, input_hashes=input_hashes)
 
-    def add_sbc(self, sender_vk: str, sbc: subblock_capnp.SubBlockContender) -> bool:
+    def add_sbc(self, sender_vk: str, sbc) -> bool:
         """
         Adds a SubBlockContender to this BlockContender's data.
         :param sender_vk: The VK of the sender of the SubBlockContender
@@ -348,36 +383,47 @@ class BlockContender:
             return False
 
         groups_empty = len(self.sb_groups) == 0
+
         if sbc.subBlockIdx not in self.sb_groups:
-            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash)
+            self.sb_groups[sbc.subBlockIdx] = SubBlockGroup(sb_idx=sbc.subBlockIdx, curr_block_hash=self.curr_block_hash, contacts=self.contacts)
 
         self.sb_groups[sbc.subBlockIdx].add_sbc(sender_vk, sbc)
         return groups_empty
 
-    def __get_first_sb_idx(self, sb_groups) -> int:
+    # Return to this. Is this behaving properly? Is it redundant?
+    def get_first_sb_idx_unsorted(self, sb_groups) -> int:
         sb_idx = sb_groups[0].sb_idx
-        sbb_rem = sb_idx % NUM_SB_BUILDERS
-        assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
+        sbb_rem = sb_idx % self.builders_per_block
+        # assert sb_idx >= sbb_rem, "sub block indices are not maintained properly"
         return sb_idx - sbb_rem
 
-    def _get_first_sb_idx(self) -> int:
-        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
-        return self.__get_first_sb_idx(sb_groups)
-
-    def _get_input_hashes(self) -> List[list]:
+    def get_first_sb_idx_sorted(self) -> int:
         sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
         num_sbg = len(sb_groups)
-        assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
-        sb_idx = self.__get_first_sb_idx(sb_groups)
+        assert num_sbg <= self.subblocks_per_block, "Sub groups are not in a consistent state"
+        return self.get_first_sb_idx_unsorted(sb_groups)
+
+    # Pads empty sb groups?
+    def get_input_hashes_sorted(self) -> List[list]:
+        sb_groups = sorted(self.sb_groups.values(), key=lambda sb: sb.sb_idx)
+        num_sbg = len(sb_groups)
+        # assert num_sbg <= NUM_SB_PER_BLOCK, "Sub groups are not in a consistent state"
+
+        sb_idx = self.get_first_sb_idx_unsorted(sb_groups) # 0
         input_hashes = []
+
         for sb_group in sb_groups:
+            # In what natural situation does is while loop conditional met?
             while sb_idx < sb_group.sb_idx:
                 sb_idx += 1
                 num_sbg += 1
                 input_hashes.append([])
+
             input_hashes.append(sb_group.get_input_hashes())
             sb_idx += 1
-        while num_sbg < NUM_SB_PER_BLOCK:
+
+        # In what natural situation does is while loop conditional met?
+        while num_sbg < self.subblocks_per_block:
             num_sbg += 1
             input_hashes.append([])
 

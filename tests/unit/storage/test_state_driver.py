@@ -1,20 +1,18 @@
 from unittest import TestCase
 import unittest
-from cilantro_ee.messages.block_data.block_data import GENESIS_BLOCK_HASH
-from cilantro_ee.storage.state import MetaDataStorage, update_nonce_hash
+from cilantro_ee.services.storage.state import MetaDataStorage
 import json
-from cilantro_ee.protocol.wallet import Wallet
-from cilantro_ee.protocol.transaction import TransactionBuilder
-from cilantro_ee.messages import capnp as schemas
+from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.core.utils.transaction import TransactionBuilder
+from cilantro_ee.core.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.protocol.structures.merkle_tree import MerkleTree
+from cilantro_ee.core.containers.merkle_tree import MerkleTree
 from contracting.db import encoder
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
-envelope_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/envelope.capnp')
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 
@@ -22,6 +20,9 @@ signal_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/signals.capnp')
 class TestStateDriver(TestCase):
     def setUp(self):
         self.r = MetaDataStorage()  # this is a class, not an instance, so we do not instantiate
+        self.r.flush()
+
+    def tearDown(self):
         self.r.flush()
 
     def test_state_updated(self):
@@ -35,7 +36,6 @@ class TestStateDriver(TestCase):
                                     kwargs={'amount': 10, 'to': 'jeff'},
                                     stamps=500000,
                                     processor=secrets.token_bytes(32),
-                                    epoch=b'\x00' * 32,
                                     nonce=i)
 
             tx.sign(w.signing_key())
@@ -101,7 +101,7 @@ class TestStateDriver(TestCase):
 
     def test_get_latest_block_hash_with_none_set(self):
         b_hash = self.r.get_latest_block_hash()
-        self.assertEqual(GENESIS_BLOCK_HASH, b_hash)
+        self.assertEqual(b'\x00'*32, b_hash)
 
     def test_get_latest_block_num_with_none_set(self):
         b_num = self.r.get_latest_block_num()
@@ -119,96 +119,6 @@ class TestStateDriver(TestCase):
 
         self.assertEqual(self.r.get_latest_block_num(), b_num)
 
-    def test_update_nonce_empty_hash_adds_anything(self):
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=999,
-        )
-
-        nonces = {}
-        update_nonce_hash(nonces, tx_payload)
-
-        self.assertEqual(nonces.get((b'456', b'123')), 999)
-
-    def test_update_nonce_when_new_max_nonce_found(self):
-        nonces = {}
-
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=999,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=1000,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
-
-    def test_update_nonce_only_keeps_max_values(self):
-        nonces = {}
-
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=1000,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=999,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
-
-    def test_update_nonce_keeps_multiple_nonces(self):
-        nonces = {}
-
-        sender = b'123'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=1000,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        sender = b'124'
-        processor = b'456'
-        tx_payload = transaction_capnp.TransactionPayload.new_message(
-            sender=sender,
-            processor=processor,
-            nonce=999,
-        )
-
-        update_nonce_hash(nonces, tx_payload)
-
-        self.assertEqual(nonces.get((b'456', b'123')), 1000)
-        self.assertEqual(nonces.get((b'456', b'124')), 999)
-
     def test_set_transaction_data_single_value(self):
         update = {'123': 999}
         encoded = json.dumps(update)
@@ -224,6 +134,8 @@ class TestStateDriver(TestCase):
         update = {'123': 999,
                   'stu': b'555',
                   'something': [1, 2, 3]}
+
+        print(encoder.encode(update))
 
         encoded = encoder.encode(update)
         tx_data = transaction_capnp.TransactionData.new_message(
@@ -256,98 +168,3 @@ class TestStateDriver(TestCase):
         # Won't write the data because it's not a valid JSON map
         self.assertEqual(len(self.r.keys()), 0)
 
-    def test_nonces_are_set_and_deleted_from_commit_nonces(self):
-        n1 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n2 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n3 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n4 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n5 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n6 = (secrets.token_bytes(32), secrets.token_bytes(32))
-
-        nonces = {
-            n1: 5,
-            n3: 3,
-            n5: 6,
-            n6: 100
-        }
-
-        self.r.set_pending_nonce(n1[0], n1[1], 5)
-        self.r.set_pending_nonce(n2[0], n2[1], 999)
-        self.r.set_pending_nonce(n3[0], n3[1], 3)
-        self.r.set_pending_nonce(n4[0], n4[1], 888)
-        self.r.set_pending_nonce(n5[0], n5[1], 6)
-
-        self.r.set_nonce(n1[0], n1[1], 4)
-        self.r.set_nonce(n3[0], n3[1], 2)
-        self.r.set_nonce(n5[0], n5[1], 5)
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 3)
-
-        self.r.commit_nonces(nonce_hash=nonces)
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 2)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 4)
-
-    def test_delete_pending_nonce_removes_all_pending_nonce_but_not_normal_nonces(self):
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_pending_nonce(processor=secrets.token_bytes(32),
-                                 sender=secrets.token_bytes(32),
-                                 nonce=100)
-
-        self.r.set_nonce(processor=secrets.token_bytes(32),
-                         sender=secrets.token_bytes(32),
-                         nonce=100)
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
-
-        self.r.delete_pending_nonces()
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
-
-    def test_commit_nonce_when_nonce_hash_is_none_that_it_commits_all_current_pending_nonces(self):
-        n1 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n2 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n3 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n4 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n5 = (secrets.token_bytes(32), secrets.token_bytes(32))
-        n6 = (secrets.token_bytes(32), secrets.token_bytes(32))
-
-        self.r.set_pending_nonce(processor=n1[0], sender=n1[1], nonce=100)
-        self.r.set_pending_nonce(processor=n2[0], sender=n2[1], nonce=100)
-        self.r.set_pending_nonce(processor=n3[0], sender=n3[1], nonce=100)
-        self.r.set_pending_nonce(processor=n4[0], sender=n4[1], nonce=100)
-        self.r.set_pending_nonce(processor=n5[0], sender=n5[1], nonce=100)
-
-        self.r.set_nonce(processor=n6[0], sender=n6[1], nonce=100)
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 5)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 1)
-
-        self.r.commit_nonces()
-
-        self.assertEqual(len(self.r.iter(self.r.pending_nonce_key)), 0)
-        self.assertEqual(len(self.r.iter(self.r.nonce_key)), 6)
-
-        self.assertEqual(self.r.get_nonce(processor=n1[0], sender=n1[1]), 100)
-        self.assertEqual(self.r.get_nonce(processor=n2[0], sender=n2[1]), 100)
-        self.assertEqual(self.r.get_nonce(processor=n3[0], sender=n3[1]), 100)
-        self.assertEqual(self.r.get_nonce(processor=n4[0], sender=n4[1]), 100)
-        self.assertEqual(self.r.get_nonce(processor=n5[0], sender=n5[1]), 100)
