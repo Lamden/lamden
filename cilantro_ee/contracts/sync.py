@@ -144,3 +144,39 @@ def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
 
         client.submit(code, name=contract_name, owner=contract['owner'],
                       constructor_args=contract['constructor_args'])
+
+
+def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
+                                   delegate_price=10_000, root=os.path.dirname(__file__)):
+    submission_file = root + '/submission.s.py'
+    client = ContractingClient(submission_filename=submission_file)
+
+    members = root + '/genesis/members.s.py'
+
+    with open(members) as f:
+        code = f.read()
+
+    client.submit(code, name='masternodes', owner='election_house', constructor_args={
+        'initial_members': initial_masternodes,
+        'bn': boot_mns
+    })
+
+    client.submit(code, name='delegates', owner='election_house', constructor_args={
+        'initial_members': initial_delegates,
+        'bn': boot_dels
+    })
+
+    elect_members = root + '/genesis/elect_members.s.py'
+
+    with open(elect_members) as f:
+        code = f.read()
+
+    client.submit(code, name='elect_masternodes', owner='election_house', constructor_args={
+        'policy': 'masternodes',
+        'cost': master_price,
+    })
+
+    client.submit(code, name='elect_delegates', owner='election_house', constructor_args={
+        'policy': 'delegates',
+        'cost': delegate_price,
+    })

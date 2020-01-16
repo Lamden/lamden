@@ -433,25 +433,18 @@ class TestTotalEndToEnd(TestCase):
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
-                    mnw1.verifying_key().hex(),
-                    mnw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
-                    dw1.verifying_key().hex(),
-                    dw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "witnesses": {},
-            "schedulers": {},
-            "notifiers": {},
-            "enable_stamps": False,
-            "enable_nonces": False
+            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'witnesses': [],
+            'schedulers': [],
+            'notifiers': [],
+            'enable_stamps': False,
+            'enable_nonces': False,
+            'masternode_min_quorum': 1,
+            'delegate_min_quorum': 1,
+            'witness_min_quorum': 0,
+            'notifier_min_quorum': 0,
+            'scheduler_min_quorum': 0
         }
 
         md1 = IsolatedDriver()
