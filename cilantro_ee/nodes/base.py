@@ -19,8 +19,8 @@ class Node:
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
 
         # Seed state initially
-        if driver.get_contract('vkbook') is None or overwrite:
-            sync.submit_vkbook(constitution, overwrite=overwrite)
+        #if driver.get_contract('vkbook') is None or overwrite:
+        #    sync.submit_vkbook(constitution, overwrite=overwrite)
 
         # Sync contracts
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
@@ -31,7 +31,8 @@ class Node:
             boot_dels=constitution['delegate_min_quorum']
         )
 
-        self.contacts = VKBook()
+        self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
+                               boot_del=constitution['delegate_min_quorum'])
 
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
@@ -54,7 +55,7 @@ class Node:
             masternode_sockets=SocketBook(
                 socket_base=self.socket_base,
                 service_type=ServiceType.BLOCK_SERVER,
-                phonebook_function=self.contacts.contract.get_masternodes,
+                phonebook_function=lambda: self.contacts.masternodes,
                 ctx=self.ctx
             )
         )
