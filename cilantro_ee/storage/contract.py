@@ -1,4 +1,6 @@
 from contracting.db.driver import ContractDriver
+from contracting.client import ContractingClient
+from cilantro_ee.core.rewards import RewardManager
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_KEY = '_current_block_num'

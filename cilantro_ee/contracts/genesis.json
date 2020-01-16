@@ -21,6 +21,40 @@
 			"name": "rewards",
 			"owner": "election_house",
 			"constructor_args": null
+		},
+        {
+			"name": "members",
+            "submit_as": "masternodes",
+            "owner": "election_house",
+            "constructor_args": {
+              "initial_members": [1, 2, 3]
+            }
+		},
+        {
+			"name": "elect_members",
+            "submit_as": "elect_masternodes",
+            "owner": "election_house",
+            "constructor_args": {
+              "policy": "masternodes",
+              "cost": 100000
+            }
+		},
+        {
+			"name": "members",
+            "submit_as": "delegates",
+            "owner": "election_house",
+            "constructor_args": {
+              "initial_members": [1, 2, 3]
+            }
+		},
+        {
+			"name": "elect_members",
+            "submit_as": "elect_delegates",
+            "owner": "election_house",
+            "constructor_args": {
+              "policy": "delegates",
+              "cost": 10000
+            }
 		}
 	]
 }

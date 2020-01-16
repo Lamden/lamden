@@ -9,6 +9,7 @@ from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 
+
 class TestRewards(TestCase):
     def setUp(self):
 

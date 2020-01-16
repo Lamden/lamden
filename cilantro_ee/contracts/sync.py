@@ -138,5 +138,9 @@ def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
         with open(c_filepath) as f:
             code = f.read()
 
-        client.submit(code, name=contract['name'], owner=contract['owner'],
+        contract_name = contract['name']
+        if contract.get('submit_as') is not None:
+            contract_name = contract['submit_as']
+
+        client.submit(code, name=contract_name, owner=contract['owner'],
                       constructor_args=contract['constructor_args'])
