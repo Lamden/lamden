@@ -17,10 +17,18 @@ from cilantro_ee.storage.contract import BlockchainDriver
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
-        print(constitution)
         # Seed state initially
         if driver.get_contract('vkbook') is None or overwrite:
             sync.submit_vkbook(constitution, overwrite=overwrite)
+
+        # Sync contracts
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum']
+        )
 
         self.contacts = VKBook()
 
@@ -77,8 +85,7 @@ class Node:
     async def start(self):
         await self.network.start()
 
-        # Sync contracts
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+
 
         # Catchup
         if len(self.contacts.masternodes) > 1:
