@@ -18,10 +18,6 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
 
-        # Seed state initially
-        #if driver.get_contract('vkbook') is None or overwrite:
-        #    sync.submit_vkbook(constitution, overwrite=overwrite)
-
         # Sync contracts
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
         sync.submit_node_election_contracts(
