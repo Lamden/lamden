@@ -30,8 +30,7 @@ class TestVKBook(TestCase):
 
         self.assertEqual(v.masternodes, masternodes)
         self.assertEqual(v.delegates, delegates)
-        self.assertEqual(v.stamps_enabled, stamps)
-        self.assertEqual(v.nonces_enabled, nonces)
+
 
     def test_reinitialization_does_not_resubmit_and_overwrite(self):
         masternodes = ['a', 'b', 'c']
@@ -66,62 +65,6 @@ class TestVKBook(TestCase):
 
         self.assertEqual(v.masternodes, masternodes)
         self.assertEqual(v.delegates, delegates)
-        self.assertEqual(v.stamps_enabled, stamps)
-        self.assertEqual(v.nonces_enabled, nonces)
-
-    def test_witnesses_as_default(self):
-        masternodes = ['a', 'b', 'c']
-        delegates = ['d', 'e', 'f']
-        stamps = False
-        nonces = False
-
-        sync.submit_vkbook({
-            'masternodes': masternodes,
-            'delegates': delegates,
-            'masternode_min_quorum': 1,
-            'enable_stamps': stamps,
-            'enable_nonces': nonces
-        }, overwrite=False)
-
-        v = VKBook()
-
-        self.assertEqual(v.witnesses, [])
-
-    def test_notifiers_as_default(self):
-        masternodes = ['a', 'b', 'c']
-        delegates = ['d', 'e', 'f']
-        stamps = False
-        nonces = False
-
-        sync.submit_vkbook({
-            'masternodes': masternodes,
-            'delegates': delegates,
-            'masternode_min_quorum': 1,
-            'enable_stamps': stamps,
-            'enable_nonces': nonces
-        }, overwrite=False)
-
-        v = VKBook()
-
-        self.assertEqual(v.notifiers, [])
-
-    def test_schedulers_as_default(self):
-        masternodes = ['a', 'b', 'c']
-        delegates = ['d', 'e', 'f']
-        stamps = False
-        nonces = False
-
-        sync.submit_vkbook({
-            'masternodes': masternodes,
-            'delegates': delegates,
-            'masternode_min_quorum': 1,
-            'enable_stamps': stamps,
-            'enable_nonces': nonces
-        }, overwrite=False)
-
-        v = VKBook()
-
-        self.assertEqual(v.schedulers, [])
 
     def test_state_sync_returns_masternodes_and_delegates(self):
         masternodes = ['a', 'b', 'c']
