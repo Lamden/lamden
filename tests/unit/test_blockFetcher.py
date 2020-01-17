@@ -194,7 +194,7 @@ class TestBlockFetcher(TestCase):
 
     def test_fetch_block_from_master(self):
         # Setup Mongo
-        sync.seed_vkbook()
+        #sync.seed_vkbook()
         w = Wallet()
         c = CilantroStorageDriver(key=w.sk.encode())
         c.drop_collections()

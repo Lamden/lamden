@@ -9,6 +9,7 @@ from nacl.signing import SigningKey
 from cilantro_ee.contracts import sync
 import cilantro_ee
 
+
 class TestAuthenticator(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()

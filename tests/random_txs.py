@@ -72,18 +72,16 @@ def subblock_from_txs(txs, idx=0):
     w = Wallet()
 
     sig = w.sign(tree[0])
-    h = hashlib.sha3_256()
-    h.update(tree[0])
 
-    proof = subblock_capnp.MerkleProof.new_message(hash=h.digest(), signer=w.vk.encode(), signature=sig)
+    signature = subblock_capnp.Signature.new_message(signer=w.verifying_key(), signature=sig)
 
     sb = subblock_capnp.SubBlock.new_message(
-        merkleRoot=tree[0],
-        signatures=[proof.to_bytes_packed()],
-        merkleLeaves=tree,
-        subBlockNum=0,
         inputHash=secrets.token_bytes(32),
-        transactions=[tx for tx in txs]
+        transactions=[tx for tx in txs],
+        merkleLeaves=[t for t in tree],
+        signatures=[signature],
+        subBlockNum=idx,
+        prevBlockHash=b'\x00'*32,
     )
 
     return sb
@@ -190,7 +188,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
                 prevBlockHash=prev_block_hash)
         else:
             sbc = {
-                'resultHash' :tree.root,
+                'resultHash': tree.root,
                 'inputHash': input_hash,
                 'merkleLeaves': [leaf for leaf in tree.leaves],
                 'signature': proof.to_bytes_packed(),
