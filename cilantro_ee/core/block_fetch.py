@@ -1,11 +1,10 @@
-from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.storage import VKBook, BlockchainDriver, CilantroStorageDriver
 from cilantro_ee.core.top import TopBlockManager
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.sockets.services import get, defer
-from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, Parameters
 import zmq.asyncio
 import asyncio
 from collections import Counter
@@ -37,14 +36,13 @@ class BlockFetcher:
                  network_parameters=NetworkParameters(),
                  top=TopBlockManager(),
                  state=BlockchainDriver(),
-                 masternode_sockets=None):
+                 parameters: Parameters=None):
 
         self.contacts = contacts
         self.network_parameters = network_parameters
-        self.masternodes = masternode_sockets or \
-                           SocketBook("tcp://127.0.0.1",
-                                      ServiceType.BLOCK_SERVER, ctx, self.network_parameters,
-                                      self.contacts.contract.get_masternodes)
+
+        self.parameters = parameters
+
         self.top = top
         self.wallet = wallet
         self.ctx = ctx
@@ -57,15 +55,17 @@ class BlockFetcher:
 
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=500):
-        await self.masternodes.refresh()
+        await self.parameters.refresh()
+
+        masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
         responses = ConfirmationCounter()
 
         # In a 2 MN setup, a MN can only as one other MN
-        confirmations = min(confirmations, len(self.masternodes.sockets.values()) - 1)
+        confirmations = min(confirmations, len(masternodes) - 1)
 
         futures = []
         # Fire off requests to masternodes on the network
-        for master in self.masternodes.sockets.values():
+        for master in masternodes:
             f = asyncio.ensure_future(self.get_latest_block_height(master))
             futures.append(f)
 

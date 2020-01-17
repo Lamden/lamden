@@ -5,7 +5,6 @@ from cilantro_ee.core.block_fetch import BlockFetcher
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook
-from cilantro_ee.sockets.socket_book import SocketBook
 from cilantro_ee.contracts import sync
 from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
 import cilantro_ee
@@ -48,12 +47,7 @@ class Node:
             wallet=self.wallet,
             ctx=self.ctx,
             contacts=self.contacts,
-            masternode_sockets=SocketBook(
-                socket_base=self.socket_base,
-                service_type=ServiceType.BLOCK_SERVER,
-                phonebook_function=lambda: self.contacts.masternodes,
-                ctx=self.ctx
-            )
+            parameters=self.parameters,
         )
 
         self.network = Network(

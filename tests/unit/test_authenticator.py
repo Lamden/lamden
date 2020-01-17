@@ -7,7 +7,7 @@ import os
 from cilantro_ee.storage.vkbook import VKBook
 from nacl.signing import SigningKey
 from cilantro_ee.contracts import sync
-
+import cilantro_ee
 
 class TestAuthenticator(TestCase):
     def setUp(self):
@@ -16,18 +16,12 @@ class TestAuthenticator(TestCase):
 
         masternodes = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
         delegates = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
-        stamps = False
-        nonces = False
 
-        sync.submit_vkbook({
-            'masternodes': masternodes,
-            'delegates': delegates,
-            'masternode_min_quorum': 1,
-            'enable_stamps': stamps,
-            'enable_nonces': nonces
-        }, overwrite=True)
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(initial_masternodes=masternodes, boot_mns=1,
+                                            initial_delegates=delegates, boot_dels=1)
 
-        self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(), ctx=self.ctx)
+        self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(boot_mn=1, boot_del=1), ctx=self.ctx)
 
     def tearDown(self):
         self.ctx.destroy()
