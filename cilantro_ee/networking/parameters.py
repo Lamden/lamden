@@ -63,7 +63,7 @@ class Parameters:
                  ctx: zmq.asyncio.Context,
                  wallet,
                  contacts: VKBook,
-                 network_parameters:NetworkParameters=NetworkParameters()
+                 network_parameters: NetworkParameters=NetworkParameters()
                  ):
 
         self.socket_base = socket_base

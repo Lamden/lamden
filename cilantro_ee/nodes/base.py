@@ -13,6 +13,7 @@ import asyncio
 
 from cilantro_ee.storage.contract import BlockchainDriver
 
+
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
@@ -46,7 +47,6 @@ class Node:
         self.block_fetcher = BlockFetcher(
             wallet=self.wallet,
             ctx=self.ctx,
-            contacts=self.contacts,
             parameters=self.parameters,
         )
 

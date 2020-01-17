@@ -1,10 +1,9 @@
-from cilantro_ee.storage import VKBook, BlockchainDriver, CilantroStorageDriver
-from cilantro_ee.core.top import TopBlockManager
+from cilantro_ee.storage import BlockchainDriver, CilantroStorageDriver
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.messages.message import Message, MessageType
 from cilantro_ee.core.canonical import verify_block
 from cilantro_ee.sockets.services import get, defer
-from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, Parameters
+from cilantro_ee.networking.parameters import ServiceType, Parameters
 import zmq.asyncio
 import asyncio
 from collections import Counter
@@ -31,19 +30,12 @@ class ConfirmationCounter(Counter):
 class BlockFetcher:
     def __init__(self, wallet: Wallet,
                  ctx: zmq.asyncio.Context,
-                 contacts: VKBook,
                  blocks: CilantroStorageDriver=None,
-                 network_parameters=NetworkParameters(),
-                 top=TopBlockManager(),
                  state=BlockchainDriver(),
                  parameters: Parameters=None):
 
-        self.contacts = contacts
-        self.network_parameters = network_parameters
-
         self.parameters = parameters
 
-        self.top = top
         self.wallet = wallet
         self.ctx = ctx
         self.blocks = blocks
@@ -128,14 +120,16 @@ class BlockFetcher:
                 return unpacked
 
     async def find_valid_block(self, i, latest_hash, timeout=500):
-        await self.masternodes.refresh()
+        await self.parameters.refresh()
+
+        masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
 
         block_found = False
         block = None
 
         futures = []
         # Fire off requests to masternodes on the network
-        for master in self.masternodes.sockets.values():
+        for master in masternodes:
             f = asyncio.ensure_future(self.get_block_from_master(i, master))
             futures.append(f)
 
@@ -154,15 +148,15 @@ class BlockFetcher:
         return block
 
     async def fetch_blocks(self, latest_block_available=0):
-        latest_block_stored = self.top.get_latest_block_number()
-        latest_hash = self.top.get_latest_block_hash()
+        latest_block_stored = self.state.get_latest_block_num()
+        latest_hash = self.state.get_latest_block_hash()
 
         if latest_block_available <= latest_block_stored:
             return
 
         for i in range(latest_block_stored, latest_block_available + 1):
             await self.find_and_store_block(i, latest_hash)
-            latest_hash = self.top.get_latest_block_hash()
+            latest_hash = self.state.get_latest_block_hash()
 
     async def find_and_store_block(self, block_num, block_hash):
         block = await self.find_valid_block(block_num, block_hash)
@@ -182,15 +176,15 @@ class BlockFetcher:
                 self.blocks.put(block_dict)
 
             self.state.update_with_block(block_dict)
-            self.top.set_latest_block_hash(block.blockHash)
-            self.top.set_latest_block_number(block_num)
+            self.state.set_latest_block_hash(block.blockHash)
+            self.state.set_latest_block_num(block_num)
 
     # Main Catchup function. Called at launch of node
     async def sync(self):
         self.in_catchup = True
 
         current_height = await self.find_missing_block_indexes()
-        latest_block_stored = self.top.get_latest_block_number()
+        latest_block_stored = self.state.get_latest_block_num()
 
         while current_height < latest_block_stored:
 
@@ -219,7 +213,7 @@ class BlockFetcher:
 
         last_block = self.blocks.get_last_n(1, CilantroStorageDriver.INDEX)[0]
         last_stored_block_num = last_block.get('blockNum')
-        last_state_block_num = self.top.get_latest_block_number()
+        last_state_block_num = self.state.get_latest_block_num()
 
         while last_state_block_num < last_stored_block_num:
             last_state_block_num += 1
@@ -229,5 +223,5 @@ class BlockFetcher:
 
     async def is_caught_up(self):
         current_height = await self.find_missing_block_indexes()
-        latest_block_stored = self.top.get_latest_block_number()
+        latest_block_stored = self.state.get_latest_block_num()
         return current_height >= latest_block_stored
