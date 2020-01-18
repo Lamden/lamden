@@ -1,7 +1,6 @@
 from unittest import TestCase
 import zmq.asyncio
 import asyncio
-from cilantro_ee.core import canonical
 from contracting.client import ContractingClient
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.nodes.masternode.masternode import Masternode

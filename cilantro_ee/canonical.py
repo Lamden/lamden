@@ -3,7 +3,7 @@ import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import bson
 import hashlib
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 from cilantro_ee.messages import Message, MessageType
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')

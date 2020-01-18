@@ -1,5 +1,5 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
-from cilantro_ee.core.canonical import block_is_failed
+from cilantro_ee.canonical import block_is_failed
 from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message

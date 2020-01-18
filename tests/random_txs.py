@@ -4,7 +4,7 @@ from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 import random
 from cilantro_ee.storage import BlockchainDriver
 from contracting import config

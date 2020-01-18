@@ -1,7 +1,7 @@
 from cilantro_ee.constants import conf
 
 from cilantro_ee.networking.network import Network
-from cilantro_ee.core.block_fetch import BlockFetcher
+from cilantro_ee.block_server import BlockFetcher
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook

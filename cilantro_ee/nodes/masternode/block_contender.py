@@ -5,10 +5,10 @@ from cilantro_ee.storage import BlockchainDriver
 import capnp
 import os
 
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 
 import asyncio
 import time

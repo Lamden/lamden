@@ -1,12 +1,12 @@
 from unittest import TestCase
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.core.block_server import BlockServer
+from cilantro_ee.block_server import BlockServer
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 import time
 import zmq.asyncio
 import zmq
