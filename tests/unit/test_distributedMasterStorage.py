@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.storage.master import DistributedMasterStorage
-from cilantro_ee.crypto import wallet
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 
@@ -15,7 +15,8 @@ class TestDistributedMasterStorage(TestCase):
                             'enable_nonces': True},
                            overwrite=True)
 
-        sk, vk = wallet.new()
+        w = Wallet()
+        sk, vk = w.signing_key(), w.verifying_key()
         self.db = DistributedMasterStorage(key=sk, vkbook=VKBook())
 
     def tearDown(self):
