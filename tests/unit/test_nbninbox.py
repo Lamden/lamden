@@ -1,7 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
+from cilantro_ee.contracts.sync import extract_vk_args
 from cilantro_ee.nodes.new_block_inbox import NBNInbox, BlockNumberMismatch, NotBlockNotificationMessageType
-from tests.utils.constitution_builder import ConstitutionBuilder
 
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.contract import BlockchainDriver
@@ -15,6 +14,7 @@ import cilantro_ee
 from cilantro_ee.contracts import sync
 import zmq.asyncio
 import asyncio
+
 
 # seed the vkbook
 def seed_vk_book(num_mn=10, mn_quorum=10, num_del=10, del_quorum=10):

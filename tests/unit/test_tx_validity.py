@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.crypto.transaction import TransactionBuilder, transaction_is_valid
 from cilantro_ee.crypto import transaction
 from cilantro_ee.crypto.wallet import Wallet
@@ -14,11 +14,11 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 
 class TestTXValidity(TestCase):
     def setUp(self):
-        self.nonce_manager = NonceManager()
-        self.nonce_manager.driver.flush()
+        self.nonce_manager = BlockchainDriver()
+        self.nonce_manager.flush()
 
     def tearDown(self):
-        self.nonce_manager.driver.flush()
+        self.nonce_manager.flush()
 
     def test_processor_incorrect_returns_false(self):
         w = Wallet()
@@ -150,7 +150,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            tx.payload.sender.hex())
 
-        balance = self.nonce_manager.driver.get(balances_key) or 0
+        balance = self.nonce_manager.get(balances_key) or 0
 
         self.assertEqual(balance, 0)
 
@@ -176,10 +176,10 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            tx.payload.sender.hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
-        balance = self.nonce_manager.driver.get(balances_key) or 0
+        balance = self.nonce_manager.get(balances_key) or 0
 
         self.assertEqual(balance, 500000)
 
@@ -193,7 +193,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -261,7 +261,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -330,7 +330,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -399,7 +399,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -442,7 +442,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -483,7 +483,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=2)
@@ -512,7 +512,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=10)
@@ -542,7 +542,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=16)
@@ -572,7 +572,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         for i in range(15):
             tx = TransactionBuilder(w.verifying_key(),
