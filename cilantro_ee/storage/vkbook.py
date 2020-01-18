@@ -1,9 +1,8 @@
 from contracting.client import ContractingClient
-import math
 
 
 class VKBook:
-    def __init__(self, boot_mn, boot_del, client=ContractingClient()):
+    def __init__(self, boot_mn=1, boot_del=1, client=ContractingClient()):
         self.boot_mn = boot_mn
         self.boot_del = boot_del
         self.reload(client)

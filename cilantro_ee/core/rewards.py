@@ -1,6 +1,5 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from cilantro_ee.storage.vkbook import VKBook
 import capnp
 import os
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
@@ -11,7 +10,7 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, vkbook:VKBook, driver=ContractDriver(), client=ContractingClient()):
+    def __init__(self, vkbook, driver=ContractDriver(), client=ContractingClient()):
         self.vkbook = vkbook
         self.driver = driver
         self.client = client
@@ -19,6 +18,7 @@ class RewardManager:
         self.stamp_contract = self.client.get_contract('stamp_cost')
         self.reward_contract = self.client.get_contract('rewards')
         self.currency_contract = self.client.get_contract('currency')
+        self.election_house = self.client.get_contract('election_house')
 
         assert self.stamp_contract is not None, 'Stamp contract not in state.'
         assert self.reward_contract is not None, 'Reward contract not in state.'
@@ -34,6 +34,7 @@ class RewardManager:
         master_reward = (master_ratio * pending_rewards) / len(masters)
         delegate_reward = (delegate_ratio * pending_rewards) / len(delegates)
         foundation_reward = foundation_ratio * pending_rewards
+        # BURN + DEVELOPER
 
         for m in masters:
             self.add_to_balance(vk=m, amount=master_reward)
