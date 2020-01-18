@@ -14,6 +14,7 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
+from cilantro_ee.rewards import RewardManager
 
 
 class Delegate(Node):
@@ -36,6 +37,8 @@ class Delegate(Node):
         self.pending_sbcs = set()
 
         self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
+
+        self.reward_manager = RewardManager(driver=self.driver, client=ContractingClient(executor=self.executor))
 
     async def start(self):
         await super().start()
@@ -64,10 +67,29 @@ class Delegate(Node):
             self.log.info('Did not sign block. Processing.')
             self.driver.revert()
             self.driver.update_with_block(nbn)
+
+            # ISSUE REWARDS
+            stamps = self.reward_manager.stamps_in_block(nbn)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
+
         elif not block_is_failed(nbn, nbn['prevBlockHash'], nbn['blockNum']):
             self.log.info('Received successful block')
             self.driver.commit()
             self.driver.update_with_block(nbn, commit_tx=False)
+
+            # ISSUE REWARDS
+            stamps = self.reward_manager.stamps_in_block(nbn)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
+
+            # ISSUE REWARDS
+            stamps = self.reward_manager.stamps_in_block(nbn)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
         else:
             self.log.info('Skip block. Reverting')
             self.driver.revert()

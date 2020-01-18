@@ -1,5 +1,5 @@
 import asyncio
-from cilantro_ee.block_server import BlockServer
+from cilantro_ee.catchup import BlockServer
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import CilantroStorageDriver
@@ -8,6 +8,7 @@ from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee import canonical
+from cilantro_ee.rewards import RewardManager
 
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
@@ -38,6 +39,8 @@ class Masternode(Node):
             ctx=self.ctx,
             driver=self.driver
         )
+
+        self.reward_manager = RewardManager(driver=self.driver)
 
         self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
@@ -128,6 +131,13 @@ class Masternode(Node):
         #if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num:
             self.driver.update_with_block(block)
+
+            # ISSUE REWARDS
+            stamps = self.reward_manager.stamps_in_block(block)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
+
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 

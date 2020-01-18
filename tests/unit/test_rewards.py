@@ -22,7 +22,7 @@ class TestRewards(TestCase):
             boot_dels=3,
         )
 
-        self.r = RewardManager(vkbook=VKBook(2, 3), client=self.client)
+        self.r = RewardManager(vkbook=VKBook(2, 3))
 
     def tearDown(self):
         self.client.flush()
