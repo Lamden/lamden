@@ -53,15 +53,22 @@ class BlockServer(AsyncInbox):
                 subblocks = block_dict.get('subBlocks')
                 owners = block_dict.get('blockOwners')
 
-                reply = Message.get_signed_message_packed_2(
-                    wallet=self.wallet,
-                    msg_type=MessageType.BLOCK_DATA,
-                    blockHash=block_hash,
-                    blockNum=block_num,
-                    blockOwners=[owner for owner in owners],
-                    prevBlockHash=prev_hash,
-                    subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
-                )
+                try:
+                    reply = Message.get_signed_message_packed_2(
+                        wallet=self.wallet,
+                        msg_type=MessageType.BLOCK_DATA,
+                        blockHash=block_hash,
+                        blockNum=block_num,
+                        blockOwners=[owner for owner in owners],
+                        prevBlockHash=prev_hash,
+                        subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
+                    )
+                except:
+                    reply = Message.get_signed_message_packed_2(
+                        wallet=self.wallet,
+                        msg_type=MessageType.BAD_REQUEST,
+                        timestamp=int(time.time())
+                    )
 
                 await self.return_msg(_id, reply)
             else:
