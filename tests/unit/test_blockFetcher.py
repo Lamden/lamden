@@ -7,10 +7,6 @@ from cilantro_ee.core.block_server import BlockServer
 from cilantro_ee.core import canonical
 import secrets
 from cilantro_ee.storage.master import CilantroStorageDriver
-from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.core.top import TopBlockManager
-from cilantro_ee.contracts import sync
-import cilantro_ee
 import zmq.asyncio
 import zmq
 import asyncio
@@ -33,7 +29,7 @@ class FakeTopBlockManager:
     def get_latest_block_hash(self):
         return self.hash_
 
-    def get_latest_block_number(self):
+    def get_latest_block_num(self):
         return self.height
 
 
@@ -78,11 +74,9 @@ class TestBlockFetcher(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.ctx = zmq.asyncio.Context()
-        self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
-        self.t.driver.flush()
         self.loop.close()
 
     def test_get_latest_block_height(self):
@@ -92,7 +86,7 @@ class TestBlockFetcher(TestCase):
                         ctx=self.ctx,
                         linger=500,
                         poll_timeout=500,
-                        top=FakeTopBlockManager(101, 'abcd'))
+                        driver=FakeTopBlockManager(101, 'abcd'))
 
         f = BlockFetcher(wallet=Wallet(), ctx=self.ctx)
 
@@ -116,7 +110,7 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=500,
-                         top=FakeTopBlockManager(101, 'abcd'))
+                         driver=FakeTopBlockManager(101, 'abcd'))
 
         w2 = Wallet()
         n2 = '/tmp/n2'
@@ -126,7 +120,7 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'))
+                         driver=FakeTopBlockManager(101, 'abcd'))
 
         w3 = Wallet()
         n3 = '/tmp/n3'
@@ -136,7 +130,7 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'))
+                         driver=FakeTopBlockManager(101, 'abcd'))
 
         w4 = Wallet()
         n4 = '/tmp/n4'
@@ -146,7 +140,7 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(90, 'abcd'))
+                         driver=FakeTopBlockManager(90, 'abcd'))
 
         class FakeParameters:
             async def refresh(self):
@@ -208,8 +202,7 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=500,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=c)
+                         driver=FakeTopBlockManager(101, 'abcd'))
 
         class FakeParameters:
             async def refresh(self):
@@ -256,8 +249,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=500,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=c)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=c)
 
         # Bad Ones
         bad_block = canonical.block_from_subblocks([s for s in random_txs.random_block().subBlocks],
@@ -275,8 +268,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=d)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=d)
 
         w3 = Wallet()
         n3 = '/tmp/n3'
@@ -286,8 +279,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=d)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=d)
 
         class FakeParameters:
             async def refresh(self):
@@ -305,9 +298,9 @@ class TestBlockFetcher(TestCase):
             m2.serve(),
             m3.serve(),
             f.find_valid_block(0, latest_hash=b'\x00' * 32, timeout=3000),
-            stop_server(m1, 0.7),
-            stop_server(m2, 0.7),
-            stop_server(m3, 0.7),
+            stop_server(m1, 2),
+            stop_server(m2, 2),
+            stop_server(m3, 2),
         )
 
         loop = asyncio.get_event_loop()
@@ -340,8 +333,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=500,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=c)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=c)
 
         w2 = Wallet()
         n2 = '/tmp/n2'
@@ -351,8 +344,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=c)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=c)
 
         w3 = Wallet()
         n3 = '/tmp/n3'
@@ -362,8 +355,8 @@ class TestBlockFetcher(TestCase):
                          ctx=self.ctx,
                          linger=500,
                          poll_timeout=100,
-                         top=FakeTopBlockManager(101, 'abcd'),
-                         driver=c)
+                         driver=FakeTopBlockManager(101, 'abcd'),
+                         blocks=c)
 
 
         fake_driver = FakeBlockReciever()

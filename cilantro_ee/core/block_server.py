@@ -1,7 +1,6 @@
 from cilantro_ee.sockets.services import AsyncInbox
 
-from cilantro_ee.storage.master import CilantroStorageDriver
-from cilantro_ee.core.top import TopBlockManager
+from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
@@ -19,10 +18,8 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 
 class BlockServer(AsyncInbox):
-    def __init__(self, wallet, socket_base, ctx=None, network_parameters=NetworkParameters(),
-                 linger=500, poll_timeout=200,
-                 driver: CilantroStorageDriver=None, top=TopBlockManager()
-                 ):
+    def __init__(self, wallet, socket_base, ctx=None, network_parameters=NetworkParameters(), linger=500,
+                 poll_timeout=200, blocks: CilantroStorageDriver=None, driver=BlockchainDriver()):
 
         self.wallet = wallet
         self.ctx = ctx or zmq.asyncio.Context()
@@ -34,19 +31,20 @@ class BlockServer(AsyncInbox):
                          linger=linger,
                          poll_timeout=poll_timeout)
 
-        self.driver = driver or CilantroStorageDriver(key=self.wallet.signing_key())
-        self.top = top
+        self.blocks = blocks or CilantroStorageDriver(key=self.wallet.signing_key())
+        self.driver = driver
 
     def sync_serve(self):
         asyncio.get_event_loop().run_until_complete(
-                           asyncio.ensure_future(self.serve()))
+            asyncio.ensure_future(self.serve())
+        )
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
 
-        if msg_type == MessageType.BLOCK_DATA_REQUEST and self.driver is not None:
+        if msg_type == MessageType.BLOCK_DATA_REQUEST and self.blocks is not None:
 
-            block_dict = self.driver.get_block(msg.blockNum)
+            block_dict = self.blocks.get_block(msg.blockNum)
 
             if block_dict is not None:
                 block_hash = block_dict.get('blockHash')
@@ -55,46 +53,51 @@ class BlockServer(AsyncInbox):
                 subblocks = block_dict.get('subBlocks')
                 owners = block_dict.get('blockOwners')
 
-                reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                            msg_type=MessageType.BLOCK_DATA,
-                                                            blockHash=block_hash,
-                                                            blockNum=block_num,
-                                                            blockOwners=[owner for owner in owners],
-                                                            prevBlockHash=prev_hash,
-                                                            subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
-                                                            )
+                reply = Message.get_signed_message_packed_2(
+                    wallet=self.wallet,
+                    msg_type=MessageType.BLOCK_DATA,
+                    blockHash=block_hash,
+                    blockNum=block_num,
+                    blockOwners=[owner for owner in owners],
+                    prevBlockHash=prev_hash,
+                    subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
+                )
 
                 await self.return_msg(_id, reply)
             else:
-                reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                            msg_type=MessageType.BAD_REQUEST,
-                                                            timestamp=int(time.time()))
+                reply = Message.get_signed_message_packed_2(
+                    wallet=self.wallet,
+                    msg_type=MessageType.BAD_REQUEST,
+                    timestamp=int(time.time())
+                )
+
                 await self.return_msg(_id, reply)
 
-        elif msg_type == MessageType.BLOCK_INDEX_REQUEST and self.driver is not None:
+        elif msg_type == MessageType.BLOCK_INDEX_REQUEST and self.blocks is not None:
             await self.return_msg(_id, b'howdy')
 
         elif msg_type == MessageType.LATEST_BLOCK_HEIGHT_REQUEST:
-            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                        msg_type=MessageType.LATEST_BLOCK_HEIGHT_REPLY,
-                                                        blockHeight=self.top.get_latest_block_number())
+            reply = Message.get_signed_message_packed_2(
+                wallet=self.wallet,
+                msg_type=MessageType.LATEST_BLOCK_HEIGHT_REPLY,
+                blockHeight=self.driver.get_latest_block_num()
+            )
 
             await self.return_msg(_id, reply)
 
         elif msg_type == MessageType.LATEST_BLOCK_HASH_REQUEST:
-            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                        msg_type=MessageType.LATEST_BLOCK_HASH_REPLY,
-                                                        blockHash=self.top.get_latest_block_hash())
+            reply = Message.get_signed_message_packed_2(
+                wallet=self.wallet,
+                msg_type=MessageType.LATEST_BLOCK_HASH_REPLY,
+                blockHash=self.driver.get_latest_block_hash()
+            )
 
             await self.return_msg(_id, reply)
         else:
-            reply = Message.get_signed_message_packed_2(wallet=self.wallet,
-                                                        msg_type=MessageType.BAD_REQUEST,
-                                                        timestamp=int(time.time()))
+            reply = Message.get_signed_message_packed_2(
+                wallet=self.wallet,
+                msg_type=MessageType.BAD_REQUEST,
+                timestamp=int(time.time())
+            )
+
             await self.return_msg(_id, reply)
-
-
-class BlockServerProcess:
-    def __init__(self, **kwargs):
-        bs = BlockServer(**kwargs)
-        bs.sync_serve()

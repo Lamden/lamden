@@ -6,12 +6,10 @@ import capnp
 import secrets
 from cilantro_ee.containers.merkle_tree import merklize
 import random
-import json
-import hashlib
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from contracting import config
 
-N = NonceManager()
+N = BlockchainDriver()
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -32,7 +30,7 @@ def random_packed_tx(nonce=0, processor=None, give_stamps=False):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        N.driver.set(balances_key, stamps + 1000)
+        N.set(balances_key, stamps + 1000)
 
     tx = TransactionBuilder(w.verifying_key(), contract=secrets.token_hex(8),
                             function=secrets.token_hex(8),
