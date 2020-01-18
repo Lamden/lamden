@@ -34,7 +34,7 @@ class TestBlockServer(TestCase):
 
     def test_get_latest_block_height(self):
         w = Wallet()
-        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=self.t)
 
         self.t.set_latest_block_num(555)
 
