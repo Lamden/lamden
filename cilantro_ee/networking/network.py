@@ -144,10 +144,10 @@ class Network:
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
-            log.info('Need {} MNs and {} DELs to begin...'.format(
-                masternode_quorum_required,
-                delegate_quorum_required
-            ))
+            # log.info('Need {} MNs and {} DELs to begin...'.format(
+            #     masternode_quorum_required,
+            #     delegate_quorum_required
+            # ))
 
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]

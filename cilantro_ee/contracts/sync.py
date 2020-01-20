@@ -137,8 +137,6 @@ def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.
         if contract.get('submit_as') is not None:
             contract_name = contract['submit_as']
 
-        print(contract_name)
-
         client.submit(code, name=contract_name, owner=contract['owner'],
                       constructor_args=contract['constructor_args'])
 
@@ -146,6 +144,9 @@ def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.
 def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
                                    delegate_price=10_000, root=os.path.dirname(__file__), client=ContractingClient()):
     members = root + '/genesis/members.s.py'
+
+    print(f'masters: {initial_masternodes}')
+    print(f'delegates: {initial_delegates}')
 
     with open(members) as f:
         code = f.read()
