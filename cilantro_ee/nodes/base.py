@@ -22,8 +22,6 @@ class Node:
         self.driver = driver
         self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
 
-        print(self.client.submission_contract)
-
         # Sync contracts
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(

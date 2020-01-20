@@ -161,7 +161,7 @@ class SubscriptionService:
 
 
 class RequestReplyService:
-    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=500, poll_timeout=10):
+    def __init__(self, socket_id: SocketStruct, wallet: Wallet, ctx: zmq.Context, linger=1000, poll_timeout=500):
         self.address = str(socket_id)
         self.wallet = wallet
         self.ctx = ctx
@@ -207,7 +207,7 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500, linger=500, retries=10, dealer=False):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=1000, retries=10, dealer=False):
     if retries < 0:
         return None
 
@@ -239,7 +239,7 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=500,
 
 
 class AsyncInbox:
-    def __init__(self, socket_id: SocketStruct, ctx: zmq.Context, wallet=None, linger=500, poll_timeout=10):
+    def __init__(self, socket_id: SocketStruct, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=500):
         if socket_id.protocol == Protocols.TCP:
             socket_id.id = '*'
 

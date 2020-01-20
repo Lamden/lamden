@@ -69,6 +69,9 @@ class MockDB:
     def set(self, key, value):
         self.d[key] = value
 
+    def iter(self, prefix):
+        return [k for k in self.d.keys() if k.startswith(prefix)]
+
 
 class IsolatedDriver(BlockchainDriver):
     def __init__(self, *args, **kwargs):
@@ -84,14 +87,21 @@ class IsolatedDriver(BlockchainDriver):
     def commit(self):
         pass
 
-    def set_contract(self, *args, **kwargs):
-        super().set_contract(*args, **kwargs)
-        print('set')
-
 
 def get_drivers():
     c = ContractDriver()
 
+
+def start_delegate(wallet, ctx, socket_base, constitution, bootnodes, driver):
+    d1 = Delegate(wallet=wallet, ctx=ctx, socket_base=socket_base, constitution=constitution, bootnodes=bootnodes,
+                  driver=driver)
+    d1.start()
+
+
+def start_masternode(wallet, ctx, socket_base, constitution, bootnodes, driver, webserver_port):
+    d1 = Masternode(wallet=wallet, ctx=ctx, socket_base=socket_base, constitution=constitution, bootnodes=bootnodes,
+                    driver=driver, webserver_port=webserver_port)
+    d1.start()
 
 class TestTotalEndToEnd(TestCase):
     def setUp(self):
@@ -296,25 +306,18 @@ class TestTotalEndToEnd(TestCase):
         dw2 = Wallet()
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
-                    mnw1.verifying_key().hex(),
-                    mnw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
-                    dw1.verifying_key().hex(),
-                    dw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "witnesses": {},
-            "schedulers": {},
-            "notifiers": {},
-            "enable_stamps": False,
-            "enable_nonces": False
+            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'witnesses': [],
+            'schedulers': [],
+            'notifiers': [],
+            'enable_stamps': False,
+            'enable_nonces': False,
+            'masternode_min_quorum': 2,
+            'delegate_min_quorum': 2,
+            'witness_min_quorum': 0,
+            'notifier_min_quorum': 0,
+            'scheduler_min_quorum': 0
         }
 
         n1 = '/tmp/n1'
@@ -367,50 +370,43 @@ class TestTotalEndToEnd(TestCase):
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
-                    mnw1.verifying_key().hex(),
-                    mnw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
-                    dw1.verifying_key().hex(),
-                    dw2.verifying_key().hex()
-                ],
-                "min_quorum": 1
-            },
-            "witnesses": {},
-            "schedulers": {},
-            "notifiers": {},
-            "enable_stamps": False,
-            "enable_nonces": False
+            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'witnesses': [],
+            'schedulers': [],
+            'notifiers': [],
+            'enable_stamps': False,
+            'enable_nonces': False,
+            'masternode_min_quorum': 2,
+            'delegate_min_quorum': 2,
+            'witness_min_quorum': 0,
+            'notifier_min_quorum': 0,
+            'scheduler_min_quorum': 0
         }
 
-        md1 = IsolatedDriver()
+        #md1 = IsolatedDriver()
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8080, driver=md1)
+                         constitution=constitution, webserver_port=8080)#, driver=md1)
 
-        md2 = IsolatedDriver()
+        #md2 = IsolatedDriver()
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8081, driver=md2)
+                         constitution=constitution, webserver_port=8081)#, driver=md2)
 
-        dd1 = IsolatedDriver()
+        #dd1 = IsolatedDriver()
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
-                      constitution=constitution, bootnodes=bootnodes, driver=dd1)
+                      constitution=constitution, bootnodes=bootnodes)#, driver=dd1)
 
-        dd2 = IsolatedDriver()
+        #dd2 = IsolatedDriver()
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
-                      constitution=constitution, bootnodes=bootnodes, driver=dd2)
+                      constitution=constitution, bootnodes=bootnodes)#, driver=dd2)
 
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(
@@ -456,8 +452,8 @@ class TestTotalEndToEnd(TestCase):
             'notifiers': [],
             'enable_stamps': False,
             'enable_nonces': False,
-            'masternode_min_quorum': 1,
-            'delegate_min_quorum': 1,
+            'masternode_min_quorum': 2,
+            'delegate_min_quorum': 2,
             'witness_min_quorum': 0,
             'notifier_min_quorum': 0,
             'scheduler_min_quorum': 0
@@ -516,3 +512,48 @@ class TestTotalEndToEnd(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run())
+
+
+    def test_multiprocess_boot(self):
+        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
+
+        mnw1 = Wallet()
+        mnw2 = Wallet()
+        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
+
+        dw1 = Wallet()
+        dw2 = Wallet()
+        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
+
+        constitution = {
+            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'witnesses': [],
+            'schedulers': [],
+            'notifiers': [],
+            'enable_stamps': False,
+            'enable_nonces': False,
+            'masternode_min_quorum': 2,
+            'delegate_min_quorum': 2,
+            'witness_min_quorum': 0,
+            'notifier_min_quorum': 0,
+            'scheduler_min_quorum': 0
+        }
+
+        md1 = IsolatedDriver()
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+        mn1 = {
+            'wallet': mnw1,
+            'ctx': self.ctx,
+            'socket_base': f'ipc://{n1}',
+            'bootnodes': bootnodes,
+            'constitution': constitution,
+            'webserver_port': 8080,
+            'driver': md1
+        }
+
+        import multiprocessing
+
+        p = multiprocessing.Process(target=start_masternode, kwargs=mn1)
+        p.start()
