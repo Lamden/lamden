@@ -63,8 +63,8 @@ class BlockchainDriver(ContractDriver):
         log.info(self.latest_block_hash)
         log.info(block['prevBlockHash'])
 
-        # if self.latest_block_hash != block['prevBlockHash']:
-        #     log.error('BLOCK MISMATCH!!!')
+        if self.latest_block_hash != block['prevBlockHash']:
+            log.error('BLOCK MISMATCH!!!')
         #     return
 
         # Map of tuple to nonce such that (processor, sender) => nonce

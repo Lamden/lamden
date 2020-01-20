@@ -507,7 +507,12 @@ class TestTotalEndToEnd(TestCase):
                 r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
 
             res = await r.json()
-            await asyncio.sleep(10)
+            await asyncio.sleep(2)
+            async with aiohttp.ClientSession() as session:
+                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
+
+            res = await r.json()
+            await asyncio.sleep(5)
             mn1.stop()
             mn2.stop()
             d1.stop()
@@ -515,44 +520,3 @@ class TestTotalEndToEnd(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run())
-
-
-    def test_multiprocess_boot(self):
-        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
-
-        mnw1 = Wallet()
-        mnw2 = Wallet()
-        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
-
-        dw1 = Wallet()
-        dw2 = Wallet()
-        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
-
-        constitution = {
-            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
-            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
-            'witnesses': [],
-            'schedulers': [],
-            'notifiers': [],
-            'enable_stamps': False,
-            'enable_nonces': False,
-            'masternode_min_quorum': 2,
-            'delegate_min_quorum': 2,
-            'witness_min_quorum': 0,
-            'notifier_min_quorum': 0,
-            'scheduler_min_quorum': 0
-        }
-
-        n1 = '/tmp/n1'
-        make_ipc(n1)
-        mn1 = {
-            'wallet': mnw1,
-            'socket_base': f'ipc://{n1}',
-            'bootnodes': bootnodes,
-            'constitution': constitution,
-        }
-
-        import multiprocessing
-
-        p = multiprocessing.Process(target=start_delegate, kwargs=mn1)
-        p.start()
