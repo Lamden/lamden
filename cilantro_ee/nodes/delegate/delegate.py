@@ -65,15 +65,14 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         self.driver.revert()
-        self.log.info(nbn)
         if self.driver.latest_block_num < nbn['blockNum']:
             self.driver.update_with_block(nbn)
 
-        # ISSUE REWARDS
-        stamps = self.reward_manager.stamps_in_block(nbn)
-        self.log.info(f'{stamps} in this block to issue.')
-        self.reward_manager.set_pending_rewards(stamps)
-        self.reward_manager.issue_rewards()
+            # ISSUE REWARDS
+            stamps = self.reward_manager.stamps_in_block(nbn)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
 
         self.nbn_inbox.clean()
         self.pending_sbcs.clear()
