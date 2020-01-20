@@ -145,9 +145,6 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
                                    delegate_price=10_000, root=os.path.dirname(__file__), client=ContractingClient()):
     members = root + '/genesis/members.s.py'
 
-    print(f'masters: {initial_masternodes}')
-    print(f'delegates: {initial_delegates}')
-
     with open(members) as f:
         code = f.read()
 
