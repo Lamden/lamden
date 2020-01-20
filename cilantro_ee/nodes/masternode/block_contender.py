@@ -99,10 +99,10 @@ class SBCInbox(AsyncInbox):
         if not valid_sig:
             raise SBCInvalidSignatureError
 
-        if sbc.prevBlockHash != self.driver.latest_block_hash:
-            self.log.info(sbc.prevBlockHash)
-            self.log.info(self.driver.latest_block_hash)
-            raise SBCBlockHashMismatchError
+        # if sbc.prevBlockHash != self.driver.latest_block_hash:
+        #     self.log.info(sbc.prevBlockHash)
+        #     self.log.info(self.driver.latest_block_hash)
+        #     raise SBCBlockHashMismatchError
 
         # idk
         if len(sbc.merkleTree.leaves) > 0:
