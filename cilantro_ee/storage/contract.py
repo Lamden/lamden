@@ -60,8 +60,8 @@ class BlockchainDriver(ContractDriver):
 
         # self.log.info("block {}".format(block))
 
-        log.info(self.latest_block_hash)
-        log.info(block['prevBlockHash'])
+        log.info(f'LATEST: {self.latest_block_hash}')
+        log.info(f"PREV: {block['prevBlockHash']}")
 
         if self.latest_block_hash != block['prevBlockHash']:
             log.error('BLOCK MISMATCH!!!')
