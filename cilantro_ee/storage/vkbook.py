@@ -2,9 +2,15 @@ from contracting.client import ContractingClient
 
 
 class VKBook:
-    def __init__(self, boot_mn=1, boot_del=1, client=ContractingClient()):
+    def __init__(self, boot_mn=1, boot_del=1, client=None):
         self.boot_mn = boot_mn
         self.boot_del = boot_del
+
+        if client is None:
+            self.client = ContractingClient()
+        else:
+            self.client = client
+
         self.reload(client)
 
     def reload(self, client=ContractingClient()):

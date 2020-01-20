@@ -3,7 +3,7 @@ import json
 from functools import partial
 
 import zmq
-from cilantro_ee.networking.network import PEPPER
+from cilantro_ee.constants.ports import PEPPER
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets import services
 from cilantro_ee.networking import discovery

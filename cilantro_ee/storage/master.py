@@ -1,5 +1,5 @@
 import cilantro_ee
-from cilantro_ee.crypto import wallet
+from cilantro_ee.crypto.wallet import Wallet
 from pymongo import MongoClient, DESCENDING
 from configparser import ConfigParser
 from cilantro_ee.logger.base import get_logger
@@ -164,8 +164,11 @@ class DistributedMasterStorage(MasterStorage):
 
         self.distribute_writes = distribute_writes
         self.vkbook = vkbook
-        self.sk = key
-        self.vk = wallet.get_vk(self.sk)
+
+        self.wallet = Wallet(seed=key)
+
+        self.sk = self.wallet.signing_key()
+        self.vk = self.wallet.verifying_key()
 
         self.test_hook = self.config.get('MN_DB', 'test_hook')
         self.mn_id = int(self.config.get('MN_DB', 'mn_id'))

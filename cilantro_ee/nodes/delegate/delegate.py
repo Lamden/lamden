@@ -14,6 +14,7 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
+from contracting.client import ContractingClient
 from cilantro_ee.rewards import RewardManager
 
 
@@ -38,7 +39,7 @@ class Delegate(Node):
 
         self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
 
-        self.reward_manager = RewardManager(driver=self.driver, client=ContractingClient(executor=self.executor))
+        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
 
     async def start(self):
         await super().start()

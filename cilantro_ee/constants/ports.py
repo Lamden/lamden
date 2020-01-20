@@ -1,4 +1,6 @@
 # Webservers
+from os import getenv as env
+
 WEB_SERVER_PORT = 8080 # Used to serve HTTP traffic
 SSL_WEB_SERVER_PORT = 443 # Used to serve HTTPS traffic
 
@@ -32,3 +34,4 @@ SS_ROUTER_PORT = 10030
 SS_PUB_PORT = 10031
 
 OVERLAY_SERVER = 10777
+PEPPER = env('PEPPER', 'cilantro_pepper')

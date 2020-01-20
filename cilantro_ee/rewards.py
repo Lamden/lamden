@@ -10,10 +10,10 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, vkbook, driver=ContractDriver(), client=ContractingClient()):
+    def __init__(self, vkbook, driver=ContractDriver()):
         self.vkbook = vkbook
         self.driver = driver
-        self.client = client
+        self.client = ContractingClient(driver=driver)
 
         self.stamp_contract = self.client.get_contract('stamp_cost')
         self.reward_contract = self.client.get_contract('rewards')

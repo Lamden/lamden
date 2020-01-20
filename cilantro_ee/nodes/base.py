@@ -1,7 +1,7 @@
 from cilantro_ee.constants import conf
 
 from cilantro_ee.networking.network import Network
-from cilantro_ee.block_server import BlockFetcher
+from cilantro_ee.catchup import BlockFetcher
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook
@@ -12,23 +12,31 @@ import zmq.asyncio
 import asyncio
 
 from cilantro_ee.storage.contract import BlockchainDriver
+from contracting.client import ContractingClient
 
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
 
+        self.driver = driver
+        self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
+
+        print(self.client.submission_contract)
+
         # Sync contracts
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
-            boot_dels=constitution['delegate_min_quorum']
+            boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
         self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
-                               boot_del=constitution['delegate_min_quorum'])
+                               boot_del=constitution['delegate_min_quorum'],
+                               client=self.client)
 
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
@@ -41,8 +49,6 @@ class Node:
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.overwrite = overwrite
-
-        self.driver = driver
 
         self.block_fetcher = BlockFetcher(
             wallet=self.wallet,
@@ -76,8 +82,6 @@ class Node:
 
     async def start(self):
         await self.network.start()
-
-
 
         # Catchup
         if len(self.contacts.masternodes) > 1:

@@ -56,10 +56,12 @@ def make_tx_packed(processor, contract_name, function_name, kwargs={}, drivers=[
     return b
 
 
-class IsolatedDriver(BlockchainDriver):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class MockDB:
+    def __init__(self):
         self.d = {}
+
+    def exists(self, key):
+        return not self.d.get(key) is None
 
     def get(self, key):
         return self.d.get(key)
@@ -67,8 +69,24 @@ class IsolatedDriver(BlockchainDriver):
     def set(self, key, value):
         self.d[key] = value
 
+
+class IsolatedDriver(BlockchainDriver):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.db = MockDB()
+
+    def get(self, key):
+        return self.db.get(key)
+
+    def set(self, key, value):
+        self.db.set(key, value)
+
     def commit(self):
         pass
+
+    def set_contract(self, *args, **kwargs):
+        super().set_contract(*args, **kwargs)
+        print('set')
 
 
 def get_drivers():
@@ -273,11 +291,9 @@ class TestTotalEndToEnd(TestCase):
 
         mnw1 = Wallet()
         mnw2 = Wallet()
-        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
 
         dw1 = Wallet()
         dw2 = Wallet()
-        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
             "masternodes": {

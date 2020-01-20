@@ -1,7 +1,5 @@
-from os import getenv as env
-
 from cilantro_ee.constants import conf
-from cilantro_ee.constants.ports import DHT_PORT
+from cilantro_ee.constants.ports import DHT_PORT, PEPPER
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking import discovery
@@ -239,4 +237,3 @@ class Network:
         self.peer_service.stop()
 
 
-PEPPER = env('PEPPER', 'cilantro_pepper')

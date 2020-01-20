@@ -1,6 +1,7 @@
 import glob
 import os
 from contracting.client import ContractingClient
+from contracting.db.driver import ContractDriver
 from cilantro_ee.constants import conf
 import cilantro_ee
 import json
@@ -122,12 +123,9 @@ def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
-def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
+def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.path.dirname(__file__)):
     with open(filename) as f:
         genesis = json.load(f)
-
-    submission_file = root + '/submission.s.py'
-    client = ContractingClient(submission_filename=submission_file)
 
     for contract in genesis['contracts']:
         c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
@@ -144,10 +142,7 @@ def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
 
 
 def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
-                                   delegate_price=10_000, root=os.path.dirname(__file__)):
-    submission_file = root + '/submission.s.py'
-    client = ContractingClient(submission_filename=submission_file)
-
+                                   delegate_price=10_000, root=os.path.dirname(__file__), client=ContractingClient()):
     members = root + '/genesis/members.s.py'
 
     with open(members) as f:

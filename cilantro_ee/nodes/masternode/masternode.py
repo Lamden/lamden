@@ -39,8 +39,7 @@ class Masternode(Node):
             ctx=self.ctx,
             driver=self.driver
         )
-
-        self.reward_manager = RewardManager(driver=self.driver)
+        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
 
         self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
