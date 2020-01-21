@@ -16,10 +16,10 @@ if __name__ == '__main__':
     os.environ['PKG_PATH'] = str(Path(os.getcwd()).parent)
     os.environ['CIL_ROOT'] = os.getenv('PKG_PATH') + '/cilantro_ee'
     os.environ['CFG_PATH'] = os.getenv('CIL_ROOT') + '/config'
+    os.environ['REDIS_CONF_PATH'] = os.getenv('CFG_PATH') + '/config'
 
     print(os.environ['PKG_PATH'])
     print(os.environ['CIL_ROOT'])
-
 
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--username', default='lamden')
