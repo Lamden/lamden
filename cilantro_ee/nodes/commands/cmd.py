@@ -1,16 +1,5 @@
 import argparse
 
-
-# class HandleUpdate(argparse.Action):
-#     def upd_trigger():
-#         pass
-#
-#     def upd_vote():
-#         pass
-#
-#     def upd_ready():
-#         pass
-
 parser = argparse.ArgumentParser(description = "Lamden Commands", prog='cil')
 
 # create parser for update commands
@@ -19,16 +8,16 @@ subparser = parser.add_subparsers(title = 'subcommands', description='Network up
 
 upd_parser = subparser.add_parser('update')
 
-upd_parser.add_argument('--trigger', dest = 'hash', nargs = '?',
-                        help='Notify network of new update available')
+upd_parser.add_argument('-t', '--trigger', dest = 'pkg_hash', nargs = '?', type =str,
+                        help='str: Notify network of new update with given pkg_hash')
 
 upd_parser.parse_args('--trigger'.split())
 
-# upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
-#                         help='Register consent for network version upgrade')
-#
-# upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
-#                         help='Notify network for update readiness')
+upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
+                        help='Bool : Register consent for network version upgrade')
+
+upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
+                        help='Bool : Notify network for update readiness')
 
 
 # create parser for view commands
@@ -46,3 +35,12 @@ args = parser.parse_args()
 
 
 print(args)
+
+# # implementation
+#
+# if args.pkg_hash:
+#         print (args.pkg_hash)
+#         # execute upgrade contract
+#
+# if args.vote:
+#
