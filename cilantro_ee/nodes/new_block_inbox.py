@@ -76,4 +76,4 @@ class NBNInbox(AsyncInbox):
         return nbn
 
     def clean(self):
-        self.q = [nbn for nbn in self.q if nbn['blockNum'] > self.driver.latest_block_num]
+        self.q = [nbn for nbn in self.q if nbn['blockNum'] >= self.driver.latest_block_num]

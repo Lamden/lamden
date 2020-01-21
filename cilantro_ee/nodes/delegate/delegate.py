@@ -1,5 +1,4 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
-from cilantro_ee.canonical import block_is_failed, block_is_genesis
 from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message
@@ -14,7 +13,6 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
-from contracting.client import ContractingClient
 from cilantro_ee.rewards import RewardManager
 
 
@@ -103,7 +101,6 @@ class Delegate(Node):
         return self.filter_work(work)
 
     def process_work(self, filtered_work):
-        self.log.error(self.driver.latest_block_hash)
         results = execution.execute_work(
             executor=self.executor,
             driver=self.driver,
@@ -127,19 +124,15 @@ class Delegate(Node):
     async def run(self):
         # If first block, just wait for masters to send the genesis NBN
         if self.driver.latest_block_num == 0:
-            self.log.info('Genesis. Waiting for the genesis NBN')
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
 
-        self.log.info('Running now')
         while self.running:
             filtered_work = await self.acquire_work()
 
             self.log.info(filtered_work)
 
             sbc_msg = self.process_work(filtered_work)
-
-            self.log.error('SENDING SBC')
 
             await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 

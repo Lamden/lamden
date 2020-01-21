@@ -1,110 +1,9 @@
-import aiohttp
-import asyncio
-import os
 from unittest import TestCase
 
-import capnp
+from tests.inprog.orchestrator import *
+
 import zmq.asyncio
-from cilantro_ee.crypto.transaction import TransactionBuilder
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
-from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.nodes.masternode.masternode import Masternode
-from contracting import config
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver, DictDriver
-from contracting.db.encoder import encode, decode
-from cilantro_ee.storage import BlockchainDriver
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-
-from copy import deepcopy
-
-def make_ipc(p):
-    try:
-        os.mkdir(p)
-    except:
-        pass
-
-
-def make_tx_packed(processor, contract_name, function_name, kwargs={}, drivers=[]):
-    w = Wallet()
-    batch = TransactionBuilder(
-        sender=w.verifying_key(),
-        contract=contract_name,
-        function=function_name,
-        kwargs=kwargs,
-        stamps=10000,
-        processor=processor,
-        nonce=0
-    )
-
-    batch.sign(w.signing_key())
-    b = batch.serialize()
-
-    currency_contract = 'currency'
-    balances_hash = 'balances'
-
-    balances_key = '{}{}{}{}{}'.format(currency_contract,
-                                       config.INDEX_SEPARATOR,
-                                       balances_hash,
-                                       config.DELIMITER,
-                                       w.verifying_key().hex())
-
-    for driver in drivers:
-        driver.set(balances_key, 1_000_000)
-        driver.commit()
-
-    return b
-
-
-class MockDB:
-    def __init__(self):
-        self.d = {}
-
-    def exists(self, key):
-        return not self.d.get(key) is None
-
-    def get(self, key):
-        val = self.d.get(key)
-        return decode(val)
-
-    def set(self, key, value):
-        v = encode(value)
-        self.d[key] = v
-
-    def iter(self, prefix):
-        return [k for k in self.d.keys() if k.startswith(prefix)]
-
-class IsolatedDriver(BlockchainDriver):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.db = MockDB()
-
-    def get(self, key):
-        return self.db.get(key)
-
-    def set(self, key, value):
-        self.db.set(key, value)
-
-    def commit(self):
-        pass
-
-
-def get_drivers():
-    c = ContractDriver()
-
-
-def start_delegate(wallet, socket_base, constitution, bootnodes):
-    d1 = Delegate(wallet=wallet, ctx=zmq.asyncio.Context(), socket_base=socket_base, constitution=constitution,
-                  bootnodes=bootnodes, driver=IsolatedDriver())
-    d1.start()
-
-
-def start_masternode(wallet, socket_base, constitution, bootnodes, webserver_port):
-    d1 = Masternode(wallet=wallet, ctx=zmq.asyncio.Context(), socket_base=socket_base, constitution=constitution, bootnodes=bootnodes,
-                    driver=IsolatedDriver(), webserver_port=webserver_port)
-    d1.start()
 
 class TestTotalEndToEnd(TestCase):
     def setUp(self):
@@ -143,8 +42,7 @@ class TestTotalEndToEnd(TestCase):
         dw16 = Wallet()
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
+            "masternodes": [
                     mnw1.verifying_key().hex(),
                     mnw2.verifying_key().hex(),
                     mnw3.verifying_key().hex(),
@@ -154,21 +52,18 @@ class TestTotalEndToEnd(TestCase):
                     mnw7.verifying_key().hex(),
                     mnw8.verifying_key().hex(),
                 ],
-                "min_quorum": 6
-            },
-            "delegates": {
-                "vk_list": [
-                    dw9.verifying_key().hex(),
-                    dw10.verifying_key().hex(),
-                    dw11.verifying_key().hex(),
-                    dw12.verifying_key().hex(),
-                    dw13.verifying_key().hex(),
-                    dw14.verifying_key().hex(),
-                    dw15.verifying_key().hex(),
-                    dw16.verifying_key().hex(),
-                ],
-                "min_quorum": 8
-            },
+            "delegates": [
+                dw9.verifying_key().hex(),
+                dw10.verifying_key().hex(),
+                dw11.verifying_key().hex(),
+                dw12.verifying_key().hex(),
+                dw13.verifying_key().hex(),
+                dw14.verifying_key().hex(),
+                dw15.verifying_key().hex(),
+                dw16.verifying_key().hex(),
+            ],
+            "masternode_min_quorum": 6,
+            "delegate_min_quorum": 8,
             "witnesses": {},
             "schedulers": {},
             "notifiers": {},
@@ -366,11 +261,9 @@ class TestTotalEndToEnd(TestCase):
 
         mnw1 = Wallet()
         mnw2 = Wallet()
-        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
 
         dw1 = Wallet()
         dw2 = Wallet()
-        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
             'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -387,29 +280,29 @@ class TestTotalEndToEnd(TestCase):
             'scheduler_min_quorum': 0
         }
 
-        #md1 = IsolatedDriver()
+        md1 = IsolatedDriver()
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8080)#, driver=md1)
+                         constitution=constitution, webserver_port=8080, driver=md1)
 
-        #md2 = IsolatedDriver()
+        md2 = IsolatedDriver()
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
-                         constitution=constitution, webserver_port=8081)#, driver=md2)
+                         constitution=constitution, webserver_port=8081, driver=md2)
 
-        #dd1 = IsolatedDriver()
+        dd1 = IsolatedDriver()
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
-                      constitution=constitution, bootnodes=bootnodes)#, driver=dd1)
+                      constitution=constitution, bootnodes=bootnodes, driver=dd1)
 
-        #dd2 = IsolatedDriver()
+        dd2 = IsolatedDriver()
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
-                      constitution=constitution, bootnodes=bootnodes)#, driver=dd2)
+                      constitution=constitution, bootnodes=bootnodes, driver=dd2)
 
         # should test to see all ready signals are recieved
         tasks = asyncio.gather(
@@ -437,15 +330,13 @@ class TestTotalEndToEnd(TestCase):
         loop.run_until_complete(run())
 
     def test_tx2_network_bootup(self):
-        bootnodes = ['ipc:///tmp/n1', 'ipc:///tmp/n3']
+        bootnodes = ['ipc:///tmp/n1']
 
         mnw1 = Wallet()
         mnw2 = Wallet()
-        masternodes = [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()]
 
         dw1 = Wallet()
         dw2 = Wallet()
-        delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
             'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -497,22 +388,49 @@ class TestTotalEndToEnd(TestCase):
         async def run():
             await tasks
             async with aiohttp.ClientSession() as session:
-                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
+                r = await session.post('http://127.0.0.1:8081/', data=
+                make_tx_packed(
+                    mnw2.verifying_key(),
+                    'testing',
+                    'test',
+                    sender=Wallet(),
+                    kwargs={},
+                    drivers=[md1, md2, dd1, dd2]
+                )
+            )
 
             res = await r.json()
             print(res)
             #self.assertEqual(res['success'], 'Transaction successfully submitted to the network.')
             await asyncio.sleep(2)
             async with aiohttp.ClientSession() as session:
-                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
+                r = await session.post('http://127.0.0.1:8081/', data=
+                make_tx_packed(
+                    mnw2.verifying_key(),
+                    'testing',
+                    'test',
+                    sender=Wallet(),
+                    kwargs={},
+                    drivers=[md1, md2, dd1, dd2]
+                )
+            )
 
             res = await r.json()
             await asyncio.sleep(2)
             async with aiohttp.ClientSession() as session:
-                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
+                r = await session.post('http://127.0.0.1:8081/', data=
+                make_tx_packed(
+                    mnw2.verifying_key(),
+                    'testing',
+                    'test',
+                    sender=Wallet(),
+                    kwargs={},
+                    drivers=[md1, md2, dd1, dd2]
+                )
+            )
 
             res = await r.json()
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
             mn1.stop()
             mn2.stop()
             d1.stop()
@@ -520,3 +438,17 @@ class TestTotalEndToEnd(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run())
+
+    def test_orchestrator(self):
+        mns, dls = make_network(2, 2, self.ctx)
+
+        start_up = make_start_awaitable(mns, dls)
+
+        async def test():
+            await start_up
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
