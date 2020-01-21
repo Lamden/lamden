@@ -1,6 +1,27 @@
 import argparse
 
 
+class Cilparser:
+    def __init__(self):
+        self.pkg = args.pkg_hash
+        self.vote = args.vote
+        self.ready = args.ready
+
+        print(self.pkg, self.vote, self.ready)
+
+    def trigger(self):
+        print('pkg ->', self.pkg)
+        pass
+
+    def check_vote(self, vk = None):
+        print('vote ->', vk)
+        pass
+
+    def check_ready_quorum(self, vk = None):
+        print('ready ->', vk)
+        pass
+
+
 def setup_cilparser(parser):
     # create parser for update commands
     subparser = parser.add_subparsers(title = 'subcommands', description='Network update commands',
@@ -29,27 +50,6 @@ def setup_cilparser(parser):
         #TODO
 
 
-class Cilparser:
-    def __init__(self):
-        self.pkg = args.pkg_hash
-        self.vote = args.vote
-        self.ready = args.ready
-
-        print(self.pkg, self.vote, self.ready)
-
-    def trigger(self):
-        print('pkg ->', self.pkg)
-        pass
-
-    def vote(self, vk = None):
-        print('vote ->', self.vote)
-        pass
-
-    def ready(self, vk = None):
-        print('ready ->', self.ready)
-        pass
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description = "Lamden Commands", prog='cil')
@@ -67,8 +67,9 @@ if __name__ == '__main__':
 
     if args.vote:
         print(args)
-        # shell.vote(vk = 'sdfsfds')
+        if shell.vote:
+            shell.check_vote(vk = 'dafsd')
 
     if args.ready:
         print(args)
-        # shell.ready(vk = 'sdfsfds')
+        shell.check_ready_quorum(vk = 'sdfsfds')
