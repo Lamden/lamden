@@ -48,3 +48,20 @@ struct TransactionBatch {
     sender @3: Data;
     inputHash @4: Data;  # hash of transactions + timestamp
 }
+
+struct NewTransactionPayload {
+    sender @0 :Data;
+    processor @1: Data;
+    nonce @2 :UInt64;
+
+    stampsSupplied @3 :UInt64;
+
+    contractName @4 :Text;
+    functionName @5 :Text;
+    kwargs @6 :Data;
+}
+
+struct NewTransaction {
+    metadata @0: MetaData;
+    payload @1: NewTransactionPayload;
+}

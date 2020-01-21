@@ -8,6 +8,8 @@ import time
 import os
 import capnp
 
+from contracting.db.encoder import encode, decode
+
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 NUMERIC_TYPES = {int, Decimal}
@@ -32,8 +34,8 @@ class TransactionBuilder:
         self.kwargs = kwargs
 
         # Serializes all that it can on init
-        self.struct = transaction_capnp.Transaction.new_message()
-        self.payload = transaction_capnp.TransactionPayload.new_message()
+        self.struct = transaction_capnp.NewTransaction.new_message()
+        self.payload = transaction_capnp.NewTransactionPayload.new_message()
 
         self.payload.sender = self.sender
         self.payload.processor = self.processor
@@ -42,25 +44,27 @@ class TransactionBuilder:
         self.payload.functionName = self.function
         self.payload.nonce = self.nonce
 
-        # Create a list of entries in Capnproto
-        self.payload.kwargs.init('entries', len(self.kwargs))
+        self.payload.kwargs = encode(kwargs)
 
-        # Enumerate through the Python dictionary and make sure to type cast when needed for Capnproto
-        for i, key in enumerate(self.kwargs):
-            self.payload.kwargs.entries[i].key = key
-            value, t = self.kwargs[key], type(self.kwargs[key])
-
-            # Represent numeric types as strings so we do not lose any precision due to floating point
-            if t in NUMERIC_TYPES:
-                self.payload.kwargs.entries[i].value.fixedPoint = str(value)
-
-            # This should be streamlined with explicit encodings for different types
-            # For example, 32 byte strings -> UInt32
-            else:
-                assert t is not float, "Float types not allowed in kwargs. Used python's decimal.Decimal class instead"
-                assert t in VALUE_TYPE_MAP, "value type {} with value {} not recognized in " \
-                                            "types {}".format(t, self.kwargs[key], list(VALUE_TYPE_MAP.keys()))
-                setattr(self.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
+        # # Create a list of entries in Capnproto
+        # self.payload.kwargs.init('entries', len(self.kwargs))
+        #
+        # # Enumerate through the Python dictionary and make sure to type cast when needed for Capnproto
+        # for i, key in enumerate(self.kwargs):
+        #     self.payload.kwargs.entries[i].key = key
+        #     value, t = self.kwargs[key], type(self.kwargs[key])
+        #
+        #     # Represent numeric types as strings so we do not lose any precision due to floating point
+        #     if t in NUMERIC_TYPES:
+        #         self.payload.kwargs.entries[i].value.fixedPoint = str(value)
+        #
+        #     # This should be streamlined with explicit encodings for different types
+        #     # For example, 32 byte strings -> UInt32
+        #     else:
+        #         assert t is not float, "Float types not allowed in kwargs. Used python's decimal.Decimal class instead"
+        #         assert t in VALUE_TYPE_MAP, "value type {} with value {} not recognized in " \
+        #                                     "types {}".format(t, self.kwargs[key], list(VALUE_TYPE_MAP.keys()))
+        #         setattr(self.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
 
         self.payload_bytes = self.payload.to_bytes_packed()
         self.signature = None
