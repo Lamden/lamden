@@ -17,7 +17,7 @@ upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
                         help='Bool : Register consent for network version upgrade')
 
 upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
-                        help='Bool : Notify network for update readiness')
+                        help='Bool : Notify network upgrade ready')
 
 
 # create parser for view commands
@@ -29,18 +29,19 @@ upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
 
 # create parser for debug/logging view
 
-#parser.print_help()
 
 args = parser.parse_args()
 
+#print(args)
 
-print(args)
+# implementation
 
-# # implementation
-#
-# if args.pkg_hash:
-#         print (args.pkg_hash)
-#         # execute upgrade contract
-#
-# if args.vote:
-#
+if args.pkg_hash:
+    print(args.pkg_hash)
+    # execute upgrade contract
+
+if args.vote:
+    print(args.vote)
+
+if args.ready:
+    print(args.ready)
