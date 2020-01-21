@@ -1,8 +1,8 @@
 from unittest import TestCase
 
 
-class TestVKBook(TestCase):
-    def test_update_trigger( self ):
+class ParserTest(TestCase):
+    def test_update_trigger(self):
         pass
 
     def test_update_vote( self ):

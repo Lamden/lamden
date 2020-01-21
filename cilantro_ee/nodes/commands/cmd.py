@@ -1,47 +1,74 @@
 import argparse
 
-parser = argparse.ArgumentParser(description = "Lamden Commands", prog='cil')
 
-# create parser for update commands
-subparser = parser.add_subparsers(title = 'subcommands', description='Network update commands',
-                                  help = 'Shows set of update cmd options')
+def setup_cilparser(parser):
+    # create parser for update commands
+    subparser = parser.add_subparsers(title = 'subcommands', description='Network update commands',
+                                      help = 'Shows set of update cmd options')
 
-upd_parser = subparser.add_parser('update')
+    upd_parser = subparser.add_parser('update')
 
-upd_parser.add_argument('-t', '--trigger', dest = 'pkg_hash', nargs = '?', type =str,
-                        help='str: Notify network of new update with given pkg_hash')
+    upd_parser.add_argument('-t', '--trigger', dest = 'pkg_hash', nargs = '?', type =str,
+                            help='str: Notify network of new update with given pkg_hash')
 
-upd_parser.parse_args('--trigger'.split())
+    upd_parser.parse_args('--trigger'.split())
 
-upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
-                        help='Bool : Register consent for network version upgrade')
+    upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
+                            help='Bool : Register consent for network version upgrade')
 
-upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
-                        help='Bool : Notify network upgrade ready')
+    upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
+                            help='Bool : Notify network upgrade ready')
+
+    # create parser for view commands
+        #TODO
+    # create parser for node admin commands
+        #TODO
+    # create parser for stats commands
+        #TODO
+    # create parser for debug/logging view
+        #TODO
 
 
-# create parser for view commands
+class Cilparser:
+    def __init__(self):
+        self.pkg = args.pkg_hash
+        self.vote = args.vote
+        self.ready = args.ready
 
-# create parser for node admin commands
+        print(self.pkg, self.vote, self.ready)
+
+    def trigger(self):
+        print('pkg ->', self.pkg)
+        pass
+
+    def vote(self, vk = None):
+        print('vote ->', self.vote)
+        pass
+
+    def ready(self, vk = None):
+        print('ready ->', self.ready)
+        pass
 
 
-# create parser for stats commands
+if __name__ == '__main__':
 
-# create parser for debug/logging view
+    parser = argparse.ArgumentParser(description = "Lamden Commands", prog='cil')
+    setup_cilparser(parser)
+    args = parser.parse_args()
+    print(args)
 
+    # implementation
 
-args = parser.parse_args()
+    shell = Cilparser()
 
-#print(args)
+    if args.pkg_hash:
+        shell.trigger()
+        # execute upgrade contract
 
-# implementation
+    if args.vote:
+        print(args)
+        # shell.vote(vk = 'sdfsfds')
 
-if args.pkg_hash:
-    print(args.pkg_hash)
-    # execute upgrade contract
-
-if args.vote:
-    print(args.vote)
-
-if args.ready:
-    print(args.ready)
+    if args.ready:
+        print(args)
+        # shell.ready(vk = 'sdfsfds')
