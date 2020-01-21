@@ -1,6 +1,7 @@
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
+from contracting.db.encoder import decode
 
 from cilantro_ee.canonical import build_sbc_from_work_results
 
@@ -15,12 +16,7 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 
 def execute_tx(executor: Executor, transaction, environment: dict={}):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
-    kwargs = {}
-    for entry in transaction.payload.kwargs.entries:
-        if entry.value.which() == 'fixedPoint':
-            kwargs[entry.key] = ContractingDecimal(entry.value.fixedPoint)  # ContractingDecimal!
-        else:
-            kwargs[entry.key] = getattr(entry.value, entry.value.which())
+    kwargs = decode(transaction.payload.kwargs)
 
     output = executor.execute(
         sender=transaction.payload.sender.hex(),
