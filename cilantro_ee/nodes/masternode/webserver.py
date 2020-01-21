@@ -102,7 +102,7 @@ class WebServer:
 
         # Try to deserialize transaction.
         try:
-            tx = transaction_capnp.Transaction.from_bytes_packed(request.body)
+            tx = transaction_capnp.NewTransaction.from_bytes_packed(request.body)
 
         except Exception as e:
             return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
