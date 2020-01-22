@@ -3,7 +3,7 @@ from contracting.db.encoder import encode, decode
 from cilantro_ee.crypto.wallet import Wallet
 import asyncio
 from copy import deepcopy
-
+from contracting.db.driver import DictDriver
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.masternode.masternode import Masternode
 
@@ -84,6 +84,7 @@ def make_network(masternodes, delegates, ctx):
     bootnodes = None
     node_count = 0
     for wallet in mn_wallets:
+        # driver = BlockchainDriver(db=DictDriver())
         driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
@@ -96,7 +97,7 @@ def make_network(masternodes, delegates, ctx):
             ctx=ctx,
             socket_base=f'ipc://{ipc}',
             bootnodes=bootnodes,
-            constitution=deepcopy(constitution),
+            constitution=constitution,
             webserver_port=18080 + node_count,
             driver=driver
         )
@@ -105,6 +106,7 @@ def make_network(masternodes, delegates, ctx):
         node_count += 1
 
     for wallet in dl_wallets:
+        # driver = BlockchainDriver(db=DictDriver())
         driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
@@ -113,7 +115,7 @@ def make_network(masternodes, delegates, ctx):
             wallet=wallet,
             ctx=ctx,
             socket_base=f'ipc://{ipc}',
-            constitution=deepcopy(constitution),
+            constitution=constitution,
             bootnodes=bootnodes,
             driver=driver
         )
