@@ -1,5 +1,5 @@
 import argparse
-from cilantro_ee.core.crypto.wallet import Wallet
+from cilantro_ee.crypto.wallet import Wallet
 
 class Cilparser:
     def __init__(self):
@@ -65,8 +65,8 @@ if __name__ == '__main__':
         # execute upgrade contract
 
     if args.vote:
-        res = shell.check_vote(vk = str(Wallet.verifying_key()))
+        res = shell.check_vote(vk = 'asdfadf')
 
     if args.ready:
         print(args)
-        res = shell.check_ready_quorum(vk = str(Wallet.verifying_key()))
+        res = shell.check_ready_quorum(vk = 'sdfafda')

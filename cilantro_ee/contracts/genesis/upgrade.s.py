@@ -21,6 +21,8 @@ dl_vote = Variable()
 # Results
 upg_consensus = Variable()
 
+import election_house
+
 @construct
 def seed():
     upg_lock.set(False)
@@ -29,6 +31,9 @@ def seed():
 def init_upgrade(pepper, initiator_vk):
     if upg_lock.get() is True:
         assert_parallel_upg_check()
+
+    if initiator_vk in election_house.get_value_for_policy('masternodes'):
+        pass
 
     if vkbook.check_master(initiator_vk) or vkbook.check_delegate(initiator_vk):
         upg_lock.set(True)
