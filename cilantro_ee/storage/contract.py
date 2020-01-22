@@ -26,7 +26,7 @@ class BlockchainDriver(ContractDriver):
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
     def get_latest_block_num(self):
-        num = self.get(BLOCK_NUM_KEY)
+        num = super().get_direct(BLOCK_NUM_KEY)
 
         if num is None:
             return 0
@@ -41,7 +41,7 @@ class BlockchainDriver(ContractDriver):
 
         v = str(v).encode()
 
-        self.set(BLOCK_NUM_KEY, v)
+        super().set_direct(BLOCK_NUM_KEY, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 

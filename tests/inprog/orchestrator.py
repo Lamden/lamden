@@ -84,8 +84,8 @@ def make_network(masternodes, delegates, ctx):
     bootnodes = None
     node_count = 0
     for wallet in mn_wallets:
-        # driver = BlockchainDriver(db=DictDriver())
-        driver = IsolatedDriver()
+        driver = BlockchainDriver(db=DictDriver())
+        # driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
 
@@ -106,8 +106,8 @@ def make_network(masternodes, delegates, ctx):
         node_count += 1
 
     for wallet in dl_wallets:
-        # driver = BlockchainDriver(db=DictDriver())
-        driver = IsolatedDriver()
+        driver = BlockchainDriver(db=DictDriver())
+        # driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
 
