@@ -1,8 +1,8 @@
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
-from contracting.db.encoder import decode
-
+from contracting.db.encoder import encode, decode
+from contracting.db.driver import encode_kv
 from cilantro_ee.canonical import build_sbc_from_work_results
 
 import os
@@ -28,10 +28,13 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         auto_commit=False
     )
 
-    print(output['writes'])
+    deltas = []
+    for k, v in output['writes'].items():
+        key, value = encode_kv(k, v)
+        d = transaction_capnp.Delta.new_message(key=key, value=value)
+        deltas.append(d)
 
     # Encode deltas into a Capnp struct
-    deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
     tx_output = transaction_capnp.TransactionData.new_message(
         transaction=transaction,
         status=output['status_code'],

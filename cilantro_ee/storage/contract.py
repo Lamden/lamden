@@ -1,4 +1,4 @@
-from contracting.db.driver import ContractDriver
+from contracting.db.driver import ContractDriver, decode_kv
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_KEY = '_current_block_num'
@@ -48,8 +48,9 @@ class BlockchainDriver(ContractDriver):
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                self.set(delta['key'], delta['value'])
-                log.info(f"{delta['key']} -> {delta['value']}")
+                k, v = decode_kv(delta['key'], delta['value'])
+                self.set(k, v)
+                log.info(f"{k} -> {v}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage
@@ -137,7 +138,7 @@ class BlockchainDriver(ContractDriver):
         self.commit()
 
     def delete_pending_nonces(self):
-        for nonce in self.iter(PENDING_NONCE_KEY):
+        for nonce in self.keys(PENDING_NONCE_KEY):
             self.delete(nonce)
 
         self.commit()

@@ -62,7 +62,7 @@ class Delegate(Node):
         return True
 
     def process_nbn(self, nbn):
-        self.driver.revert()
+        self.driver.clear_pending_state()
         if self.driver.latest_block_num < nbn['blockNum']:
             self.driver.update_with_block(nbn)
 
