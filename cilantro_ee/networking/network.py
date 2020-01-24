@@ -246,4 +246,5 @@ class Network:
     def stop(self):
         self.peer_service.stop()
 
-
+    def peers(self):
+        return self.peer_service.table.peers

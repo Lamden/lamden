@@ -16,6 +16,8 @@ from contracting.client import ContractingClient
 
 from cilantro_ee.logger.base import get_logger
 
+from copy import deepcopy
+
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
                  bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
@@ -62,10 +64,10 @@ class Node:
             socket_base=socket_base,
             bootnodes=self.bootnodes,
             params=self.network_parameters,
-            initial_del_quorum=self.contacts.delegate_quorum_min,
-            initial_mn_quorum=self.contacts.masternode_quorum_min,
-            mn_to_find=self.contacts.masternodes,
-            del_to_find=self.contacts.delegates,
+            initial_del_quorum=deepcopy(self.contacts.delegate_quorum_min),
+            initial_mn_quorum=deepcopy(self.contacts.masternode_quorum_min),
+            mn_to_find=deepcopy(self.contacts.masternodes),
+            del_to_find=deepcopy(self.contacts.delegates),
         )
 
         self.nbn_inbox = NBNInbox(

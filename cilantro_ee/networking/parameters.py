@@ -198,4 +198,3 @@ class Parameters:
         if entry is not None:
             #entry.close()
             del self.sockets[vk]
-
