@@ -41,6 +41,7 @@ class NBNInbox(AsyncInbox):
 
         try:
             nbn = self.validate_nbn(msg)
+            self.log.info(nbn)
             self.q.append(nbn)
         except BlockNotificationException as e:
             # This would be where the audit layer would take over
