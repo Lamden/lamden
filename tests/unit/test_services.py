@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.sockets.services import SubscriptionService, SocketStruct, Protocols
+from cilantro_ee.sockets.services import SubscriptionService, SocketStruct, Protocols, strip_service
 import zmq.asyncio
 import asyncio
 
@@ -151,3 +151,9 @@ class TestSubscriptionService(TestCase):
         s = SocketStruct.from_string('ipc:///tmp/something')
 
         self.assertEqual(str(s), 'ipc:///tmp/something')
+
+    def test_strip_service_tcp(self):
+        self.assertEqual(strip_service('tcp://127.0.0.1:9999'), 'tcp://127.0.0.1')
+
+    def test_strip_service_ipc(self):
+        self.assertEqual(strip_service('ipc:///tmp/n0/discovery'), 'ipc:///tmp/n0')

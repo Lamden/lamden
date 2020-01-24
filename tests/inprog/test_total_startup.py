@@ -5,6 +5,9 @@ from tests.inprog.orchestrator import *
 import zmq.asyncio
 from contracting.client import ContractingClient
 
+from contracting.db.driver import InMemDriver
+from cilantro_ee.storage.contract import BlockchainDriver
+
 class TestTotalEndToEnd(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
@@ -280,25 +283,25 @@ class TestTotalEndToEnd(TestCase):
             'scheduler_min_quorum': 0
         }
 
-        md1 = IsolatedDriver()
+        md1 = BlockchainDriver(driver=InMemDriver())
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
                          constitution=constitution, webserver_port=8080, driver=md1)
 
-        md2 = IsolatedDriver()
+        md2 = BlockchainDriver(driver=InMemDriver())
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
                          constitution=constitution, webserver_port=8081, driver=md2)
 
-        dd1 = IsolatedDriver()
+        dd1 = BlockchainDriver(driver=InMemDriver())
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
                       constitution=constitution, bootnodes=bootnodes, driver=dd1)
 
-        dd2 = IsolatedDriver()
+        dd2 = BlockchainDriver(driver=InMemDriver())
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
@@ -446,9 +449,9 @@ class TestTotalEndToEnd(TestCase):
 
         async def test():
             await start_up
-            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
-            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
-            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())

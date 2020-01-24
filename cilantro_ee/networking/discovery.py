@@ -10,12 +10,14 @@ DiscoverServer
 Returns a message of the signed pepper and VK
 '''
 
+TIMEOUT = 2500
+LINGER = 2000
+POLL = 100
 
 class DiscoveryServer(services.RequestReplyService):
-    def __init__(self, socket_id: services.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(),
-                 linger=500, poll_timeout=500):
+    def __init__(self, socket_id: services.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
 
-        super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, linger=linger, poll_timeout=poll_timeout)
+        super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, **kwargs)
 
         self.pepper = pepper
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
@@ -40,17 +42,17 @@ def unpack_pepper_msg(msg: bytes):
 
 
 async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout):
-    log.info('Timeout: {}'.format(timeout))
+    log.info(f'Pinging: {socket_id.zmq_url()}')
     response = await services.get(socket_id=socket_id, msg=b'', ctx=ctx, timeout=timeout)
 
     log.info('Got response: {}'.format(response))
 
+    vk = None
     if verify_vk_pepper(response, pepper):
         log.info('Verifying key successfully extracted and message matches network pepper.')
         vk, _ = unpack_pepper_msg(response)
-        return str(socket_id).rstrip('discovery'), vk
 
-    return str(socket_id).rstrip('discovery'), None
+    return str(socket_id), vk
 
 
 async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=500, retries=10):
@@ -77,6 +79,7 @@ async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=500, 
             ip, vk = res
             if vk is not None:
                 nodes_found[str(ip)] = vk.hex()
+                log.info(f'Found {ip} with VK {vk}')
                 one_found = True
 
         if not one_found:

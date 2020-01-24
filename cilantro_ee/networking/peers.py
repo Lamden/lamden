@@ -8,6 +8,7 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets import services
 from cilantro_ee.networking import discovery
 
+from cilantro_ee.logger.base import get_logger
 
 class KTable:
     def __init__(self, data: dict, initial_peers={}, response_size=10):
@@ -63,6 +64,8 @@ class PeerServer(services.RequestReplyService):
 
         self.event_queue_loop_running = False
 
+        self.log = get_logger('PeerService')
+
     def handle_msg(self, msg):
         msg = msg.decode()
         command, args = json.loads(msg)
@@ -92,7 +95,7 @@ class PeerServer(services.RequestReplyService):
 
             if responded_vk.hex() == vk:
                 # Valid response
-                self.table.peers[vk] = ip
+                self.table.peers[vk] = services.strip_service(ip)
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]

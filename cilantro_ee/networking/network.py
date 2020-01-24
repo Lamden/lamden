@@ -101,22 +101,21 @@ class Network:
 
             log.success('Network is ready.')
 
-            self.ready = True
+            #self.ready = True
 
-            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
+            #ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
 
-            await self.peer_service.event_publisher.send(ready_msg)
+            #await self.peer_service.event_publisher.send(ready_msg)
 
-            log.success('Sent ready signal.')
+            #log.success('Sent ready signal.')
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
                                                    ctx=self.ctx, timeout=1000)
 
-        log.info(responses)
-
         for ip, vk in responses.items():
-            self.table.peers[vk] = ip  # Should be stripped of port and tcp
+            self.table.peers[vk] = services.strip_service(ip)  # Should be stripped of port and tcp
+            log.error(f'Added {services.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
             asyncio.ensure_future(self.discovery_server.serve())
@@ -128,7 +127,9 @@ class Network:
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
             join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
 
-            peer = services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
+            peer = self.params.resolve(ip, service_type=ServiceType.PEER)
+            log.error(peer)
+
             await services.get(peer, msg=join_message, ctx=self.ctx, timeout=1000)
 
     async def wait_for_quorum(self, masternode_quorum_required: int,
@@ -140,14 +141,13 @@ class Network:
 
         results = None
 
-
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
-            # log.info('Need {} MNs and {} DELs to begin...'.format(
-            #     masternode_quorum_required,
-            #     delegate_quorum_required
-            # ))
+            log.info('Need {} MNs and {} DELs to begin...'.format(
+                masternodes_to_find,
+                delegates_to_find
+            ))
 
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
                             vk_to_find=vk, retries=3) for vk in masternodes_to_find]
@@ -171,6 +171,9 @@ class Network:
             delegate_quorum_required = self.updated_peers_and_crawl(delegates_got,
                                                                     delegates_to_find,
                                                                     delegate_quorum_required)
+
+            if len(masternodes_to_find) == 0 and len(delegates_to_find) == 0:
+                break
 
         # At this point, start the discovery server if it's not already running because you are a masternode.
 

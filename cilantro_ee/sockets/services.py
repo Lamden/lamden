@@ -84,6 +84,16 @@ def resolve_tcp_or_ipc_base(base_string: str, tcp_port, ipc_dir, bind=False):
         return SocketStruct.from_string(f'{base_string}/{ipc_dir}')
 
 
+def strip_service(socket_str):
+    if socket_str.startswith('tcp://'):
+        sock_str = socket_str.lstrip('tcp://').split(':')[0]
+        return 'tcp://' + sock_str
+    elif socket_str.startswith('ipc://'):
+        return '/'.join(socket_str.split('/')[:-1])
+    else:
+        return socket_str
+
+
 # Pushes current task to the back of the event loop
 async def defer():
     await asyncio.sleep(0)

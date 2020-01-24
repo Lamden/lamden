@@ -12,7 +12,7 @@ log = get_logger('STATE')
 
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
-        block_hash = super().get_direct(BLOCK_HASH_KEY)
+        block_hash = self.get(BLOCK_HASH_KEY, mark=False)
         if block_hash is None:
             return b'\x00' * 32
         return block_hash
@@ -21,12 +21,12 @@ class BlockchainDriver(ContractDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        super().set_direct(BLOCK_HASH_KEY, v)
+        self.set(BLOCK_HASH_KEY, v, mark=False)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
     def get_latest_block_num(self):
-        num = super().get_direct(BLOCK_NUM_KEY)
+        num = self.get(BLOCK_NUM_KEY, mark=False)
 
         if num is None:
             return 0
@@ -41,7 +41,7 @@ class BlockchainDriver(ContractDriver):
 
         v = str(v).encode()
 
-        super().set_direct(BLOCK_NUM_KEY, v)
+        self.set(BLOCK_NUM_KEY, v, mark=False)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 

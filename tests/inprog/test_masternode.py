@@ -205,20 +205,16 @@ class TestNewMasternode(TestCase):
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
+            "masternodes": [
                     mnw1.verifying_key().hex(),
                     mnw2.verifying_key().hex()
                 ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
+            "masternode_min_quorum": 1,
+            "delegates": [
                     dw1.verifying_key().hex(),
                     dw2.verifying_key().hex()
                 ],
-                "min_quorum": 1
-            },
+            "delegate_min_quorum": 1,
             "witnesses": {},
             "schedulers": {},
             "notifiers": {},

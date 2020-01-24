@@ -28,6 +28,8 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         auto_commit=False
     )
 
+    print(output['writes'])
+
     # Encode deltas into a Capnp struct
     deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
     tx_output = transaction_capnp.TransactionData.new_message(

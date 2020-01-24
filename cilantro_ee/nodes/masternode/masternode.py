@@ -129,8 +129,8 @@ class Masternode(Node):
 
         #if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num:
+            print(block)
             self.driver.update_with_block(block)
-
             # ISSUE REWARDS
             # stamps = self.reward_manager.stamps_in_block(block)
             # self.log.info(f'{stamps} in this block to issue.')

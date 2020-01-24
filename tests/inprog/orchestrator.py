@@ -3,7 +3,7 @@ from contracting.db.encoder import encode, decode
 from cilantro_ee.crypto.wallet import Wallet
 import asyncio
 from copy import deepcopy
-from contracting.db.driver import DictDriver
+from contracting.db.driver import ContractDriver, InMemDriver
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.masternode.masternode import Masternode
 
@@ -23,40 +23,6 @@ def make_ipc(p):
     try:
         os.mkdir(p)
     except:
-        pass
-
-
-class MockDB:
-    def __init__(self):
-        self.d = {}
-
-    def exists(self, key):
-        return not self.d.get(key) is None
-
-    def get(self, key):
-        val = self.d.get(key)
-        return decode(val)
-
-    def set(self, key, value):
-        v = encode(value)
-        self.d[key] = v
-
-    def iter(self, prefix):
-        return [k for k in self.d.keys() if k.startswith(prefix)]
-
-
-class IsolatedDriver(BlockchainDriver):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.db = MockDB()
-
-    def get(self, key):
-        return self.db.get(key)
-
-    def set(self, key, value):
-        self.db.set(key, value)
-
-    def commit(self):
         pass
 
 
@@ -84,7 +50,7 @@ def make_network(masternodes, delegates, ctx):
     bootnodes = None
     node_count = 0
     for wallet in mn_wallets:
-        driver = BlockchainDriver(db=DictDriver())
+        driver = BlockchainDriver(driver=InMemDriver())
         # driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
@@ -106,7 +72,7 @@ def make_network(masternodes, delegates, ctx):
         node_count += 1
 
     for wallet in dl_wallets:
-        driver = BlockchainDriver(db=DictDriver())
+        driver = BlockchainDriver(driver=InMemDriver())
         # driver = IsolatedDriver()
         ipc = f'/tmp/n{node_count}'
         make_ipc(ipc)
