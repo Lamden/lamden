@@ -8,6 +8,8 @@ import json
 import zmq.asyncio
 import asyncio
 
+from cilantro_ee.logger.base import get_logger
+
 
 class ServiceType:
     PEER = 0
@@ -75,6 +77,8 @@ class Parameters:
         self.peer_service_address = self.network_parameters.resolve(socket_base, ServiceType.PEER)
         self.sockets = {}
 
+        self.log = get_logger('Parameters')
+
     def get_masternode_sockets(self, service=None):
         masternodes = {}
         vks = set(self.contacts.masternodes)
@@ -138,6 +142,7 @@ class Parameters:
 
     async def refresh(self):
         pb_nodes = set(self.contacts.delegates + self.contacts.masternodes)
+        self.log.info(f'Finding these nodes: {pb_nodes}')
 
         try:
             pb_nodes.remove(self.wallet.verifying_key().hex())

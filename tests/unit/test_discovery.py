@@ -375,8 +375,6 @@ class TestDiscoveryServer(TestCase):
 
         r = results[-1]
 
-        print(r)
-
         self.assertEqual(r[str(addresses[0])], wallets[0].verifying_key().hex())
         self.assertEqual(r[str(addresses[1])], wallets[1].verifying_key().hex())
         self.assertEqual(r[str(addresses[2])], wallets[2].verifying_key().hex())

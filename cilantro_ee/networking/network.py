@@ -62,8 +62,10 @@ class Network:
         # Quorum Constants
         self.initial_mn_quorum = initial_mn_quorum
         self.initial_del_quorum = initial_del_quorum
+
         self.mn_to_find = mn_to_find
         self.del_to_find = del_to_find
+
         self.ready = False
 
     async def start(self, discover=True):
@@ -90,6 +92,8 @@ class Network:
 
             log.info('Peers now: {}'.format(peer_sockets))
 
+            #self.peer_service.table.peers = peer_sockets
+
             # Wait for the quorum to resolve
             await self.wait_for_quorum(
                 self.initial_mn_quorum,
@@ -101,13 +105,13 @@ class Network:
 
             log.success('Network is ready.')
 
-            #self.ready = True
+            self.ready = True
 
-            #ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
+            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
 
-            #await self.peer_service.event_publisher.send(ready_msg)
+            await self.peer_service.event_publisher.send(ready_msg)
 
-            #log.success('Sent ready signal.')
+            log.success('Sent ready signal.')
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
@@ -195,7 +199,10 @@ class Network:
                 nodes.update(node)
 
         # Update the peer table with the _new nodes
+        log.info(nodes)
         self.table.peers.update(nodes)
+
+        log.info(f'Peer table now: {self.table.peers}')
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():

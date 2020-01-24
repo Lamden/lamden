@@ -14,6 +14,7 @@ import asyncio
 from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
+from cilantro_ee.logger.base import get_logger
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
@@ -21,7 +22,8 @@ class Node:
 
         self.driver = driver
         self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
-
+        self.log = get_logger('NODE')
+        self.log.info(constitution)
         # Sync contracts
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
@@ -85,9 +87,9 @@ class Node:
         if len(self.contacts.masternodes) > 1:
             await self.block_fetcher.sync()
 
-        self.running = True
-
         asyncio.ensure_future(self.nbn_inbox.serve())
+
+        self.running = True
 
     def stop(self):
         self.network.stop()

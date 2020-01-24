@@ -59,12 +59,14 @@ class Masternode(Node):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
     async def run(self):
+        self.log.info('Running...')
         if self.driver.latest_block_num == 0:
             await self.new_blockchain_boot()
         else:
             await self.join_quorum()
 
     async def new_blockchain_boot(self):
+        self.log.info('Fresh blockchain boot.')
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
             if not self.running:
                 return
@@ -104,6 +106,7 @@ class Masternode(Node):
 
         # No one is online
         if len(self.delegate_work_sockets()) == 0:
+            self.log.error('No one online!')
             return
 
         return await multicast(self.ctx, tx_batch, self.delegate_work_sockets())  # Works

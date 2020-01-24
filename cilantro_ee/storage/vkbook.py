@@ -2,23 +2,20 @@ from contracting.client import ContractingClient
 
 
 class VKBook:
-    def __init__(self, boot_mn=1, boot_del=1, client=None):
+    def __init__(self, boot_mn=1, boot_del=1, client=ContractingClient()):
         self.boot_mn = boot_mn
         self.boot_del = boot_del
 
-        if client is None:
-            self.client = ContractingClient()
-        else:
-            self.client = client
+        self.client = client
 
-        self.reload(client)
+        self.reload(self.client)
 
     def reload(self, client=ContractingClient()):
-        self.masternodes_contract = client.get_contract('masternodes')
+        self.masternodes_contract = self.client.get_contract('masternodes')
 
         assert self.masternodes_contract is not None, 'Masternodes not in state.'
 
-        self.delegates_contract = client.get_contract('delegates')
+        self.delegates_contract = self.client.get_contract('delegates')
 
         assert self.masternodes_contract is not None, 'Delegates not in state.'
 

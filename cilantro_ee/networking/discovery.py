@@ -10,9 +10,10 @@ DiscoverServer
 Returns a message of the signed pepper and VK
 '''
 
-TIMEOUT = 2500
-LINGER = 2000
-POLL = 100
+TIMEOUT = 1000
+LINGER = 500
+POLL = 50
+
 
 class DiscoveryServer(services.RequestReplyService):
     def __init__(self, socket_id: services.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
@@ -55,7 +56,7 @@ async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context
     return str(socket_id), vk
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=500, retries=10):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10):
     nodes_found = {}
     one_found = False
     retries_left = retries

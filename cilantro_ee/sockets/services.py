@@ -217,7 +217,7 @@ class RequestReplyService:
         self.running = False
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=1000, retries=10, dealer=False):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=False):
     if retries < 0:
         return None
 

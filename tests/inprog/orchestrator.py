@@ -63,7 +63,7 @@ def make_network(masternodes, delegates, ctx):
             ctx=ctx,
             socket_base=f'ipc://{ipc}',
             bootnodes=bootnodes,
-            constitution=constitution,
+            constitution=deepcopy(constitution),
             webserver_port=18080 + node_count,
             driver=driver
         )
@@ -81,7 +81,7 @@ def make_network(masternodes, delegates, ctx):
             wallet=wallet,
             ctx=ctx,
             socket_base=f'ipc://{ipc}',
-            constitution=constitution,
+            constitution=deepcopy(constitution),
             bootnodes=bootnodes,
             driver=driver
         )

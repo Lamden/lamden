@@ -449,9 +449,11 @@ class TestTotalEndToEnd(TestCase):
 
         async def test():
             await start_up
-            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
-            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
-            #await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            await asyncio.sleep(1)
+            r = await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            print(r)
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
