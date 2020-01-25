@@ -182,9 +182,11 @@ class CurrentContenders:
 
         for sig in signatures:
             subblock['signatures'].append({
-                'signer': sig[0],
-                'signature': sig[1]
+                'signature': sig[0],
+                'signer': sig[1]
             })
+
+        subblock['signatures'].sort(key=lambda i: i['signer'])
 
         return subblock
 
