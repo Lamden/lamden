@@ -3,21 +3,23 @@ from cilantro_ee.storage.master import DistributedMasterStorage
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
+import cilantro_ee
 
 
 class TestDistributedMasterStorage(TestCase):
     def setUp(self):
         m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook({'masternodes': m,
-                            'delegates': d,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=m,
+            boot_mns=1,
+            initial_delegates=d,
+            boot_dels=1,
+        )
 
         w = Wallet()
         sk, vk = w.signing_key(), w.verifying_key()
-        self.db = DistributedMasterStorage(key=sk, vkbook=VKBook())
+        self.db = DistributedMasterStorage(key=sk, vkbook=VKBook(1, 1))
 
     def tearDown(self):
         self.db.drop_collections()

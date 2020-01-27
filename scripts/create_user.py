@@ -10,6 +10,7 @@ def create_user(delay):
     settings = configparser.ConfigParser()
     settings._interpolation = configparser.ExtendedInterpolation()
     db_conf_path = cilantro_ee.__path__[0] + '/config/mn_db_conf.ini'
+    print(db_conf_path)
     settings.read(db_conf_path)
     client = MongoClient()
     db = client.admin

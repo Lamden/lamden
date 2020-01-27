@@ -41,7 +41,7 @@ class WebServer:
             'REQUEST_MAX_SIZE': 10000,
             'REQUEST_TIMEOUT': 5
         })
-        self.cors = CORS(self.app, automatic_options=True)
+        #self.cors = CORS(self.app, automatic_options=True)
 
         # Initialize the backend data interfaces
         self.client = contracting_client
@@ -90,10 +90,10 @@ class WebServer:
         # Start server with SSL enabled or not
         if self.ssl_enabled:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.ssl_port, debug=self.debug,
-                                  access_log=self.access_log, ssl=self.context))
+                                  access_log=self.access_log, ssl=self.context, return_asyncio_server=True))
         else:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
-                                  access_log=self.access_log))
+                                  access_log=self.access_log, return_asyncio_server=True))
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
