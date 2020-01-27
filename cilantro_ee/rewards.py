@@ -53,8 +53,6 @@ class RewardManager:
     def add_to_balance(self, vk, amount):
         current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
 
-        print(current_balance)
-
         if current_balance is None:
             current_balance = ContractingDecimal(0)
 

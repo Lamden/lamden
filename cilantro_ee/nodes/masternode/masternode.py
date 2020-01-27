@@ -136,7 +136,7 @@ class Masternode(Node):
             # ISSUE REWARDS
             stamps = self.reward_manager.stamps_in_block(block)
             self.log.info(f'{stamps} in this block to issue.')
-            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
             self.reward_manager.issue_rewards()
 
             self.blocks.put(block, self.blocks.BLOCK)
