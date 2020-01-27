@@ -3,6 +3,10 @@ from contracting.db.driver import ContractDriver
 import capnp
 import os
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.logger.base import get_logger
+
+from decimal import Decimal
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
@@ -23,6 +27,8 @@ class RewardManager:
         assert self.stamp_contract is not None, 'Stamp contract not in state.'
         assert self.reward_contract is not None, 'Reward contract not in state.'
         assert self.currency_contract is not None, 'Currency contract not in state.'
+
+        self.log = get_logger('RWM')
 
     def issue_rewards(self):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
@@ -47,9 +53,13 @@ class RewardManager:
     def add_to_balance(self, vk, amount):
         current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
 
-        if current_balance is None:
-            current_balance = 0
+        print(current_balance)
 
+        if current_balance is None:
+            current_balance = ContractingDecimal(0)
+
+        amount = ContractingDecimal(amount)
+        self.log.info('Sending {} to {}'.format(amount, vk))
         self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
 
     def get_pending_rewards(self):

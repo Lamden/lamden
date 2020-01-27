@@ -134,10 +134,10 @@ class Masternode(Node):
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
             # ISSUE REWARDS
-            # stamps = self.reward_manager.stamps_in_block(block)
-            # self.log.info(f'{stamps} in this block to issue.')
-            # self.reward_manager.set_pending_rewards(stamps)
-            # self.reward_manager.issue_rewards()
+            stamps = self.reward_manager.stamps_in_block(block)
+            self.log.info(f'{stamps} in this block to issue.')
+            self.reward_manager.set_pending_rewards(stamps)
+            self.reward_manager.issue_rewards()
 
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
