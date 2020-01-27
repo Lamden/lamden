@@ -450,10 +450,33 @@ class TestTotalEndToEnd(TestCase):
         async def test():
             await start_up
             await asyncio.sleep(1)
-            r = await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
-            print(r)
             await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
             await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+            await send_tx(mns[1], mns + dls, contract='testing', function='test', sender=Wallet())
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
+
+    def test_send_currency_works_in_orchestrator(self):
+        mns, dls = make_network(2, 2, self.ctx)
+
+        start_up = make_start_awaitable(mns, dls)
+
+        joe = Wallet()
+        bob = Wallet()
+
+        async def test():
+            await start_up
+            await asyncio.sleep(1)
+            await send_tx(mns[1], mns + dls,
+                          contract='currency',
+                          function='transfer',
+                          kwargs={
+                              'to': bob.verifying_key().hex(),
+                              'amount': 123
+                          },
+                          sender=joe
+                          )
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
