@@ -1,6 +1,6 @@
 from unittest import TestCase
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.block_server import BlockServer
+from cilantro_ee.catchup import BlockServer
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType

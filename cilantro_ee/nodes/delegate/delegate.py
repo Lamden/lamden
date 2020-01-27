@@ -14,7 +14,7 @@ import asyncio
 
 from contracting.execution.executor import Executor
 from cilantro_ee.rewards import RewardManager
-
+from cilantro_ee import canonical
 
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
@@ -64,8 +64,9 @@ class Delegate(Node):
     def process_nbn(self, nbn):
         self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
         self.driver.clear_pending_state()
-        if self.driver.latest_block_num < nbn['blockNum']:
+        if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
+            self.log.error('FAIL')
 
             # ISSUE REWARDS
             # stamps = self.reward_manager.stamps_in_block(nbn)

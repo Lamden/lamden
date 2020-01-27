@@ -88,7 +88,7 @@ def block_is_skip_block(block: dict):
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     block = {
-        'blockHash': b'\x00' * 32,
+        'blockHash': b'\xff' * 32,
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': []

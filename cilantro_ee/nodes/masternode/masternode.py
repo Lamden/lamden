@@ -130,8 +130,8 @@ class Masternode(Node):
         do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
         do_not_store |= canonical.block_is_skip_block(block)
 
-        #if not do_not_store:
-        if block['blockNum'] != self.driver.latest_block_num:
+        # if not do_not_store:
+        if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
             print(block)
             self.driver.update_with_block(block)
             # ISSUE REWARDS
