@@ -239,18 +239,3 @@ class Aggregator:
 
     def stop(self):
         self.sbc_inbox.stop()
-
-    # def build_subblocks_from_contenders(self, contender):
-    #     subblock = {
-    #         'inputHash'
-    #     }
-    #     pass
-
-# struct SubBlockContender {
-#     inputHash @0 :Data;
-#     transactions @1: List(T.TransactionData);
-#     merkleTree @2 :MerkleTree;
-#     signer @3 :Data;
-#     subBlockNum @4: UInt8;
-#     prevBlockHash @5: Data;
-# }

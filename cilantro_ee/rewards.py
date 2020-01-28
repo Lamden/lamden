@@ -51,8 +51,6 @@ class RewardManager:
         self.set_pending_rewards(0)
 
     def add_to_balance(self, vk, amount):
-        # current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
-
         current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
 
         if current_balance is None:
@@ -68,8 +66,6 @@ class RewardManager:
             value=amount + current_balance,
             mark=False
         )
-
-        #self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
 
     def get_pending_rewards(self):
         key = self.driver.get(PENDING_REWARDS_KEY)
