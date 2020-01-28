@@ -478,5 +478,16 @@ class TestTotalEndToEnd(TestCase):
                           sender=joe
                           )
 
+            await asyncio.sleep(1)
+            await send_tx(mns[1], mns + dls,
+                          contract='currency',
+                          function='transfer',
+                          kwargs={
+                              'to': joe.verifying_key().hex(),
+                              'amount': 5678
+                          },
+                          sender=bob
+                          )
+
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
