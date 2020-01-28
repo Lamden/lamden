@@ -106,10 +106,10 @@ class BlockchainDriver(ContractDriver):
         return self.get(self.n_key(NONCE_KEY, processor, sender))
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce)
+        self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce, mark=False)
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(NONCE_KEY, processor, sender), nonce)
+        self.set(self.n_key(NONCE_KEY, processor, sender), nonce, mark=False)
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
         self.delete(self.n_key(PENDING_NONCE_KEY, processor, sender))

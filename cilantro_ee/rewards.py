@@ -39,7 +39,7 @@ class RewardManager:
 
         master_reward = (master_ratio * pending_rewards) / len(masters)
         delegate_reward = (delegate_ratio * pending_rewards) / len(delegates)
-        foundation_reward = foundation_ratio * pending_rewards
+        # foundation_reward = foundation_ratio * pending_rewards
         # BURN + DEVELOPER
 
         for m in masters:
@@ -51,14 +51,25 @@ class RewardManager:
         self.set_pending_rewards(0)
 
     def add_to_balance(self, vk, amount):
-        current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
+        # current_balance = self.currency_contract.quick_read(variable='balances', key=vk)
+
+        current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
 
         if current_balance is None:
             current_balance = ContractingDecimal(0)
 
         amount = ContractingDecimal(amount)
         self.log.info('Sending {} to {}'.format(amount, vk))
-        self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
+
+        self.driver.set_var(
+            contract='currency',
+            variable='balances',
+            arguments=[vk],
+            value=amount + current_balance,
+            mark=False
+        )
+
+        #self.currency_contract.quick_write(variable='balances', key=vk, value=amount + current_balance)
 
     def get_pending_rewards(self):
         key = self.driver.get(PENDING_REWARDS_KEY)
@@ -69,7 +80,7 @@ class RewardManager:
         return key
 
     def set_pending_rewards(self, value):
-        self.driver.set(PENDING_REWARDS_KEY, value=value)
+        self.driver.set(PENDING_REWARDS_KEY, value=value, mark=False)
 
     @property
     def stamps_per_tau(self):
