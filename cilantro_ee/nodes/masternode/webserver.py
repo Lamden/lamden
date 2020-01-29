@@ -20,6 +20,7 @@ import ssl
 import hashlib
 import asyncio
 
+
 log = get_logger("MN-WebServer")
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -97,6 +98,7 @@ class WebServer:
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
+        log.info(f'Got req:{request}')
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503)
 
@@ -130,6 +132,7 @@ class WebServer:
             return response.json({'error': 'Transaction has negative stamps supplied.'})
 
         # Put it in the rate limiter queue.
+        log.info('Q TIME')
         self.queue.append(tx)
 
         h = hashlib.sha3_256()

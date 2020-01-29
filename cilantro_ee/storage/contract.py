@@ -1,4 +1,5 @@
-from contracting.db.driver import ContractDriver, decode_kv
+from contracting.db.driver import ContractDriver
+from contracting.db.encoder import decode_kv
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_KEY = '_current_block_num'
@@ -113,6 +114,17 @@ class BlockchainDriver(ContractDriver):
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
         self.delete(self.n_key(PENDING_NONCE_KEY, processor, sender))
+
+    def get_latest_nonce(self, processor:bytes, sender: bytes):
+        nonce = self.get_pending_nonce(processor, sender)
+
+        if nonce is None:
+            nonce = self.get_nonce(processor, sender)
+
+        if nonce is None:
+            nonce = 0
+
+        return nonce
 
     def commit_nonces(self, nonce_hash=None):
         # Delete pending nonces and update the nonces

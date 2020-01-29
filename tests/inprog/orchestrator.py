@@ -103,15 +103,15 @@ def make_start_awaitable(mns, dls):
     return asyncio.gather(*coros)
 
 
-def make_tx_packed(processor, contract_name, function_name, sender=Wallet(), kwargs={}, drivers=[]):
+def make_tx_packed(processor, contract_name, function_name, sender=Wallet(), kwargs={}, drivers=[], stamps=10_000, nonce=0):
     batch = TransactionBuilder(
         sender=sender.verifying_key(),
         contract=contract_name,
         function=function_name,
         kwargs=kwargs,
-        stamps=10000,
+        stamps=stamps,
         processor=processor,
-        nonce=0
+        nonce=nonce
     )
 
     batch.sign(sender.signing_key())
@@ -143,13 +143,23 @@ async def send_tx(masternode: Masternode, nodes, contract, function, sender=Wall
                 function_name=function,
                 sender=sender,
                 kwargs=kwargs,
-                drivers=[node.driver for node in nodes]
+                drivers=[node.driver for node in nodes],
+                nonce=0
             )
         )
 
     res = await r.json()
     await asyncio.sleep(sleep)
     return res
+
+
+async def send_tx_batch(masternode, txs):
+    async with aiohttp.ClientSession() as session:
+        for tx in txs:
+            await session.post(
+                url=f'http://127.0.0.1:{masternode.webserver.port}/',
+                data=tx
+            )
 
 # async def
 # async with aiohttp.ClientSession() as session:
