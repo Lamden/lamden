@@ -80,9 +80,9 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         async def test():
             await start_up
-            await asyncio.sleep(1)
-            await send_tx_batch(mns[1], [tx1, tx2, tx3, tx4])
             await asyncio.sleep(3)
+            await send_tx_batch(mns[1], [tx1, tx2, tx3, tx4])
+            await asyncio.sleep(5)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
@@ -92,14 +92,13 @@ class TestGovernanceOrchestration(unittest.TestCase):
                 contract='elect_masternodes',
                 variable='candidate_votes',
                 arguments=[])
-
-            print(v)
+            self.assertDictEqual(v, {candidate.verifying_key().hex(): 1})
 
     def test_new_orchestrator(self):
         candidate = Wallet()
         stu = Wallet()
 
-        o = Orchestrator(2, 2, self.ctx)
+        o = Orchestrator(2, 4, self.ctx)
 
         txs = []
 
@@ -142,9 +141,13 @@ class TestGovernanceOrchestration(unittest.TestCase):
             await o.start_network
             await asyncio.sleep(1)
             await send_tx_batch(o.masternodes[0], txs)
+            await asyncio.sleep(3)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
+
+        v = o.get_var('elect_masternodes', 'candidate_votes')
+        self.assertDictEqual(v, {candidate.verifying_key().hex(): 1})
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
 #     self.currency.transfer(signer='stu', amount=100_000, to='joe')

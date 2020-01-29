@@ -217,7 +217,24 @@ class Orchestrator:
 
         for driver in [node.driver for node in self.nodes]:
             driver.set(balances_key, amount)
+            driver.commit()
 
         self.minted.add(to.verifying_key())
+
+    def get_var(self, contract, function, arguments=[]):
+        vals = []
+        for node in self.nodes:
+            v = node.driver.get_var(
+                contract=contract,
+                variable=function,
+                arguments=arguments)
+
+            vals.append(v)
+
+        if len(vals) > 1:
+            for v in vals:
+                assert vals[0] == v, 'Consensus failure'
+
+        return vals.pop()
 
     # get value from all driver
