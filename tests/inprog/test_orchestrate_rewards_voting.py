@@ -95,8 +95,56 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
             print(v)
 
+    def test_new_orchestrator(self):
+        candidate = Wallet()
+        stu = Wallet()
 
+        o = Orchestrator(2, 2, self.ctx)
 
+        txs = []
+
+        txs.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=candidate
+        ))
+
+        txs.append(o.make_tx(
+            contract='elect_masternodes',
+            function='register',
+            sender=candidate
+        ))
+
+        txs.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=stu
+        ))
+
+        txs.append(o.make_tx(
+            contract='elect_masternodes',
+            function='vote_candidate',
+            kwargs={
+                'address': candidate.verifying_key().hex()
+            },
+            sender=stu,
+        ))
+
+        async def test():
+            await o.start_network
+            await asyncio.sleep(1)
+            await send_tx_batch(o.masternodes[0], txs)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
 #     self.currency.transfer(signer='stu', amount=100_000, to='joe')

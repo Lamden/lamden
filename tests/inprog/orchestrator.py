@@ -14,6 +14,8 @@ from contracting import config
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 import capnp
+from collections import defaultdict
+import random
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
@@ -27,7 +29,7 @@ def make_ipc(p):
         pass
 
 
-def make_network(masternodes, delegates, ctx):
+def make_network(masternodes, delegates, ctx, mn_min_quorum=2, del_min_quorum=2):
     mn_wallets = [Wallet() for _ in range(masternodes)]
     dl_wallets = [Wallet() for _ in range(delegates)]
 
@@ -39,8 +41,8 @@ def make_network(masternodes, delegates, ctx):
         'notifiers': [],
         'enable_stamps': False,
         'enable_nonces': False,
-        'masternode_min_quorum': 2,
-        'delegate_min_quorum': 2,
+        'masternode_min_quorum': mn_min_quorum,
+        'delegate_min_quorum': del_min_quorum,
         'witness_min_quorum': 0,
         'notifier_min_quorum': 0,
         'scheduler_min_quorum': 0
@@ -162,10 +164,60 @@ async def send_tx_batch(masternode, txs):
                 data=tx
             )
 
-# async def
-# async with aiohttp.ClientSession() as session:
-#     r = await session.post('http://127.0.0.1:8081/',
-#                  data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
-#
-# res = await
-# r.json()
+
+class Orchestrator:
+    def __init__(self, masternode_num, delegate_num, ctx, min_mn_quorum=2, min_del_quorum=2):
+        self.ctx = ctx
+        mns, dels = make_network(masternode_num, delegate_num, ctx, min_mn_quorum, min_del_quorum)
+        self.masternodes = mns
+        self.delegates = dels
+        self.nodes = self.masternodes + self.delegates
+
+        self.start_network = make_start_awaitable(self.masternodes, self.delegates)
+
+        self.nonces = defaultdict(int)
+        self.minted = set()
+
+    def reset(self):
+        self.nonces.clear()
+        self.minted.clear()
+
+    def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000):
+        processor = self.masternodes[0]
+
+        batch = TransactionBuilder(
+            sender=sender.verifying_key(),
+            contract=contract,
+            function=function,
+            kwargs=kwargs,
+            stamps=stamps,
+            processor=processor.wallet.verifying_key(),
+            nonce=self.nonces[sender.verifying_key() + processor.wallet.verifying_key()]
+        )
+
+        batch.sign(sender.signing_key())
+        b = batch.serialize()
+
+        self.nonces[sender.verifying_key() + processor.wallet.verifying_key()] += 1
+
+        if sender.verifying_key() not in self.minted:
+            self.mint(1_000_000, sender)
+
+        return b
+
+    def mint(self, amount, to):
+        currency_contract = 'currency'
+        balances_hash = 'balances'
+
+        balances_key = '{}{}{}{}{}'.format(currency_contract,
+                                           config.INDEX_SEPARATOR,
+                                           balances_hash,
+                                           config.DELIMITER,
+                                           to.verifying_key().hex())
+
+        for driver in [node.driver for node in self.nodes]:
+            driver.set(balances_key, amount)
+
+        self.minted.add(to.verifying_key())
+
+    # get value from all driver
