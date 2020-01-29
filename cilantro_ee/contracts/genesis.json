@@ -21,6 +21,11 @@
 			"name": "rewards",
 			"owner": "election_house",
 			"constructor_args": null
+		},
+		{
+			"name": "upgrade",
+			"owner": "election_house",
+			"constructor_args": null
 		}
 	]
 }
