@@ -148,6 +148,11 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         v = o.get_var('elect_masternodes', 'candidate_votes')
         self.assertDictEqual(v, {candidate.verifying_key().hex(): 1})
+
+        v = o.get_var('currency', 'balances', ['blackhole'])
+        self.assertEqual(v, 0.2)
+
+
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
 #     self.currency.transfer(signer='stu', amount=100_000, to='joe')
