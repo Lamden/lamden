@@ -14,7 +14,7 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, vkbook, driver=ContractDriver()):
+    def __init__(self, vkbook, driver=ContractDriver(), debug=False):
         self.vkbook = vkbook
         self.driver = driver
         self.client = ContractingClient(driver=driver)
@@ -29,6 +29,7 @@ class RewardManager:
         assert self.currency_contract is not None, 'Currency contract not in state.'
 
         self.log = get_logger('RWM')
+        self.log.propagate = debug
 
     def issue_rewards(self):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio

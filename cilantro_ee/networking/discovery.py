@@ -42,7 +42,9 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout):
+async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout, debug=False):
+    log = get_logger('Pinger')
+    log.propagate = debug
     log.info(f'Pinging: {socket_id.zmq_url()}')
     response = await services.get(socket_id=socket_id, msg=b'', ctx=ctx, timeout=timeout)
 
@@ -56,11 +58,13 @@ async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context
     return str(socket_id), vk
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10, debug=False):
     nodes_found = {}
     one_found = False
     retries_left = retries
 
+    log = get_logger('DiscoverNodes')
+    log.propagate = debug
     log.info([str(ip) for ip in ip_list])
 
     while not one_found and retries_left > 0:

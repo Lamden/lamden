@@ -20,12 +20,14 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver()):
+                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=False):
 
         self.driver = driver
         self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
         self.log = get_logger('NODE')
+        self.log.propagate = debug
         self.log.info(constitution)
+
         # Sync contracts
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(

@@ -158,6 +158,13 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
         'bn': boot_dels
     })
 
+    # add to election house
+    election_house = client.get_contract('election_house')
+    election_house.register_policy(contract='masternodes')
+    election_house.register_policy(contract='delegates')
+    election_house.register_policy(contract='rewards')
+    election_house.register_policy(contract='stamp_cost')
+
     elect_members = root + '/genesis/elect_members.s.py'
 
     with open(elect_members) as f:

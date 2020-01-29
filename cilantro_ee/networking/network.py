@@ -13,8 +13,6 @@ from cilantro_ee.logger.base import get_logger
 
 import random
 
-log = get_logger('NetworkService')
-
 class Network:
     def __init__(self, wallet,
                  params=NetworkParameters(),
@@ -26,7 +24,11 @@ class Network:
                  del_to_find=[],
                  socket_base='tcp://127.0.0.1',
                  poll_timeout=200,
-                 linger=1000):
+                 linger=1000,
+                 debug=False):
+
+        self.log = get_logger('NetworkService')
+        self.log.propagate = debug
 
         # General Instance Variables
         self.wallet = wallet
@@ -90,7 +92,7 @@ class Network:
             peer_sockets = \
                 [self.params.resolve(bootnode, ServiceType.PEER) for bootnode in self.bootnodes]
 
-            log.info('Peers now: {}'.format(peer_sockets))
+            self.log.info('Peers now: {}'.format(peer_sockets))
 
             #self.peer_service.table.peers = peer_sockets
 
@@ -103,7 +105,7 @@ class Network:
                 peer_sockets
             )
 
-            log.success('Network is ready.')
+            self.log.success('Network is ready.')
 
             self.ready = True
 
@@ -111,7 +113,7 @@ class Network:
 
             await self.peer_service.event_publisher.send(ready_msg)
 
-            log.success('Sent ready signal.')
+            self.log.success('Sent ready signal.')
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
@@ -119,7 +121,7 @@ class Network:
 
         for ip, vk in responses.items():
             self.table.peers[vk] = services.strip_service(ip)  # Should be stripped of port and tcp
-            log.error(f'Added {services.strip_service(ip)} for {vk}')
+            self.log.error(f'Added {services.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
             asyncio.ensure_future(self.discovery_server.serve())
@@ -132,7 +134,7 @@ class Network:
             join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
 
             peer = self.params.resolve(ip, service_type=ServiceType.PEER)
-            log.error(peer)
+            self.log.error(peer)
 
             await services.get(peer, msg=join_message, ctx=self.ctx, timeout=1000)
 
@@ -148,7 +150,7 @@ class Network:
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
-            log.info('Need {} MNs and {} DELs to begin...'.format(
+            self.log.info('Need {} MNs and {} DELs to begin...'.format(
                 masternodes_to_find,
                 delegates_to_find
             ))
@@ -186,7 +188,7 @@ class Network:
                 self.discovery_server.serve()
             )
 
-        log.success('Quorum reached! Begin protocol services...')
+        self.log.success('Quorum reached! Begin protocol services...')
 
         return results
 
@@ -199,10 +201,10 @@ class Network:
                 nodes.update(node)
 
         # Update the peer table with the _new nodes
-        log.info(nodes)
+        self.log.info(nodes)
         self.table.peers.update(nodes)
 
-        log.info(f'Peer table now: {self.table.peers}')
+        self.log.info(f'Peer table now: {self.table.peers}')
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():

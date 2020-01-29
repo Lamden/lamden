@@ -52,10 +52,11 @@ class TestGovernanceOrchestration(unittest.TestCase):
         )
 
         tx3 = make_tx_packed(
-            contract_name='elect_masternodes',
-            function_name='vote_candidate',
+            contract_name='currency',
+            function_name='approve',
             kwargs={
-              'address': candidate.verifying_key().hex()
+                'amount': 100_000,
+                'to': 'elect_masternodes'
             },
             sender=stu,
             drivers=[node.driver for node in mns + dls],
@@ -64,10 +65,23 @@ class TestGovernanceOrchestration(unittest.TestCase):
             processor=mns[1].wallet.verifying_key()
         )
 
+        tx4 = make_tx_packed(
+            contract_name='elect_masternodes',
+            function_name='vote_candidate',
+            kwargs={
+              'address': candidate.verifying_key().hex()
+            },
+            sender=stu,
+            drivers=[node.driver for node in mns + dls],
+            nonce=1,
+            stamps=1_000_000,
+            processor=mns[1].wallet.verifying_key()
+        )
+
         async def test():
             await start_up
             await asyncio.sleep(1)
-            await send_tx_batch(mns[1], [tx1, tx2, tx3])
+            await send_tx_batch(mns[1], [tx1, tx2, tx3, tx4])
             await asyncio.sleep(3)
 
         loop = asyncio.get_event_loop()

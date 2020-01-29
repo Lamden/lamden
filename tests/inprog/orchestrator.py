@@ -12,6 +12,7 @@ from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting import config
 
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 import capnp
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
