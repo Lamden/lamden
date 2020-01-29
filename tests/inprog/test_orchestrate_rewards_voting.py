@@ -94,7 +94,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
                 arguments=[])
             self.assertDictEqual(v, {candidate.verifying_key().hex(): 1})
 
-    def test_new_orchestrator(self):
+    def test_register_work_like_contracting_tests(self):
         candidate = Wallet()
         stu = Wallet()
 
@@ -152,27 +152,5 @@ class TestGovernanceOrchestration(unittest.TestCase):
         v = o.get_var('currency', 'balances', ['blackhole'])
         self.assertEqual(v, 0.2)
 
-
-# def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
-#     # Give joe money
-#     self.currency.transfer(signer='stu', amount=100_000, to='joe')
-#
-#     # Joe Allows Spending
-#     self.currency.approve(signer='joe', amount=100_000, to='master_candidates')
-#
-#     self.master_candidates.register(signer='joe')
-#
-#     self.currency.approve(signer='stu', amount=10_000, to='master_candidates')
-#
-#     env = {'now': Datetime._from_datetime(dt.today())}
-#
-#     stu_bal = self.currency.balances['stu']
-#
-#     self.master_candidates.vote_candidate(signer='stu', address='joe', environment=env)
-#
-#     print(self.master_candidates.executor.driver.pending_writes)
-#
-#     self.assertEqual(self.currency.balances['stu'], stu_bal - 1)
-#     self.assertEqual(self.master_candidates.candidate_votes.get()['joe'], 1)
-#     self.assertEqual(self.currency.balances['blackhole'], 1)
-#     self.assertEqual(self.master_candidates.candidate_state['last_voted', 'stu'], env['now'])
+    def test_new_election_changes_parameters(self):
+        pass
