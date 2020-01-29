@@ -6,14 +6,14 @@ from contracting.client import ContractingClient
 
 
 class TestUpgrade(TestCase):
-    def setup(self):
-        masternodes = ['a', 'b', 'c']
-        delegates = ['d', 'e', 'f']
-        stamps = False
-        nonces = False
-
-        v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
-        self.assertIsNotNone(v)
+    # def setup(self):
+    #     masternodes = ['a', 'b', 'c']
+    #     delegates = ['d', 'e', 'f']
+    #     stamps = False
+    #     nonces = False
+    #
+    #     v = VKBook(masternodes, delegates, stamps=stamps, nonces=nonces, debug=False)
+    #     self.assertIsNotNone(v)
 
     # check initial state of Upgrade
     def test_init_state(self):

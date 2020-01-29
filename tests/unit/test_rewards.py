@@ -1,4 +1,4 @@
-from unittest import TestCase
+import unittest
 from cilantro_ee.core.rewards import RewardManager
 from tests import random_txs
 from contracting.db.driver import ContractDriver
@@ -9,8 +9,9 @@ from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 
-class TestRewards(TestCase):
-    def setUp(self):
+
+class TestRewards(unittest.TestCase):
+    def test_setup(self):
 
         self.driver = ContractDriver()
         self.client = ContractingClient()
@@ -129,3 +130,6 @@ class TestRewards(TestCase):
         self.assertEqual(currency_contract.quick_read(variable='balances', key='alex'), 250)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
+
+if __name__ == '__main__':
+    unittest.main()

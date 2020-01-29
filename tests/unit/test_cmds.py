@@ -13,8 +13,10 @@ class ParserTest(TestCase):
 
         self.assertEqual(args.vote, False)
         self.assertEqual(args.read, False)
+        print('hello')
 
     def test_update_trigger(self):
+        print('hello')
         pass
 
     def test_update_vote(self):
