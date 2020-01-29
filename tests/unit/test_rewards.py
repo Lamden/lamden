@@ -34,6 +34,10 @@ class TestRewards(unittest.TestCase):
             c = f.read()
             self.client.submit(c, name='rewards', owner='election_house')
 
+        with open(os.path.join(genesis_path, 'upgrade.s.py')) as f:
+            c = f.read()
+            self.client.submit(c, name = 'upgarde', owner = 'election_house')
+
         sync.submit_vkbook({'masternodes': ['stu', 'raghu', 'steve'],
           'delegates': ['tejas', 'alex'],
           'masternode_min_quorum': 2,
@@ -130,6 +134,7 @@ class TestRewards(unittest.TestCase):
         self.assertEqual(currency_contract.quick_read(variable='balances', key='alex'), 250)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
+
 
 if __name__ == '__main__':
     unittest.main()
