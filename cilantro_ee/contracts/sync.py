@@ -163,12 +163,12 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
     with open(elect_members) as f:
         code = f.read()
 
-    client.submit(code, name='elect_masternodes', owner='election_house', constructor_args={
+    client.submit(code, name='elect_masternodes', constructor_args={
         'policy': 'masternodes',
         'cost': master_price,
     })
 
-    client.submit(code, name='elect_delegates', owner='election_house', constructor_args={
+    client.submit(code, name='elect_delegates', constructor_args={
         'policy': 'delegates',
         'cost': delegate_price,
     })

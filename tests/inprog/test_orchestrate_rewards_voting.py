@@ -32,7 +32,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function_name='approve',
             kwargs={
                 'amount': 100_000,
-                'to': 'master_candidates'
+                'to': 'elect_masternodes'
             },
             sender=candidate,
             drivers=[node.driver for node in mns + dls],
@@ -42,7 +42,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         )
 
         tx2 = make_tx_packed(
-            contract_name='master_candidates',
+            contract_name='elect_masternodes',
             function_name='register',
             sender=candidate,
             drivers=[node.driver for node in mns + dls],
@@ -52,8 +52,8 @@ class TestGovernanceOrchestration(unittest.TestCase):
         )
 
         tx3 = make_tx_packed(
-            contract_name='master_candidates',
-            function_name='vote_candidates',
+            contract_name='elect_masternodes',
+            function_name='vote',
             kwargs={
               'address': candidate.verifying_key().hex()
             },
@@ -66,12 +66,22 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         async def test():
             await start_up
-            await asyncio.sleep(5)
+            await asyncio.sleep(1)
             await send_tx_batch(mns[1], [tx1, tx2, tx3])
-            await asyncio.sleep(10)
+            await asyncio.sleep(3)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
+
+        for node in mns + dls:
+            v = node.driver.get_var(
+                contract='elect_masters',
+                variable='candidate_votes',
+                arguments=[])
+
+            print(v)
+
+
 
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
