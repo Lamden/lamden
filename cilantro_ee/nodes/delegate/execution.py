@@ -29,8 +29,7 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         auto_commit=False
     )
 
-    if output['status_code'] == 1:
-        log.error(output)
+    log.error(output)
 
     deltas = []
     for k, v in output['writes'].items():
@@ -46,7 +45,7 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         stampsUsed=output['stamps_used']
     )
 
-    executor.driver.clear_pending_state()
+    executor.driver.pending_writes.clear()
 
     return tx_output
 

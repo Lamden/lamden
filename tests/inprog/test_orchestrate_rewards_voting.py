@@ -53,7 +53,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         tx3 = make_tx_packed(
             contract_name='elect_masternodes',
-            function_name='vote',
+            function_name='vote_candidate',
             kwargs={
               'address': candidate.verifying_key().hex()
             },
