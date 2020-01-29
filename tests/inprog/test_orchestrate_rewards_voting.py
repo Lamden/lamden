@@ -20,7 +20,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         self.loop.close()
 
     def test_orchestrator(self):
-        mns, dls = make_network(2, 2, self.ctx)
+        mns, dls = make_network(2, 4, self.ctx)
 
         start_up = make_start_awaitable(mns, dls)
 
@@ -89,7 +89,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         for node in mns + dls:
             v = node.driver.get_var(
-                contract='elect_masters',
+                contract='elect_masternodes',
                 variable='candidate_votes',
                 arguments=[])
 
