@@ -6,13 +6,13 @@ REMOVE_MEMBER = 1
 ADD_SEAT = 2
 REMOVE_SEAT = 3
 
-VOTING_PERIOD = Variable()
+VOTING_PERIOD = datetime.DAYS * 1
 
 S = Hash()
 boot_num = Variable()
 
 @construct
-def seed(initial_members, bn=1, period=datetime.DAYS * 1):
+def seed(initial_members, bn=1):
     S['members'] = initial_members
     boot_num.set(bn)
 
@@ -21,8 +21,6 @@ def seed(initial_members, bn=1, period=datetime.DAYS * 1):
 
     S['current_motion'] = NO_MOTION
     S['motion_opened'] = now
-
-    VOTING_PERIOD.set(period)
 
 @export
 def quorum_max():
@@ -70,7 +68,7 @@ def vote(vk, obj):
         elif S['nays'] >= len(S['members']) // 2 + 1:
             reset()
 
-        elif now - S['motion_opened'] >= VOTING_PERIOD.get():
+        elif now - S['motion_opened'] >= VOTING_PERIOD:
             reset()
 
 
@@ -117,7 +115,7 @@ def pass_current_motion():
 
     elif current_motion == ADD_SEAT:
         # Get the top member
-        new_del = member_candidates.top_member()
+        new_del = member_candidates.top_membernode()
 
         # Append it to the list, and remove it from pending
         if new_del is not None:
@@ -126,7 +124,7 @@ def pass_current_motion():
 
     elif current_motion == REMOVE_SEAT:
         # Get least popular member
-        old_del = member_candidates.last_member()
+        old_del = member_candidates.last_membernode()
 
         # Remove them from the list and pop them from deprecating
         if old_del is not None:

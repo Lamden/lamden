@@ -2,7 +2,6 @@ import glob
 import os
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
-from contracting.stdlib.bridge.time import DAYS
 from cilantro_ee.constants import conf
 import cilantro_ee
 import json
@@ -142,7 +141,7 @@ def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.
                       constructor_args=contract['constructor_args'])
 
 
-def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, voting_period=DAYS, master_price=100_000,
+def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
                                    delegate_price=10_000, root=os.path.dirname(__file__), client=ContractingClient()):
     members = root + '/genesis/members.s.py'
 
@@ -151,14 +150,12 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
 
     client.submit(code, name='masternodes', owner='election_house', constructor_args={
         'initial_members': initial_masternodes,
-        'bn': boot_mns,
-        'period': voting_period,
+        'bn': boot_mns
     })
 
     client.submit(code, name='delegates', owner='election_house', constructor_args={
         'initial_members': initial_delegates,
-        'bn': boot_dels,
-        'period': voting_period,
+        'bn': boot_dels
     })
 
     # add to election house
