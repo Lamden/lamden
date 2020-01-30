@@ -24,7 +24,7 @@
 		},
 		{
 			"name": "upgrade",
-			"owner": "election_house",
+			"owner": "",
 			"constructor_args": null
 		}
 	]
