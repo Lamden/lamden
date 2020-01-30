@@ -99,7 +99,6 @@ class TestGovernanceOrchestration(unittest.TestCase):
         stu = Wallet()
 
         o = Orchestrator(2, 4, self.ctx)
-
         txs = []
 
         txs.append(o.make_tx(
@@ -138,6 +137,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         ))
 
         async def test():
+
             await o.start_network
             await asyncio.sleep(1)
             await send_tx_batch(o.masternodes[0], txs)
