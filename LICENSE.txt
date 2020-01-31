@@ -119,7 +119,9 @@ Section 1 -- Definitions.
      other material subject to Copyright and Similar Rights by digital
      file-sharing or similar means is NonCommercial provided there is
      no payment of monetary compensation in connection with the
-     exchange.
+     exchange. Monetary compensation includes cryptocurrency. Any new
+     cryptocurrency created via forks or deployment of this software
+     is covered as monetary compensation.
 
   j. Share means to provide material to the public by any means or
      process that requires permission under the Licensed Rights, such
