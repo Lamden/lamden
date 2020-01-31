@@ -214,9 +214,9 @@ def set(var):
 def get():
     return v.get()
         '''
-
+        print('ok')
         self.client.submit(test_contract, name='testing')
-
+        print('here')
         tx = TransactionBuilder(
             sender='stu',
             contract='testing',

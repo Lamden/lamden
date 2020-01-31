@@ -2,7 +2,7 @@ from unittest import TestCase
 from cilantro_ee.sockets import services
 from cilantro_ee.crypto.wallet import Wallet
 
-from cilantro_ee.block_server import BlockServer, BlockFetcher
+from cilantro_ee.catchup import BlockServer, BlockFetcher
 from cilantro_ee import canonical
 import secrets
 from cilantro_ee.storage.master import CilantroStorageDriver
