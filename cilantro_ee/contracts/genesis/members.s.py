@@ -10,11 +10,13 @@ VOTING_PERIOD = datetime.DAYS * 1
 
 S = Hash()
 boot_num = Variable()
+candidate_contract = Variable()
 
 @construct
-def seed(initial_members, bn=1):
+def seed(initial_members, bn=1, candidate='elect_masternodes'):
     S['members'] = initial_members
     boot_num.set(bn)
+    candidate_contract.set(candidate)
 
     S['yays'] = 0
     S['nays'] = 0
@@ -37,7 +39,7 @@ def current_value():
 
 @export
 def vote(vk, obj):
-    assert type(obj) == tuple, 'Pass a tuple!'
+    assert type(obj) == list, 'Pass a tuple!'
 
     arg = None
     try:
@@ -115,7 +117,8 @@ def pass_current_motion():
 
     elif current_motion == ADD_SEAT:
         # Get the top member
-        new_del = member_candidates.top_membernode()
+        member_candidates = importlib.import_module(candidate_contract.get())
+        new_del = member_candidates.top_member()
 
         # Append it to the list, and remove it from pending
         if new_del is not None:
@@ -124,7 +127,8 @@ def pass_current_motion():
 
     elif current_motion == REMOVE_SEAT:
         # Get least popular member
-        old_del = member_candidates.last_membernode()
+        member_candidates = importlib.import_module(candidate_contract.get())
+        old_del = member_candidates.last_member()
 
         # Remove them from the list and pop them from deprecating
         if old_del is not None:

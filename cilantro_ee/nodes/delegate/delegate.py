@@ -63,7 +63,8 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
-        self.driver.clear_pending_state()
+        self.driver.reads.clear()
+        self.driver.pending_writes.clear()
         if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
             self.log.error('FAIL')

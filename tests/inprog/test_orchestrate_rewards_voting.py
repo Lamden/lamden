@@ -152,6 +152,92 @@ class TestGovernanceOrchestration(unittest.TestCase):
         v = o.get_var('currency', 'balances', ['blackhole'])
         self.assertEqual(v, 0.2)
 
+    def test_introduce_and_pass_motion_masternodes(self):
+        stu = Wallet()
+        candidate = Wallet()
+
+        o = Orchestrator(2, 4, self.ctx)
+
+        block_0 = []
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='elect_masternodes',
+            function='register',
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=stu
+        ))
+
+        block_0.append(o.make_tx(
+            contract='elect_masternodes',
+            function='vote_candidate',
+            kwargs={
+                'address': candidate.verifying_key().hex()
+            },
+            sender=stu,
+        ))
+
+        block_1 = []
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'masternodes',
+                'value': ('introduce_motion', 2)
+            },
+            sender=o.masternodes[0].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'masternodes',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.masternodes[0].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'masternodes',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.masternodes[1].wallet
+        ))
+
+        async def test():
+
+            await o.start_network
+            await asyncio.sleep(1)
+            await send_tx_batch(o.masternodes[0], block_0)
+            await asyncio.sleep(3)
+            await send_tx_batch(o.masternodes[0], block_1)
+            await asyncio.sleep(3)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
 
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
