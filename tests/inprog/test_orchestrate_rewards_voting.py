@@ -239,6 +239,9 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
+        v = o.get_var('masternodes', 'S', ['members'])
+        self.assertListEqual(v, [o.masternodes[0].wallet.verifying_key().hex(), o.masternodes[1].wallet.verifying_key().hex(), candidate.verifying_key().hex()])
+
 # def test_vote_for_someone_registered_deducts_tau_and_adds_vote(self):
 #     # Give joe money
 #     self.currency.transfer(signer='stu', amount=100_000, to='joe')
