@@ -77,6 +77,7 @@ class Delegate(Node):
 
         self.nbn_inbox.clean()
         self.pending_sbcs.clear()
+        self.nbn_inbox.update_signers()
 
     def filter_work(self, work):
         filtered_work = []

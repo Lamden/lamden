@@ -29,9 +29,10 @@ class NBNInbox(AsyncInbox):
         self.contacts = contacts
         self.driver = driver
         self.verify = verify
-        self.quorum_ratio = 0.66
+        self.quorum_ratio = 0.50
         self.allow_current_block_num = allow_current_block_num
         self.log = get_logger('NBN')
+        self.signers = len(self.contacts.delegates) # This has to be updated every block in case a delegate is added or removed
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
@@ -58,7 +59,7 @@ class NBNInbox(AsyncInbox):
 
         # Check if signed by quorum amount
         for sub_block in msg_blob.subBlocks:
-            if len(sub_block.signatures) < math.ceil(len(self.contacts.delegates) * self.quorum_ratio):
+            if len(sub_block.signatures) < math.ceil(self.signers * self.quorum_ratio):
                 raise BadConsensusBlock
 
         # Deserialize off the socket
@@ -78,3 +79,6 @@ class NBNInbox(AsyncInbox):
 
     def clean(self):
         self.q = [nbn for nbn in self.q if nbn['blockNum'] >= self.driver.latest_block_num]
+
+    def update_signers(self):
+        self.signers = len(self.contacts.delegates)

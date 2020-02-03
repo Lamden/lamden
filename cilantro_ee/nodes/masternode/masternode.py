@@ -142,6 +142,8 @@ class Masternode(Node):
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 
+        self.nbn_inbox.update_signers()
+
     async def process_blocks(self):
         while self.running:
             sends = await self.send_work()
