@@ -34,7 +34,8 @@ class SocketAuthenticator:
             self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
 
         except ZMQBaseError:
-            raise Exception('AsyncioAuthenicator could not be started. Is it already running?')
+            pass
+            #raise Exception('AsyncioAuthenicator could not be started. Is it already running?')
 
     def sync_certs(self):
         self.flush_all_keys()
@@ -84,3 +85,25 @@ class SocketAuthenticator:
         sock.curve_server = True
 
         return sock
+
+
+def make_client(wallet, ctx, zmq_type, server_vk: bytes, cert_dir):
+    sock = ctx.socket(zmq_type)
+    sock.curve_secretkey = wallet.curve_sk
+    sock.curve_publickey = wallet.curve_vk
+
+    server_pub, _ = load_certificate(str(cert_dir / f'{server_vk.hex()}.key'))
+
+    sock.curve_serverkey = server_pub
+
+    return sock
+
+
+def make_server(wallet, ctx, zmq_type):
+    sock = ctx.socket(zmq_type)
+    sock.curve_secretkey = wallet.curve_sk
+    sock.curve_publickey = wallet.curve_vk
+
+    sock.curve_server = True
+
+    return sock

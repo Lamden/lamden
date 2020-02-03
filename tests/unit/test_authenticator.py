@@ -8,6 +8,7 @@ from cilantro_ee.storage.vkbook import VKBook
 from nacl.signing import SigningKey
 from cilantro_ee.contracts import sync
 import cilantro_ee
+from contracting.client import ContractingClient
 
 
 class TestAuthenticator(TestCase):
@@ -18,15 +19,19 @@ class TestAuthenticator(TestCase):
         masternodes = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
         delegates = [Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), Wallet().verifying_key().hex(), ]
 
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        self.c = ContractingClient()
+        self.c.flush()
+
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.c)
         sync.submit_node_election_contracts(initial_masternodes=masternodes, boot_mns=1,
-                                            initial_delegates=delegates, boot_dels=1)
+                                            initial_delegates=delegates, boot_dels=1, client=self.c)
 
         self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(boot_mn=1, boot_del=1), ctx=self.ctx)
 
     def tearDown(self):
         self.ctx.destroy()
-        #self.s.flush_all_keys()
+
+        self.c.flush()
 
     def test_double_init(self):
         w = Wallet()

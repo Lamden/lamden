@@ -28,6 +28,9 @@ class Node:
         self.log = get_logger('NODE')
         self.log.propagate = debug
         self.log.info(constitution)
+        self.socket_base = socket_base
+        self.wallet = wallet
+        self.ctx = ctx
 
         # Sync contracts
 
@@ -46,10 +49,10 @@ class Node:
 
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
+        self.socket_authenticator = SocketAuthenticator(wallet=wallet, contacts=self.contacts, ctx=self.ctx)
+
         # stuff
-        self.socket_base = socket_base
-        self.wallet = wallet
-        self.ctx = ctx
+
         self.network_parameters = network_parameters
 
         self.bootnodes = bootnodes

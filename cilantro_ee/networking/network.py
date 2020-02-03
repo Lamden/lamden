@@ -4,7 +4,7 @@ from cilantro_ee.constants.ports import DHT_PORT, PEPPER
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking import discovery
-from cilantro_ee.sockets import services
+from cilantro_ee.sockets import services, struct
 
 from copy import deepcopy
 import asyncio
@@ -121,8 +121,8 @@ class Network:
                                                    ctx=self.ctx, timeout=1000)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = cilantro_ee.sockets.struct.strip_service(ip)  # Should be stripped of port and tcp
-            self.log.error(f'Added {services.strip_service(ip)} for {vk}')
+            self.table.peers[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
+            self.log.error(f'Added {struct.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
             asyncio.ensure_future(self.discovery_server.serve())
