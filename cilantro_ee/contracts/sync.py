@@ -150,12 +150,14 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
 
     client.submit(code, name='masternodes', owner='election_house', constructor_args={
         'initial_members': initial_masternodes,
-        'bn': boot_mns
+        'bn': boot_mns,
+        'candidate': 'elect_masternodes'
     })
 
     client.submit(code, name='delegates', owner='election_house', constructor_args={
         'initial_members': initial_delegates,
-        'bn': boot_dels
+        'bn': boot_dels,
+        'candidate': 'elect_delegates'
     })
 
     # add to election house
