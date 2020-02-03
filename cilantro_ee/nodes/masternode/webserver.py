@@ -109,6 +109,8 @@ class WebServer:
         except Exception as e:
             return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
+        error = False
+        msg = {'error': 'Unknown Error'}
         try:
             transaction_is_valid(tx=tx,
                                  expected_processor=self.wallet.verifying_key(),
@@ -117,19 +119,23 @@ class WebServer:
 
         # These exceptions are tested to work in the transaction_is_valid tests
         except TransactionNonceInvalid:
-            return response.json({'error': 'Transaction nonce is invalid.'})
+            msg = {'error': 'Transaction nonce is invalid.'}
         except TransactionProcessorInvalid:
-            return response.json({'error': 'Transaction processor does not match expected processor.'})
+            msg = {'error': 'Transaction processor does not match expected processor.'}
         except TransactionTooManyPendingException:
-            return response.json({'error': 'Too many pending transactions currently in the block.'})
+            msg = {'error': 'Too many pending transactions currently in the block.'}
         except TransactionSenderTooFewStamps:
-            return response.json({'error': 'Transaction sender has too few stamps for this transaction.'})
+            msg = {'error': 'Transaction sender has too few stamps for this transaction.'}
         except TransactionPOWProofInvalid:
-            return response.json({'error': 'Transaction proof of work is invalid.'})
+            msg = {'error': 'Transaction proof of work is invalid.'}
         except TransactionSignatureInvalid:
-            return response.json({'error': 'Transaction is not signed by the sender.'})
+            msg = {'error': 'Transaction is not signed by the sender.'}
         except TransactionStampsNegative:
-            return response.json({'error': 'Transaction has negative stamps supplied.'})
+            msg = {'error': 'Transaction has negative stamps supplied.'}
+
+        if error:
+            log.error(msg)
+            return response.json(msg)
 
         # Put it in the rate limiter queue.
         log.info('Q TIME')
