@@ -1,4 +1,4 @@
-from cilantro_ee.sockets.services import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox
 from collections import defaultdict
 from cilantro_ee.storage import BlockchainDriver
 

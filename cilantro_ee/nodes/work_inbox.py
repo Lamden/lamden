@@ -6,7 +6,7 @@ from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.storage import BlockchainDriver
-from cilantro_ee.sockets.services import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 

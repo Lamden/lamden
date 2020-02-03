@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.networking.discovery import *
 from cilantro_ee.networking.network import Network
 from cilantro_ee.constants.ports import PEPPER

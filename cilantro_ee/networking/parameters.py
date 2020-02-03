@@ -1,3 +1,4 @@
+import cilantro_ee.sockets.struct
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT, DISCOVERY_PORT, BLOCK_SERVER, MN_PUB_PORT, \
     DELEGATE_PUB_PORT
 from cilantro_ee.sockets import services
@@ -56,7 +57,7 @@ class NetworkParameters:
 
     def resolve(self, socket_base, service_type, bind=False):
         port, ipc = self.params[service_type]
-        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
+        return cilantro_ee.sockets.struct.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
 
 
 class Parameters:

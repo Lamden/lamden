@@ -9,6 +9,7 @@ import asyncio
 import pathlib
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
+
 class SocketAuthenticator:
     def __init__(self, wallet, contacts: VKBook, ctx: zmq.asyncio.Context,
                  loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks'):

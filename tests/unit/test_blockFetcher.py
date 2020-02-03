@@ -1,4 +1,6 @@
 from unittest import TestCase
+
+import cilantro_ee.sockets.struct
 from cilantro_ee.sockets import services
 from cilantro_ee.crypto.wallet import Wallet
 
@@ -91,7 +93,7 @@ class TestBlockFetcher(TestCase):
 
         tasks = asyncio.gather(
             m.serve(),
-            f.get_latest_block_height(services._socket('tcp://127.0.0.1:10004')),
+            f.get_latest_block_height(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10004')),
             stop_server(m, 0.2),
         )
 
@@ -214,7 +216,7 @@ class TestBlockFetcher(TestCase):
 
         tasks = asyncio.gather(
             m1.serve(),
-            f.get_block_from_master(0, services._socket('tcp://127.0.0.1:10004')),
+            f.get_block_from_master(0, cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10004')),
             stop_server(m1, 0.3),
         )
 

@@ -10,13 +10,14 @@ from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkPa
 import cilantro_ee
 import zmq.asyncio
 import asyncio
-
+from cilantro_ee.sockets.authentication import SocketAuthenticator
 from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
 from cilantro_ee.logger.base import get_logger
 
 from copy import deepcopy
+
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,

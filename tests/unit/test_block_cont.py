@@ -6,7 +6,7 @@ from cilantro_ee.nodes.masternode.block_contender import Aggregator, CurrentCont
 from cilantro_ee.crypto.wallet import Wallet
 from tests import random_txs
 from cilantro_ee.storage import BlockchainDriver
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 import secrets
 from cilantro_ee import canonical
 import zmq.asyncio

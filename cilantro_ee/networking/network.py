@@ -1,3 +1,4 @@
+import cilantro_ee.sockets.struct
 from cilantro_ee.constants import conf
 from cilantro_ee.constants.ports import DHT_PORT, PEPPER
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
@@ -109,7 +110,7 @@ class Network:
 
             self.ready = True
 
-            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
+            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
 
             await self.peer_service.event_publisher.send(ready_msg)
 
@@ -120,7 +121,7 @@ class Network:
                                                    ctx=self.ctx, timeout=1000)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = services.strip_service(ip)  # Should be stripped of port and tcp
+            self.table.peers[vk] = cilantro_ee.sockets.struct.strip_service(ip)  # Should be stripped of port and tcp
             self.log.error(f'Added {services.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
@@ -131,7 +132,7 @@ class Network:
         current_nodes = deepcopy(self.table.peers)
         for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
-            join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
+            join_message = json.dumps(join_message, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
 
             peer = self.params.resolve(ip, service_type=ServiceType.PEER)
             self.log.error(peer)
@@ -217,7 +218,7 @@ class Network:
         return current_quorum - len(nodes)
 
     # Returns raw IP string for a node: 127.0.0.1 etc. Transform this into whatever you want.
-    async def find_node(self, client_address: services.SocketStruct=None, vk_to_find=None, retries=3):
+    async def find_node(self, client_address: cilantro_ee.sockets.struct.SocketStruct =None, vk_to_find=None, retries=3):
         # Search locally if this is the case
         if str(client_address) == str(self.peer_service_address) or \
                 vk_to_find == self.wallet.verifying_key().hex() or \
@@ -227,7 +228,7 @@ class Network:
         # Otherwise, send out a network request
         else:
             find_message = ['find', vk_to_find]
-            find_message = json.dumps(find_message, cls=services.SocketEncoder).encode()
+            find_message = json.dumps(find_message, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
             response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
 
             if response is None:
@@ -243,7 +244,8 @@ class Network:
 
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
-            return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1)
+            return await self.find_node(
+                cilantro_ee.sockets.struct.SocketStruct(cilantro_ee.sockets.struct.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1)
 
     def stop(self):
         self.peer_service.stop()

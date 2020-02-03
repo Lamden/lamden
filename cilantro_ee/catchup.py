@@ -2,7 +2,8 @@ from collections import Counter
 
 from cilantro_ee.canonical import verify_block
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.sockets.services import AsyncInbox, defer, get
+from cilantro_ee.sockets.services import get
+from cilantro_ee.sockets.inbox import AsyncInbox
 
 from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
 from cilantro_ee.messages.message import Message
@@ -167,7 +168,7 @@ class BlockFetcher:
         # Iterate through the status of the
         now = time.time()
         while responses.top_count() < confirmations or time.time() - now > timeout:
-            await defer()
+            await asyncio.sleep(0)
             for f in futures:
                 if f.done():
                     responses.update([f.result()])
@@ -239,7 +240,7 @@ class BlockFetcher:
         # Iterate through the status of the
         now = time.time()
         while not block_found or time.time() - now > timeout:
-            await defer()
+            await asyncio.sleep(0)
             for f in futures:
                 if f.done():
                     block = f.result()

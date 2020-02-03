@@ -7,7 +7,7 @@ from cilantro_ee.storage.contract import BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 
 from cilantro_ee.crypto.wallet import Wallet
 import cilantro_ee

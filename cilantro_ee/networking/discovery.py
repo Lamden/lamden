@@ -1,4 +1,7 @@
 import zmq.asyncio
+
+import cilantro_ee.sockets.reqrep
+import cilantro_ee.sockets.struct
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.crypto.wallet import Wallet, _verify
 from cilantro_ee.sockets import services
@@ -15,8 +18,8 @@ LINGER = 500
 POLL = 50
 
 
-class DiscoveryServer(services.RequestReplyService):
-    def __init__(self, socket_id: services.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
+class DiscoveryServer(cilantro_ee.sockets.reqrep.RequestReplyService):
+    def __init__(self, socket_id: cilantro_ee.sockets.struct.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
 
         super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, **kwargs)
 
@@ -42,7 +45,7 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(socket_id: services.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout, debug=False):
+async def ping(socket_id: cilantro_ee.sockets.struct.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout, debug=False):
     log = get_logger('Pinger')
     log.propagate = debug
     log.info(f'Pinging: {socket_id.zmq_url()}')

@@ -1,7 +1,7 @@
 from cilantro_ee.networking.parameters import Parameters, ServiceType
 from unittest import TestCase
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.contracts import sync
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.networking.network import Network
