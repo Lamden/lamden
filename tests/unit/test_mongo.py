@@ -1,11 +1,12 @@
 from unittest import TestCase
 from cilantro_ee.storage.master import MasterStorage
-from cilantro_ee.crypto import wallet
+from cilantro_ee.crypto.wallet import Wallet
 
 
 class TestMasterDatabase(TestCase):
     def setUp(self):
-        self.sk, self.vk = wallet.new()
+        w = Wallet()
+        self.sk, self.vk = w.signing_key(), w.verifying_key()
         self.db = MasterStorage()
 
     def tearDown(self):

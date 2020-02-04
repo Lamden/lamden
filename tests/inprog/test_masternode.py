@@ -6,11 +6,11 @@ import zmq.asyncio
 from cilantro_ee.crypto.wallet import Wallet
 import asyncio
 from cilantro_ee.networking.network import Network
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 from contracting.client import ContractingClient
 from cilantro_ee.nodes.work_inbox import WorkInbox
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 from cilantro_ee.storage import BlockchainDriver
@@ -205,20 +205,16 @@ class TestNewMasternode(TestCase):
         delegates = [dw1.verifying_key().hex(), dw2.verifying_key().hex()]
 
         constitution = {
-            "masternodes": {
-                "vk_list": [
+            "masternodes": [
                     mnw1.verifying_key().hex(),
                     mnw2.verifying_key().hex()
                 ],
-                "min_quorum": 1
-            },
-            "delegates": {
-                "vk_list": [
+            "masternode_min_quorum": 1,
+            "delegates": [
                     dw1.verifying_key().hex(),
                     dw2.verifying_key().hex()
                 ],
-                "min_quorum": 1
-            },
+            "delegate_min_quorum": 1,
             "witnesses": {},
             "schedulers": {},
             "notifiers": {},

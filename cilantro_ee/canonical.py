@@ -3,8 +3,9 @@ import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import bson
 import hashlib
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 from cilantro_ee.messages import Message, MessageType
+from copy import deepcopy
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -40,7 +41,10 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
         sb = format_dictionary(subblock)
         deserialized_subblocks.append(sb)
 
-        encoded_sb = bson.BSON.encode(sb)
+        sb_without_sigs = deepcopy(sb)
+        del sb_without_sigs['signatures']
+
+        encoded_sb = bson.BSON.encode(sb_without_sigs)
         block_hasher.update(encoded_sb)
 
     block = {
@@ -88,7 +92,7 @@ def block_is_skip_block(block: dict):
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     block = {
-        'blockHash': b'\x00' * 32,
+        'blockHash': b'\xff' * 32,
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': []

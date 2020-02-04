@@ -1,14 +1,13 @@
 from unittest import TestCase
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.crypto.wallet import Wallet
-from tests.utils.constitution_builder import ConstitutionBuilder
-from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
+from cilantro_ee.contracts import sync
 from contracting.client import ContractingClient
-from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
 from cilantro_ee.crypto.transaction import TransactionBuilder
 import zmq.asyncio
 import asyncio
+import cilantro_ee
 
 from contracting.stdlib.bridge.time import Datetime
 from datetime import datetime
@@ -25,37 +24,25 @@ dw3 = Wallet()
 dw4 = Wallet()
 
 constitution = {
-    "masternodes": {
-        "vk_list": [
-            mnw1.verifying_key().hex(),
-            mnw2.verifying_key().hex()
-        ],
-        "min_quorum": 1
-    },
-    "delegates": {
-        "vk_list": [
-            dw1.verifying_key().hex(),
-            dw2.verifying_key().hex(),
-            dw3.verifying_key().hex(),
-            dw4.verifying_key().hex()
-        ],
-        "min_quorum": 1
-    },
-    "witnesses": {},
-    "schedulers": {},
-    "notifiers": {},
-    "enable_stamps": False,
-    "enable_nonces": False
+    'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
+    'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex(), dw3.verifying_key().hex(), dw4.verifying_key().hex()],
+    'witnesses': [],
+    'schedulers': [],
+    'notifiers': [],
+    'enable_stamps': False,
+    'enable_nonces': False,
+    'masternode_min_quorum': 1,
+    'delegate_min_quorum': 1,
+    'witness_min_quorum': 0,
+    'notifier_min_quorum': 0,
+    'scheduler_min_quorum': 0
 }
 
 class TestBlockManager(TestCase):
     def setUp(self):
         self.loop = asyncio.get_event_loop()
         self.ctx = zmq.asyncio.Context()
-        self.const_builder = ConstitutionBuilder(10, 10, 10, 10, False, False)
-        book = self.const_builder.get_constitution()
-        extract_vk_args(book)
-        submit_vkbook(book, overwrite=True)
+
         self.client = ContractingClient()
 
     def tearDown(self):
@@ -227,9 +214,9 @@ def set(var):
 def get():
     return v.get()
         '''
-
+        print('ok')
         self.client.submit(test_contract, name='testing')
-
+        print('here')
         tx = TransactionBuilder(
             sender='stu',
             contract='testing',
@@ -244,7 +231,7 @@ def get():
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct], wallet=Wallet())
 
-        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx)
+        b = Delegate(socket_base='tcp://127.0.0.1', wallet=Wallet(), ctx=self.ctx, constitution=constitution)
 
 
         print(sbc)

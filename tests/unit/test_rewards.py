@@ -1,57 +1,31 @@
-import unittest
-from cilantro_ee.core.rewards import RewardManager
+from unittest import TestCase
+from cilantro_ee.rewards import RewardManager
 from tests import random_txs
-from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
-from cilantro_ee.contracts import genesis
-import os
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+import cilantro_ee
 
 
-class TestRewards(unittest.TestCase):
-    def test_setup(self):
+class TestRewards(TestCase):
+    def setUp(self):
 
-        self.driver = ContractDriver()
         self.client = ContractingClient()
 
-        genesis_path = os.path.dirname(genesis.__file__)
+        # Sync contracts
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=['stu', 'raghu', 'steve'],
+            boot_mns=2,
+            initial_delegates=['tejas', 'alex'],
+            boot_dels=3,
+        )
 
-        with open(os.path.join(genesis_path, 'election_house.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='election_house')
-
-        with open(os.path.join(genesis_path, 'currency.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='currency')
-
-        with open(os.path.join(genesis_path, 'stamp_cost.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='stamp_cost', owner='election_house', constructor_args={'initial_rate': 1_000_000})
-
-        with open(os.path.join(genesis_path, 'rewards.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='rewards', owner='election_house')
-
-        with open(os.path.join(genesis_path, 'upgrade.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name = 'upgarde', owner = 'election_house')
-
-        sync.submit_vkbook({'masternodes': ['stu', 'raghu', 'steve'],
-          'delegates': ['tejas', 'alex'],
-          'masternode_min_quorum': 2,
-          'delegate_min_quorum': 3,
-          'enable_stamps': True,
-          'enable_nonces': True},
-         overwrite=True)
-
-        PhoneBook = VKBook()
-
-        self.r = RewardManager(vkbook=PhoneBook)
+        self.r = RewardManager(vkbook=VKBook(2, 3))
 
     def tearDown(self):
-        self.driver.flush()
+        self.client.flush()
 
     def test_add_rewards(self):
         block = random_txs.random_block()
@@ -83,7 +57,7 @@ class TestRewards(unittest.TestCase):
         self.assertEqual(current_balance, 2234)
 
     def test_stamps_per_tau_works(self):
-        self.assertEqual(self.r.stamps_per_tau, 1_000_000)
+        self.assertEqual(self.r.stamps_per_tau, 100_000)
 
         stamps = self.client.get_contract('stamp_cost')
 
@@ -106,7 +80,7 @@ class TestRewards(unittest.TestCase):
         for tx in block.subBlocks[0].transactions:
             total += tx.stampsUsed
 
-        expected = ContractingDecimal(total / 1_000_000)
+        expected = ContractingDecimal(total / 100_000)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
 
@@ -134,7 +108,3 @@ class TestRewards(unittest.TestCase):
         self.assertEqual(currency_contract.quick_read(variable='balances', key='alex'), 250)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
-
-
-if __name__ == '__main__':
-    unittest.main()

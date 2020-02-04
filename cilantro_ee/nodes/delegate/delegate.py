@@ -1,5 +1,4 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
-from cilantro_ee.core.canonical import block_is_failed
 from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message
@@ -14,7 +13,7 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
-
+from cilantro_ee import canonical
 
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
@@ -60,20 +59,18 @@ class Delegate(Node):
         return True
 
     def process_nbn(self, nbn):
-        if not self.did_sign_block(nbn):
-            self.log.info('Did not sign block. Processing.')
-            self.driver.revert()
+        self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
+        self.driver.reads.clear()
+        self.driver.pending_writes.clear()
+
+        if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
-        elif not block_is_failed(nbn, nbn['prevBlockHash'], nbn['blockNum']):
-            self.log.info('Received successful block')
-            self.driver.commit()
-            self.driver.update_with_block(nbn, commit_tx=False)
-        else:
-            self.log.info('Skip block. Reverting')
-            self.driver.revert()
+            self.issue_rewards(block=nbn)
+            self.update_sockets()
 
         self.nbn_inbox.clean()
         self.pending_sbcs.clear()
+        self.nbn_inbox.update_signers()
 
     def filter_work(self, work):
         filtered_work = []

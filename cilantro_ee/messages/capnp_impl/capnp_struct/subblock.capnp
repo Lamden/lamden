@@ -24,15 +24,6 @@ struct MerkleTree {
 }
 
 struct SubBlock {
-    merkleRoot @0 :Data;
-    signatures @1 :List(Data);
-    merkleLeaves @2 :List(Data);
-    subBlockNum @3 :UInt8;
-    inputHash @4 :Data;
-    transactions @5 :List(T.TransactionData);
-}
-
-struct NewSubBlock {
     inputHash @0: Data;
     transactions @1: List(T.TransactionData);
     merkleLeaves @2: List(Data);

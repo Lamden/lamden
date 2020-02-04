@@ -10,7 +10,7 @@ election_interval = datetime.WEEKS * 1
 
 @construct
 def seed():
-    value.set([0.5, 0.5, 0, 0])
+    value.set([0.7, 0.3, 0, 0])
     last_election.set(now)
     election_start.set(None)
 

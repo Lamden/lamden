@@ -1,25 +1,34 @@
 from unittest import TestCase
-from cilantro_ee.contracts.sync import extract_vk_args, submit_vkbook
+from cilantro_ee.contracts.sync import extract_vk_args
 from cilantro_ee.nodes.new_block_inbox import NBNInbox, BlockNumberMismatch, NotBlockNotificationMessageType
-from tests.utils.constitution_builder import ConstitutionBuilder
 
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.storage.contract import BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 
+from cilantro_ee.crypto.wallet import Wallet
+import cilantro_ee
+from cilantro_ee.contracts import sync
 import zmq.asyncio
 import asyncio
 
+
 # seed the vkbook
 def seed_vk_book(num_mn=10, mn_quorum=10, num_del=10, del_quorum=10):
-    const_builder = ConstitutionBuilder(num_mn, mn_quorum, num_del,
-                                             del_quorum, False, False)
-    book = const_builder.get_constitution()
-    extract_vk_args(book)
-    submit_vkbook(book, overwrite=True)
+    mn_wallets = [Wallet().verifying_key().hex() for _ in range(num_mn)]
+    dn_wallets = [Wallet().verifying_key().hex() for _ in range(num_del)]
+
+    # Sync contracts
+    sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+    sync.submit_node_election_contracts(
+        initial_masternodes=mn_wallets,
+        boot_mns=mn_quorum,
+        initial_delegates=dn_wallets,
+        boot_dels=del_quorum
+    )
 
 
 class TestNBNInbox(TestCase):

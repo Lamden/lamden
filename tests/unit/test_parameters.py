@@ -1,14 +1,18 @@
 from cilantro_ee.networking.parameters import Parameters, ServiceType
 from unittest import TestCase
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.contracts import sync
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.networking.network import Network
+import cilantro_ee
 import zmq
 import zmq.asyncio
 import os
 import asyncio
+
+
+
 
 def make_ipc(p):
     try:
@@ -32,14 +36,13 @@ class TestParameters(TestCase):
         self.loop.close()
 
     def get_vkbook_args(self, mns=['stu', 'raghu']):
-        args = {}
-        args['masternodes'] = mns
-        args['masternode_min_quorum'] = 2
-        args['delegates'] = ['tejas', 'alex', 'steve']
-        args['delegate_min_quorum'] = 2
-        args['enable_stamps'] = True
-        args['enable_nonces'] = True
-        return args
+        constitution = {
+            'masternodes': mns,
+            'masternode_min_quorum': 2,
+            'delegates': ['tejas', 'alex', 'steve'],
+            'delegate_min_quorum': 2
+        }
+        return constitution
 
     def test_new_nodes(self):
         current_nodes = {1, 2, 3, 4}
@@ -60,8 +63,17 @@ class TestParameters(TestCase):
         self.assertEqual(Parameters.old_nodes(all_nodes, current_nodes), {2, 3})
 
     def test_remove_node(self):
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
+
         ctx = zmq.Context()
-        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx)
+        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(), wallet=Wallet())
 
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
@@ -71,8 +83,17 @@ class TestParameters(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_remove_node_doesnt_exist_does_nothing(self):
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
+
         ctx = zmq.Context()
-        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx)
+        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(), wallet=Wallet())
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
         m.remove_node('c')
@@ -81,8 +102,15 @@ class TestParameters(TestCase):
         self.assertIsNotNone(m.sockets.get('b'))
 
     def test_get_masternode_sockets(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -129,8 +157,14 @@ class TestParameters(TestCase):
         self.assertEqual(masternodes.get_masternode_sockets(), expected)
 
     def test_get_delegate_sockets(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -177,8 +211,14 @@ class TestParameters(TestCase):
         self.assertEqual(masternodes.get_delegate_sockets(), expected)
 
     def test_get_all_sockets(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -222,8 +262,14 @@ class TestParameters(TestCase):
         self.assertEqual(masternodes.get_all_sockets(), raw)
 
     def test_get_sockets_with_service(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -271,8 +317,14 @@ class TestParameters(TestCase):
         self.assertEqual(masternodes.get_all_sockets(service=ServiceType.EVENT), expected)
 
     def test_get_sockets_refresh_changes_get_again(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -320,8 +372,14 @@ class TestParameters(TestCase):
         self.assertDictEqual(masternodes.sockets, expected)
 
     def test_refresh_remove_old_nodes(self):
-        vkbook_args = self.get_vkbook_args()
-        sync.submit_vkbook(vkbook_args, overwrite=True)
+        constitution = self.get_vkbook_args()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_node_election_contracts(
+            initial_masternodes=constitution['masternodes'],
+            boot_mns=constitution['masternode_min_quorum'],
+            initial_delegates=constitution['delegates'],
+            boot_dels=constitution['delegate_min_quorum'],
+        )
 
         PhoneBook = VKBook()
 
@@ -364,7 +422,7 @@ class TestParameters(TestCase):
 
         expected = {
             'stu': 'tcp://127.0.0.1',
-            'raghu': 'tcp://127.0.0.8}'
+            'raghu': 'tcp://127.0.0.8'
         }
 
         self.assertDictEqual(masternodes.sockets, expected)

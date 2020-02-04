@@ -1,5 +1,5 @@
 import asyncio
-from cilantro_ee.core.block_server import BlockServer
+from cilantro_ee.catchup import BlockServer
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import CilantroStorageDriver
@@ -7,7 +7,7 @@ from cilantro_ee.sockets.services import multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
@@ -38,7 +38,6 @@ class Masternode(Node):
             ctx=self.ctx,
             driver=self.driver
         )
-
         self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
     async def start(self):
@@ -57,12 +56,14 @@ class Masternode(Node):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
     async def run(self):
+        self.log.info('Running...')
         if self.driver.latest_block_num == 0:
             await self.new_blockchain_boot()
         else:
             await self.join_quorum()
 
     async def new_blockchain_boot(self):
+        self.log.info('Fresh blockchain boot.')
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
             if not self.running:
                 return
@@ -102,6 +103,7 @@ class Masternode(Node):
 
         # No one is online
         if len(self.delegate_work_sockets()) == 0:
+            self.log.error('No one online!')
             return
 
         return await multicast(self.ctx, tx_batch, self.delegate_work_sockets())  # Works
@@ -122,14 +124,20 @@ class Masternode(Node):
             await asyncio.sleep(0)
 
     def process_block(self, block):
-        do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
-        do_not_store |= canonical.block_is_skip_block(block)
+        #do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
+        #do_not_store |= canonical.block_is_skip_block(block)
 
-        #if not do_not_store:
-        if block['blockNum'] != self.driver.latest_block_num:
+        # if not do_not_store:
+        if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
+            self.issue_rewards(block=block)
+            self.update_sockets()
+
+            # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
+
+        self.nbn_inbox.update_signers()
 
     async def process_blocks(self):
         while self.running:
