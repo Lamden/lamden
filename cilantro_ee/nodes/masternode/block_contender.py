@@ -1,14 +1,14 @@
-from cilantro_ee.sockets.services import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox
 from collections import defaultdict
 from cilantro_ee.storage import BlockchainDriver
 
 import capnp
 import os
 
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 
 import asyncio
 import time
@@ -99,10 +99,10 @@ class SBCInbox(AsyncInbox):
         if not valid_sig:
             raise SBCInvalidSignatureError
 
-        if sbc.prevBlockHash != self.driver.latest_block_hash:
-            self.log.info(sbc.prevBlockHash)
-            self.log.info(self.driver.latest_block_hash)
-            raise SBCBlockHashMismatchError
+        # if sbc.prevBlockHash != self.driver.latest_block_hash:
+        #     self.log.info(sbc.prevBlockHash)
+        #     self.log.info(self.driver.latest_block_hash)
+        #     raise SBCBlockHashMismatchError
 
         # idk
         if len(sbc.merkleTree.leaves) > 0:
@@ -182,9 +182,11 @@ class CurrentContenders:
 
         for sig in signatures:
             subblock['signatures'].append({
-                'signer': sig[0],
-                'signature': sig[1]
+                'signature': sig[0],
+                'signer': sig[1]
             })
+
+        subblock['signatures'].sort(key=lambda i: i['signer'])
 
         return subblock
 
@@ -237,18 +239,3 @@ class Aggregator:
 
     def stop(self):
         self.sbc_inbox.stop()
-
-    # def build_subblocks_from_contenders(self, contender):
-    #     subblock = {
-    #         'inputHash'
-    #     }
-    #     pass
-
-# struct SubBlockContender {
-#     inputHash @0 :Data;
-#     transactions @1: List(T.TransactionData);
-#     merkleTree @2 :MerkleTree;
-#     signer @3 :Data;
-#     subBlockNum @4: UInt8;
-#     prevBlockHash @5: Data;
-# }

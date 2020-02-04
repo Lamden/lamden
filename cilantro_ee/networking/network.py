@@ -1,10 +1,10 @@
+import cilantro_ee.sockets.struct
 from cilantro_ee.constants import conf
-from cilantro_ee.constants.ports import DHT_PORT
-from cilantro_ee.constants.overlay_network import PEPPER
+from cilantro_ee.constants.ports import DHT_PORT, PEPPER
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking import discovery
-from cilantro_ee.sockets import services
+from cilantro_ee.sockets import services, struct
 
 from copy import deepcopy
 import asyncio
@@ -13,8 +13,6 @@ import zmq
 from cilantro_ee.logger.base import get_logger
 
 import random
-
-log = get_logger('NetworkService')
 
 class Network:
     def __init__(self, wallet,
@@ -26,8 +24,12 @@ class Network:
                  mn_to_find=[],
                  del_to_find=[],
                  socket_base='tcp://127.0.0.1',
-                 poll_timeout=10,
-                 linger=500):
+                 poll_timeout=200,
+                 linger=1000,
+                 debug=False):
+
+        self.log = get_logger('NetworkService')
+        self.log.propagate = debug
 
         # General Instance Variables
         self.wallet = wallet
@@ -63,8 +65,10 @@ class Network:
         # Quorum Constants
         self.initial_mn_quorum = initial_mn_quorum
         self.initial_del_quorum = initial_del_quorum
+
         self.mn_to_find = mn_to_find
         self.del_to_find = del_to_find
+
         self.ready = False
 
     async def start(self, discover=True):
@@ -89,7 +93,9 @@ class Network:
             peer_sockets = \
                 [self.params.resolve(bootnode, ServiceType.PEER) for bootnode in self.bootnodes]
 
-            log.info('Peers now: {}'.format(peer_sockets))
+            self.log.info('Peers now: {}'.format(peer_sockets))
+
+            #self.peer_service.table.peers = peer_sockets
 
             # Wait for the quorum to resolve
             await self.wait_for_quorum(
@@ -100,24 +106,23 @@ class Network:
                 peer_sockets
             )
 
-            log.success('Network is ready.')
+            self.log.success('Network is ready.')
 
             self.ready = True
 
-            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=services.SocketEncoder).encode()
+            ready_msg = json.dumps({'event': 'service_status', 'status': 'ready'}, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
 
             await self.peer_service.event_publisher.send(ready_msg)
 
-            log.success('Sent ready signal.')
+            self.log.success('Sent ready signal.')
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
-                                                   ctx=self.ctx, timeout=500)
-
-        log.info(responses)
+                                                   ctx=self.ctx, timeout=1000)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = ip  # Should be stripped of port and tcp
+            self.table.peers[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
+            self.log.error(f'Added {struct.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
             asyncio.ensure_future(self.discovery_server.serve())
@@ -127,10 +132,12 @@ class Network:
         current_nodes = deepcopy(self.table.peers)
         for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
-            join_message = json.dumps(join_message, cls=services.SocketEncoder).encode()
+            join_message = json.dumps(join_message, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
 
-            peer = services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT)
-            await services.get(peer, msg=join_message, ctx=self.ctx, timeout=500)
+            peer = self.params.resolve(ip, service_type=ServiceType.PEER)
+            self.log.error(peer)
+
+            await services.get(peer, msg=join_message, ctx=self.ctx, timeout=1000)
 
     async def wait_for_quorum(self, masternode_quorum_required: int,
                                     delegate_quorum_required: int,
@@ -141,13 +148,12 @@ class Network:
 
         results = None
 
-
         # Crawl while there are still nodes needed in our quorum
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
-            log.info('Need {} MNs and {} DELs to begin...'.format(
-                masternode_quorum_required,
-                delegate_quorum_required
+            self.log.info('Need {} MNs and {} DELs to begin...'.format(
+                masternodes_to_find,
+                delegates_to_find
             ))
 
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
@@ -173,6 +179,9 @@ class Network:
                                                                     delegates_to_find,
                                                                     delegate_quorum_required)
 
+            if len(masternodes_to_find) == 0 and len(delegates_to_find) == 0:
+                break
+
         # At this point, start the discovery server if it's not already running because you are a masternode.
 
         if not self.discovery_server.running:
@@ -180,7 +189,7 @@ class Network:
                 self.discovery_server.serve()
             )
 
-        log.success('Quorum reached! Begin protocol services...')
+        self.log.success('Quorum reached! Begin protocol services...')
 
         return results
 
@@ -193,7 +202,10 @@ class Network:
                 nodes.update(node)
 
         # Update the peer table with the _new nodes
+        self.log.info(nodes)
         self.table.peers.update(nodes)
+
+        self.log.info(f'Peer table now: {self.table.peers}')
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():
@@ -206,7 +218,7 @@ class Network:
         return current_quorum - len(nodes)
 
     # Returns raw IP string for a node: 127.0.0.1 etc. Transform this into whatever you want.
-    async def find_node(self, client_address: services.SocketStruct=None, vk_to_find=None, retries=3):
+    async def find_node(self, client_address: cilantro_ee.sockets.struct.SocketStruct =None, vk_to_find=None, retries=3):
         # Search locally if this is the case
         if str(client_address) == str(self.peer_service_address) or \
                 vk_to_find == self.wallet.verifying_key().hex() or \
@@ -216,8 +228,8 @@ class Network:
         # Otherwise, send out a network request
         else:
             find_message = ['find', vk_to_find]
-            find_message = json.dumps(find_message, cls=services.SocketEncoder).encode()
-            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=500)
+            find_message = json.dumps(find_message, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
+            response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
 
             if response is None:
                 return None
@@ -232,7 +244,11 @@ class Network:
 
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
-            return await self.find_node(services.SocketStruct(services.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1)
+            return await self.find_node(
+                cilantro_ee.sockets.struct.SocketStruct(cilantro_ee.sockets.struct.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1)
 
     def stop(self):
         self.peer_service.stop()
+
+    def peers(self):
+        return self.peer_service.table.peers

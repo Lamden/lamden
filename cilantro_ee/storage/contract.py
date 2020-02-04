@@ -1,4 +1,5 @@
 from contracting.db.driver import ContractDriver
+from contracting.db.encoder import decode_kv
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_KEY = '_current_block_num'
@@ -12,7 +13,7 @@ log = get_logger('STATE')
 
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
-        block_hash = super().get_direct(BLOCK_HASH_KEY)
+        block_hash = self.get(BLOCK_HASH_KEY, mark=False)
         if block_hash is None:
             return b'\x00' * 32
         return block_hash
@@ -21,12 +22,12 @@ class BlockchainDriver(ContractDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        super().set_direct(BLOCK_HASH_KEY, v)
+        self.set(BLOCK_HASH_KEY, v, mark=False)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
     def get_latest_block_num(self):
-        num = self.get(BLOCK_NUM_KEY)
+        num = self.get(BLOCK_NUM_KEY, mark=False)
 
         if num is None:
             return 0
@@ -41,27 +42,29 @@ class BlockchainDriver(ContractDriver):
 
         v = str(v).encode()
 
-        self.set(BLOCK_NUM_KEY, v)
+        self.set(BLOCK_NUM_KEY, v, mark=False)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                self.set(delta['key'], delta['value'])
-                log.info(f"{delta['key']} -> {delta['value']}")
+                k, v = decode_kv(delta['key'], delta['value'])
+                self.set(k, v)
+                log.info(f"{k} -> {v}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage
         if type(block) != dict:
             block = block.to_dict()
 
-        self.set_latest_block_num(block['blockNum'])
+        self.latest_block_num += 1
 
         # self.log.info("block {}".format(block))
 
         if self.latest_block_hash != block['prevBlockHash']:
-            return
+            log.error('BLOCK MISMATCH!!!')
+        #     return
 
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
@@ -104,13 +107,24 @@ class BlockchainDriver(ContractDriver):
         return self.get(self.n_key(NONCE_KEY, processor, sender))
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce)
+        self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce, mark=False)
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(NONCE_KEY, processor, sender), nonce)
+        self.set(self.n_key(NONCE_KEY, processor, sender), nonce, mark=False)
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
         self.delete(self.n_key(PENDING_NONCE_KEY, processor, sender))
+
+    def get_latest_nonce(self, processor:bytes, sender: bytes):
+        nonce = self.get_pending_nonce(processor, sender)
+
+        if nonce is None:
+            nonce = self.get_nonce(processor, sender)
+
+        if nonce is None:
+            nonce = 0
+
+        return nonce
 
     def commit_nonces(self, nonce_hash=None):
         # Delete pending nonces and update the nonces
@@ -136,7 +150,7 @@ class BlockchainDriver(ContractDriver):
         self.commit()
 
     def delete_pending_nonces(self):
-        for nonce in self.iter(PENDING_NONCE_KEY):
+        for nonce in self.keys(PENDING_NONCE_KEY):
             self.delete(nonce)
 
         self.commit()

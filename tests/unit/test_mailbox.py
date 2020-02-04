@@ -1,3 +1,5 @@
+import cilantro_ee.sockets.inbox
+import cilantro_ee.sockets.struct
 from cilantro_ee.sockets import services
 import zmq.asyncio
 from cilantro_ee.crypto.wallet import Wallet
@@ -22,23 +24,23 @@ class TestAsyncServer(TestCase):
 
     def test_init(self):
         w = Wallet()
-        services.AsyncInbox(services._socket('tcp://127.0.0.1:10000'), self.ctx)
+        cilantro_ee.sockets.inbox.AsyncInbox(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10000'), self.ctx)
 
     def test_addresses_correct(self):
         w = Wallet()
-        m = services.AsyncInbox(services._socket('tcp://127.0.0.1:10000'), self.ctx)
+        m = cilantro_ee.sockets.inbox.AsyncInbox(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10000'), self.ctx)
 
         self.assertEqual(m.address, 'tcp://*:10000')
 
     def test_sockets_are_initially_none(self):
         w = Wallet()
-        m = services.AsyncInbox(services._socket('tcp://127.0.0.1:10000'), self.ctx)
+        m = cilantro_ee.sockets.inbox.AsyncInbox(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10000'), self.ctx)
 
         self.assertIsNone(m.socket)
 
     def test_setup_frontend_creates_socket(self):
         w = Wallet()
-        m = services.AsyncInbox(services._socket('tcp://127.0.0.1:10000'), self.ctx)
+        m = cilantro_ee.sockets.inbox.AsyncInbox(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10000'), self.ctx)
         m.setup_socket()
 
         self.assertEqual(m.socket.type, zmq.ROUTER)
@@ -46,7 +48,7 @@ class TestAsyncServer(TestCase):
 
     def test_sending_message_returns_it(self):
         w = Wallet()
-        m = services.AsyncInbox(services._socket('tcp://127.0.0.1:10000'), self.ctx, linger=500, poll_timeout=500)
+        m = cilantro_ee.sockets.inbox.AsyncInbox(cilantro_ee.sockets.struct._socket('tcp://127.0.0.1:10000'), self.ctx, linger=500, poll_timeout=500)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)

@@ -3,7 +3,7 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.core import canonical
+from cilantro_ee import canonical
 from cilantro_ee.storage import BlockchainDriver
 
 from contextlib import suppress

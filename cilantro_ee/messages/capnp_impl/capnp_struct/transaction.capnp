@@ -31,7 +31,7 @@ struct Transaction {
 }
 
 struct TransactionData {
-    transaction @0 :Transaction;
+    transaction @0 :NewTransaction;
     status @1: UInt8;
     state @2: List(Delta);
     stampsUsed @3: UInt64;
@@ -42,9 +42,26 @@ struct Transactions {
 }
 
 struct TransactionBatch {
-    transactions @0 :List(Transaction);
+    transactions @0 :List(NewTransaction);
     timestamp @1: Float64;
     signature @2: Data;
     sender @3: Data;
     inputHash @4: Data;  # hash of transactions + timestamp
+}
+
+struct NewTransactionPayload {
+    sender @0 :Data;
+    processor @1: Data;
+    nonce @2 :UInt64;
+
+    stampsSupplied @3 :UInt64;
+
+    contractName @4 :Text;
+    functionName @5 :Text;
+    kwargs @6 :Data;
+}
+
+struct NewTransaction {
+    metadata @0: MetaData;
+    payload @1: NewTransactionPayload;
 }

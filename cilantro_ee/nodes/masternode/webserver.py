@@ -1,7 +1,7 @@
 from sanic import Sanic
 from sanic import response
 from cilantro_ee.logger.base import get_logger
-from sanic_cors import CORS
+# from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
 
@@ -19,6 +19,7 @@ import ast
 import ssl
 import hashlib
 import asyncio
+
 
 log = get_logger("MN-WebServer")
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
@@ -41,7 +42,7 @@ class WebServer:
             'REQUEST_MAX_SIZE': 10000,
             'REQUEST_TIMEOUT': 5
         })
-        self.cors = CORS(self.app, automatic_options=True)
+        #self.cors = CORS(self.app, automatic_options=True)
 
         # Initialize the backend data interfaces
         self.client = contracting_client
@@ -90,23 +91,26 @@ class WebServer:
         # Start server with SSL enabled or not
         if self.ssl_enabled:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.ssl_port, debug=self.debug,
-                                  access_log=self.access_log, ssl=self.context))
+                                  access_log=self.access_log, ssl=self.context, return_asyncio_server=True))
         else:
             asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
-                                  access_log=self.access_log))
+                                  access_log=self.access_log, return_asyncio_server=True))
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
+        log.info(f'Got req:{request}')
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503)
 
         # Try to deserialize transaction.
         try:
-            tx = transaction_capnp.Transaction.from_bytes_packed(request.body)
+            tx = transaction_capnp.NewTransaction.from_bytes_packed(request.body)
 
         except Exception as e:
             return response.json({'error': 'Malformed transaction.'.format(e)}, status=400)
 
+        error = False
+        msg = {'error': 'Unknown Error'}
         try:
             transaction_is_valid(tx=tx,
                                  expected_processor=self.wallet.verifying_key(),
@@ -115,21 +119,26 @@ class WebServer:
 
         # These exceptions are tested to work in the transaction_is_valid tests
         except TransactionNonceInvalid:
-            return response.json({'error': 'Transaction nonce is invalid.'})
+            msg = {'error': 'Transaction nonce is invalid.'}
         except TransactionProcessorInvalid:
-            return response.json({'error': 'Transaction processor does not match expected processor.'})
+            msg = {'error': 'Transaction processor does not match expected processor.'}
         except TransactionTooManyPendingException:
-            return response.json({'error': 'Too many pending transactions currently in the block.'})
+            msg = {'error': 'Too many pending transactions currently in the block.'}
         except TransactionSenderTooFewStamps:
-            return response.json({'error': 'Transaction sender has too few stamps for this transaction.'})
+            msg = {'error': 'Transaction sender has too few stamps for this transaction.'}
         except TransactionPOWProofInvalid:
-            return response.json({'error': 'Transaction proof of work is invalid.'})
+            msg = {'error': 'Transaction proof of work is invalid.'}
         except TransactionSignatureInvalid:
-            return response.json({'error': 'Transaction is not signed by the sender.'})
+            msg = {'error': 'Transaction is not signed by the sender.'}
         except TransactionStampsNegative:
-            return response.json({'error': 'Transaction has negative stamps supplied.'})
+            msg = {'error': 'Transaction has negative stamps supplied.'}
+
+        if error:
+            log.error(msg)
+            return response.json(msg)
 
         # Put it in the rate limiter queue.
+        log.info('Q TIME')
         self.queue.append(tx)
 
         h = hashlib.sha3_256()

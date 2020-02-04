@@ -3,11 +3,16 @@ import json
 from functools import partial
 
 import zmq
-from cilantro_ee.constants.overlay_network import PEPPER
+
+import cilantro_ee.sockets.pubsub
+import cilantro_ee.sockets.reqrep
+import cilantro_ee.sockets.struct
+from cilantro_ee.constants.ports import PEPPER
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets import services
 from cilantro_ee.networking import discovery
 
+from cilantro_ee.logger.base import get_logger
 
 class KTable:
     def __init__(self, data: dict, initial_peers={}, response_size=10):
@@ -42,9 +47,9 @@ class KTable:
             return neighbors
 
 
-class PeerServer(services.RequestReplyService):
-    def __init__(self, socket_id: services.SocketStruct,
-                 event_address: services.SocketStruct,
+class PeerServer(cilantro_ee.sockets.reqrep.RequestReplyService):
+    def __init__(self, socket_id: cilantro_ee.sockets.struct.SocketStruct,
+                 event_address: cilantro_ee.sockets.struct.SocketStruct,
                  table: KTable, wallet: Wallet, ctx=zmq.Context,
                  linger=500, poll_timeout=10):
 
@@ -56,12 +61,14 @@ class PeerServer(services.RequestReplyService):
 
         self.table = table
 
-        self.event_service = services.SubscriptionService(ctx=self.ctx)
+        self.event_service = cilantro_ee.sockets.pubsub.SubscriptionService(ctx=self.ctx)
         self.event_address = event_address
         self.event_publisher = self.ctx.socket(zmq.PUB)
         self.event_publisher.bind(str(self.event_address))
 
         self.event_queue_loop_running = False
+
+        self.log = get_logger('PeerService')
 
     def handle_msg(self, msg):
         msg = msg.decode()
@@ -69,7 +76,7 @@ class PeerServer(services.RequestReplyService):
 
         if command == 'find':
             response = self.table.find(args)
-            response = json.dumps(response, cls=services.SocketEncoder).encode()
+            response = json.dumps(response, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
             return response
         if command == 'join':
             vk, ip = args # unpack args
@@ -83,7 +90,7 @@ class PeerServer(services.RequestReplyService):
 
         if vk not in result or result[vk] != ip:
             # Ping discovery server
-            _, responded_vk = await discovery.ping(services._socket(ip),
+            _, responded_vk = await discovery.ping(cilantro_ee.sockets.struct._socket(ip),
                                                    pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
 
             await asyncio.sleep(0)
@@ -92,14 +99,14 @@ class PeerServer(services.RequestReplyService):
 
             if responded_vk.hex() == vk:
                 # Valid response
-                self.table.peers[vk] = ip
+                self.table.peers[vk] = cilantro_ee.sockets.struct.strip_service(ip)
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]
-                jmsg = json.dumps(msg, cls=services.SocketEncoder).encode()
+                jmsg = json.dumps(msg, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
                 await self.event_publisher.send(jmsg)
 
-                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': services._socket(ip).id}, cls=services.SocketEncoder).encode()
+                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': cilantro_ee.sockets.struct._socket(ip).id}, cls=cilantro_ee.sockets.struct.SocketEncoder).encode()
                 await self.event_publisher.send(second_msg)
 
     async def process_event_subscription_queue(self):

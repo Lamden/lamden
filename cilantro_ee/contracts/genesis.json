@@ -15,7 +15,9 @@
 		{
 			"name": "stamp_cost",
 			"owner": "election_house",
-			"constructor_args": null
+			"constructor_args": {
+				"initial_rate": 20000
+			}
 		},
 		{
 			"name": "rewards",

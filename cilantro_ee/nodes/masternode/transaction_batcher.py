@@ -6,6 +6,9 @@ from cilantro_ee.messages.message_type import MessageType
 import hashlib
 import time
 
+from cilantro_ee.logger.base import get_logger
+
+log = get_logger('TXBATCHER')
 
 class TransactionBatcher:
     def __init__(self, wallet: Wallet, queue):
@@ -35,6 +38,7 @@ class TransactionBatcher:
         #     return self.make_empty_batch()
 
         # Pop elements off into a list
+        log.info('Packing a Q')
         tx_list = []
 
         while len(tx_list) < tx_number and len(self.queue) > 0:

@@ -1,9 +1,10 @@
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
-
-from cilantro_ee.core.canonical import build_sbc_from_work_results
-
+from contracting.db.encoder import encode, decode
+from contracting.db.driver import encode_kv
+from cilantro_ee.canonical import build_sbc_from_work_results
+from cilantro_ee.logger.base import get_logger
 import os
 import capnp
 from datetime import datetime
@@ -12,15 +13,11 @@ import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
+log = get_logger('EXE')
 
 def execute_tx(executor: Executor, transaction, environment: dict={}):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
-    kwargs = {}
-    for entry in transaction.payload.kwargs.entries:
-        if entry.value.which() == 'fixedPoint':
-            kwargs[entry.key] = ContractingDecimal(entry.value.fixedPoint)  # ContractingDecimal!
-        else:
-            kwargs[entry.key] = getattr(entry.value, entry.value.which())
+    kwargs = decode(transaction.payload.kwargs)
 
     output = executor.execute(
         sender=transaction.payload.sender.hex(),
@@ -32,14 +29,23 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         auto_commit=False
     )
 
+    log.error(output)
+
+    deltas = []
+    for k, v in output['writes'].items():
+        key, value = encode_kv(k, v)
+        d = transaction_capnp.Delta.new_message(key=key, value=value)
+        deltas.append(d)
+
     # Encode deltas into a Capnp struct
-    deltas = [transaction_capnp.Delta.new_message(key=k, value=v) for k, v in output['writes'].items()]
     tx_output = transaction_capnp.TransactionData.new_message(
         transaction=transaction,
         status=output['status_code'],
         state=deltas,
         stampsUsed=output['stamps_used']
     )
+
+    executor.driver.pending_writes.clear()
 
     return tx_output
 

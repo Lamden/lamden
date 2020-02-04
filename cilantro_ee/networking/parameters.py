@@ -1,3 +1,4 @@
+import cilantro_ee.sockets.struct
 from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT, DISCOVERY_PORT, BLOCK_SERVER, MN_PUB_PORT, \
     DELEGATE_PUB_PORT
 from cilantro_ee.sockets import services
@@ -7,6 +8,8 @@ from cilantro_ee.sockets.services import get
 import json
 import zmq.asyncio
 import asyncio
+
+from cilantro_ee.logger.base import get_logger
 
 
 class ServiceType:
@@ -54,7 +57,7 @@ class NetworkParameters:
 
     def resolve(self, socket_base, service_type, bind=False):
         port, ipc = self.params[service_type]
-        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
+        return cilantro_ee.sockets.struct.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
 
 
 class Parameters:
@@ -63,7 +66,7 @@ class Parameters:
                  ctx: zmq.asyncio.Context,
                  wallet,
                  contacts: VKBook,
-                 network_parameters:NetworkParameters=NetworkParameters()
+                 network_parameters: NetworkParameters=NetworkParameters()
                  ):
 
         self.socket_base = socket_base
@@ -74,6 +77,8 @@ class Parameters:
 
         self.peer_service_address = self.network_parameters.resolve(socket_base, ServiceType.PEER)
         self.sockets = {}
+
+        self.log = get_logger('Parameters')
 
     def get_masternode_sockets(self, service=None):
         masternodes = {}
@@ -138,6 +143,7 @@ class Parameters:
 
     async def refresh(self):
         pb_nodes = set(self.contacts.delegates + self.contacts.masternodes)
+        self.log.info(f'Finding these nodes: {pb_nodes}')
 
         try:
             pb_nodes.remove(self.wallet.verifying_key().hex())
@@ -193,4 +199,3 @@ class Parameters:
         if entry is not None:
             #entry.close()
             del self.sockets[vk]
-

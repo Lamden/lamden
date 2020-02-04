@@ -36,6 +36,6 @@ if not SETUP:
         BOOT_MASTERNODE_IP_LIST = config['boot_masternode_ips'].split(',')
         BOOT_DELEGATE_IP_LIST = config['boot_delegate_ips'].split(',')
         BOOTNODES = BOOT_MASTERNODE_IP_LIST + BOOT_DELEGATE_IP_LIST
-        HOST_IP = requests.get('https://api.ipify.org').text
+        HOST_IP = requests.get('http://api.ipify.org').text
 
     SETUP = True
