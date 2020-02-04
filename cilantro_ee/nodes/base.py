@@ -92,7 +92,8 @@ class Node:
                 bind=True),
             ctx=self.ctx,
             driver=self.driver,
-            contacts=self.contacts
+            contacts=self.contacts,
+            wallet=wallet
         )
 
         self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
