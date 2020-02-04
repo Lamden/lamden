@@ -38,8 +38,10 @@ class RewardManager:
         masters = self.vkbook.masternodes
         delegates = self.vkbook.delegates
 
-        master_reward = (master_ratio * pending_rewards) / len(masters)
-        delegate_reward = (delegate_ratio * pending_rewards) / len(delegates)
+        total_shares = len(masters) + len(delegates)
+
+        master_reward = (pending_rewards / total_shares) * master_ratio
+        delegate_reward = (pending_rewards / total_shares) * delegate_ratio
         # foundation_reward = foundation_ratio * pending_rewards
         # BURN + DEVELOPER
 

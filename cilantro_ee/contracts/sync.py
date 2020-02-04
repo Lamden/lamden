@@ -141,8 +141,8 @@ def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.
                       constructor_args=contract['constructor_args'])
 
 
-def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
-                                   delegate_price=10_000, root=os.path.dirname(__file__), client=ContractingClient()):
+def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=50_000,
+                                   delegate_price=50_000, root=os.path.dirname(__file__), client=ContractingClient()):
     members = root + '/genesis/members.s.py'
 
     with open(members) as f:
