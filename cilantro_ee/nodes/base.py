@@ -14,6 +14,9 @@ from cilantro_ee.sockets.authentication import SocketAuthenticator
 from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
+from cilantro_ee.rewards import RewardManager
+
+
 from cilantro_ee.logger.base import get_logger
 
 from copy import deepcopy
@@ -51,6 +54,11 @@ class Node:
 
         self.socket_authenticator = SocketAuthenticator(wallet=wallet, contacts=self.contacts, ctx=self.ctx)
 
+        self.elect_masternodes = self.client.get_contract('elect_masternodes')
+        self.on_deck_master = self.elect_masternodes.quick_read('top_candidate')
+
+        self.elect_delegates = self.client.get_contract('elect_delegates')
+        self.on_deck_delegate = self.elect_delegates.quick_read('top_candidate')
         # stuff
 
         self.network_parameters = network_parameters
@@ -87,6 +95,8 @@ class Node:
             contacts=self.contacts
         )
 
+        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
+
         self.running = False
 
     async def start(self):
@@ -104,3 +114,25 @@ class Node:
         self.network.stop()
         self.nbn_inbox.stop()
         self.running = False
+
+    def update_sockets(self):
+        # UPDATE SOCKETS IF NEEDED
+        mn = self.elect_masternodes.quick_read('top_candidate')
+        if self.on_deck_master != mn and mn is not None:
+            self.log.info(f'New master on deck! Adding vk: {mn}')
+            self.socket_authenticator.flush_all_keys()
+            self.socket_authenticator.add_verifying_key(mn)
+            self.on_deck_master = mn
+
+        dl = self.elect_delegates.quick_read('top_candidate')
+        if self.on_deck_delegate != dl and dl is not None:
+            self.log.info(f'New delegate on deck! Adding vk: {dl}')
+            self.socket_authenticator.add_verifying_key(dl)
+            self.on_deck_master = dl
+
+    def issue_rewards(self, block):
+        # ISSUE REWARDS
+        stamps = self.reward_manager.stamps_in_block(block)
+        self.log.info(f'{stamps} in this block to issue.')
+        self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
+        self.reward_manager.issue_rewards()

@@ -8,7 +8,6 @@ from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee import canonical
-from cilantro_ee.rewards import RewardManager
 
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
@@ -39,8 +38,6 @@ class Masternode(Node):
             ctx=self.ctx,
             driver=self.driver
         )
-        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
-
         self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
     async def start(self):
@@ -127,18 +124,16 @@ class Masternode(Node):
             await asyncio.sleep(0)
 
     def process_block(self, block):
-        do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
-        do_not_store |= canonical.block_is_skip_block(block)
+        #do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
+        #do_not_store |= canonical.block_is_skip_block(block)
 
         # if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
-            # ISSUE REWARDS
-            stamps = self.reward_manager.stamps_in_block(block)
-            self.log.info(f'{stamps} in this block to issue.')
-            self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
-            self.reward_manager.issue_rewards()
+            self.issue_rewards(block=block)
+            self.update_sockets()
 
+            # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 

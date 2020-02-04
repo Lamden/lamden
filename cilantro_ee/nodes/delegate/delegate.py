@@ -13,7 +13,6 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
-from cilantro_ee.rewards import RewardManager
 from cilantro_ee import canonical
 
 class Delegate(Node):
@@ -36,8 +35,6 @@ class Delegate(Node):
         self.pending_sbcs = set()
 
         self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
-
-        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
 
     async def start(self):
         await super().start()
@@ -65,15 +62,11 @@ class Delegate(Node):
         self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
         self.driver.reads.clear()
         self.driver.pending_writes.clear()
+
         if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
-            self.log.error('FAIL')
-
-            # ISSUE REWARDS
-            stamps = self.reward_manager.stamps_in_block(nbn)
-            self.log.info(f'{stamps} in this block to issue. STR is {self.reward_manager.stamps_per_tau}')
-            self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
-            self.reward_manager.issue_rewards()
+            self.issue_rewards(block=nbn)
+            self.update_sockets()
 
         self.nbn_inbox.clean()
         self.pending_sbcs.clear()

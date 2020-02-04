@@ -357,7 +357,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             contract='currency',
             function='approve',
             kwargs={
-                'amount': 10_000,
+                'amount': 100_000,
                 'to': 'elect_delegates'
             },
             sender=candidate
@@ -373,7 +373,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             contract='currency',
             function='approve',
             kwargs={
-                'amount': 10_000,
+                'amount': 100_000,
                 'to': 'elect_delegates'
             },
             sender=stu

@@ -40,8 +40,8 @@ class RewardManager:
 
         total_shares = len(masters) + len(delegates)
 
-        master_reward = (pending_rewards / total_shares) * master_ratio
-        delegate_reward = (pending_rewards / total_shares) * delegate_ratio
+        master_reward = (pending_rewards / total_shares) * Decimal(str(master_ratio))
+        delegate_reward = (pending_rewards / total_shares) * Decimal(str(delegate_ratio))
         # foundation_reward = foundation_ratio * pending_rewards
         # BURN + DEVELOPER
 
