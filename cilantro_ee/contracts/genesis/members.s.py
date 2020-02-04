@@ -9,13 +9,13 @@ REMOVE_SEAT = 3
 VOTING_PERIOD = datetime.DAYS * 1
 
 S = Hash()
-boot_num = Variable()
+minimum_nodes = Variable()
 candidate_contract = Variable()
 
 @construct
-def seed(initial_members, bn=1, candidate='elect_masternodes'):
+def seed(initial_members, minimum=1, candidate='elect_members'):
     S['members'] = initial_members
-    boot_num.set(bn)
+    minimum_nodes.set(minimum)
     candidate_contract.set(candidate)
 
     S['yays'] = 0
@@ -30,7 +30,7 @@ def quorum_max():
 
 @export
 def quorum_min():
-    return min(quorum_max(), boot_num.get())
+    return min(quorum_max(), minimum_nodes.get())
 
 @export
 def current_value():
@@ -39,7 +39,7 @@ def current_value():
 
 @export
 def vote(vk, obj):
-    assert type(obj) == list, 'Pass a tuple!'
+    assert type(obj) == list, 'Pass a list!'
 
     arg = None
     try:
@@ -99,9 +99,10 @@ def assert_vk_is_valid(vk):
 
 def introduce_motion(position, arg):
     # If remove member, must be a member that already exists
+    assert position <= REMOVE_SEAT, 'Invalid position.'
     if position == REMOVE_MEMBER:
         assert arg in S['members'], 'member does not exist.'
-
+        assert len
         S['member_in_question'] = arg
 
     S['current_motion'] = position
@@ -113,26 +114,26 @@ def pass_current_motion():
     members = S['members']
 
     if current_motion == REMOVE_MEMBER:
-        members.remove(S['members_in_question'])
+        members.remove(S['member_in_question'])
 
     elif current_motion == ADD_SEAT:
         # Get the top member
         member_candidates = importlib.import_module(candidate_contract.get())
-        new_del = member_candidates.top_member()
+        new_mem = member_candidates.top_member()
 
         # Append it to the list, and remove it from pending
-        if new_del is not None:
-            members.append(new_del)
+        if new_mem is not None:
+            members.append(new_mem)
             member_candidates.pop_top()
 
     elif current_motion == REMOVE_SEAT:
         # Get least popular member
         member_candidates = importlib.import_module(candidate_contract.get())
-        old_del = member_candidates.last_member()
+        old_mem = member_candidates.last_member()
 
         # Remove them from the list and pop them from deprecating
-        if old_del is not None:
-            members.remove(old_mn)
+        if old_mem is not None:
+            members.remove(old_mem)
             member_candidates.pop_last()
 
     S['members'] = members
