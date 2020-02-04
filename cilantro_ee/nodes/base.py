@@ -53,6 +53,7 @@ class Node:
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
         self.socket_authenticator = SocketAuthenticator(wallet=wallet, contacts=self.contacts, ctx=self.ctx)
+        self.socket_authenticator.sync_certs()
 
         self.elect_masternodes = self.client.get_contract('elect_masternodes')
         self.on_deck_master = self.elect_masternodes.quick_read('top_candidate')

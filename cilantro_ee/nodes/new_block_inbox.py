@@ -23,7 +23,7 @@ class BadConsensusBlock(BlockNotificationException):
     pass
 
 
-class NBNInbox(AsyncInbox):
+class NBNInbox(SecureAsyncInbox):
     def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, allow_current_block_num=False, *args, **kwargs):
         self.q = []
         self.contacts = contacts

@@ -1,4 +1,4 @@
-from cilantro_ee.sockets.inbox import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
 from collections import defaultdict
 from cilantro_ee.storage import BlockchainDriver
 
@@ -48,7 +48,7 @@ class SBCIndexGreaterThanPossibleError(SBCException):
     pass
 
 
-class SBCInbox(AsyncInbox):
+class SBCInbox(SecureAsyncInbox):
     def __init__(self, driver: BlockchainDriver, expected_subblocks=4, *args, **kwargs):
         self.q = []
         self.driver = driver
@@ -57,13 +57,16 @@ class SBCInbox(AsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+        self.log.error('GOT ONE')
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
         # Ignore bad message types
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
+            self.log.error('BAD MESSAGE YOU DUMBASS')
             return
 
         if len(msg_blob.contenders) != self.expected_subblocks:
+            self.log.error(f'GOT {len(msg_blob.contenders)}, EXPECTED {self.expected_subblocks}')
             return
 
         # Make sure all the contenders are valid
@@ -196,13 +199,14 @@ def now_in_ms():
 
 
 class Aggregator:
-    def __init__(self, socket_id, ctx, driver, expected_subblocks=4):
+    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             socket_id=socket_id,
             ctx=ctx,
             driver=driver,
-            expected_subblocks=self.expected_subblocks
+            expected_subblocks=self.expected_subblocks,
+            wallet=wallet
         )
         self.driver = driver
         self.log = get_logger('AGG')
