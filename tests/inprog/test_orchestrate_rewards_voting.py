@@ -615,3 +615,152 @@ class TestGovernanceOrchestration(unittest.TestCase):
             o.delegates[3].wallet.verifying_key().hex(),
             candidate.verifying_key().hex()
         ])
+
+    def test_introduce_and_pass_motion_delegates_then_removes(self):
+        stu = Wallet()
+        candidate = Wallet()
+
+        o = Orchestrator(2, 4, self.ctx)
+
+        block_0 = []
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='elect_delegates',
+            function='register',
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=stu
+        ))
+
+        block_0.append(o.make_tx(
+            contract='elect_delegates',
+            function='vote_candidate',
+            kwargs={
+                'address': candidate.verifying_key().hex()
+            },
+            sender=stu,
+        ))
+
+        block_1 = []
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('introduce_motion', 2)
+            },
+            sender=o.delegates[0].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[0].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[1].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[2].wallet
+        ))
+
+        block_2 = []
+
+        block_2.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('introduce_motion', 1, candidate.verifying_key().hex())
+            },
+            sender=o.delegates[0].wallet
+        ))
+
+        block_2.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[0].wallet
+        ))
+
+        block_2.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[1].wallet
+        ))
+
+        block_2.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[2].wallet
+        ))
+
+        async def test():
+
+            await o.start_network
+            await asyncio.sleep(3)
+            await send_tx_batch(o.masternodes[0], block_0)
+            await asyncio.sleep(3)
+            await send_tx_batch(o.masternodes[0], block_1)
+            await asyncio.sleep(3)
+            await send_tx_batch(o.masternodes[0], block_2)
+            await asyncio.sleep(3)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
+
+        v = o.get_var('delegates', 'S', ['members'])
+        self.assertListEqual(v, [
+            o.delegates[0].wallet.verifying_key().hex(),
+            o.delegates[1].wallet.verifying_key().hex(),
+            o.delegates[2].wallet.verifying_key().hex(),
+            o.delegates[3].wallet.verifying_key().hex(),
+        ])

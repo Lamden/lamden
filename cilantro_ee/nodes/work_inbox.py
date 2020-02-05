@@ -17,6 +17,7 @@ import time
 
 from copy import deepcopy
 
+
 class DelegateWorkInboxException(Exception):
     pass
 
