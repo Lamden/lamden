@@ -54,7 +54,6 @@ def vote(vk, obj):
 
     else:
         assert S['current_motion'] != NO_MOTION, 'No motion proposed.'
-        print(S['positions', vk])
         assert S['positions', vk] is None, 'VK already voted.'
 
         if position is True:
