@@ -433,11 +433,11 @@ class TestGovernanceOrchestration(unittest.TestCase):
         async def test():
 
             await o.start_network
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             await send_tx_batch(o.masternodes[0], block_0)
-            await asyncio.sleep(4)
+            await asyncio.sleep(3)
             await send_tx_batch(o.masternodes[0], block_1)
-            await asyncio.sleep(4)
+            await asyncio.sleep(3)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())

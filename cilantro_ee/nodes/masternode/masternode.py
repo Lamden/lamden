@@ -123,7 +123,7 @@ class Masternode(Node):
             self.log.error('No one online!')
             return
 
-        await secure_multicast(
+        return await secure_multicast(
             wallet=self.wallet,
             ctx=self.ctx,
             msg=tx_batch,
@@ -167,8 +167,8 @@ class Masternode(Node):
         while self.running:
             sends = await self.send_work()
 
-            # if sends is None:
-            #     return
+            if sends is None:
+                return
 
             self.log.error(f'{len(self.contacts.masternodes)} MNS!')
 
