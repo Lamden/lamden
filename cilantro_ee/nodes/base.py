@@ -49,6 +49,8 @@ class Node:
         self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
                                boot_del=constitution['delegate_min_quorum'],
                                client=self.client)
+        self.current_masters = deepcopy(self.contacts.masternodes)
+        self.current_delegates = deepcopy(self.contacts.delegates)
 
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
@@ -125,7 +127,15 @@ class Node:
         update_mn = self.on_deck_master != mn and mn is not None
         update_del = self.on_deck_delegate != dl and dl is not None
 
-        if update_mn or update_del:
+        ## Check if
+        nodes_changed = self.contacts.masternodes != self.current_masters \
+                        or self.contacts.delegates != self.current_delegates
+
+        if nodes_changed:
+            self.current_masters = deepcopy(self.contacts.masternodes)
+            self.current_delegates = deepcopy(self.contacts.delegates)
+
+        if update_mn or update_del or nodes_changed:
             self.socket_authenticator.sync_certs()
 
             if update_mn:
