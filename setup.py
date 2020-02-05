@@ -40,6 +40,8 @@ setup(
         'redis==3.2.0',
         # CLI
         'Click==7.0',
+        #other
+        'stdlib-list==0.6.0'
     ],
     entry_points={
         'console_scripts': [
