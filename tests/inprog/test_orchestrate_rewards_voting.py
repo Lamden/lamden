@@ -146,6 +146,68 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
+        v = o.get_var('elect_masternodes', 'top_candidate')
+        self.assertEqual(v, candidate.verifying_key().hex())
+
+        v = o.get_var('currency', 'balances', ['blackhole'])
+        self.assertEqual(v, 1)
+
+    def test_new_orchestrator_2nd_mn_submission(self):
+        candidate = Wallet()
+        stu = Wallet()
+
+        o = Orchestrator(2, 4, self.ctx)
+        txs = []
+
+        txs.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=candidate,
+            pidx=1
+        ))
+
+        txs.append(o.make_tx(
+            contract='elect_masternodes',
+            function='register',
+            sender=candidate,
+            pidx=1
+        ))
+
+        txs.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_masternodes'
+            },
+            sender=stu,
+            pidx=1
+        ))
+
+        txs.append(o.make_tx(
+            contract='elect_masternodes',
+            function='vote_candidate',
+            kwargs={
+                'address': candidate.verifying_key().hex()
+            },
+            sender=stu,
+            pidx=1
+        ))
+
+        async def test():
+
+            await o.start_network
+            await asyncio.sleep(3)
+            await send_tx_batch(o.masternodes[1], txs)
+            await asyncio.sleep(5)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
+
         v = o.get_var('elect_masternodes', 'candidate_votes')
         self.assertDictEqual(v, {candidate.verifying_key().hex(): 1})
 

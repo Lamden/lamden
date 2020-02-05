@@ -120,17 +120,21 @@ class Node:
     def update_sockets(self):
         # UPDATE SOCKETS IF NEEDED
         mn = self.elect_masternodes.quick_read('top_candidate')
-        if self.on_deck_master != mn and mn is not None:
-            self.log.info(f'New master on deck! Adding vk: {mn}')
-            self.socket_authenticator.flush_all_keys()
-            self.socket_authenticator.add_verifying_key(mn)
-            self.on_deck_master = mn
-
         dl = self.elect_delegates.quick_read('top_candidate')
-        if self.on_deck_delegate != dl and dl is not None:
-            self.log.info(f'New delegate on deck! Adding vk: {dl}')
-            self.socket_authenticator.add_verifying_key(dl)
-            self.on_deck_master = dl
+
+        update_mn = self.on_deck_master != mn and mn is not None
+        update_del = self.on_deck_delegate != dl and dl is not None
+
+        if update_mn or update_del:
+            self.socket_authenticator.sync_certs()
+
+            if update_mn:
+                self.socket_authenticator.add_verifying_key(mn)
+                self.on_deck_master = mn
+
+            if update_del:
+                self.socket_authenticator.add_verifying_key(dl)
+                self.on_deck_master = dl
 
     def issue_rewards(self, block):
         # ISSUE REWARDS

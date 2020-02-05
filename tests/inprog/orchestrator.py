@@ -182,8 +182,8 @@ class Orchestrator:
         self.nonces.clear()
         self.minted.clear()
 
-    def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000):
-        processor = self.masternodes[0]
+    def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000, pidx=0):
+        processor = self.masternodes[pidx]
 
         batch = TransactionBuilder(
             sender=sender.verifying_key(),
