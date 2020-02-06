@@ -113,4 +113,4 @@ class RewardManager:
 
     @property
     def reward_ratio(self):
-        return self.reward_contract.quick_read(variable='value')
+        return self.reward_contract.quick_read(variable='S', args=['value'])

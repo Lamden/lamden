@@ -1,91 +1,110 @@
-value = Variable()
-current_votes = Hash(default_value=0)
-has_voted = Hash()
+import election_house
 
-last_election = Variable()
-election_start = Variable()
-
-election_length = datetime.DAYS * 1
-election_interval = datetime.WEEKS * 1
+S = Hash()
 
 @construct
-def seed():
-    value.set([0.7, 0.3, 0, 0])
-    last_election.set(now)
-    election_start.set(None)
+def seed(initial_split=[0.5, 0.5, 0, 0],
+         master_contract='masternodes',
+         delegate_contract='delegates',
+         election_max_length=datetime.DAYS * 1):
+
+    S['value'] = initial_split
+    S['master_contract'] = master_contract
+    S['delegate_contract'] = delegate_contract
+    S['election_max_length'] = election_max_length
+
+    reset_current_votes()
+
+
+def reset_current_votes():
+    S['current_votes', 'masternodes'] = 0
+    S['current_votes', 'delegates'] = 0
+    S['current_votes', 'blackhole'] = 0
+    S['current_votes', 'foundation'] = 0
+
 
 @export
 def current_value():
-    return value.get()
+    return S['value']
 
 @export
 def vote(vk, obj):
-    if election_start.get() is not None:
+    # Start a new election
+    if S['election_start'] is None:
+        total_nodes = len(election_house.current_value_for_policy(S['master_contract'])) + \
+                      len(election_house.current_value_for_policy(S['delegate_contract']))
+
+        S['vote_count'] = 0
+        S['min_votes_required'] = (total_nodes * 2 // 3) + 1
+
+        # Set start to now
+        S['election_start'] = now
+        S.clear('has_voted')
+
+        reset_current_votes()
+
         tally_vote(vk, obj)
 
-        # If it has been over a day since the election started... End the election
-        if now - election_start.get() >= election_length:
-            # Calculate ratio of votes
-            masternode_votes = current_votes['masternodes'] or 1
-            delegate_votes = current_votes['delegates'] or 1
-            blackhole_votes = current_votes['blackhole'] or 1
-            foundation_votes = current_votes['foundation'] or 1
+    else:
+        tally_vote(vk, obj)
 
-            total_votes = masternode_votes + delegate_votes + blackhole_votes + foundation_votes
-
-            # Do the same for each party before dividing
-            mn = masternode_votes / total_votes
-            dl = delegate_votes / total_votes
-            bh = blackhole_votes / total_votes
-            fd = foundation_votes / total_votes
-
-            # Set the new value
-            value.set([mn, dl, bh, fd])
+        if election_is_over():
+            update_value()
 
             # Reset everything
-            election_start.set(None)
-            last_election.set(now)
-            current_votes.clear()
-            has_voted.clear()
+            S['election_start'] = None
 
-    # If its been 1 week since the last election ended... Start the election
-    elif now - last_election.get() > election_interval:
-        # Set start to now
-        election_start.set(now)
-        current_votes.clear()
-        tally_vote(vk, obj)
+
+def update_value():
+    # Calculate ratio of votes
+    masternode_votes = S['current_votes', 'masternodes'] or 1
+    delegate_votes = S['current_votes', 'delegates'] or 1
+    blackhole_votes = S['current_votes', 'blackhole'] or 1
+    foundation_votes = S['current_votes', 'foundation'] or 1
+
+    total_votes = masternode_votes + delegate_votes + blackhole_votes + foundation_votes
+
+    # Do the same for each party before dividing
+    mn = masternode_votes / total_votes
+    dl = delegate_votes / total_votes
+    bh = blackhole_votes / total_votes
+    fd = foundation_votes / total_votes
+
+    # Set the new value
+    S['value'] = [mn, dl, bh, fd]
+
+
+def election_is_over():
+    return S['vote_count'] >= S['min_votes_required'] or \
+           now - S['election_start'] >= S['election_max_length']
 
 
 def tally_vote(vk, obj):
-    assert vote_is_valid(obj), 'Invalid vote object passed!'
-    assert has_voted[vk] is None, 'VK has already voted!'
-
-    has_voted[vk] = True
+    validate_vote(vk, obj)
 
     a, b, c, d = obj
 
-    current_votes['masternodes'] += a
-    current_votes['delegates'] += b
-    current_votes['blackhole'] += c
-    current_votes['foundation'] += d
+    S['current_votes', 'masternodes'] += a
+    S['current_votes', 'delegates'] += b
+    S['current_votes', 'blackhole'] += c
+    S['current_votes', 'foundation'] += d
+
+    S['has_voted', vk] = True
+    S['vote_count'] += 1
 
 
-def vote_is_valid(obj):
-    if type(obj) != list:
-        return False
+def validate_vote(vk, obj):
+    assert vk in election_house.current_value_for_policy(S['master_contract']) or \
+           vk in election_house.current_value_for_policy(S['delegate_contract']), 'Not allowed to vote!'
 
-    if len(obj) != 4:
-        return False
+    assert type(obj) == list, 'Pass a list!'
+    assert len(obj) == 4, 'Must have 4 elements!'
 
     s = 0
     for o in obj:
-        if type(o) != int:
-            return False
-        if o < 0:
-            return False
+        assert int(o) >= 0, 'No non-negative numbers!'
         s += o
 
-    if s != 100:
-        return False
+    assert s == 100, 'Elements must add to 100!'
 
-    return True
+    assert S['has_voted', vk] is None, 'VK has already voted!'
