@@ -100,6 +100,7 @@ class Masternode(Node):
 
         # Update with state
         self.driver.update_with_block(nbn)
+        self.driver.commit()
         self.blocks.put(nbn, self.blocks.BLOCK)
 
         while len(self.tx_batcher.queue) == 0:
@@ -154,6 +155,9 @@ class Masternode(Node):
         # if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
+
+            self.driver.commit()
+
             self.issue_rewards(block=block)
             self.update_sockets()
 

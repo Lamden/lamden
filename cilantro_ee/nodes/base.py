@@ -46,6 +46,9 @@ class Node:
             client=self.client
         )
 
+        self.driver.commit()
+        self.driver.clear_pending_state()
+
         self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
                                boot_del=constitution['delegate_min_quorum'],
                                client=self.client)

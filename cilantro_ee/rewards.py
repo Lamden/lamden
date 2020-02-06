@@ -60,8 +60,6 @@ class RewardManager:
         for d in delegates:
             self.add_to_balance(vk=d, amount=delegate_reward)
 
-        #self.set_pending_rewards(0)
-
     def add_to_balance(self, vk, amount):
         current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
 
