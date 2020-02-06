@@ -202,7 +202,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     if balance is None:
         balance = 0
 
-    stamp_to_tau = driver.get_var('stamp_cost', 'S', ['rate'])
+    stamp_to_tau = driver.get_var('stamp_cost', 'S', ['value'])
 
     if balance * stamp_to_tau < tx.payload.stampsSupplied:
         raise TransactionSenderTooFewStamps

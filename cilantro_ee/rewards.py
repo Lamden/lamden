@@ -61,7 +61,7 @@ class RewardManager:
         foundation_reward = reward_share * Decimal(str(foundation_ratio))
         # BURN + DEVELOPER
 
-        decimal.getcontext().rounding = decimal.ROUND_FLOOR
+        decimal.getcontext().rounding = decimal.ROUND_DOWN
 
         master_reward = round(master_reward, self.dust_exponent)
         delegate_reward = round(delegate_reward, self.dust_exponent)
@@ -105,7 +105,7 @@ class RewardManager:
 
     @property
     def stamps_per_tau(self):
-        return self.stamp_contract.quick_read('S', 'rate')
+        return self.stamp_contract.quick_read('S', 'value')
 
     @staticmethod
     def stamps_in_block(block):
