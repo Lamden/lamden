@@ -20,14 +20,18 @@ class RewardManager:
         self.driver = driver
         self.client = ContractingClient(driver=driver)
 
+        # All of this can be just derived from the blockchain driver without marking reads
+        # Should marks on default be false?
         self.stamp_contract = self.client.get_contract('stamp_cost')
         self.reward_contract = self.client.get_contract('rewards')
         self.currency_contract = self.client.get_contract('currency')
         self.election_house = self.client.get_contract('election_house')
+        self.foundation_contract = self.client.get_contract('foundation')
 
         assert self.stamp_contract is not None, 'Stamp contract not in state.'
         assert self.reward_contract is not None, 'Reward contract not in state.'
         assert self.currency_contract is not None, 'Currency contract not in state.'
+        assert self.foundation_contract is not None, 'Foundation contract not in state.'
 
         self.log = get_logger('RWM')
         self.log.propagate = debug
@@ -48,7 +52,7 @@ class RewardManager:
         masters = self.vkbook.masternodes
         delegates = self.vkbook.delegates
 
-        total_shares = len(masters) + len(delegates)
+        total_shares = len(masters) + len(delegates) + 1
 
         reward_share = Decimal(str(pending_rewards / total_shares))
 
@@ -69,7 +73,7 @@ class RewardManager:
         for d in delegates:
             self.add_to_balance(vk=d, amount=delegate_reward)
 
-        
+        self.add_to_balance(vk=self.foundation_contract.owner.get(), amount=foundation_reward)
 
     def add_to_balance(self, vk, amount):
         current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)

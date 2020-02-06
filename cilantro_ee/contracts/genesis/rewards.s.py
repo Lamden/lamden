@@ -3,7 +3,7 @@ import election_house
 S = Hash()
 
 @construct
-def seed(initial_split=[0.5, 0.5, 0, 0],
+def seed(initial_split=[0.49, 0.49, 0.01, 0.01],
          master_contract='masternodes',
          delegate_contract='delegates',
          election_max_length=datetime.DAYS * 1):
@@ -12,6 +12,8 @@ def seed(initial_split=[0.5, 0.5, 0, 0],
     S['master_contract'] = master_contract
     S['delegate_contract'] = delegate_contract
     S['election_max_length'] = election_max_length
+
+    S['vote_count'] = 0
 
     reset_current_votes()
 
