@@ -6,6 +6,7 @@ from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.logger.base import get_logger
 
 from decimal import Decimal
+import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
@@ -31,6 +32,8 @@ class RewardManager:
         self.log = get_logger('RWM')
         self.log.propagate = debug
 
+        self.dust_exponent = 8
+
     def issue_rewards(self, block):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
 
@@ -51,14 +54,22 @@ class RewardManager:
 
         master_reward = reward_share * Decimal(str(master_ratio))
         delegate_reward = reward_share * Decimal(str(delegate_ratio))
-        # foundation_reward = foundation_ratio * pending_rewards
+        foundation_reward = reward_share * Decimal(str(foundation_ratio))
         # BURN + DEVELOPER
+
+        decimal.getcontext().rounding = decimal.ROUND_FLOOR
+
+        master_reward = round(master_reward, self.dust_exponent)
+        delegate_reward = round(delegate_reward, self.dust_exponent)
+        foundation_reward = round(foundation_reward, self.dust_exponent)
 
         for m in masters:
             self.add_to_balance(vk=m, amount=master_reward)
 
         for d in delegates:
             self.add_to_balance(vk=d, amount=delegate_reward)
+
+        
 
     def add_to_balance(self, vk, amount):
         current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
@@ -67,7 +78,7 @@ class RewardManager:
             current_balance = ContractingDecimal(0)
 
         amount = ContractingDecimal(amount)
-        self.log.info('Sending {} to {}'.format(amount, vk))
+        self.log.info('Sending {} to {}. New bal: {} -> {}'.format(amount, vk[:8], current_balance, amount + current_balance))
 
         self.driver.set_var(
             contract='currency',

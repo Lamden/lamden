@@ -64,8 +64,9 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
-        #self.driver.reads.clear()
-        #self.driver.pending_writes.clear()
+
+        self.driver.reads.clear()
+        self.driver.pending_writes.clear()
 
         if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
@@ -73,7 +74,7 @@ class Delegate(Node):
             self.update_sockets()
 
         self.nbn_inbox.clean()
-        self.pending_sbcs.clear()
+        # self.pending_sbcs.clear()
         self.nbn_inbox.update_signers()
 
     def filter_work(self, work):
@@ -111,8 +112,8 @@ class Delegate(Node):
         )
 
         # Add merkle roots to track successful sbcs
-        for sb in results:
-            self.pending_sbcs.add(sb.merkleTree.leaves[0])
+        # for sb in results:
+        #     self.pending_sbcs.add(sb.merkleTree.leaves[0])
 
         self.log.info(results)
 

@@ -57,16 +57,13 @@ class SBCInbox(SecureAsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
-        self.log.error('GOT ONE')
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
         # Ignore bad message types
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
-            self.log.error('BAD MESSAGE YOU DUMBASS')
             return
 
         if len(msg_blob.contenders) != self.expected_subblocks:
-            self.log.error(f'GOT {len(msg_blob.contenders)}, EXPECTED {self.expected_subblocks}')
             return
 
         # Make sure all the contenders are valid
@@ -227,7 +224,6 @@ class Aggregator:
                 contenders.finished[i] = None
 
         self.log.info('Done aggregating new block.')
-        self.log.info(self.driver.latest_block_num)
 
         subblocks = deepcopy(contenders.finished)
         del contenders

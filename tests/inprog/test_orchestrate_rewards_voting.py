@@ -811,7 +811,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function='vote',
             kwargs={
                 'policy': 'rewards',
-                'value': [60, 40, 0, 0]
+                'value': [70, 30, 0, 0]
             },
             sender=o.delegates[0].wallet
         ))
@@ -821,7 +821,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function='vote',
             kwargs={
                 'policy': 'rewards',
-                'value': [50, 50, 0, 0]
+                'value': [70, 30, 0, 0]
             },
             sender=o.delegates[1].wallet
         ))
@@ -831,7 +831,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function='vote',
             kwargs={
                 'policy': 'rewards',
-                'value': [50, 50, 0, 0]
+                'value': [60, 40, 0, 0]
             },
             sender=o.delegates[2].wallet
         ))
@@ -841,7 +841,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function='vote',
             kwargs={
                 'policy': 'rewards',
-                'value': [70, 30, 0, 0]
+                'value': [50, 50, 0, 0]
             },
             sender=o.delegates[3].wallet
         ))
@@ -851,9 +851,41 @@ class TestGovernanceOrchestration(unittest.TestCase):
             function='vote',
             kwargs={
                 'policy': 'rewards',
-                'value': [70, 30, 0, 0]
+                'value': [50, 50, 0, 0]
             },
             sender=o.masternodes[0].wallet
+        ))
+
+        block_2 = []
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=candidate
+        ))
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': 100_000,
+                'to': stu.verifying_key().hex()
+            },
+            sender=candidate
+        ))
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': candidate.verifying_key().hex()
+            },
+            sender=stu
         ))
 
 
@@ -862,11 +894,34 @@ class TestGovernanceOrchestration(unittest.TestCase):
             await asyncio.sleep(3)
             await send_tx_batch(o.masternodes[0], block_0)
             await asyncio.sleep(3)
+
+            a = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
+            b = o.get_var('currency', 'balances', [o.delegates[0].wallet.verifying_key().hex()])
+            c = o.get_var('currency', 'balances', [o.delegates[1].wallet.verifying_key().hex()])
+            d = o.get_var('currency', 'balances', [o.delegates[2].wallet.verifying_key().hex()])
+            e = o.get_var('currency', 'balances', [o.delegates[3].wallet.verifying_key().hex()])
+
+            self.assertEqual(a, b)
+            self.assertEqual(b, c)
+            self.assertEqual(c, d)
+            self.assertEqual(d, e)
+
             await send_tx_batch(o.masternodes[0], block_1)
             await asyncio.sleep(3)
 
+            await send_tx_batch(o.masternodes[0], block_2)
+            await asyncio.sleep(3)
+
+            a = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
+            b = o.get_var('currency', 'balances', [o.delegates[0].wallet.verifying_key().hex()])
+            c = o.get_var('currency', 'balances', [o.delegates[1].wallet.verifying_key().hex()])
+            d = o.get_var('currency', 'balances', [o.delegates[2].wallet.verifying_key().hex()])
+            e = o.get_var('currency', 'balances', [o.delegates[3].wallet.verifying_key().hex()])
+
+            self.assertGreater(a, b)
+            self.assertGreater(a, c)
+            self.assertGreater(a, d)
+            self.assertGreater(a, e)
+
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
-
-        v = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
-        print(v)

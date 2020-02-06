@@ -223,7 +223,9 @@ class Orchestrator:
 
     def get_var(self, contract, function, arguments=[]):
         vals = []
-        for node in self.nodes:
+        # Masternodes are always 1 block ahead of delegates in state if the system is halted because of no work.
+        # When there is work, they send the NBN, which has the T+1 state deltas, to dels. and the new work.
+        for node in self.masternodes:
             v = node.driver.get_var(
                 contract=contract,
                 variable=function,
@@ -231,12 +233,9 @@ class Orchestrator:
 
             vals.append(v)
 
-        print(vals[0])
-
         if len(vals) > 1:
             for v in vals:
-                if not vals[0] == v:
-                    print(v)
+                assert vals[0] == v, 'Consensus failure'
 
         return vals.pop()
 

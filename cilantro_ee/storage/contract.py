@@ -51,7 +51,7 @@ class BlockchainDriver(ContractDriver):
             for delta in tx['state']:
                 k, v = decode_kv(delta['key'], delta['value'])
                 self.set(k, v)
-                log.info(f"{k} -> {v}")
+                #log.info(f"{k} -> {v}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage

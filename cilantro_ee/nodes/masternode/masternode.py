@@ -154,17 +154,20 @@ class Masternode(Node):
 
         # if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
+
             self.driver.update_with_block(block)
-
-            self.driver.commit()
-
             self.issue_rewards(block=block)
+            
+            self.driver.reads.clear()
+            self.driver.pending_writes.clear()
+
             self.update_sockets()
 
             # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 
+        self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
 
     async def process_blocks(self):
