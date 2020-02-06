@@ -231,9 +231,12 @@ class Orchestrator:
 
             vals.append(v)
 
+        print(vals[0])
+
         if len(vals) > 1:
             for v in vals:
-                assert vals[0] == v, 'Consensus failure'
+                if not vals[0] == v:
+                    print(v)
 
         return vals.pop()
 
