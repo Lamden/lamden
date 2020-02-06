@@ -148,7 +148,6 @@ class Node:
 
     def issue_rewards(self, block):
         # ISSUE REWARDS
-        stamps = self.reward_manager.stamps_in_block(block)
-        self.log.info(f'{stamps} in this block to issue.')
-        self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
-        self.reward_manager.issue_rewards()
+        # stamps = self.reward_manager.stamps_in_block(block)
+        # self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
+        self.reward_manager.issue_rewards(block=block)

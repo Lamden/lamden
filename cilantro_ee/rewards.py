@@ -31,17 +31,26 @@ class RewardManager:
         self.log = get_logger('RWM')
         self.log.propagate = debug
 
-    def issue_rewards(self):
+    def issue_rewards(self, block):
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio = self.reward_ratio
-        pending_rewards = self.get_pending_rewards()
+
+        stamps = self.stamps_in_block(block)
+
+        self.log.info(f'{stamps} stamps in this block to issue.')
+
+        pending_rewards = self.stamps_in_block(block) / self.stamps_per_tau
+
+        self.log.info(f'{pending_rewards} tau in this block to issue.')
 
         masters = self.vkbook.masternodes
         delegates = self.vkbook.delegates
 
         total_shares = len(masters) + len(delegates)
 
-        master_reward = (pending_rewards / total_shares) * Decimal(str(master_ratio))
-        delegate_reward = (pending_rewards / total_shares) * Decimal(str(delegate_ratio))
+        reward_share = Decimal(str(pending_rewards / total_shares))
+
+        master_reward = reward_share * Decimal(str(master_ratio))
+        delegate_reward = reward_share * Decimal(str(delegate_ratio))
         # foundation_reward = foundation_ratio * pending_rewards
         # BURN + DEVELOPER
 
@@ -51,7 +60,7 @@ class RewardManager:
         for d in delegates:
             self.add_to_balance(vk=d, amount=delegate_reward)
 
-        self.set_pending_rewards(0)
+        #self.set_pending_rewards(0)
 
     def add_to_balance(self, vk, amount):
         current_balance = self.driver.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
@@ -70,16 +79,16 @@ class RewardManager:
             mark=False
         )
 
-    def get_pending_rewards(self):
-        key = self.driver.get(PENDING_REWARDS_KEY)
+    # def get_pending_rewards(self):
+    #     key = self.driver.get(PENDING_REWARDS_KEY)
+    #
+    #     if key is None:
+    #         key = 0
+    #
+    #     return key
 
-        if key is None:
-            key = 0
-
-        return key
-
-    def set_pending_rewards(self, value):
-        self.driver.set(PENDING_REWARDS_KEY, value=value, mark=False)
+    # def set_pending_rewards(self, value):
+    #     self.driver.set(PENDING_REWARDS_KEY, value=value, mark=False)
 
     @property
     def stamps_per_tau(self):
@@ -104,12 +113,12 @@ class RewardManager:
 
         return total
 
-    def add_pending_rewards(self, subblock):
-        current_rewards = self.get_pending_rewards()
-        used_stamps = self.stamps_in_subblock(subblock)
-
-        rewards_as_tau = used_stamps / self.stamps_per_tau
-        self.set_pending_rewards(current_rewards + rewards_as_tau)
+    # def add_pending_rewards(self, subblock):
+    #     current_rewards = self.get_pending_rewards()
+    #     used_stamps = self.stamps_in_subblock(subblock)
+    #
+    #     rewards_as_tau = used_stamps / self.stamps_per_tau
+    #     self.set_pending_rewards(current_rewards + rewards_as_tau)
 
     @property
     def reward_ratio(self):
