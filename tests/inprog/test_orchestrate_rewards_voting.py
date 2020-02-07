@@ -3,7 +3,7 @@ from tests.inprog.orchestrator import *
 from cilantro_ee.crypto.wallet import Wallet
 import zmq.asyncio
 from contracting.client import ContractingClient
-
+from decimal import Decimal
 from contracting.db.driver import InMemDriver
 from cilantro_ee.storage.contract import BlockchainDriver
 
@@ -922,6 +922,151 @@ class TestGovernanceOrchestration(unittest.TestCase):
             self.assertGreater(a, c)
             self.assertGreater(a, d)
             self.assertGreater(a, e)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
+
+
+    def test_change_stamps_increases_reward_amounts(self):
+        o = Orchestrator(2, 4, self.ctx)
+
+        stu = Wallet()
+        candidate = Wallet()
+
+        # Send some crap to get the stamp amount
+        block_0 = []
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': 100_000,
+                'to': stu.verifying_key().hex()
+            },
+            sender=candidate
+        ))
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': candidate.verifying_key().hex()
+            },
+            sender=stu
+        ))
+
+        block_1 = []
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'stamp_cost',
+                'value': 10_000
+            },
+            sender=o.delegates[0].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'stamp_cost',
+                'value': 10_000
+            },
+            sender=o.delegates[1].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'stamp_cost',
+                'value': 10_000
+            },
+            sender=o.delegates[2].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'stamp_cost',
+                'value': 10_000
+            },
+            sender=o.delegates[3].wallet
+        ))
+
+        # NEW STAMP COST = 68_000
+
+        block_2 = []
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=candidate
+        ))
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': 100_000,
+                'to': stu.verifying_key().hex()
+            },
+            sender=candidate
+        ))
+
+        block_2.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': candidate.verifying_key().hex()
+            },
+            sender=stu
+        ))
+
+        async def test():
+            await o.start_network
+            await asyncio.sleep(3)
+            d1 = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()]) or 0
+
+            await send_tx_batch(o.masternodes[0], block_0)
+            await asyncio.sleep(3)
+
+            d2 = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
+
+            delta = d2 - d1
+
+            await send_tx_batch(o.masternodes[0], block_1)
+            await asyncio.sleep(3)
+
+            d3 = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
+
+            await send_tx_batch(o.masternodes[0], block_2)
+            await asyncio.sleep(3)
+
+            d4 = o.get_var('currency', 'balances', [o.masternodes[0].wallet.verifying_key().hex()])
+
+            delta_2 = d4 - d3
+
+            self.assertAlmostEqual(delta_2, delta * Decimal(1.67), places=3)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
