@@ -46,13 +46,19 @@ class Node:
             client=self.client
         )
 
+        self.driver.commit()
+        self.driver.clear_pending_state()
+
         self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
                                boot_del=constitution['delegate_min_quorum'],
                                client=self.client)
+        self.current_masters = deepcopy(self.contacts.masternodes)
+        self.current_delegates = deepcopy(self.contacts.delegates)
 
         self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
 
         self.socket_authenticator = SocketAuthenticator(wallet=wallet, contacts=self.contacts, ctx=self.ctx)
+        self.socket_authenticator.sync_certs()
 
         self.elect_masternodes = self.client.get_contract('elect_masternodes')
         self.on_deck_master = self.elect_masternodes.quick_read('top_candidate')
@@ -92,10 +98,11 @@ class Node:
                 bind=True),
             ctx=self.ctx,
             driver=self.driver,
-            contacts=self.contacts
+            contacts=self.contacts,
+            wallet=wallet
         )
 
-        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts)
+        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts, debug=True)
 
         self.running = False
 
@@ -118,21 +125,32 @@ class Node:
     def update_sockets(self):
         # UPDATE SOCKETS IF NEEDED
         mn = self.elect_masternodes.quick_read('top_candidate')
-        if self.on_deck_master != mn and mn is not None:
-            self.log.info(f'New master on deck! Adding vk: {mn}')
-            self.socket_authenticator.flush_all_keys()
-            self.socket_authenticator.add_verifying_key(mn)
-            self.on_deck_master = mn
-
         dl = self.elect_delegates.quick_read('top_candidate')
-        if self.on_deck_delegate != dl and dl is not None:
-            self.log.info(f'New delegate on deck! Adding vk: {dl}')
-            self.socket_authenticator.add_verifying_key(dl)
-            self.on_deck_master = dl
+
+        update_mn = self.on_deck_master != mn and mn is not None
+        update_del = self.on_deck_delegate != dl and dl is not None
+
+        ## Check if
+        nodes_changed = self.contacts.masternodes != self.current_masters \
+                        or self.contacts.delegates != self.current_delegates
+
+        if nodes_changed:
+            self.current_masters = deepcopy(self.contacts.masternodes)
+            self.current_delegates = deepcopy(self.contacts.delegates)
+
+        if update_mn or update_del or nodes_changed:
+            self.socket_authenticator.sync_certs()
+
+            if update_mn:
+                self.socket_authenticator.add_verifying_key(mn)
+                self.on_deck_master = mn
+
+            if update_del:
+                self.socket_authenticator.add_verifying_key(dl)
+                self.on_deck_master = dl
 
     def issue_rewards(self, block):
         # ISSUE REWARDS
-        stamps = self.reward_manager.stamps_in_block(block)
-        self.log.info(f'{stamps} in this block to issue.')
-        self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
-        self.reward_manager.issue_rewards()
+        # stamps = self.reward_manager.stamps_in_block(block)
+        # self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
+        self.reward_manager.issue_rewards(block=block)

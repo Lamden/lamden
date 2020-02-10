@@ -78,7 +78,7 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     cert_dir = pathlib.Path.home() / cert_dir
     cert_dir.mkdir(parents=True, exist_ok=True)
 
-    server_pub, _ = load_certificate(str(cert_dir / f'{server_vk.hex()}.key'))
+    server_pub, _ = load_certificate(str(cert_dir / f'{server_vk}.key'))
 
     socket.curve_serverkey = server_pub
 
@@ -102,14 +102,14 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     return False, evnt_dict['endpoint'].decode()
 
 
-async def secure_multicast(wallet, ctx, msg: bytes, peers: tuple, cert_dir='cilsocks'):
+async def secure_multicast(wallet, ctx, msg: bytes, peers: list, cert_dir='cilsocks'):
     return await asyncio.gather(*[
         secure_send_out(
             wallet=wallet,
             ctx=ctx,
             msg=msg,
-            socket_id=ip,
-            server_vk=vk,
+            socket_id=peer[1],
+            server_vk=peer[0],
             cert_dir=cert_dir
-        ) for ip, vk in peers
+        ) for peer in peers
     ])

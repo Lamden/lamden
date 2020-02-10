@@ -1,5 +1,4 @@
 import election_house
-import datetime
 
 # contract for network upgrade Supported features
 #
@@ -37,9 +36,9 @@ def init_upgrade(pepper, initiator_vk):
     # for now only master's trigger upgrade
     if initiator_vk in election_house.current_value_for_policy('masternodes'):
         upg_lock.set(True)
-        upg_init_time.set(datetime.now)
+        upg_init_time.set(now)
         upg_pepper.set(pepper)
-        upg_window.set(datetime.second(30))
+        upg_window.set(datetime.Timedelta(seconds=30))
         upg_consensus.set(False)
         mn_vote.set(0)
         dl_vote.set(0)
@@ -59,7 +58,7 @@ def vote(vk):
         if vk in election_house.current_value_for_policy('delegates'):
             dl_vote.set(dl_vote.get() + 1)
 
-        if datetime.now - upg_init_time.get() >= upg_window.get():
+        if now - upg_init_time.get() >= upg_window.get():
             reset_contract()
 
         if check_vote_state():

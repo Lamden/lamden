@@ -3,7 +3,7 @@ from cilantro_ee.catchup import BlockServer
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import CilantroStorageDriver
-from cilantro_ee.sockets.services import multicast
+from cilantro_ee.sockets.services import multicast, secure_multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
@@ -36,7 +36,8 @@ class Masternode(Node):
                 service_type=ServiceType.BLOCK_AGGREGATOR,
                 bind=True),
             ctx=self.ctx,
-            driver=self.driver
+            driver=self.driver,
+            wallet=self.wallet
         )
         self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
@@ -55,6 +56,12 @@ class Masternode(Node):
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
+    def dl_wk_sks(self):
+        return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items())
+
+    def nbn_sks(self):
+        return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).items())
+
     async def run(self):
         self.log.info('Running...')
         if self.driver.latest_block_num == 0:
@@ -72,7 +79,17 @@ class Masternode(Node):
         if len(self.tx_batcher.queue) > 0:
             await self.parameters.refresh()
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
-            await multicast(self.ctx, msg, self.nbn_sockets())
+
+            await secure_multicast(
+                wallet=self.wallet,
+                ctx=self.ctx,
+                msg=msg,
+                peers=self.nbn_sks()
+            )
+
+            self.log.error('yeehaw')
+
+            # await multicast(self.ctx, msg, self.nbn_sockets())
 
         self.driver.set_latest_block_num(1)
         await self.process_blocks()
@@ -83,6 +100,7 @@ class Masternode(Node):
 
         # Update with state
         self.driver.update_with_block(nbn)
+        self.driver.commit()
         self.blocks.put(nbn, self.blocks.BLOCK)
 
         while len(self.tx_batcher.queue) == 0:
@@ -102,11 +120,18 @@ class Masternode(Node):
         await self.parameters.refresh()
 
         # No one is online
-        if len(self.delegate_work_sockets()) == 0:
+        if len(self.dl_wk_sks()) == 0:
             self.log.error('No one online!')
             return
 
-        return await multicast(self.ctx, tx_batch, self.delegate_work_sockets())  # Works
+        return await secure_multicast(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            msg=tx_batch,
+            peers=self.dl_wk_sks()
+        )
+
+        # return await multicast(self.ctx, tx_batch, self.delegate_work_sockets())  # Works
 
     async def wait_for_work(self, block):
         is_skip_block = canonical.block_is_skip_block(block)
@@ -129,14 +154,20 @@ class Masternode(Node):
 
         # if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
+
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)
+            
+            self.driver.reads.clear()
+            self.driver.pending_writes.clear()
+
             self.update_sockets()
 
             # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 
+        self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
 
     async def process_blocks(self):
@@ -145,6 +176,8 @@ class Masternode(Node):
 
             if sends is None:
                 return
+
+            self.log.error(f'{len(self.contacts.masternodes)} MNS!')
 
             # this really should just give us a block straight up
             block = await self.aggregator.gather_subblocks(
@@ -157,7 +190,14 @@ class Masternode(Node):
             await self.wait_for_work(block)
 
             # Pack current NBN into message
-            await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
+            await secure_multicast(
+                wallet=self.wallet,
+                ctx=self.ctx,
+                msg=canonical.dict_to_msg_block(block),
+                peers=self.nbn_sks()
+            )
+
+            # await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
 
     def stop(self):
         super().stop()

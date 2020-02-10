@@ -182,8 +182,8 @@ class Orchestrator:
         self.nonces.clear()
         self.minted.clear()
 
-    def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000):
-        processor = self.masternodes[0]
+    def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000, pidx=0):
+        processor = self.masternodes[pidx]
 
         batch = TransactionBuilder(
             sender=sender.verifying_key(),
@@ -223,7 +223,9 @@ class Orchestrator:
 
     def get_var(self, contract, function, arguments=[]):
         vals = []
-        for node in self.nodes:
+        # Masternodes are always 1 block ahead of delegates in state if the system is halted because of no work.
+        # When there is work, they send the NBN, which has the T+1 state deltas, to dels. and the new work.
+        for node in self.masternodes:
             v = node.driver.get_var(
                 contract=contract,
                 variable=function,

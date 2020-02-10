@@ -93,7 +93,7 @@ def assert_vk_is_valid(vk):
     assert vk is not None, 'No VK provided.'
     assert type(vk) == str, 'VK not a string.'
     assert len(vk) == 64, 'VK is not 64 characters.'
-    assert vk == ctx.signer, 'Signer has to be the one voting to remove themselves.'
+    # assert vk == ctx.signer, 'Signer has to be the one voting to remove themselves.'
     int(vk, 16)
 
 
@@ -101,8 +101,8 @@ def introduce_motion(position, arg):
     # If remove member, must be a member that already exists
     assert position <= REMOVE_SEAT, 'Invalid position.'
     if position == REMOVE_MEMBER:
-        assert arg in S['members'], 'member does not exist.'
-        assert len
+        assert arg in S['members'], 'Member does not exist.'
+        assert len(S['members']) > minimum_nodes.get(), 'Cannot drop below current quorum.'
         S['member_in_question'] = arg
 
     S['current_motion'] = position
