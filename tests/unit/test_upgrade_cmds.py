@@ -9,6 +9,9 @@ class ParserTest(unittest.TestCase):
         self.parser = argparse.ArgumentParser(description = "cmd test", prog = 'test_cil')
         setup_cilparser(self.parser)
 
+    def tearDown(self):
+        self.parser = None
+
     def test_upd_parser(self):
         args = self.parser.parse_args(['update'])
         dict = args.__dict__
