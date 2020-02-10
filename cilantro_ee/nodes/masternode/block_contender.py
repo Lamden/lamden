@@ -1,4 +1,4 @@
-from cilantro_ee.sockets.inbox import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
 from collections import defaultdict
 from cilantro_ee.storage import BlockchainDriver
 
@@ -48,7 +48,7 @@ class SBCIndexGreaterThanPossibleError(SBCException):
     pass
 
 
-class SBCInbox(AsyncInbox):
+class SBCInbox(SecureAsyncInbox):
     def __init__(self, driver: BlockchainDriver, expected_subblocks=4, *args, **kwargs):
         self.q = []
         self.driver = driver
@@ -196,13 +196,14 @@ def now_in_ms():
 
 
 class Aggregator:
-    def __init__(self, socket_id, ctx, driver, expected_subblocks=4):
+    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             socket_id=socket_id,
             ctx=ctx,
             driver=driver,
-            expected_subblocks=self.expected_subblocks
+            expected_subblocks=self.expected_subblocks,
+            wallet=wallet
         )
         self.driver = driver
         self.log = get_logger('AGG')
@@ -223,7 +224,6 @@ class Aggregator:
                 contenders.finished[i] = None
 
         self.log.info('Done aggregating new block.')
-        self.log.info(self.driver.latest_block_num)
 
         subblocks = deepcopy(contenders.finished)
         del contenders

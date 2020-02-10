@@ -51,3 +51,7 @@ class MessageType(MessageBaseType):
 
     ACKNOWLEDGED = auto()
 
+    UPDATE_REG_TRIGGER = auto()
+    UPDATE_REG_VOTE = auto()
+    UPDATE_REG_RDY = auto()
+

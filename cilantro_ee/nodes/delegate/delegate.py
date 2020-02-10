@@ -5,7 +5,7 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
-from cilantro_ee.sockets.services import multicast
+from cilantro_ee.sockets.services import multicast, secure_multicast
 import heapq
 
 from cilantro_ee.nodes.base import Node
@@ -14,6 +14,7 @@ import asyncio
 
 from contracting.execution.executor import Executor
 from cilantro_ee import canonical
+
 
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
@@ -45,6 +46,9 @@ class Delegate(Node):
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
+    def mn_agg_skcs(self):
+        return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).items())
+
     def did_sign_block(self, block):
         if len(self.pending_sbcs) == 0:
             return False
@@ -60,6 +64,7 @@ class Delegate(Node):
 
     def process_nbn(self, nbn):
         self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
+
         self.driver.reads.clear()
         self.driver.pending_writes.clear()
 
@@ -69,7 +74,7 @@ class Delegate(Node):
             self.update_sockets()
 
         self.nbn_inbox.clean()
-        self.pending_sbcs.clear()
+        # self.pending_sbcs.clear()
         self.nbn_inbox.update_signers()
 
     def filter_work(self, work):
@@ -107,8 +112,8 @@ class Delegate(Node):
         )
 
         # Add merkle roots to track successful sbcs
-        for sb in results:
-            self.pending_sbcs.add(sb.merkleTree.leaves[0])
+        # for sb in results:
+        #     self.pending_sbcs.add(sb.merkleTree.leaves[0])
 
         self.log.info(results)
 
@@ -131,7 +136,14 @@ class Delegate(Node):
 
             sbc_msg = self.process_work(filtered_work)
 
-            await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
+            await secure_multicast(
+                wallet=self.wallet,
+                ctx=self.ctx,
+                msg=sbc_msg,
+                peers=self.mn_agg_skcs()
+            )
+
+            # await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)

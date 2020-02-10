@@ -1,7 +1,7 @@
 import asyncio
 
 from cilantro_ee.messages import MessageType, Message
-from cilantro_ee.sockets.inbox import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
 from cilantro_ee.storage import BlockchainDriver, VKBook
 from cilantro_ee.logger.base import get_logger
 import math
@@ -23,7 +23,7 @@ class BadConsensusBlock(BlockNotificationException):
     pass
 
 
-class NBNInbox(AsyncInbox):
+class NBNInbox(SecureAsyncInbox):
     def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, allow_current_block_num=False, *args, **kwargs):
         self.q = []
         self.contacts = contacts

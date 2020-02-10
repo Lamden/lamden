@@ -14,6 +14,9 @@ if [ -d "$ROOT_PATH/build" ]; then
 fi
 
 if [ -d "$ROOT_PATH/cilantro_ee.egg-info" ]; then
+
+    echo "Uninstalling pip3 pkg cil"
+    pip3 uninstall cilantro-ee --yes -r requirements.txt
     echo "Deleting older cilantro egg dir...."
     rm -rf $ROOT_PATH/cilantro_ee.egg-info
 fi
