@@ -1,4 +1,4 @@
-import vkbook
+import election_house
 import datetime
 
 # contract for network upgrade Supported features
@@ -18,10 +18,12 @@ upg_window = Variable()
 mn_vote = Variable()
 dl_vote = Variable()
 
+tot_mn = Variable()
+tot_dl = Variable()
+
 # Results
 upg_consensus = Variable()
 
-import election_house
 
 @construct
 def seed():
@@ -32,10 +34,8 @@ def init_upgrade(pepper, initiator_vk):
     if upg_lock.get() is True:
         assert_parallel_upg_check()
 
-    if initiator_vk in election_house.get_value_for_policy('masternodes'):
-        pass
-
-    if vkbook.check_master(initiator_vk) or vkbook.check_delegate(initiator_vk):
+    # for now only master's trigger upgrade
+    if initiator_vk in election_house.current_value_for_policy('masternodes'):
         upg_lock.set(True)
         upg_init_time.set(datetime.now)
         upg_pepper.set(pepper)
@@ -44,12 +44,19 @@ def init_upgrade(pepper, initiator_vk):
         mn_vote.set(0)
         dl_vote.set(0)
 
+        tot_mn.set(len(election_house.current_value_for_policy('masternodes')))
+        tot_dl.set(len(election_house.current_value_for_policy('delegates')))
+
+    else:
+        return False
+
+
 @export
 def vote(vk):
     if upg_lock.get():
-        if vkbook.check_master(vk):
+        if vk in election_house.current_value_for_policy('masternodes'):
             mn_vote.set(mn_vote.get() + 1)
-        if vkbook.check_delegate(vk):
+        if vk in election_house.current_value_for_policy('delegates'):
             dl_vote.set(dl_vote.get() + 1)
 
         if datetime.now - upg_init_time.get() >= upg_window.get():
@@ -60,8 +67,8 @@ def vote(vk):
 
 
 def check_vote_state():
-    mn = vkbook.get_masternodes()
-    dl = vkbook.get_delegates()
+    mn = tot_mn.get()
+    dl = tot_dl.get()
 
     if (mn_vote > (mn*2)/3) and (dl_vote > (dl*2)/3):
         upg_consensus.set(True)
