@@ -1,6 +1,4 @@
 import argparse
-from cilantro_ee.crypto.wallet import Wallet
-
 import unittest
 from cilantro_ee.nodes.commands.cmd import setup_cilparser, Cilparser
 
