@@ -54,7 +54,6 @@ def vote(vk):
 
         if datetime.now - upg_init_time.get() >= upg_window.get():
             reset_contract()
-            #TODO get ride : raise Exception('Failed to get quorum nodes for upgrade')
 
         if check_vote_state():
             reset_contract()

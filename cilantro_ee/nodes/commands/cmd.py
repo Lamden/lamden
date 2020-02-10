@@ -1,6 +1,7 @@
 import argparse
 from cilantro_ee.crypto.wallet import Wallet
 
+
 class Cilparser:
     def __init__(self):
         self.pkg = args.pkg_hash
@@ -48,6 +49,7 @@ def setup_cilparser(parser):
         #TODO
     # create parser for debug/logging view
         #TODO
+    return True
 
 
 if __name__ == '__main__':

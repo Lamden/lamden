@@ -7,7 +7,7 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 
 
-class TestUpgrade(unittest.TestCase):
+class TestUpgradeMsgs(unittest.TestCase):
 
 
     def setUp(self):
@@ -69,11 +69,7 @@ class TestUpgrade(unittest.TestCase):
                 arguments=[])
             self.assertEqual(v, True)
 
-    #TODO - do i need tear down everytime ?
-    #TODO - make_tx_packed
-    #TODO - why sleeps
-    #TODO - get_var - args?
-    #TODO -
+
 
     # test for multiple upgrade triggers
     # test for vote register
