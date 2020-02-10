@@ -1,5 +1,4 @@
 import argparse
-from cilantro_ee.crypto.wallet import Wallet
 
 
 class Cilparser:
@@ -10,15 +9,15 @@ class Cilparser:
 
         print(self.pkg, self.vote, self.ready)
 
-    def trigger(self):
+    def trigger(self, vk=None):
         print('pkg ->', self.pkg)
         return True
 
-    def check_vote(self, vk = None):
+    def vote(self, vk=None):
         print('vote ->', vk)
         return True
 
-    def check_ready_quorum(self, vk = None):
+    def check_ready_quorum(self, vk=None):
         print('ready ->', vk)
         return True
 
@@ -63,12 +62,12 @@ if __name__ == '__main__':
     shell = Cilparser()
 
     if args.pkg_hash:
-        shell.trigger()
+        shell.trigger(vk='asdfadf')
         # execute upgrade contract
 
     if args.vote:
-        res = shell.check_vote(vk = 'asdfadf')
+        res = shell.vote(vk='asdfadf')
 
     if args.ready:
         print(args)
-        res = shell.check_ready_quorum(vk = 'sdfafda')
+        res = shell.check_ready_quorum(vk='sdfafda')
