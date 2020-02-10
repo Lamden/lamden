@@ -21,7 +21,6 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(dict['vote'], False)
         self.assertEqual(dict['ready'], False)
 
-
     def test_update_trigger(self):
         args = self.parser.parse_args(['update', '-t', 'new_pepper'])
         dict = args.__dict__
