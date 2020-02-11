@@ -1,4 +1,7 @@
 import argparse
+from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto.wallet import Wallet
+
 
 
 class Cilparser:
@@ -9,18 +12,66 @@ class Cilparser:
 
         print(self.pkg, self.vote, self.ready)
 
-    def trigger(self, vk=None):
-        print('pkg ->', self.pkg)
-        return True
+    def trigger(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        pepper = 'RAMDOM' # TODO replace with verified pepper pkg
+        kwargs = {'pepper': pepper,'vk': my_wallet.verifying_key()}
+        vk = my_wallet.verifying_key()
 
-    def vote(self, vk=None):
-        print('vote ->', vk)
-        return True
+        #TODO bail out if vk is not in list of master nodes
 
-    def check_ready_quorum(self, vk=None):
-        print('ready ->', vk)
-        return True
+        pack = TransactionBuilder(
+            sender=vk,
+            contract='upgrade',
+            function='trigger_upgrade',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=vk,
+            nonce=0
+        )
 
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
+
+    def vote(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        kwargs = {'vk': my_wallet.verifying_key()}
+
+        pack = TransactionBuilder(
+            sender=my_wallet.verifying_key(),
+            contract='upgrade',
+            function='vote',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=my_wallet.verifying_key(),
+            nonce=0
+        )
+
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
+
+    def check_ready_quorum(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        kwargs = {'vk': my_wallet.verifying_key()}
+
+        pack = TransactionBuilder(
+            sender=my_wallet.verifying_key(),
+            contract='upgrade',
+            function='check_vote_state',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=my_wallet.verifying_key(),
+            nonce=0
+        )
+
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
 
 def setup_cilparser(parser):
     # create parser for update commands
@@ -62,12 +113,12 @@ if __name__ == '__main__':
     shell = Cilparser()
 
     if args.pkg_hash:
-        shell.trigger(vk='asdfadf')
+        shell.trigger(sk='asdfadf')
         # execute upgrade contract
 
     if args.vote:
-        res = shell.vote(vk='asdfadf')
+        res = shell.vote(sk='asdfadf')
 
     if args.ready:
         print(args)
-        res = shell.check_ready_quorum(vk='sdfafda')
+        res = shell.check_ready_quorum(sk='sdfafda')

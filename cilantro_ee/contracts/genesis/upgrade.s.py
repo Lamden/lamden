@@ -29,7 +29,7 @@ def seed():
     upg_lock.set(False)
 
 @export
-def init_upgrade(pepper, initiator_vk):
+def trigger_upgrade(pepper, initiator_vk):
     if upg_lock.get() is True:
         assert_parallel_upg_check()
 
