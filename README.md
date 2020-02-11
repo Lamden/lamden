@@ -47,6 +47,11 @@ cd cilantro-enterprise/scripts
 python3 create_user.py
 ```
 
+### Start Rocks (Python Driver) and fork the process
+```
+rocks serve &
+```
+
 ### Make a Constitution
 ```
 nano ~/constitution.json
