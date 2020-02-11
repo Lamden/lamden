@@ -103,4 +103,5 @@ def start_node(args):
         )
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(n.start())
+    asyncio.async(n.start())
+    loop.run_forever()
