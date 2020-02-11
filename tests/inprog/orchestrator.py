@@ -36,16 +36,8 @@ def make_network(masternodes, delegates, ctx, mn_min_quorum=2, del_min_quorum=2)
     constitution = {
         'masternodes': [mn.verifying_key().hex() for mn in mn_wallets],
         'delegates': [dl.verifying_key().hex() for dl in dl_wallets],
-        'witnesses': [],
-        'schedulers': [],
-        'notifiers': [],
-        'enable_stamps': False,
-        'enable_nonces': False,
         'masternode_min_quorum': mn_min_quorum,
         'delegate_min_quorum': del_min_quorum,
-        'witness_min_quorum': 0,
-        'notifier_min_quorum': 0,
-        'scheduler_min_quorum': 0
     }
 
     mns = []

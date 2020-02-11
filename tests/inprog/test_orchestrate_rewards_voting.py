@@ -1070,3 +1070,12 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
+
+    def test_one_by_one_network(self):
+        o = Orchestrator(1, 1, ctx=self.ctx, min_del_quorum=1, min_mn_quorum=1)
+
+        async def test():
+            await o.start_network
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
