@@ -21,9 +21,23 @@ sudo apt-get install librocksdb-dev -y
 sudo apt-get install -y mongodb
 ```
 
+### Install Contracting
+```
+git clone https://github.com/Lamden/contracting.git
+cd contracting
+git fetch
+git checkout dev
+python3 setup.py develop
+```
+
 ### Install Cilantro
 ```
-git clone 
+cd ~
+git clone https://github.com/Lamden/cilantro-enterprise.git
+cd cilantro-enterprise
+git fetch
+git checkout rel_gov_debug
+python3 setup.py develop
 ```
 
 ### Open your ports:
