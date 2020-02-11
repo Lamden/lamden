@@ -7,25 +7,23 @@
 ### Install Pip3
 ```bash
 sudo apt-get update
-sudo apt-get python3-pip
+sudo apt-get python3-pip -y
 ```
 
 ### Install RocksDB
 ```bash
-sudo apt-get install libgflags-dev
-sudo apt-get install libsnappy-dev
-sudo apt-get install zlib1g-dev
-sudo apt-get install libbz2-dev
-sudo apt-get install liblz4-dev
-sudo apt-get install libzstd-dev
-sudo apt-get install libbz2-dev
-
-sudo apt-get install librocksdb-dev
+sudo apt-get install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libbz2-dev -y
+sudo apt-get install librocksdb-dev -y
 ```
 
 ### Install MongoDB
 ```bash
 sudo apt-get install -y mongodb
+```
+
+### Install Cilantro
+```
+git clone 
 ```
 
 ### Open your ports:
