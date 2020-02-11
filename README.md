@@ -61,6 +61,11 @@ nano ~/constitution.json
 Ctrl+X, save the file.
 ```
 
+### Start your node
+```
+cil <masternode | delegate> -k <sk in hex format> -bn <list of ip addresses that are currently online>
+```
+
 ### Open your ports:
 ```
 sudo ufw allow 443/tcp
