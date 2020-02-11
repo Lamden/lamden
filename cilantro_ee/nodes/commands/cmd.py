@@ -69,21 +69,22 @@ def main():
     #     print(colored('♣︎', color='green'))
     #     return
 
-    if args.command == 'start':
-        start_node(args)
-    elif args.command == 'update':
-        shell = Cilparser(args)
-
-        if args.pkg_hash:
-            shell.trigger(vk='asdfadf')
-            # execute upgrade contract
-
-        if args.vote:
-            res = shell.vote(vk='asdfadf')
-
-        if args.ready:
-            print(args)
-            res = shell.check_ready_quorum(vk='sdfafda')
+    # if args.command == 'start':
+    #
+    start_node(args)
+    # elif args.command == 'update':
+    #     shell = Cilparser(args)
+    #
+    #     if args.pkg_hash:
+    #         shell.trigger(vk='asdfadf')
+    #         # execute upgrade contract
+    #
+    #     if args.vote:
+    #         res = shell.vote(vk='asdfadf')
+    #
+    #     if args.ready:
+    #         print(args)
+    #         res = shell.check_ready_quorum(vk='sdfafda')
 
 
 if __name__ == '__main__':
