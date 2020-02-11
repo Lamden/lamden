@@ -65,26 +65,3 @@ Ctrl+X, save the file.
 ```
 cil <masternode | delegate> -k <sk in hex format> -bn <list of ip addresses that are currently online>
 ```
-
-### Open your ports:
-```
-sudo ufw allow 443/tcp
-sudo ufw allow 8080/tcp
-sudo ufw allow 10000:10999/tcp
-```
-* * *
-
-### Download Cilantro
-```
-git clone https://github.com/Lamden/cilantro-enterprise.git
-cd cilantro-enterprise
-git checkout rel_gov_debug
-```
-* * *
-### Install Cilantro
-```
-sudo python3 setup.py develop
-```
-NOTE: Capnproto takes a *very* long time to install because it compiles from source. Please be patient!!
-
-* * *
