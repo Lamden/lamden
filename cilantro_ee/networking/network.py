@@ -1,5 +1,4 @@
 import cilantro_ee.sockets.struct
-from cilantro_ee.constants import conf
 from cilantro_ee.constants.ports import DHT_PORT, PEPPER
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
 from cilantro_ee.networking.peers import KTable, PeerServer
@@ -18,7 +17,7 @@ class Network:
     def __init__(self, wallet,
                  params=NetworkParameters(),
                  ctx=zmq.asyncio.Context(),
-                 bootnodes=conf.BOOT_DELEGATE_IP_LIST + conf.BOOT_MASTERNODE_IP_LIST,
+                 bootnodes=[],
                  initial_mn_quorum=1,
                  initial_del_quorum=1,
                  mn_to_find=[],

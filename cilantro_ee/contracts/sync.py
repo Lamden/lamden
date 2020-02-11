@@ -1,8 +1,6 @@
 import glob
 import os
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver
-from cilantro_ee.constants import conf
 import cilantro_ee
 import json
 
@@ -72,13 +70,6 @@ def submit_contract_with_construction_args(name, directory=os.path.dirname(__fil
     client.raw_driver.commit()
 
 
-def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE):
-    book = read_public_constitution(file)
-    masternodes = [node for node in book['masternodes']['vk_list']]
-    delegates = [node for node in book['delegates']['vk_list']]
-    return masternodes, delegates
-
-
 def submit_vkbook(vkbook_args: dict, overwrite=False):
     if not overwrite:
         c = ContractingClient()
@@ -115,11 +106,6 @@ def extract_vk_args(book):
     book['schedulers'], book['scheduler_min_quorum'] = \
                               extract_sub_dict_values(book, 'schedulers')
 
-
-def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
-    book = read_public_constitution(file)
-    extract_vk_args(book)
-    submit_vkbook(book, overwrite)
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
@@ -162,10 +148,25 @@ def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delega
 
     # add to election house
     election_house = client.get_contract('election_house')
-    election_house.register_policy(contract='masternodes')
-    election_house.register_policy(contract='delegates')
-    election_house.register_policy(contract='rewards')
-    election_house.register_policy(contract='stamp_cost')
+    try:
+        election_house.register_policy(contract='masternodes')
+    except:
+        pass
+
+    try:
+        election_house.register_policy(contract='delegates')
+    except:
+        pass
+
+    try:
+        election_house.register_policy(contract='rewards')
+    except Exception:
+        pass
+
+    try:
+        election_house.register_policy(contract='stamp_cost')
+    except:
+        pass
 
     elect_members = root + '/genesis/elect_members.s.py'
 

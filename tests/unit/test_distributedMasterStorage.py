@@ -8,12 +8,12 @@ import cilantro_ee
 
 class TestDistributedMasterStorage(TestCase):
     def setUp(self):
-        m, d = sync.get_masternodes_and_delegates_from_constitution()
+        #m, d = sync.get_masternodes_and_delegates_from_constitution()
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
         sync.submit_node_election_contracts(
-            initial_masternodes=m,
+            initial_masternodes=Wallet().verifying_key().hex(),
             boot_mns=1,
-            initial_delegates=d,
+            initial_delegates=Wallet().verifying_key().hex(),
             boot_dels=1,
         )
 

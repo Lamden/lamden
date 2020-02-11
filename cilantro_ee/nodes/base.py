@@ -1,5 +1,3 @@
-from cilantro_ee.constants import conf
-
 from cilantro_ee.networking.network import Network
 from cilantro_ee.catchup import BlockFetcher
 
@@ -24,7 +22,7 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=conf.BOOTNODES, network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=False):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=False):
 
         self.driver = driver
         self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
@@ -36,6 +34,8 @@ class Node:
         self.ctx = ctx
 
         # Sync contracts
+
+        print(constitution)
 
         sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
