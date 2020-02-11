@@ -42,7 +42,7 @@ python3 setup.py develop
 
 ### Setup and run Mongo
 ```
-mongod --dbpath ~/blocks --logpath ~/logs --bind_ip_all
+mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip_all
 cd cilantro-enterprise/scripts
 python3 create_user.py
 ```
