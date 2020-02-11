@@ -47,6 +47,20 @@ cd cilantro-enterprise/scripts
 python3 create_user.py
 ```
 
+### Make a Constitution
+```
+nano ~/constitution.json
+
+{
+  "masternodes": [<list of vks here>],
+  "masternode_min_quorum": <int>,
+  "delegates": [<list of vks here>],
+  "delegate_min_quorum": <int>
+}
+
+Ctrl+X, save the file.
+```
+
 ### Open your ports:
 ```
 sudo ufw allow 443/tcp
