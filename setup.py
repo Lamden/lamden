@@ -41,7 +41,8 @@ setup(
         # CLI
         'Click==7.0',
         #other
-        'stdlib-list==0.6.0'
+        'stdlib-list==0.6.0',
+        'termcolor'
     ],
     entry_points={
         'console_scripts': [

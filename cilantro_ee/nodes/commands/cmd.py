@@ -66,7 +66,7 @@ def main():
 
     # implementation
     if vars(args).get('command') is None:
-        print(colored('♣︎', color='green', on_color='white'))
+        print(colored('♣︎', color='green'))
 
     if args.command == 'start':
         start_node(args)
