@@ -65,8 +65,9 @@ def main():
     args = parser.parse_args()
 
     # implementation
-    if vars(args).get('command'):
+    if vars(args).get('command') is None:
         print(colored('♣︎', color='green', on_color='white'))
+
     if args.command == 'start':
         start_node(args)
     elif args.command == 'update':
