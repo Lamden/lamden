@@ -45,7 +45,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'node_start=cilantro_ee.__main__:main'
+            'node_start=cilantro_ee.__main__:main',
+            'cil=cilantro_ee.nodes.commands.cmd:main'
         ],
     },
     zip_safe=False,

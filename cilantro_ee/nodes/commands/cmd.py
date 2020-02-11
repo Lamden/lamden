@@ -58,12 +58,13 @@ def setup_cilparser(parser):
     return True
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description="Lamden Commands", prog='cil')
     setup_cilparser(parser)
     args = parser.parse_args()
 
     # implementation
+    assert vars(args).get('command') is not None, 'No command provided.'
     if args.command == 'start':
         start_node(args)
     elif args.command == 'update':
@@ -79,3 +80,6 @@ if __name__ == '__main__':
         if args.ready:
             print(args)
             res = shell.check_ready_quorum(vk='sdfafda')
+
+if __name__ == '__main__':
+    main()
