@@ -1,8 +1,9 @@
 import argparse
+from termcolor import colored
 from .start import start_node
 
 class Cilparser:
-    def __init__(self):
+    def __init__(self, args):
         self.pkg = args.pkg_hash
         self.vote = args.vote
         self.ready = args.ready
@@ -64,11 +65,12 @@ def main():
     args = parser.parse_args()
 
     # implementation
-    assert vars(args).get('command') is not None, 'No command provided.'
+    if vars(args).get('command'):
+        print(colored('♣︎', color='green', on_color='white'))
     if args.command == 'start':
         start_node(args)
     elif args.command == 'update':
-        shell = Cilparser()
+        shell = Cilparser(args)
 
         if args.pkg_hash:
             shell.trigger(vk='asdfadf')
@@ -80,6 +82,7 @@ def main():
         if args.ready:
             print(args)
             res = shell.check_ready_quorum(vk='sdfafda')
+
 
 if __name__ == '__main__':
     main()
