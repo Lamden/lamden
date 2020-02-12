@@ -54,6 +54,7 @@ class WorkInbox(SecureAsyncInbox):
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
+        self.log.info('Got some work.')
 
         if not self.accepting_work:
             self.log.info('TODO')
