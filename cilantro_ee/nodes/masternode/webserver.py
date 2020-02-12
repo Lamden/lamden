@@ -90,10 +90,10 @@ class WebServer:
     async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
-            asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.ssl_port, debug=self.debug,
+            asyncio.ensure_future(self.app.create_server(host='0.0.0.0', port=self.ssl_port, debug=self.debug,
                                   access_log=self.access_log, ssl=self.context, return_asyncio_server=True))
         else:
-            asyncio.ensure_future(self.app.create_server(host='127.0.0.1', port=self.port, debug=self.debug,
+            asyncio.ensure_future(self.app.create_server(host='0.0.0.0', port=self.port, debug=self.debug,
                                   access_log=self.access_log, return_asyncio_server=True))
 
     # Main Endpoint to Submit TXs
