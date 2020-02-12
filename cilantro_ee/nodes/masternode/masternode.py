@@ -80,12 +80,14 @@ class Masternode(Node):
             await self.parameters.refresh()
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
 
-            await secure_multicast(
+            sends = await secure_multicast(
                 wallet=self.wallet,
                 ctx=self.ctx,
                 msg=msg,
                 peers=self.nbn_sks()
             )
+
+            self.log.info(f'{sends}')
 
             # await multicast(self.ctx, msg, self.nbn_sockets())
 
@@ -177,6 +179,8 @@ class Masternode(Node):
                 return
 
             self.log.error(f'{len(self.contacts.masternodes)} MNS!')
+
+            self.log.info(f'{sends}')
 
             # this really should just give us a block straight up
             block = await self.aggregator.gather_subblocks(

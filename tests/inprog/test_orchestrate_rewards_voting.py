@@ -1074,8 +1074,25 @@ class TestGovernanceOrchestration(unittest.TestCase):
     def test_one_by_one_network(self):
         o = Orchestrator(1, 1, ctx=self.ctx, min_del_quorum=1, min_mn_quorum=1)
 
+        candidate = Wallet()
+
+        # Send some crap to get the stamp amount
+        block_0 = []
+
+        block_0.append(o.make_tx(
+            contract='currency',
+            function='approve',
+            kwargs={
+                'amount': 100_000,
+                'to': 'elect_delegates'
+            },
+            sender=candidate
+        ))
+
         async def test():
             await o.start_network
+            await send_tx_batch(o.masternodes[0], block_0)
+            await asyncio.sleep(2)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
