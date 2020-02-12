@@ -148,11 +148,11 @@ async def send_tx(masternode: Masternode, nodes, contract, function, sender=Wall
     return res
 
 
-async def send_tx_batch(masternode, txs):
+async def send_tx_batch(masternode, txs, server='127.0.0.1'):
     async with aiohttp.ClientSession() as session:
         for tx in txs:
             await session.post(
-                url=f'http://127.0.0.1:{masternode.webserver.port}/',
+                url=f'{server}:{masternode.webserver.port}/',
                 data=tx
             )
 
