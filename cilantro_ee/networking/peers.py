@@ -91,8 +91,10 @@ class PeerServer(reqrep.RequestReplyService):
         if vk not in result or result[vk] != ip:
             # Ping discovery server
 
+            print(ip)
+
             r = await discovery.ping(struct._socket(ip),
-                                                   pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
+                                     pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
 
             print(r)
 
