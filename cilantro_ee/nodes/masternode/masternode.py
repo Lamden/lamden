@@ -86,8 +86,6 @@ class Masternode(Node):
                 peers=self.nbn_sks()
             )
 
-            self.log.error('yeehaw')
-
             # await multicast(self.ctx, msg, self.nbn_sockets())
 
         self.driver.set_latest_block_num(1)

@@ -177,6 +177,8 @@ class Parameters:
 
                 vk, socket = [(k, v) for k, v in _r.items()][0]
 
+                self.log.info(f'Found {vk} : {socket}')
+
                 self.sockets.update({vk: socket})
 
     async def find_node(self, node):
