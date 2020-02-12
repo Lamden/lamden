@@ -95,13 +95,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             ip = self.params.resolve(ip, parameters.ServiceType.DISCOVERY)
 
-            print(ip)
-
-            r = await discovery.ping(ip, pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
-
-            print(r)
-
-            responded_vk = r
+            _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
 
             await asyncio.sleep(0)
             if responded_vk is None:
