@@ -44,7 +44,7 @@ class Masternode(Node):
         await super().start()
         # Start block server to provide catchup to other nodes
 
-        latest_block = self.blocks.get_last_n(1, self.blocks.INDEX)
+        latest_block = self.blocks.get_last_n(1, self.blocks.INDEX)[0]
         self.log.info(latest_block)
         self.driver.latest_block_num = latest_block['blockNum']
         self.driver.latest_block_hash = latest_block['blockHash']
