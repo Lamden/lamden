@@ -34,11 +34,11 @@ class NetworkParameters:
                  block_port=BLOCK_SERVER, block_ipc='blocks',
                  sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
                  block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
-                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
-                 block_notifications_port=9998, block_notifications_ipc='block_notifications',
-                 tx_batcher_port=9997, tx_batcher_ipc='tx_batcher',
-                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller',
-                 incoming_work_port=9995, incoming_work_ipc='incoming_work'
+                 tx_batch_informer_port=10091, tx_batch_informer_ipc='tx_batch_informer',
+                 block_notifications_port=10092, block_notifications_ipc='block_notifications',
+                 tx_batcher_port=10093, tx_batcher_ipc='tx_batcher',
+                 block_agg_controller_port=10094, block_agg_controller_ipc='block_agg_controller',
+                 incoming_work_port=10095, incoming_work_ipc='incoming_work'
                  ):
 
         self.params = {
