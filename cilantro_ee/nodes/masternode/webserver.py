@@ -232,8 +232,8 @@ class WebServer:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404)
 
         key = request.args.get('key')
-        if key is not None:
-            key = key.split(',')
+        # if key is not None:
+        #     key = key.split(',')
 
         k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
 

@@ -39,7 +39,6 @@ class Masternode(Node):
             driver=self.driver,
             wallet=self.wallet
         )
-        self.log = get_logger(f'MN {self.wallet.vk_pretty[4:12]}')
 
     async def start(self):
         await super().start()

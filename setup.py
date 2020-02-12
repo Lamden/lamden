@@ -36,7 +36,7 @@ setup(
         # DB
         'rocks',
         'contracting',
-        'pymongo==3.9',
+        'pymongo',
         'redis==3.2.0',
         # CLI
         'Click==7.0',

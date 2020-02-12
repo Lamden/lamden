@@ -61,7 +61,7 @@ async def ping(socket_id: cilantro_ee.sockets.struct.SocketStruct, pepper: bytes
     return str(socket_id), vk
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10, debug=True):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10, debug=False):
     nodes_found = {}
     one_found = False
     retries_left = retries

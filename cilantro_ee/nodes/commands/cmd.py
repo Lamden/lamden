@@ -1,5 +1,4 @@
 import argparse
-from termcolor import colored
 from .start import start_node
 
 class Cilparser:
