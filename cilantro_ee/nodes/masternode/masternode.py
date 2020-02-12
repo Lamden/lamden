@@ -43,7 +43,11 @@ class Masternode(Node):
     async def start(self):
         await super().start()
         # Start block server to provide catchup to other nodes
-        self.log.info(self.blocks.get_last_n(1, self.blocks.INDEX))
+
+        latest_block = self.blocks.get_last_n(1, self.blocks.INDEX)
+        self.driver.latest_block_num = latest_block['blockNum']
+        self.driver.latest_block_hash = latest_block['blockHash']
+
         #
         asyncio.ensure_future(self.block_server.serve())
         self.webserver.queue = self.tx_batcher.queue
@@ -155,6 +159,8 @@ class Masternode(Node):
     def process_block(self, block):
         #do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
         #do_not_store |= canonical.block_is_skip_block(block)
+
+        self.log.info(f'NEW BLOCK: {block}')
 
         # if not do_not_store:
         if block['blockNum'] != self.driver.latest_block_num and block['blockHash'] != b'\xff' * 32:
