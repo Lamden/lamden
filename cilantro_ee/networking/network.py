@@ -24,7 +24,7 @@ class Network:
                  socket_base='tcp://127.0.0.1',
                  poll_timeout=200,
                  linger=1000,
-                 debug=False):
+                 debug=True):
 
         self.log = get_logger('NetworkService')
         self.log.propagate = debug
