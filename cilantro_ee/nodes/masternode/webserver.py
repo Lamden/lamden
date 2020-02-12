@@ -120,18 +120,25 @@ class WebServer:
         # These exceptions are tested to work in the transaction_is_valid tests
         except TransactionNonceInvalid:
             msg = {'error': 'Transaction nonce is invalid.'}
+            error = True
         except TransactionProcessorInvalid:
             msg = {'error': 'Transaction processor does not match expected processor.'}
+            error = True
         except TransactionTooManyPendingException:
             msg = {'error': 'Too many pending transactions currently in the block.'}
+            error = True
         except TransactionSenderTooFewStamps:
             msg = {'error': 'Transaction sender has too few stamps for this transaction.'}
+            error = True
         except TransactionPOWProofInvalid:
             msg = {'error': 'Transaction proof of work is invalid.'}
+            error = True
         except TransactionSignatureInvalid:
             msg = {'error': 'Transaction is not signed by the sender.'}
+            error = True
         except TransactionStampsNegative:
             msg = {'error': 'Transaction has negative stamps supplied.'}
+            error = True
 
         if error:
             log.error(msg)
