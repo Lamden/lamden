@@ -88,6 +88,7 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     socket.connect(str(socket_id))
 
     event = 2
+    evnt_dict = {}
     while event == 2:
         evnt = await s.recv_multipart()
         evnt_dict = monitor.parse_monitor_message(evnt)
