@@ -78,7 +78,7 @@ class BlockchainDriver(ContractDriver):
                     self.set_transaction_data(tx=tx)
 
         # Commit new nonces
-        self.commit_nonces(nonce_hash=nonces)
+        self.commit_nonces()
         self.delete_pending_nonces()
 
         # Update our block hash and block num
