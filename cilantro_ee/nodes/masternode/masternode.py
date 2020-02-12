@@ -93,6 +93,7 @@ class Masternode(Node):
 
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
+        self.log.info('Join Quorum')
         nbn = await self.nbn_inbox.wait_for_next_nbn()
 
         # Update with state
