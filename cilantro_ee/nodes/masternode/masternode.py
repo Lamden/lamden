@@ -45,7 +45,7 @@ class Masternode(Node):
         # Start block server to provide catchup to other nodes
         asyncio.ensure_future(self.block_server.serve())
         self.webserver.queue = self.tx_batcher.queue
-        await self.webserver.start()
+        asyncio.ensure_future(self.webserver.start())
         asyncio.ensure_future(self.aggregator.start())
         asyncio.ensure_future(self.run())
         self.log.info('Done starting...')
