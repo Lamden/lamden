@@ -166,19 +166,23 @@ class WebServer:
     # Get the Nonce of a VK
     async def get_nonce(self, request, vk):
         # Might have to change this sucker from hex to bytes.
-        pending_nonce = self.driver.get_pending_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
+        # pending_nonce = self.driver.get_pending_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
+        #
+        # log.info('Pending nonce: {}'.format(pending_nonce))
+        #
+        # if pending_nonce is None:
+        #     nonce = self.driver.get_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
+        #     log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
+        #     if nonce is None:
+        #         pending_nonce = 0
+        #         log.info('Nonce was now so pending nonce is now zero.')
+        #     else:
+        #         pending_nonce = nonce
+        #         log.info('Nonce was not none so setting pending nonce to it.')
 
-        log.info('Pending nonce: {}'.format(pending_nonce))
+        nonce = self.driver.get_nonce(self.wallet.verifying_key(), bytes.fromhex(vk)) or 0
 
-        if pending_nonce is None:
-            nonce = self.driver.get_nonce(processor=self.wallet.verifying_key(), sender=bytes.fromhex(vk))
-            log.info('Pending nonce was none so got nonce which is {}'.format(nonce))
-            if nonce is None:
-                pending_nonce = 0
-                log.info('Nonce was now so pending nonce is now zero.')
-            else:
-                pending_nonce = nonce
-                log.info('Nonce was not none so setting pending nonce to it.')
+        pending_nonce = self.driver.get_pending_nonce(self.wallet.verifying_key(), bytes.fromhex(vk)) or nonce
 
         return response.json({'nonce': pending_nonce, 'processor': self.wallet.verifying_key().hex(), 'sender': vk})
 
