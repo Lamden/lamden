@@ -72,7 +72,7 @@ class Masternode(Node):
 
     async def run(self):
         self.log.info('Running...')
-        if self.driver.latest_block_num == 0:
+        if self.driver.latest_block_num == 0 or len(self.contacts.masternodes) == 1:
             await self.new_blockchain_boot()
         else:
             await self.join_quorum()
