@@ -43,6 +43,8 @@ class Masternode(Node):
     async def start(self):
         await super().start()
         # Start block server to provide catchup to other nodes
+        self.log.info(self.blocks.get_last_n(1, self.INDEX))
+        #
         asyncio.ensure_future(self.block_server.serve())
         self.webserver.queue = self.tx_batcher.queue
         await self.webserver.start()
