@@ -67,14 +67,6 @@ class Network:
         self.mn_to_find = mn_to_find
         self.del_to_find = del_to_find
 
-        if self.wallet.verifying_key().hex() in self.mn_to_find:
-            self.mn_to_find.remove(self.wallet.verifying_key().hex())
-            self.initial_mn_quorum -= 1
-
-        if self.wallet.verifying_key().hex() in self.del_to_find:
-            self.del_to_find.remove(self.wallet.verifying_key().hex())
-            self.initial_del_quorum -= 1
-
         self.ready = False
 
     async def start(self, discover=True):
