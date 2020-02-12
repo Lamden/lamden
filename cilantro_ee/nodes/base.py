@@ -22,7 +22,7 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=False):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=True):
 
         self.driver = driver
         self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
