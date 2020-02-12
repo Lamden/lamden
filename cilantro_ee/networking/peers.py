@@ -10,7 +10,7 @@ from  cilantro_ee.sockets import struct
 from cilantro_ee.constants.ports import PEPPER
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets import services
-from cilantro_ee.networking import discovery
+from cilantro_ee.networking import discovery, parameters
 
 from cilantro_ee.logger.base import get_logger
 
@@ -68,6 +68,8 @@ class PeerServer(reqrep.RequestReplyService):
 
         self.event_queue_loop_running = False
 
+        self.params = parameters.NetworkParameters()
+
         self.log = get_logger('PeerService')
 
     def handle_msg(self, msg):
@@ -90,6 +92,10 @@ class PeerServer(reqrep.RequestReplyService):
 
         if vk not in result or result[vk] != ip:
             # Ping discovery server
+
+
+
+            ip = self.params.resolve(ip, parameters.ServiceType.DISCOVERY)
 
             print(ip)
 
