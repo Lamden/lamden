@@ -43,6 +43,8 @@ class Delegate(Node):
         asyncio.ensure_future(self.work_inbox.serve())
         asyncio.ensure_future(self.run())
 
+        self.log.info('Running...')
+
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
