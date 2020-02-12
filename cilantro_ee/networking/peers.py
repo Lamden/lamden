@@ -103,7 +103,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             if responded_vk.hex() == vk:
                 # Valid response
-                self.table.peers[vk] = struct.strip_service(ip)
+                self.table.peers[vk] = struct.strip_service(str(ip))
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]
