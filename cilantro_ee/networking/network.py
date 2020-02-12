@@ -21,7 +21,7 @@ class Network:
                  initial_del_quorum=1,
                  mn_to_find=[],
                  del_to_find=[],
-                 socket_base='tcp://127.0.0.1',
+                 socket_base='tcp://0.0.0.0',
                  poll_timeout=200,
                  linger=1000,
                  debug=True):
