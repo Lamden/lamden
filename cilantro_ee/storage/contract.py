@@ -136,7 +136,7 @@ class BlockchainDriver(ContractDriver):
                 self.delete_pending_nonce(processor=processor, sender=sender)
         else:
             # Commit all pending nonces straight up
-            for n in self.iter(PENDING_NONCE_KEY):
+            for n in self.driver.iter(PENDING_NONCE_KEY):
                 _, processor, sender = n.split(':')
 
                 processor = bytes.fromhex(processor)
