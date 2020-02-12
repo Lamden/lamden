@@ -87,14 +87,14 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     # Try to connect
     socket.connect(str(socket_id))
 
-    # See if the connection was successful
-    evnt = await s.recv_multipart()
-    evnt_dict = monitor.parse_monitor_message(evnt)
-
-    print(evnt_dict)
+    event = 2
+    while event == 2:
+        evnt = await s.recv_multipart()
+        evnt_dict = monitor.parse_monitor_message(evnt)
+        event = evnt_dict['event']
 
     # If so, shoot out the message
-    if evnt_dict['event'] == 1:
+    if event == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
         socket.close()
         return True, evnt_dict['endpoint'].decode()
