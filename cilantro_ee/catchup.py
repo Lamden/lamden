@@ -304,6 +304,8 @@ class BlockFetcher:
             await self.fetch_blocks(current_height)
             current_height = await self.find_missing_block_indexes()
 
+            self.log.info(f'{current_height} / {latest_block_stored}')
+
         self.in_catchup = False
 
         # Finds all of the blocks that were processed while syncing
