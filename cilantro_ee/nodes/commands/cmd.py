@@ -1,6 +1,8 @@
 import argparse
 from .start import start_node
 
+from cilantro_ee.storage import MasterStorage, BlockchainDriver
+
 class Cilparser:
     def __init__(self, args):
         self.pkg = args.pkg_hash
@@ -20,6 +22,14 @@ class Cilparser:
     def check_ready_quorum(self, vk=None):
         print('ready ->', vk)
         return True
+
+
+def flush(args):
+    if args.storage_type == 'blocks':
+            MasterStorage().drop_collections()
+    elif args.storage_type == 'state':
+        BlockchainDriver().flush()
+
 
 def setup_cilparser(parser):
     # create parser for update commands
@@ -46,6 +56,9 @@ def setup_cilparser(parser):
     start_parser.add_argument('-bn', '--boot-nodes', type=str, nargs='+')
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
+
+    flush_parser = subparser.add_parser('flush')
+    flush_parser.add_argument('storage_type', type=str)
 
     # create parser for view commands
         #TODO
