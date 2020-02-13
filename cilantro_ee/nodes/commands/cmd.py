@@ -31,7 +31,13 @@ def flush(args):
     elif args.storage_type == 'state':
         BlockchainDriver().flush()
         print('State deleted.')
-
+    elif args.storage_type == 'all':
+        MasterStorage().drop_collections()
+        BlockchainDriver().flush()
+        print('All blocks deleted.')
+        print('State deleted.')
+    else:
+        print('Invalid option. < blocks | state | all >')
 
 def setup_cilparser(parser):
     # create parser for update commands
