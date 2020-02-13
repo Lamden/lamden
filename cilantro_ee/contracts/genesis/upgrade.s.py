@@ -17,11 +17,16 @@ upg_window = Variable()
 mn_vote = Variable()
 dl_vote = Variable()
 
+
+mn_rdy = Variable()
+dl_rdy = Variable()
+
 tot_mn = Variable()
 tot_dl = Variable()
 
 # Results
 upg_consensus = Variable()
+nw_ready = Variable()
 
 
 @construct
@@ -29,7 +34,7 @@ def seed():
     upg_lock.set(False)
 
 @export
-def init_upgrade(pepper, initiator_vk):
+def trigger_upgrade(pepper, initiator_vk):
     if upg_lock.get() is True:
         assert_parallel_upg_check()
 
@@ -38,7 +43,7 @@ def init_upgrade(pepper, initiator_vk):
         upg_lock.set(True)
         upg_init_time.set(now)
         upg_pepper.set(pepper)
-        upg_window.set(datetime.Timedelta(seconds=30))
+        upg_window.set(datetime.Timedelta(seconds=3000000000))
         upg_consensus.set(False)
         mn_vote.set(0)
         dl_vote.set(0)
@@ -64,16 +69,24 @@ def vote(vk):
         if check_vote_state():
             reset_contract()
 
+@export
+def ready(vk):
+    if upg_lock.get():
+        if vk in election_house.current_value_for_policy('masternodes'):
+            mn_rdy.set(mn_rdy.get() + 1)
+        if vk in election_house.current_value_for_policy('delegates'):
+            dl_rdy.set(dl_rdy.get() + 1)
 
 def check_vote_state():
     mn = tot_mn.get()
     dl = tot_dl.get()
 
-    if (mn_vote > (mn*2)/3) and (dl_vote > (dl*2)/3):
+    if (mn_vote.get() > (mn*2)/3) and (dl_vote.get() > (dl*2)/3):
         upg_consensus.set(True)
-        return True
-    else:
-        return False
+
+    if (mn_rdy.get() > (mn * 2) / 3) and (dl_rdy.get() > (dl * 2) / 3):
+        nw_ready.set(True)
+
 
 
 def reset_contract():
