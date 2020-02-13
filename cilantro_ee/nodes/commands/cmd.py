@@ -84,6 +84,9 @@ def main():
     if args.command == 'start':
         start_node(args)
 
+    elif args.command == 'flush':
+        flush(args)
+
     elif args.command == 'update':
         shell = Cilparser(args)
 
