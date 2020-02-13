@@ -149,7 +149,7 @@ class BlockFetcher:
         self.log = get_logger('Catchup')
 
     # Change to max received
-    async def find_missing_block_indexes(self, confirmations=3, timeout=500):
+    async def find_missing_block_indexes(self, confirmations=3, timeout=5000):
         await self.parameters.refresh()
 
         self.log.info('Finding missing block indexes...')
