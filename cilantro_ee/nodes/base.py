@@ -110,7 +110,7 @@ class Node:
         await self.network.start()
 
         # Catchup
-        if len(self.contacts.masternodes) > 1:
+        if len(self.contacts.masternodes) > 1 and self.wallet.verifying_key().hex() in self.contacts.masternodes:
             await self.block_fetcher.sync()
 
         asyncio.ensure_future(self.nbn_inbox.serve())
