@@ -23,7 +23,8 @@ class Masternode(Node):
         self.block_server = BlockServer(
             wallet=self.wallet,
             socket_base=self.socket_base,
-            network_parameters=self.network_parameters
+            network_parameters=self.network_parameters,
+            blocks=self.blocks
         )
 
         self.webserver = WebServer(wallet=self.wallet, port=webserver_port, driver=self.driver)

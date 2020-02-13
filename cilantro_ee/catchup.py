@@ -39,11 +39,6 @@ class BlockServer(AsyncInbox):
         self.blocks = blocks or CilantroStorageDriver(key=self.wallet.signing_key())
         self.driver = driver
 
-    def sync_serve(self):
-        asyncio.get_event_loop().run_until_complete(
-            asyncio.ensure_future(self.serve())
-        )
-
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
 
