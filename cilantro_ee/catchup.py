@@ -294,6 +294,8 @@ class BlockFetcher:
     async def sync(self):
         self.in_catchup = True
 
+        self.log.info('CATCHUP TIME...')
+
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.state.get_latest_block_num()
 
