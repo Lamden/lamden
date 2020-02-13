@@ -13,7 +13,7 @@ log = get_logger('STATE')
 
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
-        block_hash = self.get(BLOCK_HASH_KEY, mark=False)
+        block_hash = self.driver.get(BLOCK_HASH_KEY)
         if block_hash is None:
             return b'\x00' * 32
         return block_hash
@@ -22,12 +22,12 @@ class BlockchainDriver(ContractDriver):
         if type(v) == str:
             v = bytes.fromhex(v)
         assert len(v) == 32, 'Hash provided is not 32 bytes.'
-        self.set(BLOCK_HASH_KEY, v, mark=False)
+        self.driver.set(BLOCK_HASH_KEY, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
     def get_latest_block_num(self):
-        num = self.get(BLOCK_NUM_KEY, mark=False)
+        num = self.driver.get(BLOCK_NUM_KEY)
 
         if num is None:
             return 0
@@ -40,9 +40,9 @@ class BlockchainDriver(ContractDriver):
         v = int(v)
         assert v >= 0, 'Block number must be positive integer.'
 
-        v = str(v).encode()
+        # v = str(v).encode()
 
-        self.set(BLOCK_NUM_KEY, v, mark=False)
+        self.driver.set(BLOCK_NUM_KEY, v)
 
     latest_block_num = property(get_latest_block_num, set_latest_block_num)
 
@@ -101,19 +101,19 @@ class BlockchainDriver(ContractDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(PENDING_NONCE_KEY, processor, sender))
+        return self.driver.get(self.n_key(PENDING_NONCE_KEY, processor, sender))
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(NONCE_KEY, processor, sender))
+        return self.driver.get(self.n_key(NONCE_KEY, processor, sender))
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce, mark=False)
+        self.driver.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce)
 
     def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.set(self.n_key(NONCE_KEY, processor, sender), nonce, mark=False)
+        self.driver.set(self.n_key(NONCE_KEY, processor, sender), nonce)
 
     def delete_pending_nonce(self, processor: bytes, sender: bytes):
-        self.delete(self.n_key(PENDING_NONCE_KEY, processor, sender), mark=False)
+        self.driver.delete(self.n_key(PENDING_NONCE_KEY, processor, sender))
 
     def get_latest_nonce(self, processor:bytes, sender: bytes):
         nonce = self.get_pending_nonce(processor, sender)
