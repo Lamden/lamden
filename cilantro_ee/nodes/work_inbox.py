@@ -97,6 +97,7 @@ class WorkInbox(SecureAsyncInbox):
                                      driver=self.driver,
                                      strict=False)
             except TransactionException as e:
+                self.log.error(tx)
                 raise e
 
             h.update(tx.as_builder().to_bytes_packed())
