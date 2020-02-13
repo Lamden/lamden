@@ -101,10 +101,10 @@ class BlockchainDriver(ContractDriver):
 
     # Nonce methods
     def get_pending_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(PENDING_NONCE_KEY, processor, sender), mark=False)
+        return self.get(self.n_key(PENDING_NONCE_KEY, processor, sender))
 
     def get_nonce(self, processor: bytes, sender: bytes):
-        return self.get(self.n_key(NONCE_KEY, processor, sender), mark=False)
+        return self.get(self.n_key(NONCE_KEY, processor, sender))
 
     def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
         self.set(self.n_key(PENDING_NONCE_KEY, processor, sender), nonce, mark=False)
