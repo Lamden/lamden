@@ -24,7 +24,7 @@ class Cilparser:
 def setup_cilparser(parser):
     # create parser for update commands
     subparser = parser.add_subparsers(title = 'subcommands', description='Network update commands',
-                                      help = 'Shows set of update cmd options')
+                                      help = 'Shows set of update cmd options', dest='command')
 
     upd_parser = subparser.add_parser('update')
 
@@ -64,26 +64,26 @@ def main():
     args = parser.parse_args()
 
     # implementation
-    # if vars(args).get('command') is None:
-    #     print(colored('♣︎', color='green'))
-    #     return
+    if vars(args).get('command') is None:
+        print('♣︎')
+        return
 
-    # if args.command == 'start':
-    #
-    start_node(args)
-    # elif args.command == 'update':
-    #     shell = Cilparser(args)
-    #
-    #     if args.pkg_hash:
-    #         shell.trigger(vk='asdfadf')
-    #         # execute upgrade contract
-    #
-    #     if args.vote:
-    #         res = shell.vote(vk='asdfadf')
-    #
-    #     if args.ready:
-    #         print(args)
-    #         res = shell.check_ready_quorum(vk='sdfafda')
+    if args.command == 'start':
+        start_node(args)
+
+    elif args.command == 'update':
+        shell = Cilparser(args)
+
+        if args.pkg_hash:
+            shell.trigger(vk='asdfadf')
+            # execute upgrade contract
+
+        if args.vote:
+            res = shell.vote(vk='asdfadf')
+
+        if args.ready:
+            print(args)
+            res = shell.check_ready_quorum(vk='sdfafda')
 
 
 if __name__ == '__main__':
