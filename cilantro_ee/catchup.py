@@ -171,6 +171,8 @@ class BlockFetcher:
             f = asyncio.ensure_future(self.get_latest_block_height(master))
             futures.append(f)
 
+        self.log.info(futures)
+
         # Iterate through the status of the
         now = time.time()
         while responses.top_count() < confirmations or time.time() - now > timeout:
@@ -181,6 +183,9 @@ class BlockFetcher:
 
                     # Remove future
                     futures.remove(f)
+
+        self.log.info(responses)
+        self.log.info(responses.items())
 
         return responses.top_item() or 0
 

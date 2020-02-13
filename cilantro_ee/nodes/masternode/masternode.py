@@ -58,7 +58,6 @@ class Masternode(Node):
         asyncio.ensure_future(self.aggregator.start())
         asyncio.ensure_future(self.run())
 
-
     def delegate_work_sockets(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
 
