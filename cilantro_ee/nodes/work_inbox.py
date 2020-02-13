@@ -119,6 +119,8 @@ class WorkInbox(SecureAsyncInbox):
         for work in self.todo:
             await self.handle_msg(None, work)
 
+        self.todo.clear()
+
         # Wait for work from all masternodes that are currently online
         # start = time.time() * 1000
         while len(set(current_contacts) - set(self.work.keys())) > 0:
