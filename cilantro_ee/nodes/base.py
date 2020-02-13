@@ -65,6 +65,17 @@ class Node:
 
         self.elect_delegates = self.client.get_contract('elect_delegates')
         self.on_deck_delegate = self.elect_delegates.quick_read('top_candidate')
+
+        # Cilantro version / upgrade
+
+        self.version_state = self.client.get_contract('upgrade')
+        self.active_upgrade = self.version_state.quick_read('upg_lock')
+        self.all_votes = self.version_state.quick_read('tol_mn') + self.version_state.quick_read('tot_dl')
+        self.mn_votes = self.version_state.quick_read('mn_vote')
+        self.dl_votes = self.version_state.quick_read('dl_vote')
+        self.pending_cnt = self.all_votes - self.vote_cnt
+
+
         # stuff
 
         self.network_parameters = network_parameters
@@ -148,6 +159,33 @@ class Node:
             if update_del:
                 self.socket_authenticator.add_verifying_key(dl)
                 self.on_deck_master = dl
+
+    def version_check(self):
+
+        # check for trigger
+        self.version_state = self.client.get_contract('upgrade')
+        self.mn_votes = self.version_state.quick_read('mn_vote')
+        self.dl_votes = self.version_state.quick_read('dl_vote')
+
+        if self.version_state:
+            self.log.info('Waiting for Consensys on vote')
+            self.log.info('num masters voted -> {}'.format(self.mn_votes))
+            self.log.info('num delegates voted -> {}'.format(self.dl_votes))
+
+            # check for vote consensys
+            vote_consensus = self.version_state.quick_read('upg_consensus')
+            if vote_consensus:
+                self.log.info('Download and verify the pkg from FTP')
+            else:
+                self.log.info('waiting for vote on upgrade')
+
+            # ready
+            #TODO we can merge it with vote - to be decided
+
+
+        # check for ready consensys
+
+        pass
 
     def issue_rewards(self, block):
         # ISSUE REWARDS

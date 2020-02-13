@@ -38,7 +38,7 @@ def trigger_upgrade(pepper, initiator_vk):
         upg_lock.set(True)
         upg_init_time.set(now)
         upg_pepper.set(pepper)
-        upg_window.set(datetime.Timedelta(seconds=30))
+        upg_window.set(datetime.Timedelta(seconds=3000000000))
         upg_consensus.set(False)
         mn_vote.set(0)
         dl_vote.set(0)

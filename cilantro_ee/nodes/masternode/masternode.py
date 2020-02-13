@@ -160,7 +160,7 @@ class Masternode(Node):
             
             self.driver.reads.clear()
             self.driver.pending_writes.clear()
-
+            self.version_check()
             self.update_sockets()
 
             # STORE IT IN THE BACKEND
