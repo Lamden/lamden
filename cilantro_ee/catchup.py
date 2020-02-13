@@ -3,7 +3,7 @@ from collections import Counter
 from cilantro_ee.canonical import verify_block
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import get
-from cilantro_ee.sockets.inbox import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
 from cilantro_ee.messages.message import Message
@@ -22,7 +22,7 @@ subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp
 # Provide a block blocks to enable data and index requests
 # Otherwise, this will just return latest num and hash, which both delegates and masters can do
 
-class BlockServer(AsyncInbox):
+class BlockServer(SecureAsyncInbox):
     def __init__(self, wallet, socket_base, ctx=None, network_parameters=NetworkParameters(), linger=500,
                  poll_timeout=200, blocks: CilantroStorageDriver=None, driver=BlockchainDriver()):
 

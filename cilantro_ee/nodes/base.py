@@ -113,6 +113,9 @@ class Node:
         if len(self.contacts.masternodes) > 1 or self.wallet.verifying_key().hex() in self.contacts.delegates:
             await self.block_fetcher.sync()
 
+        # Start block server
+
+
         asyncio.ensure_future(self.nbn_inbox.serve())
 
         self.running = True
