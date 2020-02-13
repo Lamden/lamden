@@ -201,7 +201,7 @@ class BlockFetcher:
             socket_id=socket,
             msg=request,
             ctx=self.ctx,
-            timeout=500,
+            timeout=1000,
             retries=0,
             dealer=True
         )
@@ -223,7 +223,7 @@ class BlockFetcher:
             socket_id=socket,
             msg=request,
             ctx=self.ctx,
-            timeout=500,
+            timeout=1000,
             retries=0,
             dealer=True
         )
@@ -234,7 +234,7 @@ class BlockFetcher:
             if msg_type == MessageType.BLOCK_DATA:
                 return unpacked
 
-    async def find_valid_block(self, i, latest_hash, timeout=500):
+    async def find_valid_block(self, i, latest_hash, timeout=1000):
         await self.parameters.refresh()
 
         masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
