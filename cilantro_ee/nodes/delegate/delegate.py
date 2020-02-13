@@ -100,6 +100,7 @@ class Delegate(Node):
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
+        self.work_inbox.work.clear()
         self.log.info(f'Got {len(work)} batch(es) of work')
 
         return self.filter_work(work)
