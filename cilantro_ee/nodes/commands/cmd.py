@@ -26,9 +26,11 @@ class Cilparser:
 
 def flush(args):
     if args.storage_type == 'blocks':
-            MasterStorage().drop_collections()
+        MasterStorage().drop_collections()
+        print('All blocks deleted.')
     elif args.storage_type == 'state':
         BlockchainDriver().flush()
+        print('State deleted.')
 
 
 def setup_cilparser(parser):
