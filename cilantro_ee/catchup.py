@@ -47,6 +47,8 @@ class BlockServer(SecureAsyncInbox):
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
 
+        print('got a msg')
+
         if msg_type == MessageType.BLOCK_DATA_REQUEST and self.blocks is not None:
 
             block_dict = self.blocks.get_block(msg.blockNum)
