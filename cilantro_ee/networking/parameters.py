@@ -66,7 +66,8 @@ class Parameters:
                  ctx: zmq.asyncio.Context,
                  wallet,
                  contacts: VKBook,
-                 network_parameters: NetworkParameters=NetworkParameters()
+                 network_parameters: NetworkParameters=NetworkParameters(),
+                 debug=False
                  ):
 
         self.socket_base = socket_base
@@ -79,6 +80,7 @@ class Parameters:
         self.sockets = {}
 
         self.log = get_logger('Parameters')
+        self.log.propagate = debug
 
     def get_masternode_sockets(self, service=None):
         masternodes = {}

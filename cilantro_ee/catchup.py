@@ -165,6 +165,8 @@ class BlockFetcher:
         # In a 2 MN setup, a MN can only as one other MN
         confirmations = min(confirmations, len(masternodes) - 1)
 
+        self.log.info(confirmations)
+
         if self.wallet.verifying_key().hex() in self.parameters.contacts.delegates:
             confirmations += 1
 
