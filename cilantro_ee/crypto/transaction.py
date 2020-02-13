@@ -172,6 +172,8 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     if tx.payload.nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
         raise TransactionTooManyPendingException
 
+    print(pending_nonce)
+
     # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
     if strict:
         if tx.payload.nonce != pending_nonce:
