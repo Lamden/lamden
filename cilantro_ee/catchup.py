@@ -4,7 +4,7 @@ from cilantro_ee.canonical import verify_block
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import get
 from cilantro_ee.sockets.inbox import AsyncInbox
-
+from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
@@ -149,15 +149,22 @@ class BlockFetcher:
 
         self.in_catchup = False
 
+        self.log = get_logger('Catchup')
+
     # Change to max received
     async def find_missing_block_indexes(self, confirmations=3, timeout=500):
         await self.parameters.refresh()
+
+        self.log.info('Finding missing block indexes...')
 
         masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
         responses = ConfirmationCounter()
 
         # In a 2 MN setup, a MN can only as one other MN
         confirmations = min(confirmations, len(masternodes) - 1)
+
+        if self.wallet.verifying_key().hex() in self.parameters.contacts.delegates:
+            confirmations += 1
 
         futures = []
         # Fire off requests to masternodes on the network
