@@ -25,5 +25,5 @@ def create_user(delay):
 
 
 if __name__ == '__main__':
-    _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+    _delay = int(sys.argv[1]) if len(sys.argv) > 1 else 3
     create_user(_delay)
