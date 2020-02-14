@@ -67,7 +67,8 @@ class BlockServer(AsyncInbox):
                         prevBlockHash=prev_hash,
                         subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
                     )
-                except:
+                except Exception as e:
+                    self.log.error(str(e))
                     reply = Message.get_signed_message_packed_2(
                         wallet=self.wallet,
                         msg_type=MessageType.BAD_REQUEST,
