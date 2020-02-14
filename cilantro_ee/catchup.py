@@ -174,10 +174,11 @@ class BlockFetcher:
             for f in futures:
                 if f.done():
                     self.log.info('done')
-                    responses.update([f.result()])
+                    if f.result() is not None:
+                        responses.update([f.result()])
 
-                    # Remove future
-                    futures.remove(f)
+                        # Remove future
+                        futures.remove(f)
 
         self.log.info(responses)
         self.log.info(responses.items())
