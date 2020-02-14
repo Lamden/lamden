@@ -114,7 +114,13 @@ class BlockServer(AsyncInbox):
 
 class ConfirmationCounter(Counter):
     def top_item(self):
-        return self.most_common()[0][0]
+        try:
+            if len(self.most_common()[0]) > 0:
+                return self.most_common()[0][0]
+        except IndexError:
+            return None
+
+        return None
 
     def top_count(self):
         if len(self.most_common()) == 0:
