@@ -290,6 +290,7 @@ class BlockFetcher:
             latest_hash = self.state.get_latest_block_hash()
 
     async def find_and_store_block(self, block_num, block_hash):
+        self.log.info(f'Finding block #{block_num}')
 
         block_dict = await self.find_valid_block(block_num, block_hash)
 
