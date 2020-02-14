@@ -271,7 +271,7 @@ class BlockFetcher:
         latest_block_stored = self.state.get_latest_block_num()
         latest_hash = self.state.get_latest_block_hash()
 
-        self.log.log(f'Latest block stored: {latest_block_stored}')
+        self.log.info(f'Latest block stored: {latest_block_stored}')
 
         if latest_block_available <= latest_block_stored:
             return
