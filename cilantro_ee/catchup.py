@@ -192,12 +192,7 @@ class BlockFetcher:
         self.log.info(responses)
         self.log.info(responses.items())
 
-        # Blocks 0 and 1 are intentionally blank for system reasons
-        top_index = responses.top_item()
-        if top_index is None or top_index > 2:
-            top_index = 2
-
-        return top_index
+        return responses.top_item() or 0 # Blocks 0 and 1 are intentionally blank for system reasons
 
     async def get_latest_block_height(self, socket):
         # Build a signed request
@@ -305,6 +300,7 @@ class BlockFetcher:
             latest_hash = self.state.get_latest_block_hash()
 
     async def find_and_store_block(self, block_num, block_hash):
+
         block_dict = await self.find_valid_block(block_num, block_hash)
 
         if self.blocks is not None:
@@ -321,8 +317,10 @@ class BlockFetcher:
         self.log.info('CATCHUP TIME...')
 
         current_height = await self.find_missing_block_indexes()
-
         latest_block_stored = self.state.get_latest_block_num()
+
+        latest_block_stored = max(latest_block_stored, 2)
+
         self.log.info(f'{current_height} / {latest_block_stored}')
 
         while current_height > latest_block_stored:
