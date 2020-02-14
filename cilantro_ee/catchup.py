@@ -173,6 +173,7 @@ class BlockFetcher:
             await asyncio.sleep(0)
             for f in futures:
                 if f.done():
+                    self.log.info('done')
                     responses.update([f.result()])
 
                     # Remove future
