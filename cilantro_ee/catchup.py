@@ -161,9 +161,10 @@ class BlockFetcher:
 
         futures = []
         # Fire off requests to masternodes on the network
-        for master in masternodes:
+        for master, socket in masternodes:
             self.log.info(master)
-            f = asyncio.ensure_future(self.get_latest_block_height(master))
+            self.log.info(socket)
+            f = asyncio.ensure_future(self.get_latest_block_height(socket))
             futures.append(f)
 
         self.log.info(futures)
