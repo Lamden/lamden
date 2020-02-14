@@ -87,6 +87,7 @@ class BlockServer(AsyncInbox):
             await self.return_msg(_id, b'howdy')
 
         elif msg_type == MessageType.LATEST_BLOCK_HEIGHT_REQUEST:
+            self.log.info(f'Responding to block height request with block #{self.driver.latest_block_num}')
             reply = Message.get_signed_message_packed_2(
                 wallet=self.wallet,
                 msg_type=MessageType.LATEST_BLOCK_HEIGHT_REPLY,
