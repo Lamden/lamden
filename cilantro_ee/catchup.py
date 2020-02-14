@@ -307,7 +307,9 @@ class BlockFetcher:
 
         self.state.update_with_block(block_dict)
         self.state.set_latest_block_hash(block_dict['blockHash'])
-        self.state.set_latest_block_num(block_num)
+
+        if block_dict['blockNum'] > self.state.latest_block_num:
+            self.state.latest_block_num = block_dict['blockNum']
 
     # Main Catchup function. Called at launch of node
     async def sync(self):
