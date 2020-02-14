@@ -1,6 +1,5 @@
 from collections import Counter
-
-from cilantro_ee.canonical import verify_block
+from cilantro_ee.canonical import verify_block, get_genesis_block
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import get
 from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
@@ -243,6 +242,13 @@ class BlockFetcher:
                 return unpacked
 
     async def find_valid_block(self, i, latest_hash, timeout=1000):
+        if i == 0 or i == 1:
+            block = get_genesis_block()
+            block['blockNum'] = i
+            block['blockOwners'] = []
+
+            return block
+
         await self.parameters.refresh()
 
         masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
@@ -268,7 +274,16 @@ class BlockFetcher:
                                                proposed_hash=block.blockHash)
                     futures.remove(f)
 
-        return block
+        if block is not None:
+            block_dict = {
+                'blockHash': block.blockHash,
+                'blockNum': i,
+                'blockOwners': [m for m in block.blockOwners],
+                'prevBlockHash': latest_hash,
+                'subBlocks': [s for s in block.subBlocks]
+            }
+
+            return block_dict
 
     async def fetch_blocks(self, latest_block_available=0):
         self.log.info('Fetching blocks...')
@@ -285,25 +300,14 @@ class BlockFetcher:
             latest_hash = self.state.get_latest_block_hash()
 
     async def find_and_store_block(self, block_num, block_hash):
-        block = await self.find_valid_block(block_num, block_hash)
+        block_dict = await self.find_valid_block(block_num, block_hash)
 
-        if block is not None:
-            block_dict = {
-                'blockHash': block.blockHash,
-                'blockNum': block_num,
-                'blockOwners': [m for m in block.blockOwners],
-                'prevBlockHash': block_hash,
-                'subBlocks': [s for s in block.subBlocks]
-            }
+        if self.blocks is not None:
+            self.blocks.put(block_dict)
 
-            # Only store if master, update state if master or delegate
-
-            if self.blocks is not None:
-                self.blocks.put(block_dict)
-
-            self.state.update_with_block(block_dict)
-            self.state.set_latest_block_hash(block.blockHash)
-            self.state.set_latest_block_num(block_num)
+        self.state.update_with_block(block_dict)
+        self.state.set_latest_block_hash(block_dict['blockHash'])
+        self.state.set_latest_block_num(block_num)
 
     # Main Catchup function. Called at launch of node
     async def sync(self):
