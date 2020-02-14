@@ -306,6 +306,7 @@ class BlockFetcher:
 
         current_height = await self.find_missing_block_indexes()
         latest_block_stored = self.state.get_latest_block_num()
+        self.log.info(f'{current_height} / {latest_block_stored}')
 
         while current_height < latest_block_stored:
 
