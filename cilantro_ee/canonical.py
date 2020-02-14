@@ -70,7 +70,10 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
         sb = format_dictionary(sb)
         deserialized_subblocks.append(sb)
 
-        encoded_sb = bson.BSON.encode(sb)
+        sb_without_sigs = deepcopy(sb)
+        del sb_without_sigs['signatures']
+
+        encoded_sb = bson.BSON.encode(sb_without_sigs)
         block_hasher.update(encoded_sb)
 
     if block_hasher.digest() == proposed_hash:
