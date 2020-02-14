@@ -316,6 +316,10 @@ class BlockFetcher:
         self.log.info('CATCHUP TIME...')
 
         current_height = await self.find_missing_block_indexes()
+
+        if current_height == 0:
+            current_height = 2
+
         latest_block_stored = self.state.get_latest_block_num()
         self.log.info(f'{current_height} / {latest_block_stored}')
 
