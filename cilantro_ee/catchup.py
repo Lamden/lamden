@@ -162,6 +162,7 @@ class BlockFetcher:
         futures = []
         # Fire off requests to masternodes on the network
         for master in masternodes:
+            self.log.info(master)
             f = asyncio.ensure_future(self.get_latest_block_height(master))
             futures.append(f)
 
@@ -172,13 +173,11 @@ class BlockFetcher:
         while responses.top_count() < confirmations or time.time() - now > timeout:
             await asyncio.sleep(0)
             for f in futures:
-                if f.done():
-                    self.log.info('done')
-                    if f.result() is not None:
-                        responses.update([f.result()])
+                if f.done() and f.result() is not None:
+                    responses.update([f.result()])
 
-                        # Remove future
-                        futures.remove(f)
+                    # Remove future
+                    futures.remove(f)
 
         self.log.info(responses)
         self.log.info(responses.items())
