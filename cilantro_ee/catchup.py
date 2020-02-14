@@ -49,6 +49,8 @@ class BlockServer(AsyncInbox):
 
             block_dict = self.blocks.get_block(msg.blockNum)
 
+            self.log.info(f'Block data: {block_dict}')
+
             if block_dict is not None:
                 block_hash = block_dict.get('blockHash')
                 block_num = block_dict.get('blockNum')
