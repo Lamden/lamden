@@ -237,8 +237,6 @@ class BlockFetcher:
         if response is not None:
             msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
 
-            self.log.info(f'Got block: {unpacked}')
-
             if msg_type == MessageType.BLOCK_DATA:
                 return unpacked
 
@@ -270,7 +268,6 @@ class BlockFetcher:
             for f in futures:
                 if f.done():
                     block = f.result()
-                    self.log.info(block)
                     block_found = verify_block(subblocks=block.subBlocks,
                                                previous_hash=latest_hash,
                                                proposed_hash=block.blockHash)
