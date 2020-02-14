@@ -248,8 +248,8 @@ class BlockFetcher:
 
         futures = []
         # Fire off requests to masternodes on the network
-        for master in masternodes:
-            f = asyncio.ensure_future(self.get_block_from_master(i, master))
+        for master, socket in masternodes.items():
+            f = asyncio.ensure_future(self.get_block_from_master(i, socket))
             futures.append(f)
 
         # Iterate through the status of the
@@ -267,8 +267,11 @@ class BlockFetcher:
         return block
 
     async def fetch_blocks(self, latest_block_available=0):
+        self.log.info('Fetching blocks...')
         latest_block_stored = self.state.get_latest_block_num()
         latest_hash = self.state.get_latest_block_hash()
+
+        self.log.log(f'Latest block stored: {latest_block_stored}')
 
         if latest_block_available <= latest_block_stored:
             return
