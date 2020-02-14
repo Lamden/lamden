@@ -262,6 +262,8 @@ class BlockFetcher:
                     block_found = verify_block(subblocks=block.subBlocks,
                                                previous_hash=latest_hash,
                                                proposed_hash=block.blockHash)
+
+                    self.log.info(f'Block valid? {block_found}')
                     futures.remove(f)
 
         if block is not None:
