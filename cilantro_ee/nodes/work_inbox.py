@@ -39,7 +39,7 @@ class NotMasternode(DelegateWorkInboxException):
 
 
 class WorkInbox(SecureAsyncInbox):
-    def __init__(self, contacts, driver: BlockchainDriver=BlockchainDriver(), verify=True, *args, **kwargs):
+    def __init__(self, contacts, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=False, *args, **kwargs):
         self.work = {}
 
         self.driver = driver
@@ -50,6 +50,7 @@ class WorkInbox(SecureAsyncInbox):
         self.accepting_work = False
 
         self.log = get_logger('DEL WI')
+        self.log.propagate = debug
 
         super().__init__(*args, **kwargs)
 
@@ -113,8 +114,6 @@ class WorkInbox(SecureAsyncInbox):
     async def wait_for_next_batch_of_work(self, current_contacts, timeout=1000):
         self.accepting_work = True
         self.current_contacts = current_contacts
-
-        self.log.info(self.work.items())
 
         for work in self.todo:
             await self.handle_msg(None, work)
