@@ -38,13 +38,14 @@ class BlockServer(AsyncInbox):
 
         self.blocks = blocks or CilantroStorageDriver(key=self.wallet.signing_key())
         self.driver = driver
+        self.log = get_logger('BlockServer')
 
     async def handle_msg(self, _id, msg):
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(message=msg)
 
-        print('got a msg')
-
         if msg_type == MessageType.BLOCK_DATA_REQUEST and self.blocks is not None:
+
+            self.log.info(f'Sending block data for block #{msg.blockNum}')
 
             block_dict = self.blocks.get_block(msg.blockNum)
 
