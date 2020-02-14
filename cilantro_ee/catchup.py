@@ -269,6 +269,7 @@ class BlockFetcher:
             for f in futures:
                 if f.done():
                     block = f.result()
+                    self.log.info(block)
                     block_found = verify_block(subblocks=block.subBlocks,
                                                previous_hash=latest_hash,
                                                proposed_hash=block.blockHash)
