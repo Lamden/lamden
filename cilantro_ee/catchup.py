@@ -232,10 +232,10 @@ class BlockFetcher:
             dealer=True
         )
 
-        self.log.info(f'Got block: {response}')
-
         if response is not None:
             msg_type, unpacked, _, _, _ = Message.unpack_message_2(response)
+
+            self.log.info(f'Got block: {unpacked}')
 
             if msg_type == MessageType.BLOCK_DATA:
                 return unpacked
