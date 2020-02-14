@@ -167,17 +167,11 @@ class BlockFetcher:
         if self.wallet.verifying_key().hex() in self.parameters.contacts.delegates:
             confirmations += 1
 
-        self.log.info(confirmations)
-
         futures = []
         # Fire off requests to masternodes on the network
         for master, socket in masternodes.items():
-            self.log.info(master)
-            self.log.info(socket)
             f = asyncio.ensure_future(self.get_latest_block_height(socket))
             futures.append(f)
-
-        self.log.info(futures)
 
         # Iterate through the status of the
         now = time.time()
@@ -189,9 +183,6 @@ class BlockFetcher:
 
                     # Remove future
                     futures.remove(f)
-
-        self.log.info(responses)
-        self.log.info(responses.items())
 
         return responses.top_item() or 0 # Blocks 0 and 1 are intentionally blank for system reasons
 
