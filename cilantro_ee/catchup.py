@@ -280,7 +280,7 @@ class BlockFetcher:
             block_dict = {
                 'blockHash': block.blockHash,
                 'blockNum': i,
-                'blockOwners': [m for m in block.blockOwners],
+                'blockOwners': [],
                 'prevBlockHash': latest_hash,
                 'subBlocks': [s for s in block.subBlocks]
             }
