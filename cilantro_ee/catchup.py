@@ -192,7 +192,12 @@ class BlockFetcher:
         self.log.info(responses)
         self.log.info(responses.items())
 
-        return responses.top_item() or 2
+        # Blocks 0 and 1 are intentionally blank for system reasons
+        top_index = responses.top_item()
+        if top_index is None or top_index > 2:
+            top_index = 2
+
+        return top_index
 
     async def get_latest_block_height(self, socket):
         # Build a signed request
