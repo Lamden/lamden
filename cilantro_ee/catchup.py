@@ -55,7 +55,7 @@ class BlockServer(AsyncInbox):
                 block_num = block_dict.get('blockNum')
                 prev_hash = block_dict.get('prevBlockHash')
                 subblocks = block_dict.get('subBlocks')
-                owners = block_dict.get('blockOwners')
+                #owners = block_dict.get('blockOwners')
 
                 try:
                     reply = Message.get_signed_message_packed_2(
@@ -63,7 +63,7 @@ class BlockServer(AsyncInbox):
                         msg_type=MessageType.BLOCK_DATA,
                         blockHash=block_hash,
                         blockNum=block_num,
-                        blockOwners=[owner for owner in owners],
+                        blockOwners=[],
                         prevBlockHash=prev_hash,
                         subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
                     )
