@@ -282,8 +282,8 @@ class BlockFetcher:
 
         self.log.info(f'Latest block stored: {latest_block_stored}')
 
-        if latest_block_available <= latest_block_stored:
-            return
+        #if latest_block_available <= latest_block_stored:
+        #    return
 
         for i in range(latest_block_stored, latest_block_available + 1):
             await self.find_and_store_block(i, latest_hash)
