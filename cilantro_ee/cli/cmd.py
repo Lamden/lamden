@@ -1,5 +1,5 @@
 import argparse
-from .start import start_node
+from cilantro_ee.cli.start import start_node
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 

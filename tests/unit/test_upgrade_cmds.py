@@ -1,6 +1,6 @@
 import argparse
 import unittest
-from cilantro_ee.nodes.commands.cmd import setup_cilparser, Cilparser
+from cilantro_ee.cli.cmd import setup_cilparser
 
 
 class ParserTest(unittest.TestCase):

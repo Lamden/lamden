@@ -23,14 +23,6 @@ RUN pip3 install -e git+https://github.com/Lamden/contracting.git@dev#egg=contra
 RUN pip3 install -e git+https://github.com/Lamden/cilantro-enterprise.git@rel_gov_debug#egg=cilantro_ee
 
 RUN sudo mkdir -p /data/db
-RUN mongod --fork --logpath /var/log/mongodb/mongod.log --bind_ip_all
-
-COPY scripts/create_user.py create_user.py
-
-RUN python3 create_user.py
-
-
-#RUN rocks serve &
 
 EXPOSE 18080
-COPY app/constitution.json ~
+EXPOSE 27017
