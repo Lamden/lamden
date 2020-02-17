@@ -1,11 +1,10 @@
 from unittest import TestCase
 
 import cilantro_ee.sockets.struct
-from cilantro_ee.sockets import services
 from cilantro_ee.crypto.wallet import Wallet
 
-from cilantro_ee.catchup import BlockServer, BlockFetcher
-from cilantro_ee import canonical
+from cilantro_ee.nodes.catchup import BlockServer, BlockFetcher
+from cilantro_ee.crypto import canonical
 import secrets
 from cilantro_ee.storage.master import CilantroStorageDriver
 import zmq.asyncio

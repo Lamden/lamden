@@ -1,8 +1,8 @@
 from collections import Counter
-from cilantro_ee.canonical import verify_block, get_genesis_block
+from cilantro_ee.crypto.canonical import verify_block, get_genesis_block
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import get
-from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
 from cilantro_ee.messages.message import Message

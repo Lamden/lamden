@@ -7,9 +7,8 @@ import zmq
 from  cilantro_ee.sockets import pubsub
 from cilantro_ee.sockets import reqrep
 from  cilantro_ee.sockets import struct
-from cilantro_ee.constants.ports import PEPPER
+from cilantro_ee.ports import PEPPER
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.sockets import services
 from cilantro_ee.networking import discovery, parameters
 
 from cilantro_ee.logger.base import get_logger

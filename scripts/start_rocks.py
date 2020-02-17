@@ -1,5 +1,5 @@
 import os, sys
-from cilantro_ee.constants.db_config import DATA_DIR
+from cilantro_ee.db_config import DATA_DIR
 from rocks.server import RocksDBServer
 import asyncio
 

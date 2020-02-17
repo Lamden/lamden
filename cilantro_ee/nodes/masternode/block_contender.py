@@ -1,11 +1,11 @@
-from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
+from cilantro_ee.sockets.inbox import SecureAsyncInbox
 from collections import defaultdict
 from cilantro_ee.storage import BlockchainDriver
 
 import capnp
 import os
 
-from cilantro_ee import canonical
+from cilantro_ee.crypto import canonical
 from cilantro_ee.messages import Message, MessageType, schemas
 from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.crypto.merkle_tree import merklize

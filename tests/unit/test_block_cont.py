@@ -8,7 +8,7 @@ from tests import random_txs
 from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.sockets.struct import _socket
 import secrets
-from cilantro_ee import canonical
+from cilantro_ee.crypto import canonical
 import zmq.asyncio
 import asyncio
 

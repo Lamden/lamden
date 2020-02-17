@@ -5,7 +5,7 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
-from cilantro_ee.sockets.services import multicast, secure_multicast
+from cilantro_ee.sockets.services import secure_multicast
 import heapq
 
 from cilantro_ee.nodes.base import Node
@@ -13,7 +13,6 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
-from cilantro_ee import canonical
 
 
 class Delegate(Node):

@@ -1,5 +1,5 @@
 import os, shutil, time
-from cilantro_ee.constants.db_config import MONGO_DIR, MONGO_LOG_PATH, config_mongo_dir
+from cilantro_ee.db_config import MONGO_DIR, MONGO_LOG_PATH, config_mongo_dir
 from cilantro_ee.constants import conf
 
 

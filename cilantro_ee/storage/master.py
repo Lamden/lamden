@@ -5,7 +5,7 @@ from configparser import ConfigParser
 from cilantro_ee.logger.base import get_logger
 from bson.objectid import ObjectId
 from collections import defaultdict
-from cilantro_ee.canonical import block_from_subblocks
+from cilantro_ee.crypto.canonical import block_from_subblocks
 
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = b'\x00' * 32

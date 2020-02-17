@@ -1,9 +1,8 @@
 from contracting.execution.executor import Executor
-from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.stdlib.bridge.time import Datetime
-from contracting.db.encoder import encode, decode
+from contracting.db.encoder import decode
 from contracting.db.driver import encode_kv
-from cilantro_ee.canonical import build_sbc_from_work_results
+from cilantro_ee.crypto.canonical import build_sbc_from_work_results
 from cilantro_ee.logger.base import get_logger
 import os
 import capnp

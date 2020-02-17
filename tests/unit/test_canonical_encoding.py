@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee import canonical
+from cilantro_ee.crypto import canonical
 from tests import random_txs
 
 

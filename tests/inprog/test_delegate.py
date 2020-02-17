@@ -6,7 +6,7 @@ from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
-from cilantro_ee import canonical
+from cilantro_ee.crypto import canonical
 from contracting import config
 import time
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch

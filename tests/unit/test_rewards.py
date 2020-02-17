@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.rewards import RewardManager
+from cilantro_ee.nodes.rewards import RewardManager
 from tests import random_txs
 from contracting.client import ContractingClient
 from cilantro_ee.storage.vkbook import VKBook

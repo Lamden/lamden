@@ -1,5 +1,5 @@
 from cilantro_ee.networking.network import Network
-from cilantro_ee.catchup import BlockFetcher
+from cilantro_ee.nodes.catchup import BlockFetcher
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook
@@ -12,7 +12,7 @@ from cilantro_ee.sockets.authentication import SocketAuthenticator
 from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
-from cilantro_ee.rewards import RewardManager
+from cilantro_ee.nodes.rewards import RewardManager
 
 from cilantro_ee.logger.base import get_logger
 
