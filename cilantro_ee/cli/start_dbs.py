@@ -11,4 +11,4 @@ def start_rocks():
 
 
 def start_mongo():
-    pass
+    subprocess.Popen(['mongod', '--dbpath ~/blocks', '--logpath /dev/null', '--bind_ip_all'], stdout=open('/dev/null', 'w'), stderr=open('/dev/null', 'w'))
