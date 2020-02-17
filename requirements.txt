@@ -1,3 +1,5 @@
+rocks
+pymongo
 termcolor
 sanic
 pyzmq
