@@ -109,7 +109,7 @@ def extract_vk_args(book):
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
-def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.path.dirname(__file__)):
+def submit_from_genesis_json_file(filename, client, root=os.path.dirname(__file__)):
     with open(filename) as f:
         genesis = json.load(f)
 
@@ -127,8 +127,8 @@ def submit_from_genesis_json_file(filename, client=ContractingClient(), root=os.
                       constructor_args=contract['constructor_args'])
 
 
-def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, master_price=100_000,
-                                   delegate_price=100_000, root=os.path.dirname(__file__), client=ContractingClient()):
+def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, client, master_price=100_000,
+                                   delegate_price=100_000, root=os.path.dirname(__file__)):
     members = root + '/genesis/members.s.py'
 
     with open(members) as f:

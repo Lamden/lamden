@@ -6,12 +6,13 @@ from contracting.client import ContractingClient
 from decimal import Decimal
 from cilantro_ee.storage import MasterStorage
 
+
 class TestGovernanceOrchestration(unittest.TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
-        ContractingClient().flush()
         asyncio.set_event_loop(self.loop)
+        ContractingClient().flush()
         MasterStorage().drop_collections()
 
     def tearDown(self):

@@ -14,7 +14,6 @@ from contracting.client import ContractingClient
 
 from cilantro_ee.rewards import RewardManager
 
-
 from cilantro_ee.logger.base import get_logger
 
 from copy import deepcopy
@@ -25,13 +24,15 @@ class Node:
                  bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=True):
 
         self.driver = driver
-        self.client = ContractingClient(driver=self.driver, submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
         self.log = get_logger('NODE')
         self.log.propagate = debug
         self.log.info(constitution)
         self.socket_base = socket_base
         self.wallet = wallet
         self.ctx = ctx
+
+        self.client = ContractingClient(driver=self.driver,
+                                        submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
 
         # Sync contracts
 
@@ -49,9 +50,12 @@ class Node:
         self.driver.commit()
         self.driver.clear_pending_state()
 
-        self.contacts = VKBook(boot_mn=constitution['masternode_min_quorum'],
-                               boot_del=constitution['delegate_min_quorum'],
-                               client=self.client)
+        self.contacts = VKBook(
+            client=self.client,
+            boot_mn=constitution['masternode_min_quorum'],
+            boot_del=constitution['delegate_min_quorum'],
+        )
+
         self.current_masters = deepcopy(self.contacts.masternodes)
         self.current_delegates = deepcopy(self.contacts.delegates)
 

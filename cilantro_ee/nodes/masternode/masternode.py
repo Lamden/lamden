@@ -27,7 +27,7 @@ class Masternode(Node):
             blocks=self.blocks
         )
 
-        self.webserver = WebServer(wallet=self.wallet, port=webserver_port, driver=self.driver)
+        self.webserver = WebServer(contracting_client=self.client, driver=self.driver, blocks=self.blocks, wallet=self.wallet, port=webserver_port, )
         self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
         self.current_nbn = canonical.get_genesis_block()
 
