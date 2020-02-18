@@ -25,7 +25,7 @@ setup(
         'requests>=2.20.0',
         'uvloop>=0.9.1',
         'aiohttp',
-        'sanic>=19.6.3',
+        'sanic==19.6.3',
         'sanic-limiter>=0.1.3',
         'Sanic-Cors>=0.9.9.post1',
         'rocks',
