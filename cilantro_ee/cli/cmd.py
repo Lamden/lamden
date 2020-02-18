@@ -86,7 +86,7 @@ def main():
 
     # implementation
     if vars(args).get('command') is None:
-        print('♣︎')
+        print('Howdy.︎')
         return
 
     if args.command == 'start':
