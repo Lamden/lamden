@@ -1,7 +1,6 @@
 import cilantro_ee
 from cilantro_ee.crypto.wallet import Wallet
 from pymongo import MongoClient, DESCENDING
-from configparser import ConfigParser
 from cilantro_ee.logger.base import get_logger
 from bson.objectid import ObjectId
 from collections import defaultdict
@@ -10,7 +9,6 @@ from cilantro_ee.crypto.canonical import block_from_subblocks
 REPLICATION = 3             # TODO hard coded for now needs to change
 GENESIS_HASH = b'\x00' * 32
 OID = '5bef52cca4259d4ca5607661'
-
 
 class StorageSet:
     def __init__(self, user, password, port, database, collection_name):
@@ -34,24 +32,18 @@ class MasterStorage:
     INDEX = 1
     TX = 2
 
-    def __init__(self, config_path=cilantro_ee.__path__[0]):
+    def __init__(self, port=27027, config_path=cilantro_ee.__path__[0]):
         # Setup configuration file to read constants
         self.config_path = config_path
 
-        self.config = ConfigParser()
-        self.config.read(self.config_path + '/config/mn_db_conf.ini')
+        self.port = port
 
-        user = self.config.get('MN_DB', 'username')
-        password = self.config.get('MN_DB', 'password')
-        port = self.config.get('MN_DB', 'port')
+        self.client = MongoClient()
+        self.db = self.client.get_database('blockchain')
 
-        block_database = self.config.get('MN_DB', 'mn_blk_database')
-        index_database = self.config.get('MN_DB', 'mn_index_database')
-        tx_database = self.config.get('MN_DB', 'mn_tx_database')
-
-        self.blocks = StorageSet(user, password, port, block_database, 'blocks')
-        self.indexes = StorageSet(user, password, port, index_database, 'index')
-        self.txs = StorageSet(user, password, port, tx_database, 'tx')
+        self.blocks = self.db['blocks']
+        self.indexes = self.db['index']
+        self.txs = self.db['tx']
 
         if self.get_block(0) is None:
             self.put({
@@ -76,7 +68,7 @@ class MasterStorage:
             return None
 
         q = self.q(v)
-        block = self.blocks.collection.find_one(q)
+        block = self.blocks.find_one(q)
 
         if block is not None:
             block.pop('_id')
@@ -85,11 +77,11 @@ class MasterStorage:
 
     def put(self, data, collection=BLOCK):
         if collection == MasterStorage.BLOCK:
-            _id = self.blocks.collection.insert_one(data)
+            _id = self.blocks.insert_one(data)
         elif collection == MasterStorage.INDEX:
-            _id = self.indexes.collection.insert_one(data)
+            _id = self.indexes.insert_one(data)
         elif collection == MasterStorage.TX:
-            _id = self.txs.collection.insert_one(data)
+            _id = self.txs.insert_one(data)
         else:
             return False
 
@@ -103,7 +95,7 @@ class MasterStorage:
         else:
             return None
 
-        block_query = c.collection.find({}, {'_id': False}).sort(
+        block_query = c.find({}, {'_id': False}).sort(
             'blockNum', DESCENDING
         ).limit(n)
 
@@ -119,7 +111,7 @@ class MasterStorage:
 
     def get_owners(self, v):
         q = self.q(v)
-        index = self.indexes.collection.find_one(q)
+        index = self.indexes.find_one(q)
 
         if index is None:
             return index
@@ -130,7 +122,7 @@ class MasterStorage:
 
     def get_index(self, v):
         q = self.q(v)
-        block = self.indexes.collection.find_one(q)
+        block = self.indexes.find_one(q)
 
         if block is not None:
             block.pop('_id')
@@ -138,7 +130,7 @@ class MasterStorage:
         return block
 
     def get_tx(self, h):
-        tx = self.txs.collection.find_one({'tx_hash': h})
+        tx = self.txs.find_one({'tx_hash': h})
 
         if tx is not None:
             tx.pop('_id')
@@ -154,8 +146,8 @@ class MasterStorage:
 #            self.txs.collection.insert_one(entry)
 
     def drop_collections(self):
-        self.blocks.flush()
-        self.indexes.flush()
+        self.blocks.remove()
+        self.indexes.remove()
 
 
 class DistributedMasterStorage(MasterStorage):

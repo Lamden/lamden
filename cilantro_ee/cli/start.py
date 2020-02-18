@@ -3,13 +3,38 @@ import pathlib
 import json
 import os
 import asyncio
+import subprocess
+from subprocess import call
 
 import zmq.asyncio
 
-from subprocess import call
+from rocks.client import RocksDBClient, RocksServerOfflineError
+from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
+
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
+
+
+def start_rocks():
+    try:
+        c = RocksDBClient()
+        c.ping()
+    except RocksServerOfflineError:
+        subprocess.Popen(['rocks', 'serve'],
+                         stdout=open('/dev/null', 'w'),
+                         stderr=open('/dev/null', 'w'))
+
+
+def start_mongo():
+    try:
+        c = MongoClient(serverSelectionTimeoutMS=200)
+        c.server_info()
+    except ServerSelectionTimeoutError:
+        subprocess.Popen(['mongod', '--dbpath ~/blocks', '--logpath /dev/null', '--bind_ip_all'],
+                         stdout=open('/dev/null', 'w'),
+                         stderr=open('/dev/null', 'w'))
 
 
 def print_ascii_art():
@@ -84,7 +109,13 @@ def start_node(args):
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
 
+    # Start rocks
+    start_rocks()
+
     if args.node_type == 'masternode':
+        # Start mongo
+        start_mongo()
+
         n = Masternode(
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
