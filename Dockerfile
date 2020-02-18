@@ -24,4 +24,4 @@ RUN pip3 install -e git+https://github.com/Lamden/cilantro-enterprise.git@rel_go
 
 EXPOSE 18080
 
-# ENTRYPOINT ["cil"]
+# ENTRYPOINT ["cil", "start"]

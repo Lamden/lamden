@@ -1,5 +1,5 @@
 import argparse
-from cilantro_ee.cli.start import start_node
+from cilantro_ee.cli.start import start_node, setup_node
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 
@@ -68,6 +68,8 @@ def setup_cilparser(parser):
     flush_parser = subparser.add_parser('flush')
     flush_parser.add_argument('storage_type', type=str)
 
+    setup_parser = subparser.add_parser('setup')
+
     # create parser for view commands
         #TODO
     # create parser for node admin commands
@@ -91,6 +93,9 @@ def main():
 
     if args.command == 'start':
         start_node(args)
+
+    elif args.command == 'setup':
+        setup_node()
 
     elif args.command == 'flush':
         flush(args)
