@@ -22,7 +22,6 @@ RUN service haveged start
 RUN pip3 install -e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
 RUN pip3 install -e git+https://github.com/Lamden/cilantro-enterprise.git@rel_gov_debug#egg=cilantro_ee
 
-RUN sudo mkdir -p /data/db
-
 EXPOSE 18080
-EXPOSE 27017
+
+ENTRYPOINT ["cil"]
