@@ -111,6 +111,7 @@ def start_node(args):
 
     # Start rocks
     start_rocks()
+    print('starting rocks')
 
     if args.node_type == 'masternode':
         # Start mongo
