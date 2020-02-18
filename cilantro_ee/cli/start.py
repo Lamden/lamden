@@ -16,6 +16,7 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.nodes.masternode.masternode import Masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
 
+import time
 
 def start_rocks():
     try:
@@ -25,6 +26,8 @@ def start_rocks():
         subprocess.Popen(['rocks', 'serve'],
                          stdout=open('/dev/null', 'w'),
                          stderr=open('/dev/null', 'w'))
+        print('Starting RocksDB...')
+        time.sleep(3)
 
 
 def start_mongo():
@@ -35,6 +38,8 @@ def start_mongo():
         subprocess.Popen(['mongod', '--dbpath ~/blocks', '--logpath /dev/null', '--bind_ip_all'],
                          stdout=open('/dev/null', 'w'),
                          stderr=open('/dev/null', 'w'))
+        print('Starting MongoDB...')
+        time.sleep(3)
 
 
 def print_ascii_art():
