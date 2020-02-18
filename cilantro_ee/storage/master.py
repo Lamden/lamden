@@ -6,25 +6,9 @@ from bson.objectid import ObjectId
 from collections import defaultdict
 from cilantro_ee.crypto.canonical import block_from_subblocks
 
-REPLICATION = 3             # TODO hard coded for now needs to change
+REPLICATION = 3
 GENESIS_HASH = b'\x00' * 32
 OID = '5bef52cca4259d4ca5607661'
-
-class StorageSet:
-    def __init__(self, user, password, port, database, collection_name):
-        self.uri = 'mongodb://{}:{}@localhost:{}/{}?authSource=admin&maxPoolSize=1'.format(
-            user,
-            password,
-            port,
-            database
-        )
-
-        self.client = MongoClient(self.uri)
-        self.db = self.client.get_database()
-        self.collection = self.db[collection_name]
-
-    def flush(self):
-        self.client.drop_database(self.db)
 
 
 class MasterStorage:
@@ -162,11 +146,11 @@ class DistributedMasterStorage(MasterStorage):
         self.sk = self.wallet.signing_key()
         self.vk = self.wallet.verifying_key()
 
-        self.test_hook = self.config.get('MN_DB', 'test_hook')
-        self.mn_id = int(self.config.get('MN_DB', 'mn_id'))
-        self.rep_factor = int(self.config.get('MN_DB', 'replication'))
-        self.active_masters = int(self.config.get('MN_DB', 'total_mn'))
-        self.quorum_needed = int(self.config.get('MN_DB', 'quorum'))
+        self.test_hook = False
+        self.mn_id = 1
+        self.rep_factor = 3
+        self.active_masters = 12
+        self.quorum_needed = 3
 
     def get_master_set(self):
         if self.test_hook is True:

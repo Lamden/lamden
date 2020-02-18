@@ -4,22 +4,26 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 import cilantro_ee
+from contracting.client import ContractingClient
 
 
 class TestDistributedMasterStorage(TestCase):
     def setUp(self):
         #m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        self.client = ContractingClient()
+        self.client.flush()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=Wallet().verifying_key().hex(),
             boot_mns=1,
             initial_delegates=Wallet().verifying_key().hex(),
             boot_dels=1,
+            client=self.client
         )
 
         w = Wallet()
         sk, vk = w.signing_key(), w.verifying_key()
-        self.db = DistributedMasterStorage(key=sk, vkbook=VKBook(1, 1))
+        self.db = DistributedMasterStorage(key=sk, vkbook=VKBook(self.client, 1, 1))
 
     def tearDown(self):
         self.db.drop_collections()
@@ -57,15 +61,7 @@ class TestDistributedMasterStorage(TestCase):
         self.assertFalse(success)
 
     def test_set_mn_id_test_hook_false_master_in_active_masters(self):
-        m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook({'masternodes': m,
-                            'delegates': d,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
-
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(self.client)
 
         vk = PhoneBook.masternodes[0]
 
@@ -88,15 +84,7 @@ class TestDistributedMasterStorage(TestCase):
         self.assertEqual(self.db.rep_pool_sz(), pool)
 
     def test_build_write_list_returns_all_mns_when_jump_idx_0(self):
-        m, d = sync.get_masternodes_and_delegates_from_constitution()
-        sync.submit_vkbook({'masternodes': m,
-                            'delegates': d,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
-
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(self.client)
 
         mns = PhoneBook.masternodes
 
@@ -106,14 +94,17 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook({'masternodes': masternodes,
-                            'delegates': delegates,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
+        self.client.flush()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
+        sync.submit_node_election_contracts(
+            initial_masternodes=masternodes,
+            boot_mns=1,
+            initial_delegates=delegates,
+            boot_dels=1,
+            client=self.client
+        )
 
-        big_vkbook = VKBook()
+        big_vkbook = VKBook(self.client)
 
         self.db.vkbook = big_vkbook
 
@@ -124,14 +115,17 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook({'masternodes': masternodes,
-                            'delegates': delegates,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
+        self.client.flush()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
+        sync.submit_node_election_contracts(
+            initial_masternodes=masternodes,
+            boot_mns=1,
+            initial_delegates=delegates,
+            boot_dels=1,
+            client=self.client
+        )
 
-        big_vkbook = VKBook()
+        big_vkbook = VKBook(self.client)
 
         self.db.vkbook = big_vkbook
 
@@ -185,14 +179,17 @@ class TestDistributedMasterStorage(TestCase):
         masternodes = list(range(100))
         delegates = list(range(10))
 
-        sync.submit_vkbook({'masternodes': masternodes,
-                            'delegates': delegates,
-                            'masternode_min_quorum': 1,
-                            'enable_stamps': True,
-                            'enable_nonces': True},
-                           overwrite=True)
+        self.client.flush()
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
+        sync.submit_node_election_contracts(
+            initial_masternodes=masternodes,
+            boot_mns=1,
+            initial_delegates=delegates,
+            boot_dels=1,
+            client=self.client
+        )
 
-        big_vkbook = VKBook()
+        big_vkbook = VKBook(self.client)
 
         self.db.vkbook = big_vkbook
 
@@ -215,6 +212,7 @@ class TestDistributedMasterStorage(TestCase):
         self.db.evaluate_wr(block)
 
         stored_block = self.db.get_block(103)
+
         block.pop('_id')
 
         self.assertEqual(stored_block, block)
@@ -267,8 +265,6 @@ class TestDistributedMasterStorage(TestCase):
         stored_block = self.db.get_block(100)
         stored_index = self.db.get_index(100)
 
-        block.pop('_id')
-
         self.assertEqual(block, stored_block)
 
         self.assertEqual(stored_index['blockHash'], block['blockHash'])
@@ -297,7 +293,7 @@ class TestDistributedMasterStorage(TestCase):
             'data': 'woohoo'
         }
 
-        self.db.blocks.collection.insert_one(block)
+        self.db.blocks.insert_one(block)
 
         block.pop('_id')
 
