@@ -18,31 +18,19 @@ setup(
         # utils
         'coloredlogs',
         'checksumdir==1.1.7',
-        'pathspec',
-        'vprof',
         'Cython==0.29',
-        # protocol
         'PyNaCl==1.2.1',
         'pycapnp==0.6.3',
-        'pyzmq==17.0.0',
-        'requests==2.20.0',
-        'uvloop==0.9.1',
-        # webserver
+        'pyzmq>=17.0.0',
+        'requests>=2.20.0',
+        'uvloop>=0.9.1',
         'aiohttp',
-        'sanic==19.6.3',
-        'secure',
-        'sanic-limiter==0.1.3',
-        'Sanic-Cors==0.9.9.post1',
-        # DB
+        'sanic>=19.6.3',
+        'sanic-limiter>=0.1.3',
+        'Sanic-Cors>=0.9.9.post1',
         'rocks',
         'contracting',
         'pymongo',
-        'redis==3.2.0',
-        # CLI
-        'Click==7.0',
-        #other
-        'stdlib-list==0.6.0',
-        'termcolor'
     ],
     entry_points={
         'console_scripts': [
