@@ -82,7 +82,6 @@ class PeerServer(reqrep.RequestReplyService):
             return response
         if command == 'join':
             vk, ip = args # unpack args
-            print(vk, ip)
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
         if command == 'ask':
