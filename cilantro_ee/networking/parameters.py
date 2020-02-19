@@ -1,6 +1,4 @@
 import cilantro_ee.sockets.struct
-from cilantro_ee.ports import DHT_PORT, EVENT_PORT, DISCOVERY_PORT, BLOCK_SERVER, MN_PUB_PORT, \
-    DELEGATE_PUB_PORT
 from cilantro_ee.storage import VKBook
 from cilantro_ee.sockets.services import get
 
@@ -9,7 +7,22 @@ import zmq.asyncio
 import asyncio
 
 from cilantro_ee.logger.base import get_logger
+from os import getenv as env
 
+
+PEPPER = env('PEPPER', 'cilantro_pepper')
+DISCOVERY_PORT = 10000
+AUTH_PORT = 10001
+DHT_PORT = 10002
+EVENT_PORT = 10003
+BLOCK_SERVER = 10004
+MN_PUB_PORT = 10005
+DELEGATE_PUB_PORT = 10006
+TX_BATCH_INFORMER_PORT = 10007
+BLOCK_NOTIF_PORT = 10008
+TX_BATCHER_PORT = 10009
+BLOCK_AGG_CONTROLLER_PORT = 10010
+INCOMING_WORK_PORT = 10011
 
 class ServiceType:
     PEER = 0
@@ -33,11 +46,11 @@ class NetworkParameters:
                  block_port=BLOCK_SERVER, block_ipc='blocks',
                  sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
                  block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
-                 tx_batch_informer_port=10091, tx_batch_informer_ipc='tx_batch_informer',
-                 block_notifications_port=10092, block_notifications_ipc='block_notifications',
-                 tx_batcher_port=10093, tx_batcher_ipc='tx_batcher',
-                 block_agg_controller_port=10094, block_agg_controller_ipc='block_agg_controller',
-                 incoming_work_port=10095, incoming_work_ipc='incoming_work'
+                 tx_batch_informer_port=TX_BATCH_INFORMER_PORT, tx_batch_informer_ipc='tx_batch_informer',
+                 block_notifications_port=BLOCK_NOTIF_PORT, block_notifications_ipc='block_notifications',
+                 tx_batcher_port=TX_BATCHER_PORT, tx_batcher_ipc='tx_batcher',
+                 block_agg_controller_port=BLOCK_AGG_CONTROLLER_PORT, block_agg_controller_ipc='block_agg_controller',
+                 incoming_work_port=INCOMING_WORK_PORT, incoming_work_ipc='incoming_work'
                  ):
 
         self.params = {

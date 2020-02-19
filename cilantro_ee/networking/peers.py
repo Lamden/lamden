@@ -7,11 +7,11 @@ import zmq
 from  cilantro_ee.sockets import pubsub
 from cilantro_ee.sockets import reqrep
 from  cilantro_ee.sockets import struct
-from cilantro_ee.ports import PEPPER
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.networking import discovery, parameters
 
 from cilantro_ee.logger.base import get_logger
+
 
 class KTable:
     def __init__(self, data: dict, initial_peers={}, response_size=10):
@@ -94,7 +94,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             ip = self.params.resolve(ip, parameters.ServiceType.DISCOVERY)
 
-            _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(), ctx=self.ctx, timeout=500)
+            _, responded_vk = await discovery.ping(ip, pepper=parameters.PEPPER.encode(), ctx=self.ctx, timeout=500)
 
             await asyncio.sleep(0)
             if responded_vk is None:
@@ -132,7 +132,7 @@ class PeerServer(reqrep.RequestReplyService):
 
                 elif command == 'leave':
                     # Ping to make sure the node is actually offline
-                    _, responded_vk = await discovery.ping(ip, pepper=PEPPER.encode(),
+                    _, responded_vk = await discovery.ping(ip, pepper=parameters.PEPPER.encode(),
                                                            ctx=self.ctx, timeout=500)
 
                     # If so, remove it from our table

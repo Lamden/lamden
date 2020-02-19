@@ -19,6 +19,7 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 import time
 from getpass import getpass
 
+
 def start_rocks():
     try:
         c = RocksDBClient()

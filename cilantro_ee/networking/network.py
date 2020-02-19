@@ -1,5 +1,4 @@
-from cilantro_ee.ports import DHT_PORT, PEPPER
-from cilantro_ee.networking.parameters import ServiceType, NetworkParameters
+from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, DHT_PORT, PEPPER
 from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking import discovery
 from cilantro_ee.sockets import services, struct

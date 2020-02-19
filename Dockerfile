@@ -22,6 +22,7 @@ RUN service haveged start
 RUN pip3 install -e git+https://github.com/Lamden/contracting.git@dev#egg=contracting
 RUN pip3 install -e git+https://github.com/Lamden/cilantro-enterprise.git@rel_gov_debug#egg=cilantro_ee
 
+EXPOSE 10000 10001 10002 10003 10004 10005 10006 10007 10008 10009 10010 10011
 EXPOSE 18080
 
 ENTRYPOINT ["cil", "setup"]
