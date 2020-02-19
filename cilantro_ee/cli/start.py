@@ -160,7 +160,7 @@ def start_node(args):
 def setup_node():
     node_type = ''
     while node_type not in ['M', 'D']:
-        node_type = input('(M)asternode or (D)elegate?').upper()
+        node_type = input('(M)asternode or (D)elegate: ').upper()
 
     while True:
         sk = getpass('Signing Key in Hex Format: ')
