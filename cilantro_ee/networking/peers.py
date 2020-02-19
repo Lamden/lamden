@@ -83,8 +83,9 @@ class PeerServer(reqrep.RequestReplyService):
             vk, ip = args # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
-        #if command == 'ping':
-        #    return self.ping_response
+        if command == 'ask':
+            return json.dumps(self.table.data, cls=struct.SocketEncoder).encode()
+
 
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)
