@@ -114,7 +114,7 @@ class Node:
         await self.network.start()
 
         # Catchup
-        if len(self.contacts.masternodes) > 1 or self.wallet.verifying_key().hex() in self.contacts.delegates:
+        if len(self.contacts.masternodes) > 1 or self.wallet.verifying_key().hex() not in self.contacts.masternodes:
             await self.block_fetcher.sync()
 
         # Start block server
