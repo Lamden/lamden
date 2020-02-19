@@ -4,9 +4,9 @@ from functools import partial
 
 import zmq
 
-from  cilantro_ee.sockets import pubsub
+from cilantro_ee.sockets import pubsub
 from cilantro_ee.sockets import reqrep
-from  cilantro_ee.sockets import struct
+from cilantro_ee.sockets import struct
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.networking import discovery, parameters
 
@@ -85,7 +85,6 @@ class PeerServer(reqrep.RequestReplyService):
             return None
         if command == 'ask':
             return json.dumps(self.table.data, cls=struct.SocketEncoder).encode()
-
 
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)

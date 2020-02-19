@@ -2,8 +2,7 @@ from unittest import TestCase
 from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.networking.discovery import *
 from cilantro_ee.networking.network import Network
-from cilantro_ee.ports import PEPPER
-from cilantro_ee.networking.parameters import NetworkParameters
+from cilantro_ee.networking.parameters import NetworkParameters, PEPPER
 from cilantro_ee.networking.peers import KTable, PeerServer
 from cilantro_ee.networking.discovery import DiscoveryServer
 from cilantro_ee.sockets import services
@@ -1503,3 +1502,28 @@ class TestNetworkService(TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
+
+    def test_ask_returns_table(self):
+        n1 = '/tmp/n1'
+        make_ipc(n1)
+
+        mnw1 = Wallet()
+        mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
+
+        mn1.table.data = {'a': 'b', 'c': 'd', 'e': 'f'}
+
+        ask_message = ['ask', '']
+        ask_message = json.dumps(ask_message).encode()
+
+        async def get():
+            return await services.get(_socket('ipc:///tmp/n1/peers'), msg=ask_message, ctx=self.ctx, timeout=500)
+
+        tasks = asyncio.gather(
+            mn1.peer_service.start(),
+            stop_server(mn1.peer_service, 0.3),
+            get()
+        )
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+        self.assertDictEqual(json.loads(res[-1]), mn1.table.data)
