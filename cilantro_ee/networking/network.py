@@ -11,6 +11,7 @@ from cilantro_ee.logger.base import get_logger
 
 import random
 
+
 class Network:
     def __init__(self, wallet,
                  params=NetworkParameters(),
@@ -23,10 +24,13 @@ class Network:
                  socket_base='tcp://0.0.0.0',
                  poll_timeout=200,
                  linger=1000,
-                 debug=True):
+                 debug=True,
+                 mn_seed=None):
 
         self.log = get_logger('NetworkService')
         self.log.propagate = debug
+
+        self.mn_seed = mn_seed # Set this to a single masternode if you are joining the network!!
 
         # General Instance Variables
         self.wallet = wallet
@@ -44,13 +48,15 @@ class Network:
         # Peer Service Constants
         self.params = params
 
+        self.socket_base = socket_base
+
         self.peer_service_address = self.params.resolve(socket_base, ServiceType.PEER, bind=True)
         self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_address=self.event_server_address,
                                        table=self.table, wallet=self.wallet, ctx=self.ctx, poll_timeout=poll_timeout, linger=linger)
 
-        self.discovery_server_address = self.params.resolve(socket_base, ServiceType.DISCOVERY, bind=True)
+        self.discovery_server_address = self.params.resolve(self.socket_base, ServiceType.DISCOVERY, bind=True)
         self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
                                                           wallet=self.wallet,
                                                           pepper=PEPPER.encode(),
@@ -73,9 +79,9 @@ class Network:
         await self.peer_service.start()
 
         if discover:
-            if self.wallet.verifying_key().hex() in self.mn_to_find:
+            if self.wallet.verifying_key().hex() in self.mn_to_find or self.mn_seed is not None:
                 asyncio.ensure_future(
-                    self.discovery_server.serve()
+                    self.discovery_server.serve() # Start this when joining network so mn_seed can verify you
                 )
             # Discover our bootnodes
 
@@ -95,13 +101,18 @@ class Network:
             #self.peer_service.table.peers = peer_sockets
 
             # Wait for the quorum to resolve
-            await self.wait_for_quorum(
-                self.initial_mn_quorum,
-                self.initial_del_quorum,
-                self.mn_to_find,
-                self.del_to_find,
-                peer_sockets
-            )
+
+            # IF THE BLOCKCHAIN IS JUST STARTING DO THIS
+            if self.mn_seed is None:
+                await self.wait_for_quorum(
+                    self.initial_mn_quorum,
+                    self.initial_del_quorum,
+                    self.mn_to_find,
+                    self.del_to_find,
+                    peer_sockets
+                )
+
+            # OTHERWISE, DO SOMETHING ELSE.
 
             self.log.success('Network is ready.')
 
@@ -112,6 +123,19 @@ class Network:
             await self.peer_service.event_publisher.send(ready_msg)
 
             self.log.success('Sent ready signal.')
+
+    async def get_current_contacts(self):
+        # Send a join
+        discovery_server_socket = self.params.resolve(self.socket_base, ServiceType.DISCOVERY)
+        join_message = ['join', (self.wallet.verifying_key().hex(), str(discovery_server_socket))]
+
+        # Ask for the current people online
+        ask_message = ['ask', '']
+        ask_msg = json.dumps(ask_message)
+        resp = await services.get()
+        contacts = None
+
+        self.peer_service.table.data = resp
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),

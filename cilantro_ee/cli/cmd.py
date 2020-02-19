@@ -3,6 +3,7 @@ from cilantro_ee.cli.start import start_node, setup_node
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 
+
 class Cilparser:
     def __init__(self, args):
         self.pkg = args.pkg_hash
@@ -38,6 +39,7 @@ def flush(args):
         print('State deleted.')
     else:
         print('Invalid option. < blocks | state | all >')
+
 
 def setup_cilparser(parser):
     # create parser for update commands
