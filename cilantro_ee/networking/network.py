@@ -128,14 +128,28 @@ class Network:
         # Send a join
         discovery_server_socket = self.params.resolve(self.socket_base, ServiceType.DISCOVERY)
         join_message = ['join', (self.wallet.verifying_key().hex(), str(discovery_server_socket))]
+        join_msg = json.dumps(join_message)
+
+        master_socket = self.params.resolve(
+            self.mn_seed,
+            ServiceType.DISCOVERY
+        )
+
+        await services.get(
+            master_socket, msg=join_msg, ctx=self.ctx, timeout=1000
+        )
 
         # Ask for the current people online
         ask_message = ['ask', '']
         ask_msg = json.dumps(ask_message)
-        resp = await services.get()
-        contacts = None
 
-        self.peer_service.table.data = resp
+        resp = await services.get(
+            master_socket, msg=ask_msg, ctx=self.ctx, timeout=1000
+        )
+
+        contacts = json.loads(resp)
+
+        self.peer_service.table.data = contacts
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
