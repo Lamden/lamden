@@ -13,6 +13,7 @@ from cilantro_ee.networking import discovery, parameters
 from cilantro_ee.logger.base import get_logger
 
 
+# Deprecate this
 class KTable:
     def __init__(self, data: dict, initial_peers={}, response_size=10):
         self.data = data
@@ -81,6 +82,7 @@ class PeerServer(reqrep.RequestReplyService):
             return response
         if command == 'join':
             vk, ip = args # unpack args
+            print(vk, ip)
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
         if command == 'ask':
@@ -94,7 +96,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             ip = self.params.resolve(ip, parameters.ServiceType.DISCOVERY)
 
-            _, responded_vk = await discovery.ping(ip, pepper=parameters.PEPPER.encode(), ctx=self.ctx, timeout=500)
+            _, responded_vk = await discovery.ping(ip, pepper=parameters.PEPPER.encode(), ctx=self.ctx, timeout=1000)
 
             await asyncio.sleep(0)
             if responded_vk is None:
@@ -103,6 +105,7 @@ class PeerServer(reqrep.RequestReplyService):
             if responded_vk.hex() == vk:
                 # Valid response
                 self.table.peers[vk] = struct.strip_service(str(ip))
+                self.table.data[vk] = struct.strip_service(str(ip))
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]

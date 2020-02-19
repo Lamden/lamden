@@ -126,13 +126,12 @@ class Network:
 
     async def get_current_contacts(self):
         # Send a join
-        discovery_server_socket = self.params.resolve(self.socket_base, ServiceType.DISCOVERY)
-        join_message = ['join', (self.wallet.verifying_key().hex(), str(discovery_server_socket))]
-        join_msg = json.dumps(join_message)
+        join_message = ['join', (self.wallet.verifying_key().hex(), self.socket_base)]
+        join_msg = json.dumps(join_message).encode()
 
         master_socket = self.params.resolve(
             self.mn_seed,
-            ServiceType.DISCOVERY
+            ServiceType.PEER
         )
 
         await services.get(
@@ -141,7 +140,7 @@ class Network:
 
         # Ask for the current people online
         ask_message = ['ask', '']
-        ask_msg = json.dumps(ask_message)
+        ask_msg = json.dumps(ask_message).encode()
 
         resp = await services.get(
             master_socket, msg=ask_msg, ctx=self.ctx, timeout=1000
