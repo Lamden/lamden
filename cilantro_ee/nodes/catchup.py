@@ -184,6 +184,8 @@ class BlockFetcher:
                     # Remove future
                     futures.remove(f)
 
+        self.log.info(f'Block height in network: {responses.top_item()}')
+
         return responses.top_item() or 0 # Blocks 0 and 1 are intentionally blank for system reasons
 
     async def get_latest_block_height(self, socket):
