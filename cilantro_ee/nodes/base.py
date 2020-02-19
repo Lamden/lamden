@@ -21,7 +21,7 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), debug=True):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True):
 
         self.driver = driver
         self.log = get_logger('NODE')
@@ -93,6 +93,7 @@ class Node:
             initial_mn_quorum=deepcopy(self.contacts.masternode_quorum_min),
             mn_to_find=deepcopy(self.contacts.masternodes),
             del_to_find=deepcopy(self.contacts.delegates),
+            mn_seed=mn_seed
         )
 
         self.nbn_inbox = NBNInbox(
@@ -113,13 +114,11 @@ class Node:
     async def start(self):
         await self.network.start()
 
-        # Catchup
-        if len(self.contacts.masternodes) > 1 or self.wallet.verifying_key().hex() not in self.contacts.masternodes:
+        # Catchup when joining the network
+        if self.network.mn_seed is not None:
             await self.block_fetcher.sync()
 
         # Start block server
-
-
         asyncio.ensure_future(self.nbn_inbox.serve())
 
         self.running = True

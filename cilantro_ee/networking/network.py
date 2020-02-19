@@ -111,6 +111,8 @@ class Network:
                     self.del_to_find,
                     peer_sockets
                 )
+            else:
+                await self.get_current_contacts()
 
             # OTHERWISE, DO SOMETHING ELSE.
 
@@ -126,6 +128,7 @@ class Network:
 
     async def get_current_contacts(self):
         # Send a join
+        self.log.info('Joining network...')
         join_message = ['join', (self.wallet.verifying_key().hex(), self.socket_base)]
         join_msg = json.dumps(join_message).encode()
 
@@ -147,6 +150,8 @@ class Network:
         )
 
         contacts = json.loads(resp)
+
+        self.log.info(f'Got contacts: {contacts}')
 
         self.peer_service.table.data = contacts
 
