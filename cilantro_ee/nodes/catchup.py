@@ -15,6 +15,8 @@ import time
 import asyncio
 import zmq, zmq.asyncio
 
+import random
+
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
@@ -115,23 +117,6 @@ class BlockServer(AsyncInbox):
 
             await self.return_msg(_id, reply)
 
-
-class ConfirmationCounter(Counter):
-    def top_item(self):
-        try:
-            if len(self.most_common()[0]) > 0:
-                return self.most_common()[0][0]
-        except IndexError:
-            return None
-
-        return None
-
-    def top_count(self):
-        if len(self.most_common()) == 0:
-            return 0
-        return self.most_common()[0][1]
-
-
 class BlockFetcher:
     def __init__(self, wallet: Wallet,
                  ctx: zmq.asyncio.Context,
@@ -151,42 +136,6 @@ class BlockFetcher:
         self.in_catchup = False
 
         self.log = get_logger('Catchup')
-
-    # Change to max received
-    async def find_missing_block_indexes(self, confirmations=1, timeout=5000):
-        await self.parameters.refresh()
-
-        self.log.info('Finding missing block indexes...')
-
-        masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
-        responses = ConfirmationCounter()
-
-        # In a 2 MN setup, a MN can only as one other MN
-        confirmations = min(confirmations, len(masternodes) - 1)
-
-        if self.wallet.verifying_key().hex() in self.parameters.contacts.delegates:
-            confirmations += 1
-
-        futures = []
-        # Fire off requests to masternodes on the network
-        for master, socket in masternodes.items():
-            f = asyncio.ensure_future(self.get_latest_block_height(socket))
-            futures.append(f)
-
-        # Iterate through the status of the
-        now = time.time()
-        while responses.top_count() < confirmations or time.time() - now > timeout:
-            await asyncio.sleep(0)
-            for f in futures:
-                if f.done() and f.result() is not None:
-                    responses.update([f.result()])
-
-                    # Remove future
-                    futures.remove(f)
-
-        self.log.info(f'Block height in network: {responses.top_item()}')
-
-        return responses.top_item() or 0 # Blocks 0 and 1 are intentionally blank for system reasons
 
     async def get_latest_block_height(self, socket):
         # Build a signed request
@@ -233,7 +182,7 @@ class BlockFetcher:
             if msg_type == MessageType.BLOCK_DATA:
                 return unpacked
 
-    async def find_valid_block(self, i, latest_hash, timeout=1000):
+    async def find_valid_block(self, sockets, i, latest_hash):
         if i == 0 or i == 1:
             block = get_genesis_block()
             block['blockNum'] = i
@@ -241,32 +190,19 @@ class BlockFetcher:
 
             return block
 
-        await self.parameters.refresh()
-
-        masternodes = self.parameters.get_masternode_sockets(ServiceType.BLOCK_SERVER)
-
         block_found = False
         block = None
 
-        futures = []
-        # Fire off requests to masternodes on the network
-        for master, socket in masternodes.items():
-            f = asyncio.ensure_future(self.get_block_from_master(i, socket))
-            futures.append(f)
+        while not block_found:
+            # Fire off requests to masternodes on the network
+            socket = random.choice(sockets)
+            block = await self.get_block_from_master(i, socket)
 
-        # Iterate through the status of the
-        now = time.time()
-        while not block_found or time.time() - now > timeout:
-            await asyncio.sleep(0)
-            for f in futures:
-                if f.done():
-                    block = f.result()
-                    block_found = verify_block(subblocks=block.subBlocks,
-                                               previous_hash=latest_hash,
-                                               proposed_hash=block.blockHash)
-
-                    self.log.info(f'Block valid? {block_found}')
-                    futures.remove(f)
+            block_found = verify_block(
+                subblocks=block.subBlocks,
+                previous_hash=latest_hash,
+                proposed_hash=block.blockHash
+            )
 
         if block is not None:
             block_dict = {
@@ -293,10 +229,10 @@ class BlockFetcher:
             await self.find_and_store_block(i, latest_hash)
             latest_hash = self.state.get_latest_block_hash()
 
-    async def find_and_store_block(self, block_num, block_hash):
+    async def find_and_store_block(self, sockets, block_num, block_hash):
         self.log.info(f'Finding block #{block_num}')
 
-        block_dict = await self.find_valid_block(block_num, block_hash)
+        block_dict = await self.find_valid_block(sockets, block_num, block_hash)
 
         if self.blocks is not None:
             self.blocks.put(block_dict)
@@ -308,12 +244,12 @@ class BlockFetcher:
             self.state.latest_block_num = block_dict['blockNum']
 
     # Main Catchup function. Called at launch of node
-    async def sync(self):
+    async def sync(self, sockets):
         self.in_catchup = True
 
         self.log.info('CATCHUP TIME...')
 
-        current_height = await self.find_missing_block_indexes()
+        current_height = await self.get_latest_block_height(random.choice(sockets))
         latest_block_stored = self.state.get_latest_block_num()
 
         latest_block_stored = max(latest_block_stored, 2)
@@ -323,7 +259,7 @@ class BlockFetcher:
         while current_height > latest_block_stored:
 
             await self.fetch_blocks(current_height)
-            current_height = await self.find_missing_block_indexes()
+            current_height = await self.get_latest_block_height(random.choice(sockets))
             latest_block_stored = self.state.get_latest_block_num()
 
             latest_block_stored = max(latest_block_stored, 2)
@@ -359,8 +295,3 @@ class BlockFetcher:
             block_dict = self.blocks.get_block(last_state_block_num)
 
             self.state.update_with_block(block_dict)
-
-    async def is_caught_up(self):
-        current_height = await self.find_missing_block_indexes()
-        latest_block_stored = self.state.get_latest_block_num()
-        return current_height >= latest_block_stored
