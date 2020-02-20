@@ -129,6 +129,10 @@ class Node:
                 )
             ])
 
+            self.log.info(self.network.peers())
+
+            self.parameters.sockets.update(self.network.peers())
+
         # Start block server
         asyncio.ensure_future(self.nbn_inbox.serve())
 

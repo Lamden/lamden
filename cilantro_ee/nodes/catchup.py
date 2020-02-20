@@ -1,4 +1,3 @@
-from collections import Counter
 from cilantro_ee.crypto.canonical import verify_block, get_genesis_block
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.sockets.services import get
@@ -12,8 +11,8 @@ import os
 import capnp
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import time
-import asyncio
-import zmq, zmq.asyncio
+import zmq
+import zmq.asyncio
 
 import random
 
