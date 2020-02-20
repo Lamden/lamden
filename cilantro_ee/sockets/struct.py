@@ -44,7 +44,6 @@ class SocketStruct:
                 str = str.split(protocol_string)[1]
 
         if protocol not in {Protocols.INPROC, Protocols.IPC}:
-            print(str)
             _id, port = str.split(':')
             port = int(port)
 
