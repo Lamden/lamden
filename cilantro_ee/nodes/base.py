@@ -160,12 +160,12 @@ class Node:
 
             if update_mn:
                 self.log.info(f'Adding on deck master {mn}')
-                self.socket_authenticator.add_verifying_key(mn)
+                self.socket_authenticator.add_verifying_key(bytes.fromhex(mn))
                 self.on_deck_master = mn
 
             if update_del:
                 self.log.info(f'Adding on deck delegate {dl}')
-                self.socket_authenticator.add_verifying_key(dl)
+                self.socket_authenticator.add_verifying_key(bytes.fromhex(dl))
                 self.on_deck_master = dl
 
     def issue_rewards(self, block):

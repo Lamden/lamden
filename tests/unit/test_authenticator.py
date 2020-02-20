@@ -37,7 +37,7 @@ class TestAuthenticator(TestCase):
         w = Wallet()
 
         with self.assertRaises(Exception):
-            b = SocketAuthenticator(wallet=w, contacts=None, ctx=self.ctx)
+            b = SocketAuthenticator(wallet=self.w, contacts=VKBook(client=ContractingClient(), boot_mn=1, boot_del=1), ctx=self.ctx)
 
     def test_add_verifying_key_as_bytes(self):
         sk = SigningKey.generate()
