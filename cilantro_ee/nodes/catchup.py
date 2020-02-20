@@ -215,7 +215,7 @@ class BlockFetcher:
 
             return block_dict
 
-    async def fetch_blocks(self, latest_block_available=0):
+    async def fetch_blocks(self, sockets, latest_block_available=0):
         self.log.info('Fetching blocks...')
         latest_block_stored = self.state.get_latest_block_num()
         latest_hash = self.state.get_latest_block_hash()
@@ -226,7 +226,7 @@ class BlockFetcher:
            return
 
         for i in range(latest_block_stored, latest_block_available + 1):
-            await self.find_and_store_block(i, latest_hash)
+            await self.find_and_store_block(sockets, i, latest_hash)
             latest_hash = self.state.get_latest_block_hash()
 
     async def find_and_store_block(self, sockets, block_num, block_hash):
@@ -258,7 +258,7 @@ class BlockFetcher:
 
         while current_height > latest_block_stored:
 
-            await self.fetch_blocks(current_height)
+            await self.fetch_blocks(sockets, current_height)
             current_height = await self.get_latest_block_height(random.choice(sockets))
             latest_block_stored = self.state.get_latest_block_num()
 
