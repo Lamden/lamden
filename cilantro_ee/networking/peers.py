@@ -90,6 +90,8 @@ class PeerServer(reqrep.RequestReplyService):
     async def handle_join(self, vk, ip):
         result = self.table.find(vk)
 
+        self.log.info(f'VK {vk} from ip {ip} joining...')
+
         if vk not in result or result[vk] != ip:
             # Ping discovery server
 

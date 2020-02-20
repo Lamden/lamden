@@ -26,7 +26,7 @@ class TestAuthenticator(TestCase):
         sync.submit_node_election_contracts(initial_masternodes=masternodes, boot_mns=1,
                                             initial_delegates=delegates, boot_dels=1, client=self.c)
 
-        self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(boot_mn=1, boot_del=1), ctx=self.ctx)
+        self.s = SocketAuthenticator(wallet=self.w, contacts=VKBook(client=ContractingClient(), boot_mn=1, boot_del=1), ctx=self.ctx)
 
     def tearDown(self):
         self.ctx.destroy()

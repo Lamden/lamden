@@ -71,6 +71,9 @@ class Node:
         self.on_deck_delegate = self.elect_delegates.quick_read('top_candidate')
         # stuff
 
+        self.socket_authenticator.add_verifying_key(self.on_deck_master)
+        self.socket_authenticator.add_verifying_key(self.on_deck_delegate)
+
         self.network_parameters = network_parameters
 
         self.bootnodes = bootnodes
