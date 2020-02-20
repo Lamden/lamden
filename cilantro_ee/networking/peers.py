@@ -106,6 +106,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             if responded_vk.hex() == vk:
                 # Valid response
+                self.log.info(f'{vk} has joined the network as {struct.strip_service(str(ip))}')
                 self.table.peers[vk] = struct.strip_service(str(ip))
                 self.table.data[vk] = struct.strip_service(str(ip))
 
