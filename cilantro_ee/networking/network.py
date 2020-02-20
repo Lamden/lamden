@@ -1,5 +1,5 @@
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, DHT_PORT, PEPPER
-from cilantro_ee.networking.peers import KTable, PeerServer
+from cilantro_ee.networking.peers import PeerServer
 from cilantro_ee.networking import discovery
 from cilantro_ee.sockets import services, struct
 
@@ -39,11 +39,9 @@ class Network:
         self.bootnodes = bootnodes
         self.ip = socket_base
 
-        data = {
+        self.table = {
             self.wallet.verifying_key().hex(): socket_base
         }
-
-        self.table = KTable(data=data)
 
         # Peer Service Constants
         self.params = params
@@ -54,7 +52,12 @@ class Network:
         self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_address=self.event_server_address,
-                                       table=self.table, wallet=self.wallet, ctx=self.ctx, poll_timeout=poll_timeout, linger=linger)
+                                       table=self.table,
+                                       wallet=self.wallet,
+                                       ctx=self.ctx,
+                                       poll_timeout=poll_timeout,
+                                       linger=linger
+                                       )
 
         self.discovery_server_address = self.params.resolve(self.socket_base, ServiceType.DISCOVERY, bind=True)
         self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,

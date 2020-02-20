@@ -1,6 +1,5 @@
 import asyncio
 import json
-from functools import partial
 
 import zmq
 
@@ -13,44 +12,10 @@ from cilantro_ee.networking import discovery, parameters
 from cilantro_ee.logger.base import get_logger
 
 
-# Deprecate this
-class KTable:
-    def __init__(self, data: dict, initial_peers={}, response_size=10):
-        self.data = data
-        self.peers = initial_peers
-        self.response_size = response_size
-
-    @staticmethod
-    def distance(string_a, string_b):
-        int_val_a = int(string_a.encode().hex(), 16)
-        int_val_b = int(string_b.encode().hex(), 16)
-        return int_val_a ^ int_val_b
-
-    def find(self, key):
-        if key in self.data:
-            return self.data
-        elif key in self.peers:
-            return {
-                key: self.peers[key]
-            }
-        else:
-            # Do an XOR sort on all the keys to find neighbors
-            sort_func = partial(self.distance, string_b=key)
-            closest_peer_keys = sorted(self.peers.keys(), key=sort_func)
-
-            # Only keep the response size number
-            closest_peer_keys = closest_peer_keys[:self.response_size]
-
-            # Dict comprehension
-            neighbors = {k: self.peers[k] for k in closest_peer_keys}
-
-            return neighbors
-
-
 class PeerServer(reqrep.RequestReplyService):
     def __init__(self, socket_id: struct.SocketStruct,
                  event_address: struct.SocketStruct,
-                 table: KTable, wallet: Wallet, ctx=zmq.Context,
+                 table: dict, wallet: Wallet, ctx=zmq.Context,
                  linger=500, poll_timeout=10):
 
         super().__init__(socket_id=socket_id,
@@ -72,13 +37,18 @@ class PeerServer(reqrep.RequestReplyService):
 
         self.log = get_logger('PeerService')
 
+    def get_vk(self, vk):
+        if self.table.get(vk) is not None:
+            return {vk: self.table.get(vk)}
+        return self.table
+
     def handle_msg(self, msg):
         self.log.info(f'Got msg: {msg}')
         msg = msg.decode()
         command, args = json.loads(msg)
 
         if command == 'find':
-            response = self.table.find(args)
+            response = self.get_vk(args)
             response = json.dumps(response, cls=struct.SocketEncoder).encode()
             return response
         if command == 'join':
@@ -86,10 +56,10 @@ class PeerServer(reqrep.RequestReplyService):
             asyncio.ensure_future(self.handle_join(vk, ip))
             return None
         if command == 'ask':
-            return json.dumps(self.table.data, cls=struct.SocketEncoder).encode()
+            return json.dumps(self.table, cls=struct.SocketEncoder).encode()
 
     async def handle_join(self, vk, ip):
-        result = self.table.find(vk)
+        result = self.get_vk(vk)
 
         self.log.info(f'VK {vk} from ip {ip} joining...')
 
@@ -108,8 +78,7 @@ class PeerServer(reqrep.RequestReplyService):
             if responded_vk.hex() == vk:
                 # Valid response
                 self.log.info(f'{vk} has joined the network as {struct.strip_service(str(ip))}')
-                self.table.peers[vk] = struct.strip_service(str(ip))
-                self.table.data[vk] = struct.strip_service(str(ip))
+                self.table[vk] = struct.strip_service(str(ip))
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]
@@ -154,8 +123,6 @@ class PeerServer(reqrep.RequestReplyService):
             self.event_service.serve(),
             self.process_event_subscription_queue()
         ))
-        #log.info('Peer services running on {}'.format(self.address))
-        #log.info('Event services running on {}'.format(self.event_address))
 
     def stop(self):
         self.running = False
