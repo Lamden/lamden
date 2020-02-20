@@ -1,5 +1,5 @@
 import argparse
-from cilantro_ee.cli.start import start_node, setup_node
+from cilantro_ee.cli.start import start_node, setup_node, join_network
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 
@@ -72,6 +72,13 @@ def setup_cilparser(parser):
 
     setup_parser = subparser.add_parser('setup')
 
+    join_parser = subparser.add_parser('join')
+    join_parser.add_argument('node_type', type=str)
+    join_parser.add_argument('-k', '--key', type=str)
+    join_parser.add_argument('-m', '--mn_seed', type=str)
+    join_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
+    join_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
+
     # create parser for view commands
         #TODO
     # create parser for node admin commands
@@ -101,6 +108,9 @@ def main():
 
     elif args.command == 'flush':
         flush(args)
+
+    elif args.command == 'join':
+        join_network(args)
 
     elif args.command == 'update':
         shell = Cilparser(args)

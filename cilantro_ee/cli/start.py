@@ -171,15 +171,28 @@ def setup_node():
         except:
             print('Invalid format! Try again.')
 
+    join_or_start = ''
+    while join_or_start not in ['J', 'S']:
+        join_or_start = input('(J)oin or (S)tart: ').upper()
+
     bootnodes = []
-    bootnode = ''
-    while len(bootnodes) < 1 or bootnode != '':
-        bootnode = input('Enter bootnodes as IP string. Press Enter twice to continue: ')
-        if is_valid_ip(bootnode):
-            print(f'Added {bootnode}.')
-            bootnodes.append(bootnode)
-        elif bootnode != '':
-            print(f'Invalid IP string: {bootnode}')
+    mn_seed = None
+    if join_or_start == 'S':
+        bootnode = ''
+        while len(bootnodes) < 1 or bootnode != '':
+            bootnode = input('Enter bootnodes as IP string. Press Enter twice to continue: ')
+            if is_valid_ip(bootnode):
+                print(f'Added {bootnode}.')
+                bootnodes.append(bootnode)
+            elif bootnode != '':
+                print(f'Invalid IP string: {bootnode}')
+    else:
+        while mn_seed is None:
+            mn_ip = input('Enter masternode as IP string: ')
+            if is_valid_ip(mn_ip):
+                mn_seed = mn_ip
+            else:
+                print(f'Invalid IP string: {mn_seed}')
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
@@ -201,6 +214,7 @@ def setup_node():
             bootnodes=bootnodes,
             constitution=const,
             webserver_port=18080,
+            mn_seed=mn_seed
         )
     elif node_type == 'D':
         n = Delegate(
@@ -209,6 +223,52 @@ def setup_node():
             socket_base=socket_base,
             bootnodes=bootnodes,
             constitution=const,
+            mn_seed=mn_seed
+        )
+
+    loop = asyncio.get_event_loop()
+    asyncio.async(n.start())
+    loop.run_forever()
+
+
+def join_network(args):
+    assert args.node_type == 'masternode' or args.node_type == 'delegate', \
+        'Provide node type as "masternode" or "delegate"'
+
+    sk = bytes.fromhex(args.key)
+
+    wallet = Wallet(seed=sk)
+
+    const = resolve_constitution(args.constitution)
+
+    mn_seed = args.seed
+
+    ip_str = requests.get('http://api.ipify.org').text
+    socket_base = f'tcp://{ip_str}'
+
+    # Start rocks
+    start_rocks()
+    print('starting rocks')
+
+    if args.node_type == 'masternode':
+        # Start mongo
+        start_mongo()
+
+        n = Masternode(
+            wallet=wallet,
+            ctx=zmq.asyncio.Context(),
+            socket_base=socket_base,
+            constitution=const,
+            webserver_port=args.webserver_port,
+            mn_seed=mn_seed
+        )
+    elif args.node_type == 'delegate':
+        n = Delegate(
+            wallet=wallet,
+            ctx=zmq.asyncio.Context(),
+            socket_base=socket_base,
+            constitution=const,
+            mn_seed=mn_seed
         )
 
     loop = asyncio.get_event_loop()
