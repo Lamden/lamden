@@ -186,6 +186,7 @@ class Parameters:
             results = loop.run_until_complete(tasks)
 
         for r in results:
+            self.log.info(r)
             if r is not None:
                 _r = json.loads(r)
 
