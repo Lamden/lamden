@@ -156,10 +156,12 @@ class Node:
             self.socket_authenticator.sync_certs()
 
             if update_mn:
+                self.log.info(f'Adding on deck master {mn}')
                 self.socket_authenticator.add_verifying_key(mn)
                 self.on_deck_master = mn
 
             if update_del:
+                self.log.info(f'Adding on deck delegate {dl}')
                 self.socket_authenticator.add_verifying_key(dl)
                 self.on_deck_master = dl
 
