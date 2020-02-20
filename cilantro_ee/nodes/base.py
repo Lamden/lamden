@@ -141,6 +141,9 @@ class Node:
         mn = self.elect_masternodes.quick_read('top_candidate')
         dl = self.elect_delegates.quick_read('top_candidate')
 
+        self.log.info(f'Top MN is {mn}')
+        self.log.info(f'Top DL is {dl}')
+
         update_mn = self.on_deck_master != mn and mn is not None
         update_del = self.on_deck_delegate != dl and dl is not None
 
