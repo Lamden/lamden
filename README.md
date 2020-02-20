@@ -7,7 +7,7 @@
 ### Install Pip3
 ```bash
 sudo apt-get update
-sudo apt-get python3-pip -y
+sudo apt-get install python3-pip -y
 ```
 
 ### Install RocksDB
