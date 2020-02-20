@@ -190,6 +190,9 @@ class Parameters:
             if r is not None:
                 _r = json.loads(r)
 
+                if len(_r) == 0:
+                    break
+
                 vk, socket = [(k, v) for k, v in _r.items()][0]
 
                 self.log.info(f'Found {vk} : {socket}')
