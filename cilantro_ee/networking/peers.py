@@ -73,6 +73,7 @@ class PeerServer(reqrep.RequestReplyService):
         self.log = get_logger('PeerService')
 
     def handle_msg(self, msg):
+        self.log.info(f'Got msg: {msg}')
         msg = msg.decode()
         command, args = json.loads(msg)
 
