@@ -156,7 +156,7 @@ class Node:
             self.current_delegates = deepcopy(self.contacts.delegates)
 
         if update_mn or update_del or nodes_changed:
-            self.socket_authenticator.sync_certs()
+            #self.socket_authenticator.sync_certs()
 
             if update_mn:
                 self.log.info(f'Adding on deck master {mn}')
