@@ -241,7 +241,7 @@ def join_network(args):
 
     const = resolve_constitution(args.constitution)
 
-    mn_seed = args.mn_seed
+    mn_seed = f'tcp://{args.mn_seed}'
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
