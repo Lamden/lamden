@@ -132,6 +132,8 @@ class Network:
         join_message = ['join', (self.wallet.verifying_key().hex(), self.socket_base)]
         join_msg = json.dumps(join_message).encode()
 
+        self.log.info(f'mn seed: {self.mn_seed}')
+
         master_socket = self.params.resolve(
             self.mn_seed,
             ServiceType.PEER
