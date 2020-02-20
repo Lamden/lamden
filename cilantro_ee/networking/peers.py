@@ -102,6 +102,7 @@ class PeerServer(reqrep.RequestReplyService):
 
             await asyncio.sleep(0)
             if responded_vk is None:
+                self.log.info(f'{vk} never responded...')
                 return
 
             if responded_vk.hex() == vk:
