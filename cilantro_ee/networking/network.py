@@ -137,6 +137,8 @@ class Network:
             ServiceType.PEER
         )
 
+        self.log.info(f'Sending {join_msg} for {str(master_socket)}')
+
         await services.get(
             master_socket, msg=join_msg, ctx=self.ctx, timeout=1000
         )
