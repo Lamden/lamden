@@ -77,15 +77,16 @@ class PeerServer(reqrep.RequestReplyService):
 
             if responded_vk.hex() == vk:
                 # Valid response
-                self.log.info(f'{vk} has joined the network as {struct.strip_service(str(ip))}')
-                self.table[vk] = struct.strip_service(str(ip))
+                ip = struct.strip_service(str(ip))
+                self.log.info(f'{vk} has joined the network as {ip}')
+                self.table[vk] = ip
 
                 # Publish a message that a _new node has joined
                 msg = ['join', (vk, ip)]
                 jmsg = json.dumps(msg, cls=struct.SocketEncoder).encode()
                 await self.event_publisher.send(jmsg)
 
-                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': str(ip)}, cls=struct.SocketEncoder).encode()
+                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': ip}, cls=struct.SocketEncoder).encode()
                 await self.event_publisher.send(second_msg)
 
     async def process_event_subscription_queue(self):

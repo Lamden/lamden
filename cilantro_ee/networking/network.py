@@ -160,14 +160,14 @@ class Network:
 
         self.log.info(f'Got contacts: {contacts}')
 
-        self.peer_service.table.data = contacts
+        self.peer_service.table = contacts
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
                                                    ctx=self.ctx, timeout=1000)
 
         for ip, vk in responses.items():
-            self.table.peers[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
+            self.table[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
             self.log.error(f'Added {struct.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
@@ -175,7 +175,7 @@ class Network:
 
         # Ping everyone discovered that you've joined
 
-        current_nodes = deepcopy(self.table.peers)
+        current_nodes = deepcopy(self.table)
         for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
             join_message = json.dumps(join_message, cls=struct.SocketEncoder).encode()
@@ -198,8 +198,8 @@ class Network:
         while masternode_quorum_required > 0 or delegate_quorum_required > 0:
             # Create task lists
             self.log.info('Need {} MNs and {} DELs to begin...'.format(
-                masternodes_to_find,
-                delegates_to_find
+                masternode_quorum_required,
+                delegate_quorum_required
             ))
 
             master_crawl = [self.find_node(client_address=random.choice(initial_peers),
@@ -249,9 +249,9 @@ class Network:
 
         # Update the peer table with the _new nodes
         self.log.info(nodes)
-        self.table.peers.update(nodes)
+        self.table.update(nodes)
 
-        self.log.info(f'Peer table now: {self.table.peers}')
+        self.log.info(f'Peer table now: {self.table}')
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():
@@ -269,7 +269,8 @@ class Network:
         if str(client_address) == str(self.peer_service_address) or \
                 vk_to_find == self.wallet.verifying_key().hex() or \
                 client_address is None:
-            response = self.table.find(vk_to_find)
+
+            response = {vk_to_find: self.table.get(vk_to_find)} if self.table.get(vk_to_find) is not None else self.table
 
         # Otherwise, send out a network request
         else:
