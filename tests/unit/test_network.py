@@ -40,6 +40,7 @@ def make_ipc(p):
     except:
         pass
 
+
 class TestNetworkService(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
@@ -90,13 +91,14 @@ class TestNetworkService(TestCase):
         loop.run_until_complete(tasks)
 
         expected_dict = {
-            w1.verifying_key().hex(): 'tcp://127.0.0.1:10999',
-            w2.verifying_key().hex(): 'tcp://127.0.0.1:11999',
-            w3.verifying_key().hex(): 'tcp://127.0.0.1:12999',
-            w4.verifying_key().hex(): 'tcp://127.0.0.1:13999'
+            w.verifying_key().hex(): 'tcp://0.0.0.0',
+            w1.verifying_key().hex(): 'tcp://127.0.0.1',
+            w2.verifying_key().hex(): 'tcp://127.0.0.1',
+            w3.verifying_key().hex(): 'tcp://127.0.0.1',
+            w4.verifying_key().hex(): 'tcp://127.0.0.1'
         }
 
-        self.assertDictEqual(n.table, expected_dict)
+        self.assertDictEqual(n.peer_service.table, expected_dict)
 
     def test_bootstrap_nodes_ipc(self):
         w = Wallet()
@@ -141,7 +143,7 @@ class TestNetworkService(TestCase):
             w4.verifying_key().hex(): 'ipc:///tmp/n4'
         }
 
-        self.assertDictEqual(n.table, expected_dict)
+        self.assertDictEqual(n.peer_service.table, expected_dict)
 
     def test_peer_server_init(self):
         w = Wallet()
@@ -321,14 +323,14 @@ class TestNetworkService(TestCase):
         p1 = Network(wallet=w1, socket_base='tcp://127.0.0.1', ctx=self.ctx)
 
         w2 = Wallet()
-        d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10999'), pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
+        d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10000'), pepper=PEPPER.encode(), ctx=self.ctx, linger=200)
 
         # 1. start network
         # 2. start discovery of other side
         # 3. send join request
         # 4. check to see if the data has been added
 
-        join_message = ['join', (w2.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
+        join_message = ['join', (w2.verifying_key().hex(), 'tcp://127.0.0.1')]
         join_message = json.dumps(join_message).encode()
 
         tasks = asyncio.gather(
@@ -342,7 +344,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertEqual(p1.peer_service.table.peers[w2.verifying_key().hex()], 'tcp://127.0.0.1:10999')
+        self.assertEqual(p1.peer_service.table[w2.verifying_key().hex()], 'tcp://127.0.0.1')
 
     def test_peer_table_updated_on_join_command_ipc(self):
         # Network params issue
@@ -438,11 +440,11 @@ class TestNetworkService(TestCase):
     def test_event_service_triggered_when_new_node_added(self):
         # Create Network service
         w1 = Wallet()
-        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://0.0.0.0')
 
         # Create Discovery Server
         w2 = Wallet()
-        d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10999'), pepper=PEPPER.encode(), ctx=self.ctx,
+        d = DiscoveryServer(wallet=w2, socket_id=_socket('tcp://127.0.0.1:10000'), pepper=PEPPER.encode(), ctx=self.ctx,
                             poll_timeout=2000, linger=200)
 
         # Create raw subscriber
@@ -474,7 +476,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
-        expected_list = ['join', [w2.verifying_key().hex(), 'tcp://127.0.0.1:10999']]
+        expected_list = ['join', [w2.verifying_key().hex(), 'tcp://127.0.0.1']]
         got_list = json.loads(res[-1].decode())
 
         self.assertListEqual(expected_list, got_list)
@@ -529,76 +531,37 @@ class TestNetworkService(TestCase):
 
         self.assertListEqual(expected_list, got_list)
 
-    def test_other_peers_add_new_nodes_when_join_event_occurs(self):
-        # Create Network service
-        w1 = Wallet()
-        n1 = NetworkParameters(peer_port=10001, event_port=10002, discovery_port=10999)
-        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
-
-        # Create Network service
-        w2 = Wallet()
-        n2 = NetworkParameters(peer_port=10003, event_port=10004)
-        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
-
-        p2.peer_service.event_service.add_subscription(_socket('tcp://127.0.0.1:10002'))
-
-        # Create Discovery Server
-        w3 = Wallet()
-        d = DiscoveryServer(wallet=w3, socket_id=_socket('tcp://127.0.0.1:10999'), pepper=PEPPER.encode(), ctx=self.ctx,
-                            poll_timeout=2000, linger=2000)
-
-        # TCP takes a bit longer to bind and is prone to dropping messages...
-        sleep(1)
-
-        # Construct the join RPC message
-        join_message = ['join', (w3.verifying_key().hex(), 'tcp://127.0.0.1:10999')]
-        join_message = json.dumps(join_message).encode()
-
-        tasks = asyncio.gather(
-            p1.peer_service.start(),
-            p2.peer_service.start(),
-            d.serve(),
-            services.get(_socket('tcp://127.0.0.1:10001'), msg=join_message, ctx=self.ctx, timeout=1000),
-            stop_server(p1.peer_service, 2),
-            stop_server(p2.peer_service, 2),
-            stop_server(d, 2),
-        )
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
-
-        self.assertTrue(w3.verifying_key().hex() in p2.peer_service.table.peers)
-
     def test_other_peers_add_new_nodes_when_join_event_occurs_ipc(self):
+        # N3 runs discovery server and pings N1
+        # N1 checks to see if N3 is valid, and if so, adds to their table and pings N2 about the new join
+
         # Create Network service
         w1 = Wallet()
-        n1 = NetworkParameters(peer_ipc='peers1', event_ipc='events1', discovery_ipc='discovery1')
-        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp', params=n1)
+        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp/n1')
 
         # Create Network service
         w2 = Wallet()
-        n2 = NetworkParameters(peer_ipc='peers2', event_port='events2')
-        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp', params=n2)
+        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='ipc:///tmp/n2')
 
-        p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/events1'))
+        p2.peer_service.event_service.add_subscription(_socket('ipc:///tmp/n1/events'))
 
         # Create Discovery Server
         w3 = Wallet()
-        d = DiscoveryServer(wallet=w3, socket_id=_socket('ipc:///tmp/discovery1'), pepper=PEPPER.encode(), ctx=self.ctx,
+        d = DiscoveryServer(wallet=w3, socket_id=_socket('ipc:///tmp/n3/discovery'), pepper=PEPPER.encode(), ctx=self.ctx,
                             poll_timeout=2000, linger=2000)
 
         # TCP takes a bit longer to bind and is prone to dropping messages...
         sleep(1)
 
         # Construct the join RPC message
-        join_message = ['join', (w3.verifying_key().hex(), 'ipc:///tmp/discovery1')]
+        join_message = ['join', (w3.verifying_key().hex(), 'ipc:///tmp/n3')]
         join_message = json.dumps(join_message).encode()
 
         tasks = asyncio.gather(
             p1.peer_service.start(),
             p2.peer_service.start(),
             d.serve(),
-            services.get(_socket('ipc:///tmp/peers1'), msg=join_message, ctx=self.ctx, timeout=1000),
+            services.get(_socket('ipc:///tmp/n1/peers'), msg=join_message, ctx=self.ctx, timeout=1000),
             stop_server(p1.peer_service, 2),
             stop_server(p2.peer_service, 2),
             stop_server(d, 2),
@@ -695,7 +658,7 @@ class TestNetworkService(TestCase):
         p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
 
         w2 = Wallet()
-        p1.table.peers[w2.verifying_key().hex()] = '9.9.9.9'
+        p1.peer_service.table[w2.verifying_key().hex()] = '9.9.9.9'
 
         async def get():
             return await p1.find_node(p1.peer_service_address, w2.verifying_key().hex())
@@ -711,7 +674,7 @@ class TestNetworkService(TestCase):
         p1 = Network(wallet=w1, ctx=self.ctx, socket_base='ipc:///tmp')
 
         w2 = Wallet()
-        p1.table[w2.verifying_key().hex()] = 'ipc:///tmp123'
+        p1.peer_service.table[w2.verifying_key().hex()] = 'ipc:///tmp123'
 
         async def get():
             return await p1.find_node(p1.peer_service_address, w2.verifying_key().hex())
@@ -822,63 +785,6 @@ class TestNetworkService(TestCase):
 
         self.assertIsNone(res[2])
 
-    def test_recursive_crawl_works_to_proper_depth(self):
-        # Create Network service
-        w1 = Wallet()
-        n1 = NetworkParameters(peer_port=10001, event_port=10002)
-        p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n1)
-
-        # Create Network service
-        w2 = Wallet()
-        n2 = NetworkParameters(peer_port=10003, event_port=10004)
-        p2 = Network(wallet=w2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n2)
-
-        # Create Network service
-        w3 = Wallet()
-        n3 = NetworkParameters(peer_port=10005, event_port=10006)
-        p3 = Network(wallet=w3, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n3)
-
-        # Create Network service
-        w4 = Wallet()
-        n4 = NetworkParameters(peer_port=10007, event_port=10008)
-        p4 = Network(wallet=w4, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n4)
-
-        # 2 tries <- info in this node should be returned
-        w5 = Wallet()
-
-        # Add node info in each peer service to 'chain' them together
-        p2.table[w3.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
-        p3.table[w4.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
-        p4.table[w5.verifying_key().hex()] = 'you found me!'
-
-        async def get():
-            return await p1.find_node(_socket('tcp://127.0.0.1:10003'), w5.verifying_key().hex(), retries=2)
-
-        async def stop(n: Network, s):
-            await asyncio.sleep(s)
-            n.peer_service.stop()
-
-        timeout = 0.3
-
-        tasks = asyncio.gather(
-            p1.peer_service.start(),
-            p2.peer_service.start(),
-            p3.peer_service.start(),
-            p4.peer_service.start(),
-            get(),
-            stop(p1, timeout),
-            stop(p2, timeout),
-            stop(p3, timeout),
-            stop(p4, timeout),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        print(res)
-
-        self.assertEqual(res[4].get(w5.verifying_key().hex()), 'you found me!')
-
     def test_recursive_crawl_works_to_proper_depth_ipc(self):
         # Create Network service
         n1 = '/tmp/n1'
@@ -918,12 +824,12 @@ class TestNetworkService(TestCase):
         w5 = Wallet()
 
         # Add node info in each peer service to 'chain' them together
-        p2.table[w3.verifying_key().hex()] = 'ipc:///tmp/n3'
-        p3.table[w4.verifying_key().hex()] = 'ipc:///tmp/n4'
-        p4.table[w5.verifying_key().hex()] = 'you found me!'
+        p2.peer_service.table[w3.verifying_key().hex()] = 'ipc:///tmp/n3'
+        p3.peer_service.table[w4.verifying_key().hex()] = 'ipc:///tmp/n4'
+        p4.peer_service.table[w5.verifying_key().hex()] = 'you found me!'
 
         async def get():
-            return await p1.find_node(_socket('ipc:///tmp/n2/peers'), w5.verifying_key().hex(), retries=2)
+            return await p1.find_node(_socket('ipc:///tmp/n2/peers'), w5.verifying_key().hex(), retries=3)
 
         async def stop(n: Network, s):
             await asyncio.sleep(s)
@@ -1079,8 +985,8 @@ class TestNetworkService(TestCase):
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n4)
 
         # Add various info to each so that a crawl is successful
-        mn2.table[dw1.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
-        d1.table[dw2.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
+        mn2.peer_service.table[dw1.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
+        d1.peer_service.table[dw2.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
 
         async def get():
             return await mn1.wait_for_quorum(2, 2, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -1108,9 +1014,9 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertIn(mnw2.verifying_key().hex(), mn1.table)
-        self.assertIn(dw1.verifying_key().hex(), mn1.table)
-        self.assertIn(dw2.verifying_key().hex(), mn1.table)
+        self.assertIn(mnw2.verifying_key().hex(), mn1.peer_service.table)
+        self.assertIn(dw1.verifying_key().hex(), mn1.peer_service.table)
+        self.assertIn(dw2.verifying_key().hex(), mn1.peer_service.table)
 
     def test_wait_for_quorum_with_initial_nodes_being_single_node_ipc(self):
         # 0 tries
@@ -1147,8 +1053,8 @@ class TestNetworkService(TestCase):
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}')
 
         # Add various info to each so that a crawl is successful
-        mn2.table[dw1.verifying_key().hex()] = 'ipc:///tmp/n3/peers'
-        d1.table[dw2.verifying_key().hex()] = 'ipc:///tmp/n4/peers'
+        mn2.peer_service.table[dw1.verifying_key().hex()] = 'ipc:///tmp/n3/peers'
+        d1.peer_service.table[dw2.verifying_key().hex()] = 'ipc:///tmp/n4/peers'
 
         async def get():
             return await mn1.wait_for_quorum(2, 2, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -1200,8 +1106,8 @@ class TestNetworkService(TestCase):
         n4 = NetworkParameters(peer_port=10007, event_port=10008)
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base='tcp://127.0.0.1', params=n4)
         # Add various info to each so that a crawl is successful
-        mn2.table[dw1.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
-        d1.table[dw2.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
+        mn2.peer_service.table[dw1.verifying_key().hex()] = 'tcp://127.0.0.1:10005'
+        d1.peer_service.table[dw2.verifying_key().hex()] = 'tcp://127.0.0.1:10007'
 
         async def get():
             return await mn1.wait_for_quorum(2, 2, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -1265,8 +1171,8 @@ class TestNetworkService(TestCase):
         d2 = Network(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}')
 
         # Add various info to each so that a crawl is successful
-        mn2.table[dw1.verifying_key().hex()] = 'ipc:///tmp/n3/peers'
-        d1.table[dw2.verifying_key().hex()] = 'ipc:///tmp/n4/peers'
+        mn2.peer_service.table[dw1.verifying_key().hex()] = 'ipc:///tmp/n3/peers'
+        d1.peer_service.table[dw2.verifying_key().hex()] = 'ipc:///tmp/n4/peers'
 
         async def get():
             return await mn1.wait_for_quorum(2, 2, [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
@@ -1374,6 +1280,10 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
         print(res[-1])
+
+        print(mn1.table)
+        print(mn1.peer_service.table)
+
         self.assertDictEqual(json.loads(res[-1]), mn1.table)
 
     def test_current_contacts_joins_mn_seed(self):

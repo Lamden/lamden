@@ -39,10 +39,6 @@ class Network:
         self.bootnodes = bootnodes
         self.ip = socket_base
 
-        self.table = {
-            self.wallet.verifying_key().hex(): socket_base
-        }
-
         # Peer Service Constants
         self.params = params
 
@@ -52,7 +48,9 @@ class Network:
         self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
         self.peer_service = PeerServer(self.peer_service_address,
                                        event_address=self.event_server_address,
-                                       table=self.table,
+                                       table={
+                                           self.wallet.verifying_key().hex(): socket_base
+                                       },
                                        wallet=self.wallet,
                                        ctx=self.ctx,
                                        poll_timeout=poll_timeout,
@@ -167,7 +165,7 @@ class Network:
                                                    ctx=self.ctx, timeout=1000)
 
         for ip, vk in responses.items():
-            self.table[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
+            self.peer_service.table[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
             self.log.error(f'Added {struct.strip_service(ip)} for {vk}')
 
         if not self.discovery_server.running:
@@ -175,7 +173,7 @@ class Network:
 
         # Ping everyone discovered that you've joined
 
-        current_nodes = deepcopy(self.table)
+        current_nodes = deepcopy(self.peer_service.table)
         for vk, ip in current_nodes.items():
             join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
             join_message = json.dumps(join_message, cls=struct.SocketEncoder).encode()
@@ -249,9 +247,9 @@ class Network:
 
         # Update the peer table with the _new nodes
         self.log.info(nodes)
-        self.table.update(nodes)
+        self.peer_service.table.update(nodes)
 
-        self.log.info(f'Peer table now: {self.table}')
+        self.log.info(f'Peer table now: {self.peer_service.table}')
 
         # Remove the nodes from the all_nodes list. Don't need to query them again
         for vk, _ in nodes.items():
@@ -270,7 +268,7 @@ class Network:
                 vk_to_find == self.wallet.verifying_key().hex() or \
                 client_address is None:
 
-            response = {vk_to_find: self.table.get(vk_to_find)} if self.table.get(vk_to_find) is not None else self.table
+            response = {vk_to_find: self.peer_service.table.get(vk_to_find)} if self.peer_service.table.get(vk_to_find) is not None else self.peer_service.table
 
         # Otherwise, send out a network request
         else:
@@ -292,7 +290,7 @@ class Network:
         # Recursive crawl goes 'retries' levels deep
         for vk, ip in response.items():
             return await self.find_node(
-                struct.SocketStruct(struct.Protocols.TCP, ip, DHT_PORT), vk_to_find, retries=retries - 1
+                self.params.resolve(ip, ServiceType.PEER), vk_to_find, retries=retries - 1
             )
 
     def stop(self):
