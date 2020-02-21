@@ -168,8 +168,8 @@ class Network:
             self.peer_service.table[vk] = struct.strip_service(ip)  # Should be stripped of port and tcp
             self.log.error(f'Added {struct.strip_service(ip)} for {vk}')
 
-        if not self.discovery_server.running:
-            asyncio.ensure_future(self.discovery_server.serve())
+        #if not self.discovery_server.running:
+        #    asyncio.ensure_future(self.discovery_server.serve())
 
         # Ping everyone discovered that you've joined
 
@@ -228,10 +228,10 @@ class Network:
 
         # At this point, start the discovery server if it's not already running because you are a masternode.
 
-        if not self.discovery_server.running:
-            asyncio.ensure_future(
-                self.discovery_server.serve()
-            )
+        #if not self.discovery_server.running:
+        #    asyncio.ensure_future(
+        #        self.discovery_server.serve()
+        #    )
 
         self.log.success('Quorum reached! Begin protocol services...')
 
