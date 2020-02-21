@@ -20,7 +20,10 @@ class RequestReplyService:
     async def serve(self):
         self.socket = self.ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.LINGER, self.linger)
-        self.socket.bind(self.address)
+        try:
+            self.socket.bind(self.address)
+        except zmq.ZMQError:
+            print(self.address)
 
         self.running = True
 
