@@ -59,6 +59,8 @@ class SBCInbox(SecureAsyncInbox):
     async def handle_msg(self, _id, msg):
         msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
 
+        self.log.info(f'Got message on SBCInbox')
+
         # Ignore bad message types
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
             return

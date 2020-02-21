@@ -1064,6 +1064,7 @@ class TestNetworkService(TestCase):
         async def stop(n: Network, s):
             await asyncio.sleep(s)
             n.peer_service.stop()
+            n.discovery_server.stop()
 
         timeout = 0.3
 
@@ -1204,9 +1205,9 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertIn(mnw2.verifying_key().hex(), mn1.table)
-        self.assertIn(dw1.verifying_key().hex(), mn1.table)
-        self.assertIn(dw2.verifying_key().hex(), mn1.table)
+        self.assertIn(mnw2.verifying_key().hex(), mn1.peer_service.table)
+        self.assertIn(dw1.verifying_key().hex(), mn1.peer_service.table)
+        self.assertIn(dw2.verifying_key().hex(), mn1.peer_service.table)
 
     # def test quorum made and another node wants to connect afterwards
 
@@ -1263,7 +1264,7 @@ class TestNetworkService(TestCase):
         mnw1 = Wallet()
         mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
 
-        mn1.table = {'a': 'b', 'c': 'd', 'e': 'f'}
+        mn1.peer_service.table = {'a': 'b', 'c': 'd', 'e': 'f'}
 
         ask_message = ['ask', '']
         ask_message = json.dumps(ask_message).encode()
@@ -1279,12 +1280,8 @@ class TestNetworkService(TestCase):
 
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
-        print(res[-1])
 
-        print(mn1.table)
-        print(mn1.peer_service.table)
-
-        self.assertDictEqual(json.loads(res[-1]), mn1.table)
+        self.assertDictEqual(json.loads(res[-1]), mn1.peer_service.table)
 
     def test_current_contacts_joins_mn_seed(self):
         n1 = '/tmp/n1'
@@ -1320,7 +1317,7 @@ class TestNetworkService(TestCase):
         mnw1 = Wallet()
         mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
 
-        mn1.peer_service.table.data = {'a': 'b', 'c': 'd', 'e': 'f'}
+        mn1.peer_service.table = {'a': 'b', 'c': 'd', 'e': 'f'}
 
         mnw2 = Wallet()
         n2 = '/tmp/n2'
@@ -1338,7 +1335,7 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertDictEqual(mn1.table.data, mn2.table.data)
+        self.assertDictEqual(mn1.peer_service.table, mn2.peer_service.table)
 
     def test_contacts_added_if_network_starts_up_and_mn_seed_provided(self):
         n1 = '/tmp/n1'
@@ -1347,7 +1344,7 @@ class TestNetworkService(TestCase):
         mnw1 = Wallet()
         mn1 = Network(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}')
 
-        mn1.peer_service.table.data = {'a': 'b', 'c': 'd', 'e': 'f'}
+        mn1.peer_service.table = {'a': 'b', 'c': 'd', 'e': 'f'}
 
         mnw2 = Wallet()
         n2 = '/tmp/n2'

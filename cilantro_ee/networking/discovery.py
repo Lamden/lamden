@@ -2,6 +2,7 @@ import zmq.asyncio
 
 import cilantro_ee.sockets.reqrep
 import cilantro_ee.sockets.struct
+from cilantro_ee.sockets.inbox import SecureAsyncInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.crypto.wallet import Wallet, _verify
 from cilantro_ee.sockets import services

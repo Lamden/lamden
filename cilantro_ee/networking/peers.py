@@ -86,9 +86,6 @@ class PeerServer(reqrep.RequestReplyService):
                 jmsg = json.dumps(msg, cls=struct.SocketEncoder).encode()
                 await self.event_publisher.send(jmsg)
 
-                second_msg = json.dumps({'event': 'node_online', 'vk': vk, 'ip': ip}, cls=struct.SocketEncoder).encode()
-                await self.event_publisher.send(second_msg)
-
     async def process_event_subscription_queue(self):
         self.event_queue_loop_running = True
 
@@ -96,10 +93,6 @@ class PeerServer(reqrep.RequestReplyService):
             if len(self.event_service.received) > 0:
                 message, sender = self.event_service.received.pop(0)
                 msg = json.loads(message.decode())
-
-                # Ignore event dictionaries
-                if isinstance(msg, dict):
-                    continue
 
                 command, args = msg
                 vk, ip = args

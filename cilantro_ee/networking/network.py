@@ -80,10 +80,10 @@ class Network:
         await self.peer_service.start()
 
         if discover:
-            if self.wallet.verifying_key().hex() in self.mn_to_find or self.mn_seed is not None:
-                asyncio.ensure_future(
-                    self.discovery_server.serve() # Start this when joining network so mn_seed can verify you
-                )
+            #if self.wallet.verifying_key().hex() in self.mn_to_find or self.mn_seed is not None:
+            asyncio.ensure_future(
+                self.discovery_server.serve() # Start this when joining network so mn_seed can verify you
+            )
             # Discover our bootnodes
 
             discovery_sockets = \
@@ -275,6 +275,10 @@ class Network:
             find_message = ['find', vk_to_find]
             find_message = json.dumps(find_message, cls=struct.SocketEncoder).encode()
             response = await services.get(client_address, msg=find_message, ctx=self.ctx, timeout=1000)
+
+            join_message = ['join', (self.wallet.verifying_key().hex(), self.socket_base)]
+            join_msg = json.dumps(join_message).encode()
+            asyncio.ensure_future(services.get(client_address, msg=join_msg, ctx=self.ctx, timeout=1000))
 
             if response is None:
                 return None
