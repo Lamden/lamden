@@ -54,12 +54,14 @@ python3 setup.py develop
 ### Setup and run Mongo
 ```
 mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip_all
-cd cilantro-enterprise/scripts
-python3 create_user.py
+# cd cilantro-enterprise/scripts
+# python3 create_user.py # nolonger needed
 ```
 
 ### Start Rocks (Python Driver) and fork the process
 ```
+pip3 install python-rocksdb
+
 rocks serve &
 ```
 
