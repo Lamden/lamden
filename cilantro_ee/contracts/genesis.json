@@ -28,7 +28,7 @@
 		},
 		{
 			"name": "upgrade",
-			"owner": "",
+			"owner": null,
 			"constructor_args": null
 		},
 		{
