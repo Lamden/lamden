@@ -209,4 +209,13 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
     if balance * stamp_to_tau < tx.payload.stampsSupplied:
         raise TransactionSenderTooFewStamps
 
+    # Prevent people from sending their entire balances for free by checking if that is what they are doing.
+    if tx.payload.contractName == 'currency' and tx.payload.functionName == 'transfer':
+        kwargs = decode(tx.payload.kwargs)
+        amount = kwargs.get('amount')
+
+        # If you have less than 2 transactions worth of tau after trying to send your amount, fail.
+        if ((balance - amount) * stamp_to_tau) / 3000 < 2:
+            raise TransactionSenderTooFewStamps
+
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)

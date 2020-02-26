@@ -35,7 +35,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionProcessorInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -54,7 +54,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -67,13 +67,13 @@ class TestTXValidity(TestCase):
                                 contract='currency',
                                 function='transfer',
                                 kwargs={'amount': 10, 'to': 'jeff'},
-                                stamps=0,
+                                stamps=10000,
                                 processor=expected_processor,
                                 nonce=0)
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -97,7 +97,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(x.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionSignatureInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -120,7 +120,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionPOWProofInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -139,7 +139,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionSenderTooFewStamps):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -168,7 +168,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         balances_key = '{}{}{}{}{}'.format('currency',
                                            config.INDEX_SEPARATOR,
@@ -205,7 +205,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -219,7 +219,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -233,7 +233,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -247,7 +247,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -273,7 +273,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -287,7 +287,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -301,7 +301,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -315,7 +315,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -342,7 +342,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -356,7 +356,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -370,7 +370,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -384,7 +384,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
                              strict=False)
@@ -411,7 +411,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
                              strict=False)
@@ -426,7 +426,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
@@ -454,7 +454,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -468,7 +468,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -498,7 +498,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -527,7 +527,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -557,7 +557,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -585,7 +585,7 @@ class TestTXValidity(TestCase):
 
             tx.sign(w.signing_key())
             tx_bytes = tx.serialize()
-            tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+            tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -599,7 +599,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
