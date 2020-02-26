@@ -603,3 +603,88 @@ class TestTXValidity(TestCase):
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_all_money_fails(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+        stamp_to_tau = self.nonce_manager.get_var('stamp_cost', 'S', ['value'])
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 500000, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionSenderTooFewStamps):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_most_money_fails_if_only_one_transfer_in_stamps_left(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+        stamp_to_tau = self.nonce_manager.get_var('stamp_cost', 'S', ['value'])
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 499999, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionSenderTooFewStamps):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_most_money_doesnt_fail_if_enough_stamps(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 499990, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
