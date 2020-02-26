@@ -4,6 +4,7 @@ from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from cilantro_ee.storage import BlockchainDriver
+from cilantro_ee.storage import CilantroStorageDriver
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting import config
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
@@ -61,7 +62,16 @@ def make_bad_tx():
 class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
-        self.ws = WebServer(wallet=self.w, contracting_client=ContractingClient())
+
+        self.blocks = CilantroStorageDriver(key=self.w.verifying_key())
+        self.driver = BlockchainDriver()
+
+        self.ws = WebServer(
+            wallet=self.w,
+            contracting_client=ContractingClient(),
+            blocks=self.blocks,
+            driver=n
+        )
         self.ws.client.flush()
         self.ws.blocks.drop_collections()
 

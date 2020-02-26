@@ -225,7 +225,7 @@ class WebServer:
         if key is not None:
             key = key.split(',')
 
-        k = self.client.raw_driver.make_key(key=contract, field=variable, args=key)
+        k = self.client.raw_driver.make_key(contract=contract, variable=variable, args=key)
         value = self.client.raw_driver.get(k)
 
         if value is None:
