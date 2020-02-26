@@ -44,7 +44,6 @@ def trigger_upgrade(pepper, initiator_vk):
         upg_init_time.set(now)
         upg_pepper.set(pepper)
         upg_window.set(datetime.Timedelta(seconds=3000000000))
-        upg_consensus.set(False)
         mn_vote.set(0)
         dl_vote.set(0)
 
@@ -77,21 +76,23 @@ def ready(vk):
         if vk in election_house.current_value_for_policy('delegates'):
             dl_rdy.set(dl_rdy.get() + 1)
 
-def check_vote_state():
-    mn = tot_mn.get()
-    dl = tot_dl.get()
 
-    if (mn_vote.get() > (mn*2)/3) and (dl_vote.get() > (dl*2)/3):
+def check_vote_state():
+    required_mn = int((tot_mn.get() * 2) / 3)
+    required_dl = int((tot_dl.get() * 2) / 3)
+
+    if (mn_vote.get() > required_mn) and (dl_vote.get() > required_dl):
         upg_consensus.set(True)
 
-    if (mn_rdy.get() > (mn * 2) / 3) and (dl_rdy.get() > (dl * 2) / 3):
+    if (mn_rdy.get() > required_mn) and (dl_rdy.get() > required_dl):
         nw_ready.set(True)
-
 
 
 def reset_contract():
     upg_init_time.set(None)
+    upg_consensus.set(False)
     upg_lock.set(False)
+    nw_ready.set(False)
 
 
 def assert_parallel_upg_check():
