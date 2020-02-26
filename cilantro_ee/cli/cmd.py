@@ -12,17 +12,66 @@ class Cilparser:
 
         print(self.pkg, self.vote, self.ready)
 
-    def trigger(self, vk=None):
-        print('pkg ->', self.pkg)
-        return True
+    def trigger(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        pepper = 'RAMDOM' # TODO replace with verified pepper pkg
+        kwargs = {'pepper': pepper,'vk': my_wallet.verifying_key()}
+        vk = my_wallet.verifying_key()
 
-    def vote(self, vk=None):
-        print('vote ->', vk)
-        return True
+        #TODO bail out if vk is not in list of master nodes
 
-    def check_ready_quorum(self, vk=None):
-        print('ready ->', vk)
-        return True
+        pack = TransactionBuilder(
+            sender=vk,
+            contract='upgrade',
+            function='trigger_upgrade',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=vk,
+            nonce=0
+        )
+
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
+
+    def vote(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        kwargs = {'vk': my_wallet.verifying_key()}
+
+        pack = TransactionBuilder(
+            sender=my_wallet.verifying_key(),
+            contract='upgrade',
+            function='vote',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=my_wallet.verifying_key(),
+            nonce=0
+        )
+
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
+
+    def check_ready_quorum(self, sk=None):
+        my_wallet = Wallet.from_sk(sk=sk)
+        kwargs = {'vk': my_wallet.verifying_key()}
+
+        pack = TransactionBuilder(
+            sender=my_wallet.verifying_key(),
+            contract='upgrade',
+            function='check_vote_state',
+            kwargs=kwargs,
+            stamps=1_000_000,
+            processor=my_wallet.verifying_key(),
+            nonce=0
+        )
+
+        pack.sign(my_wallet.signing_key())
+        m = pack.serialize()
+
+        return m
 
 
 def flush(args):
@@ -114,17 +163,16 @@ def main():
 
     elif args.command == 'update':
         shell = Cilparser(args)
-
         if args.pkg_hash:
-            shell.trigger(vk='asdfadf')
+            shell.trigger(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
             # execute upgrade contract
 
         if args.vote:
-            res = shell.vote(vk='asdfadf')
+            shell.vote(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
 
         if args.ready:
             print(args)
-            res = shell.check_ready_quorum(vk='sdfafda')
+            shell.check_ready_quorum(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
 
 
 if __name__ == '__main__':
