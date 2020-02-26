@@ -78,6 +78,10 @@ class Delegate(Node):
         # self.pending_sbcs.clear()
         self.nbn_inbox.update_signers()
 
+    # def process_upg_msg(self):
+    # possibly for ready
+    #     pass
+
     def filter_work(self, work):
         filtered_work = []
         for tx_batch in work:
@@ -129,6 +133,7 @@ class Delegate(Node):
         if self.driver.latest_block_num == 0:
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
+            self.version_check()
 
         while self.running:
             filtered_work = await self.acquire_work()

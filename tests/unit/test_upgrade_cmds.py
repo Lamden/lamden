@@ -16,7 +16,6 @@ class ParserTest(unittest.TestCase):
         args = self.parser.parse_args(['update'])
         dict = args.__dict__
 
-        print(dict)
         self.assertEqual(len(dict), 3)
         self.assertEqual(dict['pkg_hash'], None)
         self.assertEqual(dict['vote'], False)
@@ -25,8 +24,6 @@ class ParserTest(unittest.TestCase):
     def test_update_trigger(self):
         args = self.parser.parse_args(['update', '-t', 'new_pepper'])
         dict = args.__dict__
-
-        print(dict)
 
         self.assertEqual(dict['pkg_hash'], 'new_pepper')
         self.assertEqual(dict['vote'], False)
@@ -40,7 +37,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(dict['ready'], False)
 
     def test_update_ready(self):
-        args = self.parser.parse_args(['update', '-v'])
+        args = self.parser.parse_args(['update', '-r'])
         dict = args.__dict__
         self.assertEqual(dict['pkg_hash'], None)
         self.assertEqual(dict['vote'], False)

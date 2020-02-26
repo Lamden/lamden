@@ -40,6 +40,9 @@ class Masternode(Node):
             wallet=self.wallet
         )
 
+        # Network upgrade flag
+        self.active_upgrade = False
+
     async def start(self):
         await super().start()
         # Start block server to provide catchup to other nodes
@@ -123,7 +126,11 @@ class Masternode(Node):
     async def send_work(self):
         # Else, batch some more txs
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
-        tx_batch = self.tx_batcher.pack_current_queue()
+
+        if self.active_upgrade is False:
+            tx_batch = self.tx_batcher.pack_current_queue()
+        else:
+            self.log.info('Enqueue stopped network upgrading')
 
         await self.parameters.refresh()
 
@@ -170,7 +177,7 @@ class Masternode(Node):
             
             self.driver.reads.clear()
             self.driver.pending_writes.clear()
-
+            self.version_check()
             self.update_sockets()
 
             # STORE IT IN THE BACKEND
