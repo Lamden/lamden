@@ -113,12 +113,12 @@ if __name__ == '__main__':
     shell = Cilparser()
 
     if args.pkg_hash:
-        shell.trigger(sk='asdfadf')
+        shell.trigger(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
         # execute upgrade contract
 
     if args.vote:
-        res = shell.vote(sk='asdfadf')
+        res = shell.vote(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
 
     if args.ready:
         print(args)
-        res = shell.check_ready_quorum(sk='sdfafda')
+        res = shell.check_ready_quorum(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
