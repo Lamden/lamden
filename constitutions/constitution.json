@@ -1,0 +1,6 @@
+{
+  "masternodes": [0273b7051a137d1a5ee3d615cad20e8573ec2615da69c845085d6c6e45200482],
+  "masternode_min_quorum": 1,
+  "delegates": [b6c26304d802140992bcd040538c5e9c2bc85644b620260dca838d5e91f0fdaa],
+  "delegate_min_quorum": 1
+}
