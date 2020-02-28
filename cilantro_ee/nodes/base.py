@@ -72,10 +72,20 @@ class Node:
 
         self.version_state = self.client.get_contract('upgrade')
         self.active_upgrade = self.version_state.quick_read('upg_lock')
-        self.all_votes = self.version_state.quick_read('tol_mn') + self.version_state.quick_read('tot_dl')
+
+        tol_mn = self.version_state.quick_read('tol_mn')
+        tot_dl = self.version_state.quick_read('tot_dl')
+
+        if tol_mn is None:
+            tol_mn = 0
+
+        if tot_dl is None:
+            tot_dl = 0
+
+        self.all_votes = tol_mn + tot_dl
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
-        self.pending_cnt = self.all_votes - self.vote_cnt
+        #self.pending_cnt = self.all_votes - self.vote_cnt
 
 
         # stuff
