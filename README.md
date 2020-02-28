@@ -10,6 +10,11 @@ sudo apt-get update
 sudo apt-get install python3-pip -y
 ```
 
+### Other Pip3 PKG
+'''
+pip3 install --upgrade pip setuptools
+'''
+
 ### Install RocksDB
 ```bash
 sudo apt-get install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libbz2-dev -y
