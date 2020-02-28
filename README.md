@@ -10,8 +10,8 @@ sudo apt-get update
 sudo apt-get install python3-pip -y
 ```
 
-### Other Pip3 PKG
-'''
+### Other Pip3 Pkg
+'''bash
 pip3 install --upgrade pip setuptools
 '''
 
