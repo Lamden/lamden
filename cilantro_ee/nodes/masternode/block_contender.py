@@ -49,11 +49,12 @@ class SBCIndexGreaterThanPossibleError(SBCException):
 
 
 class SBCInbox(SecureAsyncInbox):
-    def __init__(self, driver: BlockchainDriver, expected_subblocks=4, *args, **kwargs):
+    def __init__(self, driver: BlockchainDriver, expected_subblocks=4, debug=False, *args, **kwargs):
         self.q = []
         self.driver = driver
         self.expected_subblocks = expected_subblocks
         self.log = get_logger('SBC')
+        self.log.propagate = debug
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):

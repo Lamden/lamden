@@ -21,7 +21,7 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=False):
 
         self.driver = driver
         self.log = get_logger('NODE')
@@ -85,7 +85,7 @@ class Node:
         self.all_votes = tol_mn + tot_dl
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
-        #self.pending_cnt = self.all_votes - self.vote_cnt
+        # self.pending_cnt = self.all_votes - self.vote_cnt
 
 
         # stuff
