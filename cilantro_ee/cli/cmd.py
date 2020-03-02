@@ -1,77 +1,7 @@
 import argparse
 from cilantro_ee.cli.start import start_node, setup_node, join_network
-
+from cilantro_ee.cil.update import verify_access, verify_pkg
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
-
-
-class Cilparser:
-    def __init__(self, args):
-        self.pkg = args.pkg_hash
-        self.vote = args.vote
-        self.ready = args.ready
-
-        print(self.pkg, self.vote, self.ready)
-
-    def trigger(self, sk=None):
-        my_wallet = Wallet.from_sk(sk=sk)
-        pepper = 'RAMDOM' # TODO replace with verified pepper pkg
-        kwargs = {'pepper': pepper,'vk': my_wallet.verifying_key()}
-        vk = my_wallet.verifying_key()
-
-        #TODO bail out if vk is not in list of master nodes
-
-        pack = TransactionBuilder(
-            sender=vk,
-            contract='upgrade',
-            function='trigger_upgrade',
-            kwargs=kwargs,
-            stamps=1_000_000,
-            processor=vk,
-            nonce=0
-        )
-
-        pack.sign(my_wallet.signing_key())
-        m = pack.serialize()
-
-        return m
-
-    def vote(self, sk=None):
-        my_wallet = Wallet.from_sk(sk=sk)
-        kwargs = {'vk': my_wallet.verifying_key()}
-
-        pack = TransactionBuilder(
-            sender=my_wallet.verifying_key(),
-            contract='upgrade',
-            function='vote',
-            kwargs=kwargs,
-            stamps=1_000_000,
-            processor=my_wallet.verifying_key(),
-            nonce=0
-        )
-
-        pack.sign(my_wallet.signing_key())
-        m = pack.serialize()
-
-        return m
-
-    def check_ready_quorum(self, sk=None):
-        my_wallet = Wallet.from_sk(sk=sk)
-        kwargs = {'vk': my_wallet.verifying_key()}
-
-        pack = TransactionBuilder(
-            sender=my_wallet.verifying_key(),
-            contract='upgrade',
-            function='check_vote_state',
-            kwargs=kwargs,
-            stamps=1_000_000,
-            processor=my_wallet.verifying_key(),
-            nonce=0
-        )
-
-        pack.sign(my_wallet.signing_key())
-        m = pack.serialize()
-
-        return m
 
 
 def flush(args):
@@ -162,17 +92,22 @@ def main():
         join_network(args)
 
     elif args.command == 'update':
-        shell = Cilparser(args)
+
+        my_wallet = verify_access()
         if args.pkg_hash:
-            shell.trigger(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
-            # execute upgrade contract
+            result = verify_pkg(args.pkg_hash)
+            if result is True:
+                print('Cilantro has same version running')
+            else:
+                vk = my_wallet.verifying_key()
+
 
         if args.vote:
-            shell.vote(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
+            #shell.vote(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
+            pass
 
         if args.ready:
-            print(args)
-            shell.check_ready_quorum(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
+            pass
 
 
 if __name__ == '__main__':
