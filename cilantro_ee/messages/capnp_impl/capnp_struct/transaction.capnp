@@ -8,8 +8,8 @@ struct Delta {
 }
 
 struct MetaData {
-    signature @1 :Data;
-    timestamp @2 :Float32;
+    signature @0 :Data;
+    timestamp @1 :Float32;
 }
 
 struct TransactionPayload {
