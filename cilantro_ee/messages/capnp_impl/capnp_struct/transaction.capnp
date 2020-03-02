@@ -8,7 +8,6 @@ struct Delta {
 }
 
 struct MetaData {
-    proof @0 :Data;         # raghu - can be eliminated
     signature @1 :Data;
     timestamp @2 :Float32;
 }

@@ -8,11 +8,12 @@ import zmq.asyncio
 import asyncio
 import pathlib
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
+from cilantro_ee.logger.base import get_logger
 
 
 class SocketAuthenticator:
     def __init__(self, wallet, contacts: VKBook, ctx: zmq.asyncio.Context,
-                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks'):
+                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks', debug=False):
 
         # Create the directory if it doesn't exist
 
@@ -26,6 +27,9 @@ class SocketAuthenticator:
         self.domain = domain
 
         self.loop = loop
+
+        self.log = get_logger('zmq.auth')
+        self.log.propagate = debug
 
         # This should throw an exception if the socket already exist
         try:
