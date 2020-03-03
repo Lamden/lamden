@@ -17,12 +17,18 @@ import capnp
 
 import ast
 import ssl
-import hashlib
 import asyncio
-
 
 log = get_logger("MN-WebServer")
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+
+class ByteEncoder(_json.JSONEncoder):
+    def default(self, o, *args):
+        if isinstance(o, bytes):
+            return o.hex()
+
+        return super().default(self, o)
 
 
 class WebServer:
@@ -87,9 +93,9 @@ class WebServer:
 
         # General Block Route
         self.app.add_route(self.get_block, '/blocks', methods=['GET'])
-        # TX Route
 
-#        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
+        # TX Route
+        self.app.add_route(self.get_tx, '/tx', methods=['GET'])
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -236,7 +242,7 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': value}, status=200)
+            return response.json({'value': value}, status=200, )
 
     async def iterate_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
@@ -280,5 +286,17 @@ class WebServer:
         if block is None:
             return response.json({'error': 'Block not found.'}, status=400)
 
-        return response.json(block)
+        return response.json(block, dumps=ByteEncoder().encode)
 
+    async def get_tx(self, request):
+        _hash = request.args.get('hash')
+
+        if _hash is not None:
+            tx = self.blocks.get_tx(bytes.fromhex(_hash))
+        else:
+            return response.json({'error': 'No tx hash provided.'}, status=400)
+
+        if tx is None:
+            return response.json({'error': 'Transaction not found.'}, status=400)
+
+        return response.json(tx, dumps=ByteEncoder().encode)

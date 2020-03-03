@@ -291,7 +291,7 @@ def get():
 
     def test_get_block_by_num_that_exists(self):
         block = {
-            'blockHash': 'a',
+            'blockHash': b'\123',
             'blockNum': 1,
             'data': 'woop'
         }
@@ -350,4 +350,19 @@ def get():
 
     def test_submit_transaction_error_if_tx_malformed(self):
         pass
+
+    def test_get_tx_by_hash_if_it_exists(self):
+        b = b'\x00' * 32
+
+        tx = {
+            'hash': b,
+            'some': 'data'
+        }
+
+        self.ws.blocks.put(tx, collection=self.ws.blocks.TX)
+
+        del tx['_id']
+
+        _, response = self.ws.app.test_client.get(f'/tx?hash={b.hex()}')
+        self.assertDictEqual(response.json, tx)
 
