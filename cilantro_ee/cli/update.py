@@ -3,6 +3,7 @@ import asyncio
 from getpass import getpass
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
+from scripts.pkg import verify_pkg
 
 
 async def cil_interface(mn, packed_data, sleep=2):
@@ -58,6 +59,12 @@ def trigger(pkg=None):
 
 def vote():
     my_wallet = verify_access()
+    pkg_check = verify_pkg()
+
+    if pkg_check is False:
+        print('Invalid package hash does not match')
+        return
+
     kwargs = {'vk': my_wallet.verifying_key()}
 
     pack = TransactionBuilder(
