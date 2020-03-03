@@ -29,10 +29,6 @@ def verify_access():
             print('Invalid format! Try again.')
 
 
-def verify_pkg(pkg):
-    return True
-
-
 def trigger(pkg=None):
 
     my_wallet = verify_access()
