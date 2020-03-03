@@ -86,7 +86,7 @@ class WebServer:
         self.app.add_route(self.get_latest_block_hash, '/latest_block_hash', methods=['GET'])
 
         # General Block Route
-
+        self.app.add_route(self.get_block, '/blocks', methods=['GET'])
         # TX Route
 
 #        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
@@ -266,17 +266,21 @@ class WebServer:
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash().hex()})
 
     async def get_block(self, request):
-        key = request.args.get('num') or request.args.get('hash')
+        num = request.args.get('num')
+        _hash = request.args.get('hash')
 
-        if key is not None:
-            block = self.blocks.get_block(key)
+        if num is not None:
+            block = self.blocks.get_block(int(num))
+        elif _hash is not None:
+            block = self.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400)
 
         if block is None:
-            return response.json({'error': f'Block not found with key {key}.'}, status=400)
+            return response.json({'error': 'Block not found.'}, status=400)
 
-        return response.json(_json.dumps(block))
+        return response.json(block)
+

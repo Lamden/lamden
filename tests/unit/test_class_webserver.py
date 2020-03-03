@@ -275,17 +275,61 @@ def get():
         _, response = self.ws.app.test_client.get('/latest_block')
         self.assertDictEqual(response.json, {'blockHash': 'abb', 'blockNum': 1000, 'data': 'woop2'})
 
+    def test_get_latest_block_num(self):
+        self.ws.driver.set_latest_block_num(1234)
+
+        _, response = self.ws.app.test_client.get('/latest_block_num')
+        self.assertDictEqual(response.json, {'latest_block_number': 1234})
+
+    def test_get_latest_block_hash(self):
+        h = b'\x00' * 32
+        self.ws.driver.set_latest_block_hash(h)
+
+        _, response = self.ws.app.test_client.get('/latest_block_hash')
+
+        self.assertDictEqual(response.json, {'latest_block_hash': h.hex()})
+
     def test_get_block_by_num_that_exists(self):
-        pass
+        block = {
+            'blockHash': 'a',
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        self.ws.blocks.put(block)
+
+        _, response = self.ws.app.test_client.get('/blocks?num=1')
+
+        del block['_id']
+
+        self.assertDictEqual(response.json, block)
 
     def test_get_block_by_num_that_doesnt_exist_returns_error(self):
-        pass
+        _, response = self.ws.app.test_client.get('/blocks?num=1000')
+
+        self.assertDictEqual(response.json, {'error': 'Block not found.'})
 
     def test_get_block_by_hash_that_exists(self):
-        pass
+        block = {
+            'blockHash': 'xxx',
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        self.ws.blocks.put(block)
+
+        del block['_id']
+
+        _, response = self.ws.app.test_client.get('/blocks?hash=xxx')
+        self.assertDictEqual(response.json, block)
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
-        pass
+        _, response = self.ws.app.test_client.get('/blocks?hash=zzz')
+        self.assertDictEqual(response.json, {'error': 'Block not found.'})
+
+    def test_get_block_no_args_returns_error(self):
+        _, response = self.ws.app.test_client.get('/blocks')
+        self.assertDictEqual(response.json, {'error': 'No number or hash provided.'})
 
     def test_bad_transaction_returns_a_TransactionException(self):
         _, response = self.ws.app.test_client.post('/', data=make_bad_tx())
