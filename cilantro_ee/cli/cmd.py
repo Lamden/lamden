@@ -93,9 +93,6 @@ def main():
 
     elif args.command == 'update':
 
-        my_wallet = verify_access()
-        vkey = my_wallet.verifying_key()
-
         if args.pkg_hash:
             result = verify_pkg(args.pkg_hash)
             if result is True:
