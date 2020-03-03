@@ -18,7 +18,7 @@ def verify_pkg(pkg):
     return True
 
 
-def trigger(self, vk=None, pkg=None):
+def trigger(vk=None, pkg=None):
     my_wallet = Wallet.from_sk(sk=sk)
     pepper = 'RAMDOM' # TODO replace with verified pepper pkg
     kwargs = {'pepper': pepper,'vk': my_wallet.verifying_key()}
@@ -38,10 +38,10 @@ def trigger(self, vk=None, pkg=None):
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
+    print(m)
 
-    return m
 
-def vote(self, vk=None):
+def vote(vk=None):
     my_wallet = Wallet.from_sk(sk=sk)
     kwargs = {'vk': my_wallet.verifying_key()}
 
@@ -58,9 +58,10 @@ def vote(self, vk=None):
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
 
-    return m
+    print(m)
 
-def check_ready_quorum(self, vk=None):
+
+def check_ready_quorum(vk=None):
     my_wallet = Wallet.from_sk(sk=sk)
     kwargs = {'vk': my_wallet.verifying_key()}
 
@@ -76,5 +77,4 @@ def check_ready_quorum(self, vk=None):
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
-
-    return m
+    print(m)

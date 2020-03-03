@@ -1,6 +1,6 @@
 import argparse
 from cilantro_ee.cli.start import start_node, setup_node, join_network
-from cilantro_ee.cil.update import verify_access, verify_pkg
+from cilantro_ee.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 
 
@@ -35,8 +35,8 @@ def setup_cilparser(parser):
     upd_parser.add_argument('-v', '--vote', action = 'store_true', default = False,
                             help='Bool : Register consent for network version upgrade')
 
-    upd_parser.add_argument('-r', '--ready', action = 'store_true', default = False,
-                            help='Bool : Notify network upgrade ready')
+    upd_parser.add_argument('-c', '--check', action = 'store_true', default = False,
+                            help='Bool : check current state of network')
 
     start_parser = subparser.add_parser('start')
 
@@ -94,20 +94,20 @@ def main():
     elif args.command == 'update':
 
         my_wallet = verify_access()
+        vkey = my_wallet.verifying_key()
+
         if args.pkg_hash:
             result = verify_pkg(args.pkg_hash)
             if result is True:
                 print('Cilantro has same version running')
             else:
-                vk = my_wallet.verifying_key()
-
+                trigger(vk=vkey, pkg=args.pkg_hash)
 
         if args.vote:
-            #shell.vote(sk='ad2c4ef0ef8c271fdfc948d5925f3d9313cce6910c137b469a7667461da10e7d')
-            pass
+            vote(vk=vkey)
 
-        if args.ready:
-            pass
+        if args.check:
+            check_ready_quorum(vk=vkey)
 
 
 if __name__ == '__main__':
