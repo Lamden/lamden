@@ -80,8 +80,15 @@ class WebServer:
         self.app.add_route(self.get_contracts, '/contracts', methods=['GET'])
         self.app.add_route(self.get_contract, '/contracts/<contract>', methods=['GET'])
 
-        # Block Explorer / Blockchain Routes
+        # Latest Block Routes
         self.app.add_route(self.get_latest_block, '/latest_block', methods=['GET', 'OPTIONS', ])
+        self.app.add_route(self.get_latest_block_number, '/latest_block_num', methods=['GET'])
+        self.app.add_route(self.get_latest_block_hash, '/latest_block_hash', methods=['GET'])
+
+        # General Block Route
+
+        # TX Route
+
 #        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
 
     async def start(self):
@@ -261,14 +268,15 @@ class WebServer:
     async def get_latest_block_hash(self, request):
         return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
 
-    async def get_block_by_number(self, request, number):
-        block = self.blocks.get_block(number)
-        if block is None:
-            return response.json({'error': 'Block at number {} does not exist.'.format(number)}, status=400)
-        return response.json(_json.dumps(block))
+    async def get_block(self, request):
+        key = request.args.get('num') or request.args.get('hash')
 
-    async def get_block_by_hash(self, request, _hash):
-        block = self.blocks.get_block(_hash)
+        if key is not None:
+            block = self.blocks.get_block(key)
+        else:
+            return response.json({'error': 'No number or hash provided.'}, status=400)
+
         if block is None:
-            return response.json({'error': 'Block with hash {} does not exist.'.format(_hash)}, status=400)
+            return response.json({'error': f'Block not found with key {key}.'}, status=400)
+
         return response.json(_json.dumps(block))
