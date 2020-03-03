@@ -16,7 +16,7 @@ class PeerServer(reqrep.RequestReplyService):
     def __init__(self, socket_id: struct.SocketStruct,
                  event_address: struct.SocketStruct,
                  table: dict, wallet: Wallet, ctx=zmq.Context,
-                 linger=500, poll_timeout=10):
+                 linger=500, poll_timeout=10, debug=False):
 
         super().__init__(socket_id=socket_id,
                          wallet=wallet,
@@ -36,6 +36,7 @@ class PeerServer(reqrep.RequestReplyService):
         self.params = parameters.NetworkParameters()
 
         self.log = get_logger('PeerService')
+        self.log.propagate = debug
 
     def get_vk(self, vk):
         if self.table.get(vk) is not None:

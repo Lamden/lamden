@@ -525,7 +525,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             contract='currency',
             function='approve',
             kwargs={
-                'amount': 10_000,
+                'amount': 100_000,
                 'to': 'elect_delegates'
             },
             sender=candidate
@@ -541,7 +541,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             contract='currency',
             function='approve',
             kwargs={
-                'amount': 10_000,
+                'amount': 100_000,
                 'to': 'elect_delegates'
             },
             sender=stu
@@ -565,7 +565,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
                 'policy': 'delegates',
                 'value': ('introduce_motion', 2)
             },
-            sender=o.masternodes[0].wallet
+            sender=o.delegates[0].wallet
         ))
 
         block_1.append(o.make_tx(
@@ -575,7 +575,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
                 'policy': 'delegates',
                 'value': ('vote_on_motion', True)
             },
-            sender=o.masternodes[0].wallet
+            sender=o.delegates[0].wallet
         ))
 
         block_1.append(o.make_tx(
@@ -585,7 +585,17 @@ class TestGovernanceOrchestration(unittest.TestCase):
                 'policy': 'delegates',
                 'value': ('vote_on_motion', True)
             },
-            sender=o.masternodes[1].wallet
+            sender=o.delegates[1].wallet
+        ))
+
+        block_1.append(o.make_tx(
+            contract='election_house',
+            function='vote',
+            kwargs={
+                'policy': 'delegates',
+                'value': ('vote_on_motion', True)
+            },
+            sender=o.delegates[2].wallet
         ))
 
         async def test():
@@ -600,7 +610,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
-        self.assertListEqual(o.delegates[0].contacts.masternodes, [
+        self.assertListEqual(o.delegates[0].contacts.delegates, [
             o.delegates[0].wallet.verifying_key().hex(),
             o.delegates[1].wallet.verifying_key().hex(),
             o.delegates[2].wallet.verifying_key().hex(),
