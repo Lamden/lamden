@@ -21,7 +21,7 @@ from copy import deepcopy
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=False):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True):
 
         self.driver = driver
         self.log = get_logger('NODE')

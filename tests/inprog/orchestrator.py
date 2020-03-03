@@ -156,7 +156,7 @@ async def send_tx_batch(masternode, txs, server='http://127.0.0.1'):
                 url=f'{server}:{masternode.webserver.port}/',
                 data=tx
             )
-            hashes.append(res)
+            # hashes.append(res)
 
     return hashes
 

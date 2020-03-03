@@ -184,8 +184,16 @@ class Masternode(Node):
             self.blocks.put(block, self.blocks.BLOCK)
             del block['_id']
 
+            self.store_txs(block)
+
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
+
+    def store_txs(self, block):
+        for subblock in block['subBlocks']:
+            for tx in subblock['transactions']:
+                self.blocks.put(tx, self.blocks.TX)
+                del tx['_id']
 
     async def process_blocks(self):
         while self.running:
