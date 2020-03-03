@@ -310,18 +310,26 @@ def get():
         self.assertDictEqual(response.json, {'error': 'Block not found.'})
 
     def test_get_block_by_hash_that_exists(self):
+        h = b'\123'
+
         block = {
-            'blockHash': 'xxx',
+            'blockHash': h,
             'blockNum': 1,
             'data': 'woop'
         }
 
         self.ws.blocks.put(block)
 
+        expected = {
+            'blockHash': h.hex(),
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
         del block['_id']
 
-        _, response = self.ws.app.test_client.get('/blocks?hash=xxx')
-        self.assertDictEqual(response.json, block)
+        _, response = self.ws.app.test_client.get(f'/blocks?hash={h.hex()}')
+        self.assertDictEqual(response.json, expected)
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
         _, response = self.ws.app.test_client.get('/blocks?hash=zzz')
@@ -359,10 +367,15 @@ def get():
             'some': 'data'
         }
 
+        expected = {
+            'hash': b.hex(),
+            'some': 'data'
+        }
+
         self.ws.blocks.put(tx, collection=self.ws.blocks.TX)
 
         del tx['_id']
 
         _, response = self.ws.app.test_client.get(f'/tx?hash={b.hex()}')
-        self.assertDictEqual(response.json, tx)
+        self.assertDictEqual(response.json, expected)
 

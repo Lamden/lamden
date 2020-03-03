@@ -279,7 +279,7 @@ class WebServer:
         if num is not None:
             block = self.blocks.get_block(int(num))
         elif _hash is not None:
-            block = self.blocks.get_block(_hash)
+            block = self.blocks.get_block(bytes.fromhex(_hash))
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400)
 
