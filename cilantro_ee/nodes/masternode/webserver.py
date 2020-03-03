@@ -6,7 +6,7 @@ import json as _json
 from contracting.client import ContractingClient
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
-
+from cilantro_ee.crypto.canonical import tx_hash_from_tx
 from cilantro_ee.crypto.transaction import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
     TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
@@ -152,9 +152,7 @@ class WebServer:
         log.info('Q TIME')
         self.queue.append(tx)
 
-        h = hashlib.sha3_256()
-        h.update(request.body)
-        tx_hash = h.digest()
+        tx_hash = tx_hash_from_tx(tx)
 
         return response.json({'success': 'Transaction successfully submitted to the network.',
                               'hash': tx_hash.hex()})

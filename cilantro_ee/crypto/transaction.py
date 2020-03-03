@@ -1,4 +1,3 @@
-from decimal import Decimal
 from cilantro_ee.crypto import wallet
 from contracting import config
 from cilantro_ee.storage import BlockchainDriver
