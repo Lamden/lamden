@@ -1,6 +1,20 @@
+import aiohttp
+import asyncio
 from getpass import getpass
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
+
+
+async def cil_interface(mn, packed_data, sleep=2):
+    async with aiohttp.ClientSession() as session:
+        r = await session.post(
+            url=f'http://127.0.0.1:{mn.webserver.port}/',
+            data=packed_data
+        )
+
+        result = await r.json()
+        await asyncio.sleep(sleep)
+        return result
 
 
 def verify_access():
@@ -18,10 +32,11 @@ def verify_pkg(pkg):
     return True
 
 
-def trigger(vk=None, pkg=None):
-    my_wallet = Wallet.from_sk(sk=sk)
-    pepper = 'RAMDOM' # TODO replace with verified pepper pkg
-    kwargs = {'pepper': pepper,'vk': my_wallet.verifying_key()}
+def trigger(pkg=None):
+
+    my_wallet = verify_access()
+    pepper = pkg  #TODO replace with verified pepper pkg
+    kwargs = {'pepper': pepper, 'vk': my_wallet.verifying_key()}
     vk = my_wallet.verifying_key()
 
     #TODO bail out if vk is not in list of master nodes
@@ -41,8 +56,8 @@ def trigger(vk=None, pkg=None):
     print(m)
 
 
-def vote(vk=None):
-    my_wallet = Wallet.from_sk(sk=sk)
+def vote():
+    my_wallet = verify_access()
     kwargs = {'vk': my_wallet.verifying_key()}
 
     pack = TransactionBuilder(
@@ -61,8 +76,8 @@ def vote(vk=None):
     print(m)
 
 
-def check_ready_quorum(vk=None):
-    my_wallet = Wallet.from_sk(sk=sk)
+def check_ready_quorum():
+    my_wallet = verify_access()
     kwargs = {'vk': my_wallet.verifying_key()}
 
     pack = TransactionBuilder(

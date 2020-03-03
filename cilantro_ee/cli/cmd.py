@@ -101,13 +101,13 @@ def main():
             if result is True:
                 print('Cilantro has same version running')
             else:
-                trigger(vk=vkey, pkg=args.pkg_hash)
+                trigger(pkg=args.pkg_hash)
 
         if args.vote:
-            vote(vk=vkey)
+            vote()
 
         if args.check:
-            check_ready_quorum(vk=vkey)
+            check_ready_quorum()
 
 
 if __name__ == '__main__':
