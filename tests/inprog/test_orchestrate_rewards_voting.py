@@ -292,7 +292,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         async def test():
 
             await o.start_network
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
             await send_tx_batch(o.masternodes[0], block_0)
             await asyncio.sleep(2)
             await send_tx_batch(o.masternodes[0], block_1)
