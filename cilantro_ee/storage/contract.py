@@ -82,7 +82,7 @@ class BlockchainDriver(ContractDriver):
         self.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.set_latest_block_hash(block['blockHash'])
+        self.set_latest_block_hash(block['hash'])
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):

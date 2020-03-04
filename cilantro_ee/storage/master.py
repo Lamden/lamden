@@ -32,20 +32,20 @@ class MasterStorage:
         if self.get_block(0) is None:
             self.put({
                 'blockNum': 0,
-                'blockHash': b'\x00' * 32,
+                'hash': b'\x00' * 32,
                 'blockOwners': [b'\x00' * 32]
             }, MasterStorage.BLOCK)
 
             self.put({
                 'blockNum': 0,
-                'blockHash': b'\x00' * 32,
+                'hash': b'\x00' * 32,
                 'blockOwners': [b'\x00' * 32]
             }, MasterStorage.INDEX)
 
     def q(self, v):
         if isinstance(v, int):
             return {'blockNum': v}
-        return {'blockHash': v}
+        return {'hash': v}
 
     def get_block(self, v=None):
         if v is None:
@@ -201,10 +201,10 @@ class DistributedMasterStorage(MasterStorage):
         assert len(nodes) > 0, 'Must have at least one block owner!'
 
         index = {'blockNum': b.get('blockNum'),
-                 'blockHash': b.get('blockHash'),
+                 'hash': b.get('hash'),
                  'blockOwners': nodes}
 
-        assert index['blockHash'] is not None and index['blockNum'] is not None, 'Block hash and number' \
+        assert index['hash'] is not None and index['blockNum'] is not None, 'Block hash and number' \
                                                                                  'must be provided!'
 
         return index
@@ -276,7 +276,7 @@ class CilantroStorageDriver(DistributedMasterStorage):
 
         if len(last_block) > 0:
             last_block = last_block[0]
-            last_hash = last_block.get('blockHash')
+            last_hash = last_block.get('hash')
             current_block_num = last_block.get('blockNum')
         else:
             last_hash = GENESIS_HASH

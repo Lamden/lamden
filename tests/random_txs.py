@@ -211,7 +211,7 @@ def random_block(txs=20, subblocks=2, block_num=1, prev_hash=b'\x00'*32) -> bloc
     sbs_capnp = [subblock_from_txs(sbs[i], i) for i in range(len(sbs))]
 
     block = blockdata_capnp.BlockData.new_message(
-        blockHash=secrets.token_bytes(32),
+        hash=secrets.token_bytes(32),
         blockNum=block_num,
         blockOwners=[secrets.token_bytes(32)],
         prevBlockHash=prev_hash,

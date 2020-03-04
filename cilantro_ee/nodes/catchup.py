@@ -52,7 +52,7 @@ class BlockServer(AsyncInbox):
             self.log.info(f'Block data: {block_dict}')
 
             if block_dict is not None:
-                block_hash = block_dict.get('blockHash')
+                block_hash = block_dict.get('hash')
                 block_num = block_dict.get('blockNum')
                 prev_hash = block_dict.get('prevBlockHash')
                 subblocks = block_dict.get('subBlocks')
@@ -62,7 +62,7 @@ class BlockServer(AsyncInbox):
                     reply = Message.get_signed_message_packed_2(
                         wallet=self.wallet,
                         msg_type=MessageType.BLOCK_DATA,
-                        blockHash=block_hash,
+                        hash=block_hash,
                         blockNum=block_num,
                         blockOwners=[],
                         prevBlockHash=prev_hash,
@@ -103,7 +103,7 @@ class BlockServer(AsyncInbox):
             reply = Message.get_signed_message_packed_2(
                 wallet=self.wallet,
                 msg_type=MessageType.LATEST_BLOCK_HASH_REPLY,
-                blockHash=self.driver.get_latest_block_hash()
+                hash=self.driver.get_latest_block_hash()
             )
 
             await self.return_msg(_id, reply)
@@ -200,12 +200,12 @@ class BlockFetcher:
             block_found = verify_block(
                 subblocks=block.subBlocks,
                 previous_hash=latest_hash,
-                proposed_hash=block.blockHash
+                proposed_hash=block.hash
             )
 
         if block is not None:
             block_dict = {
-                'blockHash': block.blockHash,
+                'hash': block.hash,
                 'blockNum': i,
                 'blockOwners': [],
                 'prevBlockHash': latest_hash,
@@ -237,7 +237,7 @@ class BlockFetcher:
             self.blocks.put(block_dict)
 
         self.state.update_with_block(block_dict)
-        self.state.set_latest_block_hash(block_dict['blockHash'])
+        self.state.set_latest_block_hash(block_dict['hash'])
 
         if block_dict['blockNum'] > self.state.latest_block_num:
             self.state.latest_block_num = block_dict['blockNum']
@@ -270,7 +270,7 @@ class BlockFetcher:
         # Finds all of the blocks that were processed while syncing
         while len(self.blocks_to_process) > 0:
             b = self.blocks_to_process.pop(0)
-            await self.find_and_store_block(b.blockNum, b.blockHash)
+            await self.find_and_store_block(b.blockNum, b.hash)
 
     # Secondary Catchup function. Called if a new block is created.
     async def intermediate_sync(self, block):
@@ -278,7 +278,7 @@ class BlockFetcher:
             self.blocks_to_process.append(block)
         else:
             # store block directly
-            await self.find_and_store_block(block.blockNum, block.blockHash)
+            await self.find_and_store_block(block.blockNum, block.hash)
 
     # Catchup for masternodes who already have storage and state is corrupted for some reason
     async def sync_blocks_with_state(self):

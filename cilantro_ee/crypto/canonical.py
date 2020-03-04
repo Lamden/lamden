@@ -48,7 +48,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
         block_hasher.update(encoded_sb)
 
     block = {
-        'blockHash': block_hasher.digest(),
+        'hash': block_hasher.digest(),
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': deserialized_subblocks
@@ -95,7 +95,7 @@ def block_is_skip_block(block: dict):
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     block = {
-        'blockHash': b'\xff' * 32,
+        'hash': b'\xff' * 32,
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': []
@@ -105,7 +105,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
 
 def get_genesis_block():
     block = {
-        'blockHash': b'\x00' * 32,
+        'hash': b'\x00' * 32,
         'blockNum': 1,
         'prevBlockHash': b'\x00' * 32,
         'subBlocks': []
