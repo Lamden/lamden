@@ -82,6 +82,7 @@ class WebServer:
 
         # State Routes
         self.app.add_route(self.get_methods, '/contracts/<contract>/methods', methods=['GET'])
+        self.app.add_route(self.get_variables, '/contracts/<contract>/variables')
         self.app.add_route(self.get_variable, '/contracts/<contract>/<variable>')
         self.app.add_route(self.get_contracts, '/contracts', methods=['GET'])
         self.app.add_route(self.get_contract, '/contracts/<contract>', methods=['GET'])
@@ -225,6 +226,31 @@ class WebServer:
             funcs.append({'name': func_name, 'arguments': kwargs})
 
         return response.json({'methods': funcs}, status=200)
+
+    async def get_variables(self, request, contract):
+        contract_code = self.client.raw_driver.get_contract(contract)
+
+        if contract_code is None:
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404)
+
+        tree = ast.parse(contract_code)
+
+        assigns = [n for n in ast.walk(tree) if isinstance(n, ast.Assign)]
+
+        variables = []
+        hashes = []
+
+        for assign in assigns:
+            if type(assign.value) == ast.Call:
+                if assign.value.func.id == 'Variable':
+                    variables.append(assign.targets[0].id.lstrip('__'))
+                elif assign.value.func.id == 'Hash':
+                    hashes.append(assign.targets[0].id.lstrip('__'))
+
+        return response.json({
+            'variables': variables,
+            'hashes': hashes
+        })
 
     async def get_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)

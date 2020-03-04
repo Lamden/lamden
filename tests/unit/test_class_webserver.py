@@ -168,6 +168,27 @@ def get():
 
         self.assertDictEqual(response.json, {'value': 12345})
 
+    def test_get_variables_returns_variable_list(self):
+            code = '''
+v = Variable()
+h = Hash()
+
+@construct
+def seed():
+    a = 123
+    v.set(12345)
+
+@export
+def get():
+    return v.get()
+        '''
+
+            self.ws.client.submit(f=code, name='testing')
+
+            _, response = self.ws.app.test_client.get('/contracts/testing/variables')
+
+            print(response.json)
+
     def test_get_variable_returns_error_if_contract_does_not_exist(self):
         _, response = self.ws.app.test_client.get('/contracts/blah/v')
 
