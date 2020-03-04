@@ -39,7 +39,7 @@ def setup_cilparser(parser):
     upd_parser.add_argument('-c', '--check', action = 'store_true', default = False,
                             help='Bool : check current state of network')
 
-    upd_parser.add_argument('-i, ''--ip', type=str, help='Master Node TX End points',
+    upd_parser.add_argument('-i', '--ip', type=str, help='Master Node TX End points',
                             required=True)
 
     start_parser = subparser.add_parser('start')
