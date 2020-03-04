@@ -34,7 +34,7 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     # Add a timestamp
     timestamp = time.time()
     h.update('{}'.format(timestamp).encode())
-    input_hash = h.digest()
+    input_hash = h.digest().hex()
 
     signature = wallet.sign(input_hash)
 

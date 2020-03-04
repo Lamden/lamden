@@ -46,7 +46,7 @@ struct TransactionBatch {
     timestamp @1: Float64;
     signature @2: Data;
     sender @3: Data;
-    inputHash @4: Data;  # hash of transactions + timestamp
+    inputHash @4: Text;  # hash of transactions + timestamp
 }
 
 struct NewTransactionPayload {

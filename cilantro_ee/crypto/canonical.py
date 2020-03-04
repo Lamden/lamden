@@ -142,8 +142,8 @@ def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash
         merkle = merklize([r.to_bytes_packed() for r in results])
         proof = wallet.sign(merkle[0])
     else:
-        merkle = merklize([input_hash])
-        proof = wallet.sign(input_hash)
+        merkle = merklize([bytes.fromhex(input_hash)])
+        proof = wallet.sign(bytes.fromhex(input_hash))
 
     merkle_tree = subblock_capnp.MerkleTree.new_message(
         leaves=[leaf for leaf in merkle],
@@ -151,7 +151,7 @@ def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash
     )
 
     sbc = subblock_capnp.SubBlockContender.new_message(
-        inputHash=input_hash,
+        inputHash=bytes.fromhex(input_hash),
         transactions=[r for r in results],
         merkleTree=merkle_tree,
         signer=wallet.verifying_key(),

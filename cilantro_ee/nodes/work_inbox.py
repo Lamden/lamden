@@ -104,7 +104,7 @@ class WorkInbox(SecureAsyncInbox):
             h.update(tx.as_builder().to_bytes_packed())
 
         h.update('{}'.format(msg_blob.timestamp).encode())
-        input_hash = h.digest()
+        input_hash = h.digest().hex()
         if input_hash != msg_blob.inputHash or \
            not _verify(msg_blob.sender, h.digest(), msg_blob.signature):
             raise InvalidSignature
