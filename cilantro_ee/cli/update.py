@@ -6,13 +6,12 @@ from cilantro_ee.crypto.transaction import TransactionBuilder
 from scripts.pkg import verify_pkg
 
 
-async def cil_interface(mn, packed_data, sleep=2):
+async def cil_interface(server, packed_data, sleep=2):
     async with aiohttp.ClientSession() as session:
         r = await session.post(
-            url=f'http://127.0.0.1:{mn.webserver.port}/',
+            url=f'http://{server}:18080/',
             data=packed_data
         )
-
         result = await r.json()
         await asyncio.sleep(sleep)
         return result
@@ -29,7 +28,7 @@ def verify_access():
             print('Invalid format! Try again.')
 
 
-def trigger(pkg=None):
+def trigger(pkg=None, iaddr=None):
 
     my_wallet = verify_access()
     pepper = pkg  #TODO replace with verified pepper pkg
@@ -51,9 +50,10 @@ def trigger(pkg=None):
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
     print(m)
+    cil_interface(server=iaddr, packed_data=m, sleep=2)
 
 
-def vote():
+def vote(iaddr):
     my_wallet = verify_access()
     pkg_check = verify_pkg()
 
@@ -77,9 +77,11 @@ def vote():
     m = pack.serialize()
 
     print(m)
+    cil_interface(server=iaddr, packed_data=m, sleep=2)
 
 
-def check_ready_quorum():
+
+def check_ready_quorum(iaddr):
     my_wallet = verify_access()
     kwargs = {'vk': my_wallet.verifying_key()}
 
@@ -96,3 +98,5 @@ def check_ready_quorum():
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
     print(m)
+    cil_interface(server=iaddr, packed_data=m, sleep=2)
+

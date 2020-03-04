@@ -31,6 +31,7 @@ setup(
         'rocks',
         'contracting',
         'pymongo',
+        'argparse_actions==0.4.4',
     ],
     entry_points={
         'console_scripts': [
