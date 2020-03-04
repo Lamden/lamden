@@ -25,6 +25,7 @@ class InvalidSignature(TXBatchInvalidError):
 class NotMasternode(TXBatchInvalidError):
     pass
 
+
 def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     h = hashlib.sha3_256()
     for tx in tx_list:

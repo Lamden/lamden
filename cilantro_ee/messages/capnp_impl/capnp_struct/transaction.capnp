@@ -58,7 +58,7 @@ struct NewTransactionPayload {
 
     contractName @4 :Text;
     functionName @5 :Text;
-    kwargs @6 :Data;
+    kwargs @6 :Text;
 }
 
 struct NewTransaction {
