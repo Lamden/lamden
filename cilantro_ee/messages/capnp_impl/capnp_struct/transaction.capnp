@@ -3,8 +3,8 @@
 using V = import "values.capnp";
 
 struct Delta {
-    key @0 :Data;
-    value @1 :Data;
+    key @0 :Text;
+    value @1 :Text;
 }
 
 struct MetaData {
