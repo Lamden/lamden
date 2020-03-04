@@ -171,7 +171,7 @@ class TestBlockFetcher(TestCase):
 
         self.assertEqual(res[4], 101)
 
-    def store_blocks(self, c, i, initial_hash=b'\x00' * 32):
+    def store_blocks(self, c, i, initial_hash=(b'\x00' * 32).hex()):
         current_hash = initial_hash
         for _i in range(i):
             block = random_txs.random_block(block_num=_i)

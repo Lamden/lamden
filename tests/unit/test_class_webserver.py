@@ -315,7 +315,7 @@ def get():
 
         _, response = self.ws.app.test_client.get('/latest_block_hash')
 
-        self.assertDictEqual(response.json, {'latest_block_hash': h.hex()})
+        self.assertDictEqual(response.json, {'latest_block_hash': h})
 
     def test_get_block_by_num_that_exists(self):
         block = {

@@ -296,7 +296,7 @@ class WebServer:
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.driver.get_latest_block_hash().hex()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
 
     async def get_block(self, request):
         num = request.args.get('num')

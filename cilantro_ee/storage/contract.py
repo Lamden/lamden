@@ -15,13 +15,13 @@ class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
         block_hash = self.driver.get(BLOCK_HASH_KEY)
         if block_hash is None:
-            return b'\x00' * 32
+            return '0' * 64
         return block_hash
 
-    def set_latest_block_hash(self, v: bytes):
-        if type(v) == str:
-            v = bytes.fromhex(v)
-        assert len(v) == 32, 'Hash provided is not 32 bytes.'
+    def set_latest_block_hash(self, v: str):
+        if type(v) == bytes:
+            v = v.hex()
+        assert len(v) == 64, 'Hash provided is not 32 bytes.'
         self.driver.set(BLOCK_HASH_KEY, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)

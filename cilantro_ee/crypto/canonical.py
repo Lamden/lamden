@@ -27,7 +27,7 @@ def format_dictionary(d: dict) -> dict:
 
 def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dict:
     block_hasher = hashlib.sha3_256()
-    block_hasher.update(previous_hash)
+    block_hasher.update(bytes.fromhex(previous_hash))
 
     deserialized_subblocks = []
 
@@ -48,7 +48,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
         block_hasher.update(encoded_sb)
 
     block = {
-        'hash': block_hasher.digest(),
+        'hash': block_hasher.digest().hex(),
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': deserialized_subblocks
@@ -76,7 +76,7 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
         encoded_sb = bson.BSON.encode(sb_without_sigs)
         block_hasher.update(encoded_sb)
 
-    if block_hasher.digest() == proposed_hash:
+    if block_hasher.digest().hex() == proposed_hash:
         return True
 
     return False
@@ -95,7 +95,7 @@ def block_is_skip_block(block: dict):
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     block = {
-        'hash': b'\xff' * 32,
+        'hash': (b'\xff' * 32).hex(),
         'blockNum': block_num,
         'prevBlockHash': previous_hash,
         'subBlocks': []
@@ -105,7 +105,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
 
 def get_genesis_block():
     block = {
-        'hash': b'\x00' * 32,
+        'hash': (b'\x00' * 32).hex(),
         'blockNum': 1,
         'prevBlockHash': b'\x00' * 32,
         'subBlocks': []
