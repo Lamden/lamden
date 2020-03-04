@@ -6,7 +6,7 @@ import json as _json
 from contracting.client import ContractingClient
 
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
-
+from cilantro_ee.crypto.canonical import tx_hash_from_tx
 from cilantro_ee.crypto.transaction import transaction_is_valid, \
     TransactionNonceInvalid, TransactionProcessorInvalid, TransactionTooManyPendingException, \
     TransactionSenderTooFewStamps, TransactionPOWProofInvalid, TransactionSignatureInvalid, TransactionStampsNegative
@@ -17,12 +17,18 @@ import capnp
 
 import ast
 import ssl
-import hashlib
 import asyncio
-
 
 log = get_logger("MN-WebServer")
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+
+class ByteEncoder(_json.JSONEncoder):
+    def default(self, o, *args):
+        if isinstance(o, bytes):
+            return o.hex()
+
+        return super().default(self, o)
 
 
 class WebServer:
@@ -76,6 +82,7 @@ class WebServer:
 
         # State Routes
         self.app.add_route(self.get_methods, '/contracts/<contract>/methods', methods=['GET'])
+        self.app.add_route(self.get_variables, '/contracts/<contract>/variables')
         self.app.add_route(self.get_variable, '/contracts/<contract>/<variable>')
         self.app.add_route(self.get_contracts, '/contracts', methods=['GET'])
         self.app.add_route(self.get_contract, '/contracts/<contract>', methods=['GET'])
@@ -86,10 +93,10 @@ class WebServer:
         self.app.add_route(self.get_latest_block_hash, '/latest_block_hash', methods=['GET'])
 
         # General Block Route
+        self.app.add_route(self.get_block, '/blocks', methods=['GET'])
 
         # TX Route
-
-#        self.app.add_route(self.get_block, '/blocks', methods=['GET', 'OPTIONS', ])
+        self.app.add_route(self.get_tx, '/tx', methods=['GET'])
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -152,9 +159,7 @@ class WebServer:
         log.info('Q TIME')
         self.queue.append(tx)
 
-        h = hashlib.sha3_256()
-        h.update(request.body)
-        tx_hash = h.digest()
+        tx_hash = tx_hash_from_tx(tx)
 
         return response.json({'success': 'Transaction successfully submitted to the network.',
                               'hash': tx_hash.hex()})
@@ -222,6 +227,31 @@ class WebServer:
 
         return response.json({'methods': funcs}, status=200)
 
+    async def get_variables(self, request, contract):
+        contract_code = self.client.raw_driver.get_contract(contract)
+
+        if contract_code is None:
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404)
+
+        tree = ast.parse(contract_code)
+
+        assigns = [n for n in ast.walk(tree) if isinstance(n, ast.Assign)]
+
+        variables = []
+        hashes = []
+
+        for assign in assigns:
+            if type(assign.value) == ast.Call:
+                if assign.value.func.id == 'Variable':
+                    variables.append(assign.targets[0].id.lstrip('__'))
+                elif assign.value.func.id == 'Hash':
+                    hashes.append(assign.targets[0].id.lstrip('__'))
+
+        return response.json({
+            'variables': variables,
+            'hashes': hashes
+        })
+
     async def get_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
 
@@ -238,7 +268,7 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': value}, status=200)
+            return response.json({'value': value}, status=200, )
 
     async def iterate_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
@@ -266,17 +296,33 @@ class WebServer:
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash().hex()})
 
     async def get_block(self, request):
-        key = request.args.get('num') or request.args.get('hash')
+        num = request.args.get('num')
+        _hash = request.args.get('hash')
 
-        if key is not None:
-            block = self.blocks.get_block(key)
+        if num is not None:
+            block = self.blocks.get_block(int(num))
+        elif _hash is not None:
+            block = self.blocks.get_block(bytes.fromhex(_hash))
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400)
 
         if block is None:
-            return response.json({'error': f'Block not found with key {key}.'}, status=400)
+            return response.json({'error': 'Block not found.'}, status=400)
 
-        return response.json(_json.dumps(block))
+        return response.json(block, dumps=ByteEncoder().encode)
+
+    async def get_tx(self, request):
+        _hash = request.args.get('hash')
+
+        if _hash is not None:
+            tx = self.blocks.get_tx(bytes.fromhex(_hash))
+        else:
+            return response.json({'error': 'No tx hash provided.'}, status=400)
+
+        if tx is None:
+            return response.json({'error': 'Transaction not found.'}, status=400)
+
+        return response.json(tx, dumps=ByteEncoder().encode)

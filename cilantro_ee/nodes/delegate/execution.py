@@ -2,11 +2,12 @@ from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import decode
 from contracting.db.driver import encode_kv
-from cilantro_ee.crypto.canonical import build_sbc_from_work_results
+from cilantro_ee.crypto.canonical import build_sbc_from_work_results, tx_hash_from_tx
 from cilantro_ee.logger.base import get_logger
 import os
 import capnp
 from datetime import datetime
+import hashlib
 import heapq
 import cilantro_ee.messages.capnp_impl.capnp_struct as schemas
 
@@ -36,8 +37,13 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         d = transaction_capnp.Delta.new_message(key=key, value=value)
         deltas.append(d)
 
+    tx_hash = tx_hash_from_tx(transaction)
+
+    log.error(tx_hash.hex())
+
     # Encode deltas into a Capnp struct
     tx_output = transaction_capnp.TransactionData.new_message(
+        hash=tx_hash,
         transaction=transaction,
         status=output['status_code'],
         state=deltas,

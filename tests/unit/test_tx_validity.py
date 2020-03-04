@@ -688,3 +688,83 @@ class TestTXValidity(TestCase):
         tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_not_prepended_with_con_throws_error(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 'bad_name', 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_not_str_throws_error(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 123, 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_prepended_with_con_succeeds(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 'con_bad_name', 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)

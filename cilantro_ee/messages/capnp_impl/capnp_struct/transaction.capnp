@@ -30,10 +30,11 @@ struct Transaction {
 }
 
 struct TransactionData {
-    transaction @0 :NewTransaction;
-    status @1: UInt8;
-    state @2: List(Delta);
-    stampsUsed @3: UInt64;
+    hash @0: Data;
+    transaction @1 :NewTransaction;
+    status @2: UInt8;
+    state @3: List(Delta);
+    stampsUsed @4: UInt64;
 }
 
 struct Transactions {

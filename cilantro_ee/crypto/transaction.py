@@ -1,4 +1,3 @@
-from decimal import Decimal
 from cilantro_ee.crypto import wallet
 from contracting import config
 from cilantro_ee.storage import BlockchainDriver
@@ -90,6 +89,8 @@ class TransactionStampsNegative(TransactionException):
 class TransactionSenderTooFewStamps(TransactionException):
     pass
 
+class TransactionContractNameInvalid(TransactionException):
+    pass
 
 def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
@@ -159,5 +160,15 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
         # If you have less than 2 transactions worth of tau after trying to send your amount, fail.
         if ((balance - amount) * stamp_to_tau) / 3000 < 2:
             raise TransactionSenderTooFewStamps
+
+    if tx.payload.contractName == 'submission' and tx.payload.functionName == 'submit_contract':
+        kwargs = decode(tx.payload.kwargs)
+        name = kwargs.get('name')
+
+        if type(name) != str:
+            raise TransactionContractNameInvalid
+
+        if not name.startswith('con_'):
+            raise TransactionContractNameInvalid
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)

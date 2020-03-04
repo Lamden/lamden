@@ -114,7 +114,7 @@ class MasterStorage:
         return block
 
     def get_tx(self, h):
-        tx = self.txs.find_one({'tx_hash': h})
+        tx = self.txs.find_one({'hash': h})
 
         if tx is not None:
             tx.pop('_id')
