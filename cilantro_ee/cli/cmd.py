@@ -97,14 +97,15 @@ def main():
 
     elif args.command == 'update':
 
-        validate_ip(address=args.ip)
+        print(args)
+        ip = validate_ip(address=args.ip)
 
         if args.pkg_hash:
             result = verify_pkg(args.pkg_hash)
             if result is True:
                 print('Cilantro has same version running')
             else:
-                trigger(pkg=args.pkg_hash, iaddr=args.ip)
+                trigger(pkg=args.pkg_hash, iaddr=ip)
 
         if args.vote:
             vote(iaddr=args.ip)
