@@ -151,7 +151,7 @@ def build_sbc_from_work_results(results, wallet, previous_block_hash, input_hash
     )
 
     sbc = subblock_capnp.SubBlockContender.new_message(
-        inputHash=bytes.fromhex(input_hash),
+        inputHash=input_hash,
         transactions=[r for r in results],
         merkleTree=merkle_tree,
         signer=wallet.verifying_key(),

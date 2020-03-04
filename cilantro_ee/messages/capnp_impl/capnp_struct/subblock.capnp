@@ -33,7 +33,7 @@ struct SubBlock {
 }
 
 struct SubBlockContender {
-    inputHash @0 :Data;
+    inputHash @0 :Text;
     transactions @1: List(T.TransactionData);
     merkleTree @2 :MerkleTree;
     signer @3 :Data;
