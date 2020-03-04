@@ -50,7 +50,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
     block = {
         'hash': block_hasher.digest().hex(),
         'blockNum': block_num,
-        'prevBlockHash': previous_hash,
+        'previous': previous_hash,
         'subBlocks': deserialized_subblocks
     }
 
@@ -97,7 +97,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
     block = {
         'hash': (b'\xff' * 32).hex(),
         'blockNum': block_num,
-        'prevBlockHash': previous_hash,
+        'previous': previous_hash,
         'subBlocks': []
     }
     return block
@@ -107,7 +107,7 @@ def get_genesis_block():
     block = {
         'hash': (b'\x00' * 32).hex(),
         'blockNum': 1,
-        'prevBlockHash': b'\x00' * 32,
+        'previous': (b'\x00' * 32).hex(),
         'subBlocks': []
     }
     return block

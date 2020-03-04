@@ -54,7 +54,7 @@ class BlockServer(AsyncInbox):
             if block_dict is not None:
                 block_hash = block_dict.get('hash')
                 block_num = block_dict.get('blockNum')
-                prev_hash = block_dict.get('prevBlockHash')
+                prev_hash = block_dict.get('previous')
                 subblocks = block_dict.get('subBlocks')
                 #owners = block_dict.get('blockOwners')
 
@@ -65,7 +65,7 @@ class BlockServer(AsyncInbox):
                         hash=block_hash,
                         blockNum=block_num,
                         blockOwners=[],
-                        prevBlockHash=prev_hash,
+                        previous=prev_hash,
                         subBlocks=[subblock_capnp.SubBlock.new_message(**sb) for sb in subblocks],
                     )
                 except Exception as e:
@@ -208,7 +208,7 @@ class BlockFetcher:
                 'hash': block.hash,
                 'blockNum': i,
                 'blockOwners': [],
-                'prevBlockHash': latest_hash,
+                'previous': latest_hash,
                 'subBlocks': [s for s in block.subBlocks]
             }
 
