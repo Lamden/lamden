@@ -171,7 +171,9 @@ def get():
     def test_get_variables_returns_variable_list(self):
             code = '''
 v = Variable()
+howdy = Variable()
 h = Hash()
+hash2 = Hash()
 
 @construct
 def seed():
@@ -187,7 +189,12 @@ def get():
 
             _, response = self.ws.app.test_client.get('/contracts/testing/variables')
 
-            print(response.json)
+            expected = {
+                'variables': ['v', 'howdy'],
+                'hashes': ['h', 'hash2']
+            }
+
+            self.assertDictEqual(response.json, expected)
 
     def test_get_variable_returns_error_if_contract_does_not_exist(self):
         _, response = self.ws.app.test_client.get('/contracts/blah/v')
