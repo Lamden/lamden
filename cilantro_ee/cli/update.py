@@ -50,7 +50,8 @@ def trigger(pkg=None, iaddr=None):
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
     print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
 
 def vote(iaddr):
@@ -77,8 +78,8 @@ def vote(iaddr):
     m = pack.serialize()
 
     print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
-
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
 
 def check_ready_quorum(iaddr):
@@ -98,5 +99,5 @@ def check_ready_quorum(iaddr):
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
     print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
-
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
