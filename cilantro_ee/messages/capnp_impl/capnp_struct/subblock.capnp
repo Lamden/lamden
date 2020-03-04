@@ -24,12 +24,12 @@ struct MerkleTree {
 }
 
 struct SubBlock {
-    inputHash @0: Data;
+    inputHash @0: Text;
     transactions @1: List(T.TransactionData);
     merkleLeaves @2: List(Data);
     signatures @3: List(Signature);
     subBlockNum @4: UInt8;
-    prevBlockHash @5: Data;
+    prevBlockHash @5: Text;
 }
 
 struct SubBlockContender {
@@ -38,7 +38,7 @@ struct SubBlockContender {
     merkleTree @2 :MerkleTree;
     signer @3 :Data;
     subBlockNum @4: UInt8;
-    prevBlockHash @5: Data;
+    prevBlockHash @5: Text;
 }
 
 struct SubBlockContenders {
