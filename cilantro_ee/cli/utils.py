@@ -13,6 +13,10 @@ def validate_ip(address):
 
 
 def build_pepper(pkg_dir_path=os.environ.get('CIL_PATH')):
+
+    if pkg_dir_path is None:
+        pkg_dir_path = '/Volumes/dev/lamden/cilantro-enterprise'
+
     pepper = dirhash(pkg_dir_path, 'sha256', excluded_extensions = ['pyc'])
     print(pepper)
     return pepper
