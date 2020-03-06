@@ -4,7 +4,7 @@ from cilantro_ee.logger.base import get_logger
 # from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
-
+from contracting.db.encoder import encode
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 from cilantro_ee.crypto.canonical import tx_hash_from_tx
 from cilantro_ee.crypto.transaction import transaction_is_valid, \
@@ -268,7 +268,7 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': value}, status=200, )
+            return response.json({'value': encode(value)}, status=200, )
 
     async def iterate_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
