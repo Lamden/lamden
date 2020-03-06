@@ -19,7 +19,7 @@ class TransactionBatcher:
         timestamp = time.time()
         h = hashlib.sha3_256()
         h.update('{}'.format(timestamp).encode())
-        input_hash = h.digest()
+        input_hash = h.digest().hex()
 
         signature = self.wallet.sign(input_hash)
 
@@ -64,7 +64,7 @@ class TransactionBatcher:
             transactions=[t for t in tx_list],
             timestamp=timestamp,
             signature=signature,
-            inputHash=input_hash,
+            inputHash=input_hash.hex(),
             sender=self.wallet.verifying_key()
         )
 

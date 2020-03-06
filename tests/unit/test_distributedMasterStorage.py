@@ -135,7 +135,7 @@ class TestDistributedMasterStorage(TestCase):
     def test_update_index(self):
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -150,7 +150,7 @@ class TestDistributedMasterStorage(TestCase):
     def test_update_index_no_owners(self):
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -168,7 +168,7 @@ class TestDistributedMasterStorage(TestCase):
 
     def test_update_index_fails_with_no_block_num(self):
         block = {
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -205,7 +205,7 @@ class TestDistributedMasterStorage(TestCase):
 
         block = {
             'blockNum': 103,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -222,7 +222,7 @@ class TestDistributedMasterStorage(TestCase):
         owners = self.db.build_wr_list(self.db.mn_id, 0)
 
         self.assertEqual(stored_index['blockOwners'], owners)
-        self.assertEqual(stored_index['blockHash'], block['blockHash'])
+        self.assertEqual(stored_index['hash'], block['hash'])
         self.assertEqual(stored_index['blockNum'], block['blockNum'])
 
     def test_eval_write_node_id_is_in_writers_returns_true(self):
@@ -230,7 +230,7 @@ class TestDistributedMasterStorage(TestCase):
 
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -243,7 +243,7 @@ class TestDistributedMasterStorage(TestCase):
 
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -256,7 +256,7 @@ class TestDistributedMasterStorage(TestCase):
 
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -267,14 +267,14 @@ class TestDistributedMasterStorage(TestCase):
 
         self.assertEqual(block, stored_block)
 
-        self.assertEqual(stored_index['blockHash'], block['blockHash'])
+        self.assertEqual(stored_index['hash'], block['hash'])
         self.assertEqual(stored_index['blockNum'], block['blockNum'])
 
     def test_get_full_block_by_number(self):
 
         block = {
             'blockNum': 100,
-            'blockHash': 'a',
+            'hash': 'a',
             'data': 'woohoo'
         }
 
@@ -289,7 +289,7 @@ class TestDistributedMasterStorage(TestCase):
     def test_get_full_block_by_hash(self):
         block = {
             'blockNum': 101,
-            'blockHash': 'abcdef',
+            'hash': 'abcdef',
             'data': 'woohoo'
         }
 

@@ -1,5 +1,5 @@
 from contracting.db.driver import ContractDriver
-from contracting.db.encoder import decode_kv
+from contracting.db.encoder import decode
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_KEY = '_current_block_num'
@@ -15,13 +15,13 @@ class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
         block_hash = self.driver.get(BLOCK_HASH_KEY)
         if block_hash is None:
-            return b'\x00' * 32
+            return '0' * 64
         return block_hash
 
-    def set_latest_block_hash(self, v: bytes):
-        if type(v) == str:
-            v = bytes.fromhex(v)
-        assert len(v) == 32, 'Hash provided is not 32 bytes.'
+    def set_latest_block_hash(self, v: str):
+        if type(v) == bytes:
+            v = v.hex()
+        assert len(v) == 64, 'Hash provided is not 32 bytes.'
         self.driver.set(BLOCK_HASH_KEY, v)
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
@@ -49,9 +49,8 @@ class BlockchainDriver(ContractDriver):
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                k, v = decode_kv(delta['key'], delta['value'])
-                self.set(k, v)
-                log.info(f"{k} -> {v}")
+                self.set(delta['key'], decode(delta['value']))
+                log.info(f"{delta['key']} -> {decode(delta['value'])}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage
@@ -62,7 +61,7 @@ class BlockchainDriver(ContractDriver):
 
         # self.log.info("block {}".format(block))
 
-        if self.latest_block_hash != block['prevBlockHash']:
+        if self.latest_block_hash != block['previous']:
             log.error('BLOCK MISMATCH!!!')
         #     return
 
@@ -82,7 +81,7 @@ class BlockchainDriver(ContractDriver):
         self.delete_pending_nonces()
 
         # Update our block hash and block num
-        self.set_latest_block_hash(block['blockHash'])
+        self.set_latest_block_hash(block['hash'])
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):

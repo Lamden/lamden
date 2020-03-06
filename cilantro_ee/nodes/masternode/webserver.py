@@ -35,7 +35,7 @@ class WebServer:
     def __init__(self, contracting_client, driver, wallet, blocks, queue=[], port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
-                 workers=2, debug=False, access_log=False,
+                 workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
                  ):
 
@@ -296,7 +296,7 @@ class WebServer:
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.driver.get_latest_block_hash().hex()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
 
     async def get_block(self, request):
         num = request.args.get('num')
