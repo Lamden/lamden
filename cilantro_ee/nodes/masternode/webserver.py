@@ -35,7 +35,7 @@ class WebServer:
     def __init__(self, contracting_client, driver, wallet, blocks, queue=[], port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
-                 workers=2, debug=False, access_log=False,
+                 workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
                  ):
 

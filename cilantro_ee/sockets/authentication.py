@@ -13,7 +13,7 @@ from cilantro_ee.logger.base import get_logger
 
 class SocketAuthenticator:
     def __init__(self, wallet, contacts: VKBook, ctx: zmq.asyncio.Context,
-                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks', debug=False):
+                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks', debug=True):
 
         # Create the directory if it doesn't exist
 
