@@ -69,7 +69,7 @@ def vote(iaddr):
         contract='upgrade',
         function='vote',
         kwargs=kwargs,
-        stamps=1_000_000,
+        stamps=1_000,
         processor=my_wallet.verifying_key(),
         nonce=0
     )
