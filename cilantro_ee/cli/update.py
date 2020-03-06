@@ -1,5 +1,6 @@
 import aiohttp
 import asyncio
+import requests
 from getpass import getpass
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
@@ -35,6 +36,11 @@ def trigger(pkg=None, iaddr=None):
     kwargs = {'pepper': pepper, 'vk': my_wallet.verifying_key()}
     vk = my_wallet.verifying_key()
 
+    SERVER = f'http://{iaddr}:18080'
+
+    nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
+    nonce = nonce_req.json()['nonce']
+
     #TODO bail out if vk is not in list of master nodes
 
     pack = TransactionBuilder(
@@ -42,9 +48,9 @@ def trigger(pkg=None, iaddr=None):
         contract='upgrade',
         function='trigger_upgrade',
         kwargs=kwargs,
-        stamps=1_000_000,
+        stamps=1_000,
         processor=vk,
-        nonce=0
+        nonce=nonce
     )
 
     pack.sign(my_wallet.signing_key())
@@ -62,6 +68,11 @@ def vote(iaddr):
         print('Invalid package hash does not match')
         return
 
+    SERVER = f'http://{iaddr}:18080'
+
+    nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
+    nonce = nonce_req.json()['nonce']
+
     kwargs = {'vk': my_wallet.verifying_key()}
 
     pack = TransactionBuilder(
@@ -71,7 +82,7 @@ def vote(iaddr):
         kwargs=kwargs,
         stamps=1_000,
         processor=my_wallet.verifying_key(),
-        nonce=0
+        nonce=nonce
     )
 
     pack.sign(my_wallet.signing_key())
@@ -84,6 +95,12 @@ def vote(iaddr):
 
 def check_ready_quorum(iaddr):
     my_wallet = verify_access()
+
+    SERVER = f'http://{iaddr}:18080'
+
+    nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
+    nonce = nonce_req.json()['nonce']
+
     kwargs = {'vk': my_wallet.verifying_key()}
 
     pack = TransactionBuilder(
@@ -91,9 +108,9 @@ def check_ready_quorum(iaddr):
         contract='upgrade',
         function='check_vote_state',
         kwargs=kwargs,
-        stamps=1_000_000,
+        stamps=1_000,
         processor=my_wallet.verifying_key(),
-        nonce=0
+        nonce=nonce
     )
 
     pack.sign(my_wallet.signing_key())
