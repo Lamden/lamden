@@ -310,7 +310,7 @@ def get():
         self.assertDictEqual(response.json, {'latest_block_number': 1234})
 
     def test_get_latest_block_hash(self):
-        h = b'\x00' * 32
+        h = '0' * 64
         self.ws.driver.set_latest_block_hash(h)
 
         _, response = self.ws.app.test_client.get('/latest_block_hash')
@@ -319,7 +319,7 @@ def get():
 
     def test_get_block_by_num_that_exists(self):
         block = {
-            'hash': b'\123',
+            'hash': '1234',
             'blockNum': 1,
             'data': 'woop'
         }
@@ -338,7 +338,7 @@ def get():
         self.assertDictEqual(response.json, {'error': 'Block not found.'})
 
     def test_get_block_by_hash_that_exists(self):
-        h = b'\123'
+        h = '1234'
 
         block = {
             'hash': h,
@@ -349,14 +349,14 @@ def get():
         self.ws.blocks.put(block)
 
         expected = {
-            'hash': h.hex(),
+            'hash': h,
             'blockNum': 1,
             'data': 'woop'
         }
 
         del block['_id']
 
-        _, response = self.ws.app.test_client.get(f'/blocks?hash={h.hex()}')
+        _, response = self.ws.app.test_client.get(f'/blocks?hash={h}')
         self.assertDictEqual(response.json, expected)
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):

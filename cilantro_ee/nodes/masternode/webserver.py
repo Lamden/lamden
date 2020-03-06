@@ -268,7 +268,7 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': encode(value)}, status=200, )
+            return response.json({'value': value}, status=200, dumps=encode)
 
     async def iterate_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
@@ -305,7 +305,7 @@ class WebServer:
         if num is not None:
             block = self.blocks.get_block(int(num))
         elif _hash is not None:
-            block = self.blocks.get_block(bytes.fromhex(_hash))
+            block = self.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400)
 
