@@ -3,7 +3,7 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
 
 
-SERVER = 'http://138.68.43.35:18080'
+SERVER = 'http://138.197.218.53:18080'
 foundation = Wallet(seed=bytes.fromhex('882b47fed47888a255bf893b384f4444b1dcc69c5ebe953c49bb5b00c5ad44eb'))
 
 
