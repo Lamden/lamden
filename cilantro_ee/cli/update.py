@@ -48,7 +48,7 @@ def trigger(pkg=None, iaddr=None):
         contract='upgrade',
         function='trigger_upgrade',
         kwargs=kwargs,
-        stamps=1_000,
+        stamps=10_000,
         processor=vk,
         nonce=nonce
     )
@@ -80,7 +80,7 @@ def vote(iaddr):
         contract='upgrade',
         function='vote',
         kwargs=kwargs,
-        stamps=1_000,
+        stamps=10_000,
         processor=my_wallet.verifying_key(),
         nonce=nonce
     )
@@ -108,7 +108,7 @@ def check_ready_quorum(iaddr):
         contract='upgrade',
         function='check_vote_state',
         kwargs=kwargs,
-        stamps=1_000,
+        stamps=10_000,
         processor=my_wallet.verifying_key(),
         nonce=nonce
     )
