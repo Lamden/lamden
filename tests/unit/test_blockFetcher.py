@@ -171,7 +171,7 @@ class TestBlockFetcher(TestCase):
 
         self.assertEqual(res[4], 101)
 
-    def store_blocks(self, c, i, initial_hash=b'\x00' * 32):
+    def store_blocks(self, c, i, initial_hash=(b'\x00' * 32).hex()):
         current_hash = initial_hash
         for _i in range(i):
             block = random_txs.random_block(block_num=_i)
@@ -184,7 +184,7 @@ class TestBlockFetcher(TestCase):
             del d['_id']
             del d['blockOwners']
 
-            current_hash = d['blockHash']
+            current_hash = d['hash']
 
     def test_fetch_block_from_master(self):
         # Setup Mongo
@@ -394,6 +394,6 @@ class TestBlockFetcher(TestCase):
             got = canonical.block_from_subblocks([s for s in fake_driver.blocks[i]['subBlocks']], previous_hash=last_hash,
                                                  block_num=i)
 
-            last_hash = block_dict['blockHash']
+            last_hash = block_dict['hash']
 
             self.assertDictEqual(block_dict, got)

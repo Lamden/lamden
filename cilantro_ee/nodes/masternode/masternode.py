@@ -50,7 +50,7 @@ class Masternode(Node):
         latest_block = self.blocks.get_last_n(1, self.blocks.BLOCK)[0]
         self.log.info(latest_block)
         self.driver.latest_block_num = latest_block['blockNum']
-        self.driver.latest_block_hash = latest_block['blockHash']
+        self.driver.latest_block_hash = latest_block['hash']
 
         #
         asyncio.ensure_future(self.block_server.serve())
@@ -170,7 +170,7 @@ class Masternode(Node):
         self.log.info(f'NEW BLOCK: {block}')
 
         # if not do_not_store:
-        if block['blockNum'] == self.driver.latest_block_num + 1 and block['blockHash'] != b'\xff' * 32:
+        if block['blockNum'] == self.driver.latest_block_num + 1 and block['hash'] != b'\xff' * 32:
 
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)

@@ -49,7 +49,7 @@ class SBCIndexGreaterThanPossibleError(SBCException):
 
 
 class SBCInbox(SecureAsyncInbox):
-    def __init__(self, driver: BlockchainDriver, expected_subblocks=4, debug=False, *args, **kwargs):
+    def __init__(self, driver: BlockchainDriver, expected_subblocks=4, debug=True, *args, **kwargs):
         self.q = []
         self.driver = driver
         self.expected_subblocks = expected_subblocks
@@ -89,7 +89,7 @@ class SBCInbox(SecureAsyncInbox):
 
         # Make sure signer is in the delegates
         if len(sbc.transactions) == 0:
-            msg = sbc.inputHash
+            msg = bytes.fromhex(sbc.inputHash)
         else:
             msg = sbc.merkleTree.leaves[0]
 

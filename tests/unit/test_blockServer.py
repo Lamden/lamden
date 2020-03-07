@@ -96,7 +96,7 @@ class TestBlockServer(TestCase):
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
 
-        self.assertEqual(msg.blockHash, b'\xAA' * 32)
+        self.assertEqual(msg.hash, b'\xAA' * 32)
 
     def test_get_block_blob_by_block_data_request(self):
         block = random_txs.random_block()

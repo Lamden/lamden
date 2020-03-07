@@ -15,10 +15,10 @@ struct BlockMetaData {
 
 
 struct BlockData {
-    blockHash @0 :Data;
+    hash @0 :Text;
     blockNum @1 :UInt32;
     blockOwners @2 :List(Data);
-    prevBlockHash @3 :Data;
+    previous @3 :Text;
     subBlocks @4 :List(SB.SubBlock);
 }
 

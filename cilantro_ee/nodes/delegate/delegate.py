@@ -69,7 +69,7 @@ class Delegate(Node):
         self.driver.reads.clear()
         self.driver.pending_writes.clear()
 
-        if self.driver.latest_block_num < nbn['blockNum'] and nbn['blockHash'] != b'\xff' * 32:
+        if self.driver.latest_block_num < nbn['blockNum'] and nbn['hash'] != b'\xff' * 32:
             self.driver.update_with_block(nbn)
             self.issue_rewards(block=nbn)
             self.update_sockets()
