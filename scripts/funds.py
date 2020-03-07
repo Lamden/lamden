@@ -32,7 +32,7 @@ def send_tx(sender, contract, function, kwargs={}):
 def get_funds_mn():
     send_tx(foundation, 'currency', 'transfer',
             {
-                'amount': 1_000_000_000,
+                'amount': 1_000_000,
                 'to': '0273b7051a137d1a5ee3d615cad20e8573ec2615da69c845085d6c6e45200482'
             })
     return True
@@ -41,7 +41,7 @@ def get_funds_mn():
 def get_funds_dl():
     send_tx(foundation, 'currency', 'transfer',
             {
-                'amount': 1_000_000_000,
+                'amount': 1_000_000,
                 'to': 'b6c26304d802140992bcd040538c5e9c2bc85644b620260dca838d5e91f0fdaa'
             })
     return True
