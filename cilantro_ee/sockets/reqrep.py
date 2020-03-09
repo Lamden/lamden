@@ -41,6 +41,7 @@ class RequestReplyService:
                     await self.socket.send(result)
 
             except zmq.error.ZMQError as e:
+                self.socket.close()
                 self.socket = self.ctx.socket(zmq.REP)
                 self.socket.setsockopt(zmq.LINGER, self.linger)
                 self.socket.bind(self.address)

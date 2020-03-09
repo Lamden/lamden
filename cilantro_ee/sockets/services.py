@@ -30,14 +30,14 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000
         if event:
             response = await socket.recv()
 
-            socket.close()
+            #socket.close()
 
             return response
         else:
-            socket.close()
+            #socket.close()
             return None
     except Exception as e:
-        socket.close()
+        #socket.close()
         return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
@@ -56,11 +56,11 @@ async def send_out(ctx, msg, socket_id):
     # If so, shoot out the message
     if evnt_dict['event'] == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
-        socket.close()
+        #socket.close()
         return True, evnt_dict['endpoint'].decode()
 
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
-    socket.close()
+    #socket.close()
     return False, evnt_dict['endpoint'].decode()
 
 
@@ -97,11 +97,11 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     # If so, shoot out the message
     if event == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
-        socket.close()
+        #socket.close()
         return True, evnt_dict['endpoint'].decode()
 
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
-    socket.close()
+    #socket.close()
     return False, evnt_dict['endpoint'].decode()
 
 
