@@ -19,7 +19,7 @@ LINGER = 500
 POLL = 50
 
 
-class AsyncDiscoveryServer(AsyncInbox):
+class DiscoveryServer(AsyncInbox):
     def __init__(self, pepper: bytes, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -27,20 +27,7 @@ class AsyncDiscoveryServer(AsyncInbox):
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
     async def handle_msg(self, _id, msg):
-        print('gottem')
         await self.return_msg(_id, self.response)
-
-
-class DiscoveryServer(cilantro_ee.sockets.reqrep.RequestReplyService):
-    def __init__(self, socket_id: cilantro_ee.sockets.struct.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
-
-        super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, **kwargs)
-
-        self.pepper = pepper
-        self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
-
-    def handle_msg(self, msg):
-        return self.response
 
 
 def verify_vk_pepper(msg: bytes, pepper: bytes):
