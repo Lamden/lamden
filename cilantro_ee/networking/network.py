@@ -75,6 +75,8 @@ class Network:
 
         self.ready = False
 
+        self.outbox = services.Outbox(self.ctx)
+
     async def start(self, discover=True):
         # Start the Peer Service and Discovery service
         await self.peer_service.start()
