@@ -1,5 +1,5 @@
 from cilantro_ee.networking.parameters import ServiceType, NetworkParameters, DHT_PORT, PEPPER
-from cilantro_ee.networking.peers import PeerServer
+from cilantro_ee.networking.peers import PeerServer, AsyncPeerServer
 from cilantro_ee.networking import discovery
 from cilantro_ee.sockets import services, struct
 
@@ -46,23 +46,23 @@ class Network:
 
         self.peer_service_address = self.params.resolve(socket_base, ServiceType.PEER, bind=True)
         self.event_server_address = self.params.resolve(socket_base, ServiceType.EVENT, bind=True)
-        self.peer_service = PeerServer(self.peer_service_address,
-                                       event_address=self.event_server_address,
-                                       table={
-                                           self.wallet.verifying_key().hex(): socket_base
-                                       },
-                                       wallet=self.wallet,
-                                       ctx=self.ctx,
-                                       poll_timeout=poll_timeout,
-                                       linger=linger
-                                       )
+        self.peer_service = AsyncPeerServer(self.peer_service_address,
+                                            event_address=self.event_server_address,
+                                            table={
+                                                self.wallet.verifying_key().hex(): socket_base
+                                            },
+                                            wallet=self.wallet,
+                                            ctx=self.ctx,
+                                            poll_timeout=poll_timeout,
+                                            linger=linger
+                                            )
 
         self.discovery_server_address = self.params.resolve(self.socket_base, ServiceType.DISCOVERY, bind=True)
-        self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
-                                                          wallet=self.wallet,
-                                                          pepper=PEPPER.encode(),
-                                                          ctx=self.ctx,
-                                                          poll_timeout=poll_timeout, linger=linger)
+        self.discovery_server = discovery.AsyncDiscoveryServer(pepper=PEPPER.encode(),
+                                                               socket_id=self.discovery_server_address,
+                                                               wallet=self.wallet,
+                                                               ctx=self.ctx,
+                                                               poll_timeout=poll_timeout, linger=linger)
 
 
 

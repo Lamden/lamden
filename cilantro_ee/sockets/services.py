@@ -91,7 +91,7 @@ class Outbox:
         return False, evnt_dict['endpoint'].decode()
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=False):
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=True):
     if retries < 0:
         return None
 

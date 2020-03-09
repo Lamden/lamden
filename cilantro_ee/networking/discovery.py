@@ -2,7 +2,7 @@ import zmq.asyncio
 
 import cilantro_ee.sockets.reqrep
 import cilantro_ee.sockets.struct
-from cilantro_ee.sockets.inbox import SecureAsyncInbox
+from cilantro_ee.sockets.inbox import SecureAsyncInbox, AsyncInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.crypto.wallet import Wallet, _verify
 from cilantro_ee.sockets import services
@@ -17,6 +17,18 @@ Returns a message of the signed pepper and VK
 TIMEOUT = 1000
 LINGER = 500
 POLL = 50
+
+
+class AsyncDiscoveryServer(AsyncInbox):
+    def __init__(self, pepper: bytes, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.pepper = pepper
+        self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
+
+    async def handle_msg(self, _id, msg):
+        print('gottem')
+        await self.return_msg(_id, self.response)
 
 
 class DiscoveryServer(cilantro_ee.sockets.reqrep.RequestReplyService):
