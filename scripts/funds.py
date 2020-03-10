@@ -20,13 +20,13 @@ def send_tx(sender, contract, function, kwargs={}):
         contract=contract,
         function=function,
         kwargs=kwargs,
-        stamps=500000,
+        stamps=50000,
         processor=processor,
         nonce=nonce)
     tx.sign(sender.signing_key())
     packed_tx = tx.serialize()
     res = submit_transaction(packed_tx)
-    #print(res.text)
+    print(res.text)
 
 
 def get_funds_mn():

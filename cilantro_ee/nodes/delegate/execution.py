@@ -30,6 +30,7 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
     )
 
     log.error(output)
+    print(output)
 
     deltas = []
     for k, v in output['writes'].items():
