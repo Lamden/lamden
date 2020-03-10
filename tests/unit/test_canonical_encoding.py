@@ -83,7 +83,7 @@ class TestCanonicalCoding(TestCase):
         block = canonical.block_from_subblocks(subblocks=sbs, previous_hash=b'\x00' * 32, block_num=0)
 
         prev_hash = block['prevBlockHash']
-        prop_hash = block['blockHash']
+        prop_hash = block['hash']
 
         valid = canonical.verify_block(sbs, prev_hash, prop_hash)
 

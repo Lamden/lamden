@@ -24,7 +24,7 @@ class Network:
                  socket_base='tcp://0.0.0.0',
                  poll_timeout=200,
                  linger=1000,
-                 debug=False,
+                 debug=True,
                  mn_seed=None):
 
         self.log = get_logger('NetworkService')
@@ -58,11 +58,11 @@ class Network:
                                        )
 
         self.discovery_server_address = self.params.resolve(self.socket_base, ServiceType.DISCOVERY, bind=True)
-        self.discovery_server = discovery.DiscoveryServer(self.discovery_server_address,
-                                                          wallet=self.wallet,
-                                                          pepper=PEPPER.encode(),
-                                                          ctx=self.ctx,
-                                                          poll_timeout=poll_timeout, linger=linger)
+        self.discovery_server = discovery.DiscoveryServer(pepper=PEPPER.encode(),
+                                                               socket_id=self.discovery_server_address,
+                                                               wallet=self.wallet,
+                                                               ctx=self.ctx,
+                                                               poll_timeout=poll_timeout, linger=linger)
 
 
 
@@ -74,6 +74,8 @@ class Network:
         self.del_to_find = del_to_find
 
         self.ready = False
+
+        self.outbox = services.Outbox(self.ctx)
 
     async def start(self, discover=True):
         # Start the Peer Service and Discovery service

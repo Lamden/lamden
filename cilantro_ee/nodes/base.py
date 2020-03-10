@@ -134,7 +134,7 @@ class Node:
             wallet=wallet
         )
 
-        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts, debug=False)
+        self.reward_manager = RewardManager(driver=self.driver, vkbook=self.contacts, debug=True)
 
         self.running = False
 

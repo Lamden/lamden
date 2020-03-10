@@ -10,7 +10,88 @@ from cilantro_ee.sockets.struct import SocketStruct
 log = get_logger("BaseServices")
 
 
-async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=False):
+class Outbox:
+    def __init__(self, ctx: zmq.Context):
+        self.sockets = {}
+        self.ctx = ctx
+
+    def get_socket(self, socket_id, _type=zmq.DEALER, linger=500):
+        socket = self.sockets.get(str(socket_id))
+
+        # Connect and store if it doesn't exist
+        if socket is None:
+            socket = self.ctx.socket(_type)
+            socket.connect(str(socket_id))
+            socket.setsockopt(zmq.LINGER, linger)
+            self.sockets[str(socket_id)] = socket
+
+        return socket
+
+    async def get(self, socket_id, msg, timeout=1000):
+        socket = self.get_socket(socket_id, zmq.REQ)
+        await socket.send(msg)
+
+        event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
+        if event:
+            response = await socket.recv()
+
+            return response
+        return None
+
+    async def send_out(self, msg, socket_id):
+        # Setup a socket and its monitor
+        socket = self.get_socket(socket_id)
+        s = socket.get_monitor_socket()
+
+        socket.connect(str(socket_id))
+
+        evnt = await s.recv_multipart()
+        evnt_dict = monitor.parse_monitor_message(evnt)
+
+        if evnt_dict['event'] == 1:
+            socket.send(msg, flags=zmq.NOBLOCK)
+            return True, evnt_dict['endpoint'].decode()
+
+        return False, evnt_dict['endpoint'].decode()
+
+    async def secure_send_out(self, wallet, msg, socket_id, server_vk, cert_dir='cilsocks'):
+        # Setup a socket and its monitor
+        socket = self.get_socket(socket_id)
+
+        socket.curve_secretkey = wallet.curve_sk
+        socket.curve_publickey = wallet.curve_vk
+
+        cert_dir = pathlib.Path.home() / cert_dir
+        cert_dir.mkdir(parents=True, exist_ok=True)
+
+        server_pub, _ = load_certificate(str(cert_dir / f'{server_vk}.key'))
+
+        socket.curve_serverkey = server_pub
+
+        s = socket.get_monitor_socket()
+
+        # Try to connect
+        socket.connect(str(socket_id))
+
+        event = 2
+        evnt_dict = {}
+        while event == 2:
+            evnt = await s.recv_multipart()
+            evnt_dict = monitor.parse_monitor_message(evnt)
+            event = evnt_dict['event']
+
+        # If so, shoot out the message
+        if event == 1:
+            socket.send(msg, flags=zmq.NOBLOCK)
+            # socket.close()
+            return True, evnt_dict['endpoint'].decode()
+
+        # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
+        # socket.close()
+        return False, evnt_dict['endpoint'].decode()
+
+
+async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=True):
     if retries < 0:
         return None
 
@@ -30,14 +111,14 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000
         if event:
             response = await socket.recv()
 
-            socket.close()
+            #socket.close()
 
             return response
         else:
-            socket.close()
+            #socket.close()
             return None
     except Exception as e:
-        socket.close()
+        #socket.close()
         return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
@@ -56,11 +137,11 @@ async def send_out(ctx, msg, socket_id):
     # If so, shoot out the message
     if evnt_dict['event'] == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
-        socket.close()
+        #socket.close()
         return True, evnt_dict['endpoint'].decode()
 
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
-    socket.close()
+    #socket.close()
     return False, evnt_dict['endpoint'].decode()
 
 
@@ -97,11 +178,11 @@ async def secure_send_out(wallet, ctx, msg, socket_id, server_vk, cert_dir='cils
     # If so, shoot out the message
     if event == 1:
         socket.send(msg, flags=zmq.NOBLOCK)
-        socket.close()
+        #socket.close()
         return True, evnt_dict['endpoint'].decode()
 
     # Otherwise, close the socket. Return result and the socket for further processing / updating sockets
-    socket.close()
+    #socket.close()
     return False, evnt_dict['endpoint'].decode()
 
 

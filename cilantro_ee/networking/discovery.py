@@ -2,7 +2,7 @@ import zmq.asyncio
 
 import cilantro_ee.sockets.reqrep
 import cilantro_ee.sockets.struct
-from cilantro_ee.sockets.inbox import SecureAsyncInbox
+from cilantro_ee.sockets.inbox import SecureAsyncInbox, AsyncInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.crypto.wallet import Wallet, _verify
 from cilantro_ee.sockets import services
@@ -19,16 +19,15 @@ LINGER = 500
 POLL = 50
 
 
-class DiscoveryServer(cilantro_ee.sockets.reqrep.RequestReplyService):
-    def __init__(self, socket_id: cilantro_ee.sockets.struct.SocketStruct, wallet: Wallet, pepper: bytes, ctx=zmq.asyncio.Context(), **kwargs):
-
-        super().__init__(socket_id=socket_id, wallet=wallet, ctx=ctx, **kwargs)
+class DiscoveryServer(AsyncInbox):
+    def __init__(self, pepper: bytes, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.pepper = pepper
         self.response = self.wallet.verifying_key() + self.wallet.sign(self.pepper)
 
-    def handle_msg(self, msg):
-        return self.response
+    async def handle_msg(self, _id, msg):
+        await self.return_msg(_id, self.response)
 
 
 def verify_vk_pepper(msg: bytes, pepper: bytes):
@@ -62,7 +61,7 @@ async def ping(socket_id: cilantro_ee.sockets.struct.SocketStruct, pepper: bytes
     return str(socket_id), vk
 
 
-async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10, debug=False):
+async def discover_nodes(ip_list, pepper: bytes, ctx: zmq.Context, timeout=1000, retries=10, debug=True):
     nodes_found = {}
     one_found = False
     retries_left = retries

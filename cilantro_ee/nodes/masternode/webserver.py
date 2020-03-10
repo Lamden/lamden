@@ -4,7 +4,7 @@ from cilantro_ee.logger.base import get_logger
 # from sanic_cors import CORS
 import json as _json
 from contracting.client import ContractingClient
-
+from contracting.db.encoder import encode
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
 from cilantro_ee.crypto.canonical import tx_hash_from_tx
 from cilantro_ee.crypto.transaction import transaction_is_valid, \
@@ -35,7 +35,7 @@ class WebServer:
     def __init__(self, contracting_client, driver, wallet, blocks, queue=[], port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
-                 workers=2, debug=False, access_log=False,
+                 workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
                  ):
 
@@ -268,7 +268,7 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404)
         else:
-            return response.json({'value': value}, status=200, )
+            return response.json({'value': value}, status=200, dumps=encode)
 
     async def iterate_variable(self, request, contract, variable):
         contract_code = self.client.raw_driver.get_contract(contract)
@@ -296,7 +296,7 @@ class WebServer:
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': self.driver.get_latest_block_hash().hex()})
+        return response.json({'latest_block_hash': self.driver.get_latest_block_hash()})
 
     async def get_block(self, request):
         num = request.args.get('num')
@@ -305,7 +305,7 @@ class WebServer:
         if num is not None:
             block = self.blocks.get_block(int(num))
         elif _hash is not None:
-            block = self.blocks.get_block(bytes.fromhex(_hash))
+            block = self.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400)
 
