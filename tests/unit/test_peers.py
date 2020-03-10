@@ -6,6 +6,8 @@ from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.networking.network import Network
 from cilantro_ee.sockets.services import SocketStruct
 from cilantro_ee.sockets.authentication import SocketAuthenticator
+import asyncio
+
 
 class MockContacts:
     def __init__(self, masters, delegates):
@@ -27,6 +29,8 @@ class TestPeers(TestCase):
         }
 
         self.ctx = zmq.asyncio.Context()
+        self.loop = asyncio.new_event_loop()
+
         self.contacts = MockContacts(
                 masters=[self.test_wallet_1.verifying_key().hex()],
                 delegates=[self.test_wallet_2.verifying_key().hex()]
@@ -41,8 +45,11 @@ class TestPeers(TestCase):
 
         self.authenticator = SocketAuthenticator(wallet=self.wallet, contacts=self.contacts, ctx=self.ctx)
 
+        asyncio.set_event_loop(self.loop)
+
     def tearDown(self):
         self.ctx.destroy()
+        self.loop.close()
 
     def testInit(self):
         p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
@@ -104,4 +111,114 @@ class TestPeers(TestCase):
         socket2 = p.sockets.get(self.test_wallet_1.verifying_key().hex())
 
         self.assertEqual(socket, socket2)
+
+    def test_sync_adds_two_sockets_from_network_peer_table(self):
+        p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        p1.peer_service.table = self.peer_table
+
+        p = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.paramaters,
+            node_type=ALL,
+            service_type=ServiceType.INCOMING_WORK
+        )
+
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(self.test_wallet_1.verifying_key().hex())
+        socket_2 = p.sockets.get(self.test_wallet_2.verifying_key().hex())
+
+        self.assertIsNotNone(socket_1)
+        self.assertIsNotNone(socket_2)
+
+    def test_sync_adds_del_if_peers_del(self):
+        p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        p1.peer_service.table = self.peer_table
+
+        p = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.paramaters,
+            node_type=DEL,
+            service_type=ServiceType.INCOMING_WORK
+        )
+
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_2 = p.sockets.get(self.test_wallet_2.verifying_key().hex())
+
+        self.assertIsNotNone(socket_2)
+
+    def test_sync_adds_del_if_peers_mn(self):
+        p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        p1.peer_service.table = self.peer_table
+
+        p = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.paramaters,
+            node_type=MN,
+            service_type=ServiceType.INCOMING_WORK
+        )
+
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(self.test_wallet_1.verifying_key().hex())
+
+        self.assertIsNotNone(socket_1)
 

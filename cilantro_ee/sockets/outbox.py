@@ -68,4 +68,27 @@ class Peers:
         return False, evnt_dict['endpoint'].decode()
 
     def sync_sockets(self):
-        pass
+        if self.node_type == MN:
+            sockets = self.parameters.get_masternode_sockets(self.service_type)
+        elif self.node_type == DEL:
+            sockets = self.parameters.get_delegate_sockets(self.service_type)
+        elif self.node_type == ALL:
+            sockets = self.parameters.get_all_sockets(self.service_type)
+        else:
+            raise Exception('Invalid node type provided on initialization.')
+
+        # Current - New = to remove
+        # New - Current = to add
+
+        new = set(sockets.keys())
+        current = set(self.sockets.keys())
+
+        for vk in current - new:
+            socket = self.sockets.get(vk)
+            socket.disconnect()
+            socket.close()
+
+        for vk in new - current:
+            socket = sockets.get(vk)
+            self.connect(socket, vk)
+
