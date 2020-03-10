@@ -5,13 +5,12 @@ from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.contracts import sync
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.networking.network import Network
+from contracting.client import ContractingClient
 import cilantro_ee
 import zmq
 import zmq.asyncio
 import os
 import asyncio
-
-
 
 
 def make_ipc(p):
@@ -20,20 +19,25 @@ def make_ipc(p):
     except:
         pass
 
+
 class MockContacts:
     def __init__(self, masters, delegates):
         self.masternodes = masters
         self.delegates = delegates
 
+
 class TestParameters(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
+        self.client = ContractingClient()
+        self.client.flush()
         asyncio.set_event_loop(self.loop)
 
     def tearDown(self):
         self.ctx.destroy()
         self.loop.close()
+        self.client.flush()
 
     def get_vkbook_args(self, mns=['stu', 'raghu']):
         constitution = {
@@ -64,16 +68,17 @@ class TestParameters(TestCase):
 
     def test_remove_node(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
         ctx = zmq.Context()
-        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(), wallet=Wallet())
+        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(client=self.client), wallet=Wallet())
 
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
@@ -84,16 +89,17 @@ class TestParameters(TestCase):
 
     def test_remove_node_doesnt_exist_does_nothing(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
         ctx = zmq.Context()
-        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(), wallet=Wallet())
+        m = Parameters(socket_base='tcp://127.0.0.1', ctx=ctx, contacts=VKBook(client=self.client), wallet=Wallet())
         m.sockets = {'a': ctx.socket(zmq.PUB), 'b': ctx.socket(zmq.PUB)}
 
         m.remove_node('c')
@@ -158,15 +164,16 @@ class TestParameters(TestCase):
 
     def test_get_delegate_sockets(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(client=self.client)
 
         w1 = Wallet()
 
@@ -178,7 +185,7 @@ class TestParameters(TestCase):
             'stu': 'tcp://127.0.0.1',
             'raghu': 'tcp://127.0.0.2'
         }
-        p1.peer_service.table.peers = raw
+        p1.peer_service.table = raw
 
         expected = {
             'raghu': 'tcp://127.0.0.2'
@@ -212,15 +219,16 @@ class TestParameters(TestCase):
 
     def test_get_all_sockets(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(client=self.client)
 
         w1 = Wallet()
 
@@ -232,7 +240,7 @@ class TestParameters(TestCase):
             'stu': 'tcp://127.0.0.1',
             'raghu': 'tcp://127.0.0.2'
         }
-        p1.peer_service.table.peers = raw
+        p1.peer_service.table = raw
 
 
         # CHANGE CLIENT TO SOCKET
@@ -263,15 +271,16 @@ class TestParameters(TestCase):
 
     def test_get_sockets_with_service(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(client=self.client)
 
         w1 = Wallet()
 
@@ -283,11 +292,11 @@ class TestParameters(TestCase):
             'stu': 'tcp://127.0.0.1',
             'raghu': 'tcp://127.0.0.2'
         }
-        p1.peer_service.table.peers = raw
+        p1.peer_service.table = raw
 
         expected = {
-            'stu': _socket('tcp://127.0.0.1:10003'),
-            'raghu': _socket('tcp://127.0.0.2:10003')
+            'stu': _socket('tcp://127.0.0.1:19003'),
+            'raghu': _socket('tcp://127.0.0.2:19003')
         }
 
         # CHANGE CLIENT TO SOCKET
@@ -318,15 +327,16 @@ class TestParameters(TestCase):
 
     def test_get_sockets_refresh_changes_get_again(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(client=self.client)
 
         w1 = Wallet()
 
@@ -338,7 +348,7 @@ class TestParameters(TestCase):
             'stu': 'tcp://127.0.0.1',
             'raghu': 'tcp://127.0.0.2'
         }
-        p1.peer_service.table.peers = raw
+        p1.peer_service.table = raw
 
         expected = {
             'stu': 'tcp://127.0.0.1',
@@ -373,15 +383,16 @@ class TestParameters(TestCase):
 
     def test_refresh_remove_old_nodes(self):
         constitution = self.get_vkbook_args()
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json')
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
         sync.submit_node_election_contracts(
             initial_masternodes=constitution['masternodes'],
             boot_mns=constitution['masternode_min_quorum'],
             initial_delegates=constitution['delegates'],
             boot_dels=constitution['delegate_min_quorum'],
+            client=self.client
         )
 
-        PhoneBook = VKBook()
+        PhoneBook = VKBook(client=self.client)
 
         w1 = Wallet()
         p1 = Network(wallet=w1, ctx=self.ctx, socket_base='tcp://127.0.0.1')
@@ -393,7 +404,7 @@ class TestParameters(TestCase):
             'steve': 'tcp://127.0.54.6'
         }
 
-        p1.peer_service.table.peers = peeps
+        p1.peer_service.table = peeps
 
         ctx2 = zmq.asyncio.Context()
 

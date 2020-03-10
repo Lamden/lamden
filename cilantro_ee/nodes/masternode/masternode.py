@@ -1,6 +1,6 @@
 import asyncio
 from cilantro_ee.nodes.catchup import BlockServer
-
+from cilantro_ee.sockets.outbox import Peers, MN, DEL, ALL
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.storage import CilantroStorageDriver
 from cilantro_ee.sockets.services import secure_multicast
@@ -26,7 +26,14 @@ class Masternode(Node):
             blocks=self.blocks
         )
 
-        self.webserver = WebServer(contracting_client=self.client, driver=self.driver, blocks=self.blocks, wallet=self.wallet, port=webserver_port, )
+        self.webserver = WebServer(
+            contracting_client=self.client,
+            driver=self.driver,
+            blocks=self.blocks,
+            wallet=self.wallet,
+            port=webserver_port
+        )
+
         self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
         self.current_nbn = canonical.get_genesis_block()
 
@@ -42,6 +49,22 @@ class Masternode(Node):
 
         # Network upgrade flag
         self.active_upgrade = False
+
+        self.nbn_socket_book = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.parameters,
+            service_type=ServiceType.BLOCK_NOTIFICATIONS,
+            node_type=ALL
+        )
+
+        self.delegate_work_socket_book = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.parameters,
+            service_type=ServiceType.INCOMING_WORK,
+            node_type=DEL
+        )
 
     async def start(self):
         await super().start()
@@ -60,11 +83,14 @@ class Masternode(Node):
         asyncio.ensure_future(self.aggregator.start())
         asyncio.ensure_future(self.run())
 
+    ## DELETE
     def delegate_work_sockets(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).values())
 
+    ## DELETE
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
+
 
     def dl_wk_sks(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items())
@@ -88,8 +114,11 @@ class Masternode(Node):
 
         if len(self.tx_batcher.queue) > 0:
             await self.parameters.refresh()
+            ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS?
+
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
 
+            ## SEND OUT VIA SOCKETS CLASS
             sends = await secure_multicast(
                 wallet=self.wallet,
                 ctx=self.ctx,
@@ -133,12 +162,14 @@ class Masternode(Node):
             self.log.info('Enqueue stopped network upgrading')
 
         await self.parameters.refresh()
+        ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS. YES
 
-        # No one is online
+        # LOOK AT SOCKETS CLASS
         if len(self.dl_wk_sks()) == 0:
             self.log.error('No one online!')
             return
 
+        ## SEND OUT VIA SOCKETS CLASS
         return await secure_multicast(
             wallet=self.wallet,
             ctx=self.ctx,
@@ -216,7 +247,7 @@ class Masternode(Node):
 
             await self.wait_for_work(block)
 
-            # Pack current NBN into message
+            # SEND OUT VIA SOCKETS
             await secure_multicast(
                 wallet=self.wallet,
                 ctx=self.ctx,
