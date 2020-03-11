@@ -6,6 +6,7 @@ from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
 from cilantro_ee.sockets.services import secure_multicast
+from cilantro_ee.sockets.outbox import Peers, MN
 import heapq
 
 from cilantro_ee.nodes.base import Node
@@ -35,6 +36,14 @@ class Delegate(Node):
         self.pending_sbcs = set()
 
         self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
+
+        self.masternode_socket_book = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.parameters,
+            service_type=ServiceType.BLOCK_AGGREGATOR,
+            node_type=MN
+        )
 
     async def start(self):
         await super().start()
@@ -136,18 +145,25 @@ class Delegate(Node):
             self.version_check()
 
         while self.running:
+            await self.parameters.refresh()
+            self.masternode_socket_book.sync_sockets()
+
             filtered_work = await self.acquire_work()
 
             self.log.info(filtered_work)
 
             sbc_msg = self.process_work(filtered_work)
 
-            await secure_multicast(
-                wallet=self.wallet,
-                ctx=self.ctx,
-                msg=sbc_msg,
-                peers=self.mn_agg_skcs()
+            await self.masternode_socket_book.send_to_peers(
+                msg=sbc_msg
             )
+
+            # await secure_multicast(
+            #     wallet=self.wallet,
+            #     ctx=self.ctx,
+            #     msg=sbc_msg,
+            #     peers=self.mn_agg_skcs()
+            # )
 
             # await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 
