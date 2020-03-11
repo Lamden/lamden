@@ -125,3 +125,4 @@ class PeerServer(AsyncInbox):
         self.event_queue_loop_running = False
         self.event_service.running = False
         self.event_service.stop()
+        self.socket.close()

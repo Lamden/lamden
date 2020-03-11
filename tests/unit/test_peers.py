@@ -222,3 +222,128 @@ class TestPeers(TestCase):
 
         self.assertIsNotNone(socket_1)
 
+    def test_resync_adds_new_contacts(self):
+        p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        p1.peer_service.table = self.peer_table
+
+        p = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.paramaters,
+            node_type=MN,
+            service_type=ServiceType.INCOMING_WORK
+        )
+
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(self.test_wallet_1.verifying_key().hex())
+
+        self.assertIsNotNone(socket_1)
+
+        new_wallet = Wallet()
+
+        p1.peer_service.table[new_wallet.verifying_key().hex()] = 'ipc:///tmp/n3'
+        self.contacts.masternodes.append(new_wallet.verifying_key().hex())
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(new_wallet.verifying_key().hex())
+        self.assertIsNotNone(socket_1)
+
+    def test_resync_removes_old_contact(self):
+        p1 = Network(wallet=self.wallet, ctx=self.ctx, socket_base='tcp://127.0.0.1')
+
+        p1.peer_service.table = self.peer_table
+
+        new_wallet = Wallet()
+
+        p1.peer_service.table[new_wallet.verifying_key().hex()] = 'ipc:///tmp/n3'
+        self.contacts.masternodes.append(new_wallet.verifying_key().hex())
+        self.authenticator.sync_certs()
+
+        p = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.paramaters,
+            node_type=MN,
+            service_type=ServiceType.INCOMING_WORK
+        )
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(new_wallet.verifying_key().hex())
+        self.assertIsNotNone(socket_1)
+
+        del p1.peer_service.table[new_wallet.verifying_key().hex()]
+        self.contacts.masternodes.remove(new_wallet.verifying_key().hex())
+
+        self.authenticator.sync_certs()
+
+        async def late_refresh():
+            await asyncio.sleep(0.3)
+            await self.paramaters.refresh()
+            p.sync_sockets()
+
+        async def stop():
+            await asyncio.sleep(0.5)
+            p1.stop()
+
+        tasks = asyncio.gather(
+            p1.start(discover=False),
+            late_refresh(),
+            stop()
+        )
+
+        self.loop.run_until_complete(tasks)
+
+        socket_1 = p.sockets.get(new_wallet.verifying_key().hex())
+        self.assertIsNone(socket_1)

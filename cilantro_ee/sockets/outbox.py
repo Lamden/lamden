@@ -85,8 +85,8 @@ class Peers:
 
         for vk in current - new:
             socket = self.sockets.get(vk)
-            socket.disconnect()
             socket.close()
+            del self.sockets[vk]
 
         for vk in new - current:
             socket = sockets.get(vk)
