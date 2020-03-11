@@ -5,7 +5,6 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
-from cilantro_ee.sockets.services import secure_multicast
 from cilantro_ee.sockets.outbox import Peers, MN
 import heapq
 
@@ -157,15 +156,6 @@ class Delegate(Node):
             await self.masternode_socket_book.send_to_peers(
                 msg=sbc_msg
             )
-
-            # await secure_multicast(
-            #     wallet=self.wallet,
-            #     ctx=self.ctx,
-            #     msg=sbc_msg,
-            #     peers=self.mn_agg_skcs()
-            # )
-
-            # await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)

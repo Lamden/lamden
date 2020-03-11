@@ -228,7 +228,6 @@ class Masternode(Node):
 
     async def process_blocks(self):
         while self.running:
-
             await self.parameters.refresh()
             self.delegate_work_socket_book.sync_sockets()
             self.nbn_socket_book.sync_sockets()
