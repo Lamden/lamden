@@ -107,17 +107,17 @@ class Masternode(Node):
 
     async def new_blockchain_boot(self):
         self.log.info('Fresh blockchain boot.')
+
+        await self.parameters.refresh()
+        self.nbn_socket_book.sync_sockets()
+        self.delegate_work_socket_book.sync_sockets()
+
         while len(self.tx_batcher.queue) == 0 and len(self.nbn_inbox.q) == 0:
             if not self.running:
                 return
             await asyncio.sleep(0)
 
         if len(self.tx_batcher.queue) > 0:
-            await self.parameters.refresh()
-            ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS?
-            self.nbn_socket_book.sync_sockets()
-            self.delegate_work_socket_book.sync_sockets()
-
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
 
             ## SEND OUT VIA SOCKETS CLASS
@@ -160,27 +160,22 @@ class Masternode(Node):
         else:
             self.log.info('Enqueue stopped network upgrading')
 
-        await self.parameters.refresh()
-        ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS. YES
-
-        self.delegate_work_socket_book.sync_sockets()
-
         # LOOK AT SOCKETS CLASS
         if len(self.dl_wk_sks()) == 0:
             self.log.error('No one online!')
             return
 
-        # return await self.delegate_work_socket_book.send_to_peers(
-        #        msg=tx_batch
-        #    )
+        return await self.delegate_work_socket_book.send_to_peers(
+               msg=tx_batch
+           )
 
         ## SEND OUT VIA SOCKETS CLASS
-        return await secure_multicast(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            msg=tx_batch,
-            peers=self.dl_wk_sks()
-        )
+        # return await secure_multicast(
+        #     wallet=self.wallet,
+        #     ctx=self.ctx,
+        #     msg=tx_batch,
+        #     peers=self.dl_wk_sks()
+        # )
 
         # return await multicast(self.ctx, tx_batch, self.delegate_work_sockets())  # Works
 
@@ -233,6 +228,11 @@ class Masternode(Node):
 
     async def process_blocks(self):
         while self.running:
+
+            await self.parameters.refresh()
+            self.delegate_work_socket_book.sync_sockets()
+            self.nbn_socket_book.sync_sockets()
+
             sends = await self.send_work()
 
             if sends is None:
@@ -252,19 +252,9 @@ class Masternode(Node):
 
             await self.wait_for_work(block)
 
-            sends = await self.nbn_socket_book.send_to_peers(
+            await self.nbn_socket_book.send_to_peers(
                 msg=canonical.dict_to_msg_block(block)
             )
-
-            # SEND OUT VIA SOCKETS
-            # await secure_multicast(
-            #     wallet=self.wallet,
-            #     ctx=self.ctx,
-            #     msg=canonical.dict_to_msg_block(block),
-            #     peers=self.nbn_sks()
-            # )
-
-            # await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
 
     def stop(self):
         super().stop()

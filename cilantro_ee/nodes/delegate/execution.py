@@ -15,7 +15,8 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 
 log = get_logger('EXE')
 
-def execute_tx(executor: Executor, transaction, environment: dict={}):
+
+def execute_tx(executor: Executor, transaction, environment: dict={}, debug=False):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
     kwargs = decode(transaction.payload.kwargs)
 
@@ -29,7 +30,8 @@ def execute_tx(executor: Executor, transaction, environment: dict={}):
         auto_commit=False
     )
 
-    log.error(output)
+    if debug:
+        log.error(output)
 
     deltas = []
     for k, v in output['writes'].items():

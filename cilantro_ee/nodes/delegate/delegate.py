@@ -47,7 +47,6 @@ class Delegate(Node):
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
-    ## PUT IN NEW SOCKET CLASS
     def mn_agg_skcs(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).items())
 
@@ -97,7 +96,6 @@ class Delegate(Node):
 
     async def acquire_work(self):
         await self.parameters.refresh()
-        ## SYNC SOCKETS
 
         if len(self.parameters.sockets) == 0:
             return
@@ -144,7 +142,6 @@ class Delegate(Node):
 
             sbc_msg = self.process_work(filtered_work)
 
-            ## SEND OUT VIA SOCKETS CLASS
             await secure_multicast(
                 wallet=self.wallet,
                 ctx=self.ctx,

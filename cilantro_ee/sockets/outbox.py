@@ -14,6 +14,7 @@ MN = 0
 DEL = 1
 ALL = 2
 
+## Connect and establish handshake here...
 
 class SecureSocketWrapper:
     def __init__(self, ctx, server_vk, socket_id, wallet, cert_dir):
@@ -31,6 +32,9 @@ class SecureSocketWrapper:
 
         self.socket.connect(str(socket_id))
 
+    def close(self):
+        self.socket.close()
+
 
 class Peers:
     def __init__(self, wallet, ctx, parameters: Parameters, service_type: ServiceType, node_type: int, cert_dir='cilsocks'):
@@ -44,29 +48,26 @@ class Peers:
 
     def connect(self, socket_id, server_vk):
         s = self.sockets.get(server_vk)
-        if s is not None:
-            return
-
-        socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
-
-        self.sockets[server_vk] = socket
+        if s is None:
+            socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
+            self.sockets[server_vk] = socket
 
     async def send_to_peers(self, msg):
         return await asyncio.gather(*[self.send(socket_wrapper, msg) for socket_wrapper in self.sockets.values()])
 
     async def send(self, socket_wrapper: SecureSocketWrapper, msg):
-        s = socket_wrapper.socket.get_monitor_socket()
-
-        while not socket_wrapper.connected and not socket_wrapper.handshake_successful:
-            evnt = await s.recv_multipart()
-            evnt_dict = monitor.parse_monitor_message(evnt)
-            event = evnt_dict['event']
-            if event == 2:
-                socket_wrapper.connected = True
-            elif event == 4096:
-                socket_wrapper.handshake_successful = True
-            else:
-                raise Exception(f'Unknown event {event} encountered on socket monitor')
+        # s = socket_wrapper.socket.get_monitor_socket()
+        #
+        # while not socket_wrapper.connected and not socket_wrapper.handshake_successful:
+        #     evnt = await s.recv_multipart()
+        #     evnt_dict = monitor.parse_monitor_message(evnt)
+        #     event = evnt_dict['event']
+        #     if event == 1:
+        #         socket_wrapper.connected = True
+        #     elif event == 4096:
+        #         socket_wrapper.handshake_successful = True
+        #     else:
+        #         raise Exception(f'Unknown event {event} encountered on socket monitor')
 
         socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
         # socket.close()
@@ -87,6 +88,9 @@ class Peers:
 
         new = set(sockets.keys())
         current = set(self.sockets.keys())
+
+        if new == current:
+            return
 
         for vk in current - new:
             socket = self.sockets.get(vk)

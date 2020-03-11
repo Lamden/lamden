@@ -50,7 +50,7 @@ class BlockchainDriver(ContractDriver):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
                 self.set(delta['key'], decode(delta['value']))
-                log.info(f"{delta['key']} -> {decode(delta['value'])}")
+                #log.info(f"{delta['key']} -> {decode(delta['value'])}")
 
     def update_with_block(self, block, commit_tx=True):
         # Capnp proto shim until we remove it completely from storage

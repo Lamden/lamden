@@ -9,7 +9,6 @@ from cilantro_ee.sockets.struct import SocketStruct
 
 log = get_logger("BaseServices")
 
-
 class Outbox:
     def __init__(self, ctx: zmq.Context):
         self.sockets = {}
