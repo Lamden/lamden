@@ -17,7 +17,7 @@ class PeerServer(AsyncInbox):
     def __init__(self, socket_id: struct.SocketStruct,
                  event_address: struct.SocketStruct,
                  table: dict, wallet: Wallet, ctx=zmq.Context,
-                 linger=500, poll_timeout=10, debug=True):
+                 linger=500, poll_timeout=10, debug=False):
 
         super().__init__(socket_id=socket_id,
                          wallet=wallet,

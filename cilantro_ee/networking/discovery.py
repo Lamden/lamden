@@ -45,7 +45,7 @@ def unpack_pepper_msg(msg: bytes):
     return msg[:32], msg[32:]
 
 
-async def ping(socket_id: cilantro_ee.sockets.struct.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout, debug=True):
+async def ping(socket_id: cilantro_ee.sockets.struct.SocketStruct, pepper: bytes, ctx: zmq.Context, timeout, debug=False):
     log = get_logger('Pinger')
     log.propagate = debug
     log.info(f'Pinging: {socket_id.zmq_url()}')

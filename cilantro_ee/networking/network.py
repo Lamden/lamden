@@ -24,7 +24,7 @@ class Network:
                  socket_base='tcp://0.0.0.0',
                  poll_timeout=200,
                  linger=1000,
-                 debug=True,
+                 debug=False,
                  mn_seed=None):
 
         self.log = get_logger('NetworkService')
