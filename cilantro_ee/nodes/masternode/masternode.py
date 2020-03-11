@@ -115,16 +115,21 @@ class Masternode(Node):
         if len(self.tx_batcher.queue) > 0:
             await self.parameters.refresh()
             ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS?
+            self.nbn_socket_book.sync_sockets()
+            self.delegate_work_socket_book.sync_sockets()
 
             msg = canonical.dict_to_msg_block(canonical.get_genesis_block())
 
             ## SEND OUT VIA SOCKETS CLASS
-            sends = await secure_multicast(
-                wallet=self.wallet,
-                ctx=self.ctx,
-                msg=msg,
-                peers=self.nbn_sks()
+            sends = await self.nbn_socket_book.send_to_peers(
+                msg=msg
             )
+            # sends = await secure_multicast(
+            #     wallet=self.wallet,
+            #     ctx=self.ctx,
+            #     msg=msg,
+            #     peers=self.nbn_sks()
+            # )
 
             self.log.info(f'{sends}')
 

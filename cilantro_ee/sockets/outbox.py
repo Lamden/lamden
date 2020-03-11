@@ -53,12 +53,15 @@ class Peers:
         event = 2
         evnt_dict = {}
         while event == 2:
+            print(event)
             evnt = await s.recv_multipart()
             evnt_dict = monitor.parse_monitor_message(evnt)
             event = evnt_dict['event']
 
         # If so, shoot out the message
-        if event == 1:
+        if event == 1 or event == 4096:
+            # Event 1 = connect success / finished
+            # Event 4096 = secure handshake accepted, good to send
             socket.send(msg, flags=zmq.NOBLOCK)
             # socket.close()
             return True, evnt_dict['endpoint'].decode()
