@@ -15,6 +15,23 @@ DEL = 1
 ALL = 2
 
 
+class SecureSocketWrapper:
+    def __init__(self, ctx, server_vk, socket_id, wallet, cert_dir):
+        self.connected = False
+        self.handshake_successful = False
+        self.socket = ctx.socket(zmq.DEALER)
+        self.socket.curve_secretkey = wallet.curve_sk
+        self.socket.curve_publickey = wallet.curve_vk
+
+        cert_dir = pathlib.Path.home() / cert_dir
+        cert_dir.mkdir(parents=True, exist_ok=True)
+
+        server_pub, _ = load_certificate(str(cert_dir / f'{server_vk}.key'))
+        self.socket.curve_serverkey = server_pub
+
+        self.socket.connect(str(socket_id))
+
+
 class Peers:
     def __init__(self, wallet, ctx, parameters: Parameters, service_type: ServiceType, node_type: int, cert_dir='cilsocks'):
         self.wallet = wallet
@@ -30,22 +47,12 @@ class Peers:
         if s is not None:
             return
 
-        socket = self.ctx.socket(zmq.DEALER)
-        socket.curve_secretkey = self.wallet.curve_sk
-        socket.curve_publickey = self.wallet.curve_vk
-
-        cert_dir = pathlib.Path.home() / self.cert_dir
-        cert_dir.mkdir(parents=True, exist_ok=True)
-
-        server_pub, _ = load_certificate(str(cert_dir / f'{server_vk}.key'))
-        socket.curve_serverkey = server_pub
-
-        socket.connect(str(socket_id))
+        socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
 
         self.sockets[server_vk] = socket
 
     async def send_to_peers(self, msg):
-        return await asyncio.gather(*[self.send(socket, msg) for socket in self.sockets.values()])
+        return await asyncio.gather(*[self.send(socket.socket, msg) for socket in self.sockets.values()])
 
     async def send(self, socket, msg):
         s = socket.get_monitor_socket()
@@ -53,15 +60,17 @@ class Peers:
         event = 2
         evnt_dict = {}
         while event == 2:
-            print(event)
+            print('start')
             evnt = await s.recv_multipart()
             evnt_dict = monitor.parse_monitor_message(evnt)
             event = evnt_dict['event']
-
+            print(evnt_dict)
+        print('done')
         # If so, shoot out the message
         if event == 1 or event == 4096:
             # Event 1 = connect success / finished
             # Event 4096 = secure handshake accepted, good to send
+
             socket.send(msg, flags=zmq.NOBLOCK)
             # socket.close()
             return True, evnt_dict['endpoint'].decode()

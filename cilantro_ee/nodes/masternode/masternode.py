@@ -124,12 +124,6 @@ class Masternode(Node):
             sends = await self.nbn_socket_book.send_to_peers(
                 msg=msg
             )
-            # sends = await secure_multicast(
-            #     wallet=self.wallet,
-            #     ctx=self.ctx,
-            #     msg=msg,
-            #     peers=self.nbn_sks()
-            # )
 
             self.log.info(f'{sends}')
 
@@ -169,10 +163,16 @@ class Masternode(Node):
         await self.parameters.refresh()
         ## SYNC SOCKETS FOR BOTH DLWKSKS AND NBNS. YES
 
+        self.delegate_work_socket_book.sync_sockets()
+
         # LOOK AT SOCKETS CLASS
         if len(self.dl_wk_sks()) == 0:
             self.log.error('No one online!')
             return
+
+        # return await self.delegate_work_socket_book.send_to_peers(
+        #        msg=tx_batch
+        #    )
 
         ## SEND OUT VIA SOCKETS CLASS
         return await secure_multicast(
@@ -252,13 +252,17 @@ class Masternode(Node):
 
             await self.wait_for_work(block)
 
-            # SEND OUT VIA SOCKETS
-            await secure_multicast(
-                wallet=self.wallet,
-                ctx=self.ctx,
-                msg=canonical.dict_to_msg_block(block),
-                peers=self.nbn_sks()
+            sends = await self.nbn_socket_book.send_to_peers(
+                msg=canonical.dict_to_msg_block(block)
             )
+
+            # SEND OUT VIA SOCKETS
+            # await secure_multicast(
+            #     wallet=self.wallet,
+            #     ctx=self.ctx,
+            #     msg=canonical.dict_to_msg_block(block),
+            #     peers=self.nbn_sks()
+            # )
 
             # await multicast(self.ctx, canonical.dict_to_msg_block(block), self.nbn_sockets())
 
