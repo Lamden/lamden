@@ -62,10 +62,10 @@ async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000
 
             return response
         else:
-            socket.disconnect(str(socket_id))
+#            socket.disconnect(str(socket_id))
             return None
     except Exception as e:
-        socket.disconnect(str(socket_id))
+#        socket.disconnect(str(socket_id))
         return await get(socket_id, msg, ctx, timeout, linger, retries-1)
 
 
