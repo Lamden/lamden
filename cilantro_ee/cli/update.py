@@ -33,7 +33,7 @@ def trigger(pkg=None, iaddr=None):
 
     my_wallet = verify_access()
     pepper = pkg  #TODO replace with verified pepper pkg
-    kwargs = {'pepper': pepper, 'vk': my_wallet.verifying_key()}
+    kwargs = {'pepper': pepper, 'initiator_vk': my_wallet.verifying_key()}
     vk = my_wallet.verifying_key()
 
     SERVER = f'http://{iaddr}:18080'
