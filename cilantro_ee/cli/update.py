@@ -63,10 +63,10 @@ def trigger(pkg=None, iaddr=None):
 
 def vote(iaddr):
     my_wallet = verify_access()
-    pkg_check = verify_pkg()
-
-    if pkg_check is False:
-        print('Invalid package hash does not match')
+    # pkg_check = verify_pkg()
+    #
+    # if pkg_check is False:
+    #     print('Invalid package hash does not match')
     #     return
 
     SERVER = f'http://{iaddr}:18080'
