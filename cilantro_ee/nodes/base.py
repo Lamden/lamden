@@ -222,19 +222,26 @@ class Node:
 
     def get_update_state(self):
         self.active_upgrade = self.version_state.quick_read('upg_lock')
-        pepper = self.version_state.quick_read('pepper')
+        start_time = self.version_state.quick_read('upg_init_time')
+        window = self.version_state.quick_read('upg_window')
+        pepper = self.version_state.quick_read('upg_pepper')
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
         consensus = self.version_state.quick_read('upg_consensus')
 
-        print("Cil Pepper   -> {}\n"
+        print("Upgrade -> {} Cil Pepper   -> {}\n"
+              "Init time -> {}, Time Window -> {}\n"
               "Masters      -> {}\n"
               "Delegates    -> {}\n"
               "Votes        -> {}\n "
               "MN-Votes     -> {}\n "
               "DL-Votes     -> {}\n "
               "Consensus    -> {}\n"
-              .format(pepper, self.tol_mn, self.tot_dl, self.all_votes, self.mn_votes, self.dl_votes, consensus))
+              .format(self.active_upgrade,
+                      pepper, start_time, window, self.tol_mn,
+                      self.tot_dl, self.all_votes,
+                      self.mn_votes, self.dl_votes,
+                      consensus))
 
     def issue_rewards(self, block):
         # ISSUE REWARDS
