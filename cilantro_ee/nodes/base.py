@@ -227,13 +227,13 @@ class Node:
         self.dl_votes = self.version_state.quick_read('dl_vote')
         consensus = self.version_state.quick_read('upg_consensus')
 
-        print("Cil Pepper   -> {}"
-              "Masters      -> {}"
-              "Delegates    -> {}"
-              "Votes        -> {}"
-              "MN-Votes     -> {}"
-              "DL-Votes     -> {}"
-              "Consensus    -> {}"
+        print("Cil Pepper   -> {}\n"
+              "Masters      -> {}\n"
+              "Delegates    -> {}\n"
+              "Votes        -> {}\n "
+              "MN-Votes     -> {}\n "
+              "DL-Votes     -> {}\n "
+              "Consensus    -> {}\n"
               .format(pepper, self.tol_mn, self.tot_dl, self.all_votes, self.mn_votes, self.dl_votes, consensus))
 
     def issue_rewards(self, block):
