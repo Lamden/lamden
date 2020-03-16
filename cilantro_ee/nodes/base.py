@@ -203,6 +203,8 @@ class Node:
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
 
+        self.get_update_state()
+
         if self.version_state:
             self.log.info('Waiting for Consensys on vote')
             self.log.info('num masters voted -> {}'.format(self.mn_votes))

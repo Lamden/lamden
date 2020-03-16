@@ -1,6 +1,8 @@
 import os
 import ipaddress
+#  import cilantro_ee
 from checksumdir import dirhash
+# from contracting.client import ContractingClient
 
 
 def validate_ip(address):
@@ -29,3 +31,24 @@ def verify_cil_pkg(pkg_hash):
         return True
     else:
         return False
+
+
+# def get_update_state(self):
+#     self.client = ContractingClient(driver=self.driver,
+#                                     submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
+#     self.version_state = self.client.get_contract('upgrade')
+#
+#     self.active_upgrade = self.version_state.quick_read('upg_lock')
+#     pepper = self.version_state.quick_read('pepper')
+#     self.mn_votes = self.version_state.quick_read('mn_vote')
+#     self.dl_votes = self.version_state.quick_read('dl_vote')
+#     consensus = self.version_state.quick_read('upg_consensus')
+#
+#     print("Cil Pepper   -> {}"
+#           "Masters      -> {}"
+#           "Delegates    -> {}"
+#           "Votes        -> {}"
+#           "MN-Votes     -> {}"
+#           "DL-Votes     -> {}"
+#           "Consensus    -> {}"
+#           .format(pepper, self.tol_mn, self.tot_dl, self.all_votes, self.mn_votes, self.dl_votes, consensus))
