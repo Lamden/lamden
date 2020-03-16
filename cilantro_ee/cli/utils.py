@@ -1,4 +1,5 @@
 import os
+import subprocess
 import ipaddress
 #  import cilantro_ee
 from checksumdir import dirhash
@@ -31,6 +32,16 @@ def verify_cil_pkg(pkg_hash):
         return True
     else:
         return False
+
+
+def version_reboot():
+    pass
+    rel = input("Enter Release branch:")
+
+    #cmds = ["cd /Volumes/dev/lamden/cilantro-enterprise", "git fetch", f"git checkout {rel}"]
+
+    #proc = subprocess.Popen(cmds, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    #stdout, stderr = proc.communicate()
 
 
 # def get_update_state(self):
