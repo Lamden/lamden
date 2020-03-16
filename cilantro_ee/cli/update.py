@@ -91,6 +91,7 @@ def vote(iaddr):
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
+    Node.get_update_state()
 
 
 def check_ready_quorum(iaddr):
