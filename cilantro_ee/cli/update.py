@@ -35,7 +35,7 @@ def trigger(pkg=None, iaddr=None):
 
     my_wallet = verify_access()
     pepper = pkg  #TODO replace with verified pepper pkg
-    kwargs = {'pepper': pepper, 'initiator_vk': my_wallet.verifying_key()}
+    kwargs = {'pepper': pepper, 'initiator_vk': my_wallet.verifying_key().hex()}
     vk = my_wallet.verifying_key()
 
     SERVER = f'http://{iaddr}:18080'
@@ -74,7 +74,7 @@ def vote(iaddr):
     nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
     nonce = nonce_req.json()['nonce']
 
-    kwargs = {'vk': my_wallet.verifying_key()}
+    kwargs = {'vk': my_wallet.verifying_key().hex()}
 
     pack = TransactionBuilder(
         sender=my_wallet.verifying_key(),
@@ -101,7 +101,7 @@ def check_ready_quorum(iaddr):
     nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
     nonce = nonce_req.json()['nonce']
 
-    kwargs = {'vk': my_wallet.verifying_key()}
+    kwargs = {'vk': my_wallet.verifying_key().hex()}
 
     pack = TransactionBuilder(
         sender=my_wallet.verifying_key(),

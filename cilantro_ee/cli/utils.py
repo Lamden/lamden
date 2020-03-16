@@ -1,9 +1,10 @@
 import os
 import subprocess
 import ipaddress
-#  import cilantro_ee
+import cilantro_ee
 from checksumdir import dirhash
-# from contracting.client import ContractingClient
+from contracting.client import ContractingClient
+from cilantro_ee.storage.contract import BlockchainDriver
 
 
 def validate_ip(address):
@@ -44,22 +45,24 @@ def version_reboot():
     #stdout, stderr = proc.communicate()
 
 
-# def get_update_state(self):
-#     self.client = ContractingClient(driver=self.driver,
-#                                     submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
-#     self.version_state = self.client.get_contract('upgrade')
-#
-#     self.active_upgrade = self.version_state.quick_read('upg_lock')
-#     pepper = self.version_state.quick_read('pepper')
-#     self.mn_votes = self.version_state.quick_read('mn_vote')
-#     self.dl_votes = self.version_state.quick_read('dl_vote')
-#     consensus = self.version_state.quick_read('upg_consensus')
-#
-#     print("Cil Pepper   -> {}"
-#           "Masters      -> {}"
-#           "Delegates    -> {}"
-#           "Votes        -> {}"
-#           "MN-Votes     -> {}"
-#           "DL-Votes     -> {}"
-#           "Consensus    -> {}"
-#           .format(pepper, self.tol_mn, self.tot_dl, self.all_votes, self.mn_votes, self.dl_votes, consensus))
+def get_update_state():
+    driver = BlockchainDriver()
+    active_upgrade = driver.get_var(contract='upgrade', variable='upg_lock', mark=False)
+    pepper = driver.get_var(contract='upgrade', variable='upg_pepper', mark=False)
+    start_time = driver.get_var(contract='upgrade', variable='upg_init_time', mark=False)
+    window = driver.get_var(contract='upgrade', variable='upg_window', mark=False)
+    mcount = driver.get_var(contract='upgrade', variable='tot_mn', mark=False)
+    dcount = driver.get_var(contract='upgrade', variable='tot_dl', mark=False)
+    mvotes = driver.get_var(contract='upgrade', variable='mn_vote', mark=False)
+    dvotes = driver.get_var(contract='upgrade', variable='dl_vote', mark=False)
+    consensus = driver.get_var(contract='upgrade', variable='pepper', mark=False)
+
+    print("Upgrade -> {} Cil Pepper   -> {}\n"
+          "Init time -> {}, Time Window -> {}\n"
+          "Masters      -> {}\n"
+          "Delegates    -> {}\n"
+          "MN-Votes     -> {}\n "
+          "DL-Votes     -> {}\n "
+          "Consensus    -> {}\n"
+          .format(active_upgrade, pepper, start_time, window, mcount, dcount,
+                  mvotes, dvotes, consensus))
