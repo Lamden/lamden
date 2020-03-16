@@ -24,6 +24,7 @@ def verify_access():
 
         try:
             wallet = Wallet(seed=bytes.fromhex(sk))
+            print('Access validated')
             return wallet
         except:
             print('Invalid format! Try again.')
@@ -55,7 +56,6 @@ def trigger(pkg=None, iaddr=None):
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
-    print(m)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
@@ -66,7 +66,7 @@ def vote(iaddr):
 
     if pkg_check is False:
         print('Invalid package hash does not match')
-        return
+    #     return
 
     SERVER = f'http://{iaddr}:18080'
 
@@ -88,7 +88,6 @@ def vote(iaddr):
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
 
-    print(m)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
@@ -115,6 +114,5 @@ def check_ready_quorum(iaddr):
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
-    print(m)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
