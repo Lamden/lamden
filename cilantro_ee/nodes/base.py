@@ -73,16 +73,16 @@ class Node:
         self.version_state = self.client.get_contract('upgrade')
         self.active_upgrade = self.version_state.quick_read('upg_lock')
 
-        tol_mn = self.version_state.quick_read('tol_mn')
-        tot_dl = self.version_state.quick_read('tot_dl')
+        self.tol_mn = self.version_state.quick_read('tol_mn')
+        self.tot_dl = self.version_state.quick_read('tot_dl')
 
-        if tol_mn is None:
-            tol_mn = 0
+        if self.tol_mn is None:
+            self.tol_mn = 0
 
-        if tot_dl is None:
-            tot_dl = 0
+        if self.tot_dl is None:
+            self.tot_dl = 0
 
-        self.all_votes = tol_mn + tot_dl
+        self.all_votes = self.tol_mn + self.tot_dl
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
         # self.pending_cnt = self.all_votes - self.vote_cnt
@@ -218,10 +218,21 @@ class Node:
             # ready
             #TODO we can merge it with vote - to be decided
 
+    def get_update_state(self):
+        self.active_upgrade = self.version_state.quick_read('upg_lock')
+        pepper = self.version_state.quick_read('pepper')
+        self.mn_votes = self.version_state.quick_read('mn_vote')
+        self.dl_votes = self.version_state.quick_read('dl_vote')
+        consensus = self.version_state.quick_read('upg_consensus')
 
-        # check for ready consensys
-
-        pass
+        print("Cil Pepper   -> {}"
+              "Masters      -> {}"
+              "Delegates    -> {}"
+              "Votes        -> {}"
+              "MN-Votes     -> {}"
+              "DL-Votes     -> {}"
+              "Consensus    -> {}"
+              .format(pepper, self.tol_mn, self.tot_dl, self.all_votes, self.mn_votes, self.dl_votes, consensus))
 
     def issue_rewards(self, block):
         # ISSUE REWARDS

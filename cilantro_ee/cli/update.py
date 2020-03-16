@@ -2,6 +2,7 @@ import aiohttp
 import asyncio
 import requests
 from getpass import getpass
+from cilantro_ee.nodes.base import Node
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from scripts.pkg import verify_pkg
@@ -116,3 +117,5 @@ def check_ready_quorum(iaddr):
     m = pack.serialize()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
+
+    Node.get_update_state()
