@@ -16,7 +16,7 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 log = get_logger('EXE')
 
 
-def execute_tx(executor: Executor, transaction, environment: dict={}, debug=False):
+def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}, debug=False):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
     kwargs = decode(transaction.payload.kwargs)
 
@@ -70,7 +70,7 @@ def generate_environment(driver, timestamp, input_hash):
     }
 
 
-def execute_tx_batch(executor, driver, batch, timestamp, input_hash):
+def execute_tx_batch(executor, driver, batch, timestamp, input_hash, stamp_cost):
     environment = generate_environment(driver, timestamp, input_hash)
 
     # Each TX Batch is basically a subblock from this point of view and probably for the near future
