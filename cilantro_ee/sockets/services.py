@@ -38,20 +38,25 @@ class Outbox:
         return None
 
 
+SOCKETS = {}
+
 async def get(socket_id: SocketStruct, msg: bytes, ctx:zmq.Context, timeout=1000, linger=500, retries=10, dealer=True):
     if retries < 0:
         return None
 
-    if dealer:
-        socket = ctx.socket(zmq.DEALER)
-    else:
-        socket = ctx.socket(zmq.REQ)
+    if SOCKETS.get(str(socket_id)) is not None:
+        socket = SOCKETS[str(socket_id)]
 
-    socket.setsockopt(zmq.LINGER, linger)
+    else:
+        if dealer:
+            socket = ctx.socket(zmq.DEALER)
+        else:
+            socket = ctx.socket(zmq.REQ)
+
+        socket.setsockopt(zmq.LINGER, linger)
+        socket.connect(str(socket_id))
     try:
         # Allow passing an existing socket to save time on initializing a _new one and waiting for connection.
-        socket.connect(str(socket_id))
-
         await socket.send(msg)
 
         event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
