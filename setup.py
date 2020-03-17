@@ -21,7 +21,7 @@ setup(
         'Cython==0.29',
         'PyNaCl==1.2.1',
         'pycapnp==0.6.3',
-        'pyzmq>=17.0.0',
+        'pyzmq==16.0.0',
         'requests>=2.20.0',
         'uvloop>=0.9.1',
         'aiohttp',
