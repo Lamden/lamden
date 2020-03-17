@@ -121,7 +121,8 @@ class Delegate(Node):
             driver=self.driver,
             work=filtered_work,
             wallet=self.wallet,
-            previous_block_hash=self.driver.latest_block_hash
+            previous_block_hash=self.driver.latest_block_hash,
+            stamp_cost=self.reward_manager.stamps_per_tau
         )
 
         # Add merkle roots to track successful sbcs

@@ -25,6 +25,7 @@ def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}
         contract_name=transaction.payload.contractName,
         function_name=transaction.payload.functionName,
         stamps=transaction.payload.stampsSupplied,
+        stamp_cost=stamp_cost,
         kwargs=kwargs,
         environment=environment,
         auto_commit=False
@@ -76,12 +77,16 @@ def execute_tx_batch(executor, driver, batch, timestamp, input_hash, stamp_cost)
     # Each TX Batch is basically a subblock from this point of view and probably for the near future
     tx_data = []
     for transaction in batch.transactions:
-        tx_data.append(execute_tx(executor, transaction, environment))
+        tx_data.append(execute_tx(executor=executor,
+                                  transaction=transaction,
+                                  environment=environment,
+                                  stamp_cost=stamp_cost)
+                       )
 
     return tx_data
 
 
-def execute_work(executor, driver, work, wallet, previous_block_hash, parallelism=4):
+def execute_work(executor, driver, work, wallet, previous_block_hash, stamp_cost, parallelism=4):
     # Assume single threaded, single process for now.
     subblocks = []
     i = 0
@@ -94,7 +99,8 @@ def execute_work(executor, driver, work, wallet, previous_block_hash, parallelis
             driver=driver,
             batch=tx_batch,
             timestamp=tx_batch.timestamp,
-            input_hash=tx_batch.inputHash
+            input_hash=tx_batch.inputHash,
+            stamp_cost=stamp_cost
         )
 
         sbc = build_sbc_from_work_results(
