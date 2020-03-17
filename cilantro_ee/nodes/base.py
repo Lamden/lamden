@@ -30,6 +30,7 @@ class Node:
         self.socket_base = socket_base
         self.wallet = wallet
         self.ctx = ctx
+        self.ctx.max_sockets = 50_000
 
         self.client = ContractingClient(driver=self.driver,
                                         submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')

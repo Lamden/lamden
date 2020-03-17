@@ -10,6 +10,7 @@ from cilantro_ee.storage import MasterStorage
 class TestGovernanceOrchestration(unittest.TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
+        self.ctx.max_sockets = 50_000
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         ContractingClient().flush()
@@ -406,6 +407,8 @@ class TestGovernanceOrchestration(unittest.TestCase):
             o.masternodes[1].wallet.verifying_key().hex(),
             candidate.verifying_key().hex()
         ])
+
+        self.ctx.destroy()
 
     def test_introduce_and_pass_motion_delegates(self):
         stu = Wallet()
