@@ -8,7 +8,7 @@ from subprocess import call
 
 import zmq.asyncio
 
-from rocks.client import RocksDBClient, RocksServerOfflineError
+# from rocks.client import RocksDBClient, RocksServerOfflineError
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
@@ -20,16 +20,16 @@ import time
 from getpass import getpass
 
 
-def start_rocks():
-    try:
-        c = RocksDBClient()
-        c.ping()
-    except RocksServerOfflineError:
-        subprocess.Popen(['rocks', 'serve'],
-                         stdout=open('/dev/null', 'w'),
-                         stderr=open('/dev/null', 'w'))
-        print('Starting RocksDB...')
-        time.sleep(3)
+# def start_rocks():
+#     try:
+#         c = RocksDBClient()
+#         c.ping()
+#     except RocksServerOfflineError:
+#         subprocess.Popen(['rocks', 'serve'],
+#                          stdout=open('/dev/null', 'w'),
+#                          stderr=open('/dev/null', 'w'))
+#         print('Starting RocksDB...')
+#         time.sleep(3)
 
 
 def start_mongo():
@@ -128,8 +128,8 @@ def start_node(args):
     socket_base = f'tcp://{ip_str}'
 
     # Start rocks
-    start_rocks()
-    print('starting rocks')
+    # start_rocks()
+    # print('starting rocks')
 
     if args.node_type == 'masternode':
         # Start mongo
@@ -201,7 +201,7 @@ def setup_node():
     c = requests.get(const_url)
     const = resolve_raw_constitution(c.text)
 
-    start_rocks()
+    # start_rocks()
 
     if node_type == 'M':
         # Start mongo
@@ -247,8 +247,8 @@ def join_network(args):
     socket_base = f'tcp://{ip_str}'
 
     # Start rocks
-    start_rocks()
-    print('starting rocks')
+    # start_rocks()
+    # print('starting rocks')
 
     if args.node_type == 'masternode':
         # Start mongo
