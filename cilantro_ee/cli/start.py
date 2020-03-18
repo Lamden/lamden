@@ -8,7 +8,6 @@ from subprocess import call
 
 import zmq.asyncio
 
-# from rocks.client import RocksDBClient, RocksServerOfflineError
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
@@ -18,18 +17,6 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 
 import time
 from getpass import getpass
-
-
-# def start_rocks():
-#     try:
-#         c = RocksDBClient()
-#         c.ping()
-#     except RocksServerOfflineError:
-#         subprocess.Popen(['rocks', 'serve'],
-#                          stdout=open('/dev/null', 'w'),
-#                          stderr=open('/dev/null', 'w'))
-#         print('Starting RocksDB...')
-#         time.sleep(3)
 
 
 def start_mongo():
@@ -126,10 +113,6 @@ def start_node(args):
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
-
-    # Start rocks
-    # start_rocks()
-    # print('starting rocks')
 
     if args.node_type == 'masternode':
         # Start mongo
@@ -246,10 +229,6 @@ def join_network(args):
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
 
-    # Start rocks
-    # start_rocks()
-    # print('starting rocks')
-
     if args.node_type == 'masternode':
         # Start mongo
         start_mongo()
@@ -263,6 +242,7 @@ def join_network(args):
             mn_seed=mn_seed
         )
     elif args.node_type == 'delegate':
+        start_mongo()
         n = Delegate(
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
