@@ -130,6 +130,7 @@ class Masternode(Node):
         if self.active_upgrade is False:
             tx_batch = self.tx_batcher.pack_current_queue()
         else:
+            tx_batch = self.tx_batcher.make_empty_batch()
             self.log.info('Enqueue stopped network upgrading')
 
         await self.parameters.refresh()
