@@ -8,6 +8,7 @@ from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkPa
 import cilantro_ee
 import zmq.asyncio
 import asyncio
+
 from cilantro_ee.sockets.authentication import SocketAuthenticator
 from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
@@ -17,6 +18,9 @@ from cilantro_ee.nodes.rewards import RewardManager
 from cilantro_ee.logger.base import get_logger
 
 from copy import deepcopy
+
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 class Node:
