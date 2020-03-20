@@ -72,6 +72,7 @@ def vote(iaddr):
     constitution = resolve_constitution(fp=file)
 
     proc = constitution.get("masternodes", "")
+    print("proc nodes -".format(proc))
 
     # pkg_check = verify_pkg()
     #
@@ -83,7 +84,8 @@ def vote(iaddr):
 
     nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
     nonce = nonce_req.json()['nonce']
-    #vk = my_wallet.verifying_key()
+    vk = my_wallet.verifying_key()
+    print('vk -{}'.format(vk))
 
     kwargs = {'vk': my_wallet.verifying_key().hex()}
 
