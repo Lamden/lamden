@@ -97,28 +97,3 @@ def vote(iaddr):
 
 def check_ready_quorum(iaddr):
     get_update_state()
-
-
-    # my_wallet = verify_access()
-    #
-    # SERVER = f'http://{iaddr}:18080'
-    #
-    # nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
-    # nonce = nonce_req.json()['nonce']
-    #
-    # kwargs = {'vk': my_wallet.verifying_key().hex()}
-    #
-    # pack = TransactionBuilder(
-    #     sender=my_wallet.verifying_key(),
-    #     contract='upgrade',
-    #     function='check_vote_state',
-    #     kwargs=kwargs,
-    #     stamps=100_000,
-    #     processor=my_wallet.verifying_key(),
-    #     nonce=nonce
-    # )
-    #
-    # pack.sign(my_wallet.signing_key())
-    # m = pack.serialize()
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
