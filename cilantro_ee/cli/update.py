@@ -6,6 +6,8 @@ from cilantro_ee.nodes.base import Node
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from cilantro_ee.cli.utils import get_update_state
+from cilantro_ee.cli.start import resolve_constitution
+
 from scripts.pkg import verify_pkg
 
 
@@ -64,6 +66,13 @@ def trigger(pkg=None, iaddr=None):
 
 def vote(iaddr):
     my_wallet = verify_access()
+
+    file = input("Enter patch to constitution:")
+
+    constitution = resolve_constitution(fp=file)
+
+    proc = constitution.get("masternodes", "")
+
     # pkg_check = verify_pkg()
     #
     # if pkg_check is False:
@@ -74,7 +83,7 @@ def vote(iaddr):
 
     nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
     nonce = nonce_req.json()['nonce']
-    vk = my_wallet.verifying_key()
+    #vk = my_wallet.verifying_key()
 
     kwargs = {'vk': my_wallet.verifying_key().hex()}
 
@@ -84,7 +93,7 @@ def vote(iaddr):
         function='vote',
         kwargs=kwargs,
         stamps=100_000,
-        processor=vk,
+        processor=proc[1],
         nonce=nonce
     )
 
