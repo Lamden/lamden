@@ -53,17 +53,18 @@ def trigger_upgrade(pepper, initiator_vk):
 
         tot_mn.set(mnum)
         tot_dl.set(dnum)
-        
-        # tot_mn.set(len(election_house.current_value_for_policy('masternodes')))
-        # tot_dl.set(len(election_house.current_value_for_policy('delegates')))
-
 
 @export
 def vote(vk):
     if upg_lock.get() is True:
-        if vk in election_house.current_value_for_policy('masternodes'):
+        # if vk in election_house.current_value_for_policy('masternodes'):
+        #     mn_vote.set(mn_vote.get() + 1)
+        # if vk in election_house.current_value_for_policy('delegates'):
+        #     dl_vote.set(dl_vote.get() + 1)
+
+        if vk in election_house.current_value_for_policy(S['master_contract']):
             mn_vote.set(mn_vote.get() + 1)
-        if vk in election_house.current_value_for_policy('delegates'):
+        if vk in election_house.current_value_for_policy(S['delegate_contract']):
             dl_vote.set(dl_vote.get() + 1)
 
         if now - upg_init_time.get() >= upg_window.get():
