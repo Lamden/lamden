@@ -72,7 +72,7 @@ def vote(iaddr):
     constitution = resolve_constitution(fp=file)
 
     proc = constitution.get("masternodes", "")
-    print("proc nodes -".format(proc))
+    print("proc nodes -{}".format(proc))
 
     # pkg_check = verify_pkg()
     #
