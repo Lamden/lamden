@@ -77,10 +77,11 @@ def vote(vk):
 
 
 def check_vote_state():
-    required_mn = int((tot_mn.get() * 2) / 3)
-    required_dl = int((tot_dl.get() * 2) / 3)
 
-    if (mn_vote.get() > required_mn) and (dl_vote.get() > required_dl):
+    all_nodes = tot_mn.get() + tot_dl.get()
+    all_votes = mn_vote.get() + dl_vote.get()
+
+    if all_votes > (all_nodes * 2/3):
         upg_consensus.set(True)
 
 
