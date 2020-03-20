@@ -85,8 +85,6 @@ def check_vote_state():
         upg_consensus.set(True)
 
 
-
-
 def reset_contract():
     upg_init_time.set(None)
     upg_consensus.set(False)
