@@ -23,6 +23,8 @@ tot_dl = Variable()
 # Results
 upg_consensus = Variable()
 
+S = Hash()
+
 @construct
 def seed():
     upg_lock.set(False)
@@ -46,7 +48,7 @@ def trigger_upgrade(pepper, initiator_vk):
         #upg_window.set(datetime.Timedelta(seconds=3000000000))
         mn_vote.set(0)
         dl_vote.set(0)
-        assert election_house.current_value_for_policy('masternodes')
+        #assert election_house.current_value_for_policy('masternodes')
 
         mnum = len(election_house.current_value_for_policy(S['master_contract']))
         dnum = len(election_house.current_value_for_policy(S['delegate_contract']))
@@ -57,15 +59,11 @@ def trigger_upgrade(pepper, initiator_vk):
 @export
 def vote(vk):
     if upg_lock.get() is True:
-        # if vk in election_house.current_value_for_policy('masternodes'):
-        #     mn_vote.set(mn_vote.get() + 1)
-        # if vk in election_house.current_value_for_policy('delegates'):
-        #     dl_vote.set(dl_vote.get() + 1)
-
-        if vk in election_house.current_value_for_policy(S['master_contract']):
+        if vk in election_house.current_value_for_policy('masternodes'):
             mn_vote.set(mn_vote.get() + 1)
-        if vk in election_house.current_value_for_policy(S['delegate_contract']):
+        if vk in election_house.current_value_for_policy('delegates'):
             dl_vote.set(dl_vote.get() + 1)
+
 
         if now - upg_init_time.get() >= upg_window.get():
             reset_contract()
