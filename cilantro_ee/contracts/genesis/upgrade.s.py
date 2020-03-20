@@ -11,7 +11,7 @@ import election_house
 
 upg_lock = Variable() # network upgrade lock only one update can be performed
 upg_init_time = Variable()
-upg_pepper = Hash()
+upg_pepper = Variable()
 upg_window = Variable()
 
 mn_vote = Variable()
@@ -49,9 +49,6 @@ def trigger_upgrade(pepper, initiator_vk):
 
         tot_mn.set(len(election_house.current_value_for_policy('masternodes')))
         tot_dl.set(len(election_house.current_value_for_policy('delegates')))
-
-    else:
-        return False
 
 
 @export
