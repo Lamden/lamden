@@ -41,9 +41,9 @@ def trigger_upgrade(pepper, initiator_vk):
     # for now only master's trigger upgrade
     if initiator_vk in election_house.current_value_for_policy('masternodes'):
         upg_lock.set(True)
-        upg_init_time.set(now)
+        #upg_init_time.set(now)
         upg_pepper.set(pepper)
-        upg_window.set(datetime.Timedelta(seconds=3000000000))
+        #upg_window.set(datetime.Timedelta(seconds=3000000000))
         mn_vote.set(0)
         dl_vote.set(0)
 
