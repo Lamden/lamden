@@ -8,6 +8,8 @@ from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.crypto import canonical
+from cilantro_ee.storage.contract import BlockchainDriver
+
 
 from cilantro_ee.nodes.base import Node
 
@@ -124,14 +126,23 @@ class Masternode(Node):
         await self.process_blocks()
 
     async def send_work(self):
+
+        driver = BlockchainDriver()
+        self.active_upgrade = driver.get_var(contract='upgrade', variable='upg_lock', mark=False)
+
         # Else, batch some more txs
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
 
         if self.active_upgrade is False:
             tx_batch = self.tx_batcher.pack_current_queue()
-        else:
-            tx_batch = self.tx_batcher.make_empty_batch()
-            self.log.info('Enqueue stopped network upgrading')
+        elif self.active_upgrade is True:
+            consensus_reached = driver.get_var(contract='upgrade', variable='upg_consensus', mark=False)
+            if consensus_reached is True:
+                tx_batch = self.tx_batcher.make_empty_batch()
+                self.log.info('Triggering version reboot')
+                # we should never be here node reset should have been done when state changed
+            else:
+                tx_batch = self.tx_batcher.pack_current_queue()
 
         await self.parameters.refresh()
 
