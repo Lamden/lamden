@@ -23,7 +23,6 @@ tot_dl = Variable()
 # Results
 upg_consensus = Variable()
 
-S = Hash()
 
 @construct
 def seed():
@@ -33,6 +32,8 @@ def seed():
     dl_vote.set(0)
     tot_mn.set(0)
     tot_dl.set(0)
+
+
 
 
 @export
@@ -50,8 +51,8 @@ def trigger_upgrade(pepper, initiator_vk):
         dl_vote.set(0)
         #assert election_house.current_value_for_policy('masternodes')
 
-        mnum = len(election_house.current_value_for_policy(S['master_contract']))
-        dnum = len(election_house.current_value_for_policy(S['delegate_contract']))
+        mnum = len(election_house.current_value_for_policy('masternodes'))
+        dnum = len(election_house.current_value_for_policy('delegates'))
 
         tot_mn.set(mnum)
         tot_dl.set(dnum)
