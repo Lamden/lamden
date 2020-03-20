@@ -95,7 +95,7 @@ def vote(iaddr):
         function='vote',
         kwargs=kwargs,
         stamps=100_000,
-        processor=proc[0],
+        processor=bytes.fromhex(proc[0]),
         nonce=nonce
     )
 
