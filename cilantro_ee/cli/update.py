@@ -74,6 +74,7 @@ def vote(iaddr):
 
     nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
     nonce = nonce_req.json()['nonce']
+    vk = my_wallet.verifying_key()
 
     kwargs = {'vk': my_wallet.verifying_key().hex()}
 
@@ -83,7 +84,7 @@ def vote(iaddr):
         function='vote',
         kwargs=kwargs,
         stamps=100_000,
-        processor=my_wallet.verifying_key(),
+        processor=vk,
         nonce=nonce
     )
 

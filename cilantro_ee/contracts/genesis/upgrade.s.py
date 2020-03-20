@@ -61,7 +61,8 @@ def vote(vk):
         if now - upg_init_time.get() >= upg_window.get():
             reset_contract()
 
-        if check_vote_state():
+        check_vote_state()
+        if upg_consensus.get() is True:
             reset_contract()
 
 
@@ -71,6 +72,8 @@ def check_vote_state():
 
     if (mn_vote.get() > required_mn) and (dl_vote.get() > required_dl):
         upg_consensus.set(True)
+
+
 
 
 def reset_contract():
