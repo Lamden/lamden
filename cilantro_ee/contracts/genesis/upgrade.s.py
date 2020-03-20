@@ -27,6 +27,10 @@ upg_consensus = Variable()
 def seed():
     upg_lock.set(False)
     upg_consensus.set(False)
+    mn_vote.set(0)
+    dl_vote.set(0)
+    tot_mn.set(0)
+    tot_dl.set(0)
 
 
 @export
@@ -52,7 +56,7 @@ def trigger_upgrade(pepper, initiator_vk):
 
 @export
 def vote(vk):
-    if upg_lock.get():
+    if upg_lock.get() is True:
         if vk in election_house.current_value_for_policy('masternodes'):
             mn_vote.set(mn_vote.get() + 1)
         if vk in election_house.current_value_for_policy('delegates'):
@@ -64,6 +68,8 @@ def vote(vk):
         check_vote_state()
         if upg_consensus.get() is True:
             reset_contract()
+    else:
+        assert 'no active upgrade'
 
 
 def check_vote_state():

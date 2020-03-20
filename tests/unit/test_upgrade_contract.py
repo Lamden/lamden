@@ -60,6 +60,8 @@ class TestUpgradeContract(unittest.TestCase):
         upgrade.quick_write(variable='mn_vote', value='1')
         upgrade.quick_write(variable='dl_vote', value='2')
 
+        total_mn = upgrade.quick_read(variable='upg_lock')
+
         upgrade.vote(vk="tejas")
 
         master_votes = upgrade.quick_read(variable='mn_vote')
@@ -68,8 +70,9 @@ class TestUpgradeContract(unittest.TestCase):
         print(master_votes)
         print(del_votes)
         result = upgrade.quick_read(variable='upg_consensus')
+        print(result)
 
-        #self.assertEqual(result, True)
+        self.assertEqual(result, False)
         #
         # upgrade.reset_contract()
         #
