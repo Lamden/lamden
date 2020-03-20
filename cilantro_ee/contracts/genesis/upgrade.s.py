@@ -46,9 +46,16 @@ def trigger_upgrade(pepper, initiator_vk):
         #upg_window.set(datetime.Timedelta(seconds=3000000000))
         mn_vote.set(0)
         dl_vote.set(0)
+        assert election_house.current_value_for_policy('masternodes')
 
-        tot_mn.set(len(election_house.current_value_for_policy('masternodes')))
-        tot_dl.set(len(election_house.current_value_for_policy('delegates')))
+        mnum = len(election_house.current_value_for_policy(S['master_contract']))
+        dnum = len(election_house.current_value_for_policy(S['delegate_contract']))
+
+        tot_mn.set(mnum)
+        tot_dl.set(dnum)
+        
+        # tot_mn.set(len(election_house.current_value_for_policy('masternodes')))
+        # tot_dl.set(len(election_house.current_value_for_policy('delegates')))
 
 
 @export
