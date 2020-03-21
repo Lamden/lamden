@@ -70,8 +70,6 @@ def vote(vk):
             reset_contract()
 
         check_vote_state()
-        if upg_consensus.get() is True:
-            reset_contract()
     else:
         assert 'no active upgrade'
 
