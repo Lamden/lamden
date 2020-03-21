@@ -65,10 +65,9 @@ def vote(vk):
         if vk in election_house.current_value_for_policy('delegates'):
             dl_vote.set(dl_vote.get() + 1)
 
-
-        if now - upg_init_time.get() >= upg_window.get():
-            reset_contract()
-
+        # if now - upg_init_time.get() >= upg_window.get():
+        #     reset_contract()
+        
         check_vote_state()
     else:
         assert 'no active upgrade'
