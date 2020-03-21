@@ -13,6 +13,7 @@ from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
 from cilantro_ee.nodes.rewards import RewardManager
+from cilantro_ee.cli.utils import version_reboot
 
 from cilantro_ee.logger.base import get_logger
 
@@ -213,7 +214,8 @@ class Node:
             # check for vote consensys
             vote_consensus = self.version_state.quick_read('upg_consensus')
             if vote_consensus:
-                self.log.info('Download and verify the pkg from FTP')
+                self.log.info('Rebooting Node with new verion')
+                version_reboot()
             else:
                 self.log.info('waiting for vote on upgrade')
 

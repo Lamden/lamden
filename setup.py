@@ -32,6 +32,7 @@ setup(
         'contracting',
         'pymongo',
         'argparse_actions==0.4.4',
+        'psutil==5.7.0',
     ],
     entry_points={
         'console_scripts': [
