@@ -1,8 +1,13 @@
 import aiohttp
 import asyncio
+import requests
 from getpass import getpass
+from cilantro_ee.nodes.base import Node
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.cli.utils import get_update_state
+from cilantro_ee.cli.start import resolve_constitution
+
 from scripts.pkg import verify_pkg
 
 
@@ -23,6 +28,7 @@ def verify_access():
 
         try:
             wallet = Wallet(seed=bytes.fromhex(sk))
+            print('Access validated')
             return wallet
         except:
             print('Invalid format! Try again.')
@@ -32,8 +38,13 @@ def trigger(pkg=None, iaddr=None):
 
     my_wallet = verify_access()
     pepper = pkg  #TODO replace with verified pepper pkg
-    kwargs = {'pepper': pepper, 'vk': my_wallet.verifying_key()}
+    kwargs = {'pepper': pepper, 'initiator_vk': my_wallet.verifying_key().hex()}
     vk = my_wallet.verifying_key()
+
+    SERVER = f'http://{iaddr}:18080'
+
+    nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
+    nonce = nonce_req.json()['nonce']
 
     #TODO bail out if vk is not in list of master nodes
 
@@ -42,61 +53,57 @@ def trigger(pkg=None, iaddr=None):
         contract='upgrade',
         function='trigger_upgrade',
         kwargs=kwargs,
-        stamps=1_000_000,
+        stamps=100_000,
         processor=vk,
-        nonce=0
+        nonce=nonce
     )
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
-    print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
 
 def vote(iaddr):
     my_wallet = verify_access()
-    pkg_check = verify_pkg()
 
-    if pkg_check is False:
-        print('Invalid package hash does not match')
-        return
+    file = input("Enter patch to constitution:")
 
-    kwargs = {'vk': my_wallet.verifying_key()}
+    constitution = resolve_constitution(fp=file)
+
+    # TODO randomize proc in future
+    proc = constitution.get("masternodes", "")
+
+    # pkg_check = verify_pkg()
+    #
+    # if pkg_check is False:
+    #     print('Invalid package hash does not match')
+    #     return
+
+    SERVER = f'http://{iaddr}:18080'
+
+    nonce_req = requests.get('{}/nonce/{}'.format(SERVER, my_wallet.verifying_key().hex()))
+    nonce = nonce_req.json()['nonce']
+    vk = my_wallet.verifying_key()
+
+    kwargs = {'vk': my_wallet.verifying_key().hex()}
 
     pack = TransactionBuilder(
         sender=my_wallet.verifying_key(),
         contract='upgrade',
         function='vote',
         kwargs=kwargs,
-        stamps=1_000_000,
-        processor=my_wallet.verifying_key(),
-        nonce=0
+        stamps=100_000,
+        processor=bytes.fromhex(proc[0]),
+        nonce=nonce
     )
 
     pack.sign(my_wallet.signing_key())
     m = pack.serialize()
 
-    print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
-
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(cil_interface(server=iaddr, packed_data=m, sleep=2))
 
 
 def check_ready_quorum(iaddr):
-    my_wallet = verify_access()
-    kwargs = {'vk': my_wallet.verifying_key()}
-
-    pack = TransactionBuilder(
-        sender=my_wallet.verifying_key(),
-        contract='upgrade',
-        function='check_vote_state',
-        kwargs=kwargs,
-        stamps=1_000_000,
-        processor=my_wallet.verifying_key(),
-        nonce=0
-    )
-
-    pack.sign(my_wallet.signing_key())
-    m = pack.serialize()
-    print(m)
-    cil_interface(server=iaddr, packed_data=m, sleep=2)
-
+    get_update_state()

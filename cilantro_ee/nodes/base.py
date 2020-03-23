@@ -14,6 +14,7 @@ from cilantro_ee.storage.contract import BlockchainDriver
 from contracting.client import ContractingClient
 
 from cilantro_ee.nodes.rewards import RewardManager
+from cilantro_ee.cli.utils import version_reboot
 
 from cilantro_ee.logger.base import get_logger
 
@@ -78,16 +79,16 @@ class Node:
         self.version_state = self.client.get_contract('upgrade')
         self.active_upgrade = self.version_state.quick_read('upg_lock')
 
-        tol_mn = self.version_state.quick_read('tol_mn')
-        tot_dl = self.version_state.quick_read('tot_dl')
+        self.tol_mn = self.version_state.quick_read('tol_mn')
+        self.tot_dl = self.version_state.quick_read('tot_dl')
 
-        if tol_mn is None:
-            tol_mn = 0
+        if self.tol_mn is None:
+            self.tol_mn = 0
 
-        if tot_dl is None:
-            tot_dl = 0
+        if self.tot_dl is None:
+            self.tot_dl = 0
 
-        self.all_votes = tol_mn + tot_dl
+        self.all_votes = self.tol_mn + self.tot_dl
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
         # self.pending_cnt = self.all_votes - self.vote_cnt
@@ -208,6 +209,8 @@ class Node:
         self.mn_votes = self.version_state.quick_read('mn_vote')
         self.dl_votes = self.version_state.quick_read('dl_vote')
 
+        self.get_update_state()
+
         if self.version_state:
             self.log.info('Waiting for Consensys on vote')
             self.log.info('num masters voted -> {}'.format(self.mn_votes))
@@ -216,17 +219,36 @@ class Node:
             # check for vote consensys
             vote_consensus = self.version_state.quick_read('upg_consensus')
             if vote_consensus:
-                self.log.info('Download and verify the pkg from FTP')
+                self.log.info('Rebooting Node with new verion')
+                version_reboot()
             else:
                 self.log.info('waiting for vote on upgrade')
 
             # ready
             #TODO we can merge it with vote - to be decided
 
+    def get_update_state(self):
+        self.active_upgrade = self.version_state.quick_read('upg_lock')
+        start_time = self.version_state.quick_read('upg_init_time')
+        window = self.version_state.quick_read('upg_window')
+        pepper = self.version_state.quick_read('upg_pepper')
+        self.mn_votes = self.version_state.quick_read('mn_vote')
+        self.dl_votes = self.version_state.quick_read('dl_vote')
+        consensus = self.version_state.quick_read('upg_consensus')
 
-        # check for ready consensys
-
-        pass
+        print("Upgrade -> {} Cil Pepper   -> {}\n"
+              "Init time -> {}, Time Window -> {}\n"
+              "Masters      -> {}\n"
+              "Delegates    -> {}\n"
+              "Votes        -> {}\n "
+              "MN-Votes     -> {}\n "
+              "DL-Votes     -> {}\n "
+              "Consensus    -> {}\n"
+              .format(self.active_upgrade,
+                      pepper, start_time, window, self.tol_mn,
+                      self.tot_dl, self.all_votes,
+                      self.mn_votes, self.dl_votes,
+                      consensus))
 
     def issue_rewards(self, block):
         # ISSUE REWARDS

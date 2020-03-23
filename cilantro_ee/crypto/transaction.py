@@ -150,6 +150,7 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
         stamp_to_tau = 1
 
     if balance * stamp_to_tau < tx.payload.stampsSupplied:
+        print("bal -> {}, stamp2tau - > {}, txpayload -> {}".format(balance, stamp_to_tau, tx.payload.stampsSupplied))
         raise TransactionSenderTooFewStamps
 
     # Prevent people from sending their entire balances for free by checking if that is what they are doing.

@@ -30,6 +30,8 @@ setup(
         'pymongo',
         'termcolor',
         'Cython==0.29',
+        'argparse_actions==0.4.4',
+        'psutil==5.7.0',
     ],
     entry_points={
         'console_scripts': [
@@ -50,5 +52,5 @@ setup(
     classifiers=[
         'Programming Language :: Python :: 3.6',
     ],
-    python_requires='==3.6.8',
+    python_requires='>=3.6.5',
 )
