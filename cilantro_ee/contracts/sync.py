@@ -114,9 +114,6 @@ def submit_from_genesis_json_file(filename, client, root=os.path.dirname(__file_
         genesis = json.load(f)
 
     for contract in genesis['contracts']:
-        if client.get_contract(contract['name']) is not None:
-            continue
-
         c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
 
         with open(c_filepath) as f:
@@ -126,8 +123,11 @@ def submit_from_genesis_json_file(filename, client, root=os.path.dirname(__file_
         if contract.get('submit_as') is not None:
             contract_name = contract['submit_as']
 
-        client.submit(code, name=contract_name, owner=contract['owner'],
-                      constructor_args=contract['constructor_args'])
+        try:
+            client.submit(code, name=contract_name, owner=contract['owner'],
+                          constructor_args=contract['constructor_args'])
+        except:
+            pass
 
 
 def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, client, master_price=100_000,
