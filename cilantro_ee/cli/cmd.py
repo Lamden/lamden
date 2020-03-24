@@ -1,5 +1,5 @@
 import argparse
-from cilantro_ee.cli.utils import validate_ip
+from cilantro_ee.cli.utils import validate_ip, version_reboot
 from cilantro_ee.cli.start import start_node, setup_node, join_network
 from cilantro_ee.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
 from cilantro_ee.storage import MasterStorage, BlockchainDriver
@@ -39,8 +39,12 @@ def setup_cilparser(parser):
     upd_parser.add_argument('-c', '--check', action = 'store_true', default = False,
                             help='Bool : check current state of network')
 
-    upd_parser.add_argument('-i, ''--ip', type=str, help='Master Node TX End points',
+    upd_parser.add_argument('-n', '--now', action = 'store_true', default = False,
+                            help='Bool : reboot to new network')
+
+    upd_parser.add_argument('-i', '--ip', type=str, help='Master Node TX End points',
                             required=True)
+
 
     start_parser = subparser.add_parser('start')
 
@@ -97,17 +101,17 @@ def main():
 
     elif args.command == 'update':
 
-        validate_ip(address=args.ip)
+        print(args)
+        ip = validate_ip(address=args.ip)
 
         if args.pkg_hash:
-            result = verify_pkg(args.pkg_hash)
-            if result is True:
-                print('Cilantro has same version running')
-            else:
-                trigger(pkg=args.pkg_hash, iaddr=args.ip)
+            trigger(pkg=args.pkg_hash, iaddr=ip)
 
         if args.vote:
             vote(iaddr=args.ip)
+
+        if args.now:
+            version_reboot()
 
         if args.check:
             check_ready_quorum(iaddr=args.ip)

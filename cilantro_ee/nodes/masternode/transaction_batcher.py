@@ -19,19 +19,21 @@ class TransactionBatcher:
         timestamp = time.time()
         h = hashlib.sha3_256()
         h.update('{}'.format(timestamp).encode())
-        input_hash = h.digest().hex()
+        input_hash = h.digest()
 
         signature = self.wallet.sign(input_hash)
 
-        return Message.get_signed_message_packed_2(
+        msg = Message.get_signed_message_packed_2(
             wallet=self.wallet,
             msg_type=MessageType.TRANSACTION_BATCH,
             transactions=[],
             timestamp=timestamp,
             signature=signature,
-            inputHash=input_hash,
+            inputHash=input_hash.hex(),
             sender=self.wallet.verifying_key()
         )
+
+        return msg
 
     def pack_current_queue(self, tx_number=100):
         # if len(self.queue) == 0:

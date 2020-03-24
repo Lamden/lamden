@@ -114,6 +114,12 @@ def start_node(args):
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
 
+    # Setup Environment
+    CURR_DIR = pathlib.Path(os.getcwd())
+    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
+    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/cilantro_ee'
+
+
     if args.node_type == 'masternode':
         # Start mongo
         start_mongo()
@@ -228,6 +234,12 @@ def join_network(args):
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
+
+    # Setup Environment
+    CURR_DIR = pathlib.Path(os.getcwd())
+    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
+    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/cilantro_ee'
+
 
     if args.node_type == 'masternode':
         # Start mongo
