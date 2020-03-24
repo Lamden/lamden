@@ -131,7 +131,9 @@ class Masternode(Node):
 
             # await multicast(self.ctx, msg, self.nbn_sockets())
 
-        self.driver.set_latest_block_num(1)
+        if len(self.contacts.masternodes) > 1:
+            self.driver.set_latest_block_num(1)
+
         await self.process_blocks()
 
     async def join_quorum(self):
