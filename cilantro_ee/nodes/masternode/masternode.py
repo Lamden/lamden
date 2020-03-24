@@ -102,7 +102,7 @@ class Masternode(Node):
 
     async def run(self):
         self.log.info('Running...')
-        if self.driver.latest_block_num == 0 or len(self.contacts.masternodes) == 1:
+        if self.driver.latest_block_num == 0:# or len(self.contacts.masternodes) == 1:
             await self.new_blockchain_boot()
         else:
             await self.join_quorum()
@@ -169,6 +169,8 @@ class Masternode(Node):
                 tx_batch = self.tx_batcher.make_empty_batch()
                 self.log.info('Triggering version reboot')
                 # we should never be here node reset should have been done when state changed
+            else:
+                tx_batch = self.tx_batcher.pack_current_queue()
         else:
             tx_batch = self.tx_batcher.pack_current_queue()
 
