@@ -114,7 +114,7 @@ def submit_from_genesis_json_file(filename, client, root=os.path.dirname(__file_
         genesis = json.load(f)
 
     for contract in genesis['contracts']:
-        if client.get_contract(contract) is not None:
+        if client.get_contract(contract['name']) is not None:
             continue
 
         c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
