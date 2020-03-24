@@ -56,12 +56,12 @@ def get_update_state():
     dvotes = driver.get_var(contract='upgrade', variable='dl_vote', mark=False)
     consensus = driver.get_var(contract='upgrade', variable='upg_consensus', mark=False)
 
-    print("Upgrade -> {} Cil Pepper   -> {}\n"
-          "Init time -> {}, Time Window -> {}\n"
-          "Masters      -> {}\n"
-          "Delegates    -> {}\n"
-          "MN-Votes     -> {}\n "
-          "DL-Votes     -> {}\n "
-          "Consensus    -> {}\n"
+    print("Upgrade: {} Cil Pepper:  {}\n"
+          "Init time:   {}, Time Window:    {}\n"
+          "Masters:     {}\n"
+          "Delegates:   {}\n"
+          "MN-Votes:    {}\n "
+          "DL-Votes:    {}\n "
+          "Consensus:   {}\n"
           .format(active_upgrade, pepper, start_time, window, mcount, dcount,
                   mvotes, dvotes, consensus))
