@@ -169,8 +169,8 @@ class Masternode(Node):
                 tx_batch = self.tx_batcher.make_empty_batch()
                 self.log.info('Triggering version reboot')
                 # we should never be here node reset should have been done when state changed
-            else:
-                tx_batch = self.tx_batcher.pack_current_queue()
+        else:
+            tx_batch = self.tx_batcher.pack_current_queue()
 
         # LOOK AT SOCKETS CLASS
         if len(self.dl_wk_sks()) == 0:
