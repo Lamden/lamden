@@ -93,7 +93,6 @@ class Masternode(Node):
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
 
-
     def dl_wk_sks(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items())
 
@@ -161,16 +160,17 @@ class Masternode(Node):
         # Else, batch some more txs
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
 
-        if self.active_upgrade is False:
-            tx_batch = self.tx_batcher.pack_current_queue()
-        elif self.active_upgrade is True:
-            consensus_reached = driver.get_var(contract='upgrade', variable='upg_consensus', mark=False)
-            if consensus_reached is True:
-                tx_batch = self.tx_batcher.make_empty_batch()
-                self.log.info('Triggering version reboot')
-                # we should never be here node reset should have been done when state changed
-            else:
-                tx_batch = self.tx_batcher.pack_current_queue()
+        # if self.active_upgrade is False:
+        #     tx_batch = self.tx_batcher.pack_current_queue()
+        # elif self.active_upgrade is True:
+        #     consensus_reached = driver.get_var(contract='upgrade', variable='upg_consensus', mark=False)
+        #     if consensus_reached is True:
+        #         tx_batch = self.tx_batcher.make_empty_batch()
+        #         self.log.info('Triggering version reboot')
+        #         # we should never be here node reset should have been done when state changed
+        #     else:
+
+        tx_batch = self.tx_batcher.pack_current_queue()
 
         # LOOK AT SOCKETS CLASS
         if len(self.dl_wk_sks()) == 0:
