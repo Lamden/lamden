@@ -1,4 +1,5 @@
 import os
+import sys
 import psutil
 import subprocess
 import ipaddress
@@ -36,12 +37,35 @@ def verify_cil_pkg(pkg_hash):
         return False
 
 
+def run(*args):
+    return subprocess.check_call(['git'] + list(args))
+
+
 def version_reboot():
+
+    try:
+        path = os.environ.get('CIL_PATH')
+        os.chdir(path)
+
+        # get latest release
+        rel = input("Enter New Release branch:")
+        br = f'{rel}'
+
+        run("checkout", "-b", br)
+    except OSError as err:
+        print("OS error: {0}".format(err))
+    except:
+        print("Unexpected error:", sys.exc_info())
+        raise
+
+    # Find cil process
     PNAME = 'cil'
     for proc in psutil.process_iter():
         # check whether the process name matches
         if proc.name() == PNAME:
             proc.kill()
+
+
 
 
 def get_update_state():
