@@ -11,9 +11,9 @@ sudo apt-get install python3-pip -y
 ```
 
 ### Other Pip3 Pkg
-'''bash
+```bash
 pip3 install --upgrade pip setuptools
-'''
+```
 
 ### Install RocksDB
 ```bash
@@ -52,7 +52,7 @@ cd ~
 git clone https://github.com/Lamden/cilantro-enterprise.git
 cd cilantro-enterprise
 git fetch
-git checkout rel_gov_debug
+git checkout ori1-rel-gov-socks
 python3 setup.py develop
 ```
 
