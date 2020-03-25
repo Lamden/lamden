@@ -34,22 +34,42 @@ class SocketStruct:
         else:
             return '{}{}:{}'.format(Protocols.PROTOCOL_STRINGS[self.protocol], self.id, self.port)
 
+    # @classmethod
+    # def from_string(cls, str):
+    #     protocol = Protocols.TCP
+    #
+    #     for protocol_string in Protocols.PROTOCOL_STRINGS:
+    #         if len(str.split(protocol_string)) > 1:
+    #             protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
+    #             str = str.split(protocol_string)[1]
+    #
+    #     if protocol not in {Protocols.INPROC, Protocols.IPC}:
+    #         _id, port = str.split(':')
+    #         port = int(port)
+    #
+    #         return cls(protocol=protocol, id=_id, port=port)
+    #     else:
+    #         return cls(protocol=protocol, id=str, port=None)
+
     @classmethod
-    def from_string(cls, str):
-        protocol = Protocols.TCP
+    def from_string(cls, _str: str):
+        protocol = 0
+        p_str = Protocols.PROTOCOL_STRINGS[0]
+        for i in range(len(Protocols.PROTOCOL_STRINGS)):
+            p = Protocols.PROTOCOL_STRINGS[i]
+            if _str.startswith(p):
+                protocol = i
+                p_str = p
 
-        for protocol_string in Protocols.PROTOCOL_STRINGS:
-            if len(str.split(protocol_string)) > 1:
-                protocol = Protocols.PROTOCOL_STRINGS.index(protocol_string)
-                str = str.split(protocol_string)[1]
+        end = _str.split(p_str)[1]
 
-        if protocol not in {Protocols.INPROC, Protocols.IPC}:
-            _id, port = str.split(':')
+        if protocol == Protocols.TCP:
+            _id, port = end.split(':')
             port = int(port)
 
             return cls(protocol=protocol, id=_id, port=port)
         else:
-            return cls(protocol=protocol, id=str, port=None)
+            return cls(protocol=protocol, id=end, port=None)
 
     @classmethod
     def is_valid(cls, s):
