@@ -156,11 +156,12 @@ class Network:
             master_socket, msg=ask_msg, ctx=self.ctx, timeout=1000
         )
 
-        contacts = json.loads(resp)
+        if resp is not None:
+            contacts = json.loads(resp)
 
-        self.log.info(f'Got contacts: {contacts}')
+            self.log.info(f'Got contacts: {contacts}')
 
-        self.peer_service.table = contacts
+            self.peer_service.table.update(contacts)
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
