@@ -56,7 +56,7 @@ class PeerServer(AsyncInbox):
         if command == 'join':
             vk, ip = args  # unpack args
             asyncio.ensure_future(self.handle_join(vk, ip))
-            return None
+            await self.return_msg(_id, b'ok')
         if command == 'ask':
             await self.return_msg(_id, json.dumps(self.table, cls=struct.SocketEncoder).encode())
 
@@ -125,4 +125,4 @@ class PeerServer(AsyncInbox):
         self.event_queue_loop_running = False
         self.event_service.running = False
         self.event_service.stop()
-        self.socket.close()
+        #self.socket.close()

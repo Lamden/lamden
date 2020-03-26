@@ -1295,6 +1295,9 @@ class TestNetworkService(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
+        print(mn1.peer_service.table)
+        print(mn2.peer_service.table)
+
         self.assertDictEqual(mn1.peer_service.table, mn2.peer_service.table)
 
     def test_contacts_added_if_network_starts_up_and_mn_seed_provided(self):
