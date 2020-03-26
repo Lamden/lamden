@@ -76,6 +76,8 @@ def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
         encoded_sb = bson.BSON.encode(sb_without_sigs)
         block_hasher.update(encoded_sb)
 
+    print(f'Should be: {proposed_hash}')
+    print(f'It is    : {block_hasher.digest().hex()}')
     if block_hasher.digest().hex() == proposed_hash:
         return True
 
