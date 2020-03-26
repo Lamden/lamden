@@ -182,7 +182,7 @@ class BlockFetcher:
                 return unpacked
 
     async def find_valid_block(self, sockets, i, latest_hash):
-        if i == 0 or i == 1:
+        if i == 0:
             block = get_genesis_block()
             block['blockNum'] = i
             block['blockOwners'] = []
