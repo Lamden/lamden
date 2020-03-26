@@ -1109,3 +1109,58 @@ class TestGovernanceOrchestration(unittest.TestCase):
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
+
+    def test_jeffs_contract_behavior(self):
+        code = '''
+state = Hash()
+
+@construct
+def seed():
+    state['thiskey', 'current'] = 'jeff'
+    state['thiskey', 'next'] = 'stu'
+
+@export
+def testing(value):
+    state['thiskey', 'current'] = 'tejas'
+    state['thiskey', 'next'] = value
+'''
+
+        stu = Wallet()
+
+        o = Orchestrator(2, 4, self.ctx)
+
+        block_0 = []
+
+        block_0.append(o.make_tx(
+            contract='submission',
+            function='submit_contract',
+            kwargs={
+                'name': 'con_jeff',
+                'code': code
+            },
+            sender=stu
+        ))
+
+        block_1 = []
+
+        block_1.append(
+            o.make_tx(
+                contract='con_jeff',
+                function='testing',
+                kwargs={
+                    'value': 'moomoo'
+                },
+                sender=stu
+            )
+        )
+
+        async def test():
+            await o.start_network
+            await send_tx_batch(o.masternodes[0], block_0)
+            await asyncio.sleep(2)
+            await send_tx_batch(o.masternodes[0], block_1)
+            await asyncio.sleep(2)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(test())
+
