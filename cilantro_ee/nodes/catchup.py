@@ -197,6 +197,10 @@ class BlockFetcher:
             socket = random.choice(sockets)
             block = await self.get_block_from_master(i, socket)
 
+            self.log.info(f'Got Block {i}')
+            self.log.info(f'Previous Hash: {latest_hash}')
+            self.log.info(f'Block.Hash: {block.hash}')
+
             block_found = verify_block(
                 subblocks=block.subBlocks,
                 previous_hash=latest_hash,
