@@ -57,31 +57,9 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
     return block
 
 
-def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes):
-    # Verify signatures!
-    block_hasher = hashlib.sha3_256()
-    block_hasher.update(bytes.fromhex(previous_hash))
-
-    deserialized_subblocks = []
-
-    for subblock in subblocks:
-        sb = subblock.to_dict()
-
-        sb = format_dictionary(sb)
-        deserialized_subblocks.append(sb)
-
-        sb_without_sigs = deepcopy(sb)
-        del sb_without_sigs['signatures']
-
-        encoded_sb = bson.BSON.encode(sb_without_sigs)
-        block_hasher.update(encoded_sb)
-
-    print(f'Should be: {proposed_hash}')
-    print(f'It is    : {block_hasher.digest().hex()}')
-    if block_hasher.digest().hex() == proposed_hash:
-        return True
-
-    return False
+def verify_block(subblocks, previous_hash: bytes, proposed_hash: bytes, block_num=0):
+    block = block_from_subblocks(subblocks, previous_hash, block_num)
+    return block['hash'] == proposed_hash
 
 
 def block_is_skip_block(block: dict):

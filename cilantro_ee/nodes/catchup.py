@@ -204,7 +204,8 @@ class BlockFetcher:
             block_found = verify_block(
                 subblocks=block.subBlocks,
                 previous_hash=latest_hash,
-                proposed_hash=block.hash
+                proposed_hash=block.hash,
+                block_num=i
             )
 
         if block is not None:
