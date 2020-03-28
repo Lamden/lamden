@@ -28,6 +28,8 @@ class Masternode(Node):
             blocks=self.blocks
         )
 
+        self.block_fetcher.blocks = self.blocks
+
         self.webserver = WebServer(
             contracting_client=self.client,
             driver=self.driver,
@@ -92,7 +94,6 @@ class Masternode(Node):
     ## DELETE
     def nbn_sockets(self):
         return list(self.parameters.get_all_sockets(service=ServiceType.BLOCK_NOTIFICATIONS).values())
-
 
     def dl_wk_sks(self):
         return list(self.parameters.get_delegate_sockets(service=ServiceType.INCOMING_WORK).items())
