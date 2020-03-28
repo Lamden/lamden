@@ -209,15 +209,15 @@ class BlockFetcher:
             )
 
         if block is not None:
-            block_dict = {
-                'hash': block.hash,
-                'blockNum': i,
-                'blockOwners': [],
-                'previous': latest_hash,
-                'subBlocks': [s for s in block.subBlocks]
-            }
+            # block_dict = {
+            #     'hash': block.hash,
+            #     'blockNum': i,
+            #     'blockOwners': [],
+            #     'previous': latest_hash,
+            #     'subBlocks': [s for s in block.subBlocks]
+            # }
 
-            return block_dict
+            return block.to_dict()
 
     async def fetch_blocks(self, sockets, latest_block_available=0):
         self.log.info('Fetching blocks...')
