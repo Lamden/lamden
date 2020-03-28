@@ -185,7 +185,7 @@ def setup_node():
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}'
-
+    mn_seed_str = f'tcp://{mn_seed}'
     const_url = input('URL of constitution: ')
     c = requests.get(const_url)
     const = resolve_raw_constitution(c.text)
@@ -203,7 +203,7 @@ def setup_node():
             bootnodes=bootnodes,
             constitution=const,
             webserver_port=18080,
-            mn_seed=mn_seed
+            mn_seed=mn_seed_str
         )
     elif node_type == 'D':
         n = Delegate(
@@ -212,7 +212,7 @@ def setup_node():
             socket_base=socket_base,
             bootnodes=bootnodes,
             constitution=const,
-            mn_seed=mn_seed
+            mn_seed=mn_seed_str
         )
 
     loop = asyncio.get_event_loop()
