@@ -132,6 +132,7 @@ class Network:
     async def get_current_contacts(self):
         # Send a join
         self.log.info('Joining network...')
+        self.peer_service.table[self.wallet.verifying_key().hex()] = self.socket_base
         join_message = ['join', (self.wallet.verifying_key().hex(), self.socket_base)]
         join_msg = json.dumps(join_message).encode()
 
