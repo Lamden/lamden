@@ -104,13 +104,18 @@ class Delegate(Node):
 
     async def acquire_work(self):
         await self.parameters.refresh()
+        self.masternode_socket_book.sync_sockets()
 
         if len(self.parameters.sockets) == 0:
             return
 
+        self.log.error(f'{len(self.parameters.get_masternode_vks())} MNS!')
+
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
+
+
         self.log.info(f'Got {len(work)} batch(es) of work')
 
         return self.filter_work(work)
@@ -158,8 +163,8 @@ class Delegate(Node):
                 msg=sbc_msg
             )
 
-            await self.parameters.refresh()
-            self.masternode_socket_book.sync_sockets()
+            #await self.parameters.refresh()
+            #self.masternode_socket_book.sync_sockets()
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
