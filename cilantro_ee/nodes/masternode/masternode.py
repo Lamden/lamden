@@ -271,6 +271,7 @@ class Masternode(Node):
 
             await self.wait_for_work(block)
 
+            await self.parameters.refresh()
             self.nbn_socket_book.sync_sockets()
 
             sends = await self.nbn_socket_book.send_to_peers(
