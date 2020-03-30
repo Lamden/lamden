@@ -269,10 +269,10 @@ class Masternode(Node):
 
             self.process_block(block)
 
-            await self.wait_for_work(block)
-
             await self.parameters.refresh()
             self.nbn_socket_book.sync_sockets()
+
+            await self.wait_for_work(block)
 
             sends = await self.nbn_socket_book.send_to_peers(
                 msg=canonical.dict_to_msg_block(block)
