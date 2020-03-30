@@ -269,6 +269,9 @@ class Masternode(Node):
             if sends is None:
                 return
 
+            self.log.info(self.contacts.masternodes)
+            self.log.info(self.contacts.delegates)
+
             self.log.error(f'{len(self.contacts.masternodes)} MNS!')
 
             self.log.info(f'{sends}')
