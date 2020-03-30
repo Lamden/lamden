@@ -144,21 +144,26 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
+        # while len(self.nbn_inbox.q) == 0:
+        #     if not self.running:
+        #         return
+        #     await asyncio.sleep(0)
+
         nbn = await self.nbn_inbox.wait_for_next_nbn()
-
-        # Update with state
-        self.driver.update_with_block(nbn)
-        self.driver.commit()
-        self.blocks.put(nbn, self.blocks.BLOCK)
-
-        while len(self.tx_batcher.queue) == 0:
-            await asyncio.sleep(0)
-            if len(self.nbn_inbox.q) > 0:
-                self.log.info('GOT NBN')
-                nbn = self.nbn_inbox.q.pop(0)
-                self.driver.update_with_block(nbn)
-                self.blocks.put(nbn, self.blocks.BLOCK)
-
+        #
+        # # Update with state
+        # self.driver.update_with_block(nbn)
+        # self.driver.commit()
+        # self.blocks.put(nbn, self.blocks.BLOCK)
+        #
+        # while len(self.tx_batcher.queue) == 0:
+        #     await asyncio.sleep(0)
+        #     if len(self.nbn_inbox.q) > 0:
+        #         self.log.info('GOT NBN')
+        #         nbn = self.nbn_inbox.q.pop(0)
+        #         self.driver.update_with_block(nbn)
+        #         self.blocks.put(nbn, self.blocks.BLOCK)
+        self.process_block(nbn)
         await self.process_blocks()
 
     async def send_work(self):
