@@ -251,7 +251,6 @@ class Masternode(Node):
         while self.running:
             await self.parameters.refresh()
             self.delegate_work_socket_book.sync_sockets()
-            self.nbn_socket_book.sync_sockets()
 
             sends = await self.send_work()
 
@@ -271,6 +270,8 @@ class Masternode(Node):
             self.process_block(block)
 
             await self.wait_for_work(block)
+
+            self.nbn_socket_book.sync_sockets()
 
             await self.nbn_socket_book.send_to_peers(
                 msg=canonical.dict_to_msg_block(block)
