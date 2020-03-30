@@ -140,6 +140,10 @@ class Masternode(Node):
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
         self.log.info('Join Quorum')
+        await self.parameters.refresh()
+        self.nbn_socket_book.sync_sockets()
+        self.delegate_work_socket_book.sync_sockets()
+
         nbn = await self.nbn_inbox.wait_for_next_nbn()
 
         # Update with state
@@ -150,6 +154,7 @@ class Masternode(Node):
         while len(self.tx_batcher.queue) == 0:
             await asyncio.sleep(0)
             if len(self.nbn_inbox.q) > 0:
+                self.log.info('GOT NBN')
                 nbn = self.nbn_inbox.q.pop(0)
                 self.driver.update_with_block(nbn)
                 self.blocks.put(nbn, self.blocks.BLOCK)
