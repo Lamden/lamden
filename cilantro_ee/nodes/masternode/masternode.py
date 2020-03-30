@@ -163,6 +163,13 @@ class Masternode(Node):
         #         nbn = self.nbn_inbox.q.pop(0)
         #         self.driver.update_with_block(nbn)
         #         self.blocks.put(nbn, self.blocks.BLOCK)
+        await self.block_fetcher.sync(sockets=[
+            self.network_parameters.resolve(
+                self.network.mn_seed,
+                ServiceType.BLOCK_SERVER
+            )
+        ])
+
         self.process_block(nbn)
         await self.process_blocks()
 
