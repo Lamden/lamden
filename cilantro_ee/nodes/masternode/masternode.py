@@ -273,9 +273,11 @@ class Masternode(Node):
 
             self.nbn_socket_book.sync_sockets()
 
-            await self.nbn_socket_book.send_to_peers(
+            sends = await self.nbn_socket_book.send_to_peers(
                 msg=canonical.dict_to_msg_block(block)
             )
+
+            self.log.info(f'NBN SENDS {sends}')
 
     def stop(self):
         super().stop()
