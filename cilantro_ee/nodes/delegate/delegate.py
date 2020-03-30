@@ -158,6 +158,9 @@ class Delegate(Node):
                 msg=sbc_msg
             )
 
+            await self.parameters.refresh()
+            self.masternode_socket_book.sync_sockets()
+
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_nbn(nbn)
 
