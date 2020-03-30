@@ -57,13 +57,13 @@ class BlockchainDriver(ContractDriver):
         if type(block) != dict:
             block = block.to_dict()
 
-        self.set_latest_block_num(block['blockNum'])
+        self.latest_block_num += 1
 
         # self.log.info("block {}".format(block))
 
         if self.latest_block_hash != block['previous']:
             log.error('BLOCK MISMATCH!!!')
-            return
+        #     return
 
         # Map of tuple to nonce such that (processor, sender) => nonce
         nonces = {}
