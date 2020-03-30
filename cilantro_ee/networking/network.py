@@ -162,6 +162,15 @@ class Network:
             self.log.info(f'Got contacts: {contacts}')
 
             self.peer_service.table.update(contacts)
+            current_nodes = deepcopy(self.peer_service.table)
+            for vk, ip in current_nodes.items():
+                join_message = ['join', (self.wallet.verifying_key().hex(), self.ip)]
+                join_message = json.dumps(join_message, cls=struct.SocketEncoder).encode()
+
+                peer = self.params.resolve(ip, service_type=ServiceType.PEER)
+                self.log.error(peer)
+
+                await services.get(peer, msg=join_message, ctx=self.ctx, timeout=1000)
 
     async def discover_bootnodes(self, nodes):
         responses = await discovery.discover_nodes(nodes, pepper=PEPPER.encode(),
