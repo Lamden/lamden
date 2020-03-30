@@ -57,7 +57,7 @@ class BlockchainDriver(ContractDriver):
         if type(block) != dict:
             block = block.to_dict()
 
-        self.latest_block_num += 1
+        self.set_latest_block_num(block['blockNum'])
 
         # self.log.info("block {}".format(block))
 
