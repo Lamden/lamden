@@ -276,6 +276,7 @@ class BlockFetcher:
         while len(self.blocks_to_process) > 0:
             b = self.blocks_to_process.pop(0)
             await self.find_and_store_block(b.blockNum, b.hash)
+            self.log.info(f'sneaky')
 
     # Secondary Catchup function. Called if a new block is created.
     async def intermediate_sync(self, block):
