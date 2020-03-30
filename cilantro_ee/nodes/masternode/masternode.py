@@ -170,7 +170,7 @@ class Masternode(Node):
             )
         ])
 
-        self.process_block(nbn)
+        # self.process_block(nbn)
         await self.process_blocks()
 
     async def send_work(self):
