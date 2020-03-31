@@ -80,8 +80,7 @@ class Parameters:
                  wallet,
                  contacts: VKBook,
                  network_parameters: NetworkParameters=NetworkParameters(),
-                 debug=True
-
+                 debug=False
                  ):
 
         self.socket_base = socket_base

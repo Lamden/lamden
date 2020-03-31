@@ -67,6 +67,7 @@ class WorkInbox(SecureAsyncInbox):
             if not self.verify:
                 msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
                 self.work[msg_blob.sender.hex()] = msg_blob
+                self.log.info(f'Got work from : {msg_blob.sender.hex()}')
 
             try:
                 msg_struct = self.verify_transaction_bag(msg)
