@@ -251,6 +251,8 @@ class BlockFetcher:
             self.state.latest_block_num = block_dict['blockNum']
             self.log.info(f'Latest block num: {self.state.latest_block_num}')
 
+        self.state.commit()
+
     # Main Catchup function. Called at launch of node
     async def sync(self, sockets):
         self.in_catchup = True
