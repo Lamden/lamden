@@ -174,7 +174,7 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        # self.process_block(nbn)
+        self.process_block(nbn)
         await self.process_blocks()
 
     async def send_work(self):
@@ -242,7 +242,6 @@ class Masternode(Node):
 
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)
-            
             self.driver.reads.clear()
             self.driver.pending_writes.clear()
             self.version_check()
