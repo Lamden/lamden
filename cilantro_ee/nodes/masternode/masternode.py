@@ -146,6 +146,17 @@ class Masternode(Node):
 
         while self.wallet.verifying_key().hex() not in self.contacts.masternodes:
             block = await self.nbn_inbox.wait_for_next_nbn()
+
+            # if block number does not equal one more than the current block number
+            # ask for the blocks before it
+            if block['blockNum'] > self.driver.latest_block_num + 1:
+                last_block = await self.block_fetcher.get_block_from_master(block['blockNum']-1, self.network_parameters.resolve(
+                    self.network.mn_seed,
+                    ServiceType.BLOCK_SERVER
+                ))
+
+                self.process_block(last_block.to_dict())
+
             self.process_block(block)
 
             await self.parameters.refresh()
@@ -222,7 +233,7 @@ class Masternode(Node):
         self.log.info(f'NEW BLOCK: {block}')
 
         # if not do_not_store:
-        if block['blockNum'] >= self.driver.latest_block_num + 1 and block['hash'] != b'\xff' * 32:
+        if block['blockNum'] == self.driver.latest_block_num + 1 and block['hash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)
             self.driver.reads.clear()
