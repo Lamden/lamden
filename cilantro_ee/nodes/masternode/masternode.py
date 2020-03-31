@@ -145,15 +145,11 @@ class Masternode(Node):
         self.delegate_work_socket_book.sync_sockets()
 
         while self.wallet.verifying_key().hex() not in self.contacts.masternodes:
-            await self.nbn_inbox.wait_for_next_nbn()
-            self.nbn_inbox.clean()
+            block = await self.nbn_inbox.wait_for_next_nbn()
+            self.process_block(block)
 
-            await self.block_fetcher.sync(sockets=[
-                self.network_parameters.resolve(
-                    self.network.mn_seed,
-                    ServiceType.BLOCK_SERVER
-                )
-            ])
+            await self.parameters.refresh()
+            self.nbn_socket_book.sync_sockets()
 
             print(self.contacts.masternodes)
 
