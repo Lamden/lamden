@@ -144,40 +144,21 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        # while len(self.nbn_inbox.q) == 0:
-        #     if not self.running:
-        #         return
-        #     await asyncio.sleep(0)
+        while self.wallet.verifying_key().hex() not in self.contacts.masternodes:
+            await self.nbn_inbox.wait_for_next_nbn()
 
-        nbn = await self.nbn_inbox.wait_for_next_nbn()
-        self.process_block(nbn)
-        await self.send_work()
-
-        #
-        # # Update with state
-        # self.driver.update_with_block(nbn)
-        # self.driver.commit()
-        # self.blocks.put(nbn, self.blocks.BLOCK)
-        #
-        # while len(self.tx_batcher.queue) == 0:
-        #     await asyncio.sleep(0)
-        #     if len(self.nbn_inbox.q) > 0:
-        #         self.log.info('GOT NBN')
-        #         nbn = self.nbn_inbox.q.pop(0)
-        #         self.driver.update_with_block(nbn)
-        #         self.blocks.put(nbn, self.blocks.BLOCK)
-        await self.block_fetcher.sync(sockets=[
-            self.network_parameters.resolve(
-                self.network.mn_seed,
-                ServiceType.BLOCK_SERVER
-            )
-        ])
+            await self.block_fetcher.sync(sockets=[
+                self.network_parameters.resolve(
+                    self.network.mn_seed,
+                    ServiceType.BLOCK_SERVER
+                )
+            ])
 
         await self.parameters.refresh()
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        self.process_block(nbn)
+        await self.send_work()
 
         await self.process_blocks()
 
