@@ -4,7 +4,7 @@ from zmq.utils import monitor
 import pathlib
 from zmq.auth.certs import load_certificate
 from cilantro_ee.networking.parameters import Parameters, ServiceType
-
+from cilantro_ee.logger.base import get_logger
 # Sync sockets from parameters
 # If there is a difference between the sockets stored and the sockets in parameters:
 # Add and connect the ones that exist
@@ -23,6 +23,8 @@ class SecureSocketWrapper:
         self.socket = ctx.socket(zmq.DEALER)
         self.socket.curve_secretkey = wallet.curve_sk
         self.socket.curve_publickey = wallet.curve_vk
+
+        self._id = str(socket_id)
 
         cert_dir = pathlib.Path.home() / cert_dir
         cert_dir.mkdir(parents=True, exist_ok=True)
@@ -45,6 +47,7 @@ class Peers:
         self.parameters = parameters
         self.service_type = service_type
         self.node_type = node_type
+        self.log = get_logger('PEERS')
 
     def connect(self, socket_id, server_vk):
         s = self.sockets.get(server_vk)
@@ -68,6 +71,8 @@ class Peers:
         #         socket_wrapper.handshake_successful = True
         #     else:
         #         raise Exception(f'Unknown event {event} encountered on socket monitor')
+
+        self.log.info(f'Sending message to : {socket_wrapper._id}')
 
         socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
         # socket.close()
