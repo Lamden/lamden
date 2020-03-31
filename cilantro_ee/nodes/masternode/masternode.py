@@ -150,6 +150,7 @@ class Masternode(Node):
         #     await asyncio.sleep(0)
 
         nbn = await self.nbn_inbox.wait_for_next_nbn()
+        self.process_block(nbn)
         await self.send_work()
 
         #
