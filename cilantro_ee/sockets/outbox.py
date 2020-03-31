@@ -60,29 +60,23 @@ class Peers:
         return await asyncio.gather(*[self.send(socket_wrapper, msg) for socket_wrapper in self.sockets.values()])
 
     async def send(self, socket_wrapper: SecureSocketWrapper, msg):
-        # s = socket_wrapper.socket.get_monitor_socket()
-        # event = 999
-        # while event != 1:
-        #     evnt = await s.recv_multipart()
-        #     evnt_dict = monitor.parse_monitor_message(evnt)
-        #     self.log.info(evnt_dict)
-        #     event = evnt_dict['event']
-
-        #
-        # while not socket_wrapper.connected and not socket_wrapper.handshake_successful:
-        #     evnt = await s.recv_multipart()
-        #     evnt_dict = monitor.parse_monitor_message(evnt)
-        #     event = evnt_dict['event']
-        #     if event == 1:
-        #         socket_wrapper.connected = True
-        #     elif event == 4096:
-        #         socket_wrapper.handshake_successful = True
-        #     else:
-        #         raise Exception(f'Unknown event {event} encountered on socket monitor')
-
         self.log.info(f'Sending message to : {socket_wrapper._id}')
 
-        await socket_wrapper.socket.send(msg)
+        s = socket_wrapper.socket.get_monitor_socket()
+
+        # Try to connect
+        # socket.connect(str(socket_id))
+
+        # See if the connection was successful
+
+        event = 1
+        while event:
+            event = await s.poll(timeout=100, flags=zmq.POLLIN)
+            evnt = await s.recv_multipart()
+            evnt_dict = monitor.parse_monitor_message(evnt)
+            self.log.info(evnt_dict)
+
+        socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
 
         self.log.info('Done')
         # socket.close()
