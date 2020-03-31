@@ -175,6 +175,7 @@ class Masternode(Node):
         self.delegate_work_socket_book.sync_sockets()
 
         self.process_block(nbn)
+        await self.send_work()
         await self.process_blocks()
 
     async def send_work(self):
