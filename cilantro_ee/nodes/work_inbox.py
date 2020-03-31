@@ -117,6 +117,8 @@ class WorkInbox(SecureAsyncInbox):
         self.accepting_work = True
         self.current_contacts = current_contacts
 
+        self.log.info(f'Current todo {self.todo}')
+
         for work in self.todo:
             await self.handle_msg(None, work)
 
