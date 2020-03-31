@@ -53,6 +53,7 @@ class Peers:
         s = self.sockets.get(server_vk)
         if s is None:
             socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
+            self.log.info(f'Connecting to {server_vk}, {socket_id}')
             self.sockets[server_vk] = socket
 
     async def send_to_peers(self, msg):
