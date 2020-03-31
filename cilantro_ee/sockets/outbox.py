@@ -35,7 +35,7 @@ class SecureSocketWrapper:
         self.socket.connect(str(socket_id))
         s = self.socket.get_monitor_socket()
         evnt = s.recv_multipart()
-        evnt_dict = monitor.parse_monitor_message(evnt)
+        evnt_dict = monitor.parse_monitor_message(evnt.result())
         print(evnt_dict)
 
     def close(self):
