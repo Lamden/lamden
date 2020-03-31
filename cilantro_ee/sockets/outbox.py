@@ -33,6 +33,9 @@ class SecureSocketWrapper:
         self.socket.curve_serverkey = server_pub
 
         self.socket.connect(str(socket_id))
+        s = self.socket.get_monitor_socket()
+        evnt = s.recv_multipart()
+        print(evnt)
 
     def close(self):
         self.socket.close()
