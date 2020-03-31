@@ -242,7 +242,7 @@ class BlockFetcher:
         block_dict = await self.find_valid_block(sockets, block_num, block_hash)
 
         if self.blocks is not None:
-            self.blocks.put(block_dict)
+            self.blocks.store_block(block_dict)
 
         self.state.update_with_block(block_dict)
         self.state.set_latest_block_hash(block_dict['hash'])

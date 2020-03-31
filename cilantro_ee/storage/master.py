@@ -133,6 +133,17 @@ class MasterStorage:
         self.blocks.remove()
         self.indexes.remove()
 
+    def store_block(self, block):
+        self.put(block, self.blocks.BLOCK)
+        del block['_id']
+        self.store_txs(block)
+
+    def store_txs(self, block):
+        for subblock in block['subBlocks']:
+            for tx in subblock['transactions']:
+                self.put(tx, MasterStorage.TX)
+                del tx['_id']
+
 
 class DistributedMasterStorage(MasterStorage):
     def __init__(self, key, distribute_writes=False, config_path=cilantro_ee.__path__[0], vkbook=None):
@@ -295,15 +306,15 @@ class CilantroStorageDriver(DistributedMasterStorage):
             block['blockOwners'] = self.vkbook.masternodes
         self.evaluate_wr(entry=block)
 
-    def store_block(self, sub_blocks):
-        block_dict = self.get_block_dict(sub_blocks, kind=0)
-
-        successful_storage = self.evaluate_wr(entry=block_dict)
-
-        assert successful_storage is None or successful_storage is True, 'Write failure.'
-        block_dict['subBlocks'] = [s for s in sub_blocks]
-
-        return block_dict
+    # def store_block(self, sub_blocks):
+    #     block_dict = self.get_block_dict(sub_blocks, kind=0)
+    #
+    #     successful_storage = self.evaluate_wr(entry=block_dict)
+    #
+    #     assert successful_storage is None or successful_storage is True, 'Write failure.'
+    #     block_dict['subBlocks'] = [s for s in sub_blocks]
+    #
+    #     return block_dict
 
     def get_transactions(self, tx_hash):
         txs = self.get_tx(tx_hash)

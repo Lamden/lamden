@@ -247,22 +247,14 @@ class Masternode(Node):
             self.update_sockets()
 
             # STORE IT IN THE BACKEND
-            self.blocks.put(block, self.blocks.BLOCK)
+            self.blocks.store_block(block)
 
             self.log.info(f'STORED {block}')
 
             del block['_id']
 
-            self.store_txs(block)
-
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
-
-    def store_txs(self, block):
-        for subblock in block['subBlocks']:
-            for tx in subblock['transactions']:
-                self.blocks.put(tx, self.blocks.TX)
-                del tx['_id']
 
     async def process_blocks(self):
         while self.running:
