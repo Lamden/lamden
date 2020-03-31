@@ -57,6 +57,8 @@ class WorkInbox(SecureAsyncInbox):
     async def handle_msg(self, _id, msg):
         self.log.info('Got some work.')
 
+        asyncio.ensure_future(self.return_msg(_id, b'ok'))
+
         if not self.accepting_work:
             self.log.info('TODO')
             self.todo.append(msg)
