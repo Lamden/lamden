@@ -49,7 +49,7 @@ class BlockchainDriver(ContractDriver):
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                self.set(delta['key'], decode(delta['value']))
+                self.driver.set(delta['key'], decode(delta['value']))
                 log.info(f"{delta['key']} -> {decode(delta['value'])}")
 
     def update_with_block(self, block, commit_tx=True):
@@ -83,9 +83,9 @@ class BlockchainDriver(ContractDriver):
         # Update our block hash and block num
         self.set_latest_block_hash(block['hash'])
 
-        log.info(self.pending_writes)
+        log.info(f'TO WRITE: {self.pending_writes}')
 
-        self.commit()
+        #self.commit()
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):
