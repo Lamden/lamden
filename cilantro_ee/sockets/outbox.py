@@ -74,7 +74,7 @@ class Peers:
 
         self.log.info(f'Sending message to : {socket_wrapper._id}')
 
-        await socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
+        await socket_wrapper.socket.send(msg)
         # socket.close()
         return True
 
