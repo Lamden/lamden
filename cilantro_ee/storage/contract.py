@@ -83,6 +83,8 @@ class BlockchainDriver(ContractDriver):
         # Update our block hash and block num
         self.set_latest_block_hash(block['hash'])
 
+        log.info(self.pending_writes)
+
         self.commit()
 
     @staticmethod
