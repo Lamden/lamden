@@ -75,6 +75,8 @@ class Peers:
         self.log.info(f'Sending message to : {socket_wrapper._id}')
 
         await socket_wrapper.socket.send(msg)
+
+        self.log.info('Done')
         # socket.close()
         return True
 
