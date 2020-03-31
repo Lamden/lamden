@@ -123,7 +123,7 @@ class WorkInbox(SecureAsyncInbox):
         self.log.info(f'Current todo {self.todo}')
 
         for work in self.todo:
-            await self.verify_work(work)
+            self.verify_work(work)
 
         self.todo.clear()
 
