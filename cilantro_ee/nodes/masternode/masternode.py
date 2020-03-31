@@ -251,8 +251,6 @@ class Masternode(Node):
 
             self.log.info(f'STORED {block}')
 
-            del block['_id']
-
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
 
