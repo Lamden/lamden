@@ -64,18 +64,21 @@ class WorkInbox(SecureAsyncInbox):
             self.todo.append(msg)
 
         else:
-            if not self.verify:
-                msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
-                self.work[msg_blob.sender.hex()] = msg_blob
-            try:
-                msg_struct = self.verify_transaction_bag(msg)
-                self.work[msg_struct.sender.hex()] = msg_struct
-                self.log.info(msg_struct.sender.hex())
-            except DelegateWorkInboxException as e:
-                # Audit trigger
-                self.log.error(type(e))
-            except TransactionException as e:
-                self.log.error(type(e))
+            self.verify_work(msg)
+
+    def verify_work(self, msg):
+        if not self.verify:
+            msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
+            self.work[msg_blob.sender.hex()] = msg_blob
+        try:
+            msg_struct = self.verify_transaction_bag(msg)
+            self.work[msg_struct.sender.hex()] = msg_struct
+            self.log.info(msg_struct.sender.hex())
+        except DelegateWorkInboxException as e:
+            # Audit trigger
+            self.log.error(type(e))
+        except TransactionException as e:
+            self.log.error(type(e))
 
     def verify_transaction_bag(self, msg):
         # What is the valid signature
@@ -120,7 +123,7 @@ class WorkInbox(SecureAsyncInbox):
         self.log.info(f'Current todo {self.todo}')
 
         for work in self.todo:
-            await self.handle_msg(None, work)
+            await self.verify_work(work)
 
         self.todo.clear()
 
