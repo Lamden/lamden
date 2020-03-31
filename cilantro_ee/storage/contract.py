@@ -77,6 +77,7 @@ class BlockchainDriver(ContractDriver):
                     self.set_transaction_data(tx=tx)
 
         # Commit new nonces
+        self.commit()
         self.commit_nonces()
         self.delete_pending_nonces()
 
@@ -84,8 +85,6 @@ class BlockchainDriver(ContractDriver):
         self.set_latest_block_hash(block['hash'])
 
         log.info(f'TO WRITE: {self.pending_writes}')
-
-        self.commit()
 
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):

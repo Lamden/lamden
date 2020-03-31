@@ -157,8 +157,6 @@ class Masternode(Node):
 
             print(self.contacts.masternodes)
 
-
-
         await self.parameters.refresh()
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
