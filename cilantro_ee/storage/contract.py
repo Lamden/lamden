@@ -83,6 +83,8 @@ class BlockchainDriver(ContractDriver):
         # Update our block hash and block num
         self.set_latest_block_hash(block['hash'])
 
+        self.commit()
+
     @staticmethod
     def update_nonce_hash(nonce_hash: dict, tx_payload):
         if type(tx_payload) != dict:
