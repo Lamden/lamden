@@ -62,20 +62,6 @@ class Peers:
     async def send(self, socket_wrapper: SecureSocketWrapper, msg):
         self.log.info(f'Sending message to : {socket_wrapper._id}')
 
-        s = socket_wrapper.socket.get_monitor_socket()
-
-        # Try to connect
-        # socket.connect(str(socket_id))
-
-        # See if the connection was successful
-
-        event = 1
-        while event:
-            event = await s.poll(timeout=100, flags=zmq.POLLIN)
-            evnt = await s.recv_multipart()
-            evnt_dict = monitor.parse_monitor_message(evnt)
-            self.log.info(evnt_dict)
-
         socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
 
         self.log.info('Done')
