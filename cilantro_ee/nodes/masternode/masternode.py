@@ -240,6 +240,7 @@ class Masternode(Node):
         # if not do_not_store:
         if block['blockNum'] == self.driver.latest_block_num + 1 and block['hash'] != b'\xff' * 32:
 
+            self.log.info(self.driver.pending_writes)
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)
             self.driver.reads.clear()
