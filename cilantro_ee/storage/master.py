@@ -134,9 +134,11 @@ class MasterStorage:
         self.indexes.remove()
 
     def store_block(self, block):
-        self.put(block, self.blocks.BLOCK)
+        self.put(block, MasterStorage.BLOCK)
+
         if block.get('_id') is not None:
             del block['_id']
+
         self.store_txs(block)
 
     def store_txs(self, block):
