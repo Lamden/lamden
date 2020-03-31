@@ -33,10 +33,6 @@ class SecureSocketWrapper:
         self.socket.curve_serverkey = server_pub
 
         self.socket.connect(str(socket_id))
-        s = self.socket.get_monitor_socket()
-        evnt = s.recv_multipart()
-        evnt_dict = monitor.parse_monitor_message(evnt.result())
-        print(evnt_dict)
 
     def close(self):
         self.socket.close()
@@ -64,7 +60,14 @@ class Peers:
         return await asyncio.gather(*[self.send(socket_wrapper, msg) for socket_wrapper in self.sockets.values()])
 
     async def send(self, socket_wrapper: SecureSocketWrapper, msg):
-        # s = socket_wrapper.socket.get_monitor_socket()
+        s = socket_wrapper.socket.get_monitor_socket()
+        event = 999
+        while event != 1:
+            evnt = await s.recv_multipart()
+            evnt_dict = monitor.parse_monitor_message(evnt)
+            self.log.info(evnt_dict)
+            event = evnt_dict['event']
+
         #
         # while not socket_wrapper.connected and not socket_wrapper.handshake_successful:
         #     evnt = await s.recv_multipart()
