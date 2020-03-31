@@ -2,7 +2,7 @@ import asyncio
 from cilantro_ee.nodes.catchup import BlockServer
 from cilantro_ee.sockets.outbox import Peers, MN, DEL, ALL
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.storage import CilantroStorageDriver
+from cilantro_ee.storage import CilantroStorageDriver, MasterStorage
 from cilantro_ee.sockets.services import secure_multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.nodes.masternode.block_contender import Aggregator
@@ -18,7 +18,7 @@ class Masternode(Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.blocks = CilantroStorageDriver(key=self.wallet.verifying_key())
+        self.blocks = MasterStorage()
 
         # Services
         self.block_server = BlockServer(
@@ -248,6 +248,7 @@ class Masternode(Node):
 
             # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
+
             del block['_id']
 
             self.store_txs(block)
