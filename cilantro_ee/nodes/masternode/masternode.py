@@ -254,6 +254,9 @@ class Masternode(Node):
             self.blocks.store_block(block)
 
             self.log.info(f'STORED {block}')
+        else:
+            self.log.error(f'NOT STORING THAT BLOCK...')
+            self.log.error(block['blockNum'], self.driver.latest_block_num + 1)
 
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
