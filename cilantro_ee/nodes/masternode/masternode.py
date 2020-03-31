@@ -249,6 +249,8 @@ class Masternode(Node):
             # STORE IT IN THE BACKEND
             self.blocks.put(block, self.blocks.BLOCK)
 
+            self.log.info(f'STORED {block}')
+
             del block['_id']
 
             self.store_txs(block)
