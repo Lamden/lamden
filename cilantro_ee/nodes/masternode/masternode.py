@@ -146,6 +146,7 @@ class Masternode(Node):
 
         while self.wallet.verifying_key().hex() not in self.contacts.masternodes:
             await self.nbn_inbox.wait_for_next_nbn()
+            self.nbn_inbox.clean()
 
             await self.block_fetcher.sync(sockets=[
                 self.network_parameters.resolve(
@@ -153,6 +154,10 @@ class Masternode(Node):
                     ServiceType.BLOCK_SERVER
                 )
             ])
+
+            print(self.contacts.masternodes)
+
+
 
         await self.parameters.refresh()
         self.nbn_socket_book.sync_sockets()
