@@ -93,6 +93,7 @@ class Peers:
             return
 
         for vk in current - new:
+            self.log.info(f'Deleting {vk}')
             socket = self.sockets.get(vk)
             socket.close()
             del self.sockets[vk]
