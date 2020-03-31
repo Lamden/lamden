@@ -182,7 +182,7 @@ class BlockFetcher:
                 return unpacked
 
     async def find_valid_block(self, sockets, i, latest_hash):
-        if i == 0:
+        if i == 0 or i == 1:
             block = get_genesis_block()
             block['blockNum'] = i
             block['blockOwners'] = []
@@ -262,7 +262,7 @@ class BlockFetcher:
         current_height = await self.get_latest_block_height(random.choice(sockets))
         latest_block_stored = self.state.get_latest_block_num()
 
-        latest_block_stored = max(latest_block_stored, 1)
+        latest_block_stored = max(latest_block_stored, 2)
 
         self.log.info(f'{current_height} / {latest_block_stored}')
 
@@ -271,7 +271,7 @@ class BlockFetcher:
             current_height = await self.get_latest_block_height(random.choice(sockets))
             latest_block_stored = self.state.get_latest_block_num()
 
-            latest_block_stored = max(latest_block_stored, 1)
+            latest_block_stored = max(latest_block_stored, 2)
 
             self.log.info(f'{current_height} / {latest_block_stored}')
 
