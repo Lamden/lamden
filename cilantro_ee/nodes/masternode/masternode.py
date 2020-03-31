@@ -150,6 +150,8 @@ class Masternode(Node):
         #     await asyncio.sleep(0)
 
         nbn = await self.nbn_inbox.wait_for_next_nbn()
+        await self.send_work()
+
         #
         # # Update with state
         # self.driver.update_with_block(nbn)
@@ -174,9 +176,8 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        nbn = await self.nbn_inbox.wait_for_next_nbn()
-
         self.process_block(nbn)
+
         await self.process_blocks()
 
     async def send_work(self):
