@@ -62,7 +62,11 @@ class Peers:
     async def send(self, socket_wrapper: SecureSocketWrapper, msg):
         self.log.info(f'Sending message to : {socket_wrapper._id}')
 
-        socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
+        try:
+            socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
+        except zmq.Again:
+            await asyncio.sleep(0.5)
+            socket_wrapper.socket.send(msg, flags=zmq.NOBLOCK)
 
         self.log.info('Done')
         # socket.close()
