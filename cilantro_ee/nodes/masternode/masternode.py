@@ -168,7 +168,7 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        await self.send_work()
+        #await self.send_work()
 
         await self.process_blocks()
 
