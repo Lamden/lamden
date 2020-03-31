@@ -68,11 +68,9 @@ class WorkInbox(SecureAsyncInbox):
                 msg_type, msg_blob, _, _, _ = Message.unpack_message_2(msg)
                 self.work[msg_blob.sender.hex()] = msg_blob
 
-
             try:
                 msg_struct = self.verify_transaction_bag(msg)
                 self.work[msg_struct.sender.hex()] = msg_struct
-                self.log.info(f'Got work from : {msg_blob.sender.hex()}')
             except DelegateWorkInboxException as e:
                 # Audit trigger
                 self.log.error(type(e))
