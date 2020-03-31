@@ -131,6 +131,7 @@ class WorkInbox(SecureAsyncInbox):
         # start = time.time() * 1000
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
+            self.log.info('Waiting for work...')
 
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         for masternode in set(current_contacts) - set(self.work.keys()):
