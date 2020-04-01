@@ -38,7 +38,7 @@ class NotMasternode(DelegateWorkInboxException):
     pass
 
 
-class WorkInbox(SecureAsyncInbox):
+class WorkInbox(AsyncInbox):
     def __init__(self, contacts, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
         self.work = {}
 
