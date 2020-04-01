@@ -129,7 +129,7 @@ class WorkInbox(AsyncInbox):
 
         # Wait for work from all masternodes that are currently online
         # start = time.time() * 1000
-        self.log(f'{set(self.work.keys())} / {len(set(current_contacts))} work bags received')
+        self.log.info(f'{set(self.work.keys())} / {len(set(current_contacts))} work bags received')
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
 
