@@ -37,7 +37,7 @@ def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     h.update('{}'.format(timestamp).encode())
     input_hash = h.digest().hex()
 
-    signature = wallet.sign(input_hash)
+    signature = wallet.sign(bytes.fromhex(input_hash))
 
     msg = Message.get_message(
         msg_type=MessageType.TRANSACTION_BATCH,
