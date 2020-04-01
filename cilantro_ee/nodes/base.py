@@ -202,8 +202,6 @@ class Node:
                 self.socket_authenticator.add_verifying_key(bytes.fromhex(dl))
                 self.on_deck_master = dl
 
-        self.socket_authenticator.configure()
-
     def version_check(self):
 
         # check for trigger
