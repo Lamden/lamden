@@ -52,6 +52,9 @@ class SocketAuthenticator:
 
         self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
 
+    def configure(self):
+        self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
+
     def add_verifying_key(self, vk: bytes):
         # Convert to bytes if hex string
         if isinstance(vk, str):
