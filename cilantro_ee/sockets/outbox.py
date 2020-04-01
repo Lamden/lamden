@@ -71,6 +71,7 @@ class Peers:
     def sync_sockets(self):
         if self.node_type == MN:
             sockets = self.parameters.get_masternode_sockets(self.service_type)
+            self.log.info(f'MN Socks: {sockets}')
         elif self.node_type == DEL:
             sockets = self.parameters.get_delegate_sockets(self.service_type)
         elif self.node_type == ALL:
@@ -88,7 +89,6 @@ class Peers:
             return
 
         for vk in current - new:
-            self.log.info(f'Deleting {vk}')
             socket = self.sockets.get(vk)
             socket.close()
             del self.sockets[vk]

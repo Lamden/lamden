@@ -128,10 +128,13 @@ class WorkInbox(SecureAsyncInbox):
         self.todo.clear()
 
         # Wait for work from all masternodes that are currently online
-        # start = time.time() * 1000
+        start = time.time()
         self.log.info(f'{set(self.work.keys())} / {len(set(current_contacts))} work bags received')
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
+            now = time.time()
+            if now - start > 1:
+                break
 
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         for masternode in set(current_contacts) - set(self.work.keys()):
