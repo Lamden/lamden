@@ -153,8 +153,10 @@ class Node:
         self.running = False
 
     async def catchup(self, mn_seed):
-        current = self.driver.get_latest_block_num
+        current = self.driver.get_latest_block_num()
         latest = await self.block_fetcher.get_latest_block_height(mn_seed)
+
+        print(f'latest: {latest}')
 
         for i in range(current, latest):
             block = await self.block_fetcher.get_block_from_master(i, mn_seed)
@@ -187,12 +189,12 @@ class Node:
 
         # Catchup when joining the network
         if self.network.mn_seed is not None:
-            await self.block_fetcher.sync(sockets=[
+            await self.catchup(
                 self.network_parameters.resolve(
                     self.network.mn_seed,
                     ServiceType.BLOCK_SERVER
                 )
-            ])
+            )
 
             self.log.info(self.network.peers())
 
