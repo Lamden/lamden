@@ -87,6 +87,7 @@ def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
 
 
 def get_genesis_block():
+    print('BAD BOY\n')
     block = {
         'hash': (b'\x00' * 32).hex(),
         'blockNum': 1,
