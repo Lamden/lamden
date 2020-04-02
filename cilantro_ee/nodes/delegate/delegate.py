@@ -115,7 +115,6 @@ class Delegate(Node):
             current_contacts=self.parameters.get_masternode_vks()
         )
 
-
         self.log.info(f'Got {len(work)} batch(es) of work')
 
         return self.filter_work(work)

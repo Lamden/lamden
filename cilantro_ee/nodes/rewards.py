@@ -15,8 +15,7 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, vkbook, driver=ContractDriver(), debug=False):
-        self.vkbook = vkbook
+    def __init__(self, driver=ContractDriver(), debug=False):
         self.driver = driver
         self.client = ContractingClient(driver=driver)
 
@@ -27,11 +26,15 @@ class RewardManager:
         self.currency_contract = self.client.get_contract('currency')
         self.election_house = self.client.get_contract('election_house')
         self.foundation_contract = self.client.get_contract('foundation')
+        self.masternodes_contract = self.client.get_contract('masternodes')
+        self.delegates_contract = self.client.get_contract('delegates')
 
         assert self.stamp_contract is not None, 'Stamp contract not in state.'
         assert self.reward_contract is not None, 'Reward contract not in state.'
         assert self.currency_contract is not None, 'Currency contract not in state.'
         assert self.foundation_contract is not None, 'Foundation contract not in state.'
+        assert self.masternodes_contract is not None, 'Masternodes not in state.'
+        assert self.delegates_contract is not None, 'Delegates not in state.'
 
         self.log = get_logger('RWM')
         self.log.propagate = debug
@@ -49,8 +52,8 @@ class RewardManager:
 
         self.log.info(f'{pending_rewards} tau in this block to issue.')
 
-        masters = self.vkbook.masternodes
-        delegates = self.vkbook.delegates
+        masters = self.masternodes_contract.quick_read('S', 'members')
+        delegates = self.delegates_contract.quick_read('S', 'members')
 
         total_shares = len(masters) + len(delegates) + 1
 
