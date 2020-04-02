@@ -186,7 +186,7 @@ class BlockchainDriver(ContractDriver):
 
     latest_block_hash = property(get_latest_block_hash, set_latest_block_hash)
 
-    def get_latest_block_num(self):
+    def get_latest_block_num(self) -> int:
         num = self.driver.get(BLOCK_NUM_KEY)
 
         if num is None:

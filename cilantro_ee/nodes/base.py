@@ -1,5 +1,6 @@
 from cilantro_ee.networking.network import Network
 from cilantro_ee.nodes.catchup import BlockFetcher
+from cilantro_ee.storage import CilantroStorageDriver, MasterStorage
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook
@@ -26,9 +27,15 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True):
+                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True, store=False):
 
         self.driver = driver
+        self.store = store
+
+        self.blocks = None
+        if self.store:
+            self.blocks = MasterStorage()
+
         self.log = get_logger('NODE')
         self.log.propagate = debug
         self.log.info(constitution)
@@ -110,6 +117,7 @@ class Node:
         self.constitution = constitution
         self.overwrite = overwrite
 
+        # Should have a function to get the current NBN
         self.block_fetcher = BlockFetcher(
             wallet=self.wallet,
             ctx=self.ctx,
@@ -144,6 +152,25 @@ class Node:
 
         self.running = False
 
+    async def catchup(self, mn_seed):
+        current = self.driver.get_latest_block_num
+        latest = await self.block_fetcher.get_latest_block_height(mn_seed)
+
+        for i in range(current, latest):
+            block = await self.block_fetcher.get_block_from_master(i, mn_seed)
+            self.process_block(block)
+
+            if self.store:
+                self.blocks.store_block(block)
+
+        while len(self.nbn_inbox.q) > 0:
+            block = self.nbn_inbox.q.pop(0)
+            self.process_block(block)
+
+            if self.store:
+                self.blocks.store_block(block)
+            self.nbn_inbox.clean()
+
     def process_block(self, block):
         self.driver.reads.clear()
         self.driver.pending_writes.clear()
@@ -159,6 +186,9 @@ class Node:
     async def start(self):
         await self.network.start()
 
+        # Start block server
+        asyncio.ensure_future(self.nbn_inbox.serve())
+
         # Catchup when joining the network
         if self.network.mn_seed is not None:
             await self.block_fetcher.sync(sockets=[
@@ -173,7 +203,7 @@ class Node:
             self.parameters.sockets.update(self.network.peers())
 
         # Start block server
-        asyncio.ensure_future(self.nbn_inbox.serve())
+        #asyncio.ensure_future(self.nbn_inbox.serve())
 
         self.running = True
 
