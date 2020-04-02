@@ -156,9 +156,6 @@ class Node:
         current = self.driver.get_latest_block_num()
         latest = await self.block_fetcher.get_latest_block_height(mn_seed)
 
-        print(f'current: {current}')
-        print(f'latest: {latest}')
-
         if current == 0:
             current = 1
 
@@ -169,6 +166,7 @@ class Node:
 
         while len(self.nbn_inbox.q) > 0:
             block = self.nbn_inbox.q.pop(0)
+            self.log.error(f'NBN block!!!')
             self.process_block(block)
 
     def process_block(self, block):
