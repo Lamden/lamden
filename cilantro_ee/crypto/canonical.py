@@ -74,6 +74,10 @@ def block_is_skip_block(block: dict):
 
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
+    print('''
+BAD BOY!!!
+YOU FAIL!!!
+    ''')
     block_hasher = hashlib.sha3_256()
     block_hasher.update(bytes.fromhex(previous_hash))
 
