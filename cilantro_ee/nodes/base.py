@@ -160,16 +160,9 @@ class Node:
             block = await self.block_fetcher.get_block_from_master(i, mn_seed)
             self.process_block(block)
 
-            if self.store:
-                self.blocks.store_block(block)
-
         while len(self.nbn_inbox.q) > 0:
             block = self.nbn_inbox.q.pop(0)
             self.process_block(block)
-
-            if self.store:
-                self.blocks.store_block(block)
-            self.nbn_inbox.clean()
 
     def process_block(self, block):
         self.driver.reads.clear()
@@ -179,6 +172,9 @@ class Node:
             self.driver.update_with_block(block)
             self.issue_rewards(block=block)
             self.update_sockets()
+
+            if self.store:
+                self.blocks.store_block(block)
 
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
