@@ -156,6 +156,7 @@ class Node:
         current = self.driver.get_latest_block_num()
         latest = await self.block_fetcher.get_latest_block_height(mn_seed)
 
+        print(f'current: {current}')
         print(f'latest: {latest}')
 
         for i in range(current, latest):
