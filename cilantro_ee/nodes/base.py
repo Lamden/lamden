@@ -144,6 +144,18 @@ class Node:
 
         self.running = False
 
+    def process_block(self, block):
+        self.driver.reads.clear()
+        self.driver.pending_writes.clear()
+
+        if self.driver.latest_block_num < block['blockNum'] and block['hash'] != b'\xff' * 32:
+            self.driver.update_with_block(block)
+            self.issue_rewards(block=block)
+            self.update_sockets()
+
+        self.nbn_inbox.clean()
+        self.nbn_inbox.update_signers()
+
     async def start(self):
         await self.network.start()
 

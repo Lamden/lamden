@@ -226,32 +226,6 @@ class Masternode(Node):
 
             await asyncio.sleep(0)
 
-    def process_block(self, block):
-        #do_not_store = canonical.block_is_failed(block, self.driver.latest_block_hash, self.driver.latest_block_num + 1)
-        #do_not_store |= canonical.block_is_skip_block(block)
-
-        self.log.info(f'NEW BLOCK: {block}')
-
-        # if not do_not_store:
-        if block['blockNum'] == self.driver.latest_block_num + 1 and block['hash'] != b'\xff' * 32:
-            self.driver.update_with_block(block)
-            self.issue_rewards(block=block)
-            self.driver.reads.clear()
-            self.driver.pending_writes.clear()
-            self.version_check()
-            self.update_sockets()
-
-            # STORE IT IN THE BACKEND
-            self.blocks.store_block(block)
-
-            self.log.info(f'STORED {block}')
-        else:
-            self.log.error(f'NOT STORING THAT BLOCK...')
-            self.log.error(block['blockNum'], self.driver.latest_block_num + 1)
-
-        self.nbn_inbox.clean()
-        self.nbn_inbox.update_signers()
-
     async def process_blocks(self):
         while self.running:
             await self.parameters.refresh()

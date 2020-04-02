@@ -55,41 +55,6 @@ class Delegate(Node):
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
-    def mn_agg_skcs(self):
-        return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).items())
-
-    def did_sign_block(self, block):
-        if len(self.pending_sbcs) == 0:
-            return False
-
-        # Throws a failure if even one of the subblocks isnt signed.
-        # This can be fixed in the future with partial blocks.
-        for sub_block in block['subBlocks']:
-            if sub_block['merkleLeaves'][0] not in self.pending_sbcs:
-                return False
-
-        # Returns true if its an empty block. Not sure if that is intended?
-        return True
-
-    def process_nbn(self, nbn):
-        self.log.error(f'DEL UPDATING FOR BLOCK NUM {self.driver.latest_block_num}')
-
-        self.driver.reads.clear()
-        self.driver.pending_writes.clear()
-
-        if self.driver.latest_block_num < nbn['blockNum'] and nbn['hash'] != b'\xff' * 32:
-            self.driver.update_with_block(nbn)
-            self.issue_rewards(block=nbn)
-            self.update_sockets()
-
-        self.nbn_inbox.clean()
-        # self.pending_sbcs.clear()
-        self.nbn_inbox.update_signers()
-
-    # def process_upg_msg(self):
-    # possibly for ready
-    #     pass
-
     def filter_work(self, work):
         filtered_work = []
         for tx_batch in work:
@@ -129,10 +94,6 @@ class Delegate(Node):
             stamp_cost=self.reward_manager.stamps_per_tau
         )
 
-        # Add merkle roots to track successful sbcs
-        # for sb in results:
-        #     self.pending_sbcs.add(sb.merkleTree.leaves[0])
-
         self.log.info(results)
 
         # Send out the contenders to masternodes
@@ -145,7 +106,7 @@ class Delegate(Node):
         # If first block, just wait for masters to send the genesis NBN
         if self.driver.latest_block_num == 0:
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            self.process_nbn(nbn)
+            self.process_block(nbn)
             self.version_check()
 
         while self.running:
@@ -162,11 +123,8 @@ class Delegate(Node):
                 msg=sbc_msg
             )
 
-            #await self.parameters.refresh()
-            #self.masternode_socket_book.sync_sockets()
-
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            self.process_nbn(nbn)
+            self.process_block(nbn)
 
     def stop(self):
         self.running = False

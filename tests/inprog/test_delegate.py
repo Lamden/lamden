@@ -437,7 +437,7 @@ class TestDelegate(TestCase):
         b.client.raw_driver.set('A', 'B')
         self.assertIsNone(b.client.raw_driver.get_direct('A'))
 
-        b.process_nbn(block)
+        b.process_block(block)
 
         self.assertEqual(b.client.raw_driver.get(b'A'), 'B')
 
@@ -452,7 +452,7 @@ class TestDelegate(TestCase):
 
         self.assertIsNone(b.client.raw_driver.get_direct(k))
 
-        b.process_nbn(block)
+        b.process_block(block)
 
         self.assertEqual(b.client.raw_driver.get_direct(k), v)
 
