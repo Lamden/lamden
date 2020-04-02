@@ -159,7 +159,7 @@ class Node:
         print(f'current: {current}')
         print(f'latest: {latest}')
 
-        for i in range(current, latest):
+        for i in range(current, latest, 1):
             block = await self.block_fetcher.get_block_from_master(i, mn_seed)
             self.process_block(block)
 
