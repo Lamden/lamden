@@ -166,7 +166,6 @@ class Node:
 
         while len(self.nbn_inbox.q) > 0:
             block = self.nbn_inbox.q.pop(0)
-            self.log.error(f'NBN block!!!')
             self.process_block(block)
 
     def process_block(self, block):

@@ -74,24 +74,16 @@ def block_is_skip_block(block: dict):
 
 
 def get_failed_block(previous_hash: bytes, block_num: int) -> dict:
-    #block_hasher = hashlib.sha3_256()
-    #block_hasher.update(bytes.fromhex(previous_hash))
+    block_hasher = hashlib.sha3_256()
+    block_hasher.update(bytes.fromhex(previous_hash))
 
     block = {
-        'hash': (b'\xff' * 32).hex(),
+        'hash': block_hasher.digest().hex(),
         'blockNum': block_num,
         'previous': previous_hash,
         'subBlocks': []
     }
     return block
-
-    # block = {
-    #     'hash': block_hasher.digest().hex(),
-    #     'blockNum': block_num,
-    #     'previous': previous_hash,
-    #     'subBlocks': []
-    # }
-    # return block
 
 
 def get_genesis_block():
