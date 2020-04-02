@@ -164,6 +164,7 @@ class Node:
 
         for i in range(current, latest):
             block = await self.block_fetcher.get_block_from_master(i, mn_seed)
+            block = block.to_dict()
             self.process_block(block)
 
         while len(self.nbn_inbox.q) > 0:
