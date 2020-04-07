@@ -163,7 +163,7 @@ class TestCurrentContenders(TestCase):
 
         con.add_sbcs(c)
 
-        self.assertTrue(con.subblock_has_consensus(3))
+        self.assertTrue(con.subblock_contenders[3].has_required_consensus)
 
     def test_out_of_range_index_not_added(self):
         con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
@@ -177,11 +177,6 @@ class TestCurrentContenders(TestCase):
 
         self.assertEqual(con.current_responded_sbcs(), 1)
 
-    def test_subblock_has_consensus_false_if_sb_is_none(self):
-        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
-
-        self.assertFalse(con.subblock_has_consensus(1))
-
     def test_subblock_has_consensus_false_if_not_quorum(self):
         con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
@@ -191,7 +186,7 @@ class TestCurrentContenders(TestCase):
 
         con.add_sbcs(c)
 
-        self.assertFalse(con.subblock_has_consensus(1))
+        self.assertFalse(con.subblock_contenders[1].has_required_consensus)
 
     def test_block_true_if_all_blocks_have_consensus(self):
         con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)

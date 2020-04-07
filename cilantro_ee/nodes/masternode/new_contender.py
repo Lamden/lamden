@@ -41,7 +41,7 @@ class PotentialSolution:
 
 
 class SubBlockContender:
-    def __init__(self, input_hash, index, total_contacts, required_consensus, adequate_consensus):
+    def __init__(self, input_hash, index, total_contacts, required_consensus=0.66, adequate_consensus=0.51):
         self.input_hash = input_hash
         self.index = index
 
@@ -128,7 +128,7 @@ class BlockContender:
 
             # If it's the first contender, create a new object and store it
             if self.subblock_contenders[sbc.subBlockNum] is None:
-                s = SubBlockContender(input_hash=sbc.inputHash, index=sbc.subBlockNum)
+                s = SubBlockContender(input_hash=sbc.inputHash, index=sbc.subBlockNum, total_contacts=self.total_contacts)
                 self.subblock_contenders[sbc.subBlockNum] = s
 
             # Access the object at the SB index and add a potential solution
