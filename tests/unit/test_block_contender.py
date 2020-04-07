@@ -74,27 +74,27 @@ class TestCurrentContenders(TestCase):
 
         # Input: 2 blocks with more different results
         # Check; votes for the first two potential solutions is still one
-        a = MockSBC(1, 2, 1)
-        b = MockSBC(2, 2, 3)
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=2, result=2, index=3)
 
         c = [a, b]
 
-        con = CurrentContenders()
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
         con.add_sbcs(c)
 
-        self.assertEqual(con.top_votes[1], 1)
-        self.assertEqual(con.top_votes[2], 1)
+        self.assertEqual(con.subblock_contenders[1].best_solution.votes, 1)
+        self.assertEqual(con.subblock_contenders[3].best_solution.votes, 1)
 
-        a = MockSBC(1, 3, 1)
-        b = MockSBC(2, 3, 3)
+        a = MockSBC(input=1, result=3, index=1)
+        b = MockSBC(input=2, result=3, index=3)
 
         c = [a, b]
 
         con.add_sbcs(c)
 
-        self.assertEqual(con.top_votes[1], 1)
-        self.assertEqual(con.top_votes[2], 1)
+        self.assertEqual(con.subblock_contenders[1].best_solution.votes, 1)
+        self.assertEqual(con.subblock_contenders[3].best_solution.votes, 1)
 
     def test_adding_sbcs_increments_top_vote_if_new_result_multiple_and_more_than_previous_top_vote(self):
         a = MockSBC(1, 2, 1)

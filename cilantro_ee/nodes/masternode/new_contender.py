@@ -35,7 +35,7 @@ class SubBlockContender:
         p.signatures.append((sbc.merkleTree.signature, sbc.signer))
 
         # Update the best solution if the current potential solution now has more votes
-        if self.best_solution is None or p.votes > self.best_solution.vote:
+        if self.best_solution is None or p.votes > self.best_solution.votes:
             self.best_solution = p
 
 
