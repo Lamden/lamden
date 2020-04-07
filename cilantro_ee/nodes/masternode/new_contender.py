@@ -41,12 +41,18 @@ class PotentialSolution:
 
 
 class SubBlockContender:
-    def __init__(self, input_hash, index):
+    def __init__(self, input_hash, index, total_contacts, required_consensus, adequate_consensus):
         self.input_hash = input_hash
         self.index = index
 
         self.potential_solutions = {}
         self.best_solution = None
+
+        self.total_responses = 0
+        self.total_contacts = total_contacts
+
+        self.required_consensus = required_consensus
+        self.adequate_consensus = adequate_consensus
 
     def add_potential_solution(self, sbc):
         result_hash = sbc.merkleTree.leaves[0]
@@ -62,6 +68,43 @@ class SubBlockContender:
         # Update the best solution if the current potential solution now has more votes
         if self.best_solution is None or p.votes > self.best_solution.votes:
             self.best_solution = p
+
+        self.total_responses += 1
+
+    @property
+    def failed(self):
+        # True if all responses are recorded and required consensus is not possible
+        return self.total_responses >= self.total_contacts and \
+               not self.has_required_consensus
+
+    @property
+    def has_required_consensus(self):
+        if self.best_solution is None:
+            return False
+
+        if self.best_solution.votes / self.total_contacts < self.required_consensus:
+            return False
+
+        return True
+
+    @property
+    def has_adequate_consensus(self):
+        if self.best_solution is None:
+            return False
+
+        if self.best_solution.votes / self.total_contacts < self.adequate_consensus:
+            return False
+
+        return True
+
+    @property
+    def serialized_solution(self):
+        if not self.has_adequate_consensus:
+            return None
+        if self.failed:
+            return None
+
+        return self.best_solution.struct_to_dict()
 
 
 class BlockContender:
@@ -100,27 +143,11 @@ class BlockContender:
 
         return i
 
-    def subblock_has_consensus(self, i):
-        s = self.subblock_contenders[i]
-
-        if s is None:
-            return False
-
-        # Untestable, but also impossible. Here for sanity.
-        if s.best_solution is None:
-            return False
-
-        if s.best_solution.votes / self.total_contacts < self.required_consensus:
-            return False
-
-        return True
-
     def block_has_consensus(self):
-        for i in range(self.total_subblocks):
-            if self.subblock_contenders[i] is None:
+        for sb in self.subblock_contenders:
+            if sb is None:
                 return False
-
-            if not self.subblock_has_consensus(i):
+            if not sb.has_required_consensus:
                 return False
 
         return True
@@ -129,16 +156,11 @@ class BlockContender:
         block = []
 
         # Where None is appended = failed
-        for i in range(self.total_subblocks):
-            sb = self.subblock_contenders[i]
+        for sb in self.subblock_contenders:
             if sb is None:
                 block.append(None)
-            elif sb.best_solution is None:
-                block.append(None)
-            elif sb.best_solution.votes / self.total_contacts > self.acceptable_consensus:
-                block.append(sb.best_solution.struct_to_dict())
             else:
-                block.append(None)
+                block.append(sb.serialized_solution)
 
         return block
 

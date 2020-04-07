@@ -335,12 +335,10 @@ class TestAggregator(TestCase):
 
         res = self.loop.run_until_complete(a.gather_subblocks(4))
 
-        print(res)
-
-        self.assertEqual(res['subBlocks'][0]['merkleTree']['leaves'][0], 'res_1')
-        self.assertEqual(res['subBlocks'][1]['merkleTree']['leaves'][0], 'res_2')
-        self.assertEqual(res['subBlocks'][2]['merkleTree']['leaves'][0], 'res_3')
-        self.assertEqual(res['subBlocks'][3]['merkleTree']['leaves'][0], 'res_4')
+        self.assertEqual(res['subBlocks'][0]['merkleLeaves'][0], 'res_1')
+        self.assertEqual(res['subBlocks'][1]['merkleLeaves'][0], 'res_2')
+        self.assertEqual(res['subBlocks'][2]['merkleLeaves'][0], 'res_3')
+        self.assertEqual(res['subBlocks'][3]['merkleLeaves'][0], 'res_4')
 
     def test_failed_block_on_one_returns_failed_block(self):
         a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())

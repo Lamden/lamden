@@ -247,7 +247,7 @@ class TestAggregator(TestCase):
         self.loop = asyncio.get_event_loop()
 
     def test_gather_subblocks_all_same_blocks(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = [MockSBC('input_1', 'res_1', 0),
               MockSBC('input_2', 'res_2', 1),
@@ -279,7 +279,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res['subBlocks'][3]['merkleTree']['leaves'][0], 'res_4')
 
     def test_mixed_results_still_makes_quorum(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = [MockSBC('input_1', 'res_X', 0),
               MockSBC('input_2', 'res_2', 1),
@@ -311,7 +311,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res['subBlocks'][3]['merkleTree']['leaves'][0], 'res_4')
 
     def test_failed_block_on_one_returns_failed_block(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = [MockSBC('input_1', 'res_X', 0),
                              MockSBC('input_2', 'res_2', 1),
@@ -340,7 +340,7 @@ class TestAggregator(TestCase):
         self.assertTrue(canonical.block_is_failed(res, b'\x00' * 32, 1))
 
     def test_block_dropped_failed_consenus_returns_none(self):
-        a = Aggregator(socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
 
         c1 = [MockSBC('input_1', 'res_1', 0),
                              MockSBC('input_2', 'res_2', 1),
