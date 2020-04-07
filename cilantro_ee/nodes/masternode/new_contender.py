@@ -48,14 +48,11 @@ class BlockContender:
         # Create an empty list to store the contenders as they come in
         self.subblock_contenders = [None for _ in range(self.total_subblocks)]
 
-    def best_result(self):
-        pass
-
     def add_sbcs(self, sbcs):
         for sbc in sbcs:
             # If it's out of range, ignore
             if sbc.subBlockNum > self.total_subblocks - 1:
-                return
+                continue
 
             # If it's the first contender, create a new object and store it
             if self.subblock_contenders[sbc.subBlockNum] is None:
@@ -66,16 +63,25 @@ class BlockContender:
             s = self.subblock_contenders[sbc.subBlockNum]
             s.add_potential_solution(sbc)
 
+    def current_responded_sbcs(self):
+        i = 0
+        for s in self.subblock_contenders:
+            if s is not None:
+                i += 1
+
+        return i
+
     def subblock_has_consensus(self, i):
         s = self.subblock_contenders[i]
 
         if s is None:
             return False
 
+        # Untestable, but also impossible. Here for sanity.
         if s.best_solution is None:
             return False
 
-        if self.total_contacts / s.best_solution.votes < self.required_consensus:
+        if s.best_solution.votes / self.total_contacts < self.required_consensus:
             return False
 
         return True

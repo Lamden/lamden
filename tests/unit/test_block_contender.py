@@ -150,25 +150,109 @@ class TestCurrentContenders(TestCase):
 
         self.assertTrue(con.subblock_has_consensus(3))
 
-    def test_none_added_if_quorum_cannot_be_reached(self):
-        con = CurrentContenders(3)
+    def test_out_of_range_index_not_added(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
-        a = MockSBC(1, 2, 1)
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=2, result=2, index=300)
 
-        con.add_sbcs([a])
+        c = [a, b]
 
-        self.assertDictEqual(con.finished, {})
+        con.add_sbcs(c)
 
-        b = MockSBC(1, 3, 1)
+        self.assertEqual(con.current_responded_sbcs(), 1)
 
-        con.add_sbcs([b])
+    def test_subblock_has_consensus_false_if_sb_is_none(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
-        self.assertDictEqual(con.finished, {})
+        self.assertFalse(con.subblock_has_consensus(1))
 
-        aa = MockSBC(1, 4, 1)
+    def test_subblock_has_consensus_false_if_not_quorum(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
-        con.add_sbcs([aa])
+        a = MockSBC(input=1, result=2, index=1)
 
-        self.assertDictEqual(con.finished, {1: None})
+        c = [a]
+
+        con.add_sbcs(c)
+
+        self.assertFalse(con.subblock_has_consensus(1))
+
+    def test_block_true_if_all_blocks_have_consensus(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
+
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=1, result=2, index=1)
+
+        c = MockSBC(input=1, result=2, index=2)
+        d = MockSBC(input=1, result=2, index=2)
+
+        e = MockSBC(input=1, result=2, index=3)
+        f = MockSBC(input=1, result=2, index=3)
+
+        g = MockSBC(input=1, result=2, index=0)
+        h = MockSBC(input=1, result=2, index=0)
+
+        con.add_sbcs([a, b, c, d, e, f, g, h])
+
+        self.assertTrue(con.block_has_consensus())
+
+    def test_block_false_if_one_subblocks_doesnt_have_consensus(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
+
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=1, result=2, index=1)
+
+        c = MockSBC(input=1, result=2, index=2)
+        d = MockSBC(input=1, result=2, index=2)
+
+        e = MockSBC(input=1, result=2, index=3)
+        # f = MockSBC(input=1, result=2, index=3)
+
+        g = MockSBC(input=1, result=2, index=0)
+        h = MockSBC(input=1, result=2, index=0)
+
+        con.add_sbcs([a, b, c, d, e, g, h])
+
+        self.assertFalse(con.block_has_consensus())
+
+    def test_block_false_if_one_subblock_is_none(self):
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
+
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=1, result=2, index=1)
+
+        c = MockSBC(input=1, result=2, index=2)
+        d = MockSBC(input=1, result=2, index=2)
+
+        # e = MockSBC(input=1, result=2, index=3)
+        # f = MockSBC(input=1, result=2, index=3)
+
+        g = MockSBC(input=1, result=2, index=0)
+        h = MockSBC(input=1, result=2, index=0)
+
+        con.add_sbcs([a, b, c, d, g, h])
+
+        self.assertFalse(con.block_has_consensus())
+    # def test_none_added_if_quorum_cannot_be_reached(self):
+    #     con = CurrentContenders(3)
+    #
+    #     a = MockSBC(1, 2, 1)
+    #
+    #     con.add_sbcs([a])
+    #
+    #     self.assertDictEqual(con.finished, {})
+    #
+    #     b = MockSBC(1, 3, 1)
+    #
+    #     con.add_sbcs([b])
+    #
+    #     self.assertDictEqual(con.finished, {})
+    #
+    #     aa = MockSBC(1, 4, 1)
+    #
+    #     con.add_sbcs([aa])
+    #
+    #     self.assertDictEqual(con.finished, {1: None})
 
 
