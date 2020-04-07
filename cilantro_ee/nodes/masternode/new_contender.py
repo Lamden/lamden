@@ -141,7 +141,7 @@ class BlockContender:
 
         return block
 
-
+# Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
     def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4):
         self.expected_subblocks = expected_subblocks
@@ -176,7 +176,7 @@ class Aggregator:
         block = contenders.get_current_best_block()
 
         return canonical.block_from_subblocks(
-            [v for _, v in sorted(block.items())],
+            block,
             previous_hash=self.driver.latest_block_hash,
             block_num=self.driver.latest_block_num + 1
         )
