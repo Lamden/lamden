@@ -6,7 +6,6 @@ from cilantro_ee.crypto import canonical
 import asyncio
 import capnp
 import os
-from copy import deepcopy
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -37,6 +36,8 @@ class PotentialSolution:
             })
 
         subblock['signatures'].sort(key=lambda i: i['signer'])
+
+        return subblock
 
 
 class SubBlockContender:
@@ -134,7 +135,7 @@ class BlockContender:
                 block.append(None)
             elif sb.best_solution is None:
                 block.append(None)
-            elif sb.best_solution.votes / self.total_contacts < self.acceptable_consensus:
+            elif sb.best_solution.votes / self.total_contacts > self.acceptable_consensus:
                 block.append(sb.best_solution.struct_to_dict())
             else:
                 block.append(None)

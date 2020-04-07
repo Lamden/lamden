@@ -1,13 +1,26 @@
 from unittest import TestCase
 
-from cilantro_ee.nodes.masternode.block_contender import CurrentContenders
-from cilantro_ee.nodes.masternode.new_contender import BlockContender, SubBlockContender, PotentialSolution
-
+from cilantro_ee.nodes.masternode.new_contender import BlockContender, SubBlockContender, PotentialSolution, Aggregator
+import zmq.asyncio
+import asyncio
+from cilantro_ee.sockets.struct import _socket
+from cilantro_ee.storage import BlockchainDriver
+from cilantro_ee.crypto import canonical
 import secrets
+from cilantro_ee.crypto.wallet import Wallet
+
 
 class MockContenders:
     def __init__(self, c):
         self.contenders = c
+
+
+class MockTx:
+    def __init__(self):
+        self.tx = secrets.token_hex(6)
+
+    def to_dict(self):
+        return self.tx
 
 
 class MockMerkle:
@@ -26,6 +39,8 @@ class MockSBC:
         self.merkleTree = MockMerkle([result])
         self.subBlockNum = index
         self.signer = secrets.token_hex(8)
+        self.transactions = [MockTx() for _ in range(12)]
+        self.prevBlockHash = 0
 
     def to_dict(self):
         return {
@@ -256,3 +271,126 @@ class TestCurrentContenders(TestCase):
     #     self.assertDictEqual(con.finished, {1: None})
 
 
+
+class TestAggregator(TestCase):
+    def setUp(self):
+        self.loop = asyncio.get_event_loop()
+
+    def test_gather_subblocks_all_same_blocks(self):
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+
+        c1 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c2 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c3 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c4 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        a.sbc_inbox.q = [c1, c2, c3, c4]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        self.assertEqual(res['subBlocks'][0]['merkleTree']['leaves'][0], 'res_1')
+        self.assertEqual(res['subBlocks'][1]['merkleTree']['leaves'][0], 'res_2')
+        self.assertEqual(res['subBlocks'][2]['merkleTree']['leaves'][0], 'res_3')
+        self.assertEqual(res['subBlocks'][3]['merkleTree']['leaves'][0], 'res_4')
+
+    def test_mixed_results_still_makes_quorum(self):
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+
+        c1 = [MockSBC('input_1', 'res_X', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c2 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_X', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c3 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_i', 'res_X', 2),
+              MockSBC('input_4', 'res_4', 3)]
+
+        c4 = [MockSBC('input_1', 'res_1', 0),
+              MockSBC('input_2', 'res_2', 1),
+              MockSBC('input_3', 'res_3', 2),
+              MockSBC('input_4', 'res_X', 3)]
+
+        a.sbc_inbox.q = [c1, c2, c3, c4]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        print(res)
+
+        self.assertEqual(res['subBlocks'][0]['merkleTree']['leaves'][0], 'res_1')
+        self.assertEqual(res['subBlocks'][1]['merkleTree']['leaves'][0], 'res_2')
+        self.assertEqual(res['subBlocks'][2]['merkleTree']['leaves'][0], 'res_3')
+        self.assertEqual(res['subBlocks'][3]['merkleTree']['leaves'][0], 'res_4')
+
+    def test_failed_block_on_one_returns_failed_block(self):
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+
+        c1 = [MockSBC('input_1', 'res_X', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)]
+
+        c2 = [MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_X', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)]
+
+        c3 = [MockSBC('input_1', 'res_X', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_i', 'res_X', 2),
+                             MockSBC('input_4', 'res_4', 3)]
+
+        c4 = [MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_X', 3)]
+
+        a.sbc_inbox.q = [c1, c2, c3, c4]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        self.assertTrue(canonical.block_is_failed(res, b'\x00' * 32, 1))
+
+    def test_block_dropped_failed_consenus_returns_none(self):
+        a = Aggregator(wallet=Wallet(), socket_id=_socket('tcp://127.0.0.1:8888'), ctx=zmq.asyncio.Context(), driver=BlockchainDriver())
+
+        c1 = [MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)]
+
+        c2 = [MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_4', 3)]
+
+        c3 = [MockSBC('input_1', 'res_1', 0),
+                             MockSBC('input_2', 'res_2', 1),
+                             MockSBC('input_3', 'res_3', 2),
+                             MockSBC('input_4', 'res_X', 3)]
+
+        a.sbc_inbox.q = [c1, c2, c3]
+
+        res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        self.assertTrue(canonical.block_is_failed(res, b'\x00' * 32, 1))
