@@ -53,20 +53,19 @@ class TestCurrentContenders(TestCase):
         self.assertEqual(sb.potential_solutions[2].votes, 2)
 
     def test_adding_sbcs_updates_top_vote_initially(self):
-        # Input: 2 blocks with different hashes
-
+        # Input: 2 blocks with different input hashes
 
         a = MockSBC(1, 2, 1)
         b = MockSBC(2, 2, 3)
 
         c = [a, b]
 
-        con = CurrentContenders()
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
         con.add_sbcs(c)
 
-        self.assertEqual(con.top_votes[1], 1)
-        self.assertEqual(con.top_votes[2], 1)
+        self.assertEqual(con.subblock_contenders[3].best_solution.votes, 1)
+        self.assertEqual(con.subblock_contenders[1].best_solution.votes, 1)
 
     def test_adding_sbcs_doesnt_update_if_not_new_result_different(self):
         # Input: 2 blocks with different result hashes, but same input and index

@@ -26,11 +26,17 @@ class SubBlockContender:
     def add_potential_solution(self, sbc):
         result_hash = sbc.merkleTree.leaves[0]
 
+        # Create a new potential solution if it is a new result hash
         if self.potential_solutions.get(result_hash) is None:
             self.potential_solutions[result_hash] = PotentialSolution(struct=sbc)
 
+        # Add the signature to the potential solution
         p = self.potential_solutions.get(result_hash)
         p.signatures.append((sbc.merkleTree.signature, sbc.signer))
+
+        # Update the best solution if the current potential solution now has more votes
+        if self.best_solution is None or p.votes > self.best_solution.vote:
+            self.best_solution = p
 
 
 class BlockContender:
