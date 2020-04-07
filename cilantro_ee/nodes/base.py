@@ -174,7 +174,7 @@ class Node:
 
         if self.driver.latest_block_num < block['blockNum'] and block['hash'] != b'\xff' * 32:
             self.driver.update_with_block(block)
-            self.issue_rewards(block=block)
+            self.reward_manager.issue_rewards(block=block)
             self.update_sockets()
 
             if self.store:
@@ -293,9 +293,3 @@ class Node:
                       self.tot_dl, self.all_votes,
                       self.mn_votes, self.dl_votes,
                       consensus))
-
-    def issue_rewards(self, block):
-        # ISSUE REWARDS
-        # stamps = self.reward_manager.stamps_in_block(block)
-        # self.reward_manager.set_pending_rewards(stamps / self.reward_manager.stamps_per_tau)
-        self.reward_manager.issue_rewards(block=block)

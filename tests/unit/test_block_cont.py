@@ -1,7 +1,8 @@
 from unittest import TestCase
 
-from cilantro_ee.nodes.masternode.block_contender import Aggregator, CurrentContenders, SBCInbox, \
-    SBCInvalidSignatureError, SBCBlockHashMismatchError, SBCMerkleLeafVerificationError
+from cilantro_ee.nodes.masternode.block_contender import Aggregator, CurrentContenders
+from cilantro_ee.nodes.masternode.sbc_inbox import SBCInbox, SBCInvalidSignatureError, SBCBlockHashMismatchError, \
+    SBCMerkleLeafVerificationError
 
 from cilantro_ee.crypto.wallet import Wallet
 from tests import random_txs
