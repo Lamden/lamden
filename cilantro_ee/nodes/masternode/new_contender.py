@@ -1,6 +1,12 @@
+from cilantro_ee.messages import schemas
+from cilantro_ee.nodes.masternode.sbc_inbox import SBCInbox
+from cilantro_ee.logger.base import get_logger
+from cilantro_ee.crypto import canonical
+
+import asyncio
 import capnp
 import os
-from cilantro_ee.messages import schemas
+from copy import deepcopy
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -13,6 +19,24 @@ class PotentialSolution:
     @property
     def votes(self):
         return len(self.signatures)
+
+    def struct_to_dict(self):
+        subblock = {
+            'inputHash': self.struct.inputHash,
+            'transactions': [tx.to_dict() for tx in self.struct.transactions],
+            'merkleLeaves': [leaf for leaf in self.struct.merkleTree.leaves],
+            'subBlockNum': self.struct.subBlockNum,
+            'prevBlockHash': self.struct.prevBlockHash,
+            'signatures': []
+        }
+
+        for sig in self.signatures:
+            subblock['signatures'].append({
+                'signature': sig[0],
+                'signer': sig[1]
+            })
+
+        subblock['signatures'].sort(key=lambda i: i['signer'])
 
 
 class SubBlockContender:
@@ -40,10 +64,14 @@ class SubBlockContender:
 
 
 class BlockContender:
-    def __init__(self, total_contacts, total_subblocks, required_consensus):
+    def __init__(self, total_contacts, total_subblocks, required_consensus=0.66, acceptable_consensus=0.5):
         self.total_contacts = total_contacts
         self.total_subblocks = total_subblocks
+
         self.required_consensus = required_consensus
+
+        # Acceptable consensus forces a block to complete. Anything below this will fail.
+        self.acceptable_consensus = acceptable_consensus
 
         # Create an empty list to store the contenders as they come in
         self.subblock_contenders = [None for _ in range(self.total_subblocks)]
@@ -96,5 +124,65 @@ class BlockContender:
 
         return True
 
-    def get_capnp_message(self):
-        pass
+    def get_current_best_block(self):
+        block = []
+
+        # Where None is appended = failed
+        for i in range(self.total_subblocks):
+            sb = self.subblock_contenders[i]
+            if sb is None:
+                block.append(None)
+            elif sb.best_solution is None:
+                block.append(None)
+            elif sb.best_solution.votes / self.total_contacts < self.acceptable_consensus:
+                block.append(sb.best_solution.struct_to_dict())
+            else:
+                block.append(None)
+
+        return block
+
+
+class Aggregator:
+    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4):
+        self.expected_subblocks = expected_subblocks
+        self.sbc_inbox = SBCInbox(
+            socket_id=socket_id,
+            ctx=ctx,
+            driver=driver,
+            expected_subblocks=self.expected_subblocks,
+            wallet=wallet
+        )
+        self.driver = driver
+        self.log = get_logger('AGG')
+
+    async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=5000):
+        self.sbc_inbox.expected_subblocks = expected_subblocks
+
+        contenders = BlockContender(
+            total_contacts=total_contacts,
+            required_consensus=quorum_ratio,
+            total_subblocks=expected_subblocks
+        )
+
+        # Add timeout condition.
+        while not contenders.block_has_consensus():
+            if self.sbc_inbox.has_sbc():
+                sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
+                contenders.add_sbcs(sbcs)
+            await asyncio.sleep(0)
+
+        self.log.info('Done aggregating new block.')
+
+        block = contenders.get_current_best_block()
+
+        return canonical.block_from_subblocks(
+            [v for _, v in sorted(block.items())],
+            previous_hash=self.driver.latest_block_hash,
+            block_num=self.driver.latest_block_num + 1
+        )
+
+    async def start(self):
+        asyncio.ensure_future(self.sbc_inbox.serve())
+
+    def stop(self):
+        self.sbc_inbox.stop()
