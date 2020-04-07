@@ -130,25 +130,25 @@ class TestCurrentContenders(TestCase):
         self.assertEqual(con.subblock_contenders[3].best_solution.votes, 2)
 
     def test_blocks_added_to_finished_when_quorum_met(self):
-        con = CurrentContenders(total_contacts=4)
+        con = BlockContender(total_contacts=2, required_consensus=0.66, total_subblocks=4)
 
-        a = MockSBC(1, 2, 1)
+        a = MockSBC(input=1, result=2, index=1)
+        b = MockSBC(input=2, result=2, index=3)
+
+        c = [a, b]
+
+        con.add_sbcs(c)
+
+        self.assertFalse(con.block_has_consensus())
+
+        a = MockSBC(1, 1, 1)
         b = MockSBC(2, 2, 3)
 
         c = [a, b]
 
         con.add_sbcs(c)
 
-        self.assertDictEqual(con.finished, {})
-
-        a = MockSBC(1, 1, 1)
-        b = MockSBC(2, 2, 4)
-
-        c = [a, b]
-
-        con.add_sbcs(c)
-
-        self.assertDictEqual(con.finished, {4: b})
+        self.assertTrue(con.subblock_has_consensus(3))
 
     def test_none_added_if_quorum_cannot_be_reached(self):
         con = CurrentContenders(3)

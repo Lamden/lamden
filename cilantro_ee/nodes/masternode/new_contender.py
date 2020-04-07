@@ -66,5 +66,29 @@ class BlockContender:
             s = self.subblock_contenders[sbc.subBlockNum]
             s.add_potential_solution(sbc)
 
+    def subblock_has_consensus(self, i):
+        s = self.subblock_contenders[i]
+
+        if s is None:
+            return False
+
+        if s.best_solution is None:
+            return False
+
+        if self.total_contacts / s.best_solution.votes < self.required_consensus:
+            return False
+
+        return True
+
+    def block_has_consensus(self):
+        for i in range(self.total_subblocks):
+            if self.subblock_contenders[i] is None:
+                return False
+
+            if not self.subblock_has_consensus(i):
+                return False
+
+        return True
+
     def get_capnp_message(self):
         pass
