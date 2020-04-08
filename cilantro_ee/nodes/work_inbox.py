@@ -125,13 +125,22 @@ class WorkInbox(SecureAsyncInbox):
         self.todo.clear()
 
         # Wait for work from all masternodes that are currently online
-        start = time.time()
+        start = None
+        timeout_timer = False
         self.log.info(f'{set(self.work.keys())} / {len(set(current_contacts))} work bags received')
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
-            now = time.time()
-            if now - start > seconds_to_timeout:
-                break
+
+            if len(set(self.work.keys())) > 0 and not timeout_timer:
+                # Got one, start the timeout timer
+                timeout_timer = True
+                start = time.time()
+
+            if timeout_timer:
+                now = time.time()
+                if now - start > seconds_to_timeout:
+                    self.log.error('TIMEOUT')
+                    break
 
         self.accepting_work = False
 

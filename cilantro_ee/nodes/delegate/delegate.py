@@ -20,6 +20,7 @@ from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 
 transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
+
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
 
