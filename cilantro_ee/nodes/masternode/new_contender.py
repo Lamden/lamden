@@ -209,7 +209,6 @@ class Aggregator:
                 time.time() - started < self.seconds_to_timeout:
 
             if self.sbc_inbox.has_sbc():
-                print('yes')
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 contenders.add_sbcs(sbcs)
             await asyncio.sleep(0)
@@ -217,8 +216,6 @@ class Aggregator:
         self.log.info('Done aggregating new block.')
 
         block = contenders.get_current_best_block()
-
-        self.log.info(f'Best block gotten: {block}')
 
         return canonical.block_from_subblocks(
             block,
