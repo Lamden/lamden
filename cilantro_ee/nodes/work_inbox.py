@@ -6,12 +6,9 @@ from cilantro_ee.crypto.wallet import _verify
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.storage import BlockchainDriver
-from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
-from cilantro_ee.storage.vkbook import VKBook
-from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
+from cilantro_ee.sockets.inbox import SecureAsyncInbox
 
 from cilantro_ee.logger.base import get_logger
-import logging
 
 import time
 
@@ -116,7 +113,7 @@ class WorkInbox(SecureAsyncInbox):
 
         return msg_blob
 
-    async def wait_for_next_batch_of_work(self, current_contacts, timeout=1000):
+    async def wait_for_next_batch_of_work(self, current_contacts, seconds_to_timeout=5):
         self.accepting_work = True
         self.current_contacts = current_contacts
 
@@ -133,12 +130,8 @@ class WorkInbox(SecureAsyncInbox):
         while len(set(current_contacts) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
             now = time.time()
-            if now - start > 1:
+            if now - start > seconds_to_timeout:
                 break
-
-        # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
-        for masternode in set(current_contacts) - set(self.work.keys()):
-            self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
 
         self.accepting_work = False
 

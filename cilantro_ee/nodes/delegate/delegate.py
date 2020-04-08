@@ -82,6 +82,14 @@ class Delegate(Node):
 
         self.log.info(f'Got {len(work)} batch(es) of work')
 
+        # If the number of batches is less than the number of masternodes, add shims.
+        # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
+        # for masternode in set(current_contacts) - set(self.work.keys()):
+            # self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
+
+        for task in work:
+            self.log.info(task.sender.hex())
+
         return self.filter_work(work)
 
     def process_work(self, filtered_work):
