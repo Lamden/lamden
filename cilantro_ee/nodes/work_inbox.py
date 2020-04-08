@@ -37,12 +37,13 @@ class NotMasternode(DelegateWorkInboxException):
 
 
 class WorkInbox(SecureAsyncInbox):
-    def __init__(self, contacts, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
+    def __init__(self, parameters, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
         self.work = {}
 
         self.driver = driver
-        self.current_contacts = contacts
         self.verify = verify
+
+        self.parameters = parameters
 
         self.todo = []
         self.accepting_work = False
@@ -78,7 +79,7 @@ class WorkInbox(SecureAsyncInbox):
 
             transaction_batch_is_valid(
                 tx_batch=msg_blob,
-                current_masternodes=self.current_contacts,
+                current_masternodes=self.parameters.get_masternode_vks(),
                 driver=self.driver
             )
 
@@ -91,9 +92,7 @@ class WorkInbox(SecureAsyncInbox):
         except TransactionException as e:
             self.log.error(type(e))
 
-    async def wait_for_next_batch_of_work(self, current_contacts, seconds_to_timeout=5):
-        self.current_contacts = current_contacts
-
+    def process_todo_work(self):
         self.log.info(f'Current todo {self.todo}')
 
         for work in self.todo:
@@ -101,11 +100,12 @@ class WorkInbox(SecureAsyncInbox):
 
         self.todo.clear()
 
+    async def wait_for_next_batch_of_work(self, seconds_to_timeout=5):
         # Wait for work from all masternodes that are currently online
         start = None
         timeout_timer = False
-        self.log.info(f'{set(self.work.keys())} / {len(set(current_contacts))} work bags received')
-        while len(set(current_contacts) - set(self.work.keys())) > 0:
+        self.log.info(f'{set(self.work.keys())} / {len(set(self.parameters.get_masternode_vks()))} work bags received')
+        while len(set(self.parameters.get_masternode_vks()) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
 
             if len(set(self.work.keys())) > 0 and not timeout_timer:

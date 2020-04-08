@@ -29,6 +29,7 @@ class TransactionBatchNotFromMasternode(TransactionBatchProcessingException):
 # Capnp for now. JSON later?
 def transaction_batch_is_valid(tx_batch, current_masternodes, driver):
     if tx_batch.sender.hex() not in current_masternodes:
+        print(current_masternodes)
         raise TransactionBatchNotFromMasternode
 
     # Set up a hasher for input hash and a list for valid txs

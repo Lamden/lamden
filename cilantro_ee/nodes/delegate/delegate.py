@@ -34,7 +34,7 @@ class Delegate(Node):
             socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
             driver=self.driver,
             ctx=self.ctx,
-            contacts=self.parameters.get_masternode_vks(),
+            parameters=self.parameters,
             wallet=self.wallet
         )
 
@@ -83,10 +83,9 @@ class Delegate(Node):
         self.log.error(f'{len(self.parameters.get_masternode_vks())} MNS!')
 
         self.work_inbox.accepting_work = True
+        self.work_inbox.process_todo_work()
 
-        work = await self.work_inbox.wait_for_next_batch_of_work(
-            current_contacts=self.parameters.get_masternode_vks()
-        )
+        work = await self.work_inbox.wait_for_next_batch_of_work()
 
         self.work_inbox.accepting_work = False
 
