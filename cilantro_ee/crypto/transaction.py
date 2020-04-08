@@ -89,8 +89,10 @@ class TransactionStampsNegative(TransactionException):
 class TransactionSenderTooFewStamps(TransactionException):
     pass
 
+
 class TransactionContractNameInvalid(TransactionException):
     pass
+
 
 def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,

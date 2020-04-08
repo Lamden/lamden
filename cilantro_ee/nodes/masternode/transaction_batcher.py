@@ -10,6 +10,7 @@ from cilantro_ee.logger.base import get_logger
 
 log = get_logger('TXBATCHER')
 
+
 class TransactionBatcher:
     def __init__(self, wallet: Wallet, queue):
         self.wallet = wallet
