@@ -72,7 +72,7 @@ class WorkInbox(SecureAsyncInbox):
             self.work[msg_struct.sender.hex()] = msg_struct
             self.log.info(msg_struct.sender.hex())
         except DelegateWorkInboxException as e:
-            # Audit trigger
+            # Audit trigger. Won't prevent operation of the network. Shim will be used.
             self.log.error(type(e))
         except TransactionException as e:
             self.log.error(type(e))

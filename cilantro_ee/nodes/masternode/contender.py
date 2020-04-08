@@ -1,14 +1,9 @@
-from cilantro_ee.messages import schemas
 from cilantro_ee.nodes.masternode.sbc_inbox import SBCInbox
 from cilantro_ee.logger.base import get_logger
 from cilantro_ee.crypto import canonical
 
 import asyncio
-import capnp
-import os
 import time
-
-subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
 
 class PotentialSolution:

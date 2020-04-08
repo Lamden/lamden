@@ -13,7 +13,12 @@ from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
+import capnp
+import os
+import time
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 class Delegate(Node):
     def __init__(self, parallelism=4, *args, **kwargs):
@@ -84,11 +89,24 @@ class Delegate(Node):
 
         # If the number of batches is less than the number of masternodes, add shims.
         # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
-        # for masternode in set(current_contacts) - set(self.work.keys()):
-            # self.work[masternode] = transaction_list_to_transaction_batch([], wallet=self.wallet)
+        expected_masters = set(self.contacts.masternodes)
 
         for task in work:
-            self.log.info(task.sender.hex())
+            try:
+                expected_masters.remove(task.sender.hex())
+            except KeyError:
+                self.log.error('Unauthorized work!')
+
+        for missing_master in expected_masters:
+            self.log.info(f'Adding shim tx batch for {missing_master}.')
+            shim = transaction_capnp.TransactionBatch.new_message(
+                transactions=[],
+                timestamp=time.time(),
+                signature=b'\x00' * 64,
+                inputHash=missing_master,
+                sender=missing_master
+            )
+            work.append(shim)
 
         return self.filter_work(work)
 

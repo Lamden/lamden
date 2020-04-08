@@ -1,6 +1,6 @@
 from cilantro_ee.networking.network import Network
 from cilantro_ee.nodes.catchup import BlockFetcher
-from cilantro_ee.storage import CilantroStorageDriver, MasterStorage
+from cilantro_ee.storage import MasterStorage
 
 from cilantro_ee.nodes.new_block_inbox import NBNInbox
 from cilantro_ee.storage import VKBook

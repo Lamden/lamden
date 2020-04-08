@@ -1,9 +1,23 @@
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.crypto.wallet import Wallet, _verify
-import time
 import hashlib
 from .transaction import transaction_is_valid, TransactionException
+from cilantro_ee.messages import schemas
+
+import capnp
+import os
+import time
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+
+# struct TransactionBatch {
+#     transactions @0 :List(NewTransaction);
+#     timestamp @1: Float64;
+#     signature @2: Data;
+#     sender @3: Data;
+#     inputHash @4: Text;  # hash of transactions + timestamp
+# }
 
 
 class TXBatchInvalidError(Exception):
@@ -25,6 +39,15 @@ class InvalidSignature(TXBatchInvalidError):
 class NotMasternode(TXBatchInvalidError):
     pass
 
+
+def make_shim_tx_batch(sender, timestamp):
+    return transaction_capnp.TransactionBatch.new_message(
+        transactions=[],
+        timestamp=timestamp,
+        signature=b'\x00' * 64,
+        inputHash=sender,
+        sender=sender
+    )
 
 def transaction_list_to_transaction_batch(tx_list, wallet: Wallet):
     h = hashlib.sha3_256()

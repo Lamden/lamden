@@ -1,10 +1,9 @@
 import asyncio
 from cilantro_ee.nodes.catchup import BlockServer
-from cilantro_ee.sockets.outbox import Peers, MN, DEL, ALL
+from cilantro_ee.sockets.outbox import Peers, DEL, ALL
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
-from cilantro_ee.sockets.services import secure_multicast
 from cilantro_ee.nodes.masternode.webserver import WebServer
-from cilantro_ee.nodes.masternode.new_contender import Aggregator
+from cilantro_ee.nodes.masternode.contender import Aggregator
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.crypto import canonical
 from cilantro_ee.storage.contract import BlockchainDriver
