@@ -40,6 +40,8 @@ class WorkInbox(SecureAsyncInbox):
     def __init__(self, parameters, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
         self.work = {}
 
+        self.q = []
+
         self.driver = driver
         self.verify = verify
 
@@ -64,6 +66,7 @@ class WorkInbox(SecureAsyncInbox):
 
         else:
             self.verify_work(msg)
+            self.q.append(msg)
 
     def verify_work(self, msg):
         if not self.verify:

@@ -5,6 +5,7 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
+from cilantro_ee.nodes.delegate.work import gather_transaction_batches
 from cilantro_ee.sockets.outbox import Peers, MN
 import heapq
 
@@ -84,6 +85,8 @@ class Delegate(Node):
 
         self.work_inbox.accepting_work = True
         self.work_inbox.process_todo_work()
+
+        #await gather_transaction_batches(queue=self.work_inbox, expected_batches=len(self.parameters.get_masternode_vks()), timeout=5)
 
         work = await self.work_inbox.wait_for_next_batch_of_work()
 
