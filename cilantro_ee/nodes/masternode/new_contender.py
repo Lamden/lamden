@@ -6,6 +6,7 @@ from cilantro_ee.crypto import canonical
 import asyncio
 import capnp
 import os
+import time
 
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 
@@ -164,9 +165,20 @@ class BlockContender:
 
         return block
 
+    @property
+    def responses(self):
+        m = 0
+        for sb in self.subblock_contenders:
+            if sb is None:
+                continue
+            if sb.total_responses > m:
+                m = sb.total_responses
+
+        return m
+
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4):
+    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4, seconds_to_timeout=5):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             socket_id=socket_id,
@@ -176,20 +188,28 @@ class Aggregator:
             wallet=wallet
         )
         self.driver = driver
+
+        self.seconds_to_timeout = seconds_to_timeout
+
         self.log = get_logger('AGG')
 
-    async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, expected_subblocks=4, timeout=5000):
+    async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
         contenders = BlockContender(
             total_contacts=total_contacts,
             required_consensus=quorum_ratio,
-            total_subblocks=expected_subblocks
+            total_subblocks=expected_subblocks,
+            acceptable_consensus=adequate_ratio
         )
 
         # Add timeout condition.
-        while not contenders.block_has_consensus():
+        started = time.time()
+        while (not contenders.block_has_consensus() and contenders.responses < contenders.total_contacts) and \
+                time.time() - started < self.seconds_to_timeout:
+
             if self.sbc_inbox.has_sbc():
+                print('yes')
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 contenders.add_sbcs(sbcs)
             await asyncio.sleep(0)
@@ -197,6 +217,8 @@ class Aggregator:
         self.log.info('Done aggregating new block.')
 
         block = contenders.get_current_best_block()
+
+        self.log.info(f'Best block gotten: {block}')
 
         return canonical.block_from_subblocks(
             block,
