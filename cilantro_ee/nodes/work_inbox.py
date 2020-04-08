@@ -92,7 +92,6 @@ class WorkInbox(SecureAsyncInbox):
             self.log.error(type(e))
 
     async def wait_for_next_batch_of_work(self, current_contacts, seconds_to_timeout=5):
-        self.accepting_work = True
         self.current_contacts = current_contacts
 
         self.log.info(f'Current todo {self.todo}')
@@ -119,8 +118,6 @@ class WorkInbox(SecureAsyncInbox):
                 if now - start > seconds_to_timeout:
                     self.log.error('TIMEOUT')
                     break
-
-        self.accepting_work = False
 
         returned_work = deepcopy(list(self.work.values()))
         self.work.clear()

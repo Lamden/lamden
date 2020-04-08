@@ -1,10 +1,5 @@
-import hashlib
-from cilantro_ee.crypto.transaction import transaction_is_valid, TransactionException
-from cilantro_ee.crypto.wallet import _verify
 import asyncio
 import time
-
-
 
 
 async def gather_transaction_batches(queue, expected_batches, timeout=5):

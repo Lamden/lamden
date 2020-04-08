@@ -82,9 +82,13 @@ class Delegate(Node):
 
         self.log.error(f'{len(self.parameters.get_masternode_vks())} MNS!')
 
+        self.work_inbox.accepting_work = True
+
         work = await self.work_inbox.wait_for_next_batch_of_work(
             current_contacts=self.parameters.get_masternode_vks()
         )
+
+        self.work_inbox.accepting_work = False
 
         self.log.info(f'Got {len(work)} batch(es) of work')
 
