@@ -290,7 +290,7 @@ class WebServer:
 
     async def get_latest_block(self, request):
         index = self.blocks.get_last_n(n=1, collection=MasterStorage.BLOCK)
-        return response.json(index[0])
+        return response.json(index[0], dumps=ByteEncoder().encode)
 
     async def get_latest_block_number(self, request):
         return response.json({'latest_block_number': self.driver.get_latest_block_num()})
