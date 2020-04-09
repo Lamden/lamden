@@ -36,7 +36,7 @@ def pad_work(work: list, expected_masters: set):
             timestamp=time.time(),
             signature=b'\x00' * 64,
             inputHash=missing_master,
-            sender=missing_master
+            sender=bytes.fromhex(missing_master)
         )
         work.append(shim)
 

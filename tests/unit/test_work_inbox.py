@@ -77,8 +77,8 @@ class TestWork(TestCase):
 
         self.assertEqual(a, MockWork('ab'))
         self.assertEqual(b, MockWork('cd'))
-        self.assertEqual(c.sender, b"23")
+        self.assertEqual(c.sender.hex(), "23")
         self.assertEqual(c.inputHash, "23")
-        self.assertEqual(d.sender, b'45')
+        self.assertEqual(d.sender.hex(), '45')
         self.assertEqual(d.inputHash, "45")
 
