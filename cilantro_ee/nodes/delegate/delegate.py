@@ -86,9 +86,9 @@ class Delegate(Node):
         self.work_inbox.accepting_work = True
         self.work_inbox.process_todo_work()
 
-        #work = await gather_transaction_batches(queue=self.work_inbox.q, expected_batches=len(self.parameters.get_masternode_vks()), timeout=5)
+        work = await gather_transaction_batches(queue=self.work_inbox.work, expected_batches=len(self.parameters.get_masternode_vks()), timeout=5)
 
-        work = await self.work_inbox.wait_for_next_batch_of_work()
+        #work = await self.work_inbox.wait_for_next_batch_of_work()
 
         self.work_inbox.accepting_work = False
 
