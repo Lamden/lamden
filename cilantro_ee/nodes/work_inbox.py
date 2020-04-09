@@ -40,8 +40,6 @@ class WorkInbox(SecureAsyncInbox):
     def __init__(self, parameters, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
         self.work = {}
 
-        self.q = []
-
         self.driver = driver
         self.verify = verify
 
@@ -66,7 +64,6 @@ class WorkInbox(SecureAsyncInbox):
 
         else:
             self.verify_work(msg)
-            self.q.append(msg)
 
     def verify_work(self, msg):
         if not self.verify:
@@ -89,6 +86,8 @@ class WorkInbox(SecureAsyncInbox):
             self.work[msg_blob.sender.hex()] = msg_blob
             self.log.info(msg_blob.sender.hex())
 
+            return msg_blob
+
         except DelegateWorkInboxException as e:
             # Audit trigger. Won't prevent operation of the network. Shim will be used.
             self.log.error(type(e))
@@ -105,22 +104,18 @@ class WorkInbox(SecureAsyncInbox):
 
     async def wait_for_next_batch_of_work(self, seconds_to_timeout=5):
         # Wait for work from all masternodes that are currently online
-        start = None
-        timeout_timer = False
         self.log.info(f'{set(self.work.keys())} / {len(set(self.parameters.get_masternode_vks()))} work bags received')
+        while len(set(self.work.keys())) == 0:
+            await asyncio.sleep(0)
+
+        start = time.time()
         while len(set(self.parameters.get_masternode_vks()) - set(self.work.keys())) > 0:
             await asyncio.sleep(0)
 
-            if len(set(self.work.keys())) > 0 and not timeout_timer:
-                # Got one, start the timeout timer
-                timeout_timer = True
-                start = time.time()
-
-            if timeout_timer:
-                now = time.time()
-                if now - start > seconds_to_timeout:
-                    self.log.error('TIMEOUT')
-                    break
+            now = time.time()
+            if now - start > seconds_to_timeout:
+                self.log.error('TIMEOUT')
+                break
 
         returned_work = deepcopy(list(self.work.values()))
         self.work.clear()
