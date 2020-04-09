@@ -25,7 +25,7 @@ async def gather_transaction_batches(queue: dict, expected_batches: int, timeout
     return work
 
 
-def pad_work(work: list, expected_masters: set):
+def pad_work(work: list, expected_masters: list):
     for task in work:
         if task.sender.hex() in expected_masters:
             expected_masters.remove(task.sender.hex())

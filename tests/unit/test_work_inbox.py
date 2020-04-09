@@ -57,7 +57,7 @@ class TestWork(TestCase):
         self.assertListEqual(expected, w)
 
     def test_pad_work_does_nothing_if_complete(self):
-        expected_masters = {'ab', 'cd', '23', '45'}
+        expected_masters = ['ab', 'cd', '23', '45']
 
         work_list = [MockWork('ab'), MockWork('cd'), MockWork('23'), MockWork('45')]
         expected_list = [MockWork('ab'), MockWork('cd'), MockWork('23'), MockWork('45')]
