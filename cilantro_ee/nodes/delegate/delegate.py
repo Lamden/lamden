@@ -5,21 +5,14 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
-from cilantro_ee.nodes.delegate.work import gather_transaction_batches
+from cilantro_ee.nodes.delegate.work import gather_transaction_batches, pad_work, filter_work
 from cilantro_ee.sockets.outbox import Peers, MN
-import heapq
 
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
 import asyncio
 
 from contracting.execution.executor import Executor
-import capnp
-import os
-import time
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class Delegate(Node):
@@ -62,18 +55,6 @@ class Delegate(Node):
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
-    def filter_work(self, work):
-        filtered_work = []
-        for tx_batch in work:
-            # Filter out None responses
-            if tx_batch is None:
-                continue
-
-            # Add the rest to a priority queue based on their timestamp
-            heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
-
-        return filtered_work
-
     async def acquire_work(self):
         await self.parameters.refresh()
         self.masternode_socket_book.sync_sockets()
@@ -86,36 +67,20 @@ class Delegate(Node):
         self.work_inbox.accepting_work = True
         self.work_inbox.process_todo_work()
 
-        work = await gather_transaction_batches(queue=self.work_inbox.work, expected_batches=len(self.parameters.get_masternode_vks()), timeout=5)
-
-        #work = await self.work_inbox.wait_for_next_batch_of_work()
+        work = await gather_transaction_batches(
+            queue=self.work_inbox.work,
+            expected_batches=len(self.parameters.get_masternode_vks()),
+            timeout=5
+        )
 
         self.work_inbox.accepting_work = False
 
         self.log.info(f'Got {len(work)} batch(es) of work')
 
-        # If the number of batches is less than the number of masternodes, add shims.
-        # If timeout is hit, just pad the rest of the expected amounts with empty tx batches?
         expected_masters = set(self.contacts.masternodes)
+        pad_work(work=work, expected_masters=expected_masters)
 
-        for task in work:
-            try:
-                expected_masters.remove(task.sender.hex())
-            except KeyError:
-                self.log.error('Unauthorized work!')
-
-        for missing_master in expected_masters:
-            self.log.info(f'Adding shim tx batch for {missing_master}.')
-            shim = transaction_capnp.TransactionBatch.new_message(
-                transactions=[],
-                timestamp=time.time(),
-                signature=b'\x00' * 64,
-                inputHash=missing_master,
-                sender=missing_master
-            )
-            work.append(shim)
-
-        return self.filter_work(work)
+        return filter_work(work)
 
     def process_work(self, filtered_work):
         results = execution.execute_work(

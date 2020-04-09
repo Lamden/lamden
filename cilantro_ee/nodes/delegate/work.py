@@ -1,6 +1,12 @@
 import asyncio
-import time
 from copy import deepcopy
+import capnp
+import os
+import time
+import heapq
+from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 async def gather_transaction_batches(queue: dict, expected_batches: int, timeout=5):
@@ -17,3 +23,32 @@ async def gather_transaction_batches(queue: dict, expected_batches: int, timeout
     queue.clear()
 
     return work
+
+
+def pad_work(work: list, expected_masters: set):
+    for task in work:
+        if task.sender.hex() in expected_masters:
+            expected_masters.remove(task.sender.hex())
+
+    for missing_master in expected_masters:
+        shim = transaction_capnp.TransactionBatch.new_message(
+            transactions=[],
+            timestamp=time.time(),
+            signature=b'\x00' * 64,
+            inputHash=missing_master,
+            sender=missing_master
+        )
+        work.append(shim)
+
+
+def filter_work(work):
+    filtered_work = []
+    for tx_batch in work:
+        # Filter out None responses
+        if tx_batch is None:
+            continue
+
+        # Add the rest to a priority queue based on their timestamp
+        heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
+
+    return filtered_work
