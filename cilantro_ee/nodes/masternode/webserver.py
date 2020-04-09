@@ -326,3 +326,4 @@ class WebServer:
             return response.json({'error': 'Transaction not found.'}, status=400)
 
         return response.json(tx, dumps=ByteEncoder().encode)
+
