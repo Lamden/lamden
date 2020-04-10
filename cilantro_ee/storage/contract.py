@@ -10,67 +10,6 @@ PENDING_NONCE_KEY = '__pn'
 log = get_logger('STATE')
 
 
-class NonceDriver:
-    def __init__(self, driver=Driver(collection='nonces'), pending=Driver(collection='pending_nonces')):
-        self.driver = driver
-        self.pending = pending
-
-    @staticmethod
-    def n_key(processor, sender):
-        return ':'.join([processor.hex(), sender.hex()])
-
-    def get_pending_nonce(self, processor: bytes, sender: bytes):
-        return self.pending.get(self.n_key(processor, sender))
-
-    def get_nonce(self, processor: bytes, sender: bytes):
-        return self.driver.get(self.n_key(processor, sender))
-
-    def set_pending_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.pending.set(self.n_key(processor, sender), nonce)
-
-    def set_nonce(self, processor: bytes, sender: bytes, nonce: int):
-        self.driver.set(self.n_key(processor, sender), nonce)
-
-    def delete_pending_nonce(self, processor: bytes, sender: bytes):
-        self.pending.delete(self.n_key(processor, sender))
-
-    def get_latest_nonce(self, processor:bytes, sender: bytes):
-        nonce = self.get_pending_nonce(processor, sender)
-
-        if nonce is None:
-            nonce = self.get_nonce(processor, sender)
-
-        if nonce is None:
-            nonce = 0
-
-        return nonce
-
-    def commit_nonces(self, nonce_hash=None):
-        # Delete pending nonces and update the nonces
-        if nonce_hash is not None:
-            for k, v in nonce_hash.items():
-                processor, sender = k
-
-                self.set_nonce(processor=processor, sender=sender, nonce=v)
-                self.delete_pending_nonce(processor=processor, sender=sender)
-        else:
-            # Commit all pending nonces straight up
-            for n in self.driver.iter(PENDING_NONCE_KEY):
-                _, processor, sender = n.split(':')
-
-                processor = bytes.fromhex(processor)
-                sender = bytes.fromhex(sender)
-
-                nonce = self.get_pending_nonce(processor=processor, sender=sender)
-
-                self.set_nonce(processor=processor, sender=sender, nonce=nonce)
-                self.driver.delete(n)
-
-    def delete_pending_nonces(self):
-        for nonce in self.driver.keys(PENDING_NONCE_KEY):
-            self.driver.delete(nonce)
-
-
 class BlockchainDriver(ContractDriver):
     def get_latest_block_hash(self):
         block_hash = self.driver.get(BLOCK_HASH_KEY)
@@ -109,7 +48,7 @@ class BlockchainDriver(ContractDriver):
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                self.set(delta['key'], decode(delta['value']))
+                self.driver.set(delta['key'], decode(delta['value']))
                 log.info(f"{delta['key']} -> {decode(delta['value'])}")
 
     def update_with_block(self, block):

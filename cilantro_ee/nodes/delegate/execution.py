@@ -16,7 +16,7 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 log = get_logger('EXE')
 
 
-def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}, debug=False):
+def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}, debug=True):
     # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
     kwargs = decode(transaction.payload.kwargs)
 
@@ -42,8 +42,6 @@ def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}
 
     tx_hash = tx_hash_from_tx(transaction)
 
-    log.error(tx_hash.hex())
-
     # Encode deltas into a Capnp struct
     tx_output = transaction_capnp.TransactionData.new_message(
         hash=tx_hash,
@@ -53,7 +51,7 @@ def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}
         stampsUsed=output['stamps_used']
     )
 
-    executor.driver.pending_writes.clear()
+    #executor.driver.pending_writes.clear()
 
     return tx_output
 
