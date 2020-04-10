@@ -170,6 +170,8 @@ class Node:
 
     def process_block(self, block):
         self.driver.reads.clear()
+
+        self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
         self.driver.pending_writes.clear()
 
         if self.driver.latest_block_num < block['blockNum'] and block['hash'] != b'\xff' * 32:
