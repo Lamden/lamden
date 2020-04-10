@@ -172,13 +172,9 @@ class BlockchainDriver(ContractDriver):
             self.set_nonce(processor=processor, sender=sender, nonce=nonce)
             self.delete(n, mark=False)
 
-        self.commit()
-
     def delete_pending_nonces(self):
         for nonce in self.keys(PENDING_NONCE_KEY):
             self.delete(nonce, mark=False)
-
-        self.commit()
 
     def iter(self, *args, **kwargs):
         return self.driver.iter(*args, **kwargs)
