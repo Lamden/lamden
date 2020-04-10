@@ -318,16 +318,5 @@ class BlockchainDriver(ContractDriver):
 
         self.commit()
 
-    def update_nonces_with_block(self, block):
-        # Reinitialize the latest nonce. This should probably be abstracted into a seperate class at a later date
-        nonces = {}
-
-        for sb in block.subBlocks:
-            for tx in sb.transactions:
-                self.update_nonce_hash(nonce_hash=nonces, tx_payload=tx.transaction.payload)
-
-        self.commit_nonces(nonce_hash=nonces)
-        self.delete_pending_nonces()
-
     def iter(self, *args, **kwargs):
         return self.driver.iter(*args, **kwargs)
