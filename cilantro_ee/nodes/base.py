@@ -181,6 +181,8 @@ class Node:
 
             if self.store:
                 self.blocks.store_block(block)
+        else:
+            self.driver.delete_pending_nonces()
 
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
