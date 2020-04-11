@@ -170,6 +170,7 @@ class Node:
 
     def process_block(self, block):
         self.driver.reads.clear()
+        self.driver.cache.clear()
 
         self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
         self.driver.pending_writes.clear()
@@ -181,6 +182,8 @@ class Node:
 
             if self.store:
                 self.blocks.store_block(block)
+                self.reward_manager.issue_rewards(block=block)
+                self.update_sockets()
         else:
             self.driver.delete_pending_nonces()
 
