@@ -121,6 +121,8 @@ class Delegate(Node):
                 msg=sbc_msg
             )
 
+            self.driver.clear_pending_state()
+
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_block(nbn)
 
