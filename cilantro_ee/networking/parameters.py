@@ -199,8 +199,6 @@ class Parameters:
                 self.log.info(f'Found {vk} : {socket}')
 
                 self.sockets.update({vk: socket})
-            else:
-                self.log.error(f'COULDNT FIND {vk}')
             self.log.info('Done finding.')
 
     async def find_node(self, node):
