@@ -48,7 +48,7 @@ class BlockchainDriver(ContractDriver):
     def set_transaction_data(self, tx):
         if tx['state'] is not None and len(tx['state']) > 0:
             for delta in tx['state']:
-                self.driver.set(delta['key'], decode(delta['value']))
+                self.driver.set(delta['key'], decode(delta['value'])) # driver.driver bypasses cache
                 log.info(f"{delta['key']} -> {decode(delta['value'])}")
 
     def update_with_block(self, block):
