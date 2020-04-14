@@ -123,8 +123,12 @@ class Delegate(Node):
 
             self.driver.clear_pending_state() # Add
 
+            self.waiting_for_confirmation = True
+
             nbn = await self.nbn_inbox.wait_for_next_nbn()
             self.process_block(nbn)
+
+            self.waiting_for_confirmation = False
 
     def stop(self):
         self.running = False

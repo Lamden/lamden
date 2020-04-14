@@ -36,6 +36,8 @@ class Node:
         if self.store:
             self.blocks = MasterStorage()
 
+        self.waiting_for_confirmation = False
+
         self.log = get_logger('NODE')
         self.log.propagate = debug
         self.log.info(constitution)
@@ -168,6 +170,12 @@ class Node:
             block = self.nbn_inbox.q.pop(0)
             self.process_block(block)
 
+    def should_process(self, block):
+        if self.waiting_for_confirmation:
+            return self.driver.latest_block_num <= block['blockNum'] and block['hash'] != 'f' * 64
+        else:
+            return self.driver.latest_block_num < block['blockNum'] and block['hash'] != 'f' * 64
+
     def process_block(self, block):
         # self.driver.reads.clear()
         # self.driver.cache.clear()
@@ -175,7 +183,7 @@ class Node:
         # self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
         # self.driver.pending_writes.clear()
 
-        if self.driver.latest_block_num < block['blockNum'] and block['hash'] != 'f' * 64:
+        if self.should_process(block):
             self.driver.update_with_block(block)
             self.reward_manager.issue_rewards(block=block)
             self.update_sockets()

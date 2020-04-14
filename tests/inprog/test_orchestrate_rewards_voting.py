@@ -759,13 +759,13 @@ class TestGovernanceOrchestration(unittest.TestCase):
         async def test():
 
             await o.start_network
-            await asyncio.sleep(3)
+            await asyncio.sleep(7)
             await send_tx_batch(o.masternodes[0], block_0)
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
             await send_tx_batch(o.masternodes[0], block_1)
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
             await send_tx_batch(o.masternodes[0], block_2)
-            await asyncio.sleep(3)
+            await asyncio.sleep(5)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
@@ -1219,3 +1219,5 @@ def testing(value):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
+    def test_1_by_2_votes_new_masternode_that_never_joins_can_vote_them_out(self):
+        pass
