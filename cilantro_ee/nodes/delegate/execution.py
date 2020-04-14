@@ -51,7 +51,7 @@ def execute_tx(executor: Executor, transaction, stamp_cost, environment: dict={}
         stampsUsed=output['stamps_used']
     )
 
-    executor.driver.pending_writes.clear()
+    executor.driver.pending_writes.clear() # add
 
     return tx_output
 

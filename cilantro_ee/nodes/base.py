@@ -148,7 +148,7 @@ class Node:
             wallet=wallet
         )
 
-        self.reward_manager = RewardManager(driver=self.driver, debug=True)
+        self.reward_manager = RewardManager(driver=self.driver, debug=False)
 
         self.running = False
 
@@ -169,24 +169,31 @@ class Node:
             self.process_block(block)
 
     def process_block(self, block):
-        self.driver.reads.clear()
-        self.driver.cache.clear()
+        # self.driver.reads.clear()
+        # self.driver.cache.clear()
+        #
+        # self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
+        # self.driver.pending_writes.clear()
 
-        self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
-        self.driver.pending_writes.clear()
-
-        if self.driver.latest_block_num < block['blockNum'] and block['hash'] != b'\xff' * 32:
+        if self.driver.latest_block_num < block['blockNum'] and block['hash'] != 'f' * 64:
             self.driver.update_with_block(block)
             self.reward_manager.issue_rewards(block=block)
             self.update_sockets()
 
             if self.store:
                 self.blocks.store_block(block)
-                self.reward_manager.issue_rewards(block=block)
-                self.update_sockets()
+                #self.reward_manager.issue_rewards(block=block)
+                #self.update_sockets()
         else:
+            self.log.error('Could not store block...')
+            if self.driver.latest_block_num >= block['blockNum']:
+                self.log.error(f'Latest block num = {self.driver.latest_block_num}')
+                self.log.error(f'New block num = {block["blockNum"]}')
+            if block['hash'] == 'f' * 64:
+                self.log.error(f'Block hash = {block["hash"]}')
             self.driver.delete_pending_nonces()
 
+        self.driver.cache.clear()
         self.nbn_inbox.clean()
         self.nbn_inbox.update_signers()
 
