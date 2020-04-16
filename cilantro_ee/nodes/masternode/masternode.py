@@ -257,6 +257,9 @@ class Masternode(Node):
 
             self.log.info(f'NBN SENDS {sends}')
 
+            # Clear the work here??
+            self.aggregator.sbc_inbox.q.clear()
+
     def stop(self):
         super().stop()
         self.block_server.stop()

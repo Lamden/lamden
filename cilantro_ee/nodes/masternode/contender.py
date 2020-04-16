@@ -194,6 +194,14 @@ class Aggregator:
     async def gather_subblocks(self, total_contacts, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
+        self.log.info(f'''
+========
+Gathering subblocks:
+Total Contacts: {total_contacts}, Expected SBs: {expected_subblocks}
+Quorum Ratio: {quorum_ratio}, Adequate Ratio: {adequate_ratio}
+========
+        ''')
+
         contenders = BlockContender(
             total_contacts=total_contacts,
             required_consensus=quorum_ratio,

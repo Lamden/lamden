@@ -24,9 +24,11 @@ class SBCInbox(SecureAsyncInbox):
 
         # Ignore bad message types
         if msg_type != MessageType.SUBBLOCK_CONTENDERS:
+            self.log.error('Wrong SBC message type. Tossing.')
             return
 
         if len(msg_blob.contenders) != self.expected_subblocks:
+            self.log.error('Contender does not have enough subblocks. Tossing.')
             return
 
         # Make sure all the contenders are valid
@@ -80,9 +82,11 @@ class SBCInbox(SecureAsyncInbox):
         return len(self.q) > 0
 
     async def receive_sbc(self):
+        self.log.info('Waiting for an SBC...')
         while len(self.q) <= 0:
             await asyncio.sleep(0)
 
+        self.log.info('Got one! Returning...')
         return self.q.pop(0)
 
 
