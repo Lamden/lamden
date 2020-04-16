@@ -215,7 +215,7 @@ class Masternode(Node):
         # If so, hang until you get a new block or some work OR NBN
         #self.nbn_inbox.clean()
 
-        while is_skip_block and len(self.tx_batcher.queue) <= 0:
+        while len(self.tx_batcher.queue) <= 0:
             if len(self.nbn_inbox.q) > 0:
                 break
 
