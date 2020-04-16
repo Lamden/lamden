@@ -7,6 +7,10 @@ from cilantro_ee.crypto.merkle_tree import merklize
 from cilantro_ee.messages import Message, MessageType
 from copy import deepcopy
 
+from cilantro_ee.logger.base import get_logger
+
+log = get_logger('CANON')
+
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 

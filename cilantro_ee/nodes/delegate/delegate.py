@@ -113,6 +113,13 @@ class Delegate(Node):
 
             filtered_work = await self.acquire_work()
 
+            # Run mini catch up here to prevent 'desyncing'
+            self.log.info(f'Pending Block Notifications to Process: {len(self.nbn_inbox.q)}')
+
+            while len(self.nbn_inbox.q) > 0:
+                block = self.nbn_inbox.q.pop(0)
+                self.process_block(block)
+
             self.log.info(filtered_work)
 
             sbc_msg = self.process_work(filtered_work)

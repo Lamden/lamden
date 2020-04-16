@@ -116,6 +116,8 @@ class BlockContender:
         # Create an empty list to store the contenders as they come in
         self.subblock_contenders = [None for _ in range(self.total_subblocks)]
 
+        self.log = get_logger('AGG')
+
     def add_sbcs(self, sbcs):
         for sbc in sbcs:
             # If it's out of range, ignore
@@ -154,6 +156,7 @@ class BlockContender:
         # Where None is appended = failed
         for sb in self.subblock_contenders:
             if sb is None:
+                self.log.error('SB IS NONE!!!')
                 block.append(None)
             else:
                 block.append(sb.serialized_solution)
@@ -207,6 +210,9 @@ class Aggregator:
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 contenders.add_sbcs(sbcs)
             await asyncio.sleep(0)
+
+        if time.time() - started > self.seconds_to_timeout:
+            self.log.error('BLOCK TIMEOUT!')
 
         self.log.info('Done aggregating new block.')
 
