@@ -44,6 +44,8 @@ class Delegate(Node):
             node_type=MN
         )
 
+        self.masternode_contract = self.client.get_contract('masternodes')
+
     async def start(self):
         await super().start()
 
@@ -62,14 +64,14 @@ class Delegate(Node):
         if len(self.parameters.sockets) == 0:
             return
 
-        self.log.error(f'{len(self.parameters.get_masternode_vks())} MNS!')
+        self.log.error(f'{len(self.masternode_contract.quick_read("S", "members"))} MNS!')
 
         self.work_inbox.accepting_work = True
         self.work_inbox.process_todo_work()
 
         work = await gather_transaction_batches(
             queue=self.work_inbox.work,
-            expected_batches=len(self.parameters.get_masternode_vks()),
+            expected_batches=len(self.masternode_contract.quick_read("S", "members")),
             timeout=5
         )
 
@@ -77,7 +79,7 @@ class Delegate(Node):
 
         self.log.info(f'Got {len(work)} batch(es) of work')
 
-        expected_masters = set(self.contacts.masternodes)
+        expected_masters = set(self.masternode_contract.quick_read("S", "members"))
         pad_work(work=work, expected_masters=expected_masters)
 
         return filter_work(work)
