@@ -236,32 +236,35 @@ class Node:
 
     def update_sockets(self):
         # UPDATE SOCKETS IF NEEDED
-        self.log.info(f'Top MN is {mn}')
-        self.log.info(f'Top DL is {dl}')
-
-        mns = deepcopy(self.contacts.masternodes)
-        dls = deepcopy(self.contacts.delegates)
-
         mn = self.elect_masternodes.quick_read('top_candidate')
         dl = self.elect_delegates.quick_read('top_candidate')
 
-        mns.append(mn)
-        dls.append(dl)
+        self.log.info(f'Top MN is {mn}')
+        self.log.info(f'Top DL is {dl}')
 
-        self.socket_authenticator.flush_all_keys()
+        update_mn = self.on_deck_master != mn and mn is not None
+        update_del = self.on_deck_delegate != dl and dl is not None
 
-        for k in mns:
-            self.socket_authenticator.add_verifying_key(bytes.fromhex(k))
-
-        for k in dls:
-            self.socket_authenticator.add_verifying_key(bytes.fromhex(k))
-
+        ## Check if
         nodes_changed = self.contacts.masternodes != self.current_masters \
                         or self.contacts.delegates != self.current_delegates
 
         if nodes_changed:
             self.current_masters = deepcopy(self.contacts.masternodes)
             self.current_delegates = deepcopy(self.contacts.delegates)
+
+        if update_mn or update_del or nodes_changed:
+            self.socket_authenticator.sync_certs()
+
+            if update_mn:
+                self.log.info(f'Adding on deck master {mn}')
+                self.socket_authenticator.add_verifying_key(bytes.fromhex(mn))
+                self.on_deck_master = mn
+
+            if update_del:
+                self.log.info(f'Adding on deck delegate {dl}')
+                self.socket_authenticator.add_verifying_key(bytes.fromhex(dl))
+                self.on_deck_delegate = dl
 
         self.socket_authenticator.configure()
 
