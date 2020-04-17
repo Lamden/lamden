@@ -4,6 +4,7 @@ from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.sockets.inbox import SecureAsyncInbox
+from contracting.client import ContractingClient
 
 from cilantro_ee.logger.base import get_logger
 
@@ -29,13 +30,14 @@ class NotMasternode(DelegateWorkInboxException):
 
 
 class WorkInbox(SecureAsyncInbox):
-    def __init__(self, parameters, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
+    def __init__(self, client: ContractingClient, driver: BlockchainDriver=BlockchainDriver(), verify=True, debug=True, *args, **kwargs):
         self.work = {}
 
         self.driver = driver
         self.verify = verify
 
-        self.parameters = parameters
+        self.client = client
+        self.masternode_contract = self.client.get_contract('masternodes')
 
         self.todo = []
         self.accepting_work = False
@@ -70,7 +72,7 @@ class WorkInbox(SecureAsyncInbox):
 
             transaction_batch_is_valid(
                 tx_batch=msg_blob,
-                current_masternodes=self.parameters.get_masternode_vks(),
+                current_masternodes=self.masternode_contract.quick_read('S', 'members'),
                 driver=self.driver
             )
 
