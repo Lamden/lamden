@@ -212,11 +212,15 @@ class Masternode(Node):
         if is_skip_block:
             self.log.info('SKIP. Going to hang now...')
 
+
         # If so, hang until you get a new block or some work OR NBN
-        #self.nbn_inbox.clean()
+        self.nbn_inbox.clean()
 
         while len(self.tx_batcher.queue) <= 0:
             if len(self.nbn_inbox.q) > 0:
+                self.log.info('''
+=== Got a New Block Notification from another Master ===
+                ''')
                 break
 
             await asyncio.sleep(0)

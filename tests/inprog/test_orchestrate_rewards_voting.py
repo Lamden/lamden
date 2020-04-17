@@ -613,7 +613,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
-        self.assertListEqual(o.delegates[0].contacts.delegates, [
+        self.assertListEqual(o.masternodes[0].contacts.delegates, [
             o.delegates[0].wallet.verifying_key().hex(),
             o.delegates[1].wallet.verifying_key().hex(),
             o.delegates[2].wallet.verifying_key().hex(),
@@ -621,7 +621,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             candidate.verifying_key().hex()
         ])
 
-        self.assertListEqual(o.delegates[1].contacts.delegates, [
+        self.assertListEqual(o.masternodes[1].contacts.delegates, [
             o.delegates[0].wallet.verifying_key().hex(),
             o.delegates[1].wallet.verifying_key().hex(),
             o.delegates[2].wallet.verifying_key().hex(),
