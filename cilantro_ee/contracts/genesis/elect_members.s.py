@@ -84,6 +84,7 @@ def pop_top():
         return None
 
     candidate_state.clear('votes')
+    top_candidate.set(None)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # VOTE NO CONFIDENCE
@@ -136,6 +137,7 @@ def pop_last():
     else:
         no_confidence_state.clear('votes')
         candidate_state['registered', last_candidate.get()] = False
+        last_candidate.set(None)
 
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # REMOVE!!
