@@ -10,19 +10,19 @@ import pathlib
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 from cilantro_ee.logger.base import get_logger
 
+CERT_DIR = 'cilsocks'
+
 
 class SocketAuthenticator:
-    def __init__(self, wallet, contacts: VKBook, ctx: zmq.asyncio.Context,
-                 loop=asyncio.get_event_loop(), domain='*', cert_dir='cilsocks', debug=True):
+    def __init__(self, ctx: zmq.asyncio.Context,
+                 loop=asyncio.get_event_loop(), domain='*', cert_dir=CERT_DIR, debug=True):
 
         # Create the directory if it doesn't exist
 
         self.cert_dir = pathlib.Path.home() / cert_dir
         self.cert_dir.mkdir(parents=True, exist_ok=True)
 
-        self.wallet = wallet
         self.ctx = ctx
-        self.contacts = contacts
 
         self.domain = domain
 
@@ -55,6 +55,23 @@ class SocketAuthenticator:
     def configure(self):
         self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
 
+    def add_governance_sockets(self, masternode_list, on_deck_masternode, delegate_list, on_deck_delegate):
+        self.flush_all_keys()
+
+        for mn in masternode_list:
+            self.add_verifying_key(mn)
+
+        for dl in delegate_list:
+            self.add_verifying_key(dl)
+
+        if on_deck_masternode is not None:
+            self.add_verifying_key(on_deck_masternode)
+
+        if on_deck_delegate is not None:
+            self.add_verifying_key(on_deck_delegate)
+
+        self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
+
     def add_verifying_key(self, vk: bytes):
         # Convert to bytes if hex string
         if isinstance(vk, str):
@@ -64,6 +81,7 @@ class SocketAuthenticator:
             pk = crypto_sign_ed25519_pk_to_curve25519(vk)
         # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
         except RuntimeError:
+            print('no go')
             return
 
         zvk = z85.encode(pk).decode('utf-8')
@@ -73,22 +91,36 @@ class SocketAuthenticator:
         shutil.rmtree(str(self.cert_dir))
         self.cert_dir.mkdir(parents=True, exist_ok=True)
 
-    def make_client(self, zmq_type, server_vk: bytes):
-        sock = self.ctx.socket(zmq_type)
-        sock.curve_secretkey = self.wallet.curve_sk
-        sock.curve_publickey = self.wallet.curve_vk
-
-        server_pub, _ = load_certificate(str(self.cert_dir / f'{server_vk.hex()}.key'))
-
-        sock.curve_serverkey = server_pub
-
-        return sock
-
-    def make_server(self, zmq_type):
-        sock = self.ctx.socket(zmq_type)
-        sock.curve_secretkey = self.wallet.curve_sk
-        sock.curve_publickey = self.wallet.curve_vk
-
-        sock.curve_server = True
-
-        return sock
+    # def update_sockets(self):
+    #     # UPDATE SOCKETS IF NEEDED
+    #     mn = self.elect_masternodes.quick_read('top_candidate')
+    #     dl = self.elect_delegates.quick_read('top_candidate')
+    #
+    #     self.log.info(f'Top MN is {mn}')
+    #     self.log.info(f'Top DL is {dl}')
+    #
+    #     update_mn = self.on_deck_master != mn and mn is not None
+    #     update_del = self.on_deck_delegate != dl and dl is not None
+    #
+    #     ## Check if
+    #     nodes_changed = self.contacts.masternodes != self.current_masters \
+    #                     or self.contacts.delegates != self.current_delegates
+    #
+    #     if nodes_changed:
+    #         self.current_masters = deepcopy(self.contacts.masternodes)
+    #         self.current_delegates = deepcopy(self.contacts.delegates)
+    #
+    #     if update_mn or update_del or nodes_changed:
+    #         self.socket_authenticator.sync_certs()
+    #
+    #         if update_mn:
+    #             self.log.info(f'Adding on deck master {mn}')
+    #             self.socket_authenticator.add_verifying_key(bytes.fromhex(mn))
+    #             self.on_deck_master = mn
+    #
+    #         if update_del:
+    #             self.log.info(f'Adding on deck delegate {dl}')
+    #             self.socket_authenticator.add_verifying_key(bytes.fromhex(dl))
+    #             self.on_deck_delegate = dl
+    #
+    #     self.socket_authenticator.configure()

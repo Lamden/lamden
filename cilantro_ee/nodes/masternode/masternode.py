@@ -65,6 +65,8 @@ class Masternode(Node):
             node_type=DEL
         )
 
+        self.masternode_contract = self.client.get_contract('masternodes')
+
     async def start(self):
         await super().start()
         # Start block server to provide catchup to other nodes
@@ -139,7 +141,7 @@ class Masternode(Node):
         self.nbn_socket_book.sync_sockets()
         self.delegate_work_socket_book.sync_sockets()
 
-        while self.wallet.verifying_key().hex() not in self.contacts.masternodes:
+        while self.wallet.verifying_key().hex() not in self.masternode_contract.quick_read("S", "members"):
             block = await self.nbn_inbox.wait_for_next_nbn()
 
             # if block number does not equal one more than the current block number
@@ -245,7 +247,7 @@ class Masternode(Node):
             # this really should just give us a block straight up
             block = await self.aggregator.gather_subblocks(
                 total_contacts=len(self.contacts.delegates),
-                expected_subblocks=len(self.contacts.masternodes)
+                expected_subblocks=len(self.masternode_contract.quick_read("S", "members"))
             )
 
             self.process_block(block)
