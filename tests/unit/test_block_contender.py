@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from cilantro_ee.nodes.masternode.new_contender import BlockContender, SubBlockContender, PotentialSolution, Aggregator
+from cilantro_ee.nodes.masternode.contender import BlockContender, SubBlockContender, PotentialSolution, Aggregator
 import zmq.asyncio
 import asyncio
 from cilantro_ee.sockets.struct import _socket
@@ -361,6 +361,8 @@ class TestAggregator(TestCase):
         a.sbc_inbox.q = [c1, c2, c3, c4]
 
         res = self.loop.run_until_complete(a.gather_subblocks(4))
+
+        print(res)
 
         self.assertTrue(canonical.block_is_failed(res, '0' * 64, 1))
 

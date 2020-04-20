@@ -37,7 +37,7 @@ def block_from_subblocks(subblocks, previous_hash: bytes, block_num: int) -> dic
 
     for subblock in subblocks:
         if subblock is None:
-            return get_failed_block(previous_hash=previous_hash, block_num=block_num)
+            continue
 
         if type(subblock) != dict:
             subblock = subblock.to_dict()
