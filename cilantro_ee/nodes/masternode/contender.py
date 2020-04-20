@@ -176,7 +176,7 @@ class BlockContender:
 
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4, seconds_to_timeout=5):
+    def __init__(self, socket_id, ctx, driver, wallet, expected_subblocks=4, seconds_to_timeout=10):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             socket_id=socket_id,
