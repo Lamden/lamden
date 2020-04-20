@@ -3,3 +3,4 @@ killall cil
 cil flush all
 git pull
 rm nohup.out
+rm -r ~/cilsocks/
