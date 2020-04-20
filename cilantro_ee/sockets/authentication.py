@@ -1,8 +1,7 @@
 from zmq.auth.asyncio import AsyncioAuthenticator
 from zmq.error import ZMQBaseError
-from zmq.auth.certs import _write_key_file, _cert_public_banner, load_certificate
+from zmq.auth.certs import _write_key_file, _cert_public_banner
 from zmq.utils import z85
-from cilantro_ee.storage.vkbook import VKBook
 import shutil
 import zmq.asyncio
 import asyncio
@@ -41,20 +40,6 @@ class SocketAuthenticator:
             pass
             #raise Exception('AsyncioAuthenicator could not be started. Is it already running?')
 
-    def sync_certs(self):
-        self.flush_all_keys()
-
-        for m in self.contacts.masternodes:
-            self.add_verifying_key(m)
-
-        for d in self.contacts.delegates:
-            self.add_verifying_key(d)
-
-        self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
-
-    def configure(self):
-        self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
-
     def add_governance_sockets(self, masternode_list, on_deck_masternode, delegate_list, on_deck_delegate):
         self.flush_all_keys()
 
@@ -91,36 +76,3 @@ class SocketAuthenticator:
         shutil.rmtree(str(self.cert_dir))
         self.cert_dir.mkdir(parents=True, exist_ok=True)
 
-    # def update_sockets(self):
-    #     # UPDATE SOCKETS IF NEEDED
-    #     mn = self.elect_masternodes.quick_read('top_candidate')
-    #     dl = self.elect_delegates.quick_read('top_candidate')
-    #
-    #     self.log.info(f'Top MN is {mn}')
-    #     self.log.info(f'Top DL is {dl}')
-    #
-    #     update_mn = self.on_deck_master != mn and mn is not None
-    #     update_del = self.on_deck_delegate != dl and dl is not None
-    #
-    #     ## Check if
-    #     nodes_changed = self.contacts.masternodes != self.current_masters \
-    #                     or self.contacts.delegates != self.current_delegates
-    #
-    #     if nodes_changed:
-    #         self.current_masters = deepcopy(self.contacts.masternodes)
-    #         self.current_delegates = deepcopy(self.contacts.delegates)
-    #
-    #     if update_mn or update_del or nodes_changed:
-    #         self.socket_authenticator.sync_certs()
-    #
-    #         if update_mn:
-    #             self.log.info(f'Adding on deck master {mn}')
-    #             self.socket_authenticator.add_verifying_key(bytes.fromhex(mn))
-    #             self.on_deck_master = mn
-    #
-    #         if update_del:
-    #             self.log.info(f'Adding on deck delegate {dl}')
-    #             self.socket_authenticator.add_verifying_key(bytes.fromhex(dl))
-    #             self.on_deck_delegate = dl
-    #
-    #     self.socket_authenticator.configure()

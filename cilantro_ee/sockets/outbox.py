@@ -1,6 +1,7 @@
 import zmq
 import asyncio
 from zmq.utils import monitor
+import os
 import pathlib
 from zmq.auth.certs import load_certificate
 from cilantro_ee.networking.parameters import Parameters, ServiceType
@@ -52,9 +53,10 @@ class Peers:
     def connect(self, socket_id, server_vk):
         s = self.sockets.get(server_vk)
         if s is None:
-            socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
-            self.log.info(f'Connecting to {server_vk}, {socket_id}')
-            self.sockets[server_vk] = socket
+            if os.path.exists(pathlib.Path.home() / self.cert_dir / f'{server_vk}.key'):
+                socket = SecureSocketWrapper(self.ctx, server_vk, socket_id, self.wallet, self.cert_dir)
+                self.log.info(f'Connecting to {server_vk}, {socket_id}')
+                self.sockets[server_vk] = socket
 
     async def send_to_peers(self, msg):
         return await asyncio.gather(*[self.send(socket_wrapper, msg) for socket_wrapper in self.sockets.values()])
