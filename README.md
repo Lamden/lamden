@@ -53,7 +53,7 @@ python3 setup.py develop
 ### Setup and run Mongo
 ```
 mkdir ~/blocks
-mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip_all --fork
+mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip 127.0.0.1 --fork
 # cd cilantro-enterprise/scripts
 # python3 create_user.py # nolonger needed
 ```
