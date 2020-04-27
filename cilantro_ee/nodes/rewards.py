@@ -15,7 +15,7 @@ PENDING_REWARDS_KEY = '__rewards'
 
 
 class RewardManager:
-    def __init__(self, driver=ContractDriver(), debug=False):
+    def __init__(self, driver=ContractDriver(), debug=True):
         self.driver = driver
         self.client = ContractingClient(driver=driver)
 
