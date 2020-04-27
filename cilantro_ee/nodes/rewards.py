@@ -92,8 +92,10 @@ class RewardManager:
             variable='balances',
             arguments=[vk],
             value=amount + current_balance,
-            mark=False
+            mark=True
         )
+
+        self.driver.commit()
 
     # def get_pending_rewards(self):
     #     key = self.driver.get(PENDING_REWARDS_KEY)
