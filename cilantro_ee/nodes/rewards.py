@@ -96,6 +96,7 @@ class RewardManager:
         )
 
         self.driver.commit()
+        self.driver.clear_pending_state()
 
     # def get_pending_rewards(self):
     #     key = self.driver.get(PENDING_REWARDS_KEY)
