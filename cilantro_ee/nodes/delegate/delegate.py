@@ -94,8 +94,6 @@ class Delegate(Node):
             stamp_cost=self.reward_manager.stamps_per_tau
         )
 
-        self.log.info(results)
-
         # Send out the contenders to masternodes
         return Message.get_message_packed_2(
             msg_type=MessageType.SUBBLOCK_CONTENDERS,
@@ -121,8 +119,6 @@ class Delegate(Node):
             while len(self.nbn_inbox.q) > 0:
                 block = self.nbn_inbox.q.pop(0)
                 self.process_block(block)
-
-            self.log.info(filtered_work)
 
             sbc_msg = self.process_work(filtered_work)
 

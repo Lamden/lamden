@@ -175,6 +175,7 @@ class Node:
         # self.driver.pending_writes.clear()
 
         if self.should_process(block):
+            self.log.info('Processing new block...')
             self.driver.update_with_block(block)
             self.reward_manager.issue_rewards(block=block)
             self.update_sockets()
