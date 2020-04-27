@@ -122,10 +122,13 @@ class RewardManager:
 
     @staticmethod
     def stamps_in_subblock(subblock):
+        if type(subblock) != dict:
+            subblock = subblock.to_dict()
+
         total = 0
 
-        for tx in subblock.transactions:
-            total += tx.stampsUsed
+        for tx in subblock['transactions']:
+            total += tx['stampsUsed']
 
         return total
 
