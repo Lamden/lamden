@@ -1,6 +1,0 @@
-coloredlogs
-coverage
-numpy
-scipy
-vprof
-paramiko

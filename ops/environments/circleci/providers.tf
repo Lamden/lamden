@@ -1,1 +1,0 @@
-../../base/environment/providers.tf

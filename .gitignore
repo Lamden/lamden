@@ -16,16 +16,29 @@ __pycache__/
 # C extensions
 *.so
 
+# other extensions
+*.svg
+*.pdf
+*.dot
+*.ps
+
+cilantro_ee.egg-info/
 cilantro.egg-info/
+capnproto-c++-0.7.0/
+capnproto/
+var/
+mongo/
+
+
 
 # FOR DEMO
-cilantro/faucet.json
+cilantro_ee/faucet.json
 
 # LOGS
 **/logs
 
 # Data
-cilantro/protocol/networks/data
+cilantro_ee/protocol/networks/data
 certs
 .DS_Store
 state.tmp
@@ -38,19 +51,26 @@ data
 vmnet_configs/constitutions/private
 *.tfstate
 *.tfstate.backup
-.cache/*
+ops/environments/*/.cache/*
+ops/environments/*/conf
+ops/environments/TJ*
 
 # Config files
 db_conf.ini
-cilantro/testnet_configs/testnet.ini
-#cilantro/vmnet_configs/constitutions/test/testnet.ini
+cilantro_ee/testnet_configs/testnet.ini
+#cilantro_ee/vmnet_configs/constitutions/test/testnet.ini
 tests/cloud/Dockerfile
 
 # Docker
 docker-compose.yml
-dump.rdb
 docker/redis.env
+src
 
 # Docs
 docs/sphinx/_build
 fsock
+
+#dir
+build
+dist
+ops

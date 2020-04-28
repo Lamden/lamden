@@ -6,7 +6,7 @@ Then clone the fork onto your local machine.
 Make sure you [configure a remote](https://help.github.com/articles/configuring-a-remote-for-a-fork/) for your fork to [sync changes](https://help.github.com/articles/syncing-a-fork/) you make with the original repository.
 
 ### SETUP
-See [installation instructions](https://github.com/Lamden/cilantro#installing).  
+See [installation instructions](https://github.com/Lamden/cilantro_ee#installing).  
 We recommend using a virtual environment to isolate dependencies.   
 Make sure to pull often. Cilantro is in very active state of development.
 

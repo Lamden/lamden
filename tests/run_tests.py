@@ -6,11 +6,9 @@ import sys
 import time
 import os
 import re
-from cilantro.logger import get_logger, overwrite_logger_level
-import logging
+from cilantro_ee.core.logger import get_logger, overwrite_logger_level
 import argparse
-import random
-from cilantro.nodes.factory import _wait_for_mongo, _wait_for_redis
+from cilantro_ee.utils.factory import _wait_for_mongo, _wait_for_redis
 
 # Hack to import stuff from groups.py regardless of where this file is run
 try: from .groups import *
@@ -23,7 +21,7 @@ all tests are run.
 
 log = get_logger("TestRunner")
 delim = '-' * 80
-os.environ['__INHERIT_CONSTITUTION__'] = 'True'
+os.environ['__INHERIT_CONSTITUTION__'] = 'False'
 
 
 def skip_tests(test_suite: unittest.TestSuite, test_names: list):

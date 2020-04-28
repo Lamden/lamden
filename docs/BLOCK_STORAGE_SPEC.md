@@ -31,7 +31,7 @@ about the block. It can be customized to hold any key-values.
 *  **Merkle Root**
   - The Merkle root, a 64 hex character hash value.
 *  **Block Contender**
-  - The block contender is the original [Block Contender](https://github.com/Lamden/cilantro/blob/master/cilantro/messages/consensus/block_contender.py) object that ultimately
+  - The block contender is the original [Block Contender](https://github.com/Lamden/cilantro_ee/blob/master/cilantro_ee/messages/consensus/block_contender.py) object that ultimately
     was built into this block. It contains a list of signatures from the delegates
     who signed the block.
 
@@ -69,13 +69,13 @@ block hash = SHA3(concatenated binary)
 
 ## Genesis Block & Seeding Default Values
 
-Unlike Bitcoin and Ethereum, Cilantro doesn't really have anything directly analogous to a Genesis block. This is because **all transactions in Cilantro are smart contracts**, including standard currency transactions, atomic swaps, votes, ect. Thus seeding any default values is actually done in the smart contracts themselves. For example, to seed any 'genesis wallets', developers specify a list of wallets and intial values in the implement of the standard [currency.seneca smart contract](https://github.com/Lamden/cilantro/blob/master/cilantro/contracts/lib/currency.seneca).
+Unlike Bitcoin and Ethereum, Cilantro doesn't really have anything directly analogous to a Genesis block. This is because **all transactions in Cilantro are smart contracts**, including standard currency transactions, atomic swaps, votes, ect. Thus seeding any default values is actually done in the smart contracts themselves. For example, to seed any 'genesis wallets', developers specify a list of wallets and intial values in the implement of the standard [currency.seneca smart contract](https://github.com/Lamden/cilantro_ee/blob/master/cilantro_ee/contracts/lib/currency.seneca).
 
 Since Cilantro does not use a 'genesis block' to seed default values, the 'literal genesis block'
 exists simply as a placeholder for the first real block to be built. It is created
 with a block hash of 0 and all block data fields set to 0 or None. Furthermore, because Cilantro uses smart contracts to implement both core transactions (such as currency/voting) and 3rd party transactions, the only significant configuration to be done in regards to seeding default values is the specification
 of which default 'genesis' contracts should included in the initial deployment of
-the blockchain. Currently the system will load all contracts in the cilantro/contracts/lib folder.
+the blockchain. Currently the system will load all contracts in the cilantro_ee/contracts/lib folder.
 
 ## Table Schema
 TODO
