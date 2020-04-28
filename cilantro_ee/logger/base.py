@@ -25,7 +25,7 @@ req_log.propagate = True
 def get_main_log_path():
     import cilantro_ee
 
-    root = cilantro_ee.__file__  # resolves to '/Users/davishaba/Developer/cilantro_ee/cilantro_ee/__init__.py'
+    root = cilantro_ee.__file__
     log_path = '/'.join(root.split('/')[:-2]) + '/logs/cilantro_ee.log'
 
     # Create log directory if it does not exist

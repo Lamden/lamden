@@ -6,6 +6,10 @@ from cilantro_ee.messages.message_type import MessageType
 import hashlib
 import time
 
+from cilantro_ee.logger.base import get_logger
+
+log = get_logger('TXBATCHER')
+
 
 class TransactionBatcher:
     def __init__(self, wallet: Wallet, queue):
@@ -20,21 +24,24 @@ class TransactionBatcher:
 
         signature = self.wallet.sign(input_hash)
 
-        return Message.get_signed_message_packed_2(
+        msg = Message.get_signed_message_packed_2(
             wallet=self.wallet,
             msg_type=MessageType.TRANSACTION_BATCH,
             transactions=[],
             timestamp=timestamp,
             signature=signature,
-            inputHash=input_hash,
+            inputHash=input_hash.hex(),
             sender=self.wallet.verifying_key()
         )
+
+        return msg
 
     def pack_current_queue(self, tx_number=100):
         # if len(self.queue) == 0:
         #     return self.make_empty_batch()
 
         # Pop elements off into a list
+        log.info('Packing a Q')
         tx_list = []
 
         while len(tx_list) < tx_number and len(self.queue) > 0:
@@ -60,7 +67,7 @@ class TransactionBatcher:
             transactions=[t for t in tx_list],
             timestamp=timestamp,
             signature=signature,
-            inputHash=input_hash,
+            inputHash=input_hash.hex(),
             sender=self.wallet.verifying_key()
         )
 

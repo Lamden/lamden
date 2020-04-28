@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-from setuptools.command.install import install
 
 
 __version__ = '0.0.4'
@@ -18,31 +17,25 @@ setup(
         # utils
         'coloredlogs',
         'checksumdir==1.1.7',
-        'pathspec',
-        'vprof',
-        'Cython==0.29',
-        # protocol
+        'PyNaCl==1.2.1',
         'pycapnp==0.6.3',
-        'pyzmq==17.0.0',
-        'requests==2.20.0',
-        'uvloop==0.9.1',
-        # webserver
+        'pyzmq==19.0.0',
+        'requests>=2.21.0',
+        'uvloop>=0.9.1',
         'aiohttp',
         'sanic==19.6.3',
-        'secure',
-        'sanic-limiter==0.1.3',
-        'Sanic-Cors==0.9.9.post1',
-        # DB
-        'rocks',
+        'sanic-limiter>=0.1.3',
+        'Sanic-Cors>=0.9.9.post1',
         'contracting',
-        'pymongo==3.9',
-        'redis==3.2.0',
-        # CLI
-        'Click==7.0',
+        'pymongo',
+        'termcolor',
+        'Cython==0.29',
+        'argparse_actions==0.4.4',
+        'psutil==5.7.0',
     ],
     entry_points={
         'console_scripts': [
-            'node_start=cilantro_ee.__main__:main'
+            'cil=cilantro_ee.cli.cmd:main'
         ],
     },
     zip_safe=False,
@@ -50,7 +43,7 @@ setup(
         '': [],
         'cilantro_ee': ['cilantro_ee.conf'],
     },
-    description = "Lamden Blockchain",
+    description="Lamden Blockchain",
     long_description= long_desc,
     long_description_content_type="text/markdown",
     url='https://github.com/Lamden/cilantro-enterprise',

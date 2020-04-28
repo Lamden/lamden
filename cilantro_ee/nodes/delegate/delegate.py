@@ -1,13 +1,12 @@
 from cilantro_ee.nodes.work_inbox import WorkInbox
-from cilantro_ee.core.canonical import block_is_failed
 from cilantro_ee.networking.parameters import ServiceType
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
 from cilantro_ee.nodes.delegate import execution
-from cilantro_ee.sockets.services import multicast
-import heapq
+from cilantro_ee.nodes.delegate.work import gather_transaction_batches, pad_work, filter_work
+from cilantro_ee.sockets.outbox import Peers, MN
 
 from cilantro_ee.nodes.base import Node
 from cilantro_ee.logger.base import get_logger
@@ -29,7 +28,7 @@ class Delegate(Node):
             socket_id=self.network_parameters.resolve(self.socket_base, ServiceType.INCOMING_WORK, bind=True),
             driver=self.driver,
             ctx=self.ctx,
-            contacts=self.parameters.get_masternode_vks(),
+            client=self.client,
             wallet=self.wallet
         )
 
@@ -37,68 +36,53 @@ class Delegate(Node):
 
         self.log = get_logger(f'DEL {self.wallet.vk_pretty[4:12]}')
 
+        self.masternode_socket_book = Peers(
+            wallet=self.wallet,
+            ctx=self.ctx,
+            parameters=self.parameters,
+            service_type=ServiceType.BLOCK_AGGREGATOR,
+            node_type=MN
+        )
+
+        self.masternode_contract = self.client.get_contract('masternodes')
+
     async def start(self):
         await super().start()
 
         asyncio.ensure_future(self.work_inbox.serve())
         asyncio.ensure_future(self.run())
 
+        self.log.info('Running...')
+
     def masternode_aggregator_sockets(self):
         return list(self.parameters.get_masternode_sockets(service=ServiceType.BLOCK_AGGREGATOR).values())
 
-    def did_sign_block(self, block):
-        if len(self.pending_sbcs) == 0:
-            return False
-
-        # Throws a failure if even one of the subblocks isnt signed.
-        # This can be fixed in the future with partial blocks.
-        for sub_block in block['subBlocks']:
-            if sub_block['merkleLeaves'][0] not in self.pending_sbcs:
-                return False
-
-        # Returns true if its an empty block. Not sure if that is intended?
-        return True
-
-    def process_nbn(self, nbn):
-        if not self.did_sign_block(nbn):
-            self.log.info('Did not sign block. Processing.')
-            self.driver.revert()
-            self.driver.update_with_block(nbn)
-        elif not block_is_failed(nbn, nbn['prevBlockHash'], nbn['blockNum']):
-            self.log.info('Received successful block')
-            self.driver.commit()
-            self.driver.update_with_block(nbn, commit_tx=False)
-        else:
-            self.log.info('Skip block. Reverting')
-            self.driver.revert()
-
-        self.nbn_inbox.clean()
-        self.pending_sbcs.clear()
-
-    def filter_work(self, work):
-        filtered_work = []
-        for tx_batch in work:
-            # Filter out None responses
-            if tx_batch is None:
-                continue
-
-            # Add the rest to a priority queue based on their timestamp
-            heapq.heappush(filtered_work, (tx_batch.timestamp, tx_batch))
-
-        return filtered_work
-
     async def acquire_work(self):
         await self.parameters.refresh()
+        self.masternode_socket_book.sync_sockets()
 
         if len(self.parameters.sockets) == 0:
             return
 
-        work = await self.work_inbox.wait_for_next_batch_of_work(
-            current_contacts=self.parameters.get_masternode_vks()
+        self.log.error(f'{len(self.masternode_contract.quick_read("S", "members"))} MNS!')
+
+        self.work_inbox.accepting_work = True
+        self.work_inbox.process_todo_work()
+
+        work = await gather_transaction_batches(
+            queue=self.work_inbox.work,
+            expected_batches=len(self.masternode_contract.quick_read("S", "members")),
+            timeout=5
         )
+
+        self.work_inbox.accepting_work = False
+
         self.log.info(f'Got {len(work)} batch(es) of work')
 
-        return self.filter_work(work)
+        expected_masters = set(self.masternode_contract.quick_read("S", "members"))
+        pad_work(work=work, expected_masters=expected_masters)
+
+        return filter_work(work)
 
     def process_work(self, filtered_work):
         results = execution.execute_work(
@@ -106,14 +90,9 @@ class Delegate(Node):
             driver=self.driver,
             work=filtered_work,
             wallet=self.wallet,
-            previous_block_hash=self.driver.latest_block_hash
+            previous_block_hash=self.driver.latest_block_hash,
+            stamp_cost=self.reward_manager.stamps_per_tau
         )
-
-        # Add merkle roots to track successful sbcs
-        for sb in results:
-            self.pending_sbcs.add(sb.merkleTree.leaves[0])
-
-        self.log.info(results)
 
         # Send out the contenders to masternodes
         return Message.get_message_packed_2(
@@ -125,19 +104,36 @@ class Delegate(Node):
         # If first block, just wait for masters to send the genesis NBN
         if self.driver.latest_block_num == 0:
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            self.process_nbn(nbn)
+            self.process_block(nbn)
+            self.version_check()
 
         while self.running:
+            await self.parameters.refresh()
+            self.masternode_socket_book.sync_sockets()
+
             filtered_work = await self.acquire_work()
 
-            self.log.info(filtered_work)
+            # Run mini catch up here to prevent 'desyncing'
+            self.log.info(f'Pending Block Notifications to Process: {len(self.nbn_inbox.q)}')
+
+            while len(self.nbn_inbox.q) > 0:
+                block = self.nbn_inbox.q.pop(0)
+                self.process_block(block)
 
             sbc_msg = self.process_work(filtered_work)
 
-            await multicast(self.ctx, sbc_msg, self.masternode_aggregator_sockets())
+            await self.masternode_socket_book.send_to_peers(
+                msg=sbc_msg
+            )
+
+            self.driver.clear_pending_state() # Add
+
+            self.waiting_for_confirmation = True
 
             nbn = await self.nbn_inbox.wait_for_next_nbn()
-            self.process_nbn(nbn)
+            self.process_block(nbn)
+
+            self.waiting_for_confirmation = False
 
     def stop(self):
         self.running = False

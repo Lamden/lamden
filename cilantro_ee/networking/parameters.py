@@ -1,12 +1,28 @@
-from cilantro_ee.constants.ports import DHT_PORT, EVENT_PORT, DISCOVERY_PORT, BLOCK_SERVER, MN_PUB_PORT, \
-    DELEGATE_PUB_PORT
-from cilantro_ee.sockets import services
+import cilantro_ee.sockets.struct
 from cilantro_ee.storage import VKBook
 from cilantro_ee.sockets.services import get
 
 import json
 import zmq.asyncio
 import asyncio
+
+from cilantro_ee.logger.base import get_logger
+from os import getenv as env
+
+
+PEPPER = env('PEPPER', 'cilantro_pepper')
+DISCOVERY_PORT = 19000
+AUTH_PORT = 19001
+DHT_PORT = 19002
+EVENT_PORT = 19003
+BLOCK_SERVER = 19004
+MN_PUB_PORT = 19005
+DELEGATE_PUB_PORT = 19006
+TX_BATCH_INFORMER_PORT = 19007
+BLOCK_NOTIF_PORT = 19008
+TX_BATCHER_PORT = 19009
+BLOCK_AGG_CONTROLLER_PORT = 19010
+INCOMING_WORK_PORT = 19011
 
 
 class ServiceType:
@@ -31,11 +47,11 @@ class NetworkParameters:
                  block_port=BLOCK_SERVER, block_ipc='blocks',
                  sbb_pub_port=MN_PUB_PORT, sbb_pub_ipc='sbb_publisher',
                  block_agg_port=DELEGATE_PUB_PORT, block_agg_ipc='block_aggregator',
-                 tx_batch_informer_port=9999, tx_batch_informer_ipc='tx_batch_informer',
-                 block_notifications_port=9998, block_notifications_ipc='block_notifications',
-                 tx_batcher_port=9997, tx_batcher_ipc='tx_batcher',
-                 block_agg_controller_port=9996, block_agg_controller_ipc='block_agg_controller',
-                 incoming_work_port=9995, incoming_work_ipc='incoming_work'
+                 tx_batch_informer_port=TX_BATCH_INFORMER_PORT, tx_batch_informer_ipc='tx_batch_informer',
+                 block_notifications_port=BLOCK_NOTIF_PORT, block_notifications_ipc='block_notifications',
+                 tx_batcher_port=TX_BATCHER_PORT, tx_batcher_ipc='tx_batcher',
+                 block_agg_controller_port=BLOCK_AGG_CONTROLLER_PORT, block_agg_controller_ipc='block_agg_controller',
+                 incoming_work_port=INCOMING_WORK_PORT, incoming_work_ipc='incoming_work'
                  ):
 
         self.params = {
@@ -54,7 +70,7 @@ class NetworkParameters:
 
     def resolve(self, socket_base, service_type, bind=False):
         port, ipc = self.params[service_type]
-        return services.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
+        return cilantro_ee.sockets.struct.resolve_tcp_or_ipc_base(socket_base, port, ipc, bind=bind)
 
 
 class Parameters:
@@ -63,7 +79,8 @@ class Parameters:
                  ctx: zmq.asyncio.Context,
                  wallet,
                  contacts: VKBook,
-                 network_parameters:NetworkParameters=NetworkParameters()
+                 network_parameters: NetworkParameters=NetworkParameters(),
+                 debug=False
                  ):
 
         self.socket_base = socket_base
@@ -74,6 +91,9 @@ class Parameters:
 
         self.peer_service_address = self.network_parameters.resolve(socket_base, ServiceType.PEER)
         self.sockets = {}
+
+        self.log = get_logger('Parameters')
+        self.log.propagate = debug
 
     def get_masternode_sockets(self, service=None):
         masternodes = {}
@@ -138,6 +158,7 @@ class Parameters:
 
     async def refresh(self):
         pb_nodes = set(self.contacts.delegates + self.contacts.masternodes)
+        self.log.info(f'Finding these nodes: {pb_nodes}')
 
         try:
             pb_nodes.remove(self.wallet.verifying_key().hex())
@@ -166,12 +187,19 @@ class Parameters:
             results = loop.run_until_complete(tasks)
 
         for r in results:
+            self.log.info(r)
             if r is not None:
                 _r = json.loads(r)
 
+                if len(_r) == 0:
+                    break
+
                 vk, socket = [(k, v) for k, v in _r.items()][0]
 
+                self.log.info(f'Found {vk} : {socket}')
+
                 self.sockets.update({vk: socket})
+            self.log.info('Done finding.')
 
     async def find_node(self, node):
         find_message = ['find', node]
@@ -193,4 +221,3 @@ class Parameters:
         if entry is not None:
             #entry.close()
             del self.sockets[vk]
-

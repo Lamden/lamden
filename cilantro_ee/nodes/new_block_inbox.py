@@ -1,7 +1,7 @@
 import asyncio
 
 from cilantro_ee.messages import MessageType, Message
-from cilantro_ee.sockets.services import AsyncInbox
+from cilantro_ee.sockets.inbox import AsyncInbox, SecureAsyncInbox
 from cilantro_ee.storage import BlockchainDriver, VKBook
 from cilantro_ee.logger.base import get_logger
 import math
@@ -23,15 +23,16 @@ class BadConsensusBlock(BlockNotificationException):
     pass
 
 
-class NBNInbox(AsyncInbox):
+class NBNInbox(SecureAsyncInbox):
     def __init__(self, contacts: VKBook, driver: BlockchainDriver=BlockchainDriver(), verify=True, allow_current_block_num=False, *args, **kwargs):
         self.q = []
         self.contacts = contacts
         self.driver = driver
         self.verify = verify
-        self.quorum_ratio = 0.66
+        self.quorum_ratio = 0.50
         self.allow_current_block_num = allow_current_block_num
         self.log = get_logger('NBN')
+        self.signers = len(self.contacts.delegates) # This has to be updated every block in case a delegate is added or removed
         super().__init__(*args, **kwargs)
 
     async def handle_msg(self, _id, msg):
@@ -41,6 +42,7 @@ class NBNInbox(AsyncInbox):
 
         try:
             nbn = self.validate_nbn(msg)
+            self.log.info(nbn)
             self.q.append(nbn)
         except BlockNotificationException as e:
             # This would be where the audit layer would take over
@@ -57,7 +59,7 @@ class NBNInbox(AsyncInbox):
 
         # Check if signed by quorum amount
         for sub_block in msg_blob.subBlocks:
-            if len(sub_block.signatures) < math.ceil(len(self.contacts.delegates) * self.quorum_ratio):
+            if len(sub_block.signatures) < math.ceil(self.signers * self.quorum_ratio):
                 raise BadConsensusBlock
 
         # Deserialize off the socket
@@ -76,4 +78,7 @@ class NBNInbox(AsyncInbox):
         return nbn
 
     def clean(self):
-        self.q = [nbn for nbn in self.q if nbn['blockNum'] > self.driver.latest_block_num]
+        self.q = [nbn for nbn in self.q if nbn['blockNum'] >= self.driver.latest_block_num]
+
+    def update_signers(self):
+        self.signers = len(self.contacts.delegates)

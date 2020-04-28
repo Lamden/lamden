@@ -4,6 +4,7 @@ from cilantro_ee.nodes.masternode.webserver import WebServer
 from cilantro_ee.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from cilantro_ee.storage import BlockchainDriver
+from cilantro_ee.storage import CilantroStorageDriver
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting import config
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
@@ -61,7 +62,16 @@ def make_bad_tx():
 class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
-        self.ws = WebServer(wallet=self.w, contracting_client=ContractingClient())
+
+        self.blocks = CilantroStorageDriver(key=self.w.verifying_key())
+        self.driver = BlockchainDriver()
+
+        self.ws = WebServer(
+            wallet=self.w,
+            contracting_client=ContractingClient(),
+            blocks=self.blocks,
+            driver=n
+        )
         self.ws.client.flush()
         self.ws.blocks.drop_collections()
 
@@ -158,6 +168,34 @@ def get():
 
         self.assertDictEqual(response.json, {'value': 12345})
 
+    def test_get_variables_returns_variable_list(self):
+            code = '''
+v = Variable()
+howdy = Variable()
+h = Hash()
+hash2 = Hash()
+
+@construct
+def seed():
+    a = 123
+    v.set(12345)
+
+@export
+def get():
+    return v.get()
+        '''
+
+            self.ws.client.submit(f=code, name='testing')
+
+            _, response = self.ws.app.test_client.get('/contracts/testing/variables')
+
+            expected = {
+                'variables': ['v', 'howdy'],
+                'hashes': ['h', 'hash2']
+            }
+
+            self.assertDictEqual(response.json, expected)
+
     def test_get_variable_returns_error_if_contract_does_not_exist(self):
         _, response = self.ws.app.test_client.get('/contracts/blah/v')
 
@@ -247,7 +285,7 @@ def get():
 
     def test_get_latest_block(self):
         block = {
-            'blockHash': 'a',
+            'hash': 'a',
             'blockNum': 1,
             'data': 'woop'
         }
@@ -255,7 +293,7 @@ def get():
         self.ws.blocks.put(block)
 
         block2 = {
-            'blockHash': 'abb',
+            'hash': 'abb',
             'blockNum': 1000,
             'data': 'woop2'
         }
@@ -263,19 +301,71 @@ def get():
         self.ws.blocks.put(block2)
 
         _, response = self.ws.app.test_client.get('/latest_block')
-        self.assertDictEqual(response.json, {'blockHash': 'abb', 'blockNum': 1000, 'data': 'woop2'})
+        self.assertDictEqual(response.json, {'hash': 'abb', 'blockNum': 1000, 'data': 'woop2'})
+
+    def test_get_latest_block_num(self):
+        self.ws.driver.set_latest_block_num(1234)
+
+        _, response = self.ws.app.test_client.get('/latest_block_num')
+        self.assertDictEqual(response.json, {'latest_block_number': 1234})
+
+    def test_get_latest_block_hash(self):
+        h = '0' * 64
+        self.ws.driver.set_latest_block_hash(h)
+
+        _, response = self.ws.app.test_client.get('/latest_block_hash')
+
+        self.assertDictEqual(response.json, {'latest_block_hash': h})
 
     def test_get_block_by_num_that_exists(self):
-        pass
+        block = {
+            'hash': '1234',
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        self.ws.blocks.put(block)
+
+        _, response = self.ws.app.test_client.get('/blocks?num=1')
+
+        del block['_id']
+
+        self.assertDictEqual(response.json, block)
 
     def test_get_block_by_num_that_doesnt_exist_returns_error(self):
-        pass
+        _, response = self.ws.app.test_client.get('/blocks?num=1000')
+
+        self.assertDictEqual(response.json, {'error': 'Block not found.'})
 
     def test_get_block_by_hash_that_exists(self):
-        pass
+        h = '1234'
+
+        block = {
+            'hash': h,
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        self.ws.blocks.put(block)
+
+        expected = {
+            'hash': h,
+            'blockNum': 1,
+            'data': 'woop'
+        }
+
+        del block['_id']
+
+        _, response = self.ws.app.test_client.get(f'/blocks?hash={h}')
+        self.assertDictEqual(response.json, expected)
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
-        pass
+        _, response = self.ws.app.test_client.get('/blocks?hash=zzz')
+        self.assertDictEqual(response.json, {'error': 'Block not found.'})
+
+    def test_get_block_no_args_returns_error(self):
+        _, response = self.ws.app.test_client.get('/blocks')
+        self.assertDictEqual(response.json, {'error': 'No number or hash provided.'})
 
     def test_bad_transaction_returns_a_TransactionException(self):
         _, response = self.ws.app.test_client.post('/', data=make_bad_tx())
@@ -296,4 +386,24 @@ def get():
 
     def test_submit_transaction_error_if_tx_malformed(self):
         pass
+
+    def test_get_tx_by_hash_if_it_exists(self):
+        b = b'\x00' * 32
+
+        tx = {
+            'hash': b,
+            'some': 'data'
+        }
+
+        expected = {
+            'hash': b.hex(),
+            'some': 'data'
+        }
+
+        self.ws.blocks.put(tx, collection=self.ws.blocks.TX)
+
+        del tx['_id']
+
+        _, response = self.ws.app.test_client.get(f'/tx?hash={b.hex()}')
+        self.assertDictEqual(response.json, expected)
 

@@ -2,64 +2,82 @@ import election_house
 
 S = Hash()
 
-ELECTION_INTERVAL = datetime.DAYS * 3
-VOTING_PERIOD = datetime.DAYS * 1
-
-
 @construct
-def seed(initial_rate=100_000):
-    S['rate'] = initial_rate
-    reset()
+def seed(initial_rate=100_000,
+         master_contract='masternodes',
+         delegate_contract='delegates',
+         election_max_length=datetime.DAYS * 1):
 
+    S['value'] = initial_rate
+    S['master_contract'] = master_contract
+    S['delegate_contract'] = delegate_contract
+    S['election_max_length'] = election_max_length
+
+    S['vote_count'] = 1
+
+    reset_current_votes()
+
+
+def reset_current_votes():
+    S['current_total'] = S['value']
 
 @export
 def current_value():
-    return S['rate']
-
+    return S['value']
 
 @export
 def vote(vk, obj):
-    assert_vote_is_valid(vk, obj)
+    # Start a new election
+    if S['election_start'] is None:
+        total_nodes = len(election_house.current_value_for_policy(S['master_contract'])) + \
+                      len(election_house.current_value_for_policy(S['delegate_contract']))
 
-    # Check to make sure that there is an election
-    if S['in_election']:
-        S['votes', vk] = obj
+        S['vote_count'] = 1
+        S['min_votes_required'] = (total_nodes * 2 // 3) + 1
 
-        if now - S['election_start_time'] >= VOTING_PERIOD:
-            # Tally votes and set the new value
-            result = median(S.all('votes'))
-            S['rate'] = result
+        # Set start to now
+        S['election_start'] = now
+        S.clear('has_voted')
 
-            reset()
-    elif now - S['last_election_end_time'] > ELECTION_INTERVAL:
-        # Start the election and set the proper variables
-        S['election_start_time'] = now
-        S['in_election'] = True
-        S['votes', vk] = obj
+        reset_current_votes()
 
+        tally_vote(vk, obj)
 
-def assert_vote_is_valid(vk, obj):
-    current_rate = S['rate']
-    assert type(obj) == int, 'Vote is not an int'
-    assert current_rate / 2 <= obj <= current_rate * 2, 'Proposed rate is not within proper boundaries.'
-
-    masternode_policy = election_house.current_value_for_policy(policy='masternodes')
-
-    assert vk in masternode_policy['masternodes'], 'VK is not a masternode!'
-    assert S['votes', vk] is None, 'VK already voted!'
-
-
-def median(vs):
-    sorted_votes = sorted(vs)
-    index = (len(sorted_votes) - 1) // 2
-
-    if len(sorted_votes) % 2:
-        return sorted_votes[index]
     else:
-        return (sorted_votes[index] + sorted_votes[index + 1]) / 2
+        tally_vote(vk, obj)
+
+        if election_is_over():
+            update_value()
+
+            # Reset everything
+            S['election_start'] = None
 
 
-def reset():
-    S['last_election_end_time'] = now
-    S['in_election'] = False
-    S.clear('votes')
+def update_value():
+    S['value'] = int(S['current_total'] / S['vote_count']) or 1
+
+
+def election_is_over():
+    return S['vote_count'] >= S['min_votes_required'] or \
+           now - S['election_start'] >= S['election_max_length']
+
+
+def tally_vote(vk, obj):
+    validate_vote(vk, obj)
+
+    S['current_total'] += obj
+
+    S['has_voted', vk] = True
+    S['vote_count'] += 1
+
+
+def validate_vote(vk, obj):
+    assert vk in election_house.current_value_for_policy(S['master_contract']) or \
+           vk in election_house.current_value_for_policy(S['delegate_contract']), 'Not allowed to vote!'
+
+    assert type(obj) == int, 'Pass an int!'
+    assert obj > 0, 'No negatives!'
+
+    assert S['value'] / 2 <= obj <= S['value'] * 2, 'Out of range!'
+
+    assert S['votes', vk] is None, 'Already voted!'

@@ -1,10 +1,8 @@
-supply = Variable()
 balances = Hash(default_value=0)
 
 @construct
-def seed():
-    balances[ctx.caller] = 288_090_567
-    supply.set(288_090_567)
+def seed(vk):
+    balances[vk] = 288_090_567
 
 @export
 def transfer(amount, to):

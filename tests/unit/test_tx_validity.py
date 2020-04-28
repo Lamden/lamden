@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.crypto.transaction import TransactionBuilder, transaction_is_valid
 from cilantro_ee.crypto import transaction
 from cilantro_ee.crypto.wallet import Wallet
@@ -14,11 +14,11 @@ transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction
 
 class TestTXValidity(TestCase):
     def setUp(self):
-        self.nonce_manager = NonceManager()
-        self.nonce_manager.driver.flush()
+        self.nonce_manager = BlockchainDriver()
+        self.nonce_manager.flush()
 
     def tearDown(self):
-        self.nonce_manager.driver.flush()
+        self.nonce_manager.flush()
 
     def test_processor_incorrect_returns_false(self):
         w = Wallet()
@@ -35,7 +35,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionProcessorInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -54,7 +54,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -67,13 +67,13 @@ class TestTXValidity(TestCase):
                                 contract='currency',
                                 function='transfer',
                                 kwargs={'amount': 10, 'to': 'jeff'},
-                                stamps=0,
+                                stamps=10000,
                                 processor=expected_processor,
                                 nonce=0)
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -97,7 +97,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(x.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionSignatureInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -120,7 +120,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionPOWProofInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -139,7 +139,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionSenderTooFewStamps):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -150,7 +150,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            tx.payload.sender.hex())
 
-        balance = self.nonce_manager.driver.get(balances_key) or 0
+        balance = self.nonce_manager.get(balances_key) or 0
 
         self.assertEqual(balance, 0)
 
@@ -168,7 +168,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         balances_key = '{}{}{}{}{}'.format('currency',
                                            config.INDEX_SEPARATOR,
@@ -176,10 +176,10 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            tx.payload.sender.hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
-        balance = self.nonce_manager.driver.get(balances_key) or 0
+        balance = self.nonce_manager.get(balances_key) or 0
 
         self.assertEqual(balance, 500000)
 
@@ -193,7 +193,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -205,7 +205,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -219,7 +219,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -233,7 +233,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -247,7 +247,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -261,7 +261,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -273,7 +273,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -287,7 +287,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -301,7 +301,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -315,7 +315,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -330,7 +330,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -342,7 +342,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -356,7 +356,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -370,7 +370,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -384,7 +384,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
                              strict=False)
@@ -399,7 +399,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -411,7 +411,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
                              strict=False)
@@ -426,7 +426,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager,
@@ -442,7 +442,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         tx = TransactionBuilder(w.verifying_key(),
                                 contract='currency',
@@ -454,7 +454,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -468,7 +468,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionNonceInvalid):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -483,7 +483,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=2)
@@ -498,7 +498,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -512,7 +512,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=10)
@@ -527,7 +527,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -542,7 +542,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         self.nonce_manager.set_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=1)
         self.nonce_manager.set_pending_nonce(processor=expected_processor, sender=w.verifying_key(), nonce=16)
@@ -557,7 +557,7 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
@@ -572,7 +572,7 @@ class TestTXValidity(TestCase):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        self.nonce_manager.driver.set(balances_key, 500000)
+        self.nonce_manager.set(balances_key, 500000)
 
         for i in range(15):
             tx = TransactionBuilder(w.verifying_key(),
@@ -585,7 +585,7 @@ class TestTXValidity(TestCase):
 
             tx.sign(w.signing_key())
             tx_bytes = tx.serialize()
-            tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+            tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
 
@@ -599,7 +599,172 @@ class TestTXValidity(TestCase):
 
         tx.sign(w.signing_key())
         tx_bytes = tx.serialize()
-        tx_struct = transaction_capnp.Transaction.from_bytes_packed(tx_bytes)
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
 
         with self.assertRaises(transaction.TransactionTooManyPendingException):
             transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_all_money_fails(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+        stamp_to_tau = self.nonce_manager.get_var('stamp_cost', 'S', ['value'])
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 500000, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionSenderTooFewStamps):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_most_money_fails_if_only_one_transfer_in_stamps_left(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+        stamp_to_tau = self.nonce_manager.get_var('stamp_cost', 'S', ['value'])
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 499999, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionSenderTooFewStamps):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_sending_transfer_of_most_money_doesnt_fail_if_enough_stamps(self):
+        self.nonce_manager.set_var('stamp_cost', 'S', ['value'], value=3000)
+
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='currency',
+                                function='transfer',
+                                kwargs={'amount': 499990, 'to': 'jeff'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_not_prepended_with_con_throws_error(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 'bad_name', 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_not_str_throws_error(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 123, 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)
+
+    def test_submission_prepended_with_con_succeeds(self):
+        w = Wallet()
+        expected_processor = secrets.token_bytes(32)
+
+        balances_key = '{}{}{}{}{}'.format('currency',
+                                           config.INDEX_SEPARATOR,
+                                           'balances',
+                                           config.DELIMITER,
+                                           w.verifying_key().hex())
+
+        self.nonce_manager.set(balances_key, 500000)
+
+        tx = TransactionBuilder(w.verifying_key(),
+                                contract='submission',
+                                function='submit_contract',
+                                kwargs={'name': 'con_bad_name', 'code': 'blah'},
+                                stamps=3000,
+                                processor=expected_processor,
+                                nonce=0)
+
+        tx.sign(w.signing_key())
+        tx_bytes = tx.serialize()
+        tx_struct = transaction_capnp.NewTransaction.from_bytes_packed(tx_bytes)
+
+        transaction_is_valid(tx=tx_struct, expected_processor=expected_processor, driver=self.nonce_manager)

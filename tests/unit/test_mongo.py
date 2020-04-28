@@ -1,11 +1,12 @@
 from unittest import TestCase
 from cilantro_ee.storage.master import MasterStorage
-from cilantro_ee.crypto import wallet
+from cilantro_ee.crypto.wallet import Wallet
 
 
 class TestMasterDatabase(TestCase):
     def setUp(self):
-        self.sk, self.vk = wallet.new()
+        w = Wallet()
+        self.sk, self.vk = w.signing_key(), w.verifying_key()
         self.db = MasterStorage()
 
     def tearDown(self):
@@ -62,7 +63,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_by_hash(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000
         }
@@ -79,7 +80,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_by_number(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000
         }
@@ -96,7 +97,7 @@ class TestMasterDatabase(TestCase):
     def test_fail_get_block_by_hash(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000
         }
@@ -113,7 +114,7 @@ class TestMasterDatabase(TestCase):
     def test_fail_get_block_by_number(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000
         }
@@ -130,7 +131,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_owners_block_number(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
@@ -144,7 +145,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_owners_by_block_hash(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
@@ -158,7 +159,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_owners_by_block_number_non_existent(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
@@ -174,7 +175,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_owners_by_block_hash_non_existent(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
@@ -190,7 +191,7 @@ class TestMasterDatabase(TestCase):
     def test_get_block_owners_bad_dict_returns_none(self):
         block = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'sender': 'stu',
             'amount': 1000000,
             'blockOwners': ['stu', 'raghu']
@@ -211,31 +212,31 @@ class TestMasterDatabase(TestCase):
     def test_query_last_n_blocks(self):
         block_1 = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_2 = {
             'blockNum': 2,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_3 = {
             'blockNum': 3,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_4 = {
             'blockNum': 4,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_5 = {
             'blockNum': 5,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
@@ -254,31 +255,31 @@ class TestMasterDatabase(TestCase):
     def test_query_too_many_blocks_returns_total(self):
         block_1 = {
             'blockNum': 1,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_2 = {
             'blockNum': 2,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_3 = {
             'blockNum': 3,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_4 = {
             'blockNum': 4,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 
         block_5 = {
             'blockNum': 5,
-            'blockHash': 'a',
+            'hash': 'a',
             'blockOwners': ['stu', 'raghu']
         }
 

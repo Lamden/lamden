@@ -2,6 +2,7 @@ import argparse
 import os
 from pathlib import Path
 
+
 def main(mode = False):
     if mode:
         print("Debug ON")
@@ -31,8 +32,8 @@ def main(mode = False):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    parser = argparse.ArgumentParser(description = 'Node Setup')
-    parser.add_argument('debug', type = bool, help = 'skip post install setup steps')
+    parser = argparse.ArgumentParser(description='Node Setup')
+    parser.add_argument('debug', type = bool, help='skip post install setup steps')
     parser.print_help()
     args = parser.parse_args()
     main(args.mode)

@@ -40,7 +40,7 @@ class CapnpImpl:
             MessageType.SUBBLOCK_CONTENDERS: self.subblock_capnp.SubBlockContenders,
             MessageType.TRANSACTION_BATCH: self.transaction_capnp.TransactionBatch,
             MessageType.TRANSACTION_DATA: self.transaction_capnp.TransactionData,
-            MessageType.TRANSACTION: self.transaction_capnp.Transaction,
+            MessageType.TRANSACTION: self.transaction_capnp.NewTransaction,
             MessageType.MERKLE_PROOF: self.subblock_capnp.MerkleProof,
             MessageType.SUBBLOCK: self.subblock_capnp.SubBlock,
             MessageType.LATEST_BLOCK_HEIGHT_REQUEST: self.signals_capnp.LatestBlockHeightRequest,

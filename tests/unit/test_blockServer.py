@@ -1,13 +1,12 @@
 from unittest import TestCase
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.core.block_server import BlockServer
+from cilantro_ee.nodes.catchup import BlockServer
 
 from cilantro_ee.messages.message import Message
 from cilantro_ee.messages.message_type import MessageType
 
-from cilantro_ee.storage.master import CilantroStorageDriver
-from cilantro_ee.core import canonical
-from cilantro_ee.core.top import TopBlockManager
+from cilantro_ee.storage import CilantroStorageDriver, BlockchainDriver
+from cilantro_ee.crypto import canonical
 import time
 import zmq.asyncio
 import zmq
@@ -25,19 +24,19 @@ class TestBlockServer(TestCase):
     def setUp(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+        self.t = BlockchainDriver()
         self.ctx = zmq.asyncio.Context()
-        self.t = TopBlockManager()
 
     def tearDown(self):
         self.ctx.destroy()
-        self.t.driver.flush()
+        self.t.flush()
         self.loop.close()
 
     def test_get_latest_block_height(self):
         w = Wallet()
-        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500)
+        m = BlockServer(w, 'tcp://127.0.0.1', self.ctx, linger=500, poll_timeout=500, driver=self.t)
 
-        self.t.set_latest_block_number(555)
+        self.t.set_latest_block_num(555)
 
         async def get(msg):
             socket = self.ctx.socket(zmq.DEALER)
@@ -97,7 +96,7 @@ class TestBlockServer(TestCase):
 
         msg_type, msg, sender, timestamp, is_verified = Message.unpack_message_2(res[1])
 
-        self.assertEqual(msg.blockHash, b'\xAA' * 32)
+        self.assertEqual(msg.hash, b'\xAA' * 32)
 
     def test_get_block_blob_by_block_data_request(self):
         block = random_txs.random_block()
@@ -168,7 +167,7 @@ class TestBlockServer(TestCase):
         tasks = asyncio.gather(
             m.serve(),
             get(message),
-            stop_server(m, 0.2),
+            stop_server(m, 1),
         )
 
         loop = asyncio.get_event_loop()

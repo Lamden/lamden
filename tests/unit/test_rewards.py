@@ -1,52 +1,33 @@
 from unittest import TestCase
-from cilantro_ee.core.rewards import RewardManager
+from cilantro_ee.nodes.rewards import RewardManager
 from tests import random_txs
-from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
-from cilantro_ee.contracts import genesis
-import os
 from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.contracts import sync
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+import cilantro_ee
+
 
 class TestRewards(TestCase):
     def setUp(self):
 
-        self.driver = ContractDriver()
         self.client = ContractingClient()
+        self.driver = self.client.raw_driver
 
-        genesis_path = os.path.dirname(genesis.__file__)
+        # Sync contracts
+        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
+        sync.submit_node_election_contracts(
+            initial_masternodes=['stu', 'raghu', 'steve'],
+            boot_mns=2,
+            initial_delegates=['tejas', 'alex'],
+            boot_dels=3,
+            client=self.client
+        )
 
-        with open(os.path.join(genesis_path, 'election_house.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='election_house')
-
-        with open(os.path.join(genesis_path, 'currency.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='currency')
-
-        with open(os.path.join(genesis_path, 'stamp_cost.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='stamp_cost', owner='election_house', constructor_args={'initial_rate': 1_000_000})
-
-        with open(os.path.join(genesis_path, 'rewards.s.py')) as f:
-            c = f.read()
-            self.client.submit(c, name='rewards', owner='election_house')
-
-        sync.submit_vkbook({'masternodes': ['stu', 'raghu', 'steve'],
-          'delegates': ['tejas', 'alex'],
-          'masternode_min_quorum': 2,
-          'delegate_min_quorum': 3,
-          'enable_stamps': True,
-          'enable_nonces': True},
-         overwrite=True)
-
-        PhoneBook = VKBook()
-
-        self.r = RewardManager(vkbook=PhoneBook)
+        self.r = RewardManager(driver=self.driver)
 
     def tearDown(self):
-        self.driver.flush()
+        self.client.flush()
 
     def test_add_rewards(self):
         block = random_txs.random_block()
@@ -61,24 +42,30 @@ class TestRewards(TestCase):
 
     def test_add_to_balance(self):
         currency_contract = self.client.get_contract('currency')
-        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+        current_balance = currency_contract.quick_read(variable='balances', key='test')
+        if current_balance is None:
+            current_balance = 0
 
         self.assertEqual(current_balance, 0)
 
         self.r.add_to_balance('test', 1234)
 
-        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+        current_balance = currency_contract.quick_read(variable='balances', key='test')
+        if current_balance is None:
+            current_balance = 0
 
         self.assertEqual(current_balance, 1234)
 
         self.r.add_to_balance('test', 1000)
 
-        current_balance = currency_contract.quick_read(variable='balances', key='test') or 0
+        current_balance = currency_contract.quick_read(variable='balances', key='test')
+        if current_balance is None:
+            current_balance = 0
 
         self.assertEqual(current_balance, 2234)
 
     def test_stamps_per_tau_works(self):
-        self.assertEqual(self.r.stamps_per_tau, 1_000_000)
+        self.assertEqual(self.r.stamps_per_tau, 20_000)
 
         stamps = self.client.get_contract('stamp_cost')
 
@@ -101,7 +88,7 @@ class TestRewards(TestCase):
         for tx in block.subBlocks[0].transactions:
             total += tx.stampsUsed
 
-        expected = ContractingDecimal(total / 1_000_000)
+        expected = ContractingDecimal(total / 100_000)
 
         self.assertEqual(self.r.get_pending_rewards(), 0)
 

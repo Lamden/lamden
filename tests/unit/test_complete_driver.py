@@ -6,7 +6,7 @@ import capnp
 from tests import random_txs
 
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
-from cilantro_ee.core.nonces import PENDING_NONCE_KEY, NONCE_KEY
+from cilantro_ee.storage.contract import PENDING_NONCE_KEY, NONCE_KEY
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -32,7 +32,7 @@ class TestCompleteDriver(TestCase):
 
     def test_set_latest_block_hash_not_hex_fails(self):
         bhash = 'x' * 32
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
             self.db.set_latest_block_hash(bhash)
 
     def test_set_latest_block_hash_returns_when_successful(self):
@@ -41,14 +41,14 @@ class TestCompleteDriver(TestCase):
         self.db.set_latest_block_hash(bhash)
 
     def test_get_latest_block_hash_none(self):
-        expected = b'\00' * 32
+        expected = '0' * 64
 
         got = self.db.get_latest_block_hash()
 
         self.assertEqual(expected, got)
 
     def test_get_latest_block_hash_after_setting(self):
-        expected = b'a' * 32
+        expected = 'a' * 64
 
         self.db.set_latest_block_hash(expected)
 
@@ -57,7 +57,7 @@ class TestCompleteDriver(TestCase):
         self.assertEqual(expected, got)
 
     def test_latest_block_hash_as_property(self):
-        expected = b'a' * 32
+        expected = 'a' * 64
 
         self.db.latest_block_hash = expected
 
@@ -255,6 +255,8 @@ class TestCompleteDriver(TestCase):
         self.assertEqual(len(self.db.iter(NONCE_KEY)), 1)
 
         self.db.delete_pending_nonces()
+
+        print(self.db.iter(PENDING_NONCE_KEY))
 
         self.assertEqual(len(self.db.iter(PENDING_NONCE_KEY)), 0)
         self.assertEqual(len(self.db.iter(NONCE_KEY)), 1)

@@ -5,7 +5,9 @@
 		{
 			"name": "currency",
 			"owner": null,
-			"constructor_args": null
+			"constructor_args": {
+				"vk": "0000e9f4137969c4ee2fc047917dacd53aeb220fae0bdc87a82024c0ff3c9e50"
+			}
 		},
 		{
 			"name": "election_house",
@@ -15,12 +17,26 @@
 		{
 			"name": "stamp_cost",
 			"owner": "election_house",
-			"constructor_args": null
+			"constructor_args": {
+				"initial_rate": 20000
+			}
 		},
 		{
 			"name": "rewards",
 			"owner": "election_house",
 			"constructor_args": null
+		},
+		{
+			"name": "upgrade",
+			"owner": null,
+			"constructor_args": null
+		},
+		{
+			"name": "foundation",
+			"owner": null,
+			"constructor_args": {
+				"vk": "0000e9f4137969c4ee2fc047917dacd53aeb220fae0bdc87a82024c0ff3c9e50"
+			}
 		}
 	]
 }

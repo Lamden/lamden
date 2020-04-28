@@ -3,7 +3,7 @@ from cilantro_ee.nodes.delegate.delegate import Delegate
 
 from cilantro_ee.nodes.masternode.transaction_batcher import TransactionBatcher
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.core import canonical
+from cilantro_ee.crypto import canonical
 from cilantro_ee.storage import BlockchainDriver
 
 from contextlib import suppress
@@ -29,49 +29,28 @@ mnw3 = Wallet()
 dw1 = Wallet()
 
 constitution = {
-    "masternodes": {
-        "vk_list": [
-            mnw1.verifying_key().hex(),
-        ],
-        "min_quorum": 1
-    },
-    "delegates": {
-        "vk_list": [
-            dw1.verifying_key().hex(),
-        ],
-        "min_quorum": 1
-    },
-    "witnesses": {},
-    "schedulers": {},
-    "notifiers": {},
-    "enable_stamps": False,
-    "enable_nonces": False
-}
+        'masternodes': [mnw1.verifying_key().hex()],
+        'delegates': [dw1.verifying_key().hex()],
+        'masternode_min_quorum': 1,
+        'delegate_min_quorum': 1,
+    }
 
 constitution2 = {
-    "masternodes": {
-        "vk_list": [
+        'masternodes': [
             mnw1.verifying_key().hex(),
             mnw2.verifying_key().hex(),
             mnw3.verifying_key().hex()
         ],
-        "min_quorum": 1
-    },
-    "delegates": {
-        "vk_list": [
+        'delegates': [
             dw1.verifying_key().hex(),
         ],
-        "min_quorum": 1
-    },
-    "witnesses": {},
-    "schedulers": {},
-    "notifiers": {},
-    "enable_stamps": False,
-    "enable_nonces": False
-}
+        'masternode_min_quorum': 1,
+        'delegate_min_quorum': 1,
+    }
 
 n1 = '/tmp/n1'
 n3 = '/tmp/n3'
+
 
 def make_ipc(p):
     try:

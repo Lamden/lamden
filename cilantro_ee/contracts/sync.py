@@ -1,7 +1,6 @@
 import glob
 import os
 from contracting.client import ContractingClient
-from cilantro_ee.constants import conf
 import cilantro_ee
 import json
 
@@ -66,19 +65,9 @@ def submit_contract_with_construction_args(name, directory=os.path.dirname(__fil
 
     with open(file) as f:
         code = f.read()
-        # log.debug('code {}'.format(code))
-        # log.debug('name {}'.format(name))
-        # log.debug('args {}'.format(args))
         client.submit(code, name=name, constructor_args=args)
 
     client.raw_driver.commit()
-
-
-def get_masternodes_and_delegates_from_constitution(file=conf.CONSTITUTION_FILE):
-    book = read_public_constitution(file)
-    masternodes = [node for node in book['masternodes']['vk_list']]
-    delegates = [node for node in book['delegates']['vk_list']]
-    return masternodes, delegates
 
 
 def submit_vkbook(vkbook_args: dict, overwrite=False):
@@ -118,19 +107,11 @@ def extract_vk_args(book):
                               extract_sub_dict_values(book, 'schedulers')
 
 
-def seed_vkbook(file=conf.CONSTITUTION_FILE, overwrite=False):
-    book = read_public_constitution(file)
-    extract_vk_args(book)
-    submit_vkbook(book, overwrite)
-
 
 # Maintains order and a set of constructor args that can be included in the constitution file
-def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
+def submit_from_genesis_json_file(filename, client, root=os.path.dirname(__file__)):
     with open(filename) as f:
         genesis = json.load(f)
-
-    submission_file = root + '/submission.s.py'
-    client = ContractingClient(submission_filename=submission_file)
 
     for contract in genesis['contracts']:
         c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
@@ -138,5 +119,81 @@ def submit_from_genesis_json_file(filename, root=os.path.dirname(__file__)):
         with open(c_filepath) as f:
             code = f.read()
 
-        client.submit(code, name=contract['name'], owner=contract['owner'],
-                      constructor_args=contract['constructor_args'])
+        contract_name = contract['name']
+        if contract.get('submit_as') is not None:
+            contract_name = contract['submit_as']
+
+        try:
+            client.submit(code, name=contract_name, owner=contract['owner'],
+                          constructor_args=contract['constructor_args'])
+        except:
+            pass
+
+
+def submit_node_election_contracts(initial_masternodes, boot_mns, initial_delegates, boot_dels, client, master_price=100_000,
+                                   delegate_price=100_000, root=os.path.dirname(__file__)):
+    members = root + '/genesis/members.s.py'
+
+    with open(members) as f:
+        code = f.read()
+
+    try:
+        client.submit(code, name='masternodes', owner='election_house', constructor_args={
+            'initial_members': initial_masternodes,
+            'minimum': boot_mns,
+            'candidate': 'elect_masternodes'
+        })
+    except:
+        pass
+
+    try:
+        client.submit(code, name='delegates', owner='election_house', constructor_args={
+            'initial_members': initial_delegates,
+            'minimum': boot_dels,
+            'candidate': 'elect_delegates'
+        })
+    except:
+        pass
+
+    # add to election house
+    election_house = client.get_contract('election_house')
+    try:
+        election_house.register_policy(contract='masternodes')
+    except:
+        pass
+
+    try:
+        election_house.register_policy(contract='delegates')
+    except:
+        pass
+
+    try:
+        election_house.register_policy(contract='rewards')
+    except Exception:
+        pass
+
+    try:
+        election_house.register_policy(contract='stamp_cost')
+    except:
+        pass
+
+    elect_members = root + '/genesis/elect_members.s.py'
+
+    with open(elect_members) as f:
+        code = f.read()
+
+    try:
+        client.submit(code, name='elect_masternodes', constructor_args={
+            'policy': 'masternodes',
+            'cost': master_price,
+        })
+    except:
+        pass
+
+    try:
+        client.submit(code, name='elect_delegates', constructor_args={
+            'policy': 'delegates',
+            'cost': delegate_price,
+        })
+    except:
+        pass

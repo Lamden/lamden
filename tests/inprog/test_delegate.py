@@ -6,7 +6,7 @@ from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.crypto.transaction import TransactionBuilder
-from cilantro_ee.core import canonical
+from cilantro_ee.crypto import canonical
 from contracting import config
 import time
 from cilantro_ee.crypto.transaction_batch import transaction_list_to_transaction_batch
@@ -437,7 +437,7 @@ class TestDelegate(TestCase):
         b.client.raw_driver.set('A', 'B')
         self.assertIsNone(b.client.raw_driver.get_direct('A'))
 
-        b.process_nbn(block)
+        b.process_block(block)
 
         self.assertEqual(b.client.raw_driver.get(b'A'), 'B')
 
@@ -452,7 +452,7 @@ class TestDelegate(TestCase):
 
         self.assertIsNone(b.client.raw_driver.get_direct(k))
 
-        b.process_nbn(block)
+        b.process_block(block)
 
         self.assertEqual(b.client.raw_driver.get_direct(k), v)
 

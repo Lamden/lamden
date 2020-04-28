@@ -4,9 +4,9 @@ from cilantro_ee.storage.vkbook import VKBook
 from cilantro_ee.networking.network import Network
 from cilantro_ee.networking.parameters import ServiceType
 from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.sockets.services import _socket
+from cilantro_ee.sockets.struct import _socket
 from cilantro_ee.contracts import sync
-from cilantro_ee.constants.ports import EVENT_PORT
+from cilantro_ee.ports import EVENT_PORT
 import zmq
 import zmq.asyncio
 import os

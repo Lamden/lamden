@@ -4,14 +4,12 @@ from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import os
 import capnp
 import secrets
-from cilantro_ee.containers.merkle_tree import merklize
+from cilantro_ee.crypto.merkle_tree import merklize
 import random
-import json
-import hashlib
-from cilantro_ee.core.nonces import NonceManager
+from cilantro_ee.storage import BlockchainDriver
 from contracting import config
 
-N = NonceManager()
+N = BlockchainDriver()
 
 blockdata_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 subblock_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/subblock.capnp')
@@ -32,7 +30,7 @@ def random_packed_tx(nonce=0, processor=None, give_stamps=False):
                                            config.DELIMITER,
                                            w.verifying_key().hex())
 
-        N.driver.set(balances_key, stamps + 1000)
+        N.set(balances_key, stamps + 1000)
 
     tx = TransactionBuilder(w.verifying_key(), contract=secrets.token_hex(8),
                             function=secrets.token_hex(8),
@@ -72,18 +70,16 @@ def subblock_from_txs(txs, idx=0):
     w = Wallet()
 
     sig = w.sign(tree[0])
-    h = hashlib.sha3_256()
-    h.update(tree[0])
 
-    proof = subblock_capnp.MerkleProof.new_message(hash=h.digest(), signer=w.vk.encode(), signature=sig)
+    signature = subblock_capnp.Signature.new_message(signer=w.verifying_key(), signature=sig)
 
     sb = subblock_capnp.SubBlock.new_message(
-        merkleRoot=tree[0],
-        signatures=[proof.to_bytes_packed()],
-        merkleLeaves=tree,
-        subBlockNum=0,
         inputHash=secrets.token_bytes(32),
-        transactions=[tx for tx in txs]
+        transactions=[tx for tx in txs],
+        merkleLeaves=[t for t in tree],
+        signatures=[signature],
+        subBlockNum=idx,
+        prevBlockHash=b'\x00'*32,
     )
 
     return sb
@@ -190,7 +186,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
                 prevBlockHash=prev_block_hash)
         else:
             sbc = {
-                'resultHash' :tree.root,
+                'resultHash': tree.root,
                 'inputHash': input_hash,
                 'merkleLeaves': [leaf for leaf in tree.leaves],
                 'signature': proof.to_bytes_packed(),
@@ -204,7 +200,7 @@ def x_sbcs_from_tx(input_hash, prev_block_hash, wallets, txs=20, idx=0, as_dict=
     return sbcs
 
 
-def random_block(txs=20, subblocks=2, block_num=1, prev_hash=b'\x00'*32) -> blockdata_capnp.BlockData:
+def random_block(txs=20, subblocks=2, block_num=1, prev_hash=(b'\x00'*32).hex()) -> blockdata_capnp.BlockData:
     transactions = []
     for i in range(txs):
         packed_tx = random_packed_tx(nonce=i)
@@ -215,7 +211,7 @@ def random_block(txs=20, subblocks=2, block_num=1, prev_hash=b'\x00'*32) -> bloc
     sbs_capnp = [subblock_from_txs(sbs[i], i) for i in range(len(sbs))]
 
     block = blockdata_capnp.BlockData.new_message(
-        blockHash=secrets.token_bytes(32),
+        hash=secrets.token_hex(32),
         blockNum=block_num,
         blockOwners=[secrets.token_bytes(32)],
         prevBlockHash=prev_hash,

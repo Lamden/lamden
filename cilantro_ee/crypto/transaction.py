@@ -1,6 +1,4 @@
-from decimal import Decimal
 from cilantro_ee.crypto import wallet
-from cilantro_ee.crypto.pow import SHA3POW, SHA3POWBytes
 from contracting import config
 from cilantro_ee.storage import BlockchainDriver
 from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
@@ -8,14 +6,9 @@ import time
 import os
 import capnp
 
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
+from contracting.db.encoder import encode, decode
 
-NUMERIC_TYPES = {int, Decimal}
-VALUE_TYPE_MAP = {
-    str: 'text',
-    bytes: 'data',
-    bool: 'bool'
-}
+transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 
 class TransactionBuilder:
@@ -32,8 +25,8 @@ class TransactionBuilder:
         self.kwargs = kwargs
 
         # Serializes all that it can on init
-        self.struct = transaction_capnp.Transaction.new_message()
-        self.payload = transaction_capnp.TransactionPayload.new_message()
+        self.struct = transaction_capnp.NewTransaction.new_message()
+        self.payload = transaction_capnp.NewTransactionPayload.new_message()
 
         self.payload.sender = self.sender
         self.payload.processor = self.processor
@@ -42,31 +35,11 @@ class TransactionBuilder:
         self.payload.functionName = self.function
         self.payload.nonce = self.nonce
 
-        # Create a list of entries in Capnproto
-        self.payload.kwargs.init('entries', len(self.kwargs))
-
-        # Enumerate through the Python dictionary and make sure to type cast when needed for Capnproto
-        for i, key in enumerate(self.kwargs):
-            self.payload.kwargs.entries[i].key = key
-            value, t = self.kwargs[key], type(self.kwargs[key])
-
-            # Represent numeric types as strings so we do not lose any precision due to floating point
-            if t in NUMERIC_TYPES:
-                self.payload.kwargs.entries[i].value.fixedPoint = str(value)
-
-            # This should be streamlined with explicit encodings for different types
-            # For example, 32 byte strings -> UInt32
-            else:
-                assert t is not float, "Float types not allowed in kwargs. Used python's decimal.Decimal class instead"
-                assert t in VALUE_TYPE_MAP, "value type {} with value {} not recognized in " \
-                                            "types {}".format(t, self.kwargs[key], list(VALUE_TYPE_MAP.keys()))
-                setattr(self.payload.kwargs.entries[i].value, VALUE_TYPE_MAP[t], value)
+        self.payload.kwargs = encode(kwargs)
 
         self.payload_bytes = self.payload.to_bytes_packed()
         self.signature = None
-        self.proof = None
 
-        self.proof_generated = False
         self.tx_signed = False
 
     def sign(self, signing_key: bytes):
@@ -74,39 +47,15 @@ class TransactionBuilder:
         self.signature = wallet._sign(signing_key, self.payload_bytes)
         self.tx_signed = True
 
-    def generate_proof(self):
-        #self.proof = pipehash.find_solution(self.epoch, self.payload_bytes, difficulty=self.proof_difficulty)
-        self.proof = SHA3POWBytes.find(self.payload_bytes)
-        self.proof_generated = True
-
     def serialize(self):
         if not self.tx_signed:
             return None
 
-        if not self.proof_generated:
-            self.generate_proof()
-
         self.struct.payload = self.payload
-        self.struct.metadata.proof = self.proof
         self.struct.metadata.signature = self.signature
         self.struct.metadata.timestamp = int(time.time())
 
         return self.struct.to_bytes_packed()
-
-
-# raghu todo this method is not used
-def verify_packed_tx(sender, tx):
-    try:
-        unpacked = transaction_capnp.Transaction.from_bytes_packed(tx)
-        msg = unpacked.payload
-
-        proof = SHA3POW.check(msg, unpacked.metadata.proof.decode())
-        sig = bytes.fromhex(unpacked.metadata.signature.decode())
-
-        verified = wallet._verify(sender, msg, sig)
-        return verified and proof
-    except:
-        return False
 
 
 class TransactionException(Exception):
@@ -141,6 +90,10 @@ class TransactionSenderTooFewStamps(TransactionException):
     pass
 
 
+class TransactionContractNameInvalid(TransactionException):
+    pass
+
+
 def transaction_is_valid(tx: transaction_capnp.Transaction,
                          expected_processor: bytes,
                          driver: BlockchainDriver,
@@ -151,10 +104,6 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
                           tx.payload.as_builder().to_bytes_packed(),
                           tx.metadata.signature):
         raise TransactionSignatureInvalid
-
-    # Validate Proof
-    if not SHA3POWBytes.check(o=tx.payload.as_builder().to_bytes_packed(), proof=tx.metadata.proof):
-        raise TransactionPOWProofInvalid
 
     # Check nonce processor is correct
     if tx.payload.processor != expected_processor:
@@ -194,9 +143,36 @@ def transaction_is_valid(tx: transaction_capnp.Transaction,
                                        config.DELIMITER,
                                        tx.payload.sender.hex())
 
-    balance = driver.get(balances_key) or 0
+    balance = driver.get(balances_key)
+    if balance is None:
+        balance = 0
 
-    if balance < tx.payload.stampsSupplied:
+    stamp_to_tau = driver.get_var('stamp_cost', 'S', ['value'])
+    if stamp_to_tau is None:
+        stamp_to_tau = 1
+
+    if balance * stamp_to_tau < tx.payload.stampsSupplied:
+        print("bal -> {}, stamp2tau - > {}, txpayload -> {}".format(balance, stamp_to_tau, tx.payload.stampsSupplied))
         raise TransactionSenderTooFewStamps
+
+    # Prevent people from sending their entire balances for free by checking if that is what they are doing.
+    if tx.payload.contractName == 'currency' and tx.payload.functionName == 'transfer':
+        kwargs = decode(tx.payload.kwargs)
+        amount = kwargs.get('amount')
+
+        # If you have less than 2 transactions worth of tau after trying to send your amount, fail.
+        if ((balance - amount) * stamp_to_tau) / 3000 < 2:
+            print(f'BAL IS: {((balance - amount) * stamp_to_tau) / 3000}')
+            raise TransactionSenderTooFewStamps
+
+    if tx.payload.contractName == 'submission' and tx.payload.functionName == 'submit_contract':
+        kwargs = decode(tx.payload.kwargs)
+        name = kwargs.get('name')
+
+        if type(name) != str:
+            raise TransactionContractNameInvalid
+
+        if not name.startswith('con_'):
+            raise TransactionContractNameInvalid
 
     driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
