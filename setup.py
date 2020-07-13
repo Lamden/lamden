@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 
-__version__ = '0.0.4'
+__version__ = '1.0'
 
 with open("README.md", "r") as fh:
     long_desc = fh.read()
@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 setup(
     name='cilantro',
     version=__version__,
-    packages=find_packages(exclude=['docs', 'ops', 'docker', 'deprecated']),
+    packages=find_packages(),
 
     # Note install requirements have to be same as dev-requirement.txt (for aws)
     install_requires=[
@@ -43,7 +43,7 @@ setup(
         'cilantro': ['cilantro.conf'],
     },
     description="Lamden Blockchain",
-    long_description= long_desc,
+    long_description=long_desc,
     long_description_content_type="text/markdown",
     url='https://github.com/Lamden/cilantro-enterprise',
     author='Lamden',

@@ -74,6 +74,5 @@ def main():
         join_network(args)
 
 
-
 if __name__ == '__main__':
     main()
