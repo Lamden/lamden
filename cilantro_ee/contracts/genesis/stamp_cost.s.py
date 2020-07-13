@@ -3,7 +3,7 @@ import election_house
 S = Hash()
 
 @construct
-def seed(initial_rate=100_000,
+def seed(initial_rate: int=100,
          master_contract='masternodes',
          delegate_contract='delegates',
          election_max_length=datetime.DAYS * 1):
@@ -26,7 +26,7 @@ def current_value():
     return S['value']
 
 @export
-def vote(vk, obj):
+def vote(vk: str, obj: int):
     # Start a new election
     if S['election_start'] is None:
         total_nodes = len(election_house.current_value_for_policy(S['master_contract'])) + \
@@ -62,7 +62,7 @@ def election_is_over():
            now - S['election_start'] >= S['election_max_length']
 
 
-def tally_vote(vk, obj):
+def tally_vote(vk: str, obj: int):
     validate_vote(vk, obj)
 
     S['current_total'] += obj
@@ -71,7 +71,7 @@ def tally_vote(vk, obj):
     S['vote_count'] += 1
 
 
-def validate_vote(vk, obj):
+def validate_vote(vk: str, obj: int):
     assert vk in election_house.current_value_for_policy(S['master_contract']) or \
            vk in election_house.current_value_for_policy(S['delegate_contract']), 'Not allowed to vote!'
 

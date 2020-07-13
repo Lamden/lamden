@@ -1,6 +1,8 @@
 from unittest import TestCase
+
+import cilantro_ee.nodes.masternode.masternode
 from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.storage import BlockchainDriver
+from cilantro_ee.storage import StateDriver
 from cilantro_ee.nodes.delegate import execution
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
@@ -16,7 +18,8 @@ from tests.random_txs import random_block
 import os
 import capnp
 import asyncio
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
+from cilantro_ee.messages import capnp_struct as schemas
+
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
 def make_ipc(p):
@@ -59,7 +62,7 @@ def get_tx_batch():
         processor=b'\x00' * 32,
         nonce=0
     )
-    tx.sign(w.signing_key())
+    tx.sign(w.signing_key)
     tx.serialize()
 
     currency_contract = 'currency'
@@ -69,9 +72,9 @@ def get_tx_batch():
                                        config.INDEX_SEPARATOR,
                                        balances_hash,
                                        config.DELIMITER,
-                                       w.verifying_key().hex())
+                                       w.verifying_key)
 
-    driver = BlockchainDriver()
+    driver = StateDriver()
     driver.set(balances_key, 1_000_000)
     driver.commit()
 
@@ -85,7 +88,7 @@ def get_tx_batch():
         processor=b'\x00' * 32,
         nonce=0
     )
-    tx2.sign(Wallet().signing_key())
+    tx2.sign(Wallet().signing_key)
     tx2.serialize()
 
     currency_contract = 'currency'
@@ -95,9 +98,9 @@ def get_tx_batch():
                                        config.INDEX_SEPARATOR,
                                        balances_hash,
                                        config.DELIMITER,
-                                       w.verifying_key().hex())
+                                       w.verifying_key)
 
-    driver = BlockchainDriver()
+    driver = StateDriver()
     driver.set(balances_key, 1_000_000)
     driver.commit()
 
@@ -119,7 +122,7 @@ def seed():
     v.set('hello')
 
 @export
-def set(var):
+def set(var: str):
     v.set(var)
 
 @export
@@ -138,7 +141,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx.sign(Wallet().signing_key())
+        tx.sign(Wallet().signing_key)
         tx.serialize()
 
         result = execution.execute_tx(self.client, tx.struct)
@@ -214,7 +217,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx.sign(Wallet().signing_key())
+        tx.sign(Wallet().signing_key)
         tx.serialize()
 
         tx2 = TransactionBuilder(
@@ -226,7 +229,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx2.sign(Wallet().signing_key())
+        tx2.sign(Wallet().signing_key)
         tx2.serialize()
 
         tx_batch = transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
@@ -272,7 +275,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx.sign(Wallet().signing_key())
+        tx.sign(Wallet().signing_key)
         tx.serialize()
 
         tx2 = TransactionBuilder(
@@ -284,7 +287,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx2.sign(Wallet().signing_key())
+        tx2.sign(Wallet().signing_key)
         tx2.serialize()
 
         tx_batch_1 = transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
@@ -298,7 +301,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx.sign(Wallet().signing_key())
+        tx.sign(Wallet().signing_key)
         tx.serialize()
 
         tx2 = TransactionBuilder(
@@ -310,7 +313,7 @@ def get():
             processor=b'\x00' * 32,
             nonce=0
         )
-        tx2.sign(Wallet().signing_key())
+        tx2.sign(Wallet().signing_key)
         tx2.serialize()
 
         tx_batch_2 = transaction_list_to_transaction_batch([tx.struct, tx2.struct], wallet=Wallet())
@@ -364,13 +367,13 @@ dw1 = Wallet()
 constitution = {
     "masternodes": {
         "vk_list": [
-            mnw1.verifying_key().hex(),
+            mnw1.verifying_key,
         ],
         "min_quorum": 1
     },
     "delegates": {
         "vk_list": [
-            dw1.verifying_key().hex(),
+            dw1.verifying_key,
         ],
         "min_quorum": 1
     },
@@ -437,7 +440,7 @@ class TestDelegate(TestCase):
         b.client.raw_driver.set('A', 'B')
         self.assertIsNone(b.client.raw_driver.get_direct('A'))
 
-        b.process_block(block)
+        b.process_new_block(block)
 
         self.assertEqual(b.client.raw_driver.get(b'A'), 'B')
 
@@ -452,7 +455,7 @@ class TestDelegate(TestCase):
 
         self.assertIsNone(b.client.raw_driver.get_direct(k))
 
-        b.process_block(block)
+        b.process_new_block(block)
 
         self.assertEqual(b.client.raw_driver.get_direct(k), v)
 
@@ -460,7 +463,7 @@ class TestDelegate(TestCase):
         b = Delegate(socket_base='ipc:///tmp/n2', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
                      constitution=constitution)
 
-        gb = canonical.get_genesis_block()
+        gb = cilantro_ee.nodes.masternode.masternode.get_genesis_block()
         gb = canonical.dict_to_capnp_block(gb)
 
         # Put the genesis block in here so we start immediately
@@ -470,12 +473,12 @@ class TestDelegate(TestCase):
 
         # Add a single peer that we control
         b.parameters.sockets = {
-            mnw1.verifying_key().hex(): 'ipc:///tmp/n1'
+            mnw1.verifying_key: 'ipc:///tmp/n1'
         }
 
         put_test_contract(self.client)
 
-        b.work_inbox.work[mnw1.verifying_key().hex()] = get_tx_batch()
+        b.work_inbox.work[mnw1.verifying_key] = get_tx_batch()
 
         async def stop():
             await asyncio.sleep(1)

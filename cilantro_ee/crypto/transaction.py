@@ -1,61 +1,11 @@
-from cilantro_ee.crypto import wallet
-from contracting import config
-from cilantro_ee.storage import BlockchainDriver
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 import time
-import os
-import capnp
 
-from contracting.db.encoder import encode, decode
-
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
-
-
-class TransactionBuilder:
-    def __init__(self, sender, contract: str, function: str, kwargs: dict, stamps: int, processor: bytes,
-                 nonce: int):
-
-        # Stores variables in self for convenience
-        self.sender = sender
-        self.stamps = stamps
-        self.processor = processor
-        self.contract = contract
-        self.function = function
-        self.nonce = nonce
-        self.kwargs = kwargs
-
-        # Serializes all that it can on init
-        self.struct = transaction_capnp.NewTransaction.new_message()
-        self.payload = transaction_capnp.NewTransactionPayload.new_message()
-
-        self.payload.sender = self.sender
-        self.payload.processor = self.processor
-        self.payload.stampsSupplied = self.stamps
-        self.payload.contractName = self.contract
-        self.payload.functionName = self.function
-        self.payload.nonce = self.nonce
-
-        self.payload.kwargs = encode(kwargs)
-
-        self.payload_bytes = self.payload.to_bytes_packed()
-        self.signature = None
-
-        self.tx_signed = False
-
-    def sign(self, signing_key: bytes):
-        # signs the payload binary
-        self.signature = wallet._sign(signing_key, self.payload_bytes)
-        self.tx_signed = True
-
-    def serialize(self):
-        if not self.tx_signed:
-            return None
-
-        self.struct.payload = self.payload
-        self.struct.metadata.signature = self.signature
-        self.struct.metadata.timestamp = int(time.time())
-
-        return self.struct.to_bytes_packed()
+from cilantro_ee.crypto.canonical import format_dictionary
+from cilantro_ee.formatting import check_format, rules, primatives
+from contracting.db.encoder import encode
+from cilantro_ee import storage
+from cilantro_ee.crypto import wallet
+from contracting.client import ContractingClient
 
 
 class TransactionException(Exception):
@@ -94,85 +44,180 @@ class TransactionContractNameInvalid(TransactionException):
     pass
 
 
-def transaction_is_valid(tx: transaction_capnp.Transaction,
-                         expected_processor: bytes,
-                         driver: BlockchainDriver,
-                         strict=True,
-                         tx_per_block=15):
-    # Validate Signature
-    if not wallet._verify(tx.payload.sender,
-                          tx.payload.as_builder().to_bytes_packed(),
-                          tx.metadata.signature):
+class TransactionFormattingError(TransactionException):
+    pass
+
+
+EXCEPTION_MAP = {
+    TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
+    TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
+    TransactionTooManyPendingException: {'error': 'Too many pending transactions currently in the block.'},
+    TransactionSenderTooFewStamps: {'error': 'Transaction sender has too few stamps for this transaction.'},
+    TransactionPOWProofInvalid: {'error': 'Transaction proof of work is invalid.'},
+    TransactionSignatureInvalid: {'error': 'Transaction is not signed by the sender.'},
+    TransactionStampsNegative: {'error': 'Transaction has negative stamps supplied.'},
+    TransactionException: {'error': 'Another error has occured.'},
+    TransactionFormattingError: {'error': 'Transaction is not formatted properly.'}
+}
+
+
+def check_tx_formatting(tx: dict, expected_processor: str):
+    if not check_format(tx, rules.TRANSACTION_RULES):
+        raise TransactionFormattingError
+
+    if not wallet.verify(
+            tx['payload']['sender'],
+            encode(tx['payload']),
+            tx['metadata']['signature']
+    ):
         raise TransactionSignatureInvalid
 
-    # Check nonce processor is correct
-    if tx.payload.processor != expected_processor:
+    if tx['payload']['processor'] != expected_processor:
         raise TransactionProcessorInvalid
 
+
+def get_nonces(sender, processor, driver: storage.NonceStorage):
+    nonce = driver.get_nonce(
+        processor=processor,
+        sender=sender
+    )
+
+    if nonce is None:
+        nonce = 0
+
+    pending_nonce = driver.get_pending_nonce(
+        processor=processor,
+        sender=sender
+    )
+    if pending_nonce is None:
+        pending_nonce = 0
+
+    return nonce, pending_nonce
+
+
+def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_block=15):
     # Attempt to get the current block's pending nonce
-    nonce = driver.get_nonce(tx.payload.processor, tx.payload.sender) or 0
-
-    pending_nonce = driver.get_pending_nonce(tx.payload.processor, tx.payload.sender) or nonce
-
-    if tx.payload.nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
+    if tx_nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
         raise TransactionTooManyPendingException
 
-    # Strict mode requires exact sequence matching (1, 2, 3, 4). This is for masternodes
+    expected_nonce = max(nonce, pending_nonce)
+
     if strict:
-        if tx.payload.nonce != pending_nonce:
+        if tx_nonce != expected_nonce:
             raise TransactionNonceInvalid
-        pending_nonce += 1
+        expected_nonce += 1
 
-    # However, some of those tx's might fail verification and never make it to delegates. Thus,
-    # delegates shouldn't be as concerned. (1, 2, 4) should be valid for delegates.
     else:
-        if tx.payload.nonce < pending_nonce:
+        if tx_nonce < expected_nonce:
             raise TransactionNonceInvalid
-        pending_nonce = tx.payload.nonce + 1
+        expected_nonce = tx_nonce + 1
 
-    # Validate Stamps
-    if tx.payload.stampsSupplied < 0:
-        raise TransactionStampsNegative
+    return expected_nonce
 
-    currency_contract = 'currency'
-    balances_hash = 'balances'
 
-    balances_key = '{}{}{}{}{}'.format(currency_contract,
-                                       config.INDEX_SEPARATOR,
-                                       balances_hash,
-                                       config.DELIMITER,
-                                       tx.payload.sender.hex())
-
-    balance = driver.get(balances_key)
-    if balance is None:
-        balance = 0
-
-    stamp_to_tau = driver.get_var('stamp_cost', 'S', ['value'])
-    if stamp_to_tau is None:
-        stamp_to_tau = 1
-
-    if balance * stamp_to_tau < tx.payload.stampsSupplied:
-        print("bal -> {}, stamp2tau - > {}, txpayload -> {}".format(balance, stamp_to_tau, tx.payload.stampsSupplied))
+def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, function=None, amount=0):
+    if balance * stamps_per_tau < stamps_supplied:
         raise TransactionSenderTooFewStamps
 
     # Prevent people from sending their entire balances for free by checking if that is what they are doing.
-    if tx.payload.contractName == 'currency' and tx.payload.functionName == 'transfer':
-        kwargs = decode(tx.payload.kwargs)
-        amount = kwargs.get('amount')
+    if contract == 'currency' and function == 'transfer':
 
         # If you have less than 2 transactions worth of tau after trying to send your amount, fail.
-        if ((balance - amount) * stamp_to_tau) / 3000 < 2:
-            print(f'BAL IS: {((balance - amount) * stamp_to_tau) / 3000}')
+        if ((balance - amount) * stamps_per_tau) / 6000 < 2:
             raise TransactionSenderTooFewStamps
 
-    if tx.payload.contractName == 'submission' and tx.payload.functionName == 'submit_contract':
-        kwargs = decode(tx.payload.kwargs)
-        name = kwargs.get('name')
 
-        if type(name) != str:
-            raise TransactionContractNameInvalid
+def contract_name_is_valid(contract, function, name):
+    if contract == 'submission' and function == 'submit_contract' and not primatives.contract_name_is_formatted(name):
+        raise TransactionContractNameInvalid
 
-        if not name.startswith('con_'):
-            raise TransactionContractNameInvalid
 
-    driver.set_pending_nonce(tx.payload.processor, tx.payload.sender, pending_nonce)
+def transaction_is_not_expired(transaction, timeout=5):
+    timestamp = transaction['metadata']['timestamp']
+    return (int(time.time()) - timestamp) < timeout
+
+
+def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce: int, processor: str, stamps: int):
+    payload = {
+        'contract': contract,
+        'function': function,
+        'kwargs': kwargs,
+        'nonce': nonce,
+        'processor': processor,
+        'sender': wallet.verifying_key,
+        'stamps_supplied': stamps,
+    }
+
+    payload = format_dictionary(payload) # Sort payload in case kwargs unsorted
+
+    assert check_format(payload, rules.TRANSACTION_PAYLOAD_RULES), 'Invalid payload provided!'
+
+    signature = wallet.sign(encode(payload))
+
+    metadata = {
+        'signature': signature,
+        'timestamp': int(time.time())
+    }
+
+    tx = {
+        'payload': payload,
+        'metadata': metadata
+    }
+
+    return encode(format_dictionary(tx))
+
+
+# Run through all tests
+def transaction_is_valid(transaction, expected_processor, client: ContractingClient, nonces: storage.NonceStorage, strict=True,
+                         tx_per_block=15, timeout=5):
+    # Check basic formatting so we can access via __getitem__ notation without errors
+    if not check_format(transaction, rules.TRANSACTION_RULES):
+        return TransactionFormattingError
+
+    transaction_is_not_expired(transaction, timeout)
+
+    # Put in to variables for visual ease
+    processor = transaction['payload']['processor']
+    sender = transaction['payload']['sender']
+
+    # Checks if correct processor and if signature is valid
+    check_tx_formatting(transaction, expected_processor)
+
+    # Gets the expected nonces
+    nonce, pending_nonce = get_nonces(sender, processor, nonces)
+
+    # Get the provided nonce
+    tx_nonce = transaction['payload']['nonce']
+
+    # Check to see if the provided nonce is valid to what we expect and
+    # if there are less than the max pending txs in the block
+    get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=strict, tx_per_block=tx_per_block)
+
+    # Get the senders balance and the current stamp rate
+    balance = client.get_var(contract='currency', variable='balances', arguments=[sender], mark=False)
+    stamp_rate = client.get_var(contract='stamp_cost', variable='S', arguments=['value'], mark=False)
+
+    contract = transaction['payload']['contract']
+    func = transaction['payload']['function']
+    stamps_supplied = transaction['payload']['stamps_supplied']
+    if stamps_supplied is None:
+        stamps_supplied = 0
+
+    if stamp_rate is None:
+        stamp_rate = 0
+
+    if balance is None:
+        balance = 0
+
+    # Get how much they are sending
+    amount = transaction['payload']['kwargs'].get('amount')
+    if amount is None:
+        amount = 0
+
+    # Check if they have enough stamps for the operation
+    has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)
+
+    # Check if contract name is valid
+    name = transaction['payload']['kwargs'].get('name')
+    contract_name_is_valid(contract, func, name)
+

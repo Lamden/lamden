@@ -3,21 +3,17 @@ from contracting.db.encoder import encode, decode
 from cilantro_ee.crypto.wallet import Wallet
 import asyncio
 from copy import deepcopy
-from contracting.db.driver import ContractDriver, InMemDriver
+from contracting.db.driver import ContractDriver, InMemDriver, Driver
 from cilantro_ee.nodes.delegate.delegate import Delegate
 from cilantro_ee.nodes.masternode.masternode import Masternode
 
-from cilantro_ee.storage import BlockchainDriver
-from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro_ee.crypto.transaction import build_transaction
 from contracting import config
 
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-import capnp
 from collections import defaultdict
 import random
 
-transaction_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/transaction.capnp')
 
 import aiohttp
 
@@ -29,53 +25,57 @@ def make_ipc(p):
         pass
 
 
-def make_network(masternodes, delegates, ctx, mn_min_quorum=2, del_min_quorum=2):
+def make_network(masternodes, delegates, ctx):
     mn_wallets = [Wallet() for _ in range(masternodes)]
     dl_wallets = [Wallet() for _ in range(delegates)]
 
     constitution = {
-        'masternodes': [mn.verifying_key().hex() for mn in mn_wallets],
-        'delegates': [dl.verifying_key().hex() for dl in dl_wallets],
-        'masternode_min_quorum': mn_min_quorum,
-        'delegate_min_quorum': del_min_quorum,
+        'masternodes': [mn.verifying_key for mn in mn_wallets],
+        'delegates': [dl.verifying_key for dl in dl_wallets],
     }
 
     mns = []
     dls = []
-    bootnodes = None
+
+    bootnodes = {}
+
+    for i in range(len(mn_wallets + dl_wallets)):
+        port = 18000 + i
+        tcp = f'tcp://127.0.0.1:{port}'
+
+        vk = (mn_wallets + dl_wallets)[i]
+        bootnodes[vk.verifying_key] = tcp
+
     node_count = 0
     for wallet in mn_wallets:
-        driver = BlockchainDriver(driver=InMemDriver())
+        driver = ContractDriver(driver=Driver(collection=wallet.verifying_key))
         # driver = IsolatedDriver()
-        ipc = f'/tmp/n{node_count}'
-        make_ipc(ipc)
-
-        if bootnodes is None:
-            bootnodes = [f'ipc://{ipc}']
+        port = 18000 + node_count
+        tcp = f'tcp://127.0.0.1:{port}'
 
         mn = Masternode(
             wallet=wallet,
             ctx=ctx,
-            socket_base=f'ipc://{ipc}',
+            socket_base=tcp,
             bootnodes=bootnodes,
             constitution=deepcopy(constitution),
             webserver_port=18080 + node_count,
-            driver=driver
+            driver=driver,
         )
 
         mns.append(mn)
         node_count += 1
 
     for wallet in dl_wallets:
-        driver = BlockchainDriver(driver=InMemDriver())
+        driver = ContractDriver(driver=Driver(collection=wallet.verifying_key))
         # driver = IsolatedDriver()
-        ipc = f'/tmp/n{node_count}'
-        make_ipc(ipc)
+        port = 18000 + node_count
+        tcp = f'tcp://127.0.0.1:{port}'
 
         dl = Delegate(
             wallet=wallet,
             ctx=ctx,
-            socket_base=f'ipc://{ipc}',
+            socket_base=tcp,
             constitution=deepcopy(constitution),
             bootnodes=bootnodes,
             driver=driver
@@ -99,8 +99,8 @@ def make_start_awaitable(mns, dls):
 
 
 def make_tx_packed(processor, contract_name, function_name, sender=Wallet(), kwargs={}, drivers=[], stamps=10_000, nonce=0):
-    batch = TransactionBuilder(
-        sender=sender.verifying_key(),
+    batch = build_transaction(
+        wallet=sender,
         contract=contract_name,
         function=function_name,
         kwargs=kwargs,
@@ -109,9 +109,6 @@ def make_tx_packed(processor, contract_name, function_name, sender=Wallet(), kwa
         nonce=nonce
     )
 
-    batch.sign(sender.signing_key())
-    b = batch.serialize()
-
     currency_contract = 'currency'
     balances_hash = 'balances'
 
@@ -119,13 +116,13 @@ def make_tx_packed(processor, contract_name, function_name, sender=Wallet(), kwa
                                        config.INDEX_SEPARATOR,
                                        balances_hash,
                                        config.DELIMITER,
-                                       sender.verifying_key().hex())
+                                       sender.verifying_key)
 
     for driver in drivers:
         driver.set(balances_key, 1_000_000)
         driver.commit()
 
-    return b
+    return batch
 
 
 async def send_tx(masternode: Masternode, nodes, contract, function, sender=Wallet(), kwargs={}, sleep=2):
@@ -133,7 +130,7 @@ async def send_tx(masternode: Masternode, nodes, contract, function, sender=Wall
         r = await session.post(
             url=f'http://127.0.0.1:{masternode.webserver.port}/',
             data=make_tx_packed(
-                masternode.wallet.verifying_key(),
+                masternode.wallet.verifying_key,
                 contract_name=contract,
                 function_name=function,
                 sender=sender,
@@ -162,9 +159,9 @@ async def send_tx_batch(masternode, txs, server='http://127.0.0.1'):
 
 
 class Orchestrator:
-    def __init__(self, masternode_num, delegate_num, ctx, min_mn_quorum=2, min_del_quorum=2):
+    def __init__(self, masternode_num, delegate_num, ctx):
         self.ctx = ctx
-        mns, dels = make_network(masternode_num, delegate_num, ctx, min_mn_quorum, min_del_quorum)
+        mns, dels = make_network(masternode_num, delegate_num, ctx)
         self.masternodes = mns
         self.delegates = dels
         self.nodes = self.masternodes + self.delegates
@@ -181,25 +178,22 @@ class Orchestrator:
     def make_tx(self, contract, function, sender, kwargs={}, stamps=1_000_000, pidx=0):
         processor = self.masternodes[pidx]
 
-        batch = TransactionBuilder(
-            sender=sender.verifying_key(),
+        batch = build_transaction(
+            wallet=sender,
             contract=contract,
             function=function,
             kwargs=kwargs,
             stamps=stamps,
-            processor=processor.wallet.verifying_key(),
-            nonce=self.nonces[sender.verifying_key() + processor.wallet.verifying_key()]
+            processor=processor.wallet.verifying_key,
+            nonce=self.nonces[sender.verifying_key + processor.wallet.verifying_key]
         )
 
-        batch.sign(sender.signing_key())
-        b = batch.serialize()
+        self.nonces[sender.verifying_key + processor.wallet.verifying_key] += 1
 
-        self.nonces[sender.verifying_key() + processor.wallet.verifying_key()] += 1
-
-        if sender.verifying_key() not in self.minted:
+        if sender.verifying_key not in self.minted:
             self.mint(1_000_000, sender)
 
-        return b
+        return batch
 
     def mint(self, amount, to):
         currency_contract = 'currency'
@@ -209,13 +203,13 @@ class Orchestrator:
                                            config.INDEX_SEPARATOR,
                                            balances_hash,
                                            config.DELIMITER,
-                                           to.verifying_key().hex())
+                                           to.verifying_key)
 
         for driver in [node.driver for node in self.nodes]:
             driver.set(balances_key, amount)
             driver.commit()
 
-        self.minted.add(to.verifying_key())
+        self.minted.add(to.verifying_key)
 
     def get_var(self, contract, function, arguments=[]):
         vals = []

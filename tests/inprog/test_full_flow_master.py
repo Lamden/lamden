@@ -4,11 +4,10 @@ import asyncio
 from contracting.client import ContractingClient
 from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.nodes.masternode.masternode import Masternode
-from cilantro_ee.messages import Message
+from cilantro_ee.messages import Message, capnp_struct as schemas
 from contracting import config
 import os
 import capnp
-from cilantro_ee.messages.capnp_impl import capnp_struct as schemas
 from cilantro_ee.crypto.transaction import TransactionBuilder
 from contracting.db.driver import ContractDriver
 import time
@@ -23,13 +22,13 @@ dw1 = Wallet()
 constitution = {
     "masternodes": {
         "vk_list": [
-            mnw1.verifying_key().hex(),
+            mnw1.verifying_key,
         ],
         "min_quorum": 1
     },
     "delegates": {
         "vk_list": [
-            dw1.verifying_key().hex(),
+            dw1.verifying_key,
         ],
         "min_quorum": 1
     },
@@ -55,7 +54,7 @@ make_ipc(n1)
 def make_tx(processor, contract_name, function_name, kwargs={}):
     w = Wallet()
     batch = TransactionBuilder(
-        sender=w.verifying_key(),
+        sender=w.verifying_key,
         contract=contract_name,
         function=function_name,
         kwargs=kwargs,
@@ -64,7 +63,7 @@ def make_tx(processor, contract_name, function_name, kwargs={}):
         nonce=0
     )
 
-    batch.sign(w.signing_key())
+    batch.sign(w.signing_key)
     b = batch.serialize()
 
     tx = transaction_capnp.Transaction.from_bytes_packed(b)
@@ -76,7 +75,7 @@ def make_tx(processor, contract_name, function_name, kwargs={}):
                                        config.INDEX_SEPARATOR,
                                        balances_hash,
                                        config.DELIMITER,
-                                       w.verifying_key().hex())
+                                       w.verifying_key)
 
     driver = ContractDriver()
     driver.set(balances_key, 1_000_000)
@@ -142,7 +141,7 @@ class TestMasterFullFlow(TestCase):
         d = MockDelegate(self.ctx)
 
         m.parameters.sockets = {
-            dw1.verifying_key().hex(): 'ipc:///tmp/n1'
+            dw1.verifying_key: 'ipc:///tmp/n1'
         }
 
         tasks = asyncio.gather(
@@ -171,7 +170,7 @@ class TestMasterFullFlow(TestCase):
         d = MockDelegate(self.ctx)
 
         m.parameters.sockets = {
-            dw1.verifying_key().hex(): 'ipc:///tmp/n1'
+            dw1.verifying_key: 'ipc:///tmp/n1'
         }
 
         tasks = asyncio.gather(
@@ -179,7 +178,7 @@ class TestMasterFullFlow(TestCase):
             d.recv_work()
         )
 
-        tx = make_tx(mnw1.verifying_key().hex(),
+        tx = make_tx(mnw1.verifying_key,
                      contract_name='howdy',
                      function_name='yoohoo')
 

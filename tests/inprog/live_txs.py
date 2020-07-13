@@ -16,7 +16,7 @@ def make_tx_packed(sender, server, contract_name, function_name, kwargs={}, stam
     processor = bytes.fromhex(nonce_req.json()['processor'])
 
     batch = TransactionBuilder(
-        sender=wallet.verifying_key(),
+        sender=wallet.verifying_key,
         contract=contract_name,
         function=function_name,
         kwargs=kwargs,

@@ -1,0 +1,1 @@
+from .masternode import Masternode

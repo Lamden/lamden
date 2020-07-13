@@ -1,5 +1,5 @@
-Attribution-NonCommercial 4.0 International "Forkless"
-Additional Stipulation Covering Cryptocurrency Forks
+Attribution-NonCommercial 4.0 International
+
 =======================================================================
 
 Creative Commons Corporation ("Creative Commons") is not a law firm and
@@ -119,9 +119,7 @@ Section 1 -- Definitions.
      other material subject to Copyright and Similar Rights by digital
      file-sharing or similar means is NonCommercial provided there is
      no payment of monetary compensation in connection with the
-     exchange. Monetary compensation includes cryptocurrency. Any new
-     cryptocurrency created via forks or deployment of this software
-     is covered as monetary compensation.
+     exchange.
 
   j. Share means to provide material to the public by any means or
      process that requires permission under the Licensed Rights, such

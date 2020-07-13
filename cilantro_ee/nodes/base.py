@@ -1,289 +1,356 @@
-from cilantro_ee.networking.network import Network
-from cilantro_ee.nodes.catchup import BlockFetcher
-from cilantro_ee.storage import MasterStorage
-
-from cilantro_ee.nodes.new_block_inbox import NBNInbox
-from cilantro_ee.storage import VKBook
+from cilantro_ee import storage, network, router, authentication, rewards, upgrade
+from cilantro_ee.crypto import canonical
+from cilantro_ee.crypto.wallet import Wallet
 from cilantro_ee.contracts import sync
-from cilantro_ee.networking.parameters import Parameters, ServiceType, NetworkParameters
+from contracting.db.driver import ContractDriver, encode
 import cilantro_ee
 import zmq.asyncio
 import asyncio
-
-from cilantro_ee.sockets.authentication import SocketAuthenticator
-from cilantro_ee.storage.contract import BlockchainDriver
+import json
 from contracting.client import ContractingClient
-
-from cilantro_ee.nodes.rewards import RewardManager
-from cilantro_ee.cli.utils import version_reboot
-
-from cilantro_ee.logger.base import get_logger
-
-from copy import deepcopy
-
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
+from cilantro_ee.logger.base import get_logger
+
+
+BLOCK_SERVICE = 'catchup'
+NEW_BLOCK_SERVICE = 'new_blocks'
+WORK_SERVICE = 'work'
+CONTENDER_SERVICE = 'contenders'
+
+GET_BLOCK = 'get_block'
+GET_HEIGHT = 'get_height'
+
+
+async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
+    msg = {
+        'name': GET_HEIGHT,
+        'arg': ''
+    }
+
+    response = await router.secure_request(
+        ip=ip,
+        vk=vk,
+        wallet=wallet,
+        service=BLOCK_SERVICE,
+        msg=msg,
+        ctx=ctx,
+    )
+
+    return response
+
+
+async def get_block(block_num: int, wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
+    msg = {
+        'name': GET_BLOCK,
+        'arg': block_num
+    }
+
+    response = await router.secure_request(
+        ip=ip,
+        vk=vk,
+        wallet=wallet,
+        service=BLOCK_SERVICE,
+        msg=msg,
+        ctx=ctx,
+    )
+
+    return response
+
+
+class NewBlock(router.Processor):
+    def __init__(self, driver: ContractDriver):
+        self.q = []
+        self.driver = driver
+        self.log = get_logger('NBN')
+
+    async def process_message(self, msg):
+        self.q.append(msg)
+
+    async def wait_for_next_nbn(self):
+        while len(self.q) <= 0:
+            await asyncio.sleep(0)
+
+        nbn = self.q.pop(0)
+
+        self.q.clear()
+
+        return nbn
+
+    def clean(self, height):
+        self.q = [nbn for nbn in self.q if nbn['number'] > height]
+
+
+def ensure_in_constitution(verifying_key: str, constitution: dict):
+    masternodes = constitution['masternodes']
+    delegates = constitution['delegates']
+
+    is_masternode = verifying_key in masternodes.values()
+    is_delegate = verifying_key in delegates.values()
+
+    assert is_masternode or is_delegate, 'You are not in the constitution!'
+
 
 class Node:
-    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, overwrite=False,
-                 bootnodes=[], network_parameters=NetworkParameters(), driver=BlockchainDriver(), mn_seed=None, debug=True, store=False):
+    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
+                 driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
+                 genesis_path=cilantro_ee.contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage()):
 
         self.driver = driver
+        self.nonces = nonces
         self.store = store
 
-        self.blocks = None
-        if self.store:
-            self.blocks = MasterStorage()
+        self.seed = seed
 
-        self.waiting_for_confirmation = False
+        self.blocks = blocks
 
-        self.log = get_logger('NODE')
+        self.log = get_logger('Base')
         self.log.propagate = debug
-        self.log.info(constitution)
         self.socket_base = socket_base
         self.wallet = wallet
         self.ctx = ctx
-        self.ctx.max_sockets = 50_000
 
-        self.client = ContractingClient(driver=self.driver,
-                                        submission_filename=cilantro_ee.contracts.__path__[0] + '/submission.s.py')
+        self.genesis_path = genesis_path
 
-        # Sync contracts
-
-        sync.submit_from_genesis_json_file(cilantro_ee.contracts.__path__[0] + '/genesis.json', client=self.client)
-        sync.submit_node_election_contracts(
-            initial_masternodes=constitution['masternodes'],
-            boot_mns=constitution['masternode_min_quorum'],
-            initial_delegates=constitution['delegates'],
-            boot_dels=constitution['delegate_min_quorum'],
-            client=self.client
+        self.client = ContractingClient(
+            driver=self.driver,
+            submission_filename=genesis_path + '/submission.s.py'
         )
-
-        self.driver.commit()
-        self.driver.clear_pending_state()
-
-        self.contacts = VKBook(
-            client=self.client,
-            boot_mn=constitution['masternode_min_quorum'],
-            boot_del=constitution['delegate_min_quorum'],
-        )
-
-        self.current_masters = deepcopy(self.contacts.masternodes)
-        self.current_delegates = deepcopy(self.contacts.delegates)
-
-        self.parameters = Parameters(socket_base, ctx, wallet, contacts=self.contacts)
-
-        self.socket_authenticator = SocketAuthenticator(ctx=self.ctx)
-
-        self.elect_masternodes = self.client.get_contract('elect_masternodes')
-        self.elect_delegates = self.client.get_contract('elect_delegates')
-
-        self.masternode_contract = self.client.get_contract('masternodes')
-        self.delegate_contract = self.client.get_contract('delegates')
-
-        self.update_sockets()
-
-        # Cilantro version / upgrade
-
-        self.version_state = self.client.get_contract('upgrade')
-        self.active_upgrade = self.version_state.quick_read('upg_lock')
-
-        self.tol_mn = self.version_state.quick_read('tol_mn')
-        self.tot_dl = self.version_state.quick_read('tot_dl')
-
-        if self.tol_mn is None:
-            self.tol_mn = 0
-
-        if self.tot_dl is None:
-            self.tot_dl = 0
-
-        self.all_votes = self.tol_mn + self.tot_dl
-        self.mn_votes = self.version_state.quick_read('mn_vote')
-        self.dl_votes = self.version_state.quick_read('dl_vote')
-        # self.pending_cnt = self.all_votes - self.vote_cnt
-        # stuff
-
-        self.network_parameters = network_parameters
 
         self.bootnodes = bootnodes
         self.constitution = constitution
-        self.overwrite = overwrite
 
-        # Should have a function to get the current NBN
-        self.block_fetcher = BlockFetcher(
-            wallet=self.wallet,
-            ctx=self.ctx,
-            parameters=self.parameters,
+        self.seed_genesis_contracts()
+
+        self.socket_authenticator = authentication.SocketAuthenticator(
+            bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
         )
 
-        self.network = Network(
-            wallet=self.wallet,
+        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
+
+        self.router = router.Router(
+            socket_id=socket_base,
             ctx=self.ctx,
-            socket_base=socket_base,
-            bootnodes=self.bootnodes,
-            params=self.network_parameters,
-            initial_del_quorum=deepcopy(self.contacts.delegate_quorum_min),
-            initial_mn_quorum=deepcopy(self.contacts.masternode_quorum_min),
-            mn_to_find=deepcopy(self.contacts.masternodes),
-            del_to_find=deepcopy(self.contacts.delegates),
-            mn_seed=mn_seed
+            wallet=wallet,
+            secure=True
         )
 
-        self.nbn_inbox = NBNInbox(
-            socket_id=self.network_parameters.resolve(
-                self.socket_base,
-                service_type=ServiceType.BLOCK_NOTIFICATIONS,
-                bind=True),
+        self.network = network.Network(
+            wallet=wallet,
+            ip_string=socket_base,
             ctx=self.ctx,
-            driver=self.driver,
-            contacts=self.contacts,
-            wallet=wallet
+            router=self.router
         )
 
-        self.reward_manager = RewardManager(driver=self.driver, debug=True)
+        self.new_block_processor = NewBlock(driver=self.driver)
+        self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.running = False
+        self.upgrade = False
 
-    async def catchup(self, mn_seed):
-        current = self.driver.get_latest_block_num()
-        latest = await self.block_fetcher.get_latest_block_height(mn_seed)
+        self.reward_manager = reward_manager
 
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
+
+        self.bypass_catchup = bypass_catchup
+
+    def seed_genesis_contracts(self):
+        self.log.info('Setting up genesis contracts.')
+        sync.setup_genesis_contracts(
+            initial_masternodes=self.constitution['masternodes'],
+            initial_delegates=self.constitution['delegates'],
+            client=self.client,
+            filename=self.genesis_path + '/genesis.json',
+            root=self.genesis_path
+        )
+
+    async def catchup(self, mn_seed, mn_vk):
+        # Get the current latest block stored and the latest block of the network
+        self.log.info('Running catchup.')
+        current = self.current_height
+        latest = await get_latest_block_height(
+            ip=mn_seed,
+            vk=mn_vk,
+            wallet=self.wallet,
+            ctx=self.ctx
+        )
+
+        self.log.info(f'Current block: {current}, Latest available block: {latest}')
+
+        if latest == 0 or latest is None or type(latest) == dict:
+            self.log.info('No need to catchup. Proceeding.')
+            return
+
+        # Increment current by one. Don't count the genesis block.
         if current == 0:
             current = 1
 
-        for i in range(current, latest):
-            block = await self.block_fetcher.get_block_from_master(i, mn_seed)
-            block = block.to_dict()
-            self.process_block(block)
+        # Find the missing blocks process them
+        for i in range(current, latest + 1):
+            block = await get_block(
+                block_num=i,
+                ip=mn_seed,
+                vk=mn_vk,
+                wallet=self.wallet,
+                ctx=self.ctx
+            )
+            self.process_new_block(block)
 
-        while len(self.nbn_inbox.q) > 0:
-            block = self.nbn_inbox.q.pop(0)
-            self.process_block(block)
+        # Process any blocks that were made while we were catching up
+        while len(self.new_block_processor.q) > 0:
+            block = self.new_block_processor.q.pop(0)
+            self.process_new_block(block)
 
     def should_process(self, block):
-        if self.waiting_for_confirmation:
-            return self.driver.latest_block_num <= block['blockNum'] and block['hash'] != 'f' * 64
+        self.log.info(f'Processing block #{block["number"]}')
+        # Test if block failed immediately
+        if block['hash'] == 'f' * 64:
+            self.log.error('Failed Block! Not storing.')
+            return False
+
+        # Get current metastate
+
+        # Test if block contains the same metastate
+        if block['number'] != self.current_height + 1:
+            self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
+                          f'Node has probably already processed this block. Continuing.')
+            return False
+
+        if block['previous'] != self.current_hash:
+            self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
+            return False
+
+        # If so, use metastate and subblocks to create the 'expected' block
+        expected_block = canonical.block_from_subblocks(
+            subblocks=block['subblocks'],
+            previous_hash=self.current_hash,
+            block_num=self.current_height + 1
+        )
+
+        # Return if the block contains the expected information
+        good = block == expected_block
+        if good:
+            self.log.info(f'Block #{block["number"]} passed all checks. Store.')
         else:
-            return self.driver.latest_block_num < block['blockNum'] and block['hash'] != 'f' * 64
+            self.log.error(f'Block #{block["number"]} has an encoding problem. Do not store.')
 
-    def process_block(self, block):
-        # self.driver.reads.clear()
-        # self.driver.cache.clear()
-        #
-        # self.log.info(f'PENDING WRITES :{self.driver.pending_writes}')
-        # self.driver.pending_writes.clear()
+        return good
 
+    def update_state(self, block):
+        self.driver.clear_pending_state()
+
+        # Check if the block is valid
         if self.should_process(block):
-            self.log.info('Processing new block...')
-            self.driver.update_with_block(block)
-            self.reward_manager.issue_rewards(block=block)
-            self.update_sockets()
-
-            if self.store:
-                self.blocks.store_block(block)
-                #self.reward_manager.issue_rewards(block=block)
-                #self.update_sockets()
-        else:
-            self.log.error('Could not store block...')
-            if self.driver.latest_block_num >= block['blockNum']:
-                self.log.error(f'Latest block num = {self.driver.latest_block_num}')
-                self.log.error(f'New block num = {block["blockNum"]}')
-            if block['hash'] == 'f' * 64:
-                self.log.error(f'Block hash = {block["hash"]}')
-            self.driver.delete_pending_nonces()
-
-        self.driver.cache.clear()
-        self.nbn_inbox.clean()
-        self.nbn_inbox.update_signers()
-
-    async def start(self):
-        await self.network.start()
-
-        # Start block server
-        asyncio.ensure_future(self.nbn_inbox.serve())
-
-        # Catchup when joining the network
-        if self.network.mn_seed is not None:
-            await self.catchup(
-                self.network_parameters.resolve(
-                    self.network.mn_seed,
-                    ServiceType.BLOCK_SERVER
-                )
+            self.log.info('Storing new block.')
+            # Commit the state changes and nonces to the database
+            storage.update_state_with_block(
+                block=block,
+                driver=self.driver,
+                nonces=self.nonces
             )
 
-            self.log.info(self.network.peers())
+            self.log.info('Issuing rewards.')
+            # Calculate and issue the rewards for the governance nodes
+            self.reward_manager.issue_rewards(
+                block=block,
+                client=self.client
+            )
 
-            self.parameters.sockets.update(self.network.peers())
+        self.log.info('Updating metadata.')
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
 
-        # Start block server
-        #asyncio.ensure_future(self.nbn_inbox.serve())
+        self.new_block_processor.clean(self.current_height)
 
+    def process_new_block(self, block):
+        # Update the state and refresh the sockets so new nodes can join
+        self.update_state(block)
+        self.socket_authenticator.refresh_governance_sockets()
+
+        # Store the block if it's a masternode
+        if self.store:
+            encoded_block = encode(block)
+            encoded_block = json.loads(encoded_block)
+
+            self.blocks.store_block(encoded_block)
+
+        # Prepare for the next block by flushing out driver and notification state
+        # self.new_block_processor.clean()
+
+        # Finally, check and initiate an upgrade if one needs to be done
+        self.driver.commit()
+        self.driver.clear_pending_state()
+
+    async def start(self):
+        asyncio.ensure_future(self.router.serve())
+
+        # Get the set of VKs we are looking for from the constitution argument
+        vks = self.constitution['masternodes'] + self.constitution['delegates']
+
+        for node in self.bootnodes.keys():
+            self.socket_authenticator.add_verifying_key(node)
+
+        self.socket_authenticator.configure()
+
+        # Use it to boot up the network
+        await self.network.start(bootnodes=self.bootnodes, vks=vks)
+
+        if not self.bypass_catchup:
+            masternode_ip = None
+            masternode = None
+
+            if self.seed is not None:
+                for k, v in self.bootnodes.items():
+                    self.log.info(k, v)
+                    if v == self.seed:
+                        masternode = k
+                        masternode_ip = v
+            else:
+                masternode = self.constitution['masternodes'][0]
+                masternode_ip = self.network.peers[masternode]
+
+            self.log.info(f'Masternode Seed VK: {masternode}')
+
+            # Use this IP to request any missed blocks
+            await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
+
+        # Refresh the sockets to accept new nodes
+        self.socket_authenticator.refresh_governance_sockets()
+
+        # Start running
         self.running = True
 
     def stop(self):
-        self.network.stop()
-        self.nbn_inbox.stop()
+        # Kill the router and throw the running flag to stop the loop
+        self.router.stop()
         self.running = False
 
-    def update_sockets(self):
-        od_mn = self.elect_masternodes.quick_read('top_candidate')
-        od_dl = self.elect_delegates.quick_read('top_candidate')
-
-        masternodes = self.masternode_contract.quick_read('S', 'members')
-        delegates = self.delegate_contract.quick_read('S', 'members')
-
-        self.socket_authenticator.add_governance_sockets(
-            masternode_list=masternodes,
-            delegate_list=delegates,
-            on_deck_masternode=od_mn,
-            on_deck_delegate=od_dl
+    def _get_member_peers(self, contract_name):
+        members = self.client.get_var(
+            contract=contract_name,
+            variable='S',
+            arguments=['members']
         )
 
-    def version_check(self):
+        member_peers = dict()
 
-        # check for trigger
-        self.version_state = self.client.get_contract('upgrade')
-        self.mn_votes = self.version_state.quick_read('mn_vote')
-        self.dl_votes = self.version_state.quick_read('dl_vote')
+        for member in members:
+            ip = self.network.peers.get(member)
+            if ip is not None:
+                member_peers[member] = ip
 
-        self.get_update_state()
+        return member_peers
 
-        if self.version_state:
-            self.log.info('Waiting for Consensys on vote')
-            self.log.info('num masters voted -> {}'.format(self.mn_votes))
-            self.log.info('num delegates voted -> {}'.format(self.dl_votes))
+    def get_delegate_peers(self):
+        return self._get_member_peers('delegates')
 
-            # check for vote consensys
-            vote_consensus = self.version_state.quick_read('upg_consensus')
-            if vote_consensus:
-                self.log.info('Rebooting Node with new verion')
-                version_reboot()
-            else:
-                self.log.info('waiting for vote on upgrade')
+    def get_masternode_peers(self):
+        return self._get_member_peers('masternodes')
 
-            # ready
-            #TODO we can merge it with vote - to be decided
-
-    def get_update_state(self):
-        self.active_upgrade = self.version_state.quick_read('upg_lock')
-        start_time = self.version_state.quick_read('upg_init_time')
-        window = self.version_state.quick_read('upg_window')
-        pepper = self.version_state.quick_read('upg_pepper')
-        self.mn_votes = self.version_state.quick_read('mn_vote')
-        self.dl_votes = self.version_state.quick_read('dl_vote')
-        consensus = self.version_state.quick_read('upg_consensus')
-
-        print("Upgrade -> {} Cil Pepper   -> {}\n"
-              "Init time -> {}, Time Window -> {}\n"
-              "Masters      -> {}\n"
-              "Delegates    -> {}\n"
-              "Votes        -> {}\n "
-              "MN-Votes     -> {}\n "
-              "DL-Votes     -> {}\n "
-              "Consensus    -> {}\n"
-              .format(self.active_upgrade,
-                      pepper, start_time, window, self.tol_mn,
-                      self.tot_dl, self.all_votes,
-                      self.mn_votes, self.dl_votes,
-                      consensus))
+    def make_constitution(self):
+        return {
+            'masternodes': self.get_masternode_peers(),
+            'delegates': self.get_delegate_peers()
+        }

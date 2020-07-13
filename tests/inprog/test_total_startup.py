@@ -6,7 +6,7 @@ import zmq.asyncio
 from contracting.client import ContractingClient
 
 from contracting.db.driver import InMemDriver
-from cilantro_ee.storage.contract import BlockchainDriver
+from cilantro_ee.storage.contract import StateDriver
 
 class TestTotalEndToEnd(TestCase):
     def setUp(self):
@@ -46,24 +46,24 @@ class TestTotalEndToEnd(TestCase):
 
         constitution = {
             "masternodes": [
-                    mnw1.verifying_key().hex(),
-                    mnw2.verifying_key().hex(),
-                    mnw3.verifying_key().hex(),
-                    mnw4.verifying_key().hex(),
-                    mnw5.verifying_key().hex(),
-                    mnw6.verifying_key().hex(),
-                    mnw7.verifying_key().hex(),
-                    mnw8.verifying_key().hex(),
+                    mnw1.verifying_key,
+                    mnw2.verifying_key,
+                    mnw3.verifying_key,
+                    mnw4.verifying_key,
+                    mnw5.verifying_key,
+                    mnw6.verifying_key,
+                    mnw7.verifying_key,
+                    mnw8.verifying_key,
                 ],
             "delegates": [
-                dw9.verifying_key().hex(),
-                dw10.verifying_key().hex(),
-                dw11.verifying_key().hex(),
-                dw12.verifying_key().hex(),
-                dw13.verifying_key().hex(),
-                dw14.verifying_key().hex(),
-                dw15.verifying_key().hex(),
-                dw16.verifying_key().hex(),
+                dw9.verifying_key,
+                dw10.verifying_key,
+                dw11.verifying_key,
+                dw12.verifying_key,
+                dw13.verifying_key,
+                dw14.verifying_key,
+                dw15.verifying_key,
+                dw16.verifying_key,
             ],
             "masternode_min_quorum": 6,
             "delegate_min_quorum": 8,
@@ -207,8 +207,8 @@ class TestTotalEndToEnd(TestCase):
         dw2 = Wallet()
 
         constitution = {
-            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
-            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'masternodes': [mnw1.verifying_key, mnw2.verifying_key],
+            'delegates': [dw1.verifying_key, dw2.verifying_key],
             'witnesses': [],
             'schedulers': [],
             'notifiers': [],
@@ -269,8 +269,8 @@ class TestTotalEndToEnd(TestCase):
         dw2 = Wallet()
 
         constitution = {
-            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
-            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'masternodes': [mnw1.verifying_key, mnw2.verifying_key],
+            'delegates': [dw1.verifying_key, dw2.verifying_key],
             'witnesses': [],
             'schedulers': [],
             'notifiers': [],
@@ -283,25 +283,25 @@ class TestTotalEndToEnd(TestCase):
             'scheduler_min_quorum': 0
         }
 
-        md1 = BlockchainDriver(driver=InMemDriver())
+        md1 = StateDriver(driver=InMemDriver())
         n1 = '/tmp/n1'
         make_ipc(n1)
         mn1 = Masternode(wallet=mnw1, ctx=self.ctx, socket_base=f'ipc://{n1}', bootnodes=bootnodes,
                          constitution=constitution, webserver_port=8080, driver=md1)
 
-        md2 = BlockchainDriver(driver=InMemDriver())
+        md2 = StateDriver(driver=InMemDriver())
         n2 = '/tmp/n2'
         make_ipc(n2)
         mn2 = Masternode(wallet=mnw2, ctx=self.ctx, socket_base=f'ipc://{n2}', bootnodes=bootnodes,
                          constitution=constitution, webserver_port=8081, driver=md2)
 
-        dd1 = BlockchainDriver(driver=InMemDriver())
+        dd1 = StateDriver(driver=InMemDriver())
         n3 = '/tmp/n3'
         make_ipc(n3)
         d1 = Delegate(wallet=dw1, ctx=self.ctx, socket_base=f'ipc://{n3}',
                       constitution=constitution, bootnodes=bootnodes, driver=dd1)
 
-        dd2 = BlockchainDriver(driver=InMemDriver())
+        dd2 = StateDriver(driver=InMemDriver())
         n4 = '/tmp/n4'
         make_ipc(n4)
         d2 = Delegate(wallet=dw2, ctx=self.ctx, socket_base=f'ipc://{n4}',
@@ -318,7 +318,7 @@ class TestTotalEndToEnd(TestCase):
         async def run():
             await tasks
             async with aiohttp.ClientSession() as session:
-                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key(), 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
+                r = await session.post('http://127.0.0.1:8081/', data=make_tx_packed(mnw2.verifying_key, 'testing', 'test', drivers=[md1, md2, dd1, dd2]))
 
             res = await r.json()
             print(res)
@@ -342,8 +342,8 @@ class TestTotalEndToEnd(TestCase):
         dw2 = Wallet()
 
         constitution = {
-            'masternodes': [mnw1.verifying_key().hex(), mnw2.verifying_key().hex()],
-            'delegates': [dw1.verifying_key().hex(), dw2.verifying_key().hex()],
+            'masternodes': [mnw1.verifying_key, mnw2.verifying_key],
+            'delegates': [dw1.verifying_key, dw2.verifying_key],
             'witnesses': [],
             'schedulers': [],
             'notifiers': [],
@@ -393,7 +393,7 @@ class TestTotalEndToEnd(TestCase):
             async with aiohttp.ClientSession() as session:
                 r = await session.post('http://127.0.0.1:8081/', data=
                 make_tx_packed(
-                    mnw2.verifying_key(),
+                    mnw2.verifying_key,
                     'testing',
                     'test',
                     sender=Wallet(),
@@ -409,7 +409,7 @@ class TestTotalEndToEnd(TestCase):
             async with aiohttp.ClientSession() as session:
                 r = await session.post('http://127.0.0.1:8081/', data=
                 make_tx_packed(
-                    mnw2.verifying_key(),
+                    mnw2.verifying_key,
                     'testing',
                     'test',
                     sender=Wallet(),
@@ -423,7 +423,7 @@ class TestTotalEndToEnd(TestCase):
             async with aiohttp.ClientSession() as session:
                 r = await session.post('http://127.0.0.1:8081/', data=
                 make_tx_packed(
-                    mnw2.verifying_key(),
+                    mnw2.verifying_key,
                     'testing',
                     'test',
                     sender=Wallet(),
@@ -472,7 +472,7 @@ class TestTotalEndToEnd(TestCase):
                           contract='currency',
                           function='transfer',
                           kwargs={
-                              'to': bob.verifying_key().hex(),
+                              'to': bob.verifying_key,
                               'amount': 123
                           },
                           sender=joe
@@ -483,7 +483,7 @@ class TestTotalEndToEnd(TestCase):
                           contract='currency',
                           function='transfer',
                           kwargs={
-                              'to': joe.verifying_key().hex(),
+                              'to': joe.verifying_key,
                               'amount': 5678
                           },
                           sender=bob
