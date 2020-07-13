@@ -1,13 +1,13 @@
 import os
 from contracting.db.encoder import encode, decode
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro.crypto.wallet import Wallet
 import asyncio
 from copy import deepcopy
 from contracting.db.driver import ContractDriver, InMemDriver, Driver
-from cilantro_ee.nodes.delegate.delegate import Delegate
-from cilantro_ee.nodes.masternode.masternode import Masternode
+from cilantro.nodes.delegate.delegate import Delegate
+from cilantro.nodes.masternode.masternode import Masternode
 
-from cilantro_ee.crypto.transaction import build_transaction
+from cilantro.crypto.transaction import build_transaction
 from contracting import config
 
 from contracting.stdlib.bridge.decimal import ContractingDecimal

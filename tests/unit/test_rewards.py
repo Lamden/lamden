@@ -1,8 +1,8 @@
 from unittest import TestCase
-from cilantro_ee import rewards
+from cilantro import rewards
 from contracting.client import ContractingClient
-from cilantro_ee.contracts import sync
-import cilantro_ee
+from cilantro.contracts import sync
+import cilantro
 
 
 class TestRewards(TestCase):

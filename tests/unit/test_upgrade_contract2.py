@@ -1,8 +1,8 @@
 import os
-from cilantro_ee.contracts import sync
-from cilantro_ee.upgrade import build_pepper, get_version
-from cilantro_ee.crypto.wallet import Wallet
-import cilantro_ee
+from cilantro.contracts import sync
+from cilantro.upgrade import build_pepper, get_version
+from cilantro.crypto.wallet import Wallet
+import cilantro
 from unittest import TestCase
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
@@ -22,8 +22,8 @@ class TestUpdateContractFix(TestCase):
             initial_masternodes=self.mn_wallets,
             initial_delegates=self.dn_wallets,
             client=self.client,
-            filename=cilantro_ee.contracts.__path__[0] + '/genesis.json',
-            root=cilantro_ee.contracts.__path__[0]
+            filename=cilantro.contracts.__path__[0] + '/genesis.json',
+            root=cilantro.contracts.__path__[0]
         )
 
         self.upgrade = self.client.get_contract('upgrade')
@@ -204,7 +204,7 @@ class TestUpdateContractFix(TestCase):
         self.assertEqual(p, p)
 
     def test_git_branch(self):
-        path = os.path.join(os.path.dirname(cilantro_ee.__file__), '..')
+        path = os.path.join(os.path.dirname(cilantro.__file__), '..')
         os.chdir(path)
 
         from subprocess import check_output

@@ -1,5 +1,5 @@
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro.crypto.wallet import Wallet
+from cilantro.crypto.transaction import TransactionBuilder
 
 import requests
 

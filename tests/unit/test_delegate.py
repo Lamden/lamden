@@ -1,11 +1,11 @@
-from cilantro_ee.crypto import transaction
-from cilantro_ee.crypto.wallet import Wallet, verify
-from cilantro_ee.crypto import canonical
+from cilantro.crypto import transaction
+from cilantro.crypto.wallet import Wallet, verify
+from cilantro.crypto import canonical
 from contracting.db.driver import decode, ContractDriver, InMemDriver
 from contracting.client import ContractingClient
-from cilantro_ee.nodes.delegate import execution, work
-from cilantro_ee.nodes import masternode, delegate, base
-from cilantro_ee import storage, authentication, router
+from cilantro.nodes.delegate import execution, work
+from cilantro.nodes import masternode, delegate, base
+from cilantro import storage, authentication, router
 import zmq.asyncio
 import asyncio
 import hashlib

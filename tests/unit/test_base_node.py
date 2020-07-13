@@ -1,8 +1,8 @@
-from cilantro_ee.nodes.masternode import masternode
-from cilantro_ee.nodes import base
-from cilantro_ee import router, storage, network, authentication
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.crypto import canonical
+from cilantro.nodes.masternode import masternode
+from cilantro.nodes import base
+from cilantro import router, storage, network, authentication
+from cilantro.crypto.wallet import Wallet
+from cilantro.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 import zmq.asyncio

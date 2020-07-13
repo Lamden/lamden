@@ -1,5 +1,5 @@
-from cilantro_ee.crypto import transaction
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro.crypto import transaction
+from cilantro.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, InMemDriver
 from contracting.client import ContractingClient
 import zmq.asyncio

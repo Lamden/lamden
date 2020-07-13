@@ -1,16 +1,16 @@
 import unittest
 from tests.inprog.orchestrator import *
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro.crypto.wallet import Wallet
 import zmq.asyncio
 from contracting.client import ContractingClient
 from decimal import Decimal
-from cilantro_ee import storage
+from cilantro import storage
 from .mock import mocks
 import contracting
-import cilantro_ee
+import cilantro
 import importlib
-from cilantro_ee.nodes import base
-from cilantro_ee.upgrade import reload_module, build_pepper, run_install, get_version, version_reboot
+from cilantro.nodes import base
+from cilantro.upgrade import reload_module, build_pepper, run_install, get_version, version_reboot
 
 
 class TestUpgradeOrchestration(unittest.TestCase):
@@ -142,7 +142,7 @@ class TestUpgradeOrchestration(unittest.TestCase):
         current_branch = get_version()
         current_contracting_branch = get_version(os.path.join(os.path.dirname(contracting.__file__), '..'))
 
-        cil_path = os.path.dirname(cilantro_ee.__file__)
+        cil_path = os.path.dirname(cilantro.__file__)
         pepper = build_pepper(cil_path)
 
         network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)

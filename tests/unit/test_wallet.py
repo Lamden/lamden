@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro_ee.crypto.wallet import Wallet, verify
-from cilantro_ee.crypto.zbase import bytes_to_zbase32
+from cilantro.crypto.wallet import Wallet, verify
+from cilantro.crypto.zbase import bytes_to_zbase32
 
 
 class TestWallet(TestCase):

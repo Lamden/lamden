@@ -1,4 +1,4 @@
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro.crypto.wallet import Wallet
 
 import random
 

@@ -6,7 +6,7 @@ import zmq.asyncio
 from contracting.client import ContractingClient
 
 from contracting.db.driver import InMemDriver
-from cilantro_ee.storage.contract import StateDriver
+from cilantro.storage.contract import StateDriver
 
 class TestTotalEndToEnd(TestCase):
     def setUp(self):

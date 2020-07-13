@@ -1,9 +1,9 @@
 from unittest import TestCase
 from contracting.db.encoder import encode, decode
-from cilantro_ee.crypto.canonical import merklize, block_from_subblocks
+from cilantro.crypto.canonical import merklize, block_from_subblocks
 
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.nodes.masternode import contender
+from cilantro.crypto.wallet import Wallet
+from cilantro.nodes.masternode import contender
 import asyncio
 import secrets
 

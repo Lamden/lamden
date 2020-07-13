@@ -1,11 +1,11 @@
-from cilantro_ee.nodes.masternode import masternode
-from cilantro_ee.nodes import base
-from cilantro_ee import router, storage, authentication
+from cilantro.nodes.masternode import masternode
+from cilantro.nodes import base
+from cilantro import router, storage, authentication
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 import zmq.asyncio
 import asyncio
-from cilantro_ee.crypto.wallet import Wallet
+from cilantro.crypto.wallet import Wallet
 
 from unittest import TestCase
 

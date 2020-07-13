@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-import cilantro_ee.nodes.masternode.masternode
-from cilantro_ee.nodes.delegate.delegate import Delegate
+import cilantro.nodes.masternode.masternode
+from cilantro.nodes.delegate.delegate import Delegate
 
-from cilantro_ee.nodes.masternode.masternode import TransactionBatcher
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.crypto import canonical
-from cilantro_ee.storage import StateDriver
+from cilantro.nodes.masternode.masternode import TransactionBatcher
+from cilantro.crypto.wallet import Wallet
+from cilantro.crypto import canonical
+from cilantro.storage import StateDriver
 
 from contextlib import suppress
 import zmq.asyncio
@@ -15,8 +15,8 @@ import asyncio
 from contracting import config
 import os
 import capnp
-from cilantro_ee.messages import capnp_struct as schemas
-from cilantro_ee.crypto.transaction import TransactionBuilder
+from cilantro.messages import capnp_struct as schemas
+from cilantro.crypto.transaction import TransactionBuilder
 
 from contracting.db.driver import ContractDriver
 
@@ -123,7 +123,7 @@ class ComplexMockMasternode:
 
     async def send_new_block_to_socket(self, b=None):
         if b is None:
-            b = cilantro_ee.nodes.masternode.masternode.get_genesis_block()
+            b = cilantro.nodes.masternode.masternode.get_genesis_block()
 
         await self.delegate_nbn.send(canonical.dict_to_msg_block(b))
 
@@ -184,7 +184,7 @@ class TestDelegateFullFlow(TestCase):
 
             w = await mock_master.mn_agg.recv_multipart()
 
-            b = cilantro_ee.nodes.masternode.masternode.get_genesis_block()
+            b = cilantro.nodes.masternode.masternode.get_genesis_block()
             b['blockNum'] = 2
 
             await mock_master.send_new_block_to_socket(b)

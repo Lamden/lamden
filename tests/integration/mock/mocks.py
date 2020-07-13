@@ -1,12 +1,12 @@
-from cilantro_ee.crypto.wallet import Wallet
-from cilantro_ee.crypto import transaction
+from cilantro.crypto.wallet import Wallet
+from cilantro.crypto import transaction
 from contracting.db.driver import ContractDriver, Driver
-from cilantro_ee import storage
-from cilantro_ee.nodes import masternode, delegate
+from cilantro import storage
+from cilantro.nodes import masternode, delegate
 import asyncio
 import random
 import httpx
-from cilantro_ee.logger.base import get_logger
+from cilantro.logger.base import get_logger
 
 import os
 

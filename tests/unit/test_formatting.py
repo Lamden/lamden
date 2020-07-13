@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro_ee.formatting import primatives, rules
+from cilantro.formatting import primatives, rules
 
 
 class TestFormatting(TestCase):
