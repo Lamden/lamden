@@ -1,6 +1,6 @@
 import os
 from cilantro.contracts import sync
-from cilantro.upgrade import build_pepper, get_version
+from cilantro.upgrade import build_pepper, get_version, build_pepper2
 from cilantro.crypto.wallet import Wallet
 import cilantro
 from unittest import TestCase
@@ -202,6 +202,10 @@ class TestUpdateContractFix(TestCase):
     def test_build_pepper(self):
         p = build_pepper()
         self.assertEqual(p, p)
+
+    def test_build_pepper_new(self):
+        p = build_pepper2()
+        self.assertEqual(p, '12efdca5ee2b4103c549feab7d9fdbb95b374d3e447cbb85be81c9021a641426')
 
     def test_git_branch(self):
         path = os.path.join(os.path.dirname(cilantro.__file__), '..')
