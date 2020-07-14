@@ -11,7 +11,7 @@ import importlib
 import sys
 import secrets
 import json
-
+import hashlib
 from functools import partial
 
 
@@ -91,7 +91,7 @@ class UpgradeManager:
                                   f' Only contract update={only_contract}')
 
                     if version_reboot(self.cilantro_branch_name, self.contracting_branch_name, only_contract):
-                        p = build_pepper(cil_path)
+                        p = build_pepper2()
                         if self.pepper != p:
                             self.log.error(f'peppers mismatch: {self.pepper} != {p}')
                             self.log.error(f'Restore previous versions: {old_branch_name} -> {old_contract_name}')
@@ -160,9 +160,14 @@ def build_pepper(pkg_dir_path=os.path.dirname(cilantro.__file__)):
     pepper = dirhash(pkg_dir_path, 'sha256', excluded_extensions=['pyc'])
     return pepper
 
+def build_pepper2():
+    path1 = build_pepper(os.path.dirname(cilantro.__file__))
+    path2 = build_pepper(os.path.dirname(contracting.__file__))
+    pepper2 = hashlib.sha256( (path1 + path2).encode('utf-8')).hexdigest()
+    return pepper2
 
 def verify_cil_pkg(pkg_hash):
-    current_pepper = build_pepper(pkg_dir_path=os.path.dirname(cilantro.__file__))
+    current_pepper = build_pepper2()
 
     if current_pepper == pkg_hash:
         return True
