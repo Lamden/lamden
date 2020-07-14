@@ -14,7 +14,7 @@ class TestRewards(TestCase):
         self.client.flush()
 
     def sync(self):
-        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex'], client=self.client)
+        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
 
     def test_contract_exists_false_before_sync(self):
         self.assertFalse(self.rewards.contract_exists('stamp_cost', self.client))
@@ -147,7 +147,7 @@ class TestRewards(TestCase):
             contract='rewards',
             variable='S',
             arguments=['value'],
-            value=[0.4, 0.4, 0.1, 0.1]
+            value=[0.4, 0.3, 0.1, 0.1, 0.1]
         )
         self.client.set_var(
             contract='foundation',
@@ -161,19 +161,52 @@ class TestRewards(TestCase):
             value=100
         )
 
+        self.client.set_var(
+            contract='thing_1',
+            variable='__developer__',
+            value='stu2'
+        )
+
+        self.client.set_var(
+            contract='thing_2',
+            variable='__developer__',
+            value='jeff'
+        )
+
+        self.client.set_var(
+            contract='thing_3',
+            variable='__developer__',
+            value='alex'
+        )
+
         block = {
             'number': 1,
             'subblocks': [
                 {
                     'transactions': [
                         {
-                            'stamps_used': 1000
+                            'stamps_used': 1000,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_1'
+                                }
+                            }
                         },
                         {
-                            'stamps_used': 2000
+                            'stamps_used': 2000,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_2'
+                                }
+                            }
                         },
                         {
-                            'stamps_used': 3000
+                            'stamps_used': 3000,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_3'
+                                }
+                            }
                         }
                     ]
                 },
@@ -181,13 +214,28 @@ class TestRewards(TestCase):
                 {
                     'transactions': [
                         {
-                            'stamps_used': 4500
+                            'stamps_used': 4500,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_1'
+                                }
+                            }
                         },
                         {
-                            'stamps_used': 1250
+                            'stamps_used': 1250,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_1'
+                                }
+                            }
                         },
                         {
-                            'stamps_used': 2750
+                            'stamps_used': 2750,
+                            'transaction': {
+                                'payload': {
+                                    'contract': 'thing_2'
+                                }
+                            }
                         }
                     ]
                 }
@@ -196,27 +244,37 @@ class TestRewards(TestCase):
 
         # tau to distribute should be 145
 
-        tau = self.rewards.calculate_tau_to_split(block, client=self.client)
+        stamps = self.rewards.stamps_in_block(block)
+
+        tau = stamps / 100
 
         self.assertEqual(tau, 145)
 
         self.rewards.issue_rewards(block, client=self.client)
 
-        total_tau_to_split = 145
+        # Stu is owed: 6750 stamps / 100 / 3 =
+        # Jeff is owed: 4750 stamps / 100 / 3= 47.5
+        # Alex is owed:
 
-        m, d, f = self.rewards.calculate_all_rewards(total_tau_to_split, self.client)
+        m, d, f, mapping = self.rewards.calculate_all_rewards(total_stamps_to_split=stamps, client=self.client, block=block)
 
         masters = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
         delegates = self.client.get_var(contract='delegates', variable='S', arguments=['members'])
 
         for mn in masters:
             current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[mn], mark=False)
-            self.assertEqual(current_balance, m)
+            self.assertEqual(current_balance, m / 100)
 
         for dl in delegates:
             current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dl], mark=False)
-            self.assertEqual(current_balance, d)
+            self.assertEqual(current_balance, d / 100)
 
         current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
-        self.assertEqual(current_balance, f)
+        self.assertEqual(current_balance, f / 100)
+
+        for dev in mapping.keys():
+            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dev],
+                                                  mark=False)
+
+            self.assertAlmostEqual(current_balance, mapping[dev] / 100)
 
