@@ -71,7 +71,9 @@ class RewardManager:
         return rounded_reward
 
     @staticmethod
-    def calculate_all_rewards(total_stamps_to_split, block, client: ContractingClient):
+    def calculate_all_rewards(block, client: ContractingClient):
+        total_stamps_to_split = RewardManager.stamps_in_block(block)
+
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
             client.get_var(contract='rewards', variable='S', arguments=['value'])
 
@@ -132,7 +134,6 @@ class RewardManager:
     @staticmethod
     def issue_rewards(block, client: ContractingClient):
         rewards = RewardManager.calculate_all_rewards(
-            total_stamps_to_split=RewardManager.stamps_in_block(block),
             client=client,
             block=block
         )
