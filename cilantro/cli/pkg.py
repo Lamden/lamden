@@ -11,7 +11,10 @@ import hashlib
 
 
 def build_pepper(pkg_dir_path):
-    pepper = dirhash(pkg_dir_path, 'sha256', excluded_extensions = ['pyc'])
+    pepper1 = dirhash(pkg_dir_path, 'sha256', excluded_extensions = ['pyc'])
+    contracting_dir_path = pkg_dir_path + '/../../contracting/contracting'
+    pepper2 = dirhash(contracting_dir_path, 'sha256', excluded_extensions = ['pyc'])
+    pepper = hashlib.sha256( (pepper1 + pepper2).encode('utf-8')).hexdigest()
     print(pepper)
     return pepper
 
@@ -43,7 +46,7 @@ def pkg_ops(arg):
 if __name__ == '__main__':
     CURR_DIR = Path(os.getcwd())
     os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
-    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/cilantro'
+    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') #+ '/cilantro'
 
     print(os.environ.get('CIL_PATH'))
 

@@ -10,7 +10,7 @@ import contracting
 import cilantro
 import importlib
 from cilantro.nodes import base
-from cilantro.upgrade import reload_module, build_pepper, run_install, get_version, version_reboot
+from cilantro.upgrade import reload_module, build_pepper2, run_install, get_version, version_reboot
 
 
 class TestUpgradeOrchestration(unittest.TestCase):
@@ -143,7 +143,7 @@ class TestUpgradeOrchestration(unittest.TestCase):
         current_contracting_branch = get_version(os.path.join(os.path.dirname(contracting.__file__), '..'))
 
         cil_path = os.path.dirname(cilantro.__file__)
-        pepper = build_pepper(cil_path)
+        pepper = build_pepper2()
 
         network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)
         network.flush()
