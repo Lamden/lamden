@@ -160,11 +160,13 @@ def build_pepper(pkg_dir_path=os.path.dirname(cilantro.__file__)):
     pepper = dirhash(pkg_dir_path, 'sha256', excluded_extensions=['pyc'])
     return pepper
 
+
 def build_pepper2():
     path1 = build_pepper(os.path.dirname(cilantro.__file__))
     path2 = build_pepper(os.path.dirname(contracting.__file__))
-    pepper2 = hashlib.sha256( (path1 + path2).encode('utf-8')).hexdigest()
+    pepper2 = hashlib.sha256((path1 + path2).encode('utf-8')).hexdigest()
     return pepper2
+
 
 def verify_cil_pkg(pkg_hash):
     current_pepper = build_pepper2()
