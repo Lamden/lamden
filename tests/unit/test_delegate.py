@@ -101,7 +101,9 @@ def get():
             nonce=0
         )
 
-        result = execution.execute_tx(self.client.executor, decode(tx), stamp_cost=20_000)
+        e = execution.SerialExecutor(executor=self.client.executor)
+
+        result = e.execute_tx(decode(tx), stamp_cost=20_000)
 
         self.assertEqual(result['status'], 0)
         self.assertEqual(result['state'][0]['key'], 'testing.v')
@@ -111,7 +113,9 @@ def get():
     def test_generate_environment_creates_datetime_wrapped_object(self):
         timestamp = int(time.time())
 
-        e = execution.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        e = exe.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
 
         t = datetime.utcfromtimestamp(timestamp)
 
@@ -126,21 +130,27 @@ def get():
     def test_generate_environment_creates_input_hash(self):
         timestamp = time.time()
 
-        e = execution.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        e = exe.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
 
         self.assertEqual(e['__input_hash'], 'A' * 64)
 
     def test_generate_environment_creates_block_hash(self):
         timestamp = time.time()
 
-        e = execution.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        e = exe.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
 
         self.assertEqual(e['block_hash'], storage.get_latest_block_hash(self.client.raw_driver))
 
     def test_generate_environment_creates_block_num(self):
         timestamp = time.time()
 
-        e = execution.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        e = exe.generate_environment(self.client.raw_driver, timestamp, 'A' * 64)
 
         self.assertEqual(e['block_num'], storage.get_latest_block_height(self.client.raw_driver) + 1)
 
@@ -196,8 +206,9 @@ def get():
             'transactions': [tx, tx2]
         }
 
-        results = execution.execute_tx_batch(
-            executor=self.client.executor,
+        e = execution.SerialExecutor(executor=self.client.executor)
+
+        results = e.execute_tx_batch(
             driver=self.client.raw_driver,
             batch=tx_batch,
             timestamp=time.time(),
@@ -292,8 +303,9 @@ def get():
             'transactions': [tx, tx2, tx3, tx4]
         }
 
-        results = execution.execute_tx_batch(
-            executor=self.client.executor,
+        e = execution.SerialExecutor(executor=self.client.executor)
+
+        results = e.execute_tx_batch(
             driver=self.client.raw_driver,
             batch=tx_batch,
             timestamp=time.time(),
@@ -409,8 +421,9 @@ def get():
 
         work = [tx_batch_1, tx_batch_2]
 
-        results = execution.execute_work(
-            executor=self.client.executor,
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        results = exe.execute_work(
             driver=self.client.raw_driver,
             work=work,
             previous_block_hash='B' * 64,
@@ -460,8 +473,9 @@ def get():
 
         w = Wallet()
 
-        results = execution.execute_work(
-            executor=self.client.executor,
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        results = exe.execute_work(
             driver=self.client.raw_driver,
             work=work,
             previous_block_hash='B' * 64,

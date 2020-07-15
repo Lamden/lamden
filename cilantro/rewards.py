@@ -127,8 +127,6 @@ class RewardManager:
             dev_reward = round((amount / stamp_cost), DUST_EXPONENT)
             RewardManager.add_to_balance(vk=recipient, amount=dev_reward, client=client)
 
-            log.info(f'Developer {recipient[:8]} reward: {dev_reward}t.')
-
         log.info(f'Remainder is burned.')
 
     @staticmethod
