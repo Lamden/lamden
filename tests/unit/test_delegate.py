@@ -216,6 +216,112 @@ def get():
         self.assertEqual(len(td2['state']), 0)
         self.assertEqual(td2['stamps_used'], 1)
 
+    def test_execute_tx_batch_returns_all_transactions_4_in_order(self):
+        test_contract = '''
+v = Variable()
+
+@construct
+def seed():
+    v.set('hello')
+
+@export
+def set(var: str):
+    v.set(var)
+
+@export
+def get():
+    return v.get()
+        '''
+
+        self.client.submit(test_contract, name='testing')
+
+        self.client.raw_driver.commit()
+        self.client.raw_driver.clear_pending_state()
+
+        stu = Wallet()
+
+        tx = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='set',
+            kwargs={'var': 'howdy'},
+            stamps=100_000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        tx = decode(tx)
+
+        tx2 = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='get',
+            kwargs={},
+            stamps=100_000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        tx2 = decode(tx2)
+
+        tx3 = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='set',
+            kwargs={'var': 'something'},
+            stamps=100_000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        tx3 = decode(tx3)
+
+        tx4 = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='set',
+            kwargs={'var': 'something2'},
+            stamps=100_000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        tx4 = decode(tx4)
+
+        tx_batch = {
+            'transactions': [tx, tx2, tx3, tx4]
+        }
+
+        results = execution.execute_tx_batch(
+            executor=self.client.executor,
+            driver=self.client.raw_driver,
+            batch=tx_batch,
+            timestamp=time.time(),
+            input_hash='A' * 64,
+            stamp_cost=20_000
+        )
+
+        td1, td2, td3, td4 = results
+
+        self.assertEqual(td1['status'], 0)
+        self.assertEqual(td1['state'][0]['key'], 'testing.v')
+        self.assertEqual(td1['state'][0]['value'], 'howdy')
+        self.assertEqual(td1['stamps_used'], 1)
+
+        self.assertEqual(td2['status'], 0)
+        self.assertEqual(len(td2['state']), 0)
+        self.assertEqual(td2['stamps_used'], 1)
+
+        self.assertEqual(td3['status'], 0)
+        self.assertEqual(td3['state'][0]['key'], 'testing.v')
+        self.assertEqual(td3['state'][0]['value'], 'something')
+        self.assertEqual(td3['stamps_used'], 1)
+
+        self.assertEqual(td4['status'], 0)
+        self.assertEqual(td4['state'][0]['key'], 'testing.v')
+        self.assertEqual(td4['state'][0]['value'], 'something2')
+        self.assertEqual(td4['stamps_used'], 1)
+
     def test_execute_work_multiple_transaction_batches_works(self):
         test_contract = '''
 v = Variable()

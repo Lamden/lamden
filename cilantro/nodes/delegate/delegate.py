@@ -110,6 +110,7 @@ class Delegate(base.Node):
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver)
+        self.transaction_executor = execution.SerialExecutor(executor=self.executor)
 
         self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces)
         self.router.add_service(WORK_SERVICE, self.work_processor)
@@ -177,8 +178,7 @@ class Delegate(base.Node):
             block = self.new_block_processor.q.pop(0)
             self.process_new_block(block)
 
-        results = execution.execute_work(
-            executor=self.executor,
+        results = self.transaction_executor.execute_work(
             driver=self.driver,
             work=filtered_work,
             wallet=self.wallet,
