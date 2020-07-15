@@ -14,23 +14,14 @@ setup(
 
     # Note install requirements have to be same as dev-requirement.txt (for aws)
     install_requires=[
-        # utils
-        'coloredlogs',
-        'checksumdir==1.1.7',
-        'PyNaCl==1.2.1',
-        'pyzmq==19.0.0',
-        'requests>=2.21.0',
-        'uvloop>=0.9.1',
-        'aiohttp',
-        'sanic==19.6.3',
-        'sanic-limiter>=0.1.3',
-        'Sanic-Cors>=0.9.9.post1',
-        'contracting',
-        'pymongo',
-        'termcolor',
-        'Cython==0.29',
-        'argparse_actions==0.4.4',
-        'psutil==5.7.0',
+        "sanic",
+        "coloredlogs",
+        "pymongo",
+        "pyzmq",
+        "requests",
+        "contracting",
+        "checksumdir",
+        "pynacl"
     ],
     entry_points={
         'console_scripts': [

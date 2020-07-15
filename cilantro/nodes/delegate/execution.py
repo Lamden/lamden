@@ -1,16 +1,16 @@
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.time import Datetime
-from contracting.db.encoder import encode, decode, safe_repr
+from contracting.db.encoder import encode, safe_repr
 from cilantro.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from cilantro.logger.base import get_logger
 from datetime import datetime
-
-log = get_logger('EXE')
 
 import multiprocessing as mp
 import copy
 from time import time, sleep
 import queue
+
+log = get_logger('EXE')
 
 __N_WORKER_PER_DELEGATES__ = 4
 __N_DELEGATES__ = 2
@@ -30,7 +30,8 @@ POOL_WAIT_SLEEP = 0.01
 TX_RERUN_SLEEP = 1
 N_TRY_PER_TX = 3
 
-def setPoolExecutor(executor):
+
+def set_pool_executor(executor: Executor):
     global PoolExecutor
     PoolExecutor = executor
 
@@ -137,15 +138,15 @@ def start_pool():
 
 
 def get_pool(n_needed):
-    rez_pool={}
-    cnt=0
+    rez_pool = {}
+    cnt = 0
     n_step = 0
     if n_needed > 0:
         if n_needed > __N_WORKER_PER_DELEGATES__:
             n_needed = __N_WORKER_PER_DELEGATES__
         while n_step < 3:
             for i in range(__N_WORKER__):
-                if busy_pool[i]== 0:
+                if busy_pool[i] == 0:
                     busy_pool[i] = 1
                     rez_pool[cnt] = i
                     cnt += 1
@@ -154,12 +155,13 @@ def get_pool(n_needed):
             if cnt > 0:
                 break
             else:
-                time.sleep(POOL_WAIT_SLEEP)
+                sleep(POOL_WAIT_SLEEP)
                 n_step += 1
     return rez_pool, cnt
 
+
 def free_pool(rez_pool):
-    for k,v in rez_pool.items():
+    for k, v in rez_pool.items():
         busy_pool[v] = 0
 
 
@@ -198,7 +200,7 @@ def wait_tx_result(N_tx, work_pool):
 def execute_tx_batch(executor, driver, batch, timestamp, input_hash, stamp_cost, bhash='0' * 64, num=1):
 
     environment = generate_environment(driver, timestamp, input_hash, bhash, num)
-    setPoolExecutor(executor)
+    set_pool_executor(executor)
 
     global pool
     if len(pool)==0:
@@ -230,7 +232,6 @@ def execute_tx_batch(executor, driver, batch, timestamp, input_hash, stamp_cost,
     tx_done_ok = [ tx['tx_number'] for tx in tx_data]
     tx_bad = [ tx['tx_number']  for tx in tx_data  if tx['status'] != 0]
     log.debug(f"tx_data={len(tx_data)}  tx_done_ok={tx_done_ok}  tx_bad={tx_bad} duration= {time() - s}")
-
 
     if len(tx_bad) > 0:
         free_pool(work_pool)

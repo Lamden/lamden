@@ -13,9 +13,9 @@ from cilantro.crypto.transaction import TransactionException
 import ssl
 import asyncio
 
-log = get_logger("MN-WebServer")
-
 from cilantro.crypto import transaction
+
+log = get_logger("MN-WebServer")
 
 
 class ByteEncoder(_json.JSONEncoder):

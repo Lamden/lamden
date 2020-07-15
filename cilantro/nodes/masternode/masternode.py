@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import time
-from cilantro import router, upgrade
+from cilantro import router
 from cilantro.crypto.wallet import Wallet
 from cilantro.storage import BlockStorage, get_latest_block_height
 from cilantro.nodes.masternode import contender, webserver

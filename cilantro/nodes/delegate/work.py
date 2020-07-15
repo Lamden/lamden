@@ -1,7 +1,6 @@
 import asyncio
 from copy import deepcopy
 import time
-import heapq
 
 
 async def gather_transaction_batches(queue: dict, expected_batches: int, timeout=5):

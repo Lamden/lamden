@@ -16,7 +16,6 @@ from cilantro.nodes.masternode.masternode import Masternode
 from cilantro.nodes.delegate.delegate import Delegate
 
 import time
-from getpass import getpass
 
 
 def start_mongo():
