@@ -10,14 +10,18 @@ sudo apt-get update
 sudo apt-get install python3-pip -y
 ```
 
-### Other Pip3 Pkg
-```bash
-pip3 install --upgrade pip setuptools
-```
-
 ### Install MongoDB
+As copied from here: https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
 ```bash
-sudo apt-get install -y mongodb
+wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
+sudo apt-get install -y mongodb-org
+echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org-server hold" | sudo dpkg --set-selections
+echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
+echo "mongodb-org-tools hold" | sudo dpkg --set-selections
+sudo systemctl start mongod
 ```
 
 ### Install Haveged (Recommended)
@@ -31,31 +35,9 @@ systemctl start haveged
 systemctl enable haveged
 ```
 
-### Install Contracting
+### Install Lamden
 ```
-git clone https://github.com/Lamden/contracting.git
-cd contracting
-git fetch
-git checkout dev
-python3 setup.py develop
-```
-
-### Install Cilantro
-```
-cd ~
-git clone https://github.com/Lamden/cilantro-enterprise.git
-cd cilantro-enterprise
-git fetch
-git checkout ori1-rel-gov-socks
-python3 setup.py develop
-```
-
-### Setup and run Mongo
-```
-mkdir ~/blocks
-mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip 127.0.0.1 --fork
-# cd cilantro-enterprise/scripts
-# python3 create_user.py # nolonger needed
+pip3 install lamden
 ```
 
 ### Make a Constitution
@@ -74,5 +56,5 @@ Ctrl+X, save the file.
 
 ### Start your node
 ```
-cil <masternode | delegate> -k <sk in hex format> -bn <list of ip addresses that are currently online>
+lamden <masternode | delegate> -k <sk in hex format> -bn <list of ip addresses that are currently online>
 ```
