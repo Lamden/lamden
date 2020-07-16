@@ -1,8 +1,8 @@
-from cilantro import storage
+from lamden import storage
 from contracting.db.driver import ContractDriver
 from unittest import TestCase
 
-from cilantro.storage import BlockStorage
+from lamden.storage import BlockStorage
 
 
 class TestNonce(TestCase):

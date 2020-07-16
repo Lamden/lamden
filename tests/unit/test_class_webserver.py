@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from cilantro.nodes.masternode.webserver import WebServer
-from cilantro.crypto.wallet import Wallet
+from lamden.nodes.masternode.webserver import WebServer
+from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
-from cilantro.storage import BlockStorage
-from cilantro.crypto.transaction import build_transaction
-from cilantro import storage
+from lamden.storage import BlockStorage
+from lamden.crypto.transaction import build_transaction
+from lamden import storage
 
 n = ContractDriver()
 

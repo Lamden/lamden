@@ -3,8 +3,8 @@ import subprocess
 from checksumdir import dirhash
 from contracting.client import ContractingClient
 
-from cilantro.logger.base import get_logger
-import cilantro
+from lamden.logger.base import get_logger
+import lamden
 import contracting
 import os
 import importlib
@@ -75,7 +75,7 @@ class UpgradeManager:
                 self.log.info(f'Rebooting Node with new verions: '
                               f'CIL -> {self.cilantro_branch_name}, CON -> {self.contracting_branch_name}')
 
-                cil_path = os.path.dirname(cilantro.__file__)
+                cil_path = os.path.dirname(lamden.__file__)
 
                 self.log.info(f'CIL_PATH={cil_path}')
                 self.log.info(f'CONTRACTING_PATH={os.path.dirname(contracting.__file__)}')
@@ -153,16 +153,16 @@ class UpgradeManager:
         subprocess.check_call(args)
 
 
-def build_pepper(pkg_dir_path=os.path.dirname(cilantro.__file__)):
+def build_pepper(pkg_dir_path=os.path.dirname(lamden.__file__)):
     if pkg_dir_path is None:
-        pkg_dir_path = '../../cilantro'
+        pkg_dir_path = '../../lamden'
 
     pepper = dirhash(pkg_dir_path, 'sha256', excluded_extensions=['pyc'])
     return pepper
 
 
 def build_pepper2():
-    path1 = build_pepper(os.path.dirname(cilantro.__file__))
+    path1 = build_pepper(os.path.dirname(lamden.__file__))
     path2 = build_pepper(os.path.dirname(contracting.__file__))
     pepper2 = hashlib.sha256((path1 + path2).encode('utf-8')).hexdigest()
     return pepper2
@@ -183,7 +183,7 @@ def run(*args):
 
 def run_install(only_contract=False):
     if not only_contract:
-        path = os.path.join(os.path.dirname(cilantro.__file__), '..')
+        path = os.path.join(os.path.dirname(lamden.__file__), '..')
         os.chdir(f'{path}')
         subprocess.check_call(['python3', "setup.py", "develop"])  # "install"
 
@@ -192,7 +192,7 @@ def run_install(only_contract=False):
     return subprocess.check_call(['python3', "setup.py", "develop"])  # "install"
 
 
-def get_version(path = os.path.join(os.path.dirname(cilantro.__file__), '..')):
+def get_version(path = os.path.join(os.path.dirname(lamden.__file__), '..')):
     cur_branch_name = None
     try:
         os.chdir(path)
@@ -207,7 +207,7 @@ def get_version(path = os.path.join(os.path.dirname(cilantro.__file__), '..')):
 def version_reboot(new_branch_name, new_contract_name='dev', contract_only=False):
     try:
         if not contract_only:
-            path = os.path.join(os.path.dirname(cilantro.__file__), '..')
+            path = os.path.join(os.path.dirname(lamden.__file__), '..')
             os.chdir(path)
 
             rel = new_branch_name  # input("Enter New Release branch:")

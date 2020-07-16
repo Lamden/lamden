@@ -1,5 +1,5 @@
-from cilantro.crypto.wallet import Wallet
-from cilantro.crypto.transaction import TransactionBuilder
+from lamden.crypto.wallet import Wallet
+from lamden.crypto.transaction import TransactionBuilder
 
 import requests
 

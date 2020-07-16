@@ -1,9 +1,9 @@
 from unittest import TestCase
-from cilantro.crypto import transaction
-from cilantro.crypto.transaction import build_transaction
-from cilantro.crypto.wallet import Wallet, verify
+from lamden.crypto import transaction
+from lamden.crypto.transaction import build_transaction
+from lamden.crypto.wallet import Wallet, verify
 from contracting.db.encoder import encode, decode
-from cilantro import storage
+from lamden import storage
 from contracting.client import ContractingClient
 
 

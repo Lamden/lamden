@@ -1,4 +1,4 @@
-from cilantro.formatting.primatives import *
+from lamden.formatting.primatives import *
 
 TRANSACTION_PAYLOAD_RULES = {
     'sender': vk_is_formatted,

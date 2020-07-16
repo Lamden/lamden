@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.crypto import canonical
+from lamden.crypto import canonical
 
 
 class TestCanonicalCoding(TestCase):

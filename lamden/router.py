@@ -1,11 +1,11 @@
 import asyncio
-from cilantro.crypto.wallet import Wallet
+from lamden.crypto.wallet import Wallet
 import zmq
 import zmq.asyncio
 from contracting.db.encoder import encode, decode
 from zmq.error import ZMQBaseError
 from zmq.auth.certs import load_certificate
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 import pathlib
 import os
 CERT_DIR = 'cilsocks'

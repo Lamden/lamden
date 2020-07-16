@@ -1,24 +1,24 @@
-import cilantro.nodes.masternode.masternode
-from cilantro.nodes.masternode.masternode import Masternode
+import lamden.nodes.masternode.masternode
+from lamden.nodes.masternode.masternode import Masternode
 from unittest import TestCase
-from cilantro.networking.discovery import *
+from lamden.networking.discovery import *
 import zmq
 import zmq.asyncio
-from cilantro.crypto.wallet import Wallet
+from lamden.crypto.wallet import Wallet
 import asyncio
-from cilantro.network import Network
-from cilantro.crypto import canonical
+from lamden.network import Network
+from lamden.crypto import canonical
 from contracting.client import ContractingClient
-from cilantro.nodes.work_inbox import WorkInbox
-from cilantro.nodes.new_block_inbox import NBNInbox
-from cilantro.struct import _socket
-from cilantro.crypto.transaction import TransactionBuilder
-from cilantro.crypto.transaction_batch import transaction_list_to_transaction_batch
-from cilantro.storage import StateDriver
+from lamden.nodes.work_inbox import WorkInbox
+from lamden.nodes.new_block_inbox import NBNInbox
+from lamden.struct import _socket
+from lamden.crypto.transaction import TransactionBuilder
+from lamden.crypto.transaction_batch import transaction_list_to_transaction_batch
+from lamden.storage import StateDriver
 from contracting import config
 import os
 import capnp
-from cilantro.messages import capnp_struct as schemas
+from lamden.messages import capnp_struct as schemas
 import secrets
 from tests import random_txs
 
@@ -983,7 +983,7 @@ class TestNewMasternode(TestCase):
 
         _, _, msg = self.loop.run_until_complete(tasks)
 
-        self.assertEqual(msg, canonical.dict_to_msg_block(cilantro.nodes.masternode.masternode.get_genesis_block()))
+        self.assertEqual(msg, canonical.dict_to_msg_block(lamden.nodes.masternode.masternode.get_genesis_block()))
 
     def test_join_quorum_updates_with_block_if_nbn_has_block(self):
         m = Masternode(

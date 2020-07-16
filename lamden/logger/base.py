@@ -6,7 +6,7 @@ import logging, coloredlogs
 import os, sys
 from os.path import dirname
 from logging.handlers import RotatingFileHandler
-import cilantro
+import lamden
 
 VALID_LVLS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 _LOG_LVL = os.getenv('LOG_LEVEL', None)
@@ -23,10 +23,10 @@ req_log.propagate = True
 
 
 def get_main_log_path():
-    import cilantro
+    import lamden
 
-    root = cilantro.__file__
-    log_path = '/'.join(root.split('/')[:-2]) + '/logs/cilantro.log'
+    root = lamden.__file__
+    log_path = '/'.join(root.split('/')[:-2]) + '/logs/lamden.log'
 
     # Create log directory if it does not exist
     log_dir = os.path.dirname(log_path)
@@ -173,7 +173,7 @@ def get_logger(name=''):
     if _LOG_LVL == 0:
         return MockLogger()
 
-    filedir = "{}/logs/{}".format(dirname(cilantro.__path__[0]), os.getenv('TEST_NAME', 'test'))
+    filedir = "{}/logs/{}".format(dirname(lamden.__path__[0]), os.getenv('TEST_NAME', 'test'))
     filename = "{}/{}.log".format(filedir, os.getenv('HOST_NAME', name))
 
     if not os.path.exists(filedir):

@@ -8,11 +8,9 @@ with open("README.md", "r") as fh:
 
 
 setup(
-    name='cilantro',
+    name='lamden',
     version=__version__,
     packages=find_packages(),
-
-    # Note install requirements have to be same as dev-requirement.txt (for aws)
     install_requires=[
         "sanic",
         "coloredlogs",
@@ -25,18 +23,14 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'cil=cilantro.cli.cmd:main'
+            'lamden=lamden.cli.cmd:main'
         ],
     },
     zip_safe=False,
-    package_data={
-        '': [],
-        'cilantro': ['cilantro.conf'],
-    },
     description="Lamden Blockchain",
     long_description=long_desc,
     long_description_content_type="text/markdown",
-    url='https://github.com/Lamden/cilantro-enterprise',
+    url='https://github.com/Lamden/lamden',
     author='Lamden',
     author_email='team@lamden.io',
     classifiers=[

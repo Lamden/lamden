@@ -1,6 +1,6 @@
 from unittest import TestCase
-from cilantro.crypto.wallet import Wallet, verify
-from cilantro.crypto.zbase import bytes_to_zbase32
+from lamden.crypto.wallet import Wallet, verify
+from lamden.crypto.zbase import bytes_to_zbase32
 
 
 class TestWallet(TestCase):

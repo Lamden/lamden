@@ -7,7 +7,7 @@ import zmq.asyncio
 import asyncio
 import pathlib
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 from contracting.client import ContractingClient
 
 CERT_DIR = 'cilsocks'

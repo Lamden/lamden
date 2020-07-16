@@ -1,14 +1,14 @@
-from cilantro.nodes.delegate import execution, work
-from cilantro import router, network
-from cilantro.nodes import base
-from cilantro.logger.base import get_logger
+from lamden.nodes.delegate import execution, work
+from lamden import router, network
+from lamden.nodes import base
+from lamden.logger.base import get_logger
 import asyncio
 import time
-from cilantro.crypto.wallet import verify
+from lamden.crypto.wallet import verify
 from contracting.execution.executor import Executor
-from cilantro.crypto import transaction
+from lamden.crypto import transaction
 from contracting.client import ContractingClient
-from cilantro import storage
+from lamden import storage
 
 WORK_SERVICE = 'work'
 

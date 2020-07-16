@@ -1,9 +1,9 @@
-from cilantro.crypto import transaction
-from cilantro.crypto.wallet import Wallet
-from cilantro.crypto import canonical
+from lamden.crypto import transaction
+from lamden.crypto.wallet import Wallet
+from lamden.crypto import canonical
 from contracting.db.driver import decode, ContractDriver, InMemDriver
 from contracting.client import ContractingClient
-from cilantro.nodes import masternode, delegate
+from lamden.nodes import masternode, delegate
 import zmq.asyncio
 import asyncio
 

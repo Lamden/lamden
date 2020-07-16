@@ -1,8 +1,8 @@
-from cilantro.nodes.masternode import masternode
-from cilantro.nodes import base
-from cilantro import router, storage, network, authentication
-from cilantro.crypto.wallet import Wallet
-from cilantro.crypto import canonical
+from lamden.nodes.masternode import masternode
+from lamden.nodes import base
+from lamden import router, storage, network, authentication
+from lamden.crypto.wallet import Wallet
+from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 import zmq.asyncio

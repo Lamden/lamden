@@ -1,5 +1,5 @@
 from unittest import TestCase
-from cilantro.crypto import zbase
+from lamden.crypto import zbase
 
 
 class TestZBase(TestCase):

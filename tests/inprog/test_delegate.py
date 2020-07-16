@@ -1,24 +1,24 @@
 from unittest import TestCase
 
-import cilantro.nodes.masternode.masternode
-from cilantro.nodes.delegate.delegate import Delegate
-from cilantro.storage import StateDriver
-from cilantro.nodes.delegate import execution
+import lamden.nodes.masternode.masternode
+from lamden.nodes.delegate.delegate import Delegate
+from lamden.storage import StateDriver
+from lamden.nodes.delegate import execution
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
-from cilantro.crypto.wallet import Wallet
-from cilantro.crypto.transaction import TransactionBuilder
-from cilantro.crypto import canonical
+from lamden.crypto.wallet import Wallet
+from lamden.crypto.transaction import TransactionBuilder
+from lamden.crypto import canonical
 from contracting import config
 import time
-from cilantro.crypto.transaction_batch import transaction_list_to_transaction_batch
+from lamden.crypto.transaction_batch import transaction_list_to_transaction_batch
 import zmq.asyncio
 import datetime
 from tests.random_txs import random_block
 import os
 import capnp
 import asyncio
-from cilantro.messages import capnp_struct as schemas
+from lamden.messages import capnp_struct as schemas
 
 block_capnp = capnp.load(os.path.dirname(schemas.__file__) + '/blockdata.capnp')
 
@@ -463,7 +463,7 @@ class TestDelegate(TestCase):
         b = Delegate(socket_base='ipc:///tmp/n2', wallet=Wallet(), ctx=self.ctx, bootnodes=bootnodes,
                      constitution=constitution)
 
-        gb = cilantro.nodes.masternode.masternode.get_genesis_block()
+        gb = lamden.nodes.masternode.masternode.get_genesis_block()
         gb = canonical.dict_to_capnp_block(gb)
 
         # Put the genesis block in here so we start immediately

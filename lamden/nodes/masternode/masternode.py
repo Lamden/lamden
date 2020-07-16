@@ -1,15 +1,15 @@
 import asyncio
 import hashlib
 import time
-from cilantro import router
-from cilantro.crypto.wallet import Wallet
-from cilantro.storage import BlockStorage, get_latest_block_height
-from cilantro.nodes.masternode import contender, webserver
-from cilantro.formatting import primatives
-from cilantro.nodes import base
+from lamden import router
+from lamden.crypto.wallet import Wallet
+from lamden.storage import BlockStorage, get_latest_block_height
+from lamden.nodes.masternode import contender, webserver
+from lamden.formatting import primatives
+from lamden.nodes import base
 from contracting.db.driver import ContractDriver
 
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 
 mn_logger = get_logger('Masternode')
 

@@ -2,13 +2,13 @@ from unittest import TestCase
 import zmq.asyncio
 import asyncio
 from contracting.client import ContractingClient
-from cilantro.crypto.wallet import Wallet
-from cilantro.nodes.masternode.masternode import Masternode
-from cilantro.messages import Message, capnp_struct as schemas
+from lamden.crypto.wallet import Wallet
+from lamden.nodes.masternode.masternode import Masternode
+from lamden.messages import Message, capnp_struct as schemas
 from contracting import config
 import os
 import capnp
-from cilantro.crypto.transaction import TransactionBuilder
+from lamden.crypto.transaction import TransactionBuilder
 from contracting.db.driver import ContractDriver
 import time
 

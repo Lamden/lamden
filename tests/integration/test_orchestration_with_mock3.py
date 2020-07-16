@@ -1,5 +1,5 @@
-from cilantro.crypto import transaction
-from cilantro.crypto.wallet import Wallet
+from lamden.crypto import transaction
+from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, InMemDriver
 from contracting.client import ContractingClient
 import zmq.asyncio

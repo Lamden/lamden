@@ -5,7 +5,7 @@ import hashlib
 
 from contracting.db.encoder import encode
 
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 
 log = get_logger('CANON')
 

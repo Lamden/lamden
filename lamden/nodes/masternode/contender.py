@@ -1,9 +1,9 @@
 from contracting.db.encoder import encode
 from collections import defaultdict
-from cilantro import router
-from cilantro.crypto.canonical import merklize, block_from_subblocks
-from cilantro.crypto.wallet import verify
-from cilantro.logger.base import get_logger
+from lamden import router
+from lamden.crypto.canonical import merklize, block_from_subblocks
+from lamden.crypto.wallet import verify
+from lamden.logger.base import get_logger
 
 import asyncio
 import time

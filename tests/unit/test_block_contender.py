@@ -1,9 +1,9 @@
 from unittest import TestCase
 from contracting.db.encoder import encode, decode
-from cilantro.crypto.canonical import merklize, block_from_subblocks
+from lamden.crypto.canonical import merklize, block_from_subblocks
 
-from cilantro.crypto.wallet import Wallet
-from cilantro.nodes.masternode import contender
+from lamden.crypto.wallet import Wallet
+from lamden.nodes.masternode import contender
 import asyncio
 import secrets
 

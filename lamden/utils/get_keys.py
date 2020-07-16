@@ -1,4 +1,4 @@
-from cilantro.crypto.wallet import Wallet
+from lamden.crypto.wallet import Wallet
 
 
 def build_nodes(num_nodes=1) -> list:

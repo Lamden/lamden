@@ -5,10 +5,10 @@ import os
 import zmq.asyncio
 from contracting.db.encoder import encode
 
-from cilantro.formatting import rules, primatives
-from cilantro.crypto.wallet import Wallet, verify
-from cilantro import router
-from cilantro.logger.base import get_logger
+from lamden.formatting import rules, primatives
+from lamden.crypto.wallet import Wallet, verify
+from lamden import router
+from lamden.logger.base import get_logger
 
 PROOF_EXPIRY = 15
 PEPPER = 'cilantroV1'

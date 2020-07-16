@@ -1,8 +1,8 @@
 from unittest import TestCase
-from cilantro import rewards
+from lamden import rewards
 from contracting.client import ContractingClient
-from cilantro.contracts import sync
-import cilantro
+from lamden.contracts import sync
+import lamden
 
 BLOCK = {
             'number': 1,

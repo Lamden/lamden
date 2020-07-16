@@ -1,12 +1,12 @@
-from cilantro.crypto.wallet import Wallet
-from cilantro.crypto import transaction
+from lamden.crypto.wallet import Wallet
+from lamden.crypto import transaction
 from contracting.db.driver import ContractDriver, Driver
-from cilantro import storage
-from cilantro.nodes import masternode, delegate
+from lamden import storage
+from lamden.nodes import masternode, delegate
 import asyncio
 import random
 import httpx
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 
 import os
 

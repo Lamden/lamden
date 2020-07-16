@@ -1,10 +1,10 @@
 import time
 
-from cilantro.crypto.canonical import format_dictionary
-from cilantro.formatting import check_format, rules, primatives
+from lamden.crypto.canonical import format_dictionary
+from lamden.formatting import check_format, rules, primatives
 from contracting.db.encoder import encode
-from cilantro import storage
-from cilantro.crypto import wallet
+from lamden import storage
+from lamden.crypto import wallet
 from contracting.client import ContractingClient
 
 

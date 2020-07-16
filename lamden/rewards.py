@@ -4,7 +4,7 @@ from collections import defaultdict
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.client import ContractingClient
 
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 
 decimal.getcontext().rounding = decimal.ROUND_DOWN
 

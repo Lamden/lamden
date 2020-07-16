@@ -1,8 +1,8 @@
 from contracting.db.driver import ContractDriver
 from pymongo import MongoClient, DESCENDING
 
-import cilantro
-from cilantro.logger.base import get_logger
+import lamden
+from lamden.logger.base import get_logger
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
@@ -13,7 +13,7 @@ log = get_logger('STATE')
 
 
 class NonceStorage:
-    def __init__(self, port=27027, db_name='lamden', nonce_collection='nonces', pending_collection='pending_nonces', config_path=cilantro.__path__[0]):
+    def __init__(self, port=27027, db_name='lamden', nonce_collection='nonces', pending_collection='pending_nonces', config_path=lamden.__path__[0]):
         self.config_path = config_path
 
         self.port = port
@@ -136,7 +136,7 @@ class BlockStorage:
     BLOCK = 0
     TX = 1
 
-    def __init__(self, port=27027, config_path=cilantro.__path__[0], db='lamden', blocks_collection='blocks', tx_collection='tx'):
+    def __init__(self, port=27027, config_path=lamden.__path__[0], db='lamden', blocks_collection='blocks', tx_collection='tx'):
         # Setup configuration file to read constants
         self.config_path = config_path
 

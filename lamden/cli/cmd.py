@@ -1,7 +1,7 @@
 import argparse
-from cilantro.cli.start import start_node, join_network
-# from cilantro.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
-from cilantro.storage import BlockStorage
+from lamden.cli.start import start_node, join_network
+# from lamden.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
+from lamden.storage import BlockStorage
 from contracting.client import ContractDriver
 
 

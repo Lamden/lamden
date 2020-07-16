@@ -1,11 +1,11 @@
 from unittest import TestCase
 import zmq.asyncio
-from cilantro.crypto.wallet import Wallet
-from cilantro.authentication import SocketAuthenticator
+from lamden.crypto.wallet import Wallet
+from lamden.authentication import SocketAuthenticator
 import os
 from nacl.signing import SigningKey
-from cilantro.contracts import sync
-import cilantro
+from lamden.contracts import sync
+import lamden
 from contracting.client import ContractingClient
 
 

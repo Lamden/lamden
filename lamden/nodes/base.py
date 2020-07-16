@@ -1,9 +1,9 @@
-from cilantro import storage, network, router, authentication, rewards, upgrade
-from cilantro.crypto import canonical
-from cilantro.crypto.wallet import Wallet
-from cilantro.contracts import sync
+from lamden import storage, network, router, authentication, rewards, upgrade
+from lamden.crypto import canonical
+from lamden.crypto.wallet import Wallet
+from lamden.contracts import sync
 from contracting.db.driver import ContractDriver, encode
-import cilantro
+import lamden
 import zmq.asyncio
 import asyncio
 import json
@@ -11,7 +11,7 @@ from contracting.client import ContractingClient
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-from cilantro.logger.base import get_logger
+from lamden.logger.base import get_logger
 
 
 BLOCK_SERVICE = 'catchup'
@@ -95,7 +95,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=cilantro.contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage()):
+                 genesis_path=lamden.contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage()):
 
         self.driver = driver
         self.nonces = nonces

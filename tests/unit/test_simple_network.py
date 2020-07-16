@@ -1,12 +1,12 @@
 from unittest import TestCase
-from cilantro.network import *
-from cilantro.crypto.wallet import Wallet
+from lamden.network import *
+from lamden.crypto.wallet import Wallet
 
 from contracting.db.encoder import encode, decode
 from contracting.client import ContractingClient
-from cilantro.router import Router
+from lamden.router import Router
 
-from cilantro import authentication
+from lamden import authentication
 
 import asyncio
 import zmq.asyncio

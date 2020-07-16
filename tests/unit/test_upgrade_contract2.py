@@ -1,8 +1,8 @@
 import os
-from cilantro.contracts import sync
-from cilantro.upgrade import build_pepper, get_version, build_pepper2
-from cilantro.crypto.wallet import Wallet
-import cilantro
+from lamden.contracts import sync
+from lamden.upgrade import build_pepper, get_version, build_pepper2
+from lamden.crypto.wallet import Wallet
+import lamden
 from unittest import TestCase
 from contracting.client import ContractingClient
 from contracting.stdlib.bridge.time import Datetime
@@ -22,8 +22,8 @@ class TestUpdateContractFix(TestCase):
             initial_masternodes=self.mn_wallets,
             initial_delegates=self.dn_wallets,
             client=self.client,
-            filename=cilantro.contracts.__path__[0] + '/genesis.json',
-            root=cilantro.contracts.__path__[0]
+            filename=lamden.contracts.__path__[0] + '/genesis.json',
+            root=lamden.contracts.__path__[0]
         )
 
         self.upgrade = self.client.get_contract('upgrade')
@@ -208,7 +208,7 @@ class TestUpdateContractFix(TestCase):
         self.assertEqual(p, '12efdca5ee2b4103c549feab7d9fdbb95b374d3e447cbb85be81c9021a641426')
 
     def test_git_branch(self):
-        path = os.path.join(os.path.dirname(cilantro.__file__), '..')
+        path = os.path.join(os.path.dirname(lamden.__file__), '..')
         os.chdir(path)
 
         from subprocess import check_output

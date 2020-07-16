@@ -6,7 +6,7 @@ MASTER_DB = 0
 DATA_DIR = os.getenv('DATADIR')
 
 if DATA_DIR is None:
-    DATA_DIR = '/usr/local/db/cilantro'
+    DATA_DIR = '/usr/local/db/lamden'
 
 
 MONGO_DIR = DATA_DIR + '/mongo'
