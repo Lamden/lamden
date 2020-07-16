@@ -10,13 +10,8 @@ sudo apt-get update
 sudo apt-get install python3-pip -y
 ```
 
-### Other Pip3 Pkg
-```bash
-pip3 install --upgrade pip setuptools
-```
-
 ### Install MongoDB
-As copied from here: 
+As copied from here: https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
 ```bash
 wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
 echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
