@@ -39,6 +39,6 @@ setup(
     ],
     python_requires='>=3.6.5',
     package_data={
-        "contracts": ["genesis.json"]
+        "": ["*.json"]
     }
 )
