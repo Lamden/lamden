@@ -19,7 +19,8 @@ setup(
         "requests",
         "contracting",
         "checksumdir",
-        "pynacl"
+        "pynacl",
+        "stdlib_list"
     ],
     entry_points={
         'console_scripts': [
@@ -37,4 +38,7 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     python_requires='>=3.6.5',
+    package_data={
+        "contracts": ["genesis.json"]
+    }
 )
