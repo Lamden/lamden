@@ -53,7 +53,12 @@ a message to the requester.
 
 class AsyncInbox:
     def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50):
-        self.address = socket_id
+        if socket_id.startswith('tcp'):
+            _, _, port = socket_id.split(':')
+            self.address = f'tcp://*:{port}'
+        else:
+            self.address = socket_id
+
         self.wallet = wallet
 
         self.ctx = ctx
