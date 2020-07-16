@@ -40,11 +40,6 @@ systemctl enable haveged
 pip3 install lamden
 ```
 
-### Autoinstall
-```
-wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc 
-```
-
 ### Make a Constitution
 ```
 nano ~/constitution.json
@@ -63,3 +58,10 @@ Ctrl+X, save the file.
 ```
 lamden <masternode | delegate> -k <sk in hex format> -bn <list of ip addresses that are currently online>
 ```
+
+### Autoinstall
+You can install a script to install the entire software.
+```
+wget https://raw.githubusercontent.com/Lamden/lamden/dev/INSTALL.sh
+```
+Always practice good saftey and examine the bash file before executing it.
