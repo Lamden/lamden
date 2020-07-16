@@ -1,30 +1,14 @@
 #!/usr/bin/env bash
-sudo apt-get update
-sudo apt-get install python3-pip -y
-sudo pip3 install --upgrade pip setuptools
-sudo apt-get install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev libbz2-dev -y
-sudo apt-get install librocksdb-dev -y
-sudo apt-get install -y mongodb
+wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
+sudo apt-get install -y mongodb-org
+echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org-server hold" | sudo dpkg --set-selections
+echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
+echo "mongodb-org-tools hold" | sudo dpkg --set-selections
+sudo systemctl start mongod
+
 sudo apt-get install haveged -y
 systemctl start haveged
 systemctl enable haveged
-
-git clone https://github.com/Lamden/contracting.git
-cd contracting
-git fetch
-git checkout dev
-python3 setup.py develop
-
-cd ~
-
-git clone https://github.com/Lamden/cilantro-enterprise.git
-cd cilantro-enterprise
-git fetch
-git checkout rel-gov-socks
-python3 setup.py develop
-
-mongod --dbpath ~/blocks --logpath ~/logs.log --bind_ip_all
-
-pip3 install python-rocksdb
-
-rocks serve &
