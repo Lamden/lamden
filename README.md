@@ -40,6 +40,11 @@ systemctl enable haveged
 pip3 install lamden
 ```
 
+### Autoinstall
+```
+wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc 
+```
+
 ### Make a Constitution
 ```
 nano ~/constitution.json
