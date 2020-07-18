@@ -161,6 +161,8 @@ class Network:
                 if result is None or result == {'response': 'ok'}:
                     continue
 
+                self.log.info(result)
+
                 for peer in result['peers']:
                     if self.peers.get(peer['vk']) is None:
                         self.peers[peer['vk']] = peer['ip']
