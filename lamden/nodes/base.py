@@ -282,6 +282,7 @@ class Node:
         # Finally, check and initiate an upgrade if one needs to be done
         self.driver.commit()
         self.driver.clear_pending_state()
+        self.nonces.flush_pending()
 
     async def start(self):
         asyncio.ensure_future(self.router.serve())
