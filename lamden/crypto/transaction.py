@@ -123,7 +123,7 @@ def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, f
     if contract == 'currency' and function == 'transfer':
 
         # If you have less than 2 transactions worth of tau after trying to send your amount, fail.
-        if ((balance - amount) * stamps_per_tau) / 6000 < 2:
+        if ((balance - amount) * stamps_per_tau) / 6 < 2:
             raise TransactionSenderTooFewStamps
 
 
