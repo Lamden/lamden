@@ -164,6 +164,7 @@ class Network:
                 for peer in result['peers']:
                     if self.peers.get(peer['vk']) is None:
                         self.peers[peer['vk']] = peer['ip']
+                        self.log.info(f'{peer["vk"]} -> {peer["ip"]}')
 
             self.log.info(f'{len(self.peers)}/{len(vks)} peers found.')
         self.log.info(f'All peers found. Continuing startup process.')
