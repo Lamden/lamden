@@ -93,12 +93,7 @@ class JoinProcessor(router.Processor):
         if not os.path.exists(filename):
             return
 
-        response = await router.secure_request(msg={}, service=IDENTITY_SERVICE, wallet=self.wallet, vk=msg.get('vk'),
-                                               ip=msg.get('ip'), ctx=self.ctx)
 
-        if response is None:
-            LOGGER.error(f'No response for identity proof for {msg.get("ip")}')
-            return
         #
         # if not verify_proof(response, PEPPER):
         #     LOGGER.error(f'Bad proof verification for identity proof for {msg.get("ip")}')
@@ -164,6 +159,15 @@ class Network:
                 self.log.info(result)
 
                 for peer in result['peers']:
+
+                    response = await router.secure_request(msg={}, service=IDENTITY_SERVICE, wallet=self.wallet,
+                                                           vk=peer.get('vk'),
+                                                           ip=peer.get('ip'), ctx=self.ctx)
+
+                    if response is None:
+                        LOGGER.error(f'No response for identity proof for {peer.get("ip")}')
+                        continue
+
                     if self.peers.get(peer['vk']) is None:
                         self.peers[peer['vk']] = peer['ip']
                         self.log.info(f'{peer["vk"]} -> {peer["ip"]}')
