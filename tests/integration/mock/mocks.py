@@ -233,6 +233,20 @@ class MockNetwork:
         for node in self.masternodes + self.delegates:
             node.stop()
 
+    async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
+        tx = transaction.build_transaction(
+            wallet=wallet,
+            contract=contract,
+            function=function,
+            kwargs=kwargs,
+            stamps=stamps,
+            processor=node.wallet.verifying_key,
+            nonce=nonce
+        )
+
+        async with httpx.AsyncClient() as client:
+            await client.post(f'{node.webserver_ip}/', data=tx)
+
     async def make_and_push_tx(self, wallet, contract, function, kwargs={}, stamps=1_000_000, mn_idx=0, random_select=False):
         # Mint money if we have to
         # Get our node we are going to send the tx to
@@ -249,18 +263,15 @@ class MockNetwork:
 
         self.log.info(f'Nonce is {nonce}')
 
-        tx = transaction.build_transaction(
+        await self.push_tx(
+            node=node,
             wallet=wallet,
             contract=contract,
             function=function,
             kwargs=kwargs,
             stamps=stamps,
-            processor=processor,
             nonce=nonce
         )
-
-        async with httpx.AsyncClient() as client:
-            await client.post(f'{node.webserver_ip}/', data=tx)
 
     def flush(self):
         for node in self.masternodes + self.delegates:
