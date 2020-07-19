@@ -37,7 +37,7 @@ def pad_work(work: list, expected_masters: list):
 
 def filter_work(work):
     actual_work = [w for w in work if w is not None]
-    return sorted(actual_work, key=lambda x: x['timestamp'])
+    return sorted(actual_work, key=lambda x: x['sender'])
     # filtered_work = []
     # print(work)
     # for tx_batch in work:
