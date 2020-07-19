@@ -38,7 +38,7 @@ class WorkProcessor(router.Processor):
         else:
             self.verify_work(msg)
 
-    def verify_work(self, msg):
+    def verify_work(self, msg, old=False):
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
@@ -47,7 +47,7 @@ class WorkProcessor(router.Processor):
             self.log.error(f'Invalidly signed TX Batch received from master {msg["sender"][:8]}')
             return
 
-        if int(time.time()) - msg['timestamp'] > self.expired_batch:
+        if int(time.time()) - msg['timestamp'] > self.expired_batch and not old:
             self.log.error(f'Expired TX Batch received from master {msg["sender"][:8]}')
             return
 
@@ -79,7 +79,7 @@ class WorkProcessor(router.Processor):
         # Check if the txs are old
 
         for work_ in self.todo:
-            self.verify_work(work_)
+            self.verify_work(work_, old=True)
 
         self.todo.clear()
 
