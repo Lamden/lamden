@@ -29,6 +29,7 @@ class WorkProcessor(router.Processor):
         self.nonces = nonces
 
     async def process_message(self, msg):
+        self.log.info('Received work from {msg["sender"][:8]}')
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
@@ -56,6 +57,7 @@ class WorkProcessor(router.Processor):
                 return
 
         self.new_work[msg['sender']].append(msg)
+        self.log.info('{msg["sender"][:8]} has {len(self.new_work[msg["sender"]]} batches of work to do.')
 
     async def gather_transaction_batches(self, masters: list, timeout=5):
         # Wait until the queue is filled before starting timeout

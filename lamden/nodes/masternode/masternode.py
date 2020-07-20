@@ -234,6 +234,8 @@ class Masternode(base.Node):
         )
 
     async def get_work_processed(self):
+        await asyncio.sleep(1)
+
         await self.send_work()
 
         # this really should just give us a block straight up
