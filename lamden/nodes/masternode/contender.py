@@ -17,15 +17,19 @@ class SBCInbox(router.Processor):
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
 
+        self.block_q = []
+
     async def process_message(self, msg):
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
         if len(msg) != self.expected_subblocks:
+            self.log.error('Contender does not have enough subblocks!')
             return
 
         for i in range(len(msg)):
             if not self.sbc_is_valid(msg[i], i):
+                self.log.error('Contender is not valid!')
                 return
 
             self.q.append(msg)
@@ -315,7 +319,7 @@ class Aggregator:
 
         block = contenders.get_current_best_block()
 
-        self.log.info(f'Best block: {block}')
+        # self.log.info(f'Best block: {block}')
 
         return block_from_subblocks(
             block,

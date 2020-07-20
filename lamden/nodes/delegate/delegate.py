@@ -9,16 +9,14 @@ from contracting.execution.executor import Executor
 from lamden.crypto import transaction
 from contracting.client import ContractingClient
 from lamden import storage
-
+from collections import defaultdict
 WORK_SERVICE = 'work'
 
 
 class WorkProcessor(router.Processor):
-    def __init__(self, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5, tx_timeout=5):
-        self.work = {}
-
-        self.todo = []
-        self.accepting_work = False
+    def __init__(self, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+                 tx_timeout=5):
+        self.new_work = defaultdict(list)
 
         self.log = get_logger('Work Inbox')
         self.log.propagate = debug
@@ -31,14 +29,6 @@ class WorkProcessor(router.Processor):
         self.nonces = nonces
 
     async def process_message(self, msg):
-        if not self.accepting_work:
-            self.log.error('Received work out of expected state. Storing in to-do list.')
-            self.todo.append(msg)
-
-        else:
-            self.verify_work(msg)
-
-    def verify_work(self, msg, old=False):
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
@@ -65,41 +55,119 @@ class WorkProcessor(router.Processor):
                 self.log.error(f'TX in batch has error: {type(e)}')
                 return
 
-        if self.work.get(msg['sender']) is not None:
-            self.log.error(f'Duplicate TX Batch received from master {msg["sender"][:8]}')
-            return
+        self.new_work[msg['sender']].append(msg)
 
-        self.work[msg['sender']] = msg
-
-    def process_todo_work(self):
-        self.log.info(f'{len(self.todo)} pieces of to-do work.')
-
-        # Check if the tx batch is old
-        # Check if the sender is a master
-        # Check if the txs are old
-
-        for work_ in self.todo:
-            self.verify_work(work_, old=True)
-
-        self.todo.clear()
-
-    async def accept_work(self, expected_batched, masters):
-        self.log.info(f'Accepting work from {len(masters)} master(s).')
-        self.accepting_work = True
+    async def gather_transaction_batches(self, masters: list, timeout=5):
+        # Wait until the queue is filled before starting timeout
         self.masters = masters
-        self.process_todo_work()
 
-        w = await work.gather_transaction_batches(
-            queue=self.work,
-            expected_batches=expected_batched,
-            timeout=5
-        )
+        ready = False
+        while not ready:
+            for master in masters:
+                if len(self.new_work[master]) > 0:
+                    ready = True
+            await asyncio.sleep(0)
 
-        self.accepting_work = False
+        # Now wait until the rest come in or the timeout is triggered
+        next_work = []
+        start = time.time()
+        while len(next_work) < len(masters) and time.time() - start < timeout:
+            for master in masters:
+                if len(self.new_work[master]) > 0:
+                    next_work.append(self.new_work[master].pop(0))
+            await asyncio.sleep(0)
 
-        self.log.info(f'Got {len(w)} batch(es) of work')
+        return next_work
 
-        return w
+# class WorkProcessor(router.Processor):
+#     def __init__(self, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5, tx_timeout=5):
+#         self.new_work = defaultdict(list)
+#
+#         self.work = {}
+#
+#         self.todo = []
+#         self.accepting_work = False
+#
+#         self.log = get_logger('Work Inbox')
+#         self.log.propagate = debug
+#
+#         self.masters = []
+#         self.expired_batch = expired_batch
+#         self.tx_timeout = tx_timeout
+#
+#         self.client = client
+#         self.nonces = nonces
+#
+#     async def process_message(self, msg):
+#         if not self.accepting_work:
+#             self.log.error('Received work out of expected state. Storing in to-do list.')
+#             self.todo.append(msg)
+#
+#         else:
+#             self.verify_work(msg)
+#
+#     def verify_work(self, msg, old=False):
+#         if msg['sender'] not in self.masters:
+#             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
+#             return
+#
+#         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
+#             self.log.error(f'Invalidly signed TX Batch received from master {msg["sender"][:8]}')
+#             return
+#
+#         if int(time.time()) - msg['timestamp'] > self.expired_batch and not old:
+#             self.log.error(f'Expired TX Batch received from master {msg["sender"][:8]}')
+#             return
+#
+#         for tx in msg['transactions']:
+#             try:
+#                 transaction.transaction_is_valid(
+#                     transaction=tx,
+#                     expected_processor=msg['sender'],
+#                     client=self.client,
+#                     nonces=self.nonces,
+#                     strict=False,
+#                     timeout=self.expired_batch + self.tx_timeout
+#                 )
+#             except transaction.TransactionException as e:
+#                 self.log.error(f'TX in batch has error: {type(e)}')
+#                 return
+#
+#         if self.work.get(msg['sender']) is not None:
+#             self.log.error(f'Duplicate TX Batch received from master {msg["sender"][:8]}')
+#             return
+#
+#         self.work[msg['sender']] = msg
+#
+#     def process_todo_work(self):
+#         self.log.info(f'{len(self.todo)} pieces of to-do work.')
+#
+#         # Check if the tx batch is old
+#         # Check if the sender is a master
+#         # Check if the txs are old
+#
+#         for work_ in self.todo:
+#             self.verify_work(work_, old=True)
+#
+#         self.todo.clear()
+#
+#     async def accept_work(self, expected_batched, masters):
+#         self.log.info(f'Accepting work from {len(masters)} master(s).')
+#         self.accepting_work = True
+#         self.masters = masters
+#         self.process_todo_work()
+#
+#         w = await work.gather_transaction_batches(
+#             queue=self.work,
+#             expected_batches=expected_batched,
+#             timeout=5
+#         )
+#
+#         self.accepting_work = False
+#
+#         self.log.info(f'Got {len(w)} batch(es) of work')
+#
+#         return w
 
 
 class Delegate(base.Node):
@@ -131,7 +199,7 @@ class Delegate(base.Node):
     async def acquire_work(self):
         current_masternodes = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
 
-        w = await self.work_processor.accept_work(expected_batched=len(current_masternodes), masters=current_masternodes)
+        w = await self.work_processor.gather_transaction_batches(masters=current_masternodes)
 
         self.log.info(f'Got {len(w)} batch(es) of work')
 
