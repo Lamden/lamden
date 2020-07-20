@@ -4,7 +4,7 @@ from lamden import router
 from lamden.crypto.canonical import merklize, block_from_subblocks
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
-
+from lamden import storage
 import asyncio
 import time
 
@@ -286,6 +286,8 @@ class Aggregator:
     async def gather_subblocks(self, total_contacts, current_height=0, current_hash='0' * 64, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
+        block = storage.get_latest_block_height(self.driver)
+
         self.log.info(f'Expecting {expected_subblocks} subblocks from {total_contacts} delegates.')
 
         contenders = BlockContender(
@@ -307,7 +309,7 @@ class Aggregator:
             await asyncio.sleep(0)
 
         if time.time() - started > self.seconds_to_timeout:
-            self.log.error('Block timeout. Too many delegates are offline! Kick out the non-responsive ones!')
+            self.log.error(f'Block timeout. Too many delegates are offline! Kick out the non-responsive ones! {block}')
 
         self.log.info('Done aggregating new block.')
 
