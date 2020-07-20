@@ -37,7 +37,7 @@ class WorkProcessor(router.Processor):
             self.log.error(f'Invalidly signed TX Batch received from master {msg["sender"][:8]}')
             return
 
-        if int(time.time()) - msg['timestamp'] > self.expired_batch and not old:
+        if int(time.time()) - msg['timestamp'] > self.expired_batch:
             self.log.error(f'Expired TX Batch received from master {msg["sender"][:8]}')
             return
 
