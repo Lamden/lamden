@@ -71,7 +71,7 @@ class TransactionBatcher:
 
         return batch
 
-    def pack_current_queue(self, tx_number=100):
+    def pack_current_queue(self, tx_number=1000):
         tx_list = []
 
         while len(tx_list) < tx_number and len(self.queue) > 0:
