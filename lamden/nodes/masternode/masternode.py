@@ -271,6 +271,8 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
+        await asyncio.sleep(1)
+
         await self.hang()
 
         await router.secure_multicast(
