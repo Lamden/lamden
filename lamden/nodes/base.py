@@ -10,7 +10,7 @@ import json
 from contracting.client import ContractingClient
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
+import gc
 from lamden.logger.base import get_logger
 
 
@@ -282,6 +282,7 @@ class Node:
         # Finally, check and initiate an upgrade if one needs to be done
         self.driver.commit()
         self.driver.clear_pending_state()
+        gc.collect() # Force memory cleanup every block
         #self.nonces.flush_pending()
 
     async def start(self):
