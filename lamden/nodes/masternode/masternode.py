@@ -74,7 +74,9 @@ class TransactionBatcher:
     def pack_current_queue(self, tx_number=250):
         tx_list = []
 
-        while len(tx_list) < tx_number and len(self.queue) > 0:
+        # len(tx_list) < tx_number and
+
+        while len(self.queue) > 0:
             tx_list.append(self.queue.pop(0))
 
         batch = self.make_batch(tx_list)
@@ -262,6 +264,8 @@ class Masternode(base.Node):
 
         block = await self.get_work_processed()
 
+        await asyncio.sleep(1)
+
         await router.secure_multicast(
             msg=block,
             service=base.NEW_BLOCK_SERVICE,
@@ -270,8 +274,6 @@ class Masternode(base.Node):
             peer_map=self.get_delegate_peers(),
             ctx=self.ctx
         )
-
-        await asyncio.sleep(1)
 
         await self.hang()
 

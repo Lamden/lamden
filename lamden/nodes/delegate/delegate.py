@@ -59,7 +59,7 @@ class WorkProcessor(router.Processor):
         self.new_work[msg['sender']].append(msg)
         self.log.info(f'{msg["sender"][:8]} has {len(self.new_work[msg["sender"]])} batches of work to do.')
 
-    async def gather_transaction_batches(self, masters: list, timeout=5):
+    async def gather_transaction_batches(self, masters: list, timeout=10):
         # Wait until the queue is filled before starting timeout
         self.masters = masters
 
