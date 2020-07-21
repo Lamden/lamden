@@ -264,8 +264,6 @@ class Masternode(base.Node):
 
         block = await self.get_work_processed()
 
-        await asyncio.sleep(1)
-
         await router.secure_multicast(
             msg=block,
             service=base.NEW_BLOCK_SERVICE,
