@@ -42,19 +42,19 @@ class WorkProcessor(router.Processor):
             self.log.error(f'Expired TX Batch received from master {msg["sender"][:8]}')
             return
 
-        for tx in msg['transactions']:
-            try:
-                transaction.transaction_is_valid(
-                    transaction=tx,
-                    expected_processor=msg['sender'],
-                    client=self.client,
-                    nonces=self.nonces,
-                    strict=False,
-                    timeout=self.expired_batch + self.tx_timeout
-                )
-            except transaction.TransactionException as e:
-                self.log.error(f'TX in batch has error: {type(e)}')
-                return
+        # for tx in msg['transactions']:
+        #     try:
+        #         transaction.transaction_is_valid(
+        #             transaction=tx,
+        #             expected_processor=msg['sender'],
+        #             client=self.client,
+        #             nonces=self.nonces,
+        #             strict=False,
+        #             timeout=self.expired_batch + self.tx_timeout
+        #         )
+        #     except transaction.TransactionException as e:
+        #         self.log.error(f'TX in batch has error: {type(e)}')
+        #         return
 
         self.new_work[msg['sender']].append(msg)
         self.log.info(f'{msg["sender"][:8]} has {len(self.new_work[msg["sender"]])} batches of work to do.')
