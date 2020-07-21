@@ -274,7 +274,7 @@ class BlockContender:
 
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, driver, expected_subblocks=4, seconds_to_timeout=10, debug=True):
+    def __init__(self, driver, expected_subblocks=4, seconds_to_timeout=300, debug=True):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             expected_subblocks=self.expected_subblocks,
@@ -303,6 +303,7 @@ class Aggregator:
 
         # Add timeout condition.
         started = time.time()
+        last_log = started
         while (not contenders.block_has_consensus() and contenders.responses < contenders.total_contacts) and \
                 time.time() - started < self.seconds_to_timeout:
 
@@ -310,6 +311,11 @@ class Aggregator:
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 self.log.info('Pop it in there.')
                 contenders.add_sbcs(sbcs)
+
+            if time.time() - last_log > 5:
+                self.log.error('Waiting for contenders for {int(time.time() - started)}s.')
+                last_log = time.time()
+
             await asyncio.sleep(0)
 
         if time.time() - started > self.seconds_to_timeout:
