@@ -51,6 +51,8 @@ class WorkProcessor(router.Processor):
             return self.new_work[msg['sender']].append(shim)
 
         # Add padded!
+        # Iterate and delete transactions from list that fail
+        good_transactions = []
         for tx in msg['transactions']:
             try:
                 transaction.transaction_is_valid(
@@ -61,9 +63,12 @@ class WorkProcessor(router.Processor):
                     strict=False,
                     timeout=self.expired_batch + self.tx_timeout
                 )
+                good_transactions.append(tx)
             except transaction.TransactionException as e:
                 self.log.error(f'TX in batch has error: {type(e)}')
-                return self.new_work[msg['sender']].append(shim)
+
+        # Replace transactions with ones that do not pass.
+        msg['transactions'] = good_transactions
 
         self.new_work[msg['sender']].append(msg)
         self.log.info(f'{msg["sender"][:8]} has {len(self.new_work[msg["sender"]])} batches of work to do.')
