@@ -194,7 +194,9 @@ class Delegate(base.Node):
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver)
-        self.transaction_executor = execution.SerialExecutor(executor=self.executor)
+        # self.transaction_executor = execution.SerialExecutor(executor=self.executor)
+        execution.PoolExecutor = self.executor
+        self.transaction_executor = execution.ConflictResolutionExecutor()
 
         self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces)
         self.router.add_service(WORK_SERVICE, self.work_processor)

@@ -99,6 +99,8 @@ class TestFullFlowWithMocks(TestCase):
             await network.start()
             network.refresh()
 
+            await asyncio.sleep(4)
+
             await network.make_and_push_tx(
                 wallet=mocks.TEST_FOUNDATION_WALLET,
                 contract='currency',
@@ -109,7 +111,7 @@ class TestFullFlowWithMocks(TestCase):
                 }
             )
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(4)
 
             await network.make_and_push_tx(
                 wallet=stu,
