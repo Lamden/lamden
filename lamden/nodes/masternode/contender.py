@@ -313,7 +313,7 @@ class Aggregator:
                 contenders.add_sbcs(sbcs)
 
             if time.time() - last_log > 5:
-                self.log.error('Waiting for contenders for {int(time.time() - started)}s.')
+                self.log.error(f'Waiting for contenders for {int(time.time() - started)}s.')
                 last_log = time.time()
 
             await asyncio.sleep(0)
