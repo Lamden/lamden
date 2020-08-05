@@ -34,7 +34,7 @@ class TestFullFlowWithMocks(TestCase):
         candidate = Wallet()
         candidate2 = Wallet()
 
-        N_tx= 3
+        N_tx= 100
         w_stu =[]
         for k in range(N_tx):
             w_stu.append(Wallet())

@@ -12,9 +12,12 @@ import queue
 
 log = get_logger('EXE')
 
-__N_WORKER_PER_DELEGATES__ = 4
-__N_DELEGATES__ = 2
-__N_WORKER__ = __N_WORKER_PER_DELEGATES__ * __N_DELEGATES__
+# __N_WORKER_PER_DELEGATES__ = 4
+# __N_DELEGATES__ = 2
+# __N_WORKER__ = __N_WORKER_PER_DELEGATES__ * __N_DELEGATES__
+__N_WORKER_PER_DELEGATES__ = 8
+__N_WORKER__ = 8
+
 
 
 PoolExecutor = None
@@ -25,7 +28,8 @@ busy_pool = []
 N_TEST = 8
 WORKER_SLEEP = 0.0001
 RESULT_SLEEP = 0.01
-POOL_WAIT_SLEEP = 0.01
+POOL_WAIT_SLEEP = 0.1
+POOL_WAIT_STEPS = 1000
 
 TX_RERUN_SLEEP = 1
 N_TRY_PER_TX = 3
@@ -183,6 +187,10 @@ class ConflictResolutionExecutor(TransactionExecutor):
             log.debug(f'Initialyze pool {len(pool)}')
 
         work_pool, active_workers = self.get_pool(len(batch['transactions']))
+        if active_workers == 0:
+            log.error(f'Get pool error. Batch was skipped')
+            return []
+
         i = 0
         s = time()
         log.debug(f"Start Pool len={active_workers}  prc={work_pool}")
@@ -329,7 +337,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         if n_needed > 0:
             if n_needed > __N_WORKER_PER_DELEGATES__:
                 n_needed = __N_WORKER_PER_DELEGATES__
-            while n_step < 3:
+            while n_step < POOL_WAIT_STEPS:
                 for i in range(__N_WORKER__):
                     if busy_pool[i] == 0:
                         busy_pool[i] = 1
@@ -352,6 +360,8 @@ class ConflictResolutionExecutor(TransactionExecutor):
         if pool is None:
             return
         global stop_cmd
+        if stop_cmd is None:
+            return
         stop_cmd.value = 1
         for i in range(__N_WORKER__):
             pool[i].join()
