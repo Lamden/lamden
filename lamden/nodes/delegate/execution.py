@@ -132,7 +132,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         return False
 
     def check_conflict2(self, rez_batch):
-        tx_bad0 = set()
+        tx_bad0 = list()
         tx_index = {}
         i1a = 0
         for tx_data0 in rez_batch:
@@ -154,15 +154,18 @@ class ConflictResolutionExecutor(TransactionExecutor):
                                         conflict = True
                                         break
                         if conflict:
-                            tx_bad0.add(tx['hash'])  # first
-                            tx_bad0.add(tx_hash)  # second
-                            tx_index[tx_hash] = (i1a, i2a)
-                            tx_index[tx['hash']] = (i1b, i2b)
+                            if tx['hash'] not in tx_bad0:
+                                tx_bad0.append(tx['hash'])
+                                tx_index[tx['hash']] = (i1b, i2b)
+                            if tx_hash not in tx_bad0:
+                                tx_bad0.append(tx_hash)
+                                tx_index[tx_hash] = (i1a, i2a)
+                            break
                         i2b += 1
                     i1b += 1
                 i2a += 1
             i1a += 1
-        tx_bad = list(tx_bad0)
+        tx_bad = tx_bad0 #list(tx_bad0)
 
         # DEBUG ONLY
         # tx_bad = []
