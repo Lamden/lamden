@@ -34,7 +34,7 @@ class TestFullFlowWithMocks(TestCase):
         candidate = Wallet()
         candidate2 = Wallet()
 
-        N_tx= 100
+        N_tx= 2
         w_stu =[]
         for k in range(N_tx):
             w_stu.append(Wallet())
@@ -317,3 +317,138 @@ class TestFullFlowWithMocks(TestCase):
             await asyncio.sleep(3)
 
         self.loop.run_until_complete(test())
+
+    def test1_process_batch_2tx(self):
+        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
+
+        w_stu =[Wallet()]
+        w_cand = [Wallet()]
+
+        async def test():
+            await network.start()
+            network.refresh()
+            await asyncio.sleep(4)
+
+            self.assertEqual(network.get_var(
+                contract='currency',
+                variable='balances',
+                arguments= [mocks.TEST_FOUNDATION_WALLET.verifying_key]
+            ), 288_090_567)
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': w_stu[0].verifying_key
+                }
+            )
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=w_stu[0],
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1338,
+                    'to': w_cand[0].verifying_key
+                },
+            )
+            await asyncio.sleep(4)
+
+            self.assertEqual(network.get_var(
+                contract='currency',
+                variable='balances',
+                arguments=[w_cand[0].verifying_key]
+            ), 1338)
+
+            self.assertEqual(network.get_var(
+                contract='currency',
+                variable='balances',
+                arguments= [w_stu[0].verifying_key]
+            ), 1_000_000 - 1338 - 0.3)
+
+            self.assertEqual(network.get_var(
+                contract='currency',
+                variable='balances',
+                arguments= [mocks.TEST_FOUNDATION_WALLET.verifying_key]
+            ), 288_090_567 - (1_000_000 + 0.294))
+
+        self.loop.run_until_complete(test())
+        if hasattr(network.delegates[0].obj.transaction_executor,"stop_pool"):
+            network.delegates[0].obj.transaction_executor.stop_pool()
+
+    def test5_process_4_tx(self):
+        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
+
+        N_tx= 1
+        w_stu =[]
+        w_cand = []
+        for k in range(N_tx):
+            w_stu.append(Wallet())
+            w_cand.append(Wallet())
+
+        async def test():
+            await network.start()
+            network.refresh()
+            await asyncio.sleep(4)
+
+            self.assertEqual(network.get_var(
+                contract='currency',
+                variable='balances',
+                arguments= [mocks.TEST_FOUNDATION_WALLET.verifying_key]
+            ), 288_090_567)
+
+            await asyncio.sleep(2)
+
+            for k in range(N_tx):
+                await network.make_and_push_tx(
+                    wallet=mocks.TEST_FOUNDATION_WALLET,
+                    contract='currency',
+                    function='transfer',
+                    kwargs={
+                        'amount': 1_000_000,
+                        'to': w_stu[k].verifying_key
+                    }
+                )
+                await asyncio.sleep(2)
+
+            for k in range(N_tx):
+                await network.make_and_push_tx(
+                    wallet=w_stu[k],
+                    contract='currency',
+                    function='transfer',
+                    kwargs={
+                        'amount': 1338,
+                        'to': w_cand[k].verifying_key
+                    },
+                )
+                # await asyncio.sleep(4)
+
+            await asyncio.sleep(4)
+
+            for k in range(N_tx):
+                self.assertEqual(network.get_var(
+                    contract='currency',
+                    variable='balances',
+                    arguments=[w_cand[k].verifying_key]
+                ), 1338)
+
+            for k in range(N_tx):
+                self.assertEqual(network.get_var(
+                    contract='currency',
+                    variable='balances',
+                    arguments= [w_stu[k].verifying_key]
+                ), 1_000_000 - 1338 - 0.3)
+
+            # self.assertEqual(network.get_var(
+            #     contract='currency',
+            #     variable='balances',
+            #     arguments= [mocks.TEST_FOUNDATION_WALLET.verifying_key]
+            # ), 288_090_567 - (1_000_000 + 0.294)* N_tx)
+
+        self.loop.run_until_complete(test())
+        network.delegates[0].obj.transaction_executor.stop_pool()
