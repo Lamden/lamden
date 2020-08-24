@@ -67,6 +67,8 @@ class ConflictResolutionExecutor(TransactionExecutor):
                     log.debug(f"deleted {k} from cash")
                     del p_cashe[k]
             return None
+        self.executor.driver.reads.clear()
+        self.executor.driver.pending_writes.clear()
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -138,6 +140,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         tx_bad0 = list()
         tx_index = {}
         i1a = 0
+        rez_ok = []
         for tx_data0 in rez_batch:
             i2a = 0
             for tx0 in tx_data0:
@@ -151,9 +154,11 @@ class ConflictResolutionExecutor(TransactionExecutor):
                             for k, v in tx['p_writes'].items():
                                 if v is not None:
                                     if k in tx0['reads']:
+                                        log.debug(f"reads conflict found: {k}")
                                         conflict = True
                                         break
                                     if k in tx0['p_writes']:
+                                        log.debug(f"p_writes conflict found: {k}")
                                         conflict = True
                                         break
                         if conflict:
@@ -267,24 +272,83 @@ class ConflictResolutionExecutor(TransactionExecutor):
             i1, i2 = tx_idx[tx_hash]
             result0[i1][i2] = tx_data[i]
             i += 1
-
         log.debug(f"End of rerun. result_list={result0} duration= {time() - s}")
-
         return result0
 
-    def execute_work(self, driver, work, wallet, previous_block_hash, current_height=0, stamp_cost=20000,
-                     parallelism=4):
+    def rerun_txs2(self, driver, batch, timestamp, input_hash, stamp_cost, bhash='0' * 64, num=1, tx_idx=None,
+                  result0=None, ):
+
+        environment = self.generate_environment(driver, timestamp, input_hash, bhash, num)
+        set_pool_executor(self.executor)
+
+        i = 0
+        s = time()
+
+        self.executor.driver.pending_writes.clear()
+        tot_pwrites = set()
+        for tx_hash in batch:
+            i1, i2 = tx_idx[tx_hash]
+            ini_pwrites = result0[i1][i2]['p_writes']
+            tot_pwrites.update(ini_pwrites.keys())
+        tot_pwrites = list(tot_pwrites)
+
+        for kk in range (len(self.work_pool)):
+            it = (None, None, environment, 0, tot_pwrites)
+            i_prc = self.work_pool[kk]
+            pool[i_prc].q_in.put(it)
+
+        self.active_workers = 1
+        for tx_hash in batch:
+            i1, i2 = tx_idx[tx_hash]
+            log.debug(f'i1, i2 {i1, i2} {tx_hash} ')
+            transaction = result0[i1][i2]['transaction']
+
+            log.debug(f'Transaction {i} {transaction}')
+            it = (transaction, stamp_cost, environment, i, None)
+            i_prc = self.work_pool[0]
+            pool[i_prc].q_in.put(it)
+            i += 1
+
+        N_tx = i
+        tx_data = self.wait_tx_result(N_tx)
+
+        result_m = []
+        for tx2 in result0:
+            tb2 = []
+            for tx in tx2:
+                if tx['hash'] not in batch:
+                    tb2.append(tx)
+            if len(tb2) > 0:
+                result_m.append(tb2)
+
+        # for tx_hash in batch:
+        #     i1, i2 = tx_idx[tx_hash]
+        #     log.debug(f'delete i1, i2 {i1, i2} {tx_hash} ')
+        #     log.debug(f' result0[i1][i2] = {result0[i1][i2]}')
+        #     del result0[i1][i2]
+
+        result_m.append(tx_data)
+        log.debug(f"End of rerun2. result_list={result_m} duration= {time() - s}")
+
+        return result_m
+
+    def init_pool(self, work=None):
         # Assume single threaded, single process for now.
         global pool
         if len(pool) == 0:
             self.start_pool()
             log.debug(f'Initialyze pool {len(pool)}')
-        l_max = 0
-        for tx_batch in work:
-            l_max = max(l_max, len(tx_batch['transactions']))
+        l_max = 1
+        if work is not None:
+            for tx_batch in work:
+                l_max = max(l_max, len(tx_batch['transactions']))
 
         self.work_pool, self.active_workers = self.get_pool(l_max)
 
+    def execute_work(self, driver, work, wallet, previous_block_hash, current_height=0, stamp_cost=20000,
+                     parallelism=4):
+
+        self.init_pool(work)
         rez_batch = []
         for tx_batch in work:
             results = self.execute_tx_batch(
@@ -301,7 +365,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         tx_bad, tx_bad_idx = self.check_conflict2(rez_batch)
         log.debug(f"tx_bad={tx_bad} tx_bad_idx= {tx_bad_idx}")
         if len(tx_bad) > 0:
-            rez_batch2 = self.rerun_txs(
+            rez_batch2 = self.rerun_txs2(
                 driver=driver,
                 batch=tx_bad,
                 timestamp=work[0]['timestamp'],
@@ -313,7 +377,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
                 result0=rez_batch,
             )
             log.debug(f"rez_batch2={rez_batch2}")
-
+            rez_batch = rez_batch2
         self.free_pool(self.work_pool)
 
         subblocks = []

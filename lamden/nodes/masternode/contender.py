@@ -23,9 +23,11 @@ class SBCInbox(router.Processor):
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
-        if len(msg) != self.expected_subblocks:
-            self.log.error('Contender does not have enough subblocks!')
-            return
+
+        #  DISABLED as Conflict executor can add new subblocks
+        # if len(msg) != self.expected_subblocks:
+        #     self.log.error('Contender does not have enough subblocks!')
+        #     return
 
         for i in range(len(msg)):
             if not self.sbc_is_valid(msg[i], i):

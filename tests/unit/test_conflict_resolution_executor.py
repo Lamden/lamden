@@ -73,6 +73,7 @@ class TestDelegate(TestCase):
         self.loop.close()
 
     def calc_rerun(self, e, tx_batch):
+        e.init_pool()
         results = e.execute_tx_batch(
             driver=self.client.raw_driver,
             batch=tx_batch,
@@ -83,7 +84,7 @@ class TestDelegate(TestCase):
         rez_batch = [results]
         tx_bad, tx_bad_idx = e.check_conflict2(rez_batch)
         if len(tx_bad) > 0:
-            rez_batch2 = e.rerun_txs(
+            rez_batch2 = e.rerun_txs2(
                 driver=self.client.raw_driver,
                 batch=tx_bad,
                 timestamp=time.time(),
@@ -93,6 +94,9 @@ class TestDelegate(TestCase):
                 result0=rez_batch,
             )
             results = rez_batch2[0]
+            if len(rez_batch2) > 1:
+                results.extend(rez_batch2[1])
+            print(f'rerun results={results}')
         return results
 
     def tx_sort_by_hash(self, tx_batch, results):
