@@ -56,9 +56,15 @@ class ConflictResolutionExecutor(TransactionExecutor):
         self.work_pool = None
         self.active_workers = None
 
-    def execute_tx(self, transaction, stamp_cost, environment: dict = {}, tx_number=0, ini_writes=None):
+    def execute_tx(self, transaction, stamp_cost, environment: dict = {}, tx_number=0, ini_writes=None, cmd=None):
         #global PoolExecutor
         #executor = PoolExecutor
+        if cmd  is not None:
+            if cmd == 1:  # clear reads & writes
+                self.executor.driver.reads.clear()
+                self.executor.driver.pending_writes.clear()
+                self.executor.driver.cache.clear()
+            return
         if ini_writes is not None:
             log.debug(f'ini_writes={ini_writes} cash ={self.executor.driver.cache}')
             p_cashe = self.executor.driver.cache
@@ -67,8 +73,6 @@ class ConflictResolutionExecutor(TransactionExecutor):
                     log.debug(f"deleted {k} from cash")
                     del p_cashe[k]
             return None
-        # self.executor.driver.reads.clear()
-        # self.executor.driver.pending_writes.clear()
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -203,7 +207,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
 
         for transaction in batch['transactions']:
             log.debug(f'Transaction {i}   {type(self.executor)}')
-            it = (transaction, stamp_cost, environment, i, None)
+            it = (transaction, stamp_cost, environment, i, None, None)
             i_prc = self.work_pool[i % self.active_workers]
             pool[i_prc].q_in.put(it)
             i += 1
@@ -249,7 +253,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         tot_pwrites = list(tot_pwrites)
 
         for kk in range (len(self.work_pool)):
-            it = (None, None, environment, 0, tot_pwrites)
+            it = (None, None, environment, 0, tot_pwrites, None)
             i_prc = self.work_pool[kk]
             pool[i_prc].q_in.put(it)
 
@@ -259,7 +263,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
             log.debug(f'i1, i2 {i1, i2} {tx_hash} ')
             transaction = result0[i1][i2]['transaction']
             log.debug(f'Transaction {i} {transaction}')
-            it = (transaction, stamp_cost, environment, i, None)
+            it = (transaction, stamp_cost, environment, i, None, None)
             i_prc = self.work_pool[0]
             pool[i_prc].q_in.put(it)
             i += 1
@@ -293,7 +297,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
         tot_pwrites = list(tot_pwrites)
 
         for kk in range (len(self.work_pool)):
-            it = (None, None, environment, 0, tot_pwrites)
+            it = (None, None, environment, 0, tot_pwrites, None)
             i_prc = self.work_pool[kk]
             pool[i_prc].q_in.put(it)
 
@@ -304,7 +308,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
             transaction = result0[i1][i2]['transaction']
 
             log.debug(f'Transaction {i} {transaction}')
-            it = (transaction, stamp_cost, environment, i, None)
+            it = (transaction, stamp_cost, environment, i, None, None)
             i_prc = self.work_pool[0]
             pool[i_prc].q_in.put(it)
             i += 1
@@ -344,6 +348,13 @@ class ConflictResolutionExecutor(TransactionExecutor):
                 l_max = max(l_max, len(tx_batch['transactions']))
 
         self.work_pool, self.active_workers = self.get_pool(l_max)
+
+        log.debug(f'Clear reads & writes')
+        for kk in range (len(self.work_pool)):
+            it = (None, None, None, 0, None, 1)
+            i_prc = self.work_pool[kk]
+            pool[i_prc].q_in.put(it)
+
 
     def execute_work(self, driver, work, wallet, previous_block_hash, current_height=0, stamp_cost=20000,
                      parallelism=4):
@@ -492,8 +503,8 @@ class ProcessThread(mp.Process):
                     # work()
                     try:
                         tx_input = x
-                        output = self.executor.execute_tx(tx_input[0], tx_input[1], environment= tx_input[2], tx_number=tx_input[3], ini_writes=tx_input[4])
-                        if tx_input[4] is None:
+                        output = self.executor.execute_tx(tx_input[0], tx_input[1], environment= tx_input[2], tx_number=tx_input[3], ini_writes=tx_input[4], cmd=tx_input[5])
+                        if tx_input[4] is None and tx_input[5] is None:
                             self.q_out.put(output)
                     except Exception as err:
                         log.error(f"Worker stopped after exception={err}")
