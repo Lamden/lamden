@@ -67,8 +67,8 @@ class ConflictResolutionExecutor(TransactionExecutor):
                     log.debug(f"deleted {k} from cash")
                     del p_cashe[k]
             return None
-        self.executor.driver.reads.clear()
-        self.executor.driver.pending_writes.clear()
+        # self.executor.driver.reads.clear()
+        # self.executor.driver.pending_writes.clear()
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],

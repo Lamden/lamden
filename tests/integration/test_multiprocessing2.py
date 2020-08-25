@@ -137,7 +137,7 @@ class TestFullFlowWithMocks(TestCase):
             network.delegates[0].obj.transaction_executor.stop_pool()
 
     def test1_process_batch_2tx(self):
-        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)
+        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
 
         w_stu =[Wallet()]
         w_cand = [Wallet()]
