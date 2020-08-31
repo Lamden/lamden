@@ -159,7 +159,7 @@ class TestValidator(TestCase):
             contract='currency',
             function='transfer',
             kwargs={
-                'amount': 123,
+                'amount': 123.0,
                 'to': 'jeff'
             }
         )

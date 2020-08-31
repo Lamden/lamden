@@ -2,7 +2,7 @@ import time
 
 from lamden.crypto.canonical import format_dictionary
 from lamden.formatting import check_format, rules, primatives
-from contracting.db.encoder import encode
+from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
@@ -152,7 +152,9 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
 
     assert check_format(payload, rules.TRANSACTION_PAYLOAD_RULES), 'Invalid payload provided!'
 
-    signature = wallet.sign(encode(payload))
+    true_payload = encode(decode(encode(payload)))
+
+    signature = wallet.sign(true_payload)
 
     metadata = {
         'signature': signature,
