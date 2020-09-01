@@ -318,7 +318,7 @@ def set_pool_executor(executor: Executor):
 
 
 class SerialExecutor(TransactionExecutor):
-    def __init__(self, executor):
+    def __init__(self, executor: Executor):
         self.executor = executor
 
     def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
@@ -354,7 +354,20 @@ class SerialExecutor(TransactionExecutor):
         if output['status_code'] == 0:
             writes = [{'key': k, 'value': v} for k, v in output['writes'].items()]
         else:
-            writes = {}
+            # Calculate only stamp deductions
+            balance = self.executor.driver.get_var(
+                contract='currency',
+                variable='balances',
+                arguments=[transaction['payload']['sender']],
+                mark=False
+            )
+
+            to_deduct = output['stamps_used'] / stamp_cost
+
+            writes = [{
+                'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
+                'value': balance - to_deduct
+            }]
 
         tx_output = {
             'hash': tx_hash,

@@ -5,7 +5,7 @@ from lamden.crypto.wallet import Wallet, verify
 from contracting.db.encoder import encode, decode
 from lamden import storage
 from contracting.client import ContractingClient
-
+import decimal
 
 class TestTransactionBuilder(TestCase):
     def test_init_valid_doesnt_assert(self):
@@ -32,7 +32,7 @@ class TestTransactionBuilder(TestCase):
                 contract='currency',
                 function='transfer',
                 kwargs={
-                    'amount': 123,
+                    'amount': 123.0,
                     'to': 'jeff'
                 }
             )
@@ -116,7 +116,7 @@ class TestValidator(TestCase):
             contract='currency',
             function='transfer',
             kwargs={
-                'amount': 123,
+                'amount': decimal.Decimal('123.872345873452873459873459870'),
                 'to': 'jeff'
             }
         )

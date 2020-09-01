@@ -1126,3 +1126,49 @@ class TestFullFlowWithMocks(TestCase):
             self.assertEqual(jeff, 1)
 
         self.loop.run_until_complete(test())
+
+    def test_eat_stamps(self):
+        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)
+
+        code = '''\
+@export
+def eat_stamps():
+    while True:
+        pass
+'''
+
+        stu = Wallet()
+        candidate = Wallet()
+
+        print(candidate.verifying_key)
+
+        async def test():
+            await network.start()
+            network.refresh()
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='submission',
+                function='submit_contract',
+                kwargs={
+                    'name': 'con_stamp_eater',
+                    'code': code
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='con_stamp_eater',
+                function='eat_stamps',
+                kwargs={},
+                stamps=10000
+            )
+
+            await asyncio.sleep(4)
+
+        self.loop.run_until_complete(test())
+
+        network.stop()
+        network.flush()
