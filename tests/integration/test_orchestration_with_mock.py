@@ -1166,6 +1166,16 @@ def eat_stamps():
                 stamps=10000
             )
 
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='con_stamp_eater',
+                function='eat_stamps',
+                kwargs={},
+                stamps=10000
+            )
+
             await asyncio.sleep(4)
 
         self.loop.run_until_complete(test())

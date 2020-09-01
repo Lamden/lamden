@@ -362,11 +362,11 @@ class SerialExecutor(TransactionExecutor):
                 mark=False
             )
 
-            to_deduct = output['stamps_used'] / stamp_cost
+            # to_deduct = output['stamps_used'] / stamp_cost
 
             writes = [{
                 'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                'value': balance - to_deduct
+                'value': balance
             }]
 
         tx_output = {
