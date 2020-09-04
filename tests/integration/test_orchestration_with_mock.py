@@ -1176,6 +1176,52 @@ def eat_stamps():
                 stamps=10000
             )
 
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1,
+                    'to': 'jeff'
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1,
+                    'to': 'jeff'
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1,
+                    'to': 'jeff'
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1,
+                    'to': 'jeff'
+                }
+            )
+
             await asyncio.sleep(4)
 
         self.loop.run_until_complete(test())

@@ -9,7 +9,7 @@ last_candidate = Variable()
 
 to_be_relinquished = Variable()
 
-STAMP_COST = 20_000
+STAMP_COST = 20
 member_cost = Variable()
 
 controller = Variable()

@@ -395,3 +395,47 @@ class TestValidator(TestCase):
             client=client,
             nonces=self.driver
         )
+
+    def test_transaction_valid_for_fixed(self):
+        w = Wallet()
+
+        tx = build_transaction(
+            wallet=w,
+            processor='b' * 64,
+            stamps=123,
+            nonce=0,
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': {'__fixed__': '123.123'},
+                'to': 'jeff'
+            }
+        )
+
+        print(tx)
+
+        decoded = decode(tx)
+
+        client = ContractingClient()
+        client.flush()
+
+        client.set_var(
+            contract='currency',
+            variable='balances',
+            arguments=[w.verifying_key],
+            value=1_000_000
+        )
+
+        client.set_var(
+            contract='stamp_cost',
+            variable='S',
+            arguments=['value'],
+            value=20_000
+        )
+
+        transaction.transaction_is_valid(
+            transaction=decoded,
+            expected_processor='b' * 64,
+            client=client,
+            nonces=self.driver
+        )
