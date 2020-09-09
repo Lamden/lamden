@@ -400,6 +400,42 @@ def get():
 
         self.assertEqual(len(self.ws.queue), 1)
 
+    def test_fixed_objects_do_not_fail_signature(self):
+        self.assertEqual(len(self.ws.queue), 0)
+
+        w = Wallet()
+
+        self.ws.client.set_var(
+            contract='currency',
+            variable='balances',
+            arguments=[w.verifying_key],
+            value=1_000_000
+        )
+
+        self.ws.client.set_var(
+            contract='stamp_cost',
+            variable='S',
+            arguments=['value'],
+            value=1_000_000
+        )
+
+        tx = build_transaction(
+            wallet=w,
+            processor=self.ws.wallet.verifying_key,
+            stamps=6000,
+            nonce=0,
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': {'__fixed__': '1.0'},
+                'to': 'jeff'
+            }
+        )
+
+        _, response = self.ws.app.test_client.post('/', data=tx)
+
+        self.assertEqual(len(self.ws.queue), 1)
+
     def test_submit_transaction_error_if_queue_full(self):
         self.ws.queue.extend(range(10_000))
 
