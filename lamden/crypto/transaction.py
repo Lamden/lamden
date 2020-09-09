@@ -67,7 +67,7 @@ def check_tx_formatting(tx: dict, expected_processor: str):
 
     if not wallet.verify(
             tx['payload']['sender'],
-            encode(decode(encode(tx['payload']))),
+            encode(tx['payload']),
             tx['metadata']['signature']
     ):
         raise TransactionSignatureInvalid

@@ -540,3 +540,6 @@ def get():
         _, response = self.ws.app.test_client.get('/tx?hash=' + 'a' * 64)
 
         self.assertDictEqual(response.json, {'error': 'Transaction not found.'})
+
+    def test_js_encoded_tx_works(self):
+        pass
