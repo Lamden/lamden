@@ -6,7 +6,7 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
-
+import json
 
 class TransactionException(Exception):
     pass
@@ -48,6 +48,10 @@ class TransactionFormattingError(TransactionException):
     pass
 
 
+class TransactionTrailingZerosFixedError(TransactionException):
+    pass
+
+
 EXCEPTION_MAP = {
     TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
     TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
@@ -57,8 +61,48 @@ EXCEPTION_MAP = {
     TransactionSignatureInvalid: {'error': 'Transaction is not signed by the sender.'},
     TransactionStampsNegative: {'error': 'Transaction has negative stamps supplied.'},
     TransactionException: {'error': 'Another error has occured.'},
-    TransactionFormattingError: {'error': 'Transaction is not formatted properly.'}
+    TransactionFormattingError: {'error': 'Transaction is not formatted properly.'},
+    TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'}
 }
+
+
+def has_trailing_zeros(s: str):
+    if type(s) != str:
+        return False
+    if len(s.split('.')) != 2:
+        return False
+    return s[-1] == '0'
+
+
+def list_has_trailing_zeros(l: list):
+    for item in l:
+        if has_trailing_zeros(item):
+            return True
+    return False
+
+
+def iterate(d: dict):
+    for k, v in d.items():
+        # Iterate lists
+        if type(v) == list and list_has_trailing_zeros(v):
+            return True
+        elif isinstance(v, dict) and iterate(d):
+            return True
+        elif has_trailing_zeros(v):
+            return True
+    return False
+
+
+def fixed_is_valid(f: dict):
+    if type(f) != dict:
+        return False
+    if '__fixed__' not in f:
+        return False
+    if type(f['__fixed__']) != str:
+        return False
+    if has_trailing_zeros(f['__fixed__']):
+        return False
+    return True
 
 
 def check_tx_formatting(tx: dict, expected_processor: str):

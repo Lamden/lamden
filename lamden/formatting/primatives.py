@@ -95,6 +95,21 @@ def number_is_formatted(i: int):
     return True
 
 
+def fixed_is_formatted(f: dict):
+    if type(f) != dict:
+        return False
+    if '__fixed__' not in f:
+        return False
+    if type(f['__fixed__']) != str:
+        return False
+    if len(f['__fixed__'].split('.')) != 2:
+        return False
+    if f['__fixed__'][-1] == '0':
+        return False
+    return True
+
+
+# Potential bug?
 def kwargs_are_formatted(k: dict):
     for k in k.keys():
         if not identifier_is_formatted(k):

@@ -506,3 +506,36 @@ class TestFormatting(TestCase):
         }
 
         self.assertFalse(primatives.check_format(thing, test_rule))
+
+    def test_fixed_returns_true(self):
+        f = {'__fixed__': '1.23'}
+        self.assertTrue(primatives.fixed_is_formatted(f))
+
+    def test_fixed_trailing_zeros_false(self):
+        f = {'__fixed__': '1.230'}
+        self.assertFalse(primatives.fixed_is_formatted(f))
+
+    def test_batch_fixed_cases(self):
+        cases = [
+            ({'__fixed__': 1}, False),
+            ({'__fixed__': 1.0}, False),
+            ({'__fixed__': '1.0'}, False),
+            ({'__fixed__': -1}, False),
+            ({'__fixed__': -1.0}, False),
+            ({'__fixed__': '-1.0'}, False),
+            ({'__fixed__': 1.001}, False),
+            ({'__fixed__': '1.001'}, True),
+            ({'__fixed__': -1.001}, False),
+            ({'__fixed__': '-1.001'}, True),
+            ({'__fixed__': 100}, False),
+            ({'__fixed__': 100.0}, False),
+            ({'__fixed__': -100}, False),
+            ({'__fixed__': -100.0}, False),
+            ({'__fixed__': '100'}, False),
+            ({'__fixed__': '100.0'}, False),
+            ({'__fixed__': '-100'}, False),
+            ({'__fixed__': '-100.0'}, False),
+        ]
+
+        for case in cases:
+            self.assertEqual(primatives.fixed_is_formatted(case[0]), case[1])
