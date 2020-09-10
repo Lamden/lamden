@@ -6,6 +6,8 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from contracting.client import ContractingClient
 import decimal
+import json
+
 
 class TestTransactionBuilder(TestCase):
     def test_init_valid_doesnt_assert(self):
@@ -412,8 +414,6 @@ class TestValidator(TestCase):
             }
         )
 
-        print(tx)
-
         decoded = decode(tx)
 
         client = ContractingClient()
@@ -483,3 +483,32 @@ class TestValidator(TestCase):
             client=client,
             nonces=self.driver
         )
+
+    def test_extract_payload_works(self):
+        tx = '{"metadata":{"signature":"27d52552e22aaa40ac91805fbe2af231610b6f97d3d51015e93d951f68a66abd161c6b25a2bfafddb71949360d79e4f19e614241dc028cac32ee6f6b5ba06203","timestamp":1599676652},"payload":{"contract":"con_token_swap","function":"disperse","kwargs":{"amount":{"__fixed__":"1.0"},"hash":"0xa619c18ba18cbcf8525475ebeccc64e414eb1a491a1b7aa2c19f6a7efe89e000","to":"testdude"},"nonce":0,"processor":"e65ae8c2167ec016557d232e4cfe4a3db69bc3384d86c5fead4d58c7b2d51a04","sender":"f16c130ceb7ed9bcebde301488cfd507717d5d511674bc269c39ad41fc15d780","stamps_supplied":100}}'
+        expected = '{"contract":"con_token_swap","function":"disperse","kwargs":{"amount":{"__fixed__":"1.0"},"hash":"0xa619c18ba18cbcf8525475ebeccc64e414eb1a491a1b7aa2c19f6a7efe89e000","to":"testdude"},"nonce":0,"processor":"e65ae8c2167ec016557d232e4cfe4a3db69bc3384d86c5fead4d58c7b2d51a04","sender":"f16c130ceb7ed9bcebde301488cfd507717d5d511674bc269c39ad41fc15d780","stamps_supplied":100}'
+
+        p = transaction.extract_payload(tx)
+        self.assertEqual(expected, p)
+
+    def test_verify_raw_tx(self):
+        w = Wallet()
+
+        tx = build_transaction(
+            wallet=w,
+            processor='b' * 64,
+            stamps=123,
+            nonce=0,
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': {'__fixed__': '1.0'},
+                'to': 'jeff'
+            }
+        )
+
+        self.assertTrue(transaction.verify_raw_tx(tx))
+
+    def test_convert_contracting_objects_works(self):
+        payload = {'amount': decimal.Decimal('123.123120000')}
+        print(transaction.convert_contracting_objects(payload))

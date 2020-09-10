@@ -6,6 +6,7 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
+import json
 
 
 class TransactionException(Exception):
@@ -59,6 +60,24 @@ EXCEPTION_MAP = {
     TransactionException: {'error': 'Another error has occured.'},
     TransactionFormattingError: {'error': 'Transaction is not formatted properly.'}
 }
+
+
+def extract_payload(raw_tx: str):
+    tx_dict = json.loads(raw_tx)
+    tx_payload = json.dumps(tx_dict['payload'], separators=(',', ':'))
+    return tx_payload
+
+
+def verify_raw_tx(raw_tx: str):
+    tx_dict = json.loads(raw_tx)
+
+    raw_payload = extract_payload(raw_tx)
+
+    return wallet.verify(
+        tx_dict['payload']['sender'],
+        raw_payload,
+        tx_dict['metadata']['signature']
+    )
 
 
 def check_tx_formatting(tx: dict, expected_processor: str):
@@ -137,6 +156,16 @@ def transaction_is_not_expired(transaction, timeout=5):
     return (int(time.time()) - timestamp) < timeout
 
 
+def raw_serialize(p: dict):
+    return json.dumps(p, separators=(',', ':'))
+
+
+def convert_contracting_objects(p: dict):
+    encoded = encode(p)
+    regular_dict = json.loads(encoded)
+    return regular_dict
+
+
 def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce: int, processor: str, stamps: int):
     payload = {
         'contract': contract,
@@ -152,21 +181,30 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
 
     assert check_format(payload, rules.TRANSACTION_PAYLOAD_RULES), 'Invalid payload provided!'
 
-    true_payload = encode(decode(encode(payload)))
+    # Serialize the payload for signing
+    converted_payload = convert_contracting_objects(payload)
+    raw_payload = raw_serialize(converted_payload)
 
-    signature = wallet.sign(true_payload)
+    # Sign it
+    signature = wallet.sign(raw_payload)
 
+    # Construct the metadata that is not affected by the signature
     metadata = {
         'signature': signature,
         'timestamp': int(time.time())
     }
 
+    # Construct the final tx
     tx = {
         'payload': payload,
         'metadata': metadata
     }
 
-    return encode(format_dictionary(tx))
+    tx = format_dictionary(tx)
+    tx = convert_contracting_objects(tx)
+    raw_tx = raw_serialize(tx)
+
+    return raw_tx
 
 
 # Run through all tests

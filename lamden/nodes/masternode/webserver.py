@@ -140,6 +140,9 @@ class WebServer:
 
         # Check that the TX is correctly formatted
         try:
+            if not transaction.verify_raw_tx(request.body):
+                raise TransactionException
+
             transaction.check_tx_formatting(tx, self.wallet.verifying_key)
 
             transaction.transaction_is_valid(
