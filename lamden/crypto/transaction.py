@@ -84,13 +84,6 @@ def check_tx_formatting(tx: dict, expected_processor: str):
     if not check_format(tx, rules.TRANSACTION_RULES):
         raise TransactionFormattingError
 
-    if not wallet.verify(
-            tx['payload']['sender'],
-            encode(tx['payload']),
-            tx['metadata']['signature']
-    ):
-        raise TransactionSignatureInvalid
-
     if tx['payload']['processor'] != expected_processor:
         raise TransactionProcessorInvalid
 
@@ -210,6 +203,7 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
 # Run through all tests
 def transaction_is_valid(transaction, expected_processor, client: ContractingClient, nonces: storage.NonceStorage, strict=True,
                          tx_per_block=15, timeout=5):
+
     # Check basic formatting so we can access via __getitem__ notation without errors
     if not check_format(transaction, rules.TRANSACTION_RULES):
         return TransactionFormattingError
