@@ -460,7 +460,6 @@ def get():
                 'to': 'jeff'
             }
         )
-
         tx = decode(tx)
         tx['payload']['stamps_supplied'] = -123
         tx = encode(tx)
