@@ -483,3 +483,21 @@ class TestValidator(TestCase):
             client=client,
             nonces=self.driver
         )
+
+    def test_iterate_kwargs_finds_fixed_good(self):
+        pass
+
+    def test_iterate_kwargs_finds_fixed_bas(self):
+        pass
+
+    def test_iterate_nested_kwarg_finds_fixed_good(self):
+        pass
+
+    def test_iterate_nested_kwarg_finds_fixed_bad(self):
+        pass
+
+    def test_iterate_nested_list_kwarg_finds_fixed_good(self):
+        pass
+
+    def test_iterate_nested_list_kwarg_finds_fixed_bad(self):
+        pass
