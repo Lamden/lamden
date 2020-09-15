@@ -7,6 +7,7 @@ from lamden import storage
 from contracting.client import ContractingClient
 import decimal
 
+
 class TestTransactionBuilder(TestCase):
     def test_init_valid_doesnt_assert(self):
         build_transaction(
