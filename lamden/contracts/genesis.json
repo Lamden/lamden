@@ -1,0 +1,42 @@
+{
+	"base_directory": "/genesis",
+	"extension": ".s.py",
+	"contracts": [
+		{
+			"name": "currency",
+			"owner": null,
+			"constructor_args": {
+				"vk": "0000054d4820cdf8089a02c0d7b4f80dd947729825336bb4569d46f6ad399a99"
+			}
+		},
+		{
+			"name": "election_house",
+			"owner": null,
+			"constructor_args": null
+		},
+		{
+			"name": "stamp_cost",
+			"owner": "election_house",
+			"constructor_args": {
+				"initial_rate": 20
+			}
+		},
+		{
+			"name": "rewards",
+			"owner": "election_house",
+			"constructor_args": null
+		},
+		{
+			"name": "upgrade",
+			"owner": null,
+			"constructor_args": null
+		},
+		{
+			"name": "foundation",
+			"owner": null,
+			"constructor_args": {
+				"vk": "0000054d4820cdf8089a02c0d7b4f80dd947729825336bb4569d46f6ad399a99"
+			}
+		}
+	]
+}
