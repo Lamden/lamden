@@ -1,2 +1,0 @@
-import currency
-currency.transfer_coins('{__receiver__}', {__amount__})

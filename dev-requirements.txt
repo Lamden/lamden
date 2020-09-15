@@ -1,7 +1,0 @@
-coloredlogs
-coverage
-numpy
-scipy
-vprof
-docker
-dill
