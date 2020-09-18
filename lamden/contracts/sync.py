@@ -5,6 +5,7 @@ from contracting.client import ContractingClient
 
 DEFAULT_PATH = os.path.dirname(__file__)
 DEFAULT_GENESIS_PATH = os.path.dirname(__file__) + '/genesis.json'
+DEFAULT_SUBMISSION_PATH = os.path.dirname(__file__) + '/submission.s.py'
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
@@ -25,6 +26,27 @@ def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GE
         if client.get_contract(contract_name) is None:
             client.submit(code, name=contract_name, owner=contract['owner'],
                           constructor_args=contract['constructor_args'])
+
+
+def flush_sys_contracts(client: ContractingClient, filename=DEFAULT_GENESIS_PATH,
+                        submission_path=DEFAULT_SUBMISSION_PATH):
+
+    # Resets submission contract, allows for updating
+    client.set_submission_contract(filename=submission_path)
+
+    # Iterates through genesis contract files
+    with open(filename) as f:
+        genesis = json.load(f)
+
+    for contract in genesis['contracts']:
+        # Get the name of each
+        contract_name = contract['name']
+        if contract.get('submit_as') is not None:
+            contract_name = contract['submit_as']
+
+        #
+        client.raw_driver.delete_contract(contract_name)
+        client.raw_driver.commit()
 
 
 def setup_member_contracts(initial_masternodes, initial_delegates, client: ContractingClient, root=DEFAULT_PATH):
