@@ -2,7 +2,8 @@ import argparse
 from lamden.cli.start import start_node, join_network
 # from lamden.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
 from lamden.storage import BlockStorage
-from contracting.client import ContractDriver
+from contracting.client import ContractDriver, ContractingClient
+from lamden.contracts import sync
 
 
 def flush(args):
@@ -51,6 +52,8 @@ def setup_cilparser(parser):
     join_parser.add_argument('-mp', '--mn_seed_port', type=int, default=18080)
     join_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
 
+    sync_parser = subparser.add_parser('sync')
+
     return True
 
 
@@ -72,6 +75,11 @@ def main():
 
     elif args.command == 'join':
         join_network(args)
+
+    elif args.command == 'sync':
+        client = ContractingClient()
+        sync.flush_sys_contracts(client=client)
+        sync.submit_from_genesis_json_file(client=client)
 
 
 if __name__ == '__main__':
