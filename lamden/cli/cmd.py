@@ -52,6 +52,8 @@ def setup_cilparser(parser):
     join_parser.add_argument('-mp', '--mn_seed_port', type=int, default=18080)
     join_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
 
+    sync_parser = subparser.add_parser('sync')
+
     return True
 
 
@@ -76,13 +78,8 @@ def main():
 
     elif args.command == 'sync':
         client = ContractingClient()
-
         sync.flush_sys_contracts(client=client)
-
         sync.submit_from_genesis_json_file(client=client)
-
-
-
 
 
 if __name__ == '__main__':
