@@ -9,7 +9,8 @@ DEFAULT_SUBMISSION_PATH = os.path.dirname(__file__) + '/submission.s.py'
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
-def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH):
+def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH,
+                                  submission_path=DEFAULT_SUBMISSION_PATH, update=False):
     with open(filename) as f:
         genesis = json.load(f)
 
@@ -23,7 +24,16 @@ def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GE
         if contract.get('submit_as') is not None:
             contract_name = contract['submit_as']
 
-        if client.get_contract(contract_name) is None:
+        if update:
+            client.set_submission_contract(filename=submission_path)
+            client.raw_driver.set_contract(
+                name=contract_name,
+                code=code,
+                owner=contract['owner'],
+                developer='sys'
+            )
+
+        elif client.get_contract(contract_name) is None:
             client.submit(code, name=contract_name, owner=contract['owner'],
                           constructor_args=contract['constructor_args'])
 

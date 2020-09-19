@@ -78,8 +78,7 @@ def main():
 
     elif args.command == 'sync':
         client = ContractingClient()
-        sync.flush_sys_contracts(client=client)
-        sync.submit_from_genesis_json_file(client=client)
+        sync.submit_from_genesis_json_file(client=client, update=True)
 
 
 if __name__ == '__main__':

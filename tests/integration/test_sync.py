@@ -19,21 +19,22 @@ class TestSync(TestCase):
     def tearDown(self):
         self.client.flush()
 
-    def test_delete(self):
+    def test_update(self):
         sync.submit_from_genesis_json_file(
             client=self.client
         )
 
         submission_code_1 = self.client.raw_driver.get('submission.__code__')
 
-        sync.flush_sys_contracts(client=self.client, filename=MOCK_GENESIS, submission_path=MOCK_SUBMISSION)
-
         sync.submit_from_genesis_json_file(
             client=self.client,
             filename=MOCK_GENESIS,
-            root=MOCK_ROOT
+            root=MOCK_ROOT,
+            submission_path=MOCK_SUBMISSION,
+            update=True
         )
 
         submission_code_2 = self.client.raw_driver.get('submission.__code__')
 
         self.assertNotEqual(submission_code_1, submission_code_2)
+
