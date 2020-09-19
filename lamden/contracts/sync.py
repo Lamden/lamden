@@ -45,7 +45,7 @@ def flush_sys_contracts(client: ContractingClient, filename=DEFAULT_GENESIS_PATH
             contract_name = contract['submit_as']
 
         #
-        client.raw_driver.delete_contract(contract_name)
+        client.raw_driver.delete(f'{contract_name}.__code__')
         client.raw_driver.commit()
 
 
