@@ -64,10 +64,10 @@ class SBCInbox(router.Processor):
                 self.log.error('Merkle Tree Len mismatch')
                 return False
 
-            for i in range(len(expected_tree)):
-                if expected_tree[i] != sbc['merkle_tree']['leaves'][i]:
-                    self.log.error(f'Subblock Contender[{sbc["subblock"]}] from {sbc["signer"][:8]} has an Merkle tree proof.')
-                    return False
+            #for i in range(len(expected_tree)):
+            #    if expected_tree[i] != sbc['merkle_tree']['leaves'][i]:
+            #        self.log.error(f'Subblock Contender[{sbc["subblock"]}] from {sbc["signer"][:8]} has an Merkle tree proof.')
+            #        return False
 
         self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
 
