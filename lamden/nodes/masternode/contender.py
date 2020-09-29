@@ -68,6 +68,7 @@ class SBCInbox(router.Processor):
                 if expected_tree[i] != sbc['merkle_tree']['leaves'][i]:
                     self.log.error(f'Subblock Contender[{sbc["subblock"]}] from {sbc["signer"][:8]} has an Merkle tree proof.')
                     self.log.error(expected_tree[i])
+                    self.log.error(txs[i])
                     return False
 
         self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
