@@ -7,6 +7,8 @@ from lamden.nodes.masternode import contender
 import asyncio
 import secrets
 
+from decimal import Decimal
+
 from contracting.db.driver import ContractDriver
 
 
@@ -653,6 +655,34 @@ class TestSBCProcessor(TestCase):
         s = contender.SBCInbox()
 
         self.assertFalse(s.sbc_is_valid(sbc, 1))
+
+    def test_merkle_leaf_complex_objects_works(self):
+        tx_1_raw = b'{"hash": "503fa157e4d990f78f2b032731dffb398f6ff642b6bbc305817e24dd42b33402", "result": "None", "stamps_used": 198, "state": [{"key": "rewards.S:current_votes:masternodes", "value": 20}, {"key": "rewards.S:current_votes:delegates", "value": 20}, {"key": "rewards.S:current_votes:blackhole", "value": 5}, {"key": "rewards.S:current_votes:foundation", "value": 5}, {"key": "rewards.S:current_votes:developer", "value": 450}, {"key": "rewards.S:has_voted:b0fc27299da14bc08834df9c70d73074f3e511a5a91321d4fa413f3401144918", "value": true}, {"key": "rewards.S:vote_count", "value": 5}, {"key": "rewards.S:value", "value": [{"__fixed__": "0.04"}, {"__fixed__": "0.04"}, {"__fixed__": "0.01"}, {"__fixed__": "0.01"}, {"__fixed__": "0.9"}]}, {"key": "rewards.S:election_start", "value": null}, {"key": "currency.balances:b0fc27299da14bc08834df9c70d73074f3e511a5a91321d4fa413f3401144918", "value": {"__fixed__": "535.30200000"}}], "status": 0, "transaction": {"metadata": {"signature": "ceb4630c8be71f2c0c1e059790609fafa6ed948b7fceb4bb44c36dca46848fac8d55fe27f539036fee5bda6d772fff852b622393eab593aa6dce67f93f7d8f08", "timestamp": 1601411941}, "payload": {"contract": "election_house", "function": "vote", "kwargs": {"policy": "rewards", "value": [4, 4, 1, 1, 90]}, "nonce": 3, "processor": "5b09493df6c18d17cc883ebce54fcb1f5afbd507533417fe32c006009a9c3c4a", "sender": "b0fc27299da14bc08834df9c70d73074f3e511a5a91321d4fa413f3401144918", "stamps_supplied": 999}}}'
+
+        tx_1 = decode(tx_1_raw)
+
+        txs = [encode(tx).encode() for tx in [tx_1]]
+        expected_tree = merklize(txs)
+
+        w = Wallet()
+
+        input_hash = 'something'
+        signature = w.sign(expected_tree[0])
+
+        sbc = {
+            'subblock': 1,
+            'transactions': [tx_1],
+            'input_hash': input_hash,
+            'signer': w.verifying_key,
+            'merkle_tree': {
+                'signature': signature,
+                'leaves': expected_tree
+            }
+        }
+
+        s = contender.SBCInbox()
+
+        self.assertTrue(s.sbc_is_valid(sbc, 1))
 
     def test_bad_merkle_leaf_in_tree(self):
         tx_1 = {

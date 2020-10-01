@@ -41,8 +41,6 @@ async def stop_server(s, timeout):
     s.stop()
 
 
-
-
 class TestFullFlow(TestCase):
     def setUp(self):
         self.ctx = zmq.asyncio.Context()

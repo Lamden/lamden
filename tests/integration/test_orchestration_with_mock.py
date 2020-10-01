@@ -239,6 +239,137 @@ class TestFullFlowWithMocks(TestCase):
         self.assertEqual(v2, 444)
         network.flush()
 
+    def test_change_stamps_works(self):
+        network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)
+
+        async def test():
+            await network.start()
+            network.refresh()
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': network.delegates[0].wallet.verifying_key
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': network.delegates[1].wallet.verifying_key
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': network.delegates[2].wallet.verifying_key
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': network.masternodes[0].wallet.verifying_key
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=mocks.TEST_FOUNDATION_WALLET,
+                contract='currency',
+                function='transfer',
+                kwargs={
+                    'amount': 1_000_000,
+                    'to': network.masternodes[1].wallet.verifying_key
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=network.masternodes[0].wallet,
+                contract='election_house',
+                function='vote',
+                kwargs={
+                    'policy': 'stamp_cost',
+                    'value': 25
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=network.masternodes[1].wallet,
+                contract='election_house',
+                function='vote',
+                kwargs={
+                    'policy': 'stamp_cost',
+                    'value': 25
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=network.delegates[0].wallet,
+                contract='election_house',
+                function='vote',
+                kwargs={
+                    'policy': 'stamp_cost',
+                    'value': 25
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=network.delegates[1].wallet,
+                contract='election_house',
+                function='vote',
+                kwargs={
+                    'policy': 'stamp_cost',
+                    'value': 25
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            await network.make_and_push_tx(
+                wallet=network.delegates[2].wallet,
+                contract='election_house',
+                function='vote',
+                kwargs={
+                    'policy': 'stamp_cost',
+                    'value': 25
+                }
+            )
+
+            await asyncio.sleep(2)
+
+            network.stop()
+
+        self.loop.run_until_complete(test())
+
     def test_add_new_masternode_with_transactions(self):
         network = mocks.MockNetwork(num_of_masternodes=2, num_of_delegates=3, ctx=self.ctx)
 

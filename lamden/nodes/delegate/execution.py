@@ -324,6 +324,10 @@ class SerialExecutor(TransactionExecutor):
     def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
         # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
 
+        # Add AUXILIARY_SALT for more randomness
+
+        environment['AUXILIARY_SALT'] = transaction['metadata']['signature']
+
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -393,7 +397,7 @@ class SerialExecutor(TransactionExecutor):
             'block_hash': bhash,
             'block_num': num,
             '__input_hash': input_hash,  # Used for deterministic entropy for random games
-            'now': now
+            'now': now,
         }
 
     def execute_tx_batch(self, driver, batch, timestamp, input_hash, stamp_cost, bhash='0' * 64, num=1):
