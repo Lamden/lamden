@@ -707,3 +707,58 @@ class TestMasterStorage(TestCase):
 
     def test_get_block_v_none_returns_none(self):
         self.assertIsNone(self.db.get_block())
+
+    def test_delete_tx(self):
+        t = self.db.get_tx(h='something')
+
+        self.assertIsNone(t)
+
+        tx = {
+            'hash': 'something',
+            'key': 'value'
+        }
+
+        self.db.put(tx, BlockStorage.TX)
+
+        t = self.db.get_tx(h='something')
+
+        self.assertIsNotNone(t)
+
+        self.db.delete_tx(h='something')
+
+        t = self.db.get_tx(h='something')
+
+        self.assertIsNone(t)
+
+    def test_return_id_noid_false_block(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'data': 'woop'
+        }
+
+        self.db.put(block)
+
+        b = self.db.get_block('a', no_id=False)
+
+        self.assertIsNotNone(b.get('_id'))
+
+        b = self.db.get_block('a')
+
+        self.assertIsNone(b.get('_id'))
+
+    def test_return_id_noid_false_tx(self):
+        tx = {
+            'hash': 'something',
+            'key': 'value'
+        }
+
+        self.db.put(tx, BlockStorage.TX)
+
+        t = self.db.get_tx(h='something', no_id=False)
+
+        self.assertIsNotNone(t.get('_id'))
+
+        t = self.db.get_tx(h='something', no_id=True)
+
+        self.assertIsNone(t.get('_id'))

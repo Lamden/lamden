@@ -223,3 +223,15 @@ class BlockStorage:
         for subblock in block['subblocks']:
             for tx in subblock['transactions']:
                 self.put(tx, BlockStorage.TX)
+
+    def delete_tx(self, h):
+        self.txs.delete_one({'hash': h})
+
+    def delete_block(self, v):
+        block = self.get_block(v, no_id=False)
+
+        for subblock in block['subblocks']:
+            for tx in subblock['transactions']:
+                self.delete_tx(tx['hash'])
+
+        self.blocks.delete_one({'_id': block['_id']})
