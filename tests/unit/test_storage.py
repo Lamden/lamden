@@ -762,3 +762,95 @@ class TestMasterStorage(TestCase):
         t = self.db.get_tx(h='something', no_id=True)
 
         self.assertIsNone(t.get('_id'))
+
+    def test_delete_block_deletes_block(self):
+        tx_1 = {
+            'hash': 'something1',
+            'key': '1'
+        }
+
+        tx_2 = {
+            'hash': 'something2',
+            'key': '2'
+        }
+
+        tx_3 = {
+            'hash': 'something3',
+            'key': '3'
+        }
+
+        block = {
+            'hash': 'hello',
+            'subblocks': [
+                {
+                    'transactions': [tx_1, tx_2, tx_3]
+                }
+            ]
+        }
+
+        self.db.store_block(block)
+
+        got_1 = self.db.get_tx(h='something1')
+        got_2 = self.db.get_tx(h='something2')
+        got_3 = self.db.get_tx(h='something3')
+
+        self.assertDictEqual(tx_1, got_1)
+        self.assertDictEqual(tx_2, got_2)
+        self.assertDictEqual(tx_3, got_3)
+
+        got_block = self.db.get_block('hello')
+
+        self.assertDictEqual(block, got_block)
+
+        self.db.delete_block(v='hello')
+
+        self.assertIsNone(self.db.get_block(v='hello'))
+
+    def test_delete_block_deletes_txs(self):
+        tx_1 = {
+            'hash': 'something1',
+            'key': '1'
+        }
+
+        tx_2 = {
+            'hash': 'something2',
+            'key': '2'
+        }
+
+        tx_3 = {
+            'hash': 'something3',
+            'key': '3'
+        }
+
+        block = {
+            'hash': 'hello',
+            'subblocks': [
+                {
+                    'transactions': [tx_1, tx_2, tx_3]
+                }
+            ]
+        }
+
+        self.db.store_block(block)
+
+        got_1 = self.db.get_tx(h='something1')
+        got_2 = self.db.get_tx(h='something2')
+        got_3 = self.db.get_tx(h='something3')
+
+        self.assertDictEqual(tx_1, got_1)
+        self.assertDictEqual(tx_2, got_2)
+        self.assertDictEqual(tx_3, got_3)
+
+        got_block = self.db.get_block('hello')
+
+        self.assertDictEqual(block, got_block)
+
+        self.db.delete_block(v='hello')
+
+        got_1 = self.db.get_tx(h='something1')
+        got_2 = self.db.get_tx(h='something2')
+        got_3 = self.db.get_tx(h='something3')
+
+        self.assertIsNone(got_1)
+        self.assertIsNone(got_2)
+        self.assertIsNone(got_3)
