@@ -10,7 +10,7 @@ import zmq.asyncio
 import asyncio
 import hashlib
 from copy import deepcopy
-
+from decimal import Decimal
 import time
 from datetime import datetime
 
@@ -109,6 +109,44 @@ def get():
         self.assertEqual(result['state'][0]['key'], 'testing.v')
         self.assertEqual(result['state'][0]['value'],  'jeff')
         self.assertEqual(result['stamps_used'], 1)
+
+    def test_stamp_deduction_on_fail(self):
+        test_contract = '''
+@export
+def eat_stamps():
+    while True:
+        pass
+        '''
+
+        self.client.submit(test_contract, name='testing')
+
+        self.client.raw_driver.commit()
+        self.client.raw_driver.clear_pending_state()
+
+        stu = Wallet()
+
+        self.client.raw_driver.set(f'currency.balances:{stu.verifying_key}', 100000)
+
+        tx = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='eat_stamps',
+            kwargs={},
+            stamps=10000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        e = execution.SerialExecutor(executor=self.client.executor)
+
+        self.client.executor.metering = True
+
+        result = e.execute_tx(decode(tx), stamp_cost=200)
+
+        self.assertEqual(result['status'], 1)
+        self.assertEqual(result['state'][0]['key'], f'currency.balances:{stu.verifying_key}')
+        self.assertEqual(result['state'][0]['value'], Decimal('99950.0'))
+        self.assertEqual(result['stamps_used'], 10000)
 
     def test_generate_environment_creates_datetime_wrapped_object(self):
         timestamp = int(time.time())

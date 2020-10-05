@@ -339,6 +339,8 @@ class SerialExecutor(TransactionExecutor):
             auto_commit=False
         )
 
+        self.executor.driver.pending_writes.clear()
+
         if output['status_code'] == 0:
             log.info(f'TX executed successfully. '
                      f'{output["stamps_used"]} stamps used. '
@@ -383,8 +385,6 @@ class SerialExecutor(TransactionExecutor):
         }
 
         tx_output = format_dictionary(tx_output)
-
-        self.executor.driver.pending_writes.clear()  # add
 
         return tx_output
 
