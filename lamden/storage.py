@@ -230,6 +230,9 @@ class BlockStorage:
     def delete_block(self, v):
         block = self.get_block(v, no_id=False)
 
+        if block is None:
+            return
+
         for subblock in block['subblocks']:
             for tx in subblock['transactions']:
                 self.delete_tx(tx['hash'])
