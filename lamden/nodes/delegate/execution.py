@@ -328,6 +328,13 @@ class SerialExecutor(TransactionExecutor):
 
         environment['AUXILIARY_SALT'] = transaction['metadata']['signature']
 
+        balance = self.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[transaction['payload']['sender']],
+            mark=False
+        )
+
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -361,18 +368,11 @@ class SerialExecutor(TransactionExecutor):
             writes = [{'key': k, 'value': v} for k, v in output['writes'].items()]
         else:
             # Calculate only stamp deductions
-            balance = self.executor.driver.get_var(
-                contract='currency',
-                variable='balances',
-                arguments=[transaction['payload']['sender']],
-                mark=False
-            )
-
-            # to_deduct = output['stamps_used'] / stamp_cost
+            to_deduct = output['stamps_used'] / stamp_cost
 
             writes = [{
                 'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                'value': balance
+                'value': balance - to_deduct
             }]
 
         tx_output = {
