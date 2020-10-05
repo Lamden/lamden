@@ -156,14 +156,14 @@ class BlockStorage:
             return {'number': v}
         return {'hash': v}
 
-    def get_block(self, v=None):
+    def get_block(self, v=None, no_id=True):
         if v is None:
             return None
 
         q = self.q(v)
         block = self.blocks.find_one(q)
 
-        if block is not None:
+        if block is not None and no_id:
             block.pop('_id')
 
         return block
@@ -200,10 +200,10 @@ class BlockStorage:
 
         return blocks
 
-    def get_tx(self, h):
+    def get_tx(self, h, no_id=True):
         tx = self.txs.find_one({'hash': h})
 
-        if tx is not None:
+        if tx is not None and no_id:
             tx.pop('_id')
 
         return tx
