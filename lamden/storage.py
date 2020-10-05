@@ -126,9 +126,10 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
 
 
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage):
-    for sb in block['subblocks']:
-        for tx in sb['transactions']:
-            update_state_with_transaction(tx, driver, nonces)
+    if block.get('subblocks') is not None:
+        for sb in block['subblocks']:
+            for tx in sb['transactions']:
+                update_state_with_transaction(tx, driver, nonces)
 
     # Update our block hash and block num
     set_latest_block_hash(block['hash'], driver=driver)
