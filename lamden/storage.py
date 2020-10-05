@@ -220,6 +220,9 @@ class BlockStorage:
         self.store_txs(block)
 
     def store_txs(self, block):
+        if block.get('subblocks') is None:
+            return
+
         for subblock in block['subblocks']:
             for tx in subblock['transactions']:
                 self.put(tx, BlockStorage.TX)
