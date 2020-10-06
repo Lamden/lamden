@@ -218,9 +218,9 @@ class Node:
                           f'Node has probably already processed this block. Continuing.')
             return False
 
-        if block['previous'] != self.current_hash:
-            self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
-            return False
+        #if block['previous'] != self.current_hash:
+        #    self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
+        #    return False
 
         # If so, use metastate and subblocks to create the 'expected' block
         expected_block = canonical.block_from_subblocks(
