@@ -116,7 +116,7 @@ class PotentialSolution:
 
 
 class SubBlockContender:
-    def __init__(self, input_hash, index, total_contacts, required_consensus=0.66, adequate_consensus=0.50):
+    def __init__(self, input_hash, index, total_contacts, required_consensus=0.66, adequate_consensus=0.51):
         self.input_hash = input_hash
         self.index = index
 
