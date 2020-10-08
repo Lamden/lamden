@@ -212,8 +212,8 @@ class Node:
 
         # Get current metastate
 
-        if len(block['subblocks']) < 1:
-            return False
+        #if len(block['subblocks']) < 1:
+        #    return False
 
         # Test if block contains the same metastate
         if block['number'] != self.current_height + 1:

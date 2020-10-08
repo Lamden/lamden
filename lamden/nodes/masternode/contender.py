@@ -326,7 +326,7 @@ class Aggregator:
         self.log.info('Done aggregating new block.')
 
         block = contenders.get_current_best_block()
-        self.sbc_inbox.q.clear()
+        # self.sbc_inbox.q.clear()
 
         # self.log.info(f'Best block: {block}')
 
