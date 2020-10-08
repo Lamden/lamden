@@ -121,7 +121,7 @@ class Masternode(base.Node):
 
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
-        self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        #self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         # Start the webserver to accept transactions
         await self.webserver.start()
@@ -286,7 +286,7 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        self.aggregator.sbc_inbox.q.clear()
+        #self.aggregator.sbc_inbox.q.clear()
 
     def stop(self):
         super().stop()
