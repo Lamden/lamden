@@ -215,10 +215,10 @@ class Node:
         #    return False
 
         # Test if block contains the same metastate
-        # if block['number'] != self.current_height + 1:
-        #     self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
-        #                   f'Node has probably already processed this block. Continuing.')
-        #     return False
+        if block['number'] < self.current_height + 1:
+            self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
+                          f'Node has probably already processed this block. Continuing.')
+            return False
 
         # if block['previous'] != self.current_hash:
         #     self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
