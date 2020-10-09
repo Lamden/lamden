@@ -215,30 +215,32 @@ class Node:
         #    return False
 
         # Test if block contains the same metastate
-        if block['number'] != self.current_height + 1:
-            self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
-                          f'Node has probably already processed this block. Continuing.')
-            return False
+        # if block['number'] != self.current_height + 1:
+        #     self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
+        #                   f'Node has probably already processed this block. Continuing.')
+        #     return False
 
-        if block['previous'] != self.current_hash:
-            self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
-            return False
+        # if block['previous'] != self.current_hash:
+        #     self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
+        #     return False
 
         # If so, use metastate and subblocks to create the 'expected' block
-        expected_block = canonical.block_from_subblocks(
-            subblocks=block['subblocks'],
-            previous_hash=self.current_hash,
-            block_num=self.current_height + 1
-        )
+        # expected_block = canonical.block_from_subblocks(
+        #     subblocks=block['subblocks'],
+        #     previous_hash=self.current_hash,
+        #     block_num=self.current_height + 1
+        # )
 
         # Return if the block contains the expected information
-        good = block == expected_block
-        if good:
-            self.log.info(f'Block #{block["number"]} passed all checks. Store.')
-        else:
-            self.log.error(f'Block #{block["number"]} has an encoding problem. Do not store.')
+        # good = block == expected_block
+        # if good:
+        #     self.log.info(f'Block #{block["number"]} passed all checks. Store.')
+        # else:
+        #     self.log.error(f'Block #{block["number"]} has an encoding problem. Do not store.')
+        #
+        # return good
 
-        return good
+        return True
 
     def update_state(self, block):
         self.driver.clear_pending_state()
