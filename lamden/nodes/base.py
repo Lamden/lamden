@@ -205,8 +205,10 @@ class Node:
 
     def should_process(self, block):
         self.log.info(f'Processing block #{block.get("number")}')
-        self.log.info(f'Processing block {block}')
         # Test if block failed immediately
+        if block == {'response': 'ok'}:
+            return False
+
         if block['hash'] == 'f' * 64:
             self.log.error('Failed Block! Not storing.')
             return False
