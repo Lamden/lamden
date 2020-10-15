@@ -204,7 +204,8 @@ class Node:
             self.process_new_block(block)
 
     def should_process(self, block):
-        self.log.info(f'Processing block #{block["number"]}')
+        self.log.info(f'Processing block #{block.get("number")}')
+        self.log.info(f'Processing block {block}')
         # Test if block failed immediately
         if block['hash'] == 'f' * 64:
             self.log.error('Failed Block! Not storing.')
@@ -215,10 +216,10 @@ class Node:
         #    return False
 
         # Test if block contains the same metastate
-        if block['number'] < self.current_height + 1:
-            self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
-                          f'Node has probably already processed this block. Continuing.')
-            return False
+        # if block['number'] != self.current_height + 1:
+        #     self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
+        #                   f'Node has probably already processed this block. Continuing.')
+        #     return False
 
         # if block['previous'] != self.current_hash:
         #     self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
