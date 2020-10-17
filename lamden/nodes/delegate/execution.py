@@ -11,6 +11,7 @@ from time import time, sleep
 import queue
 
 log = get_logger('EXE')
+log.propagate = False
 
 __N_WORKER_PER_DELEGATES__ = 4
 __N_DELEGATES__ = 2

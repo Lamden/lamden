@@ -111,7 +111,7 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
             driver.driver.set(delta['key'], delta['value'])
-            log.debug(f"{delta['key']} -> {delta['value']}")
+            # log.debug(f"{delta['key']} -> {delta['value']}")
 
             nonces.set_nonce(
                 sender=tx['transaction']['payload']['sender'],
