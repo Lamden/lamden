@@ -1,6 +1,11 @@
 @__export('submission')
 def submit_contract(name: str, code: str, owner: Any=None, constructor_args: dict={}):
     assert not name.isdigit() and all(c.isalnum() or c == '_' for c in name), 'Invalid contract name!'
+
+    assert ctx.caller == ctx.signer, 'Cannot be called from a smart contract!'
+
+    assert name.islower(), 'Name must be lowercase!'
+
     __Contract().submit(name=name, code=code, owner=owner, constructor_args=constructor_args, developer=ctx.caller)
 
 
