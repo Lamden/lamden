@@ -20,6 +20,41 @@ PENDING_NONCE_KEY = '__pn'
 log = get_logger('STATE')
 
 
+class DecimalEncoder(TypeEncoder):
+    python_type = Decimal  # the Python type acted upon by this type codec
+
+    def transform_python(self, value):
+        return Decimal128(value)
+
+
+class ContractingDecimalEncoder(TypeEncoder):
+    python_type = ContractingDecimal  # the Python type acted upon by this type codec
+
+    def transform_python(self, value):
+        return Decimal128(value._d)
+
+
+class DecimalDecoder(TypeDecoder):
+    bson_type = Decimal128
+
+    def transform_bson(self, value):
+        return value.to_decimal()
+
+# class ContractingDecimalCodec(TypeCodec):
+#     python_type = ContractingDecimal  # the Python type acted upon by this type codec
+#     bson_type = Decimal128  # the BSON type acted upon by this type codec
+#
+#     def transform_python(self, value):
+#         return Decimal128(value._d)
+#
+#     def transform_bson(self, value):
+#         return value.to_decimal()
+
+
+type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
+codec_options = CodecOptions(type_registry=type_registry)
+
+
 class NonceStorage:
     def __init__(self, port=27027, db_name='lamden', nonce_collection='nonces', pending_collection='pending_nonces', config_path=lamden.__path__[0]):
         self.config_path = config_path
@@ -28,8 +63,9 @@ class NonceStorage:
 
         self.client = MongoClient()
         self.db = self.client.get_database(db_name)
-        self.nonces = self.db[nonce_collection]
-        self.pending_nonces = self.db[pending_collection]
+
+        self.nonces = self.db.get_collection(nonce_collection, codec_options=codec_options)
+        self.pending_nonces = self.db.get_collection(pending_collection, codec_options=codec_options)
 
     @staticmethod
     def get_one(sender, processor, db):
@@ -143,41 +179,6 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
     if set_hash_and_height:
         set_latest_block_hash(block['hash'], driver=driver)
         set_latest_block_height(block['number'], driver=driver)
-
-
-class DecimalEncoder(TypeEncoder):
-    python_type = Decimal  # the Python type acted upon by this type codec
-
-    def transform_python(self, value):
-        return Decimal128(value)
-
-
-class ContractingDecimalEncoder(TypeEncoder):
-    python_type = ContractingDecimal  # the Python type acted upon by this type codec
-
-    def transform_python(self, value):
-        return Decimal128(value._d)
-
-
-class DecimalDecoder(TypeDecoder):
-    bson_type = Decimal128
-
-    def transform_bson(self, value):
-        return value.to_decimal()
-
-# class ContractingDecimalCodec(TypeCodec):
-#     python_type = ContractingDecimal  # the Python type acted upon by this type codec
-#     bson_type = Decimal128  # the BSON type acted upon by this type codec
-#
-#     def transform_python(self, value):
-#         return Decimal128(value._d)
-#
-#     def transform_bson(self, value):
-#         return value.to_decimal()
-
-
-type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
-codec_options = CodecOptions(type_registry=type_registry)
 
 
 class BlockStorage:
