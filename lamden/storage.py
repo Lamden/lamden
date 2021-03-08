@@ -10,6 +10,7 @@ from decimal import Decimal
 
 import lamden
 from lamden.logger.base import get_logger
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
@@ -149,6 +150,8 @@ class DecimalCodec(TypeCodec):
     bson_type = Decimal128  # the BSON type acted upon by this type codec
 
     def transform_python(self, value):
+        if type(value) == ContractingDecimal:
+            return Decimal128(value._d)
         return Decimal128(value)
 
     def transform_bson(self, value):
