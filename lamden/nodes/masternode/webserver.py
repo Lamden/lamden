@@ -32,9 +32,10 @@ class ByteEncoder(_json.JSONEncoder):
             }
 
         if isinstance(o, decimal.Decimal):
-            return {
-                '__fixed__': str(o)
-            }
+            if int(o) == o:
+                return int(o)
+            else:
+                return float(o)
 
         return super().default(o, *args, **kwargs)
 
