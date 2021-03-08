@@ -152,6 +152,13 @@ class DecimalEncoder(TypeEncoder):
         return Decimal128(value)
 
 
+class ContractingDecimalEncoder(TypeEncoder):
+    python_type = ContractingDecimal  # the Python type acted upon by this type codec
+
+    def transform_python(self, value):
+        return Decimal128(value._d)
+
+
 class DecimalDecoder(TypeDecoder):
     bson_type = Decimal128
 
@@ -169,7 +176,7 @@ class DecimalDecoder(TypeDecoder):
 #         return value.to_decimal()
 
 
-type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder()])
+type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
 codec_options = CodecOptions(type_registry=type_registry)
 
 
