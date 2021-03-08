@@ -2,7 +2,7 @@ from contracting.db.driver import ContractDriver
 from pymongo import MongoClient, DESCENDING
 
 from bson.decimal128 import Decimal128
-from bson.codec_options import TypeCodec, TypeEncoder
+from bson.codec_options import TypeCodec, TypeEncoder, TypeDecoder
 from bson.codec_options import TypeRegistry
 from bson.codec_options import CodecOptions
 
@@ -145,13 +145,18 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
         set_latest_block_height(block['number'], driver=driver)
 
 
-class DecimalCodec(TypeEncoder):
+class DecimalEncoder(TypeEncoder):
     python_type = Decimal  # the Python type acted upon by this type codec
 
     def transform_python(self, value):
         return Decimal128(value)
 
 
+class DecimalDecoder(TypeDecoder):
+    bson_type = Decimal128
+
+    def transform_bson(self, value):
+        return value.to_decimal()
 
 # class ContractingDecimalCodec(TypeCodec):
 #     python_type = ContractingDecimal  # the Python type acted upon by this type codec
@@ -164,8 +169,7 @@ class DecimalCodec(TypeEncoder):
 #         return value.to_decimal()
 
 
-decimal_codec = DecimalCodec()
-type_registry = TypeRegistry([decimal_codec])
+type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder()])
 codec_options = CodecOptions(type_registry=type_registry)
 
 
