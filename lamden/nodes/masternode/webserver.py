@@ -293,17 +293,8 @@ class WebServer:
     #     return response.json({'values': values, 'next': values[-1]}, status=200)
 
     async def get_latest_block(self, request):
-        index = self.blocks.get_last_n(n=1, collection=storage.BlockStorage.BLOCK)
-        if len(index) == 0:
-            block = {
-                'hash': (b'\x00' * 32).hex(),
-                'number': 0,
-                'previous': (b'\x00' * 32).hex(),
-                'subblocks': []
-            }
-        else:
-            block = index[0]
-
+        num = storage.get_latest_block_height(self.driver)
+        block = self.blocks.get_block(int(num))
         return response.json(block, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
