@@ -12,7 +12,7 @@ import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 import gc
 from lamden.logger.base import get_logger
-
+import decimal
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
@@ -279,7 +279,7 @@ class Node:
         # Store the block if it's a masternode
         if self.store:
             encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block)
+            encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
 
             self.blocks.store_block(encoded_block)
 

@@ -1,6 +1,13 @@
 from contracting.db.driver import ContractDriver
 from pymongo import MongoClient, DESCENDING
 
+from bson.decimal128 import Decimal128
+from bson.codec_options import TypeCodec
+from bson.codec_options import TypeRegistry
+from bson.codec_options import CodecOptions
+
+from decimal import Decimal
+
 import lamden
 from lamden.logger.base import get_logger
 
@@ -137,6 +144,22 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
         set_latest_block_height(block['number'], driver=driver)
 
 
+class DecimalCodec(TypeCodec):
+    python_type = Decimal  # the Python type acted upon by this type codec
+    bson_type = Decimal128  # the BSON type acted upon by this type codec
+
+    def transform_python(self, value):
+        return Decimal128(value)
+
+    def transform_bson(self, value):
+        return value.to_decimal()
+
+
+decimal_codec = DecimalCodec()
+type_registry = TypeRegistry([decimal_codec])
+codec_options = CodecOptions(type_registry=type_registry)
+
+
 class BlockStorage:
     BLOCK = 0
     TX = 1
@@ -150,8 +173,8 @@ class BlockStorage:
         self.client = MongoClient()
         self.db = self.client.get_database(db)
 
-        self.blocks = self.db[blocks_collection]
-        self.txs = self.db[tx_collection]
+        self.blocks = self.db.get_collection(blocks_collection, codec_options=codec_options)
+        self.txs = self.db.get_collection(tx_collection, codec_options=codec_options)
 
     def q(self, v):
         if isinstance(v, int):
