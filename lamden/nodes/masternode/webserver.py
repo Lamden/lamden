@@ -286,8 +286,7 @@ class WebServer:
 
     async def get_latest_block_number(self, request):
         num = storage.get_latest_block_height(self.driver)
-        if type(num) == ContractingDecimal:
-            num = int(num._d)
+
 
         return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 

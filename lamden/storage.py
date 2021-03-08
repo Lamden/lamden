@@ -142,6 +142,10 @@ def get_latest_block_height(driver: ContractDriver):
     h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
     if h is None:
         return 0
+
+    if type(h) == ContractingDecimal:
+        h = int(h._d)
+
     return h
 
 
