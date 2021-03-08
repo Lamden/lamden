@@ -150,16 +150,25 @@ class DecimalCodec(TypeCodec):
     bson_type = Decimal128  # the BSON type acted upon by this type codec
 
     def transform_python(self, value):
-        if type(value) == ContractingDecimal:
-            return Decimal128(value._d)
         return Decimal128(value)
 
     def transform_bson(self, value):
         return value.to_decimal()
 
 
+class ContractingDecimalCodec(TypeCodec):
+    python_type = ContractingDecimal  # the Python type acted upon by this type codec
+    bson_type = Decimal128  # the BSON type acted upon by this type codec
+
+    def transform_python(self, value):
+        return Decimal128(value._d)
+
+    def transform_bson(self, value):
+        return value.to_decimal()
+
+
 decimal_codec = DecimalCodec()
-type_registry = TypeRegistry([decimal_codec])
+type_registry = TypeRegistry([decimal_codec, ContractingDecimalCodec()])
 codec_options = CodecOptions(type_registry=type_registry)
 
 
