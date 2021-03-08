@@ -25,7 +25,7 @@ class ByteEncoder(_json.JSONEncoder):
         if isinstance(o, bytes):
             return o.hex()
 
-        return super().default(self, o, *args, **kwargs)
+        return super().default(o, *args, **kwargs)
 
 
 class WebServer:
