@@ -27,9 +27,12 @@ class ByteEncoder(_json.JSONEncoder):
             return o.hex()
 
         if isinstance(o, ContractingDecimal):
-            return {
-                '__fixed__': str(o._d)
-            }
+            if int(o._d) == o._d:
+                return int(o._d)
+            else:
+                return {
+                    '__fixed__': str(o._d)
+                }
 
         if isinstance(o, decimal.Decimal):
             if int(o) == o:
@@ -41,7 +44,8 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[], port=8080, ssl_port=443, ssl_enabled=False,
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
+                 port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
@@ -98,7 +102,7 @@ class WebServer:
         self.app.add_route(self.get_contracts, '/contracts', methods=['GET'])
         self.app.add_route(self.get_contract, '/contracts/<contract>', methods=['GET'])
         self.app.add_route(self.get_constitution, '/constitution', methods=['GET'])
-        #self.app.add_route(self.iterate_variable, '/contracts/<contract>/<variable>/iterate')
+        # self.app.add_route(self.iterate_variable, '/contracts/<contract>/<variable>/iterate')
 
         # Latest Block Routes
         self.app.add_route(self.get_latest_block, '/latest_block', methods=['GET', 'OPTIONS', ])
@@ -142,12 +146,12 @@ class WebServer:
         log.debug(f'New request: {request}')
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:
-            return response.json({'error': "Queue full. Resubmit shortly."}, status=503, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:
-
             return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
 
         # Check that the TX is correctly formatted
@@ -223,14 +227,17 @@ class WebServer:
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
-            return response.json({'error': '{} does not exist'.format(contract)}, status=404, headers={'Access-Control-Allow-Origin': '*'})
-        return response.json({'name': contract, 'code': contract_code}, status=200, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404,
+                                 headers={'Access-Control-Allow-Origin': '*'})
+        return response.json({'name': contract, 'code': contract_code}, status=200,
+                             headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_methods(self, request, contract):
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
-            return response.json({'error': '{} does not exist'.format(contract)}, status=404, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         funcs = parser.methods_for_contract(contract_code)
 
@@ -240,7 +247,8 @@ class WebServer:
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
-            return response.json({'error': '{} does not exist'.format(contract)}, status=404, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         variables = parser.variables_for_contract(contract_code)
 
@@ -250,7 +258,8 @@ class WebServer:
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
-            return response.json({'error': '{} does not exist'.format(contract)}, status=404, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': '{} does not exist'.format(contract)}, status=404,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         key = request.args.get('key')
         if key is not None:
@@ -262,7 +271,8 @@ class WebServer:
         if value is None:
             return response.json({'value': None}, status=404, headers={'Access-Control-Allow-Origin': '*'})
         else:
-            return response.json({'value': value}, status=200, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'value': value}, status=200, dumps=encode,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
     # async def iterate_variable(self, request, contract, variable):
     #     contract_code = self.client.raw_driver.get_contract(contract)
@@ -299,11 +309,11 @@ class WebServer:
     async def get_latest_block_number(self, request):
         num = storage.get_latest_block_height(self.driver)
 
-
         return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_hash(self, request):
-        return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)}, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)},
+                             headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_block(self, request):
         num = request.args.get('num')
@@ -314,10 +324,12 @@ class WebServer:
         elif _hash is not None:
             block = self.blocks.get_block(_hash)
         else:
-            return response.json({'error': 'No number or hash provided.'}, status=400, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': 'No number or hash provided.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         if block is None:
-            return response.json({'error': 'Block not found.'}, status=400, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': 'Block not found.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         return response.json(block, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
@@ -329,12 +341,15 @@ class WebServer:
                 int(_hash, 16)
                 tx = self.blocks.get_tx(_hash)
             except ValueError:
-                return response.json({'error': 'Malformed hash.'}, status=400, headers={'Access-Control-Allow-Origin': '*'})
+                return response.json({'error': 'Malformed hash.'}, status=400,
+                                     headers={'Access-Control-Allow-Origin': '*'})
         else:
-            return response.json({'error': 'No tx hash provided.'}, status=400, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': 'No tx hash provided.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         if tx is None:
-            return response.json({'error': 'Transaction not found.'}, status=400, headers={'Access-Control-Allow-Origin': '*'})
+            return response.json({'error': 'Transaction not found.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
 
         return response.json(tx, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
