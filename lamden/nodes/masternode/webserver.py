@@ -21,11 +21,11 @@ log = get_logger("MN-WebServer")
 
 
 class ByteEncoder(_json.JSONEncoder):
-    def default(self, o, *args):
+    def default(self, o, *args, **kwargs):
         if isinstance(o, bytes):
             return o.hex()
 
-        return super().default(self, o)
+        return super().default(self, o, *args, **kwargs)
 
 
 class WebServer:
