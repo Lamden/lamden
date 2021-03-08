@@ -285,7 +285,11 @@ class WebServer:
         return response.json(block, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
-        return response.json({'latest_block_number': int(storage.get_latest_block_height(self.driver))}, headers={'Access-Control-Allow-Origin': '*'})
+        num = storage.get_latest_block_height(self.driver)
+        if type(num) == ContractingDecimal:
+            num = int(num._d)
+
+        return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_hash(self, request):
         return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)}, headers={'Access-Control-Allow-Origin': '*'})
