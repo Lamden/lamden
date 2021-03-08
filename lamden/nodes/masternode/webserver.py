@@ -16,6 +16,7 @@ import ssl
 import asyncio
 
 from lamden.crypto import transaction
+import decimal
 
 log = get_logger("MN-WebServer")
 
@@ -24,6 +25,16 @@ class ByteEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
         if isinstance(o, bytes):
             return o.hex()
+
+        if isinstance(o, ContractingDecimal):
+            return {
+                '__fixed__': str(o._d)
+            }
+
+        if isinstance(o, decimal.Decimal):
+            return {
+                '__fixed__': str(o)
+            }
 
         return super().default(o, *args, **kwargs)
 
