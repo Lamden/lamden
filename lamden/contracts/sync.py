@@ -2,6 +2,7 @@ import os
 import json
 
 from contracting.client import ContractingClient
+from contracting.db.contract import Contract
 
 DEFAULT_PATH = os.path.dirname(__file__)
 DEFAULT_GENESIS_PATH = os.path.dirname(__file__) + '/genesis.json'
@@ -23,9 +24,11 @@ def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GE
         if contract.get('submit_as') is not None:
             contract_name = contract['submit_as']
 
+        contract_driver = Contract(client.raw_driver)
+
         if client.get_contract(contract_name) is None:
-            client.submit(code, name=contract_name, owner=contract['owner'],
-                          constructor_args=contract['constructor_args'])
+            contract_driver.submit(code=code, name=contract_name, owner=contract['owner'],
+                                   constructor_args=contract['constructor_args'])
 
 
 def flush_sys_contracts(client: ContractingClient, filename=DEFAULT_GENESIS_PATH,
