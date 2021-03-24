@@ -27,6 +27,7 @@ def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GE
         contract_driver = Contract(client.raw_driver)
 
         if client.get_contract(contract_name) is None:
+            print(f'submitting {contract_name}')
             contract_driver.submit(code=code, name=contract_name, owner=contract['owner'],
                                    constructor_args=contract['constructor_args'])
 
