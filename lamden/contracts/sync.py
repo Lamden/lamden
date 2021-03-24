@@ -30,6 +30,7 @@ def submit_from_genesis_json_file(client: ContractingClient, filename=DEFAULT_GE
             print(f'submitting {contract_name}')
             contract_driver.submit(code=code, name=contract_name, owner=contract['owner'],
                                    constructor_args=contract['constructor_args'])
+            client.raw_driver.commit()
 
 
 def flush_sys_contracts(client: ContractingClient, filename=DEFAULT_GENESIS_PATH,
@@ -66,12 +67,14 @@ def setup_member_contracts(initial_masternodes, initial_delegates, client: Contr
             'initial_members': initial_masternodes,
             'candidate': 'elect_masternodes'
         })
+        client.raw_driver.commit()
 
     if client.get_contract('delegates') is None:
         contract_driver.submit(code=code, name='delegates', owner='election_house', constructor_args={
             'initial_members': initial_delegates,
             'candidate': 'elect_delegates'
         })
+        client.raw_driver.commit()
 
 
 def register_policies(client: ContractingClient):
@@ -107,12 +110,14 @@ def setup_member_election_contracts(client: ContractingClient, masternode_price=
             'policy': 'masternodes',
             'cost': masternode_price,
         })
+        client.raw_driver.commit()
 
     if client.get_contract('elect_delegates') is None:
         contract_driver.submit(code=code, name='elect_delegates', constructor_args={
             'policy': 'delegates',
             'cost': delegate_price,
         })
+        client.raw_driver.commit()
 
 
 def setup_genesis_contracts(initial_masternodes, initial_delegates, client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH):
