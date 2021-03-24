@@ -61,13 +61,13 @@ def setup_member_contracts(initial_masternodes, initial_delegates, client: Contr
     contract_driver = Contract(client.raw_driver)
 
     if client.get_contract('masternodes') is None:
-        contract_driver.submit(code, name='masternodes', owner='election_house', constructor_args={
+        contract_driver.submit(code=code, name='masternodes', owner='election_house', constructor_args={
             'initial_members': initial_masternodes,
             'candidate': 'elect_masternodes'
         })
 
     if client.get_contract('delegates') is None:
-        contract_driver.submit(code, name='delegates', owner='election_house', constructor_args={
+        contract_driver.submit(code=code, name='delegates', owner='election_house', constructor_args={
             'initial_members': initial_delegates,
             'candidate': 'elect_delegates'
         })
@@ -102,13 +102,13 @@ def setup_member_election_contracts(client: ContractingClient, masternode_price=
         code = f.read()
 
     if client.get_contract('elect_masternodes') is None:
-        contract_driver.submit(code, name='elect_masternodes', constructor_args={
+        contract_driver.submit(code=code, name='elect_masternodes', constructor_args={
             'policy': 'masternodes',
             'cost': masternode_price,
         })
 
     if client.get_contract('elect_delegates') is None:
-        contract_driver.submit(code, name='elect_delegates', constructor_args={
+        contract_driver.submit(code=code, name='elect_delegates', constructor_args={
             'policy': 'delegates',
             'cost': delegate_price,
         })
