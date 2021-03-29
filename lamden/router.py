@@ -230,7 +230,7 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
     payload = encode(message).encode()
     logger.debug('payload: ' +  str(payload))
 
-    await socket.send(payload, flags=zmq.NOBLOCK)
+    await socket.send(payload)
     socket.close()
 
 

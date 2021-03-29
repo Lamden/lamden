@@ -157,9 +157,10 @@ class Masternode(base.Node):
         mn_logger.debug('Work / blocks available. Continuing.')
 
     async def broadcast_new_blockchain_started(self):
+        mn_logger.debug('Sending new blockchain started signal.')
+
         # Check if it was us who recieved the first transaction.
         # If so, multicast a block notification to wake everyone up
-        mn_logger.debug('Sending new blockchain started signal.')
         if len(self.tx_batcher.queue) > 0:
             await router.secure_multicast(
                 msg=get_genesis_block(),
