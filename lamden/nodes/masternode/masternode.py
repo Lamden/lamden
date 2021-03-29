@@ -281,7 +281,7 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        # await self.hang()
+        await self.hang()
         
         self.log.info('Masternode Peers: ' + str(self.get_masternode_peers()))
         await router.secure_multicast(
@@ -292,9 +292,6 @@ class Masternode(base.Node):
             peer_map=self.get_masternode_peers(),
             ctx=self.ctx
         )
-
-        # Move behind of sending new block to masternodes
-        await self.hang()
 
         # self.aggregator.sbc_inbox.q.clear()
 
