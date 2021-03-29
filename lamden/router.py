@@ -201,8 +201,7 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
 
     socket = ctx.socket(zmq.DEALER)
     socket.setsockopt(zmq.LINGER, linger)
-    # JEFF: Change keepalive to 5
-    socket.setsockopt(zmq.TCP_KEEPALIVE, 5)
+    socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
     socket.curve_secretkey = wallet.curve_sk
     socket.curve_publickey = wallet.curve_vk
