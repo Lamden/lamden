@@ -44,9 +44,10 @@ def vote(vk: str, obj: list):
     assert type(obj) == list, 'Pass a list!'
 
     arg = None
-    try:
+
+    if len(obj) == 3:
         action, position, arg = obj
-    except ValueError:
+    else:
         action, position = obj
 
     assert_vote_is_valid(vk, action, position, arg)
