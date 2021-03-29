@@ -151,6 +151,9 @@ class Masternode(base.Node):
                 return
 
             await asyncio.sleep(0)
+
+        self.log.debug('tx_batcher.queue: ' + str(len(self.tx_batcher.queue)))
+        self.log.debug('self.new_block_processor.q: ' + str(len(self.new_block_processor.q)))
         mn_logger.debug('Work / blocks available. Continuing.')
 
     async def broadcast_new_blockchain_started(self):
