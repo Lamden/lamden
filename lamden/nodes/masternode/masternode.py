@@ -269,6 +269,8 @@ class Masternode(base.Node):
 
         block = await self.get_work_processed()
 
+        self.log.info(block)
+
         await router.secure_multicast(
             msg=block,
             service=base.NEW_BLOCK_SERVICE,
