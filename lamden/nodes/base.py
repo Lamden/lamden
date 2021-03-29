@@ -66,7 +66,7 @@ class NewBlock(router.Processor):
         self.log = get_logger('NBN')
 
     async def process_message(self, msg):
-        self.log('--- Got new message on NEW_BLOCK route!' + str(msg) + ' ---')
+        self.log.debug('--- Got new message on NEW_BLOCK route!' + str(msg) + ' ---')
         self.q.append(msg)
 
     async def wait_for_next_nbn(self):
