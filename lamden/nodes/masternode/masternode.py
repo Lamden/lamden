@@ -23,7 +23,7 @@ class BlockService(router.Processor):
 
     async def process_message(self, msg):
         response = None
-        mn_logger.debug('Got a msg')
+        mn_logger.debug('Got a msg', msg)
         if primatives.dict_has_keys(msg, keys={'name', 'arg'}):
             if msg['name'] == base.GET_BLOCK:
                 response = self.get_block(msg)
@@ -253,6 +253,7 @@ class Masternode(base.Node):
             current_height=self.current_height,
             current_hash=self.current_hash
         )
+
 
         self.process_new_block(block)
 

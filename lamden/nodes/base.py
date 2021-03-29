@@ -280,7 +280,7 @@ class Node:
         if self.store:
             encoded_block = encode(block)
             encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
-
+            print(encoded_block)
             self.blocks.store_block(encoded_block)
 
         # Prepare for the next block by flushing out driver and notification state
