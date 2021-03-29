@@ -58,6 +58,7 @@ ops/environments/TJ*
 # Config files
 db_conf.ini
 cilantro_ee/testnet_configs/testnet.ini
+lamden.egg-info
 #cilantro_ee/vmnet_configs/constitutions/test/testnet.ini
 tests/cloud/Dockerfile
 
