@@ -290,12 +290,21 @@ class Aggregator:
         self.log.propagate = debug
 
     async def gather_subblocks(self, total_contacts, current_height=0, current_hash='0' * 64, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
+        # Jeff: ??
+        # How do we expect subblocks?
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
+        # Get the latest block
         block = storage.get_latest_block_height(self.driver)
 
+        # Jeff: ?? How any why are we expecting things?
         self.log.info(f'Expecting {expected_subblocks} subblocks from {total_contacts} delegates.')
 
+        # Jeff: ?? Define a block contender
+        # ? total_contacts: 
+        # ? required_consensus: 
+        # ? total_subblocks: 
+        # ? acceptable_consensus: 
         contenders = BlockContender(
             total_contacts=total_contacts,
             required_consensus=quorum_ratio,
@@ -309,6 +318,7 @@ class Aggregator:
         while (not contenders.block_has_consensus() and contenders.responses < contenders.total_contacts) and \
                 time.time() - started < self.seconds_to_timeout:
 
+            # Jeff: ?? Why does this wait so long?  These are all Digital Ocean droplets
             if self.sbc_inbox.has_sbc():
                 sbcs = await self.sbc_inbox.receive_sbc() # Can probably make this raw sync code
                 self.log.info('Pop it in there.')
@@ -320,12 +330,16 @@ class Aggregator:
 
             await asyncio.sleep(0)
 
+        # Jeff: ?? This doesn't currently kick anyone out.  Should it?  Is there somethign else we can do instead?
         if time.time() - started > self.seconds_to_timeout:
             self.log.error(f'Block timeout. Too many delegates are offline! Kick out the non-responsive ones! {block}')
 
         self.log.info('Done aggregating new block.')
 
+        # Get the block with the most consensus
         block = contenders.get_current_best_block()
+
+        # Jeff: ?? What does this do? What are we clearing?
         self.sbc_inbox.q.clear()
 
         # self.log.info(f'Best block: {block}')

@@ -173,8 +173,12 @@ class Masternode(base.Node):
     async def new_blockchain_boot(self):
         self.log.info('Fresh blockchain boot.')
 
-        # Simply wait for the first transaction to come through
+        # Simply wait for the first transaction to come through either from another masternode or from the webserver
         await self.hang()
+        
+        self.log('WAKING UP THE FIRST TIME!')
+
+        # 
         await self.broadcast_new_blockchain_started()
 
         while self.running:
@@ -253,16 +257,14 @@ class Masternode(base.Node):
         # JEFF: Send work (to who?)
         await self.send_work()
 
-        # this really should just give us a block straight up
+        # Get a List of the Masternode VKs
+        # Jeff ?? Existing Comment from STU (this really should just give us a block straight up). why?
         masters = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
-
-        # JEFF: What are masters
-        self.log.info('masters: ' + str(masters))
 
         # JEFF: What is this state? 
         self.log.info('=== ENTERING BUILD NEW BLOCK STATE ===')
 
-        # JEFF: What is this state? What are we awaiting.
+        # JEFF: What is this state? What are we awaiting?
         #  - total_contacts: the total amount of delegates
         #  ? expected_subblocks: the amount of masters??
         #  v current_height: the lastest block number
