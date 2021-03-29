@@ -221,15 +221,22 @@ class Masternode(base.Node):
             await asyncio.sleep(0)
 
         # Else, batch some more txs
+        # Jeff: TO WHO? Delegates?
         self.log.info(f'Sending {len(self.tx_batcher.queue)} transactions.')
 
+        # Empty the entire tx queue into a batch
         tx_batch = self.tx_batcher.pack_current_queue()
 
-        # LOOK AT SOCKETS CLASS
+        #  Make sure we have delegates online
+        # JEFF: SHould this be done BEFORE we empty the tx queue?
         if len(self.get_delegate_peers()) == 0:
             self.log.error('No one online!')
             return False
 
+        # Send the batch of transactions out to all the delegates
+        # Jeff: !! 
+        # Wondering about sending messages to the masternodes there about this batch.
+        # Potential spot to sync up if we need to
         await router.secure_multicast(
             msg=tx_batch,
             service=base.WORK_SERVICE,
@@ -240,15 +247,26 @@ class Masternode(base.Node):
         )
 
     async def get_work_processed(self):
+        # JEFF: Sleep for a second?
         await asyncio.sleep(1)
 
+        # JEFF: Send work (to who?)
         await self.send_work()
 
         # this really should just give us a block straight up
         masters = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
 
+        # JEFF: What are masters
+        self.log.info('masters: ' + str(masters))
+
+        # JEFF: What is this state? 
         self.log.info('=== ENTERING BUILD NEW BLOCK STATE ===')
 
+        # JEFF: What is this state? What are we awaiting.
+        #  - total_contacts: the total amount of delegates
+        #  ? expected_subblocks: the amount of masters??
+        #  v current_height: the lastest block number
+        #  v current_hash: the latest block's hash
         block = await self.aggregator.gather_subblocks(
             total_contacts=len(self.get_delegate_peers()),
             expected_subblocks=len(masters),
@@ -257,8 +275,10 @@ class Masternode(base.Node):
         )
         self.log.info(block)
 
+        # JEFF: process the block(how?)
         self.process_new_block(block)
 
+        # JEFF: ? what are we cleaning
         self.new_block_processor.clean(self.current_height)
 
         return block
@@ -266,12 +286,13 @@ class Masternode(base.Node):
     async def loop(self):
         self.log.info('=== ENTERING SEND WORK STATE ===')
         self.upgrade_manager.version_check(constitution=self.make_constitution())
-
+        # If we are here then we should have work and it will be processed in the below routine.
+        # We won't get out of here till all the delegates have responsed with their answers or the time 
+        # limit has been hit
         block = await self.get_work_processed()
-
         self.log.info(block)
         
-
+        # Tell the delegates that we posted a new block
         await router.secure_multicast(
             msg=block,
             service=base.NEW_BLOCK_SERVICE,
@@ -281,8 +302,10 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
+        # Await this routine till the tx_batcher queuse or the new_block_processor queue has something
         await self.hang()
         
+        # Send information about the new block to all the other masternodes
         self.log.info('Masternode Peers: ' + str(self.get_masternode_peers()))
         await router.secure_multicast(
             msg=block,
@@ -292,6 +315,12 @@ class Masternode(base.Node):
             peer_map=self.get_masternode_peers(),
             ctx=self.ctx
         )
+
+        # Jeff: !! 
+        # I think we we should await a response from them here. Will need to verify.
+        # This could be a spot to sync up the nodes or validate they are before moving ahead
+
+        # Loop around to the start of this routine to process the new work
 
         # self.aggregator.sbc_inbox.q.clear()
 

@@ -191,18 +191,26 @@ class Router(JSONAsyncInbox):
 
 
 async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.asyncio.Context, linger=500, cert_dir=DEFAULT_DIR):
+    # JEFF: ?? Seems like the below code is there to prevent sending to yourself.
+    # Does this not matter?
+    #
     #if wallet.verifying_key == vk:
     #    return
 
+    # JEFF: ?? Just want to see when we're doing secure_send
+
     socket = ctx.socket(zmq.DEALER)
     socket.setsockopt(zmq.LINGER, linger)
-    socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+    # JEFF: Change keepalive to 5
+    socket.setsockopt(zmq.TCP_KEEPALIVE, 5)
 
     socket.curve_secretkey = wallet.curve_sk
     socket.curve_publickey = wallet.curve_vk
 
     filename = str(cert_dir / f'{vk}.key')
+    self.log('filename: ' + filename)
     if not os.path.exists(filename):
+        self.log('KEY DOESNT EXIST')
         return None
 
     server_pub, _ = load_certificate(filename)
@@ -211,13 +219,17 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
 
     try:
         socket.connect(ip)
+        self.log('Conneted To: ' + ip)
     except ZMQBaseError:
+        self.log('Could not Connect to: ' + ip)
         socket.close()
         return None
 
     message = build_message(service=service, message=msg)
+    self.log('message: ' + str(message))
 
     payload = encode(message).encode()
+    self.log('payload: ' +  str(payload))
 
     await socket.send(payload, flags=zmq.NOBLOCK)
     socket.close()
@@ -227,6 +239,9 @@ async def secure_request(msg: dict, service: str, wallet: Wallet, vk: str, ip: s
                          linger=500, timeout=1000, cert_dir=DEFAULT_DIR):
     #if wallet.verifying_key == vk:
     #    return
+
+    # JEFF: ?? Just want to see when we're doing secure_request
+    self.log('--- USING SECURE REQUEST ----')
 
     socket = ctx.socket(zmq.DEALER)
     socket.setsockopt(zmq.LINGER, linger)
@@ -272,6 +287,7 @@ async def secure_request(msg: dict, service: str, wallet: Wallet, vk: str, ip: s
 async def secure_multicast(msg: dict, service, wallet: Wallet, peer_map: dict, ctx: zmq.asyncio.Context, linger=500, cert_dir=DEFAULT_DIR):
     coroutines = []
     for vk, ip in peer_map.items():
+        self.log('vk:' + vk + ', ip:' + ip)
         coroutines.append(
             secure_send(msg=msg, service=service, cert_dir=cert_dir, wallet=wallet, vk=vk, ip=ip, ctx=ctx, linger=linger)
         )
