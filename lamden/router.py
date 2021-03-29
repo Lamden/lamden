@@ -287,7 +287,7 @@ async def secure_request(msg: dict, service: str, wallet: Wallet, vk: str, ip: s
 async def secure_multicast(msg: dict, service, wallet: Wallet, peer_map: dict, ctx: zmq.asyncio.Context, linger=500, cert_dir=DEFAULT_DIR):
     coroutines = []
     for vk, ip in peer_map.items():
-        self.log('vk:' + vk + ', ip:' + ip)
+        logger.debug('vk:' + vk + ', ip:' + ip)
         coroutines.append(
             secure_send(msg=msg, service=service, cert_dir=cert_dir, wallet=wallet, vk=vk, ip=ip, ctx=ctx, linger=linger)
         )
