@@ -270,7 +270,7 @@ class Masternode(base.Node):
         block = await self.get_work_processed()
 
         self.log.info(block)
-        self.log.info(str('Masternode Peers: ' + self.get_masternode_peers()))
+        self.log.info('Masternode Peers: ' + str(self.get_masternode_peers()))
 
         await router.secure_multicast(
             msg=block,
