@@ -175,8 +175,8 @@ class Masternode(base.Node):
 
         # Simply wait for the first transaction to come through either from another masternode or from the webserver
         await self.hang()
-        
-        self.log('WAKING UP THE FIRST TIME!')
+
+        mn_logger.debug('WAKING UP THE FIRST TIME!')
 
         # 
         await self.broadcast_new_blockchain_started()
