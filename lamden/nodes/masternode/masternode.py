@@ -255,7 +255,7 @@ class Masternode(base.Node):
             current_height=self.current_height,
             current_hash=self.current_hash
         )
-
+        self.log.info(block)
 
         self.process_new_block(block)
 
@@ -270,7 +270,7 @@ class Masternode(base.Node):
         block = await self.get_work_processed()
 
         self.log.info(block)
-        self.log.info('Masternode Peers: ' + str(self.get_masternode_peers()))
+        
 
         await router.secure_multicast(
             msg=block,
@@ -281,8 +281,9 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        await self.hang()
-
+        # await self.hang()
+        
+        self.log.info('Masternode Peers: ' + str(self.get_masternode_peers()))
         await router.secure_multicast(
             msg=block,
             service=base.NEW_BLOCK_SERVICE,
@@ -291,6 +292,9 @@ class Masternode(base.Node):
             peer_map=self.get_masternode_peers(),
             ctx=self.ctx
         )
+
+        # Move behind of sending new block to masternodes
+        await self.hang()
 
         # self.aggregator.sbc_inbox.q.clear()
 
