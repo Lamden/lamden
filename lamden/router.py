@@ -208,9 +208,9 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
     socket.curve_publickey = wallet.curve_vk
 
     filename = str(cert_dir / f'{vk}.key')
-    self.log('filename: ' + filename)
+    logger.debug('filename: ' + filename)
     if not os.path.exists(filename):
-        self.log('KEY DOESNT EXIST')
+        logger.debug('KEY DOESNT EXIST')
         return None
 
     server_pub, _ = load_certificate(filename)
@@ -219,17 +219,17 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
 
     try:
         socket.connect(ip)
-        self.log('Conneted To: ' + ip)
+        logger.debug('Conneted To: ' + ip)
     except ZMQBaseError:
-        self.log('Could not Connect to: ' + ip)
+        logger.debug('Could not Connect to: ' + ip)
         socket.close()
         return None
 
     message = build_message(service=service, message=msg)
-    self.log('message: ' + str(message))
+    logger.debug('message: ' + str(message))
 
     payload = encode(message).encode()
-    self.log('payload: ' +  str(payload))
+    logger.debug('payload: ' +  str(payload))
 
     await socket.send(payload, flags=zmq.NOBLOCK)
     socket.close()
@@ -241,7 +241,7 @@ async def secure_request(msg: dict, service: str, wallet: Wallet, vk: str, ip: s
     #    return
 
     # JEFF: ?? Just want to see when we're doing secure_request
-    self.log('--- USING SECURE REQUEST ----')
+    logger.debug('--- USING SECURE REQUEST ----')
 
     socket = ctx.socket(zmq.DEALER)
     socket.setsockopt(zmq.LINGER, linger)
