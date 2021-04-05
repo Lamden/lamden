@@ -80,3 +80,51 @@ A ED25519 verifying key.
   "sender": <Provided Verifying Key>
 }
 ```
+
+---
+
+#### Get All Published Smart Contracts
+Returns a list of names of all published smart contracts in state.
+
+```json
+curl -X GET http://<node_ip>//contracts
+```
+##### Arguments
+None
+
+##### Returns
+```
+{
+  "contracts": [
+    <Name of Contract>,
+    <Name of Contract>
+  ],
+}
+```
+
+---
+
+#### Get Contract Code
+Returns the source code for the provided contract.
+
+```json
+curl -X GET http://<node_ip>//contracts/<Contract Name>
+```
+##### Arguments
+The name of the contract.
+
+##### Returns
+```
+{
+  "name": <Contract Name>,
+  "code": <UTF-8 String of the Source Code>
+  ],
+}
+```
+##### Errors
+Returned if the contract name provided does not exist for any contract.
+```
+{
+  "error": "<Contract Name> does not exist",
+}
+```
