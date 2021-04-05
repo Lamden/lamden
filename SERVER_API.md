@@ -9,20 +9,24 @@ All nodes run a web server for people to query the current state and blockchain 
 #### Submit Transaction
 
 ```json
-POST http://<node_ip>/
+curl -X POST http://<node_ip>/ -d <transaction json>
 ```
+##### Arguments
+Accepts a Lamden transaction sent as the body of the request.
 
+##### Returns
 
-self.app.add_route(self.submit_transaction, '/', methods=['POST', 'OPTIONS'])
+#### Submit Transaction
 
+```json
+curl -X GET http://<node_ip>/ping
+```
+##### Arguments
+None
 
-Arguments: None
-
-Output: 
+##### Returns
 ```json
 {
-  "contracts": [
-    "string",
-  ]
- }
+  "status": "online"
+}
 ```
