@@ -37,7 +37,7 @@ curl -X GET http://<node_ip>/ping
 None
 
 ##### Returns
-```json
+```
 {
   "status": "online"
 }
