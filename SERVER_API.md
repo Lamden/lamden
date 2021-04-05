@@ -7,6 +7,7 @@ All nodes run a web server for people to query the current state and blockchain 
 ---
 
 #### Submit Transaction
+Adds a transaction to a node's pool if it is formatted and the sender can afford to send it.
 
 ```json
 curl -X POST http://<node_ip>/ -d <Transaction JSON>
@@ -26,7 +27,8 @@ See Transaction Response Errors.
 
 ---
 
-#### Submit Transaction
+#### Ping Node
+Returns a simple status message if the node is online.
 
 ```json
 curl -X GET http://<node_ip>/ping
@@ -38,5 +40,23 @@ None
 ```json
 {
   "status": "online"
+}
+```
+
+---
+
+#### Get Node's Identity
+Returns the verifying key of the node.
+
+```json
+curl -X GET http://<node_ip>/id
+```
+##### Arguments
+None
+
+##### Returns
+```
+{
+  "verifying_key": <Verifying Key>
 }
 ```
