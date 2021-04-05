@@ -60,3 +60,23 @@ None
   "verifying_key": <Verifying Key>
 }
 ```
+
+---
+
+#### Get Current Nonce
+Returns the nonce of a verifying key.
+
+```json
+curl -X GET http://<node_ip>/nonce/<Verifying Key>
+```
+##### Arguments
+A ED25519 verifying key.
+
+##### Returns
+```
+{
+  "nonce": <Non-negative number>,
+  "processor": <Verifying Key of the Node Responding to the Request>,
+  "sender": <Provided Verifying Key>
+}
+```
