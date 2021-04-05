@@ -4,7 +4,7 @@ All nodes run a web server for people to query the current state and blockchain 
 
 ### Required API Routes
 
-
+---
 
 #### Submit Transaction
 
@@ -15,6 +15,8 @@ curl -X POST http://<node_ip>/ -d <transaction json>
 Accepts a Lamden transaction sent as the body of the request.
 
 ##### Returns
+
+---
 
 #### Submit Transaction
 
