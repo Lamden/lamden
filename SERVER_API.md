@@ -15,7 +15,7 @@ curl -X POST http://<node_ip>/ -d <Transaction JSON>
 Accepts a Lamden transaction sent as the body of the request.
 
 ##### Returns
-```json
+```
 {
   "success": "Transaction successfully submitted to the network.",
   "hash": <SHA3 256 Hexedecimal String>
