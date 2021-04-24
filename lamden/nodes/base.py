@@ -208,6 +208,7 @@ class Node:
             self.log.info(f'Processing block #{block.get("number")}')
         except:
             self.log.error('Malformed block :(')
+            return False
         # Test if block failed immediately
         if block == {'response': 'ok'}:
             return False
