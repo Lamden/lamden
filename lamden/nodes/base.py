@@ -204,7 +204,10 @@ class Node:
             self.process_new_block(block)
 
     def should_process(self, block):
-        self.log.info(f'Processing block #{block.get("number")}')
+        try:
+            self.log.info(f'Processing block #{block.get("number")}')
+        except:
+            self.log.error('Malformed block :(')
         # Test if block failed immediately
         if block == {'response': 'ok'}:
             return False
