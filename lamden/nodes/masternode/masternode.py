@@ -5,6 +5,7 @@ from lamden import router
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
 from lamden.nodes.masternode import contender, webserver
+from lamden.nodes.base import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
