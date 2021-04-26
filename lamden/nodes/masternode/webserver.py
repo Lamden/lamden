@@ -193,7 +193,7 @@ class WebServer:
 
 
         # Add TX to the processing queue with hlc timestamp
-        self.work_processor.add_from_webserver(tx)
+        await self.work_processor.add_from_webserver(tx)
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)
