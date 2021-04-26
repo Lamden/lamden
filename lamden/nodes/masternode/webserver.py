@@ -19,6 +19,9 @@ import asyncio
 from lamden.crypto import transaction
 import decimal
 
+# Instantiate the parser
+import argparse
+
 log = get_logger("MN-WebServer")
 
 
@@ -363,3 +366,17 @@ class WebServer:
             'masternodes': masternodes,
             'delegates': delegates
         }, headers={'Access-Control-Allow-Origin': '*'})
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Optional app description')
+
+    webserver = WebServer(
+        contracting_client=ContractingClient(),
+        driver=storage.ContractDriver(),
+        blocks=storage.BlockStorage(),
+        wallet=None,
+        port=8080
+    )
+
+    webserver.start()
