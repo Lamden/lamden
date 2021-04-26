@@ -101,7 +101,7 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
-        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
+        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue('~/txs'))
         self.webserver.queue = self.tx_batcher.queue
 
         self.aggregator = contender.Aggregator(
@@ -124,9 +124,6 @@ class Masternode(base.Node):
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
         # self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
-
-        # Start the webserver to accept transactions
-        await self.webserver.start()
 
         self.log.info('Done starting...')
 
