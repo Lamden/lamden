@@ -100,7 +100,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class WorkProcessor(router.Processor):
-    def __init__(self, wallet, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, wallet, send_work, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.main_processing_queue = []
@@ -114,6 +114,7 @@ class WorkProcessor(router.Processor):
 
         self.client = client
         self.nonces = nonces
+        self.send_work = send_work
 
         self.wallet = wallet
 
@@ -199,24 +200,6 @@ class WorkProcessor(router.Processor):
             'input_hash': input_hash
         }
 
-    async def send_work(self, work):
-        # Else, batch some more txs
-        self.log.info('Sending transaction to other nodes.')
-
-        # LOOK AT SOCKETS CLASS
-        if len(self.get_delegate_peers()) == 0:
-            self.log.error('No one online!')
-            return False
-
-        await router.secure_multicast(
-            msg=work,
-            service=WORK_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_all_peers(),
-            ctx=self.ctx
-        )
-
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
@@ -275,7 +258,7 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
-        self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces, wallet=wallet)
+        self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces, wallet=wallet, send_work=self.send_work)
         self.router.add_service(WORK_SERVICE, self.work_processor)
 
         self.running = False
@@ -544,6 +527,24 @@ class Node:
         work.pad_work(work=w, expected_masters=list(expected_masters))
 
         return work.filter_work(w)
+
+    async def send_work(self, work):
+        # Else, batch some more txs
+        self.log.info('Sending transaction to other nodes.')
+
+        # LOOK AT SOCKETS CLASS
+        if len(self.get_delegate_peers()) == 0:
+            self.log.error('No one online!')
+            return False
+
+        await router.secure_multicast(
+            msg=work,
+            service=WORK_SERVICE,
+            cert_dir=self.socket_authenticator.cert_dir,
+            wallet=self.wallet,
+            peer_map=self.get_all_peers(),
+            ctx=self.ctx
+        )
 
     def stop(self):
         # Kill the router and throw the running flag to stop the loop
