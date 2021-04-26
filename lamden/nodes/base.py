@@ -100,7 +100,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class WorkProcessor(router.Processor):
-    def __init__(self, wallet, send_work, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, wallet, send_work, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.main_processing_queue = []
@@ -114,7 +114,9 @@ class WorkProcessor(router.Processor):
 
         self.client = client
         self.nonces = nonces
+
         self.send_work = send_work
+        self.get_masters = get_masters
 
         self.wallet = wallet
 
@@ -124,6 +126,8 @@ class WorkProcessor(router.Processor):
 
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
+
+        self.masters = self.get_masters()
 
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
@@ -258,7 +262,14 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
-        self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces, wallet=wallet, send_work=self.send_work)
+        self.work_processor = WorkProcessor(
+            client=self.client,
+            nonces=self.nonces,
+            wallet=wallet,
+            send_work=self.send_work,
+            get_masters=self.get_masternode_peers
+        )
+
         self.router.add_service(WORK_SERVICE, self.work_processor)
 
         self.running = False
