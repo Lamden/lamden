@@ -129,6 +129,8 @@ class WorkProcessor(router.Processor):
 
         self.masters = self.get_masters()
 
+        self.log.debug(self.masters)
+
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
