@@ -158,8 +158,8 @@ class WorkProcessor(router.Processor):
             strict=False
         )
 
-        self.merge_hlc_timestamp(msg['hlc_timestamp'])
-        self.add_to_queue(msg)
+        await self.merge_hlc_timestamp(msg['hlc_timestamp'])
+        await self.add_to_queue(msg)
 
         self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
 
