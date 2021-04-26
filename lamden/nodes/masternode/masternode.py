@@ -134,9 +134,6 @@ class Masternode(base.Node):
         # else:
         #     asyncio.ensure_future(self.join_quorum())
 
-        while self.running:
-            await self.loop()
-
         self.log.debug('returned')
 
     '''
@@ -156,17 +153,13 @@ class Masternode(base.Node):
                 },
                 ctx=self.ctx
             )
-
+    '''
     async def new_blockchain_boot(self):
         self.log.info('Fresh blockchain boot.')
 
-        # Simply wait for the first transaction to come through
-        await self.hang()
-        await self.broadcast_new_blockchain_started()
-
         while self.running:
             await self.loop()
-
+    '''
     async def wait_for_block(self):
         self.new_block_processor.clean(self.current_height)
 
