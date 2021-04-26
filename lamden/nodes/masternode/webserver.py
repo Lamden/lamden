@@ -191,7 +191,7 @@ class WebServer:
             )
 
         # Add TX to the processing queue
-        self.queue.append(tx)
+        self.queue.append(request.body)
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)
