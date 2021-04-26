@@ -9,6 +9,7 @@ from contracting.compilation import parser
 from lamden import storage
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
+from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
@@ -369,18 +370,22 @@ class WebServer:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Optional app description')
+    parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
-    parser.add_argument('-k', '--key', type=str)
+    parser.add_argument('-k', '--key', type=str, required=True)
 
     args = parser.parse_args()
+
+    sk = bytes.fromhex(args.key)
+    wallet = Wallet(seed=sk)
 
     webserver = WebServer(
         contracting_client=ContractingClient(),
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
-        wallet=None,
+        wallet=wallet,
         port=8080
     )
 
-    webserver.start()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(webserver.start())
