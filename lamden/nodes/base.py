@@ -296,6 +296,14 @@ class Node:
         await self.hang()
         await self.process_main_queue()
 
+    async def process_main_queue(self):
+        # run all transactions older than 1 sec
+        self.log.debug(len(self.work_processor.main_processing_queue), 'items in main queue')
+        self.log.debug(" PROCESSING ")
+        tx = self.work_processor.main_processing_queue.pop()
+        self.log.debug(tx)
+        await asyncio.sleep(0)
+
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
         sync.setup_genesis_contracts(
@@ -474,11 +482,6 @@ class Node:
 
         # Start running
         self.running = True
-
-    async def process_main_queue(self):
-        # run all transactions older than 1 sec
-        self.log.debug(len(self.work_processor.main_processing_queue), 'items in main queue')
-        await asyncio.sleep(0)
 
     async def process_new_work(self):
         if len(self.get_masternode_peers()) == 0:
