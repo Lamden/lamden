@@ -30,6 +30,8 @@ class WorkProcessor(router.Processor):
 
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
+        self.log.info(msg)
+
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
@@ -128,7 +130,6 @@ class Delegate(base.Node):
         w = await self.work_processor.gather_transaction_batches(masters=current_masternodes)
 
         self.log.info(f'Got {len(w)} batch(es) of work')
-        self.log.info(w)
 
         expected_masters = set(current_masternodes)
         work.pad_work(work=w, expected_masters=list(expected_masters))
