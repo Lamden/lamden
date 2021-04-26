@@ -123,6 +123,7 @@ class Masternode(base.Node):
         await self.webserver.start()
 
         self.log.info('Done starting...')
+        self.log.info("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! I'M NEW !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
         # If we have no blocks in our database, we are starting a new network from scratch
 
