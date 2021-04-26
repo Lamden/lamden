@@ -371,8 +371,7 @@ class WebServer:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Optional app description')
 
-    parser.add_argument('pos_arg', type=int,
-                        help='A required integer positional argument')
+    parser.add_argument('-k', '--key', type=str)
 
     args = parser.parse_args()
 
