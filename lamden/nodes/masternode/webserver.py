@@ -45,13 +45,12 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
+    def __init__(self, work_processor, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
-                 max_queue_len=10_000,
-                 work_processor
+                 max_queue_len=10_000
                  ):
 
         # Setup base Sanic class and CORS

@@ -94,12 +94,12 @@ class Masternode(base.Node):
         # Services
         self.webserver_port = webserver_port
         self.webserver = webserver.WebServer(
+            work_processor=self.work_processor,
             contracting_client=self.client,
             driver=self.driver,
             blocks=self.blocks,
             wallet=self.wallet,
-            port=self.webserver_port,
-            work_processor=self.work_processor
+            port=self.webserver_port
         )
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
