@@ -160,7 +160,7 @@ class WorkProcessor(router.Processor):
 
     async def get_new_hlc_timestamp(self):
         self.hlc_clock.sync()
-        return str(self.hlc_clock())
+        return str(self.hlc_clock)
 
     async def merge_hlc_timestamp(self, event_timestamp):
         self.hlc_clock.merge(event_timestamp)
