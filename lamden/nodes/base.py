@@ -1,5 +1,4 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
-from lamden.nodes import base
 import hashlib
 from lamden.crypto import canonical
 from lamden.nodes.delegate import execution, work
@@ -209,7 +208,7 @@ class WorkProcessor(router.Processor):
 
         await router.secure_multicast(
             msg=work,
-            service=base.WORK_SERVICE,
+            service=WORK_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
             peer_map=self.get_all_peers(),
@@ -520,7 +519,7 @@ class Node:
 
         await router.secure_multicast(
             msg=results,
-            service=base.CONTENDER_SERVICE,
+            service=CONTENDER_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
             peer_map=self.get_masternode_peers(),
@@ -582,3 +581,4 @@ class Node:
             'masternodes': self.get_masternode_peers(),
             'delegates': self.get_delegate_peers()
         }
+

@@ -1,7 +1,9 @@
-from lamden import router, network
-from lamden.nodes import base
-from lamden.logger.base import get_logger
 import asyncio
+
+from lamden import router, network
+from lamden.logger.base import get_logger
+from lamden.nodes import base
+
 
 class Delegate(base.Node):
     def __init__(self, *args, **kwargs):
