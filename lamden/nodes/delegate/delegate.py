@@ -128,6 +128,7 @@ class Delegate(base.Node):
         w = await self.work_processor.gather_transaction_batches(masters=current_masternodes)
 
         self.log.info(f'Got {len(w)} batch(es) of work')
+        self.log.info(w)
 
         expected_masters = set(current_masternodes)
         work.pad_work(work=w, expected_masters=list(expected_masters))
