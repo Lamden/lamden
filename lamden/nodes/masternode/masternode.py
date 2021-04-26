@@ -46,7 +46,7 @@ class BlockService(router.Processor):
 
 
 class TransactionBatcher:
-    def __init__(self, wallet: Wallet, queue):
+    def __init__(self, wallet: Wallet, queue=FileQueue('~/txs')):
         self.wallet = wallet
         self.queue = queue
 

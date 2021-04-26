@@ -11,6 +11,7 @@ from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
@@ -44,7 +45,8 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
+                 queue=FileQueue('~/txs'),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',

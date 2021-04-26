@@ -8,11 +8,17 @@ import zmq.asyncio
 import asyncio
 import json
 from contracting.client import ContractingClient
+from contracting.db.encoder import decode
 import uvloop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 import gc
 from lamden.logger.base import get_logger
 import decimal
+from pathlib import Path
+import uuid
+import shutil
+
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
@@ -21,6 +27,36 @@ CONTENDER_SERVICE = 'contenders'
 
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
+
+
+class FileQueue:
+    EXTENSION = '.tx'
+
+    def __init__(self, root='./txs'):
+        self.root = Path(root)
+        self.root.mkdir(parents=True, exist_ok=True)
+
+    def append(self, tx):
+        name = str(uuid.uuid4()) + self.EXTENSION
+        with open(self.root.joinpath(name), 'w') as f:
+            f.write(tx)
+
+    def pop(self, idx):
+        items = sorted(self.root.iterdir(), key=os.path.getmtime)
+        item = items.pop(idx)
+
+        with open(item) as f:
+            return decode(f.read())
+
+    def flush(self):
+        shutil.rmtree(self.root)
+
+    def __len__(self):
+        try:
+            length = len(list(self.root.iterdir()))
+            return length
+        except FileNotFoundError:
+            return 0
 
 
 async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
@@ -144,7 +180,7 @@ class Node:
         )
 
         self.new_block_processor = NewBlock(driver=self.driver)
-        self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
+        self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor) # Add this after catch up?
 
         self.running = False
         self.upgrade = False
@@ -189,13 +225,15 @@ class Node:
 
         # Find the missing blocks process them
         for i in range(current, latest + 1):
-            block = await get_block(
-                block_num=i,
-                ip=mn_seed,
-                vk=mn_vk,
-                wallet=self.wallet,
-                ctx=self.ctx
-            )
+            block = None
+            while block is None:
+                block = await get_block(
+                    block_num=i,
+                    ip=mn_seed,
+                    vk=mn_vk,
+                    wallet=self.wallet,
+                    ctx=self.ctx
+                )
             self.process_new_block(block)
 
         # Process any blocks that were made while we were catching up
