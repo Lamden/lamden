@@ -127,6 +127,12 @@ class WorkProcessor(router.Processor):
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
 
+        self.log.debug("sender:", msg["sender"])
+        self.log.debug("me:", self.wallet.vk)
+
+        if msg["sender"] == self.wallet.vk:
+            return
+
         self.masters = self.get_masters()
 
         self.log.debug(self.masters)
@@ -138,9 +144,11 @@ class WorkProcessor(router.Processor):
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX Batch received from master {msg["sender"][:8]}')
 
+        '''
         if await self.check_expired(msg['hlc_timestamp']):
             self.log.error(f'Expired TX from master {msg["sender"][:8]}')
             return
+        '''
 
         transaction.transaction_is_valid(
             transaction=msg['tx'],
@@ -186,7 +194,9 @@ class WorkProcessor(router.Processor):
         return internal_nanoseconds - timestamp_nanoseconds
 
     async def check_expired(self, timestamp):
-        return await self.check_hlc_age(timestamp) >= self.tx_expiry
+        age = await self.check_hlc_age(timestamp)
+        self.log.debug("hcl age:", age)
+        return age >= self.tx_expiry
 
     async def make_tx(self, tx):
         timestamp = int(time.time())
