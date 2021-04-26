@@ -371,6 +371,11 @@ class WebServer:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Optional app description')
 
+    parser.add_argument('pos_arg', type=int,
+                        help='A required integer positional argument')
+
+    args = parser.parse_args()
+
     webserver = WebServer(
         contracting_client=ContractingClient(),
         driver=storage.ContractDriver(),
