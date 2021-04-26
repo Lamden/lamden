@@ -12,6 +12,7 @@ from lamden.crypto.transaction import TransactionException
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 
+
 import ssl
 import asyncio
 
@@ -50,6 +51,7 @@ class WebServer:
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
+                 work_processor
                  ):
 
         # Setup base Sanic class and CORS
@@ -116,6 +118,8 @@ class WebServer:
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
 
         self.coroutine = None
+
+        self.work_processor = work_processor
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -188,8 +192,9 @@ class WebServer:
                 transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
             )
 
-        # Add TX to the processing queue
-        self.queue.append(tx)
+
+        # Add TX to the processing queue with hlc timestamp
+        self.work_processor.add_from_webserver(tx)
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)

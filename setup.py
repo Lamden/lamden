@@ -20,7 +20,8 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list"
+        "stdlib_list",
+        "lamden_hcl"
     ],
     entry_points={
         'console_scripts': [
