@@ -1,7 +1,7 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
 import hashlib
 from lamden.crypto import canonical
-from lamden.nodes.delegate import execution, work
+from lamden.nodes import execution, work
 from contracting.execution.executor import Executor
 from lamden.crypto.wallet import Wallet
 from lamden.contracts import sync
