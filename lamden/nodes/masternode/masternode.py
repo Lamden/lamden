@@ -129,12 +129,6 @@ class Masternode(base.Node):
 
         asyncio.ensure_future(self.new_blockchain_boot())
 
-        # if self.current_height == 0:
-        #     asyncio.ensure_future(self.new_blockchain_boot())
-        # # Otherwise, we are joining an existing network quorum
-        # else:
-        #     asyncio.ensure_future(self.join_quorum())
-
         self.log.debug('returned')
 
     '''
