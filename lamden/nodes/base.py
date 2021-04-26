@@ -100,7 +100,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class WorkProcessor(router.Processor):
-    def __init__(self, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, wallet, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.main_processing_queue = []
@@ -114,6 +114,8 @@ class WorkProcessor(router.Processor):
 
         self.client = client
         self.nonces = nonces
+
+        self.wallet = wallet
 
         self.hlc_clock = HLC()
         self.hlc_clock.sync()
@@ -273,7 +275,7 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
-        self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces)
+        self.work_processor = WorkProcessor(client=self.client, nonces=self.nonces, wallet=wallet)
         self.router.add_service(WORK_SERVICE, self.work_processor)
 
         self.running = False
