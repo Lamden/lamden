@@ -9,6 +9,7 @@ from lamden.nodes.base import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
+from contracting.db.encoder import decode
 
 from lamden.logger.base import get_logger
 
@@ -61,7 +62,7 @@ class TransactionBatcher:
         signature = self.wallet.sign(input_hash)
 
         batch = {
-            'transactions': transactions,
+            'transactions': [decode(t) for t in transactions],
             'timestamp': timestamp,
             'signature': signature,
             'sender': self.wallet.verifying_key,

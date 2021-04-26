@@ -48,7 +48,6 @@ class FileQueue:
 
         with open(item) as f:
             i = decode(f.read())
-            print(i)
 
         os.remove(item)
 
