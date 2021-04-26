@@ -387,5 +387,4 @@ if __name__ == '__main__':
         port=8080
     )
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(webserver.start())
+    webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
