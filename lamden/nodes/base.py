@@ -16,6 +16,7 @@ import decimal
 from pathlib import Path
 import uuid
 import shutil
+import os
 
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -46,7 +47,12 @@ class FileQueue:
         item = items.pop(idx)
 
         with open(item) as f:
-            return decode(f.read())
+            i = decode(f.read())
+            print(i)
+
+        os.remove(item)
+
+        return i
 
     def flush(self):
         shutil.rmtree(self.root)
