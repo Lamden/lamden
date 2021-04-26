@@ -147,10 +147,10 @@ class WorkProcessor(router.Processor):
         self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
 
     async def add_from_webserver(self, tx):
-        signed_transaction = self.make_tx(tx)
+        signed_transaction = await self.make_tx(tx)
 
-        self.send_work(signed_transaction)
-        self.add_to_queue(signed_transaction)
+        await self.send_work(signed_transaction)
+        await self.add_to_queue(signed_transaction)
 
     async def add_to_queue(self, item):
         self.main_processing_queue.append(item)
