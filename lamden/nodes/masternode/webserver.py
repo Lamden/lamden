@@ -45,7 +45,7 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, work_processor, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
+    def __init__(self, add_from_webserver, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
@@ -118,7 +118,7 @@ class WebServer:
 
         self.coroutine = None
 
-        self.work_processor = work_processor
+        self.add_from_webserver = add_from_webserver
 
     async def start(self):
         # Start server with SSL enabled or not
