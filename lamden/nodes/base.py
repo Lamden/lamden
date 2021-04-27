@@ -142,7 +142,8 @@ class WorkProcessor(router.Processor):
             return
 
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
-            self.log.error(f'Invalidly signed TX Batch received from master {msg["sender"][:8]}')
+            self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
+
         await self.check_expired(msg['hlc_timestamp'])
         '''
         if await self.check_expired(msg['hlc_timestamp']):
