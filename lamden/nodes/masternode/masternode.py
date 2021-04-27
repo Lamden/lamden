@@ -62,7 +62,7 @@ class TransactionBatcher:
         signature = self.wallet.sign(input_hash)
 
         batch = {
-            'transactions': [decode(t) for t in transactions],
+            'transactions': [t for t in transactions],
             'timestamp': timestamp,
             'signature': signature,
             'sender': self.wallet.verifying_key,
