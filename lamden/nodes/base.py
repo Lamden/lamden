@@ -286,7 +286,7 @@ class Node:
             get_masters=self.get_masternode_peers
         )
 
-        self.log({'starting_nonces': self.nonces})
+        self.log.debug({'starting_nonces': self.nonces})
 
         self.router.add_service(WORK_SERVICE, self.work_processor)
 
