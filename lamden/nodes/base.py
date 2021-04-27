@@ -180,14 +180,16 @@ class WorkProcessor(router.Processor):
         self.hlc_clock.sync()
         return str(self.hlc_clock)
 
+    async def timestamp_to_hlc(self, timestamp):
+        return HLC.from_str(timestamp)
+
     async def merge_hlc_timestamp(self, event_timestamp):
         self.log.info({'event_timestamp': event_timestamp})
-        self.hlc_clock.merge(event_timestamp)
+        self.hlc_clock.merge(await self.timestamp_to_hlc(event_timestamp))
 
     async def check_hlc_age(self, timestamp):
         # Convert timestamp to HLC clock then to nanoseconds
-        temp_hlc = HLC()
-        temp_hlc = temp_hlc.from_str(timestamp)
+        temp_hlc = await self.timestamp_to_hlc(timestamp)
         timestamp_nanoseconds, _ = temp_hlc.tuple()
 
         # sync out clock and then get its nanoseconds
