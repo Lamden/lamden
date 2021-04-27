@@ -161,6 +161,7 @@ class Node:
             nonces=self.nonces,
             wallet=wallet,
             add_to_queue=self.add_to_queue,
+            hlc_clock=self.hlc_clock,
             get_masters=self.get_masternode_peers
         )
 
