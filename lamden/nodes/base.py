@@ -120,6 +120,10 @@ class WorkProcessor(router.Processor):
 
         self.wallet = wallet
 
+        self.log.debug(wallet.vk_pretty)
+        self.log.debug(wallet.vk)
+        self.log.debug(wallet.verifying_key)
+
         self.hlc_clock = HLC()
         self.hlc_clock.sync()
 
