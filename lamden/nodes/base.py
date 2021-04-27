@@ -182,16 +182,19 @@ class Node:
 
     async def hang(self):
         # Maybe Upgrade
-        self.upgrade_manager.version_check(constitution=self.make_constitution())
+        ## self.upgrade_manager.version_check(constitution=self.make_constitution())
 
         # Hangs until upgrade is done
+
+        '''
         while self.upgrade_manager.upgrade:
             await asyncio.sleep(0)
+        '''
 
         # Wait for activity on our transaction queue or new block processor.
         # If another masternode has transactions, it will send use a new block notification.
         # If we have transactions, we will do the opposite. This 'wakes' up the network.
-        self.log.debug('HANGING: Waiting for work...')
+        ## self.log.debug('HANGING: Waiting for work...')
 
         while len(self.main_processing_queue) <= 0:
             if not self.running:
@@ -207,11 +210,11 @@ class Node:
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second
-        self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
+        ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
         time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
-        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
+        ## self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
 
         if time_in_queue_seconds > 1:
             await self.process_tx(self.main_processing_queue.pop())
@@ -219,7 +222,7 @@ class Node:
         await asyncio.sleep(0.1)
 
     async def process_tx(self, tx):
-        self.log.debug("PROCESSING: {}".format(tx['input_hash']))
+        ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
 
         # Run mini catch up here to prevent 'desyncing'
         # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
@@ -232,7 +235,7 @@ class Node:
             current_height=self.current_height,
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
-        self.log.debug(results)
+        ## self.log.debug(results)
         '''
         await router.secure_multicast(
             msg=results,
@@ -243,7 +246,7 @@ class Node:
             ctx=self.ctx
         )
         '''
-        self.log.info('Work execution complete: {}'.format(tx['input_hash']))
+        self.log.info('{}'.format(tx['input_hash']))
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
