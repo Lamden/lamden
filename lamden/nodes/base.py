@@ -39,7 +39,7 @@ class FileQueue:
 
     def append(self, tx):
         name = str(uuid.uuid4()) + self.EXTENSION
-        with open(self.root.joinpath(name), 'w') as f:
+        with open(self.root.joinpath(name), 'wb') as f:
             f.write(tx)
 
     def pop(self, idx):
