@@ -570,7 +570,10 @@ class Node:
             return False
 
         all_peers = self.get_all_peers()
-        self.log.debug( self.get_all_peers() )
+
+        del all_peers[self.wallet.vk]
+
+        self.log.debug(all_peers)
 
 
         await router.secure_multicast(
