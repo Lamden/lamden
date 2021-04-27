@@ -205,9 +205,12 @@ class Node:
         await self.process_main_queue()
 
     async def process_main_queue(self):
-        # run all transactions older than 1 sec
+        # run top of stack if it's older than 1 second
         self.log.debug(len(self.main_processing_queue), 'items in main queue')
         self.log.debug(" PROCESSING ")
+        time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
+        time_in_queue_seconds = time_in_queue/1000000
+        self.log.debug("First Item in queue as is {} nanoseconds / {} seconds".format(time_in_queue, time_in_queue_seconds))
         tx = self.main_processing_queue.pop()
         self.log.debug(tx)
         await asyncio.sleep(0)

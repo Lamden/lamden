@@ -18,7 +18,7 @@ class HLC_Clock():
         self.log.info({'event_timestamp': event_timestamp})
         self.hlc_clock.merge(await self.timestamp_to_hlc(event_timestamp))
 
-    async def check_hlc_age(self, timestamp):
+    async def check_timestamp_age(self, timestamp):
         # Convert timestamp to HLC clock then to nanoseconds
         temp_hlc = await self.timestamp_to_hlc(timestamp)
         timestamp_nanoseconds, _ = temp_hlc.tuple()
@@ -32,6 +32,6 @@ class HLC_Clock():
 
     async def check_expired(self, timestamp, tx_expiry_sec):
         self.log.debug("In Checking Expired")
-        age = await self.check_hlc_age(timestamp)
+        age = await self.check_timestamp_age(timestamp)
         self.log.info({"hcl age:": age})
         return age >= (tx_expiry_sec * 1000000)
