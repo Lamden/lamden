@@ -126,6 +126,7 @@ class WorkProcessor(router.Processor):
 
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
+        self.log.info(msg)
 
         self.log.debug("sender:", msg["sender"])
         self.log.debug("me:", self.wallet.vk)
@@ -179,6 +180,7 @@ class WorkProcessor(router.Processor):
         return str(self.hlc_clock)
 
     async def merge_hlc_timestamp(self, event_timestamp):
+        self.log.debug({event_timestamp})
         self.hlc_clock.merge(event_timestamp)
 
     async def check_hlc_age(self, timestamp):
@@ -225,6 +227,7 @@ class Node:
         self.driver = driver
         self.nonces = nonces
         self.store = store
+
 
         self.seed = seed
 
@@ -282,6 +285,8 @@ class Node:
             send_work=self.send_work,
             get_masters=self.get_masternode_peers
         )
+
+        self.log({'starting_nonces': self.nonces})
 
         self.router.add_service(WORK_SERVICE, self.work_processor)
 
