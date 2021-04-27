@@ -167,7 +167,7 @@ class Node:
 
         self.log.debug({'starting_nonces': self.nonces})
 
-        self.router.add_service(WORK_SERVICE, self.work_processor)
+        self.router.add_service(WORK_SERVICE, self.work_validator)
 
         self.running = False
         self.upgrade = False
@@ -472,19 +472,6 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
         self.driver.clear_pending_state()
-
-    async def acquire_work(self):
-        current_masternodes = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
-
-        w = await self.work_processor.gather_transaction_batches(masters=current_masternodes)
-
-        self.log.info(f'Got {len(w)} batch(es) of work')
-
-        expected_masters = set(current_masternodes)
-        work.pad_work(work=w, expected_masters=list(expected_masters))
-
-        return work.filter_work(w)
-
 
 
     def stop(self):
