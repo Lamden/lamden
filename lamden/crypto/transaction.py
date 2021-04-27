@@ -6,6 +6,7 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
+from lamden.logger.base import get_logger
 import json
 
 class TransactionException(Exception):
@@ -145,8 +146,8 @@ def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_bl
         raise TransactionTooManyPendingException
 
     expected_nonce = max(nonce, pending_nonce)
-
-    print({'expected_nonce': expected_nonce, 'nonce': nonce, 'pending_nonce': pending_nonce})
+    log = get_logger('TRANSACTION')
+    log.debug({'expected_nonce': expected_nonce, 'nonce': nonce, 'pending_nonce': pending_nonce})
 
     if strict:
         if tx_nonce != expected_nonce:
