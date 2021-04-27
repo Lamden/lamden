@@ -414,7 +414,8 @@ class SerialExecutor(TransactionExecutor):
                                            stamp_cost=stamp_cost)
                            )
         '''
-        log.debug(batch)
+        exec_log = get_logger("EXECUTE_TX_BATCH")
+        exec_log.debug(batch)
         tx_data.append(self.execute_tx(transaction=batch['transaction'],
                                        environment=environment,
                                        stamp_cost=stamp_cost)
