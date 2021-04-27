@@ -120,10 +120,6 @@ class WorkProcessor(router.Processor):
 
         self.wallet = wallet
 
-        self.log.debug(wallet.vk_pretty)
-        self.log.debug(wallet.vk)
-        self.log.debug(wallet.verifying_key)
-
         self.hlc_clock = HLC()
         self.hlc_clock.sync()
 
@@ -574,9 +570,6 @@ class Node:
             return False
 
         all_peers = self.get_all_peers()
-
-        del all_peers[self.wallet.vk]
-
         self.log.debug(all_peers)
 
 
@@ -585,7 +578,7 @@ class Node:
             service=WORK_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
-            peer_map=self.get_all_peers(),
+            peer_map=all_peers,
             ctx=self.ctx
         )
 
@@ -611,10 +604,15 @@ class Node:
         return member_peers
 
     def get_delegate_peers(self):
-        return self._get_member_peers('delegates')
+        peers = self._get_member_peers('delegates')
+        del peers[self.wallet.verifying_key]
+        return peers
 
     def get_masternode_peers(self):
-        return self._get_member_peers('masternodes')
+        peers = self._get_member_peers('masternodes')
+        del peers[self.wallet.verifying_key]
+        return peers
+
 
     def get_all_peers(self):
         return {
