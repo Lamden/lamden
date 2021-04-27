@@ -47,7 +47,7 @@ class WorkValidator(router.Processor):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
 
         self.log.debug("Checking Expired")
-        await self.check_expired(msg['hlc_timestamp'])
+        await self.hlc_clock.check_expired(msg['hlc_timestamp'])
         self.log.debug("Done Checking Expired")
         '''
         if await self.check_expired(msg['hlc_timestamp']):
