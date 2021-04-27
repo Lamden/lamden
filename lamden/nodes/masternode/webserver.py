@@ -384,7 +384,7 @@ if __name__ == '__main__':
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
-        port=8080
+        port=18080
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
