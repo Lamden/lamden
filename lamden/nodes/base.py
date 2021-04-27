@@ -234,7 +234,7 @@ class Node:
             current_height=self.current_height,
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
-        self.log.debug({results})
+        self.log.debug(results)
         '''
         await router.secure_multicast(
             msg=results,
