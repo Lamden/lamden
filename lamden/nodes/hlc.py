@@ -5,8 +5,10 @@ class HLC_Clock():
     def __init__(self, processing_delay):
         self.hlc_clock = HLC()
         self.hlc_clock.sync()
-        self.log = get_logger("HLC_CLOCK")
+
         self.processing_delay = processing_delay
+
+        self.log = get_logger("HLC_CLOCK")
 
     async def get_new_hlc_timestamp(self):
         self.hlc_clock.sync()
@@ -16,7 +18,6 @@ class HLC_Clock():
         return HLC.from_str(timestamp)
 
     async def merge_hlc_timestamp(self, event_timestamp):
-        self.log.info({'event_timestamp': event_timestamp})
         self.hlc_clock.merge(await self.timestamp_to_hlc(event_timestamp))
 
     async def check_timestamp_age(self, timestamp):
@@ -32,7 +33,5 @@ class HLC_Clock():
         return internal_nanoseconds - timestamp_nanoseconds
 
     async def check_expired(self, timestamp):
-        self.log.debug("In Checking Expired")
         age = await self.check_timestamp_age(timestamp)
-        self.log.info({"hcl age:": age})
         return age >= (self.processing_delay * 1000000000)

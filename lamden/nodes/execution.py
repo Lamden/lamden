@@ -64,7 +64,6 @@ class ConflictResolutionExecutor(TransactionExecutor):
             environment=environment,
             auto_commit=False
         )
-        log.debug(output)
 
         tx_hash = tx_hash_from_tx(transaction)
 
@@ -414,8 +413,7 @@ class SerialExecutor(TransactionExecutor):
                                            stamp_cost=stamp_cost)
                            )
         '''
-        exec_log = get_logger("EXECUTE_TX_BATCH")
-        exec_log.debug(batch)
+
         tx_data.append(self.execute_tx(transaction=batch['tx'],
                                        environment=environment,
                                        stamp_cost=stamp_cost)

@@ -168,8 +168,6 @@ class Node:
             get_masters=self.get_masternode_peers
         )
 
-        self.log.debug({'starting_nonces': self.nonces})
-
         self.router.add_service(WORK_SERVICE, self.work_validator)
 
         self.running = False
@@ -193,7 +191,7 @@ class Node:
         # Wait for activity on our transaction queue or new block processor.
         # If another masternode has transactions, it will send use a new block notification.
         # If we have transactions, we will do the opposite. This 'wakes' up the network.
-        self.log.debug('Waiting for work work...')
+        self.log.debug('HANGING: Waiting for work...')
 
         while len(self.main_processing_queue) <= 0:
             if not self.running:
@@ -213,7 +211,7 @@ class Node:
 
         time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
-        self.log.debug("First Item in queue as is {} nanoseconds / {} seconds and current hlc_timestamp is {}".format(time_in_queue, time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
+        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
 
         if time_in_queue_seconds > 1:
             await self.process_tx(self.main_processing_queue.pop())
