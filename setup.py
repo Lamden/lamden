@@ -12,6 +12,7 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
+    "uvloop==0.14.0"
         "sanic",
         "coloredlogs",
         "pymongo",
