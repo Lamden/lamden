@@ -129,7 +129,8 @@ class ConflictResolutionExecutor(TransactionExecutor):
             self.start_pool()
             log.debug(f'Initialyze pool {len(pool)}')
 
-        work_pool, active_workers = self.get_pool(len(batch['transactions']))
+        #work_pool, active_workers = self.get_pool(len(batch['transactions']))
+        work_pool, active_workers = self.get_pool(1)
         i = 0
         s = time()
         global result_list2
@@ -406,11 +407,18 @@ class SerialExecutor(TransactionExecutor):
 
         # Each TX Batch is basically a subblock from this point of view and probably for the near future
         tx_data = []
-        for transaction in batch['transactions']:
+        '''
+        for transaction in batch['transaction']:
             tx_data.append(self.execute_tx(transaction=transaction,
                                            environment=environment,
                                            stamp_cost=stamp_cost)
                            )
+        '''
+
+        tx_data.append(self.execute_tx(transaction=batch['transaction'],
+                                       environment=environment,
+                                       stamp_cost=stamp_cost)
+                       )
 
         return tx_data
 
