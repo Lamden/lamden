@@ -2,10 +2,11 @@ from hlcpy import HLC
 from lamden.logger.base import get_logger
 
 class HLC_Clock():
-    def __init__(self):
+    def __init__(self, processing_delay):
         self.hlc_clock = HLC()
         self.hlc_clock.sync()
         self.log = get_logger("HLC_CLOCK")
+        self.processing_delay = processing_delay
 
     async def get_new_hlc_timestamp(self):
         self.hlc_clock.sync()
@@ -30,8 +31,8 @@ class HLC_Clock():
         # Return the difference
         return internal_nanoseconds - timestamp_nanoseconds
 
-    async def check_expired(self, timestamp, tx_expiry_sec):
+    async def check_expired(self, timestamp):
         self.log.debug("In Checking Expired")
         age = await self.check_timestamp_age(timestamp)
         self.log.info({"hcl age:": age})
-        return age >= (tx_expiry_sec * 1000000)
+        return age >= (self.processing_delay * 1000000000)

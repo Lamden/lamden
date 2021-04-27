@@ -155,7 +155,10 @@ class Node:
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.main_processing_queue = []
-        self.hlc_clock = HLC_Clock()
+        # how long to hold items in queue before processing
+        self.processing_delay = 1
+        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
+
         self.work_validator = work.WorkValidator(
             client=self.client,
             nonces=self.nonces,
@@ -211,11 +214,41 @@ class Node:
         time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         self.log.debug("First Item in queue as is {} nanoseconds / {} seconds and current hlc_timestamp is {}".format(time_in_queue, time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
-        self.log.debug("Nothing old enough in queue to process")
+
         if time_in_queue_seconds > 1:
-            tx = self.main_processing_queue.pop()
-            self.log.debug(" PROCESSING: {}".format(tx['input_hash']))
+            self.process_tx(self.main_processing_queue.pop())
+
         await asyncio.sleep(0.1)
+
+    async def process_tx(self, tx):
+        self.log.debug("PROCESSING: {}".format(tx['input_hash']))
+
+        # Run mini catch up here to prevent 'desyncing'
+        # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
+
+        results = self.transaction_executor.execute_work(
+            driver=self.driver,
+            work=[tx],
+            wallet=self.wallet,
+            previous_block_hash=self.current_hash,
+            current_height=self.current_height,
+            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        )
+        self.log.debug({results})
+        '''
+        await router.secure_multicast(
+            msg=results,
+            service=CONTENDER_SERVICE,
+            cert_dir=self.socket_authenticator.cert_dir,
+            wallet=self.wallet,
+            peer_map=self.get_masternode_peers(),
+            ctx=self.ctx
+        )
+        '''
+        self.log.info('Work execution complete: {}'.format(tx['input_hash']))
+
+        # self.new_block_processor.clean(self.current_height)
+        # self.driver.clear_pending_state()
 
     async def add_from_webserver(self, tx):
         signed_transaction = await self.make_tx(tx)
@@ -442,41 +475,7 @@ class Node:
         # Start running
         self.running = True
 
-    async def process_new_work(self):
-        if len(self.get_masternode_peers()) == 0:
-            return
 
-        filtered_work = await self.acquire_work()
-
-        # Run mini catch up here to prevent 'desyncing'
-        self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
-
-        while len(self.new_block_processor.q) > 0:
-            block = self.new_block_processor.q.pop(0)
-            self.process_new_block(block)
-
-        results = self.transaction_executor.execute_work(
-            driver=self.driver,
-            work=filtered_work,
-            wallet=self.wallet,
-            previous_block_hash=self.current_hash,
-            current_height=self.current_height,
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
-        )
-
-        await router.secure_multicast(
-            msg=results,
-            service=CONTENDER_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_masternode_peers(),
-            ctx=self.ctx
-        )
-
-        self.log.info(f'Work execution complete. Sending to masters.')
-
-        self.new_block_processor.clean(self.current_height)
-        self.driver.clear_pending_state()
 
 
     def stop(self):
