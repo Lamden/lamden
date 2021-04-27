@@ -216,7 +216,7 @@ class Node:
         self.log.debug("First Item in queue as is {} nanoseconds / {} seconds and current hlc_timestamp is {}".format(time_in_queue, time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
 
         if time_in_queue_seconds > 1:
-            self.process_tx(self.main_processing_queue.pop())
+            await self.process_tx(self.main_processing_queue.pop())
 
         await asyncio.sleep(0.1)
 
