@@ -144,7 +144,9 @@ class WorkProcessor(router.Processor):
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
 
+        self.log.debug("Checking Expired")
         await self.check_expired(msg['hlc_timestamp'])
+        self.log.debug("Done Checking Expired")
         '''
         if await self.check_expired(msg['hlc_timestamp']):
             self.log.error(f'Expired TX from master {msg["sender"][:8]}')
@@ -179,7 +181,7 @@ class WorkProcessor(router.Processor):
         return str(self.hlc_clock)
 
     async def merge_hlc_timestamp(self, event_timestamp):
-        self.log.info({event_timestamp})
+        self.log.info({'event_timestamp': event_timestamp})
         self.hlc_clock.merge(event_timestamp)
 
     async def check_hlc_age(self, timestamp):
@@ -196,8 +198,9 @@ class WorkProcessor(router.Processor):
         return internal_nanoseconds - timestamp_nanoseconds
 
     async def check_expired(self, timestamp):
+        self.log.debug("In Checking Expired")
         age = await self.check_hlc_age(timestamp)
-        self.log.info("hcl age:", age)
+        self.log.info({"hcl age:": age})
         return age >= self.tx_expiry
 
     async def make_tx(self, tx):
