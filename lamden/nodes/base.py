@@ -184,7 +184,7 @@ class WorkProcessor(router.Processor):
     async def check_hlc_age(self, timestamp):
         # Convert timestamp to HLC clock then to nanoseconds
         temp_hlc = HLC()
-        temp_hlc.from_str(timestamp)
+        temp_hlc = temp_hlc.from_str(timestamp)
         timestamp_nanoseconds, _ = temp_hlc.tuple()
 
         # sync out clock and then get its nanoseconds
