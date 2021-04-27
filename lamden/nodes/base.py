@@ -570,7 +570,7 @@ class Node:
             return False
 
         all_peers = self.get_all_peers()
-        self.log.debug('all_peers': all_peers)
+        self.log.debug({'all_peers': all_peers})
 
 
         await router.secure_multicast(
