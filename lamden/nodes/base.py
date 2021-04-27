@@ -206,14 +206,16 @@ class Node:
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second
-        self.log.debug(len(self.main_processing_queue), 'items in main queue')
-        self.log.debug(" PROCESSING ")
+        self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
+
         time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         self.log.debug("First Item in queue as is {} nanoseconds / {} seconds and current hlc_timestamp is {}".format(time_in_queue, time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
-        tx = self.main_processing_queue.pop()
-        self.log.debug(tx)
-        await asyncio.sleep(0)
+        self.log.debug("Nothing old enough in queue to process")
+        if time_in_queue_seconds > 1:
+            tx = self.main_processing_queue.pop()
+            self.log.debug(" PROCESSING: {}".format(tx['input_hash']))
+        await asyncio.sleep(0.1)
 
     async def add_from_webserver(self, tx):
         signed_transaction = await self.make_tx(tx)
