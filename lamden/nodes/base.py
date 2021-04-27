@@ -1,7 +1,7 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
 import hashlib
-from lamden.crypto import canonical
 from lamden.nodes import execution, work
+from lamden.nodes.hlc import HLC_Clock
 from contracting.execution.executor import Executor
 from lamden.crypto.wallet import Wallet
 from lamden.contracts import sync
@@ -16,12 +16,7 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 import gc
 from lamden.logger.base import get_logger
 import decimal
-from collections import defaultdict
 import time
-from lamden.crypto.wallet import verify
-from lamden.crypto import transaction
-from hlcpy import HLC
-
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
@@ -99,130 +94,6 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
-class WorkProcessor(router.Processor):
-    def __init__(self, wallet, send_work, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
-                 tx_timeout=5):
-
-        self.main_processing_queue = []
-        self.tx_expiry = 1001
-
-        self.log = get_logger('Work Inbox')
-        self.log.propagate = debug
-
-        self.masters = []
-        self.tx_timeout = tx_timeout
-
-        self.client = client
-        self.nonces = nonces
-
-        self.send_work = send_work
-        self.get_masters = get_masters
-
-        self.wallet = wallet
-
-        self.hlc_clock = HLC()
-        self.hlc_clock.sync()
-
-
-    async def process_message(self, msg):
-        self.log.info(f'Received work from {msg["sender"][:8]}')
-        self.log.info(msg)
-
-        self.log.info({'sender': msg["sender"], 'me': self.wallet.verifying_key })
-
-        if msg["sender"] == self.wallet.verifying_key:
-            return
-
-        self.masters = self.get_masters()
-
-        self.log.info({'masters': self.masters})
-
-        if msg['sender'] not in self.masters:
-            self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
-            return
-
-        if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
-            self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
-
-        self.log.debug("Checking Expired")
-        await self.check_expired(msg['hlc_timestamp'])
-        self.log.debug("Done Checking Expired")
-        '''
-        if await self.check_expired(msg['hlc_timestamp']):
-            self.log.error(f'Expired TX from master {msg["sender"][:8]}')
-            return
-        '''
-
-        transaction.transaction_is_valid(
-            transaction=msg['tx'],
-            expected_processor=msg['sender'],
-            client=self.client,
-            nonces=self.nonces,
-            strict=False
-        )
-
-        await self.merge_hlc_timestamp(msg['hlc_timestamp'])
-        await self.add_to_queue(msg)
-
-        self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
-
-    async def add_from_webserver(self, tx):
-        signed_transaction = await self.make_tx(tx)
-
-        await self.send_work(signed_transaction)
-        await self.add_to_queue(signed_transaction)
-
-    async def add_to_queue(self, item):
-        self.main_processing_queue.append(item)
-        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
-
-    async def get_new_hlc_timestamp(self):
-        self.hlc_clock.sync()
-        return str(self.hlc_clock)
-
-    async def timestamp_to_hlc(self, timestamp):
-        return HLC.from_str(timestamp)
-
-    async def merge_hlc_timestamp(self, event_timestamp):
-        self.log.info({'event_timestamp': event_timestamp})
-        self.hlc_clock.merge(await self.timestamp_to_hlc(event_timestamp))
-
-    async def check_hlc_age(self, timestamp):
-        # Convert timestamp to HLC clock then to nanoseconds
-        temp_hlc = await self.timestamp_to_hlc(timestamp)
-        timestamp_nanoseconds, _ = temp_hlc.tuple()
-
-        # sync out clock and then get its nanoseconds
-        self.hlc_clock.sync()
-        internal_nanoseconds, _ = self.hlc_clock.tuple()
-
-        # Return the difference
-        return internal_nanoseconds - timestamp_nanoseconds
-
-    async def check_expired(self, timestamp):
-        self.log.debug("In Checking Expired")
-        age = await self.check_hlc_age(timestamp)
-        self.log.info({"hcl age:": age})
-        return age >= self.tx_expiry
-
-    async def make_tx(self, tx):
-        timestamp = int(time.time())
-
-        h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
-        input_hash = h.hexdigest()
-
-        signature = self.wallet.sign(input_hash)
-
-        return {
-            'tx': tx,
-            'timestamp': timestamp,
-            'hlc_timestamp': await self.get_new_hlc_timestamp(),
-            'signature': signature,
-            'sender': self.wallet.verifying_key,
-            'input_hash': input_hash
-        }
-
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
@@ -282,11 +153,14 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
-        self.work_processor = WorkProcessor(
+
+        self.main_processing_queue = []
+        self.hlc_clock = HLC_Clock()
+        self.work_validator = work.WorkValidator(
             client=self.client,
             nonces=self.nonces,
             wallet=wallet,
-            send_work=self.send_work,
+            add_to_queue=self.add_to_queue,
             get_masters=self.get_masternode_peers
         )
 
@@ -317,7 +191,7 @@ class Node:
         # If we have transactions, we will do the opposite. This 'wakes' up the network.
         self.log.debug('Waiting for work work...')
 
-        while len(self.work_processor.main_processing_queue) <= 0:
+        while len(self.main_processing_queue) <= 0:
             if not self.running:
                 return
 
@@ -331,11 +205,57 @@ class Node:
 
     async def process_main_queue(self):
         # run all transactions older than 1 sec
-        self.log.debug(len(self.work_processor.main_processing_queue), 'items in main queue')
+        self.log.debug(len(self.main_processing_queue), 'items in main queue')
         self.log.debug(" PROCESSING ")
-        tx = self.work_processor.main_processing_queue.pop()
+        tx = self.main_processing_queue.pop()
         self.log.debug(tx)
         await asyncio.sleep(0)
+
+    async def add_from_webserver(self, tx):
+        signed_transaction = await self.make_tx(tx)
+
+        await self.send_work(signed_transaction)
+        await self.add_to_queue(signed_transaction)
+
+    async def add_to_queue(self, item):
+        self.main_processing_queue.append(item)
+        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
+
+    async def make_tx(self, tx):
+        timestamp = int(time.time())
+
+        h = hashlib.sha3_256()
+        h.update('{}'.format(timestamp).encode())
+        input_hash = h.hexdigest()
+
+        signature = self.wallet.sign(input_hash)
+
+        return {
+            'tx': tx,
+            'timestamp': timestamp,
+            'hlc_timestamp': await self.hlc_clock.get_new_hlc_timestamp(),
+            'signature': signature,
+            'sender': self.wallet.verifying_key,
+            'input_hash': input_hash
+        }
+
+    async def send_work(self, work):
+        # Else, batch some more txs
+        self.log.info('Sending transaction to other nodes.')
+
+        # LOOK AT SOCKETS CLASS
+        if len(self.get_delegate_peers()) == 0:
+            self.log.error('No one online!')
+            return False
+
+        await router.secure_multicast(
+            msg=work,
+            service=WORK_SERVICE,
+            cert_dir=self.socket_authenticator.cert_dir,
+            wallet=self.wallet,
+            peer_map=self.get_all_peers(),
+            ctx=self.ctx
+        )
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
@@ -564,27 +484,7 @@ class Node:
 
         return work.filter_work(w)
 
-    async def send_work(self, work):
-        # Else, batch some more txs
-        self.log.info('Sending transaction to other nodes.')
 
-        # LOOK AT SOCKETS CLASS
-        if len(self.get_delegate_peers()) == 0:
-            self.log.error('No one online!')
-            return False
-
-        all_peers = self.get_all_peers()
-        self.log.debug(all_peers)
-
-
-        await router.secure_multicast(
-            msg=work,
-            service=WORK_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=all_peers,
-            ctx=self.ctx
-        )
 
     def stop(self):
         # Kill the router and throw the running flag to stop the loop

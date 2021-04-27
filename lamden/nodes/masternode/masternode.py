@@ -94,7 +94,7 @@ class Masternode(base.Node):
         # Services
         self.webserver_port = webserver_port
         self.webserver = webserver.WebServer(
-            work_processor=self.work_processor,
+            add_from_webserver=self.add_from_webserver,
             contracting_client=self.client,
             driver=self.driver,
             blocks=self.blocks,
