@@ -128,15 +128,15 @@ class WorkProcessor(router.Processor):
         self.log.info(f'Received work from {msg["sender"][:8]}')
         self.log.info(msg)
 
-        self.log.debug("sender:", msg["sender"])
-        self.log.debug("me:", self.wallet.vk)
+        self.log.info("sender:", msg["sender"])
+        self.log.info("me:", self.wallet.vk)
 
         if msg["sender"] == self.wallet.vk:
             return
 
         self.masters = self.get_masters()
 
-        self.log.debug(self.masters)
+        self.log.info(self.masters)
 
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
@@ -180,7 +180,7 @@ class WorkProcessor(router.Processor):
         return str(self.hlc_clock)
 
     async def merge_hlc_timestamp(self, event_timestamp):
-        self.log.debug({event_timestamp})
+        self.log.info({event_timestamp})
         self.hlc_clock.merge(event_timestamp)
 
     async def check_hlc_age(self, timestamp):
@@ -198,7 +198,7 @@ class WorkProcessor(router.Processor):
 
     async def check_expired(self, timestamp):
         age = await self.check_hlc_age(timestamp)
-        self.log.debug("hcl age:", age)
+        self.log.info("hcl age:", age)
         return age >= self.tx_expiry
 
     async def make_tx(self, tx):
