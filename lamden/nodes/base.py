@@ -128,15 +128,14 @@ class WorkProcessor(router.Processor):
         self.log.info(f'Received work from {msg["sender"][:8]}')
         self.log.info(msg)
 
-        self.log.info("sender:", msg["sender"])
-        self.log.info("me:", self.wallet.vk)
+        self.log.info({'sender': msg["sender"], 'me': self.wallet.verifying_key })
 
-        if msg["sender"] == self.wallet.vk:
+        if msg["sender"] == self.wallet.verifying_key:
             return
 
         self.masters = self.get_masters()
 
-        self.log.info(self.masters)
+        self.log.info({'masters': self.masters})
 
         if msg['sender'] not in self.masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
