@@ -370,11 +370,11 @@ class WebServer:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
+    arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
-    parser.add_argument('-k', '--key', type=str, required=True)
+    arg_parser.add_argument('-k', '--key', type=str, required=True)
 
-    args = parser.parse_args()
+    args = arg_parser.parse_args()
 
     sk = bytes.fromhex(args.key)
     wallet = Wallet(seed=sk)
