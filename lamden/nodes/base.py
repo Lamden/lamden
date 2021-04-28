@@ -239,7 +239,7 @@ class Node:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
-        block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
+        block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
 
         self.process_new_block(block)
 
