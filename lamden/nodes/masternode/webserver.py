@@ -159,7 +159,7 @@ class WebServer:
             for tx in body:
                 result = await self.process_transaction(tx)
 
-                if result.has_key('tx_hash'):
+                if 'tx_hash' in result:
                     results.append({
                         'success': 'Transaction successfully submitted to the network.',
                         'hash': result['tx_hash']
@@ -171,7 +171,7 @@ class WebServer:
         else:
             result = await self.process_transaction(body)
 
-            if result.has_key('tx_hash'):
+            if 'tx_hash' in result:
                 return response.json({
                     'success': 'Transaction successfully submitted to the network.',
                     'hash': result['tx_hash']
