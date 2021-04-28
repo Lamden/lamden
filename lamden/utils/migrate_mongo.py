@@ -87,7 +87,8 @@ class MigrationNode:
         for i in range(current, latest + 1):
             block = self.old_blocks.get_block(v=i)
 
-            self.process_new_block(block)
+            if block is not None:
+                self.process_new_block(block)
 
     def should_process(self, block):
         try:
