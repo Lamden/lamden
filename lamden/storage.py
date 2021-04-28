@@ -11,7 +11,7 @@ BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
-STORAGE_HOME = pathlib.Path().home().joinpath('lamden')
+STORAGE_HOME = pathlib.Path().home().joinpath('_lamden')
 
 log = get_logger('STATE')
 
