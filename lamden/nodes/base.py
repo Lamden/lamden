@@ -239,6 +239,8 @@ class Node:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
+        self.log.info(results['state'])
+
         block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
 
         self.process_new_block(block)
@@ -254,7 +256,7 @@ class Node:
             ctx=self.ctx
         )
         '''
-        self.log.info('{}'.format(tx['input_hash']))
+        self.log.info('{}'.format(tx['hlc_timestamp']))
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
@@ -271,10 +273,9 @@ class Node:
 
     async def make_tx(self, tx):
         timestamp = int(time.time())
-        hlc_timestamp = await self.hlc_clock.get_new_hlc_timestamp()
 
         h = hashlib.sha3_256()
-        h.update('{}'.format(hlc_timestamp).encode())
+        h.update('{}'.format(timestamp).encode())
         input_hash = h.hexdigest()
 
         signature = self.wallet.sign(input_hash)
@@ -282,7 +283,7 @@ class Node:
         return {
             'tx': tx,
             'timestamp': timestamp,
-            'hlc_timestamp': hlc_timestamp,
+            'hlc_timestamp': await self.hlc_clock.get_new_hlc_timestamp(),
             'signature': signature,
             'sender': self.wallet.verifying_key,
             'input_hash': input_hash
