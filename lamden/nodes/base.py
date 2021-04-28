@@ -18,6 +18,9 @@ from lamden.logger.base import get_logger
 import decimal
 import time
 
+from lamden.crypto.canonical import merklize, block_from_subblocks
+
+
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
 WORK_SERVICE = 'work'
@@ -235,6 +238,11 @@ class Node:
             current_height=self.current_height,
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
+
+        block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
+
+        self.process_new_block(block)
+
         ## self.log.debug(results)
         '''
         await router.secure_multicast(
