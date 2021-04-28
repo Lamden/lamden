@@ -11,6 +11,7 @@ from decimal import Decimal
 import lamden
 from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from contracting.db.driver import FSDriver
 
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
@@ -56,49 +57,23 @@ codec_options = CodecOptions(type_registry=type_registry)
 
 
 class NonceStorage:
-    def __init__(self, port=27027, db_name='lamden', nonce_collection='nonces', pending_collection='pending_nonces', config_path=lamden.__path__[0]):
-        self.config_path = config_path
-
-        self.port = port
-
-        self.client = MongoClient()
-        self.db = self.client.get_database(db_name)
-
-        self.nonces = self.db.get_collection(nonce_collection, codec_options=codec_options)
-        self.pending_nonces = self.db.get_collection(pending_collection, codec_options=codec_options)
+    def __init__(self, nonce_collection='~/lamden/nonces', pending_collection='~/lamden/pending_nonces'):
+        self.nonces = FSDriver(root=nonce_collection)
+        self.pending_nonces = FSDriver(root=pending_collection)
 
     @staticmethod
-    def get_one(sender, processor, db):
-        v = db.find_one(
-            {
-                'sender': sender,
-                'processor': processor
-            }
-        )
-
-        if v is None:
-            return None
-
-        return v['value']
+    def get_one(sender, processor, db: FSDriver):
+        return db.get(f'{sender}/{processor}')
 
     @staticmethod
-    def set_one(sender, processor, value, db):
-        db.update_one(
-            {
-                'sender': sender,
-                'processor': processor
-            },
-            {
-                '$set':
-                    {
-                        'value': value
-                    }
-            }, upsert=True
-        )
+    def set_one(sender, processor, value, db: FSDriver):
+        return db.set(f'{sender}/{processor}', value)
 
+    # Move this to transaction.py
     def get_nonce(self, sender, processor):
         return self.get_one(sender, processor, self.nonces)
 
+    # Move this to transaction.py
     def get_pending_nonce(self, sender, processor):
         return self.get_one(sender, processor, self.pending_nonces)
 
@@ -108,6 +83,7 @@ class NonceStorage:
     def set_pending_nonce(self, sender, processor, value):
         self.set_one(sender, processor, value, self.pending_nonces)
 
+    # Move this to webserver.py
     def get_latest_nonce(self, sender, processor):
         latest_nonce = self.get_pending_nonce(sender=sender, processor=processor)
 
@@ -120,11 +96,11 @@ class NonceStorage:
         return latest_nonce
 
     def flush(self):
-        self.nonces.drop()
-        self.pending_nonces.drop()
+        self.nonces.flush()
+        self.pending_nonces.flush()
 
     def flush_pending(self):
-        self.pending_nonces.drop()
+        self.pending_nonces.flush()
 
 
 def get_latest_block_hash(driver: ContractDriver):
@@ -189,46 +165,40 @@ class BlockStorage:
     BLOCK = 0
     TX = 1
 
-    def __init__(self, port=27027, config_path=lamden.__path__[0], db='lamden', blocks_collection='blocks', tx_collection='tx'):
+    def __init__(self, blocks_collection='~/lamden/blocks', tx_collection='~/lamden/tx'):
         # Setup configuration file to read constants
-        self.config_path = config_path
-
-        self.port = port
-
-        self.client = MongoClient()
-        self.db = self.client.get_database(db)
-
-        self.blocks = self.db.get_collection(blocks_collection, codec_options=codec_options)
-        self.txs = self.db.get_collection(tx_collection, codec_options=codec_options)
+        self.blocks = FSDriver(blocks_collection)
+        self.txs = FSDriver(tx_collection)
 
     def q(self, v):
         if isinstance(v, int):
-            return {'number': v}
-        return {'hash': v}
+            return str(v).zfill(32)
+        return v
 
     def get_block(self, v=None, no_id=True):
         if v is None:
             return None
 
         q = self.q(v)
-        block = self.blocks.find_one(q)
-
-        if block is not None and no_id:
-            block.pop('_id')
+        block = self.blocks.get(q)
 
         return block
 
     def put(self, data, collection=BLOCK):
         if collection == BlockStorage.BLOCK:
-            _id = self.blocks.insert_one(data)
-            del data['_id']
+            name = str(data['number']).zfill(32)
+
+            self.blocks.set(name, data)
+
+            # Change to symbolic link
+            self.blocks.set(data['hash'], data)
+
         elif collection == BlockStorage.TX:
-            _id = self.txs.insert_one(data)
-            del data['_id']
+            self.txs.set(data['hash'], data)
         else:
             return False
 
-        return _id is not None
+        return True
 
     def get_last_n(self, n, collection=BLOCK):
         if collection == BlockStorage.BLOCK:
@@ -251,16 +221,11 @@ class BlockStorage:
         return blocks
 
     def get_tx(self, h, no_id=True):
-        tx = self.txs.find_one({'hash': h})
-
-        if tx is not None and no_id:
-            tx.pop('_id')
-
-        return tx
+        return self.txs.get(h)
 
     def drop_collections(self):
-        self.blocks.drop()
-        self.txs.drop()
+        self.blocks.flush()
+        self.txs.flush()
 
     def flush(self):
         self.drop_collections()
@@ -276,18 +241,3 @@ class BlockStorage:
         for subblock in block['subblocks']:
             for tx in subblock['transactions']:
                 self.put(tx, BlockStorage.TX)
-
-    def delete_tx(self, h):
-        self.txs.delete_one({'hash': h})
-
-    def delete_block(self, v):
-        block = self.get_block(v, no_id=False)
-
-        if block is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.delete_tx(tx['hash'])
-
-        self.blocks.delete_one({'_id': block['_id']})
