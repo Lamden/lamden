@@ -148,7 +148,7 @@ class WebServer:
     async def submit_transaction(self, request):
         ## log.debug(f'New request: {request}')
         # Reject TX if the queue is too large
-        '''
+        ''' REMOVED FOR TESTING
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
