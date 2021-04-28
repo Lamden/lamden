@@ -263,9 +263,10 @@ class Node:
 
     async def make_tx(self, tx):
         timestamp = int(time.time())
+        hlc_timestamp = await self.hlc_clock.get_new_hlc_timestamp()
 
         h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
+        h.update('{}'.format(hlc_timestamp).encode())
         input_hash = h.hexdigest()
 
         signature = self.wallet.sign(input_hash)
@@ -273,7 +274,7 @@ class Node:
         return {
             'tx': tx,
             'timestamp': timestamp,
-            'hlc_timestamp': await self.hlc_clock.get_new_hlc_timestamp(),
+            'hlc_timestamp': hlc_timestamp,
             'signature': signature,
             'sender': self.wallet.verifying_key,
             'input_hash': input_hash
