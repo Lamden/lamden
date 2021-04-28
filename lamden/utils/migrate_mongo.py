@@ -71,11 +71,10 @@ class MigrationNode:
             root=self.genesis_path
         )
 
-    def catchup(self):
+    def catchup(self, current=0):
         # Get the current latest block stored and the latest block of the network
         log.info('Running migration.')
 
-        current = 0
         latest = legacy.get_latest_block_height(self.old_driver)
 
         log.info(f'Current block: {current}, Latest available block: {latest}')
