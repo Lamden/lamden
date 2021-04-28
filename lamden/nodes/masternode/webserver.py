@@ -159,7 +159,7 @@ class WebServer:
             for tx in body:
                 result = await self.process_transaction(tx)
 
-                if result['tx_hash']:
+                if result.has_key('tx_hash'):
                     results.append({
                         'success': 'Transaction successfully submitted to the network.',
                         'hash': result['tx_hash']
@@ -171,7 +171,7 @@ class WebServer:
         else:
             result = await self.process_transaction(body)
 
-            if result['tx_hash']:
+            if result.has_key('tx_hash'):
                 return response.json({
                     'success': 'Transaction successfully submitted to the network.',
                     'hash': result['tx_hash']
@@ -223,7 +223,7 @@ class WebServer:
         # Add TX to the processing queue with hlc timestamp
         await self.add_from_webserver(tx)
 
-        return {tx_hash}
+        return {'tx_hash': tx_hash}
 
     # Network Status
     async def ping(self, request):
