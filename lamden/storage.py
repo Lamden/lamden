@@ -4,16 +4,21 @@ from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
 
+import pathlib
+
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
+STORAGE_HOME = pathlib.Path().home().joinpath('lamden')
+
 log = get_logger('STATE')
 
 
 class NonceStorage:
-    def __init__(self, nonce_collection='~/lamden/nonces', pending_collection='~/lamden/pending_nonces'):
+    def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
+                 pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
         self.nonces = FSDriver(root=nonce_collection)
         self.pending_nonces = FSDriver(root=pending_collection)
 
@@ -121,7 +126,7 @@ class BlockStorage:
     BLOCK = 0
     TX = 1
 
-    def __init__(self, blocks_collection='~/lamden/blocks', tx_collection='~/lamden/tx'):
+    def __init__(self, blocks_collection=STORAGE_HOME.joinpath('blocks'), tx_collection=STORAGE_HOME.joinpath('tx')):
         # Setup configuration file to read constants
         self.blocks = FSDriver(blocks_collection)
         self.txs = FSDriver(tx_collection)
@@ -155,26 +160,6 @@ class BlockStorage:
             return False
 
         return True
-
-    def get_last_n(self, n, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
-            c = self.blocks
-        else:
-            return None
-
-        block_query = c.find({}, {'_id': False}).sort(
-            'number', DESCENDING
-        ).limit(n)
-
-        blocks = [block for block in block_query]
-
-        if len(blocks) > 1:
-            first_block_num = blocks[0].get('number')
-            last_block_num = blocks[-1].get('number')
-
-            assert first_block_num > last_block_num, "Blocks are not descending."
-
-        return blocks
 
     def get_tx(self, h, no_id=True):
         return self.txs.get(h)
