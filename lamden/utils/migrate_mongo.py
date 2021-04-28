@@ -1,21 +1,17 @@
+from . import legacy
+from lamden.logger.base import get_logger
 
+log = get_logger('MIGRATE')
 
-def catchup(self, mn_seed, mn_vk):
+def catchup():
     # Get the current latest block stored and the latest block of the network
-    self.log.info('Running catchup.')
-    current = self.current_height
-    latest = await get_latest_block_height(
-        ip=mn_seed,
-        vk=mn_vk,
-        wallet=self.wallet,
-        ctx=self.ctx
-    )
+    log.info('Running migration.')
 
-    self.log.info(f'Current block: {current}, Latest available block: {latest}')
+    current = 0
+    latest = legacy.get_latest_block_height()
 
-    if latest == 0 or latest is None or type(latest) == dict:
-        self.log.info('No need to catchup. Proceeding.')
-        return
+    log.info(f'Current block: {current}, Latest available block: {latest}')
+
 
     # Increment current by one. Don't count the genesis block.
     if current == 0:
