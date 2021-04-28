@@ -57,7 +57,8 @@ class MigrationNode:
 
         self.bypass_catchup = bypass_catchup
 
-        self.constitution = json.load(constitution)
+        with open(constitution) as f:
+            self.constitution = json.load(f)
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
