@@ -281,7 +281,7 @@ class Node:
 
     async def send_work(self, work):
         # Else, batch some more txs
-        self.log.info('Sending transaction to other nodes.')
+        ## self.log.info('Sending transaction to other nodes.')
 
         # LOOK AT SOCKETS CLASS
         if len(self.get_delegate_peers()) == 0:

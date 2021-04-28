@@ -157,7 +157,7 @@ class WebServer:
         if isinstance(body, list):
             results = []
             for tx in body:
-                result = await self.process_transaction(tx, response)
+                result = await self.process_transaction(tx)
 
                 if result['tx_hash']:
                     results.append({
@@ -169,7 +169,7 @@ class WebServer:
 
             return response.json(results, headers={'Access-Control-Allow-Origin': '*'})
         else:
-            result = await self.process_transaction(body, response)
+            result = await self.process_transaction(body)
 
             if result['tx_hash']:
                 return response.json({
