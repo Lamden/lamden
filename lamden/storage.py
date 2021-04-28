@@ -1,14 +1,5 @@
 from contracting.db.driver import ContractDriver
-from pymongo import MongoClient, DESCENDING
 
-from bson.decimal128 import Decimal128
-from bson.codec_options import TypeCodec, TypeEncoder, TypeDecoder
-from bson.codec_options import TypeRegistry
-from bson.codec_options import CodecOptions
-
-from decimal import Decimal
-
-import lamden
 from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
@@ -19,41 +10,6 @@ NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
 log = get_logger('STATE')
-
-
-class DecimalEncoder(TypeEncoder):
-    python_type = Decimal  # the Python type acted upon by this type codec
-
-    def transform_python(self, value):
-        return Decimal128(value)
-
-
-class ContractingDecimalEncoder(TypeEncoder):
-    python_type = ContractingDecimal  # the Python type acted upon by this type codec
-
-    def transform_python(self, value):
-        return Decimal128(value._d)
-
-
-class DecimalDecoder(TypeDecoder):
-    bson_type = Decimal128
-
-    def transform_bson(self, value):
-        return value.to_decimal()
-
-# class ContractingDecimalCodec(TypeCodec):
-#     python_type = ContractingDecimal  # the Python type acted upon by this type codec
-#     bson_type = Decimal128  # the BSON type acted upon by this type codec
-#
-#     def transform_python(self, value):
-#         return Decimal128(value._d)
-#
-#     def transform_bson(self, value):
-#         return value.to_decimal()
-
-
-type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
-codec_options = CodecOptions(type_registry=type_registry)
 
 
 class NonceStorage:
