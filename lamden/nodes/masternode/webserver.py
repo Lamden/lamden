@@ -152,10 +152,41 @@ class WebServer:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
+        body = decode(request.body)
+
+        if isinstance(body, list):
+            results = []
+            for tx in body:
+                result = await self.process_transaction(tx, response)
+
+                if result['tx_hash']:
+                    results.append({
+                        'success': 'Transaction successfully submitted to the network.',
+                        'hash': result['tx_hash']
+                    })
+                else:
+                    results.append(results)
+
+            return response.json(results, headers={'Access-Control-Allow-Origin': '*'})
+        else:
+            result = await self.process_transaction(body, response)
+
+            if result['tx_hash']:
+                return response.json({
+                    'success': 'Transaction successfully submitted to the network.',
+                    'hash': result['tx_hash']
+                }, headers={'Access-Control-Allow-Origin': '*'})
+            else:
+                return response.json(
+                    result, headers={'Access-Control-Allow-Origin': '*'}
+                )
+
+    async def process_transaction(self, tx):
+        tx_hash = tx_hash_from_tx(tx)
+
         # Check that the payload is valid JSON
-        tx = decode(request.body)
         if tx is None:
-            return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
+            return {'error': 'Malformed request body.'}
 
         # Check that the TX is correctly formatted
         try:
@@ -187,21 +218,12 @@ class WebServer:
             )
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
-            return response.json(
-                transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
-            )
-
+            return transaction.EXCEPTION_MAP[type(e)]
 
         # Add TX to the processing queue with hlc timestamp
         await self.add_from_webserver(tx)
 
-        # Return the TX hash to the user so they can track it
-        tx_hash = tx_hash_from_tx(tx)
-
-        return response.json({
-            'success': 'Transaction successfully submitted to the network.',
-            'hash': tx_hash
-        }, headers={'Access-Control-Allow-Origin': '*'})
+        return {tx_hash}
 
     # Network Status
     async def ping(self, request):

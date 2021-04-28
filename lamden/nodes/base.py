@@ -219,7 +219,7 @@ class Node:
         if time_in_queue_seconds > 1:
             await self.process_tx(self.main_processing_queue.pop())
 
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0)
 
     async def process_tx(self, tx):
         ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
