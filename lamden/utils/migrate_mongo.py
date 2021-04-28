@@ -85,9 +85,7 @@ class MigrationNode:
 
         # Find the missing blocks process them
         for i in range(current, latest + 1):
-            block = None
-            while block is None:
-                block = self.old_blocks.get_block(v=i)
+            block = self.old_blocks.get_block(v=i)
 
             self.process_new_block(block)
 
