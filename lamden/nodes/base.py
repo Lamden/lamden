@@ -242,7 +242,6 @@ class Node:
         self.log.info(results['state'])
 
         block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
-
         self.process_new_block(block)
 
         ## self.log.debug(results)
@@ -407,6 +406,7 @@ class Node:
         if self.should_process(block):
             self.log.info('Storing new block.')
             # Commit the state changes and nonces to the database
+            self.log.debug(block)
             storage.update_state_with_block(
                 block=block,
                 driver=self.driver,
