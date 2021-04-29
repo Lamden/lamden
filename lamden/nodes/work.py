@@ -27,7 +27,7 @@ class WorkValidator(router.Processor):
         self.hlc_clock = hlc_clock
 
 
-    def process_message(self, msg):
+    async def process_message(self, msg):
         ## self.log.info(f'Received work from {msg["sender"][:8]}')
         ## self.log.info(msg)
 
