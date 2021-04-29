@@ -158,6 +158,7 @@ class Node:
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.main_processing_queue = []
+        self.total_processed = 0
         # how long to hold items in queue before processing
         self.processing_delay = 5
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
@@ -258,7 +259,9 @@ class Node:
             ctx=self.ctx
         )
         '''
-        self.log.info('Processed: {}'.format(tx['hlc_timestamp']))
+
+        self.total_processed = self.total_processed + 1
+        self.log.info('{} Processed: {}'.format(self.total_processed, tx['hlc_timestamp']))
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()

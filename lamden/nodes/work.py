@@ -3,6 +3,7 @@ from lamden import router, storage
 from lamden.crypto.wallet import verify
 from lamden.crypto import transaction
 from contracting.client import ContractingClient
+from lamden.crypto.transaction import TransactionException
 
 class WorkValidator(router.Processor):
     def __init__(self, hlc_clock, wallet, add_to_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
@@ -47,13 +48,17 @@ class WorkValidator(router.Processor):
             return
         '''
 
-        transaction.transaction_is_valid(
-            transaction=msg['tx'],
-            expected_processor=msg['sender'],
-            client=self.client,
-            nonces=self.nonces,
-            strict=False
-        )
+        try:
+            transaction.transaction_is_valid(
+                transaction=msg['tx'],
+                expected_processor=msg['sender'],
+                client=self.client,
+                nonces=self.nonces,
+                strict=False
+            )
+        except TransactionException as e:
+            self.log.error(f'Tx has error: {transaction.EXCEPTION_MAP[type(e)]}')
+            return
 
         await self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         await self.add_to_queue(msg)

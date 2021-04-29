@@ -263,6 +263,7 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     if amount is None:
         amount = 0
 
+
     # Check if they have enough stamps for the operation
     has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)
 
