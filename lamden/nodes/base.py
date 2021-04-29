@@ -239,7 +239,7 @@ class Node:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
-        self.log.debug(results)
+        # self.log.debug(results)
 
         block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
         self.process_new_block(block)
@@ -355,7 +355,8 @@ class Node:
 
     def should_process(self, block):
         try:
-            self.log.info(f'Processing block #{block.get("number")}')
+            pass
+            # self.log.info(f'Processing block #{block.get("number")}')
         except:
             self.log.error('Malformed block :(')
             return False
@@ -404,23 +405,23 @@ class Node:
 
         # Check if the block is valid
         if self.should_process(block):
-            self.log.info('Storing new block.')
+            # self.log.info('Storing new block.')
             # Commit the state changes and nonces to the database
-            self.log.debug(block)
+            # self.log.debug(block)
             storage.update_state_with_block(
                 block=block,
                 driver=self.driver,
                 nonces=self.nonces
             )
 
-            self.log.info('Issuing rewards.')
+            # self.log.info('Issuing rewards.')
             # Calculate and issue the rewards for the governance nodes
             self.reward_manager.issue_rewards(
                 block=block,
                 client=self.client
             )
 
-        self.log.info('Updating metadata.')
+        # self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
