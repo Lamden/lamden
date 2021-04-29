@@ -43,7 +43,7 @@ class RewardManager:
             for tx in sb['transactions']:
                 total += tx['stamps_used']
 
-        log.info(f'{total} stamps in block #{block["number"]} to issue as rewards.')
+        # log.info(f'{total} stamps in block #{block["number"]} to issue as rewards.')
 
         return total
 
