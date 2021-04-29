@@ -159,7 +159,7 @@ class Node:
 
         self.main_processing_queue = []
         # how long to hold items in queue before processing
-        self.processing_delay = 10
+        self.processing_delay = 5
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
 
         self.work_validator = work.WorkValidator(
@@ -222,10 +222,10 @@ class Node:
         if time_in_queue_seconds > self.processing_delay:
             await self.process_tx(self.main_processing_queue.pop())
 
-        for x in range(len(self.main_processing_queue)):
-            self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
+        # for x in range(len(self.main_processing_queue)):
+        #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0)
 
     async def process_tx(self, tx):
         ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
