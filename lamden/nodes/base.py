@@ -223,7 +223,7 @@ class Node:
             await self.process_tx(self.main_processing_queue.pop())
 
         for x in range(len(self.main_processing_queue)):
-            print(self.main_processing_queue[x])
+            print(self.main_processing_queue[x]['hlc_timestamp'])
 
         await asyncio.sleep(1)
 
@@ -258,7 +258,7 @@ class Node:
             ctx=self.ctx
         )
         '''
-        self.log.info('{}'.format(tx['hlc_timestamp']))
+        self.log.info('Processed: {}'.format(tx['hlc_timestamp']))
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
