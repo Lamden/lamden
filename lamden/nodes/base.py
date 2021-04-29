@@ -159,7 +159,7 @@ class Node:
 
         self.main_processing_queue = []
         # how long to hold items in queue before processing
-        self.processing_delay = 1
+        self.processing_delay = 10
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
 
         self.work_validator = work.WorkValidator(
