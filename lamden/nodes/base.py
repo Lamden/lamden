@@ -160,7 +160,7 @@ class Node:
         self.main_processing_queue = []
         self.total_processed = 0
         # how long to hold items in queue before processing
-        self.processing_delay = 5
+        self.processing_delay = 3
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
 
         self.work_validator = work.WorkValidator(
@@ -221,7 +221,7 @@ class Node:
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
 
         if time_in_queue_seconds > self.processing_delay:
-            await self.process_tx(self.main_processing_queue.pop())
+            self.process_tx(self.main_processing_queue.pop())
 
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
