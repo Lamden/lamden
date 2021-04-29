@@ -215,16 +215,18 @@ class Node:
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
-        time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
-        time_in_queue_seconds = time_in_queue / 1000000000
-        ## self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
-
-        if time_in_queue_seconds > self.processing_delay:
-            await self.process_tx(self.main_processing_queue.pop())
         print(len(self.main_processing_queue))
+
         for x in range(len(self.main_processing_queue)):
             print(x)
             print(self.main_processing_queue[x]['hlc_timestamp'])
+
+        time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
+        time_in_queue_seconds = time_in_queue / 1000000000
+        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
+
+        if time_in_queue_seconds > self.processing_delay:
+            await self.process_tx(self.main_processing_queue.pop())
 
         await asyncio.sleep(.5)
 
