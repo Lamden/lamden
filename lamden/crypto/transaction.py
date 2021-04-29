@@ -262,9 +262,10 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     amount = transaction['payload']['kwargs'].get('amount')
     if amount is None:
         amount = 0
-
+    ''' REMOVE FOR TESTING
     # Check if they have enough stamps for the operation
     has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)
+    '''
 
     # Check if contract name is valid
     name = transaction['payload']['kwargs'].get('name')
