@@ -219,7 +219,7 @@ class Node:
         time_in_queue_seconds = time_in_queue / 1000000000
         ## self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
 
-        if time_in_queue_seconds > 1:
+        if time_in_queue_seconds > self.processing_delay:
             await self.process_tx(self.main_processing_queue.pop())
 
         await asyncio.sleep(0)
