@@ -41,9 +41,11 @@ class WorkValidator(router.Processor):
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
 
+        ''' # Removed for testing
         if await self.hlc_clock.check_expired(timestamp=msg['hlc_timestamp']):
             self.log.error(f'Expired TX from master {msg["sender"][:8]}')
             return
+        '''
 
         transaction.transaction_is_valid(
             transaction=msg['tx'],
