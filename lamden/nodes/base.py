@@ -303,7 +303,7 @@ class Node:
         if len(self.get_delegate_peers()) == 0:
             self.log.error('No one online!')
             return False
-
+        self.log.info(f'Sending work {work["hlc_timestamp"]} {work["tx"]["metadata"]["signature"][:12]}')
         await router.secure_multicast(
             msg=work,
             service=WORK_SERVICE,
