@@ -213,6 +213,7 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
         socket.connect(ip)
     except ZMQBaseError:
         socket.close()
+        logger.error(f'Unable to send {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12]}')
         return None
 
     message = build_message(service=service, message=msg)
