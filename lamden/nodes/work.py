@@ -28,7 +28,7 @@ class WorkValidator(router.Processor):
 
 
     async def process_message(self, msg):
-        self.log.info(f'Received work from {msg["sender"][:8]}')
+        self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
         ## self.log.info(msg)
 
         #if msg["sender"] == self.wallet.verifying_key:
