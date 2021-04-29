@@ -228,7 +228,7 @@ class Node:
 
         await asyncio.sleep(0)
 
-    async def process_tx(self, tx):
+    def process_tx(self, tx):
         ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
 
         # Run mini catch up here to prevent 'desyncing'
