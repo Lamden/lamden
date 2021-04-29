@@ -261,7 +261,7 @@ class Node:
         '''
 
         self.total_processed = self.total_processed + 1
-        self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:8]))
+        self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
