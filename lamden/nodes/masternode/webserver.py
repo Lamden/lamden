@@ -219,7 +219,7 @@ class WebServer:
             )
 
         except TransactionException as e:
-            log.error(f'Tx has error: {type(e)}')
+            log.error(f'Tx has error in webserver: {type(e)}')
             return transaction.EXCEPTION_MAP[type(e)]
 
         # Add TX to the processing queue with hlc timestamp

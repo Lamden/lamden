@@ -58,7 +58,7 @@ class WorkValidator(router.Processor):
                 strict=False
             )
         except TransactionException as e:
-            self.log.error(f'Tx has error: {transaction.EXCEPTION_MAP[type(e)]}')
+            self.log.error(f'Tx has error in work processor: {transaction.EXCEPTION_MAP[type(e)]}')
             return
 
         await self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
