@@ -216,9 +216,9 @@ class Node:
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
-        time_in_queue =  await self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
+        time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
-        # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, await self.hlc_clock.get_new_hlc_timestamp()))
+        # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
 
         if time_in_queue_seconds > self.processing_delay:
             await self.process_tx(self.main_processing_queue.pop())
@@ -267,18 +267,17 @@ class Node:
         # self.driver.clear_pending_state()
 
     async def add_from_webserver(self, tx):
-
-        signed_transaction = await self.make_tx(tx)
+        signed_transaction = self.make_tx(tx)
         #self.log.info("Adding {}")
         await self.send_work(signed_transaction)
         #await self.add_to_queue(signed_transaction)
         #self.log.info("Added transaction")
 
-    async def add_to_queue(self, item):
+    def add_to_queue(self, item):
         self.main_processing_queue.append(item)
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
 
-    async def make_tx(self, tx):
+    def make_tx(self, tx):
         timestamp = int(time.time())
 
         h = hashlib.sha3_256()
@@ -290,7 +289,7 @@ class Node:
         return {
             'tx': tx,
             'timestamp': timestamp,
-            'hlc_timestamp': await self.hlc_clock.get_new_hlc_timestamp(),
+            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
             'signature': signature,
             'sender': self.wallet.verifying_key,
             'input_hash': input_hash

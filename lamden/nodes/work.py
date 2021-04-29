@@ -27,7 +27,7 @@ class WorkValidator(router.Processor):
         self.hlc_clock = hlc_clock
 
 
-    async def process_message(self, msg):
+    def process_message(self, msg):
         ## self.log.info(f'Received work from {msg["sender"][:8]}')
         ## self.log.info(msg)
 
@@ -62,7 +62,7 @@ class WorkValidator(router.Processor):
             return
         '''
 
-        await self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
-        await self.add_to_queue(msg)
+        self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
+        self.add_to_queue(msg)
 
         #self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
