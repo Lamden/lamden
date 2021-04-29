@@ -521,14 +521,14 @@ class Node:
 
     def get_delegate_peers(self):
         peers = self._get_member_peers('delegates')
-        if self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
+        # if self.wallet.verifying_key in peers:
+        #     del peers[self.wallet.verifying_key]
         return peers
 
     def get_masternode_peers(self):
         peers = self._get_member_peers('masternodes')
-        if self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
+        # if self.wallet.verifying_key in peers:
+        #     del peers[self.wallet.verifying_key]
         return peers
 
 
