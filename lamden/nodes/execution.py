@@ -370,11 +370,14 @@ class SerialExecutor(TransactionExecutor):
         else:
             # Calculate only stamp deductions
             to_deduct = output['stamps_used'] / stamp_cost
-
-            writes = [{
-                'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                'value': balance - to_deduct
-            }]
+            new_bal = 0
+            try:
+                writes = [{
+                    'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
+                    'value': balance - to_deduct
+                }]
+            except TypeError:
+                pass
 
         tx_output = {
             'hash': tx_hash,
