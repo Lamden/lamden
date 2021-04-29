@@ -267,10 +267,12 @@ class Node:
         # self.driver.clear_pending_state()
 
     async def add_from_webserver(self, tx):
-        signed_transaction = await self.make_tx(tx)
 
+        signed_transaction = await self.make_tx(tx)
+        #self.log.info("Adding {}")
         await self.send_work(signed_transaction)
-        await self.add_to_queue(signed_transaction)
+        #await self.add_to_queue(signed_transaction)
+        #self.log.info("Added transaction")
 
     async def add_to_queue(self, item):
         self.main_processing_queue.append(item)

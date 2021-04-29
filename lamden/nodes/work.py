@@ -31,8 +31,8 @@ class WorkValidator(router.Processor):
         ## self.log.info(f'Received work from {msg["sender"][:8]}')
         ## self.log.info(msg)
 
-        if msg["sender"] == self.wallet.verifying_key:
-            return
+        #if msg["sender"] == self.wallet.verifying_key:
+        #    return
 
         self.masters = self.get_masters()
         if msg['sender'] not in self.masters:
