@@ -47,7 +47,7 @@ class WorkValidator(router.Processor):
         if await self.hlc_clock.check_expired(timestamp=msg['hlc_timestamp']):
             self.log.error(f'Expired TX from master {msg["sender"][:8]}')
             return
-        '''
+        
 
         try:
             transaction.transaction_is_valid(
@@ -60,7 +60,7 @@ class WorkValidator(router.Processor):
         except TransactionException as e:
             self.log.error(f'Tx has error in work processor: {transaction.EXCEPTION_MAP[type(e)]}')
             return
-
+        '''
         await self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         await self.add_to_queue(msg)
 
