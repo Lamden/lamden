@@ -217,12 +217,13 @@ class WebServer:
                 processor=tx['payload']['processor'],
                 value=pending_nonce
             )
+
+            # Add TX to the processing queue with hlc timestamp
+            await self.add_from_webserver(tx)
+
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
             return transaction.EXCEPTION_MAP[type(e)]
-
-        # Add TX to the processing queue with hlc timestamp
-        await self.add_from_webserver(tx)
 
         return {'tx_hash': tx_hash}
 
