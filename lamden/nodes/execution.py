@@ -372,12 +372,14 @@ class SerialExecutor(TransactionExecutor):
             to_deduct = output['stamps_used'] / stamp_cost
             new_bal = 0
             try:
-                writes = [{
-                    'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                    'value': balance - to_deduct
-                }]
+                new_bal = balance - to_deduct
             except TypeError:
                 pass
+
+            writes = [{
+                'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
+                'value': new_bal
+            }]
 
         tx_output = {
             'hash': tx_hash,
