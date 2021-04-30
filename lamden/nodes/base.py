@@ -268,9 +268,9 @@ class Node:
             # Process it to get the results
             results = self.process_tx(tx)
 
-            # if this is a masternode then add it to the needs validation queue to be validated later
+            # if this is a masternode then add it to the needs validation queue to be validated later from delegate data
             if (self.upgrade_manager.node_type == "masternode"):
-                self.needs_validation.append(tx)
+                self.add_to_needs_validation_queue(tx)
 
             # if this is a delegate then send the results to the masternodes
             if (self.upgrade_manager.node_type == "delegate"):
@@ -282,8 +282,6 @@ class Node:
         await asyncio.sleep(0)
 
     async def process_needs_validation_queue(self):
-
-
         await asyncio.sleep(0)
 
     def process_tx(self, tx):
