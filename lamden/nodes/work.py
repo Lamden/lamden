@@ -6,7 +6,7 @@ from contracting.client import ContractingClient
 from lamden.crypto.transaction import TransactionException
 
 class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, hlc_clock, wallet, add_to_main_processing_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.tx_expiry_sec = 1
