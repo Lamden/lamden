@@ -43,12 +43,14 @@ class SBCInbox(router.Processor):
                 tx = msg[i]['transactions'][j]
 
                 if self.validation_results[tx['hlc_timestamp']] is None:
-                    self.validation_results[tx['hlc_timestamp']] = {}
-                else:
-                    if self.validation_results[tx['hlc_timestamp']][msg['signer']]:
-                        self.log.error(f'Already recieved results from {msg["signer"]} for {tx["hlc_timestamp"]}')
-                    else:
-                        self.validation_results[tx['hlc_timestamp']][msg['signer']] = msg[i]
+                    self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
+                    return
+
+                if self.validation_results[tx['hlc_timestamp']][msg['signer']]:
+                    self.log.error(f'Already recieved results from {msg["signer"]} for {tx["hlc_timestamp"]}')
+                    return
+
+                self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] = msg[i]
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:
