@@ -349,6 +349,8 @@ class SerialExecutor(TransactionExecutor):
 
         self.executor.driver.pending_writes.clear()
 
+        output['hlc_timestamp'] = transaction['hlc_timestamp']
+
         if output['status_code'] == 0:
             log.info(f'TX executed successfully. '
                      f'{output["stamps_used"]} stamps used. '
@@ -438,11 +440,11 @@ class SerialExecutor(TransactionExecutor):
                 batch=tx_batch,
                 timestamp=tx_batch['timestamp'],
                 input_hash=tx_batch['input_hash'],
+                hlc_timestamp=tx_batch['hlc_timestamp'],
                 stamp_cost=stamp_cost,
                 bhash=previous_block_hash,
                 num=current_height
             )
-            results['hlc_timestamp'] = tx_batch['hlc_timestamp']
 
             if len(results) > 0:
                 merkle = merklize([encode(r).encode() for r in results])
