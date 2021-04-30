@@ -45,10 +45,12 @@ class SBCInbox(router.Processor):
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
+                self.log.debug(self.validation_results)
+                self.log.debug(msg[i])
+                self.log.debug(msg[i]['signer'])
+
                 if self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] is None:
-                    self.log.debug(self.validation_results)
-                    self.log.debug(msg[i])
-                    self.log.debug(msg[i]['signer'])
+
                     self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] = msg[i]
                 else:
                     self.log.error(f'Already recieved results from {msg["signer"]} for {tx["hlc_timestamp"]}')
