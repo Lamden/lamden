@@ -274,7 +274,7 @@ class Node:
             if (self.upgrade_manager.node_type == "masternode"):
                 # Store the tx info and YOUR validation results to reference later
                 self.validation_results[tx['hlc_timestamp']] = {}
-                self.validation_results[tx['hlc_timestamp']]['tx'] = tx
+                self.validation_results[tx['hlc_timestamp']]['data'] = tx
                 self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results
 
                 # add the hlc_timestamp to the needs validation queue for processing later
