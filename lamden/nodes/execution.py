@@ -442,7 +442,7 @@ class SerialExecutor(TransactionExecutor):
                 bhash=previous_block_hash,
                 num=current_height
             )
-            results['hlc_timestamp'] = work['hlc_timestamp']
+            results['hlc_timestamp'] = tx_batch['hlc_timestamp']
 
             if len(results) > 0:
                 merkle = merklize([encode(r).encode() for r in results])
