@@ -322,7 +322,7 @@ class SerialExecutor(TransactionExecutor):
     def __init__(self, executor: Executor):
         self.executor = executor
 
-    def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
+    def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
         # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
 
         # Add AUXILIARY_SALT for more randomness
@@ -349,7 +349,7 @@ class SerialExecutor(TransactionExecutor):
 
         self.executor.driver.pending_writes.clear()
 
-        output['hlc_timestamp'] = transaction['hlc_timestamp']
+        output['hlc_timestamp'] = hlc_timestamp
 
         if output['status_code'] == 0:
             log.info(f'TX executed successfully. '
@@ -422,6 +422,7 @@ class SerialExecutor(TransactionExecutor):
         '''
 
         tx_data.append(self.execute_tx(transaction=batch['tx'],
+                                       hlc_timestamp=batch['hlc_timestamp'],
                                        environment=environment,
                                        stamp_cost=stamp_cost)
                        )
@@ -434,12 +435,12 @@ class SerialExecutor(TransactionExecutor):
         subblocks = []
         i = 0
 
-        for tx_batch in work:
+        for tx in work:
             results = self.execute_tx_batch(
                 driver=driver,
-                batch=tx_batch,
-                timestamp=tx_batch['timestamp'],
-                input_hash=tx_batch['input_hash'],
+                batch=tx,
+                timestamp=tx['timestamp'],
+                input_hash=tx['input_hash'],
                 stamp_cost=stamp_cost,
                 bhash=previous_block_hash,
                 num=current_height
@@ -449,8 +450,8 @@ class SerialExecutor(TransactionExecutor):
                 merkle = merklize([encode(r).encode() for r in results])
                 proof = wallet.sign(merkle[0])
             else:
-                merkle = merklize([bytes.fromhex(tx_batch['input_hash'])])
-                proof = wallet.sign(tx_batch['input_hash'])
+                merkle = merklize([bytes.fromhex(tx['input_hash'])])
+                proof = wallet.sign(tx['input_hash'])
 
             merkle_tree = {
                 'leaves': merkle,
@@ -458,7 +459,7 @@ class SerialExecutor(TransactionExecutor):
             }
 
             sbc = {
-                'input_hash': tx_batch['input_hash'],
+                'input_hash': tx['input_hash'],
                 'transactions': results,
                 'merkle_tree': merkle_tree,
                 'signer': wallet.verifying_key,

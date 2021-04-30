@@ -257,6 +257,7 @@ class Node:
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
+        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
         time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
@@ -282,6 +283,7 @@ class Node:
         await asyncio.sleep(0)
 
     async def process_needs_validation_queue(self):
+        self.needs_validation.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
         await asyncio.sleep(0)
 
     def process_tx(self, tx):
@@ -332,11 +334,10 @@ class Node:
 
     def add_to_main_processing_queue(self, item):
         self.main_processing_queue.append(item)
-        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
 
     def add_to_needs_validation_queue(self, item):
         self.needs_validation.append(item)
-        self.needs_validation.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
+
 
     def make_tx(self, tx):
         timestamp = int(time.time())
