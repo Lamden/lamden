@@ -197,9 +197,6 @@ class Masternode(base.Node):
         while self.running:
             await self.loop()
 
-
-
-
     def stop(self):
         super().stop()
         self.router.socket.close()

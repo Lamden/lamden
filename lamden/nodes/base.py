@@ -266,11 +266,18 @@ class Node:
         if time_in_queue_seconds > self.processing_delay:
             # Pop it out of the main processing queue
             tx = self.main_processing_queue.pop()
+
             # Process it to get the results
             results = self.process_tx(tx)
 
             # if this is a masternode then add it to the needs validation queue to be validated later from delegate data
             if (self.upgrade_manager.node_type == "masternode"):
+                # Store the tx info and YOUR validation results to reference later
+                self.validation_results[tx['hlc_timestamp']] = {}
+                self.validation_results[tx['hlc_timestamp']]['tx'] = tx
+                self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results
+
+                # add the hlc_timestamp to the needs validation queue for processing later
                 self.add_to_needs_validation_queue(tx)
 
             # if this is a delegate then send the results to the masternodes
