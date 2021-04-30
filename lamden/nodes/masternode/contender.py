@@ -52,7 +52,7 @@ class SBCInbox(router.Processor):
                 self.log.debug(msg[i]['signer'])
                 self.log.debug(self.validation_results[tx['hlc_timestamp']])
 
-                self.log.debug([msg[i]['signer']] in self.validation_results[tx['hlc_timestamp']])
+                self.log.debug(msg[i]['signer'] in self.validation_results[tx['hlc_timestamp']])
 
                 '''
                     if self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] is None:
