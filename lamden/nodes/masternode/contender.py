@@ -38,7 +38,7 @@ class SBCInbox(router.Processor):
                 return
 
             # Store the results by hlc_timestamps so we can reference them from the needs_validation list
-            for j in range(msg[i]['transactions']):
+            for j in range(len(msg[i]['transactions'])):
                 # Get the transaction
                 tx = msg[i]['transactions'][j]
 
