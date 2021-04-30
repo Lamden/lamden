@@ -32,7 +32,6 @@ class SBCInbox(router.Processor):
             return
 
         for i in range(len(msg)):
-            result = msg[i]
             if not self.sbc_is_valid(msg[i], i):
                 self.log.error('Contender is not valid!')
                 return
@@ -46,7 +45,7 @@ class SBCInbox(router.Processor):
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
-                if self.validation_results[tx['hlc_timestamp']][msg['signer']]:
+                if self.validation_results[tx['hlc_timestamp']][msg[i]['signer']]:
                     self.log.error(f'Already recieved results from {msg["signer"]} for {tx["hlc_timestamp"]}')
                     return
                 self.log.debug(self.validation_results)
