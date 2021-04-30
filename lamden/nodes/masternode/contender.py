@@ -43,7 +43,7 @@ class SBCInbox(router.Processor):
 
 
 
-                if tx['hlc_timestamp'] not in self.validation_results[]:
+                if tx['hlc_timestamp'] not in self.validation_results:
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
@@ -60,7 +60,7 @@ class SBCInbox(router.Processor):
                 '''
 
                 if [msg[i]['signer']] in self.validation_results[tx['hlc_timestamp']]:
-                    self.log.error(f'Already recieved results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
+                    self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
                     return
 
                 self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] = msg[i]
