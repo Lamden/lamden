@@ -38,13 +38,16 @@ class SBCInbox(router.Processor):
 
             # Store the results by hlc_timestamps so we can reference them from the needs_validation list
             for j in range(len(msg[i])):
-                if self.validation_results[j['hlc_timestamp']] is None:
-                    self.validation_results[j['hlc_timestamp']] = {}
+                # Get the transaction
+                tx = msg[i]['transactions'][j]
+
+                if self.validation_results[tx['hlc_timestamp']] is None:
+                    self.validation_results[tx['hlc_timestamp']] = {}
                 else:
-                    if self.validation_results[j['hlc_timestamp']][msg['signer']]:
-                        self.log.error(f'Already recieved results from {msg["signer"]} for {j["hlc_timestamp"]}')
+                    if self.validation_results[tx['hlc_timestamp']][msg['signer']]:
+                        self.log.error(f'Already recieved results from {msg["signer"]} for {tx["hlc_timestamp"]}')
                     else:
-                        self.validation_results[j['hlc_timestamp']][msg['signer']] = msg[i]
+                        self.validation_results[tx['hlc_timestamp']][msg['signer']] = msg[i]
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:

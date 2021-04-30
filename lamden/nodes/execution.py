@@ -349,8 +349,6 @@ class SerialExecutor(TransactionExecutor):
 
         self.executor.driver.pending_writes.clear()
 
-        output['hlc_timestamp'] = hlc_timestamp
-
         if output['status_code'] == 0:
             log.info(f'TX executed successfully. '
                      f'{output["stamps_used"]} stamps used. '
@@ -389,7 +387,8 @@ class SerialExecutor(TransactionExecutor):
             'status': output['status_code'],
             'state': writes,
             'stamps_used': output['stamps_used'],
-            'result': safe_repr(output['result'])
+            'result': safe_repr(output['result']),
+            'hlc_timestamp': hlc_timestamp
         }
 
         tx_output = format_dictionary(tx_output)
