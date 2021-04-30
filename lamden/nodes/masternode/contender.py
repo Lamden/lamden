@@ -43,25 +43,27 @@ class SBCInbox(router.Processor):
 
 
 
-                if self.validation_results[tx['hlc_timestamp']] is None:
+                if tx['hlc_timestamp'] not in self.validation_results[]:
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
                 self.log.debug(self.validation_results)
                 self.log.debug(msg[i])
                 self.log.debug(msg[i]['signer'])
+                self.log.debug(self.validation_results[tx['hlc_timestamp']])
+
+                self.log.debug([msg[i]['signer']] in self.validation_results[tx['hlc_timestamp']])
 
                 '''
                     if self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] is None:
                         KeyError: '1c37fa8be2f0d029cd2c66d53fa2797c4697e127af556f123f662302cb0670c4'
                 '''
 
-                if self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] is None:
-                    self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] = msg[i]
-                else:
+                if [msg[i]['signer']] in self.validation_results[tx['hlc_timestamp']]:
                     self.log.error(f'Already recieved results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
                     return
 
+                self.validation_results[tx['hlc_timestamp']][msg[i]['signer']] = msg[i]
 
 
     def sbc_is_valid(self, sbc, sb_idx=0):
