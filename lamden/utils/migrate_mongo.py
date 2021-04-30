@@ -2,7 +2,7 @@ from . import legacy
 
 from lamden import storage, rewards
 from lamden.contracts import sync
-from contracting.db.driver import ContractDriver, encode, Driver, FSDriver
+from contracting.db.driver import ContractDriver, encode, Driver, FSDriver, LMDBDriver
 import lamden
 import json
 from contracting.client import ContractingClient
@@ -30,7 +30,7 @@ class MigrationNode:
 
         # Has the new FSDriver
         self.new_driver = ContractDriver()
-        self.new_driver.driver = FSDriver()
+        self.new_driver.driver = LMDBDriver()
 
         # Does not have the new FSDriver
         self.old_driver = ContractDriver()
