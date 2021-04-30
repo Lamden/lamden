@@ -440,7 +440,6 @@ class SerialExecutor(TransactionExecutor):
                 batch=tx_batch,
                 timestamp=tx_batch['timestamp'],
                 input_hash=tx_batch['input_hash'],
-                hlc_timestamp=tx_batch['hlc_timestamp'],
                 stamp_cost=stamp_cost,
                 bhash=previous_block_hash,
                 num=current_height
