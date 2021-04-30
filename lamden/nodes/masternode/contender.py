@@ -32,12 +32,13 @@ class SBCInbox(router.Processor):
             return
 
         for i in range(len(msg)):
+            result = msg[i]
             if not self.sbc_is_valid(msg[i], i):
                 self.log.error('Contender is not valid!')
                 return
 
             # Store the results by hlc_timestamps so we can reference them from the needs_validation list
-            for j in range(len(msg[i])):
+            for j in range(msg[i]['transactions']):
                 # Get the transaction
                 tx = msg[i]['transactions'][j]
 
