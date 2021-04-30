@@ -17,6 +17,7 @@ import gc
 from lamden.logger.base import get_logger
 import decimal
 import time
+import math
 
 from lamden.crypto.canonical import merklize, block_from_subblocks
 
@@ -101,6 +102,8 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=lamden.contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
+
+        self.consensus_percent = 51
 
         self.driver = driver
         self.nonces = nonces
@@ -250,8 +253,8 @@ class Node:
     async def loop(self):
         await self.hang()
         await self.process_main_queue()
-        if (self.upgrade_manager.node_type == "masternode"):
-            await self.process_needs_validation_queue()
+        if self.upgrade_manager.node_type == "masternode":
+            self.process_needs_validation_queue()
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second
@@ -274,6 +277,7 @@ class Node:
             if (self.upgrade_manager.node_type == "masternode"):
                 # Store the tx info and YOUR validation results to reference later
                 self.validation_results[tx['hlc_timestamp']] = {}
+                self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
                 self.validation_results[tx['hlc_timestamp']]['data'] = tx
                 self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results
 
@@ -284,14 +288,87 @@ class Node:
             if (self.upgrade_manager.node_type == "delegate"):
                 await self.send_block_results(results)
 
+            # TODO This currently doesn't update cache
+            self.update_cache_state(results)
+
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
 
         await asyncio.sleep(0)
 
-    async def process_needs_validation_queue(self):
+    def process_needs_validation_queue(self):
         self.needs_validation.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
-        await asyncio.sleep(0)
+        transaction_info = self.validation_results[self.needs_validation[-1]]
+        consensus_info = self.check_consensus(transaction_info)
+
+        if consensus_info.has_consensus:
+            self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
+
+            # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
+            self.needs_validation.pop()
+
+            # Get the masternodes's results
+            results = transaction_info[self.wallet.verifying_key]
+
+            # if the masternode wasn't in the consensus group them find the results from someone who was
+            if not consensus_info.matches_me:
+                for delegate in transaction_info['solutions']:
+                    if transaction_info['solutions'][delegate]['merkle_tree']['leaves'] == solution:
+                        results = transaction_info['solutions'][delegate]
+
+            # Mint new block
+            block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
+            self.process_new_block(block)
+
+        # TODO What to do if the masternode wasn't in the consensus group?
+
+    def check_consensus(self, results):
+        # Get the number of current delegates
+        num_of_delegate = self.get_delegate_peers()
+
+        # Cal the number of current delagates that need to agree
+        consensus_needed = math.ceil(num_of_delegate * (self.consensus_percent / 100))
+        # Get the current solutions
+        delegate_solutions = results['delegate_solutions']
+        total_solutions = len(delegate_solutions)
+
+        # Return if we don't have enough responses to attempt a consensus check
+        if (total_solutions < consensus_needed):
+            return {
+                'has_consensus': False,
+                'consensus_needed': consensus_needed,
+                'total_solutions': total_solutions
+            }
+
+        solutions = {}
+        for delegate in delegate_solutions:
+            solution = delegate_solutions[delegate]['merkle_tree']['leaves']
+
+            if solution not in solutions:
+                solutions[solution] = 1
+            else:
+                solutions[solution] += 1
+            total_solutions += 1
+
+        for solution in solutions:
+            # if one solution has enough matches to put it over the consensus_needed
+            # then we have consensus for this solution
+            if solutions[solution] > consensus_needed:
+                my_solution = results[self.wallet.verifying_key]['merkle_tree']['leaves']
+                return {
+                    'has_consensus': True,
+                    'consensus_needed': consensus_needed,
+                    'solution': solution,
+                    'matches_me': my_solution == solution,
+                    'total_solutions': total_solutions
+                }
+        # If we get here then there was either not enough responses to get consensus or we had a split
+        # TODO what if split consensus? Probably very unlikely with a bunch of delegates
+        return {
+            'has_consensus': False,
+            'consensus_needed': consensus_needed,
+            'total_solutions': total_solutions
+        }
 
     def process_tx(self, tx):
         ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
@@ -309,9 +386,6 @@ class Node:
         )
 
         # self.log.debug(self.upgrade_manager.node_type)
-
-        block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
-        self.process_new_block(block)
 
         self.total_processed = self.total_processed + 1
         self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
@@ -444,39 +518,10 @@ class Node:
             self.log.error('Failed Block! Not storing.')
             return False
 
-        # Get current metastate
-        # if len(block['subblocks']) < 1:
-        #    return False
-
-        # Test if block contains the same metastate
-        # if block['number'] != self.current_height + 1:
-        #     self.log.info(f'Block #{block["number"]} != {self.current_height + 1}. '
-        #                   f'Node has probably already processed this block. Continuing.')
-        #     return False
-
-        # if block['previous'] != self.current_hash:
-        #     self.log.error('Previous block hash != Current hash. Cryptographically invalid. Not storing.')
-        #     return False
-
-        # If so, use metastate and subblocks to create the 'expected' block
-        # expected_block = canonical.block_from_subblocks(
-        #     subblocks=block['subblocks'],
-        #     previous_hash=self.current_hash,
-        #     block_num=self.current_height + 1
-        # )
-
-        # Return if the block contains the expected information
-        # good = block == expected_block
-        # if good:
-        #     self.log.info(f'Block #{block["number"]} passed all checks. Store.')
-        # else:
-        #     self.log.error(f'Block #{block["number"]} has an encoding problem. Do not store.')
-        #
-        # return good
 
         return True
 
-    def update_state(self, block):
+    def update_database_state(self, block):
         self.driver.clear_pending_state()
 
         # Check if the block is valid
@@ -503,9 +548,23 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
+    def update_cache_state(self, results):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+
+        storage.update_state_with_transaction(
+            tx=results,
+            driver=self.driver,
+            nonces=self.nonces
+        )
+
+
     def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
-        self.update_state(block)
+
+        # TODO This should be the hard disk state write but its currently written when the tx is processed
+        # self.update_database_state(block)
+
         self.socket_authenticator.refresh_governance_sockets()
 
         # Store the block if it's a masternode
@@ -523,7 +582,6 @@ class Node:
         self.driver.clear_pending_state()
         gc.collect() # Force memory cleanup every block
         #self.nonces.flush_pending()
-
 
 
     def stop(self):
