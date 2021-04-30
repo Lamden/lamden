@@ -104,6 +104,9 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
+        self.validation_results = {}
+        self.needs_validation = []
+
         # Network upgrade flag
         self.active_upgrade = False
 
@@ -117,7 +120,12 @@ class Masternode(base.Node):
 
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
-        # self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+
+        self.aggregator = contender.Aggregator(
+            validation_results=self.validation_results,
+            driver=self.driver,
+        )
+        self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         # Start the webserver to accept transactions
         await self.webserver.start()

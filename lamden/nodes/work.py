@@ -6,7 +6,7 @@ from contracting.client import ContractingClient
 from lamden.crypto.transaction import TransactionException
 
 class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, add_to_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.tx_expiry_sec = 1
@@ -20,7 +20,7 @@ class WorkValidator(router.Processor):
         self.nonces = nonces
         self.client = client
 
-        self.add_to_queue = add_to_queue
+        self.main_processing_queue = main_processing_queue
         self.get_masters = get_masters
 
         self.wallet = wallet
@@ -67,6 +67,6 @@ class WorkValidator(router.Processor):
         '''
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
-        self.add_to_queue(msg)
+        self.main_processing_queue(msg)
 
         #self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')

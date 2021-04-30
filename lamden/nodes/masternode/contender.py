@@ -11,15 +11,17 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, expected_subblocks=4, debug=True):
+    def __init__(self, validation_results, expected_subblocks=1, debug=True):
         self.q = []
         self.expected_subblocks = expected_subblocks
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
 
         self.block_q = []
+        self.validation_results = validation_results
 
     async def process_message(self, msg):
+        self.log.debug(msg)
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
@@ -32,7 +34,9 @@ class SBCInbox(router.Processor):
                 self.log.error('Contender is not valid!')
                 return
 
-            self.q.append(msg)
+
+            # self.q.append(msg)
+
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:

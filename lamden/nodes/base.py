@@ -167,7 +167,7 @@ class Node:
             client=self.client,
             nonces=self.nonces,
             wallet=wallet,
-            add_to_queue=self.add_to_queue,
+            add_to_main_processing_queue=self.add_to_main_processing_queue,
             hlc_clock=self.hlc_clock,
             get_masters=self.get_masternode_peers
         )
@@ -250,6 +250,8 @@ class Node:
     async def loop(self):
         await self.hang()
         await self.process_main_queue()
+        if (self.upgrade_manager.node_type == "masternode"):
+            await self.process_needs_validation_queue()
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second
@@ -259,11 +261,28 @@ class Node:
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
 
+        # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue_seconds > self.processing_delay:
-            self.process_tx(self.main_processing_queue.pop())
+            # Pop it out of the main processing queue
+            tx = self.main_processing_queue.pop()
+            # Process it to get the results
+            results = self.process_tx(tx)
+
+            # if this is a masternode then add it to the needs validation queue to be validated later
+            if (self.upgrade_manager.node_type == "masternode"):
+                self.needs_validation.append(tx)
+
+            # if this is a delegate then send the results to the masternodes
+            if (self.upgrade_manager.node_type == "delegate"):
+                await self.send_block_results(results)
 
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
+
+        await asyncio.sleep(0)
+
+    async def process_needs_validation_queue(self):
+
 
         await asyncio.sleep(0)
 
@@ -282,14 +301,20 @@ class Node:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
-        self.log.debug(self.upgrade_manager.node_type)
+        # self.log.debug(self.upgrade_manager.node_type)
 
         block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
         self.process_new_block(block)
 
+        self.total_processed = self.total_processed + 1
+        self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
 
-        ## self.log.debug(results)
-        '''
+        # self.new_block_processor.clean(self.current_height)
+        # self.driver.clear_pending_state()
+
+        return results
+
+    async def send_block_results(self, results):
         await router.secure_multicast(
             msg=results,
             service=CONTENDER_SERVICE,
@@ -298,13 +323,7 @@ class Node:
             peer_map=self.get_masternode_peers(),
             ctx=self.ctx
         )
-        '''
 
-        self.total_processed = self.total_processed + 1
-        self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
-
-        # self.new_block_processor.clean(self.current_height)
-        # self.driver.clear_pending_state()
 
     async def add_from_webserver(self, tx):
         signed_transaction = self.make_tx(tx)
@@ -313,9 +332,13 @@ class Node:
         #await self.add_to_queue(signed_transaction)
         #self.log.info("Added transaction")
 
-    def add_to_queue(self, item):
+    def add_to_main_processing_queue(self, item):
         self.main_processing_queue.append(item)
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
+
+    def add_to_needs_validation_queue(self, item):
+        self.needs_validation.append(item)
+        self.needs_validation.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
 
     def make_tx(self, tx):
         timestamp = int(time.time())
