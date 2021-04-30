@@ -37,7 +37,7 @@ class SBCInbox(router.Processor):
                 return
 
             # Store the results by hlc_timestamps so we can reference them from the needs_validation list
-            for j in range(len(msg[j])):
+            for j in range(len(msg[i])):
                 if self.validation_results[j['hlc_timestamp']] is None:
                     self.validation_results[j['hlc_timestamp']] = {}
                 else:
