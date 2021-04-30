@@ -59,7 +59,7 @@ class SBCInbox(router.Processor):
                         KeyError: '1c37fa8be2f0d029cd2c66d53fa2797c4697e127af556f123f662302cb0670c4'
                 '''
 
-                if [msg[i]['signer']] in self.validation_results[tx['hlc_timestamp']]:
+                if msg[i]['signer'] in self.validation_results[tx['hlc_timestamp']]:
                     self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
                     return
 
