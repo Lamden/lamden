@@ -184,6 +184,45 @@ class Node:
 
         self.bypass_catchup = bypass_catchup
 
+    async def start(self):
+        asyncio.ensure_future(self.router.serve())
+
+        # Get the set of VKs we are looking for from the constitution argument
+        vks = self.constitution['masternodes'] + self.constitution['delegates']
+
+        for node in self.bootnodes.keys():
+            self.socket_authenticator.add_verifying_key(node)
+
+        self.socket_authenticator.configure()
+
+        # Use it to boot up the network
+        await self.network.start(bootnodes=self.bootnodes, vks=vks)
+
+        if not self.bypass_catchup:
+            masternode_ip = None
+            masternode = None
+
+            if self.seed is not None:
+                for k, v in self.bootnodes.items():
+                    self.log.info(k, v)
+                    if v == self.seed:
+                        masternode = k
+                        masternode_ip = v
+            else:
+                masternode = self.constitution['masternodes'][0]
+                masternode_ip = self.network.peers[masternode]
+
+            self.log.info(f'Masternode Seed VK: {masternode}')
+
+            # Use this IP to request any missed blocks
+            await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
+
+        # Refresh the sockets to accept new nodes
+        self.socket_authenticator.refresh_governance_sockets()
+
+        # Start running
+        self.running = True
+
     async def hang(self):
         # Maybe Upgrade
         ## self.upgrade_manager.version_check(constitution=self.make_constitution())
@@ -243,10 +282,11 @@ class Node:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
-        # self.log.debug(results)
+        self.log.debug(self.upgrade_manager.node_type)
 
         block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
         self.process_new_block(block)
+
 
         ## self.log.debug(results)
         '''
@@ -454,46 +494,6 @@ class Node:
         self.driver.clear_pending_state()
         gc.collect() # Force memory cleanup every block
         #self.nonces.flush_pending()
-
-    async def start(self):
-        asyncio.ensure_future(self.router.serve())
-
-        # Get the set of VKs we are looking for from the constitution argument
-        vks = self.constitution['masternodes'] + self.constitution['delegates']
-
-        for node in self.bootnodes.keys():
-            self.socket_authenticator.add_verifying_key(node)
-
-        self.socket_authenticator.configure()
-
-        # Use it to boot up the network
-        await self.network.start(bootnodes=self.bootnodes, vks=vks)
-
-        if not self.bypass_catchup:
-            masternode_ip = None
-            masternode = None
-
-            if self.seed is not None:
-                for k, v in self.bootnodes.items():
-                    self.log.info(k, v)
-                    if v == self.seed:
-                        masternode = k
-                        masternode_ip = v
-            else:
-                masternode = self.constitution['masternodes'][0]
-                masternode_ip = self.network.peers[masternode]
-
-            self.log.info(f'Masternode Seed VK: {masternode}')
-
-            # Use this IP to request any missed blocks
-            await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
-
-        # Refresh the sockets to accept new nodes
-        self.socket_authenticator.refresh_governance_sockets()
-
-        # Start running
-        self.running = True
-
 
 
 
