@@ -11,9 +11,9 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_results, expected_subblocks=1, debug=True):
+    def __init__(self, validation_results, debug=True):
         self.q = []
-        self.expected_subblocks = expected_subblocks
+        self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
 
@@ -22,11 +22,11 @@ class SBCInbox(router.Processor):
 
     async def process_message(self, msg):
         self.log.debug(msg)
+        self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
-        ''' REMOVED FOR TESTING
         if len(msg) != self.expected_subblocks:
             self.log.error('Contender does not have enough subblocks!')
             return
@@ -35,13 +35,16 @@ class SBCInbox(router.Processor):
             if not self.sbc_is_valid(msg[i], i):
                 self.log.error('Contender is not valid!')
                 return
-        
 
-            self.q.append(msg)
-        '''
-
-
-
+            # Store the results by hlc_timestamps so we can reference them from the needs_validation list
+            for j in range(len(msg[j])):
+                if self.validation_results[j['hlc_timestamp']] is None:
+                    self.validation_results[j['hlc_timestamp']] = {}
+                else:
+                    if self.validation_results[j['hlc_timestamp']][msg['signer']]:
+                        self.log.error(f'Already recieved results from {msg["signer"]} for {j["hlc_timestamp"]}')
+                    else:
+                        self.validation_results[j['hlc_timestamp']][msg['signer']] = msg[i]
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:
@@ -288,8 +291,7 @@ class Aggregator:
     def __init__(self, validation_results, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
-            validation_results=validation_results,
-            expected_subblocks=self.expected_subblocks,
+            validation_results=validation_results
         )
 
         self.driver = driver
