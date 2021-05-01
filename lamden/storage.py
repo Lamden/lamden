@@ -76,7 +76,13 @@ class BlockStorage:
         return txs, hashes
 
     def write_block(self, block):
-        name = str(block.get('number')).zfill(64)
+        num = block.get('number')
+
+        if type(num) == dict:
+            name = str(num.get('__fixed__')).zfill(64)
+        else:
+            name = str(num).zfill(64)
+
         symlink_name = block.get('hash')
 
         encoded_block = encode(block)
@@ -90,11 +96,6 @@ class BlockStorage:
             with open(self.txs_dir.joinpath(file), 'w') as f:
                 encoded_tx = encode(data)
                 f.write(encoded_tx)
-
-    def q(self, v):
-        if isinstance(v, int):
-            return str(v).zfill(32)
-        return v
 
     def get_block(self, v=None, no_id=True):
         if v is None:
