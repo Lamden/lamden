@@ -4,6 +4,8 @@ from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
 
+from contracting.db.encoder import encode, decode, encode_kv
+
 import pathlib
 
 import json
@@ -77,15 +79,17 @@ class BlockStorage:
         name = str(block.get('number')).zfill(64)
         symlink_name = block.get('hash')
 
+        encoded_block = encode(block)
         with open(self.blocks_dir.joinpath(name), 'w') as f:
-            json.dump(block, f)
+            f.write(encoded_block)
 
         os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
 
     def write_txs(self, txs, hashes):
         for file, data in zip(hashes, txs):
             with open(self.txs_dir.joinpath(file), 'w') as f:
-                json.dump(data, f)
+                encoded_tx = encode(data)
+                f.write(encoded_tx)
 
     def q(self, v):
         if isinstance(v, int):
@@ -104,7 +108,9 @@ class BlockStorage:
         except FileNotFoundError:
             return None
 
-        block = json.load(f)
+        encoded_block = f.read()
+        block = decode(encoded_block)
+
         f.close()
 
         self.fill_block(block)
@@ -124,7 +130,9 @@ class BlockStorage:
     def get_tx(self, h):
         try:
             f = open(self.txs_dir.joinpath(h))
-            tx = json.load(f)
+            encoded_tx = f.read()
+            tx = decode(encoded_tx)
+
             f.close()
         except FileNotFoundError:
             tx = None
