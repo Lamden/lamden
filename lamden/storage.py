@@ -17,12 +17,12 @@ BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
-STORAGE_HOME = pathlib.Path().home().joinpath('_lamden')
+STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
 log = get_logger('STATE')
 
 
-class Storage:
+class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
         self.home = home
         self.home.mkdir(exist_ok=True)
@@ -236,64 +236,3 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
         set_latest_block_hash(block['hash'], driver=driver)
         set_latest_block_height(block['number'], driver=driver)
 
-
-class BlockStorage:
-    BLOCK = 0
-    TX = 1
-
-    def __init__(self, blocks_collection=STORAGE_HOME.joinpath('blocks'), tx_collection=STORAGE_HOME.joinpath('tx')):
-        # Setup configuration file to read constants
-        self.blocks = FSDriver(blocks_collection)
-        self.txs = FSDriver(tx_collection)
-
-    def q(self, v):
-        if isinstance(v, int):
-            return str(v).zfill(32)
-        return v
-
-    def get_block(self, v=None, no_id=True):
-        if v is None:
-            return None
-
-        q = self.q(v)
-        block = self.blocks.get(q)
-
-        return block
-
-    def put(self, data, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
-            name = str(data['number']).zfill(32)
-
-            self.blocks.set(name, data)
-
-            # Change to symbolic link
-            self.blocks.set(data['hash'], data)
-
-        elif collection == BlockStorage.TX:
-            self.txs.set(data['hash'], data)
-        else:
-            return False
-
-        return True
-
-    def get_tx(self, h, no_id=True):
-        return self.txs.get(h)
-
-    def drop_collections(self):
-        self.blocks.flush()
-        self.txs.flush()
-
-    def flush(self):
-        self.drop_collections()
-
-    def store_block(self, block):
-        self.put(block, BlockStorage.BLOCK)
-        self.store_txs(block)
-
-    def store_txs(self, block):
-        if block.get('subblocks') is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.put(tx, BlockStorage.TX)
