@@ -6,6 +6,12 @@ from contracting.db.driver import FSDriver
 
 import pathlib
 
+import json
+
+import os
+
+import shutil
+
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
@@ -16,6 +22,115 @@ STORAGE_HOME = pathlib.Path().home().joinpath('_lamden')
 log = get_logger('STATE')
 
 
+class Storage:
+    def __init__(self, home=STORAGE_HOME):
+        self.home = home
+        self.home.mkdir(exist_ok=True)
+
+        self.blocks_dir = self.home.joinpath('blocks')
+        self.blocks_dir.mkdir(exist_ok=True)
+
+        self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
+        self.blocks_alias_dir.mkdir(exist_ok=True)
+
+        self.txs_dir = self.home.joinpath('txs')
+        self.txs_dir.mkdir(exist_ok=True)
+
+    def flush(self):
+        try:
+            shutil.rmtree(self.home)
+        except FileNotFoundError:
+            pass
+
+    def store_block(self, block):
+        if block.get('subblocks') is None:
+            return
+
+        txs, hashes = self.cull_txs(block)
+        self.write_block(block)
+        self.write_txs(txs, hashes)
+
+    @staticmethod
+    def cull_txs(block):
+        # Pops all transactions from the block and replaces them with the hash only for storage space
+        # Returns the data and hashes for storage in a different folder. Block is modified in place
+        txs = []
+        hashes = []
+        for subblock in block['subblocks']:
+            subblock_txs = []
+            subblock_hashes = []
+
+            for i in range(len(subblock['transactions'])):
+                tx = subblock['transactions'].pop(0)
+
+                subblock_txs.append(tx)
+                subblock_hashes.append(tx['hash'])
+
+            subblock['transactions'] = subblock_hashes
+
+            txs.extend(subblock_txs)
+            hashes.extend(subblock_hashes)
+
+        return txs, hashes
+
+    def write_block(self, block):
+        name = str(block.get('number')).zfill(64)
+        symlink_name = block.get('hash')
+
+        with open(self.blocks_dir.joinpath(name), 'w') as f:
+            json.dump(block, f)
+
+        os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
+
+    def write_txs(self, txs, hashes):
+        for file, data in zip(hashes, txs):
+            with open(self.txs_dir.joinpath(file), 'w') as f:
+                json.dump(data, f)
+
+    def q(self, v):
+        if isinstance(v, int):
+            return str(v).zfill(32)
+        return v
+
+    def get_block(self, v=None, no_id=True):
+        if v is None:
+            return None
+
+        try:
+            if isinstance(v, int):
+                f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
+            else:
+                f = open(self.blocks_alias_dir.joinpath(v))
+        except FileNotFoundError:
+            return None
+
+        block = json.load(f)
+        f.close()
+
+        self.fill_block(block)
+
+        return block
+
+    def fill_block(self, block):
+        for subblock in block['subblocks']:
+            txs = []
+            for i in range(len(subblock['transactions'])):
+                tx = self.get_tx(subblock['transactions'][i])
+
+                txs.append(tx)
+
+            subblock['transactions'] = txs
+
+    def get_tx(self, h):
+        try:
+            f = open(self.txs_dir.joinpath(h))
+            tx = json.load(f)
+            f.close()
+        except FileNotFoundError:
+            tx = None
+
+        return tx
+
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
@@ -24,11 +139,11 @@ class NonceStorage:
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{sender}/{processor}')
+        return db.get(f'{processor}/{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{sender}/{processor}', value)
+        return db.set(f'{processor}/{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):

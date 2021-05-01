@@ -3,6 +3,8 @@ from contracting.db.driver import ContractDriver
 from unittest import TestCase
 
 from lamden.storage import BlockStorage
+import json
+import copy
 
 
 class TestNonce(TestCase):
@@ -444,9 +446,393 @@ class TestUpdatingState(TestCase):
         self.assertEqual(v5, 'else')
 
 
+class TestStorage2(TestCase):
+    def setUp(self):
+        self.db = storage.Storage()
+
+    def tearDown(self):
+        self.db.flush()
+
+    def test_cull_transaction_works_single_sb_and_tx(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        tx = {
+                'hash': 'XXX',
+                'foo': 'bar'
+            }
+
+        txs, hashes = self.db.cull_txs(block)
+        expected_txs = [tx]
+        expected_hashes = ['XXX']
+
+        self.assertEqual(txs, expected_txs)
+        self.assertEqual(hashes, expected_hashes)
+
+    def test_cull_transaction_works_single_sb_multi_txs(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+                        {
+                            'hash': 'XXY',
+                            'foo': 'bar2'
+                        },
+                        {
+                            'hash': 'XXF',
+                            'foo2': 'bar'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        expected_txs = [
+            {
+                'hash': 'XXX',
+                'foo': 'bar'
+            },
+            {
+                'hash': 'XXY',
+                'foo': 'bar2'
+            },
+            {
+                'hash': 'XXF',
+                'foo2': 'bar'
+            }
+        ]
+
+        expected_hashes = ['XXX', 'XXY', 'XXF']
+
+        txs, hashes = self.db.cull_txs(block)
+
+        self.assertEqual(txs, expected_txs)
+        self.assertEqual(hashes, expected_hashes)
+
+    def test_cull_transaction_works_multi_sb_multi_txs(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+                        {
+                            'hash': 'XXY',
+                            'foo': 'bar2'
+                        },
+                        {
+                            'hash': 'XXF',
+                            'foo2': 'bar'
+                        }
+                    ]
+                },
+                {
+                    'transactions': [
+                        {
+                            'hash': 'YYY',
+                            'foo3': 'bar3'
+                        },
+                        {
+                            'hash': 'YYX',
+                            'foo4': 'bar4'
+                        },
+                        {
+                            'hash': 'YSX',
+                            'foo5': 'bar5'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        expected_txs = [
+            {
+                'hash': 'XXX',
+                'foo': 'bar'
+            },
+            {
+                'hash': 'XXY',
+                'foo': 'bar2'
+            },
+            {
+                'hash': 'XXF',
+                'foo2': 'bar'
+            },
+            {
+                'hash': 'YYY',
+                'foo3': 'bar3'
+            },
+            {
+                'hash': 'YYX',
+                'foo4': 'bar4'
+            },
+            {
+                'hash': 'YSX',
+                'foo5': 'bar5'
+            }
+        ]
+
+        expected_hashes = ['XXX', 'XXY', 'XXF', 'YYY', 'YYX', 'YSX']
+
+        txs, hashes = self.db.cull_txs(block)
+
+        self.assertEqual(txs, expected_txs)
+        self.assertEqual(hashes, expected_hashes)
+
+    def test_write_block_stores_block_by_num(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        self.db.write_block(block)
+
+        filename = ('0' * 63) + '1'
+
+        with open(self.db.blocks_dir.joinpath(filename)) as f:
+            b = json.load(f)
+
+        self.assertEqual(block, b)
+
+    def test_write_block_stores_symlink_by_hash(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        self.db.write_block(block)
+
+        with open(self.db.blocks_alias_dir.joinpath(block.get('hash'))) as f:
+            b = json.load(f)
+
+        self.assertEqual(block, b)
+
+    def test_write_txs_stores_transactions_by_hash_and_payload(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        }
+                    ]
+                }
+            ]
+        }
+
+        txs, hashes = self.db.cull_txs(block)
+
+        self.db.write_txs(txs, hashes)
+
+        with open(self.db.txs_dir.joinpath('XXX')) as f:
+            t = json.load(f)
+
+        self.assertEqual(txs[0], t)
+
+    def test_store_block_completes_loop(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
+        }
+
+        self.db.store_block(block)
+
+        with open(self.db.txs_dir.joinpath('XXX')) as f:
+            t = json.load(f)
+
+        _t = {
+            'hash': 'XXX',
+            'foo': 'bar'
+        }
+
+        self.assertEqual(t, _t)
+
+        filename = ('0' * 63) + '1'
+        with open(self.db.blocks_dir.joinpath(filename)) as f:
+            b = json.load(f)
+
+        self.assertEqual(b, block)
+
+        with open(self.db.blocks_alias_dir.joinpath('a')) as f:
+            bb = json.load(f)
+
+        self.assertEqual(bb, block)
+
+    def test_q_num(self):
+        q = self.db.q(1)
+
+        self.assertEqual(q, '00000000000000000000000000000001')
+
+    def test_q_hash(self):
+        q = self.db.q('1')
+
+        self.assertEqual(q, '1')
+
+    def test_get_block(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'data': 'woop',
+            'subblocks':[]
+        }
+
+        self.db.store_block(block)
+
+        got_block = self.db.get_block(1)
+
+        self.assertEqual(block, got_block)
+
+    def test_get_block_hash(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'data': 'woop',
+            'subblocks': []
+        }
+
+        self.db.store_block(block)
+
+        got_block = self.db.get_block('a')
+
+        self.assertEqual(block, got_block)
+
+    def test_get_none_block(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'data': 'woop'
+        }
+
+        self.db.store_block(block)
+
+        got_block = self.db.get_block('b')
+
+        self.assertIsNone(got_block)
+
+    def test_got_none_block_num(self):
+        block = {
+            'hash': 'a',
+            'number': 1,
+            'data': 'woop',
+            'subblocks': []
+        }
+
+        self.db.store_block(block)
+
+        got_block = self.db.get_block(2)
+
+        self.assertIsNone(got_block)
+
+    def test_get_non_existant_tx_returns_none(self):
+        tx_got = self.db.get_tx(h='something')
+
+        self.assertIsNone(tx_got)
+
+    def test_store_block_stores_txs_and_block(self):
+        tx_1 = {
+            'hash': 'something1',
+            'key': '1'
+        }
+
+        tx_2 = {
+            'hash': 'something2',
+            'key': '2'
+        }
+
+        tx_3 = {
+            'hash': 'something3',
+            'key': '3'
+        }
+
+        block = {
+            'hash': 'hello',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [tx_1, tx_2, tx_3]
+                }
+            ]
+        }
+
+        expected = copy.deepcopy(block)
+
+        self.db.store_block(block)
+
+        got_1 = self.db.get_tx(h='something1')
+        got_2 = self.db.get_tx(h='something2')
+        got_3 = self.db.get_tx(h='something3')
+
+        self.assertDictEqual(tx_1, got_1)
+        self.assertDictEqual(tx_2, got_2)
+        self.assertDictEqual(tx_3, got_3)
+
+        got_block = self.db.get_block('hello')
+
+        self.assertDictEqual(expected, got_block)
+
+    def test_get_block_v_none_returns_none(self):
+        self.assertIsNone(self.db.get_block())
+
+
 class TestMasterStorage(TestCase):
     def setUp(self):
-        self.db = storage.NewBlockStorage()
+        self.db = storage.BlockStorage()
 
     def tearDown(self):
         self.db.drop_collections()
