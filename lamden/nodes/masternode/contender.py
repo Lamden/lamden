@@ -22,7 +22,7 @@ class SBCInbox(router.Processor):
 
     async def process_message(self, msg):
         # self.log.debug(msg)
-        self.log.debug(f'message length: {len(msg)}')
+        # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
@@ -92,7 +92,7 @@ class SBCInbox(router.Processor):
                     self.log.error(txs[i])
                     return False
 
-        self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
+        ## self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
 
         return True
 

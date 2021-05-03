@@ -199,6 +199,8 @@ class Node:
             driver=self.driver,
         )
 
+        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+
         # Get the set of VKs we are looking for from the constitution argument
         vks = self.constitution['masternodes'] + self.constitution['delegates']
 
