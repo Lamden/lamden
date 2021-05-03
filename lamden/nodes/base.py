@@ -261,7 +261,7 @@ class Node:
             await self.process_main_queue()
 
         if len(self.needs_validation_queue) > 0:
-            await self.process_needs_validation_queue()
+            self.process_needs_validation_queue()
 
         await asyncio.sleep(0)
 
@@ -355,13 +355,14 @@ class Node:
 
         solutions = {}
         for delegate in delegate_solutions:
-            solution = delegate_solutions[delegate]['merkle_tree']['leaves']
+            solution = delegate_solutions[delegate]['merkle_tree']['leaves'][0]
+
+            self.log.debug(solution)
 
             if solution not in solutions:
                 solutions[solution] = 1
             else:
                 solutions[solution] += 1
-            total_solutions += 1
 
         for solution in solutions:
             # if one solution has enough matches to put it over the consensus_needed
