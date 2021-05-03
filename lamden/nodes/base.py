@@ -287,7 +287,7 @@ class Node:
             # Store data about the tx so it can be processed for consensus later.
             self.validation_results[tx['hlc_timestamp']] = {}
             self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
-            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results
+            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results[0]
             self.validation_results[tx['hlc_timestamp']]['data'] = tx
 
             # add the hlc_timestamp to the needs validation queue for processing later
