@@ -306,6 +306,7 @@ class Node:
         consensus_info = self.check_consensus(transaction_info)
 
         self.log.debug(consensus_info)
+        self.log.debug(transaction_info)
 
         if consensus_info['has_consensus']:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
