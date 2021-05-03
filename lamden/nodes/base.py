@@ -261,7 +261,7 @@ class Node:
             await self.process_main_queue()
 
         if len(self.needs_validation_queue) > 0:
-            self.process_needs_validation_queue()
+            await self.process_needs_validation_queue()
 
         await asyncio.sleep(0)
 
@@ -304,12 +304,12 @@ class Node:
 
         await asyncio.sleep(0)
 
-    def process_needs_validation_queue(self):
+    async def process_needs_validation_queue(self):
         self.needs_validation_queue.sort()
 
         transaction_info = self.validation_results[self.needs_validation_queue[0]]
 
-        consensus_info = self.check_consensus(transaction_info)
+        consensus_info = await self.check_consensus(transaction_info)
 
         self.log.debug(consensus_info)
         self.log.debug(transaction_info)
@@ -332,8 +332,7 @@ class Node:
                         # TODO Do something with the actual consensus solution
                         break
 
-
-    def check_consensus(self, results):
+    async def check_consensus(self, results):
         # Get the number of current delegates
         num_of_delegate = len(self.get_delegate_peers())
 
