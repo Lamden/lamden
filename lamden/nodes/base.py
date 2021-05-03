@@ -246,12 +246,8 @@ class Node:
             await asyncio.sleep(0)
         '''
 
-        # Wait for activity on our transaction queue or new block processor.
-        # If another masternode has transactions, it will send use a new block notification.
-        # If we have transactions, we will do the opposite. This 'wakes' up the network.
-        ## self.log.debug('HANGING: Waiting for work...')
-
-        while len(self.main_processing_queue) > 0 or len(self.needs_validation_queue) <= 0:
+        # Wait for activity on our main processing queue or the needs validation queue
+        while len(self.main_processing_queue) <= 0 and len(self.needs_validation_queue) <= 0:
             if not self.running:
                 return
 
