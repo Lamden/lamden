@@ -311,7 +311,7 @@ class Node:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
 
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
-            del self.needs_validation_queue(0)
+            self.needs_validation_queue.pop(0)
 
             if consensus_info['matches_me']:
                 self.log.debug('I AM IN THE CONSENSUS')
