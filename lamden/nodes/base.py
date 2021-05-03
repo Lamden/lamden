@@ -299,7 +299,8 @@ class Node:
         await asyncio.sleep(0)
 
     def process_needs_validation_queue(self):
-        self.needs_validation_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
+        self.needs_validation_queue.sort()
+
         self.log.debug(self.needs_validation_queue)
         transaction_info = self.validation_results[self.needs_validation_queue[-1]]
 
