@@ -161,6 +161,7 @@ class Node:
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.main_processing_queue = []
+        self.needs_validation_queue = []
         self.total_processed = 0
         # how long to hold items in queue before processing
         self.processing_delay = 3
@@ -253,7 +254,7 @@ class Node:
     async def loop(self):
         await self.hang()
         await self.process_main_queue()
-        if self.upgrade_manager.node_type == "masternode" and len(self.needs_validation) > 0:
+        if self.upgrade_manager.node_type == "masternode" and len(self.needs_validation_queue) > 0:
             self.process_needs_validation_queue()
 
     async def process_main_queue(self):
@@ -282,7 +283,7 @@ class Node:
                 self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results[0]
 
                 # add the hlc_timestamp to the needs validation queue for processing later
-                self.add_to_needs_validation_queue(tx)
+                self.add_to_needs_validation_queue(tx['hlc_timestamp'])
 
             # if this is a delegate then send the results to the masternodes
             if (self.upgrade_manager.node_type == "delegate"):
@@ -297,15 +298,17 @@ class Node:
         await asyncio.sleep(0)
 
     def process_needs_validation_queue(self):
-        self.needs_validation.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
-        transaction_info = self.validation_results[self.needs_validation[-1]]
+        self.needs_validation_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
+        self.log.debug(self.needs_validation_queue)
+        transaction_info = self.validation_results[self.needs_validation_queue[-1]]
+
         consensus_info = self.check_consensus(transaction_info)
 
         if consensus_info.has_consensus:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
 
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
-            self.needs_validation.pop()
+            self.needs_validation_queue.pop()
 
             # Get the masternodes's results
             results = transaction_info[self.wallet.verifying_key]
@@ -417,7 +420,7 @@ class Node:
         self.main_processing_queue.append(item)
 
     def add_to_needs_validation_queue(self, item):
-        self.needs_validation.append(item)
+        self.needs_validation_queue.append(item)
 
 
     def make_tx(self, tx):
