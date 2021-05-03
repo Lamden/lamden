@@ -304,7 +304,7 @@ class Node:
 
         await asyncio.sleep(0)
 
-    async def process_needs_validation_queue(self):
+    def process_needs_validation_queue(self):
         self.needs_validation_queue.sort()
 
         transaction_info = self.validation_results[self.needs_validation_queue[0]]
