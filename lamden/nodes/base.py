@@ -279,7 +279,7 @@ class Node:
                 self.validation_results[tx['hlc_timestamp']] = {}
                 self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
                 self.validation_results[tx['hlc_timestamp']]['data'] = tx
-                self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results
+                self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results[0]
 
                 # add the hlc_timestamp to the needs validation queue for processing later
                 self.add_to_needs_validation_queue(tx)
@@ -289,7 +289,7 @@ class Node:
                 await self.send_block_results(results)
 
             # TODO This currently doesn't update cache
-            self.update_cache_state(results)
+            self.update_cache_state(results[0])
 
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
@@ -553,7 +553,7 @@ class Node:
         self.driver.clear_pending_state()
 
         storage.update_state_with_transaction(
-            tx=results,
+            tx=results['transactions'][0],
             driver=self.driver,
             nonces=self.nonces
         )

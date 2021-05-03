@@ -156,6 +156,9 @@ def set_latest_block_height(h, driver: ContractDriver):
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
     nonces_to_delete = []
 
+    log = get_logger('UPD_STATE')
+    log.debug(tx)
+
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
             driver.driver.set(delta['key'], delta['value'])
