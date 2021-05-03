@@ -366,7 +366,7 @@ class Node:
             # if one solution has enough matches to put it over the consensus_needed
             # then we have consensus for this solution
             if solutions[solution] > consensus_needed:
-                my_solution = delegate_solutions[self.wallet.verifying_key]['merkle_tree']['leaves']
+                my_solution = delegate_solutions[self.wallet.verifying_key]['merkle_tree']['leaves'][0]
                 return {
                     'has_consensus': True,
                     'consensus_needed': consensus_needed,
