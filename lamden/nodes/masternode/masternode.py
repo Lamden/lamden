@@ -104,8 +104,7 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
-        self.validation_results = {}
-        self.needs_validation = []
+
 
         # Network upgrade flag
         self.active_upgrade = False

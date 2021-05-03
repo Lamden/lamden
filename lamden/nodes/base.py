@@ -162,6 +162,8 @@ class Node:
 
         self.main_processing_queue = []
         self.needs_validation_queue = []
+        self.validation_results = {}
+
         self.total_processed = 0
         # how long to hold items in queue before processing
         self.processing_delay = 3
@@ -274,23 +276,22 @@ class Node:
             # Process it to get the results
             results = self.process_tx(tx)
 
-            # if this is a masternode then add it to the needs validation queue to be validated later from delegate data
-            if (self.upgrade_manager.node_type == "masternode"):
-                # Store the tx info and YOUR validation results to reference later
-                self.validation_results[tx['hlc_timestamp']] = {}
-                self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
-                self.validation_results[tx['hlc_timestamp']]['data'] = tx
-                self.validation_results[tx['hlc_timestamp']][self.wallet.verifying_key] = results[0]
+            # Store data about the tx so it can be processed for consensus later.
+            self.validation_results[tx['hlc_timestamp']] = {}
+            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
+            self.validation_results[tx['hlc_timestamp']]['data'] = tx
 
-                # add the hlc_timestamp to the needs validation queue for processing later
-                self.add_to_needs_validation_queue(tx['hlc_timestamp'])
+            # add the hlc_timestamp to the needs validation queue for processing later
+            self.add_to_needs_validation_queue(tx['hlc_timestamp'])
 
-            # if this is a delegate then send the results to the masternodes
-            if (self.upgrade_manager.node_type == "delegate"):
-                await self.send_block_results(results)
+            # TODO This currently just udpates DB State but it should be cache
+            # self.update_cache_state(results[0])
 
-            # TODO This currently doesn't update cache
-            self.update_cache_state(results[0])
+            # Mint new block
+            block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
+            self.process_new_block(block)
+
+            await self.send_block_results(results)
 
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
@@ -310,20 +311,18 @@ class Node:
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
             self.needs_validation_queue.pop()
 
-            # Get the masternodes's results
-            results = transaction_info[self.wallet.verifying_key]
+            if consensus_info.matches_me:
+                self.log.debug('I AM IN THE CONSENSUS')
+            else:
+                # TODO What to do if the node wasn't in the consensus group?
 
-            # if the masternode wasn't in the consensus group them find the results from someone who was
-            if not consensus_info.matches_me:
-                for delegate in transaction_info['solutions']:
-                    if transaction_info['solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
-                        results = transaction_info['solutions'][delegate]
+                # Get the actual solution result
+                for delegate in transaction_info['delegate_solutions']:
+                    if transaction_info['delegate_solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
+                        results = transaction_info['delegate_solutions'][delegate]
+                        # TODO Do something with the actual consensus solution
+                        break
 
-            # Mint new block
-            block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
-            self.process_new_block(block)
-
-        # TODO What to do if the masternode wasn't in the consensus group?
 
     def check_consensus(self, results):
         # Get the number of current delegates
@@ -331,6 +330,7 @@ class Node:
 
         # Cal the number of current delagates that need to agree
         consensus_needed = math.ceil(num_of_delegate * (self.consensus_percent / 100))
+
         # Get the current solutions
         delegate_solutions = results['delegate_solutions']
         total_solutions = len(delegate_solutions)
@@ -357,7 +357,7 @@ class Node:
             # if one solution has enough matches to put it over the consensus_needed
             # then we have consensus for this solution
             if solutions[solution] > consensus_needed:
-                my_solution = results[self.wallet.verifying_key]['merkle_tree']['leaves']
+                my_solution = delegate_solutions[self.wallet.verifying_key]['merkle_tree']['leaves']
                 return {
                     'has_consensus': True,
                     'consensus_needed': consensus_needed,
@@ -365,8 +365,9 @@ class Node:
                     'matches_me': my_solution == solution,
                     'total_solutions': total_solutions
                 }
+
         # If we get here then there was either not enough responses to get consensus or we had a split
-        # TODO what if split consensus? Probably very unlikely with a bunch of delegates
+        # TODO what if split consensus? Probably very unlikely with a bunch of delegates but could happen
         return {
             'has_consensus': False,
             'consensus_needed': consensus_needed,
@@ -404,10 +405,9 @@ class Node:
             service=CONTENDER_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
-            peer_map=self.get_masternode_peers(),
+            peer_map=self.get_all_peers(),
             ctx=self.ctx
         )
-
 
     async def add_from_webserver(self, tx):
         signed_transaction = self.make_tx(tx)
@@ -564,9 +564,7 @@ class Node:
 
     def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
-
-        # TODO This should be the hard disk state write but its currently written when the tx is processed
-        # self.update_database_state(block)
+        self.update_database_state(block)
 
         self.socket_authenticator.refresh_governance_sockets()
 
