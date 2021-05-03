@@ -301,10 +301,11 @@ class Node:
     def process_needs_validation_queue(self):
         self.needs_validation_queue.sort()
 
-        self.log.debug(self.needs_validation_queue)
         transaction_info = self.validation_results[self.needs_validation_queue[-1]]
 
         consensus_info = self.check_consensus(transaction_info)
+
+        self.log.debug(consensus_info)
 
         if consensus_info['has_consensus']:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
