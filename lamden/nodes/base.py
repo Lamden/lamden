@@ -327,7 +327,7 @@ class Node:
 
     def check_consensus(self, results):
         # Get the number of current delegates
-        num_of_delegate = self.get_delegate_peers()
+        num_of_delegate = len(self.get_delegate_peers())
 
         # Cal the number of current delagates that need to agree
         consensus_needed = math.ceil(num_of_delegate * (self.consensus_percent / 100))
