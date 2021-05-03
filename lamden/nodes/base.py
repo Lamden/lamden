@@ -263,15 +263,15 @@ class Node:
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
-        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'], reverse=True)
-        time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[-1]['hlc_timestamp'])
+        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
+        time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[0]['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
 
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue_seconds > self.processing_delay:
             # Pop it out of the main processing queue
-            tx = self.main_processing_queue.pop()
+            tx = self.main_processing_queue.pop(0)
 
             # Process it to get the results
             results = self.process_tx(tx)
@@ -301,7 +301,7 @@ class Node:
     def process_needs_validation_queue(self):
         self.needs_validation_queue.sort()
 
-        transaction_info = self.validation_results[self.needs_validation_queue[-1]]
+        transaction_info = self.validation_results[self.needs_validation_queue[0]]
 
         consensus_info = self.check_consensus(transaction_info)
 
@@ -311,7 +311,7 @@ class Node:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
 
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
-            self.needs_validation_queue.pop()
+            del self.needs_validation_queue(0)
 
             if consensus_info['matches_me']:
                 self.log.debug('I AM IN THE CONSENSUS')
