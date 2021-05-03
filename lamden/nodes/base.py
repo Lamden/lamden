@@ -1,6 +1,7 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
 import hashlib
 from lamden.nodes import execution, work
+from lamden.nodes.masternode import contender
 from lamden.nodes.hlc import HLC_Clock
 from contracting.execution.executor import Executor
 from lamden.crypto.wallet import Wallet
@@ -192,6 +193,11 @@ class Node:
 
     async def start(self):
         asyncio.ensure_future(self.router.serve())
+
+        self.aggregator = contender.Aggregator(
+            validation_results=self.validation_results,
+            driver=self.driver,
+        )
 
         # Get the set of VKs we are looking for from the constitution argument
         vks = self.constitution['masternodes'] + self.constitution['delegates']

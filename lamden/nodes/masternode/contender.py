@@ -41,6 +41,8 @@ class SBCInbox(router.Processor):
                 # Get the transaction
                 tx = msg[i]['transactions'][j]
 
+                self.log.debug(tx)
+
                 # TODO this could be a clue we are not in consensus or something else is wrong
                 if tx['hlc_timestamp'] not in self.validation_results:
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')

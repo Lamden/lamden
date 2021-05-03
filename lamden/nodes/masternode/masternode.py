@@ -4,7 +4,7 @@ import time
 from lamden import router
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
-from lamden.nodes.masternode import contender, webserver
+from lamden.nodes.masternode import webserver
 from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
@@ -104,8 +104,6 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
-
-
         # Network upgrade flag
         self.active_upgrade = False
 
@@ -120,10 +118,6 @@ class Masternode(base.Node):
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
 
-        self.aggregator = contender.Aggregator(
-            validation_results=self.validation_results,
-            driver=self.driver,
-        )
         self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         # Start the webserver to accept transactions
