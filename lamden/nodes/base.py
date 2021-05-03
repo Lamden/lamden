@@ -311,9 +311,6 @@ class Node:
 
         consensus_info = await self.check_consensus(transaction_info)
 
-        self.log.debug(consensus_info)
-        self.log.debug(transaction_info)
-
         if consensus_info['has_consensus']:
             self.log.info(f'{self.needs_validation_queue[0]} HAS CONSENSUS')
 
@@ -355,8 +352,6 @@ class Node:
         solutions = {}
         for delegate in delegate_solutions:
             solution = delegate_solutions[delegate]['merkle_tree']['leaves'][0]
-
-            self.log.debug(solution)
 
             if solution not in solutions:
                 solutions[solution] = 1
