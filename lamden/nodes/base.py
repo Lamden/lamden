@@ -287,6 +287,7 @@ class Node:
             # Store data about the tx so it can be processed for consensus later.
             self.validation_results[tx['hlc_timestamp']] = {}
             self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
+            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results
             self.validation_results[tx['hlc_timestamp']]['data'] = tx
 
             # add the hlc_timestamp to the needs validation queue for processing later
@@ -413,7 +414,7 @@ class Node:
             service=CONTENDER_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
-            peer_map=self.get_all_peers(),
+            peer_map=self.get_all_peers(not_me=True),
             ctx=self.ctx
         )
 
@@ -614,24 +615,26 @@ class Node:
 
         return member_peers
 
-    def get_delegate_peers(self):
+    def get_delegate_peers(self, not_me=False):
         peers = self._get_member_peers('delegates')
-        # if self.wallet.verifying_key in peers:
-        #     del peers[self.wallet.verifying_key]
+        if not_me and self.wallet.verifying_key in peers:
+            del peers[self.wallet.verifying_key]
         return peers
 
-    def get_masternode_peers(self):
+    def get_masternode_peers(self, not_me=False):
         peers = self._get_member_peers('masternodes')
-        # if self.wallet.verifying_key in peers:
-        #     del peers[self.wallet.verifying_key]
+
+        if not_me and self.wallet.verifying_key in peers:
+            del peers[self.wallet.verifying_key]
+
         return peers
 
-
-    def get_all_peers(self):
+    def get_all_peers(self, not_me=False):
         return {
-            ** self.get_delegate_peers(),
-            ** self.get_masternode_peers()
+            ** self.get_delegate_peers(not_me),
+            ** self.get_masternode_peers(not_me)
         }
+
 
     def make_constitution(self):
         return {
