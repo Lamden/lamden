@@ -251,7 +251,7 @@ class Node:
         # If we have transactions, we will do the opposite. This 'wakes' up the network.
         ## self.log.debug('HANGING: Waiting for work...')
 
-        while len(self.main_processing_queue) <= 0:
+        while len(self.main_processing_queue) > 0 or len(self.needs_validation_queue) <= 0:
             if not self.running:
                 return
 
@@ -262,8 +262,7 @@ class Node:
     async def loop(self):
         await self.hang()
         await self.process_main_queue()
-        if self.upgrade_manager.node_type == "masternode" and len(self.needs_validation_queue) > 0:
-            self.process_needs_validation_queue()
+        self.process_needs_validation_queue()
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second

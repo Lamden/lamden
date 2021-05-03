@@ -53,8 +53,6 @@ class SBCInbox(router.Processor):
                     return
 
                 self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][msg[i]['signer']] = msg[i]
-                self.log.debug(self.validation_results)
-
 
 
     def sbc_is_valid(self, sbc, sb_idx=0):
