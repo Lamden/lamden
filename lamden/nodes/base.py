@@ -313,7 +313,6 @@ class Node:
         transaction_info = self.validation_results[self.needs_validation_queue[0]]
 
         consensus_info = await self.check_consensus(transaction_info)
-        self.log.debug(consensus_info)
 
         if consensus_info['has_consensus']:
             self.log.info(f'{self.needs_validation_queue[0]} HAS A CONSENSUS OF {consensus_info["solution"]}')
