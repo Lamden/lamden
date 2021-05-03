@@ -41,7 +41,7 @@ class SBCInbox(router.Processor):
                 # Get the transaction
                 tx = msg[i]['transactions'][j]
 
-                self.log.debug(tx)
+
 
                 # TODO this could be a clue we are not in consensus or something else is wrong
                 if tx['hlc_timestamp'] not in self.validation_results:
@@ -53,6 +53,8 @@ class SBCInbox(router.Processor):
                     return
 
                 self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][msg[i]['signer']] = msg[i]
+                self.log.debug(self.validation_results)
+
 
 
     def sbc_is_valid(self, sbc, sb_idx=0):
