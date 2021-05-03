@@ -316,7 +316,7 @@ class Node:
             # if the masternode wasn't in the consensus group them find the results from someone who was
             if not consensus_info.matches_me:
                 for delegate in transaction_info['solutions']:
-                    if transaction_info['solutions'][delegate]['merkle_tree']['leaves'] == solution:
+                    if transaction_info['solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
                         results = transaction_info['solutions'][delegate]
 
             # Mint new block
