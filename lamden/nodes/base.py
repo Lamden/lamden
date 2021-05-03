@@ -256,9 +256,14 @@ class Node:
         # mn_logger.debug('Work available. Continuing.')
 
     async def loop(self):
-        await self.hang()
-        await self.process_main_queue()
-        self.process_needs_validation_queue()
+        #await self.hang()
+        if len(self.main_processing_queue) > 0:
+            await self.process_main_queue()
+
+        if len(self.needs_validation_queue) > 0:
+            await self.process_needs_validation_queue()
+
+        await asyncio.sleep(0)
 
     async def process_main_queue(self):
         # run top of stack if it's older than 1 second
@@ -299,7 +304,7 @@ class Node:
 
         await asyncio.sleep(0)
 
-    def process_needs_validation_queue(self):
+    async def process_needs_validation_queue(self):
         self.needs_validation_queue.sort()
 
         transaction_info = self.validation_results[self.needs_validation_queue[0]]
