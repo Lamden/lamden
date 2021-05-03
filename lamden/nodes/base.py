@@ -253,7 +253,7 @@ class Node:
     async def loop(self):
         await self.hang()
         await self.process_main_queue()
-        if self.upgrade_manager.node_type == "masternode":
+        if self.upgrade_manager.node_type == "masternode" and len(self.needs_validation) > 0:
             self.process_needs_validation_queue()
 
     async def process_main_queue(self):
