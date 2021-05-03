@@ -306,13 +306,13 @@ class Node:
 
         consensus_info = self.check_consensus(transaction_info)
 
-        if consensus_info.has_consensus:
+        if consensus_info['has_consensus']:
             self.log.info(f'{transaction_info["hlc_timestamp"]} HAS CONSENSUS')
 
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
             self.needs_validation_queue.pop()
 
-            if consensus_info.matches_me:
+            if consensus_info['matches_me']:
                 self.log.debug('I AM IN THE CONSENSUS')
             else:
                 # TODO What to do if the node wasn't in the consensus group?
@@ -329,6 +329,7 @@ class Node:
         # Get the number of current delegates
         num_of_delegate = len(self.get_delegate_peers())
 
+        # TODO How to set consensus percentage?
         # Cal the number of current delagates that need to agree
         consensus_needed = math.ceil(num_of_delegate * (self.consensus_percent / 100))
 
