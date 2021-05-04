@@ -221,11 +221,14 @@ class WebServer:
     async def get_nonce(self, request, vk):
         latest_nonce = self.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
 
+        if type(latest_nonce) == dict:
+            print('shit')
+
         return response.json({
             'nonce': latest_nonce,
             'processor': self.wallet.verifying_key,
             'sender': vk
-        }, dumps=NonceEncoder.encode, headers={'Access-Control-Allow-Origin': '*'})
+        }, headers={'Access-Control-Allow-Origin': '*'})
 
     # Get all Contracts in State (list of names)
     async def get_contracts(self, request):
