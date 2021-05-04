@@ -12,7 +12,7 @@ from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from lamden.nodes.base import FileQueue
+from lamden.nodes.filequeue import FileQueue
 
 import ssl
 import asyncio
