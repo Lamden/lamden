@@ -180,13 +180,13 @@ class Node:
             get_masters=self.get_masternode_peers
         )
 
-        self.router.add_service(WORK_SERVICE, self.work_validator)
-        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
-
         self.aggregator = contender.Aggregator(
             validation_results=self.validation_results,
             driver=self.driver,
         )
+
+        self.router.add_service(WORK_SERVICE, self.work_validator)
+        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         self.running = False
         self.upgrade = False
