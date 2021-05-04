@@ -1,6 +1,6 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
 import hashlib
-from lamden.nodes import execution, work
+from lamden.nodes import execution, work, filequeue
 from lamden.nodes.masternode import contender
 from lamden.nodes.hlc import HLC_Clock
 from contracting.execution.executor import Executor
@@ -12,15 +12,12 @@ import zmq.asyncio
 import asyncio
 import json
 from contracting.client import ContractingClient
-from contracting.db.encoder import decode
+
 import uvloop
 import gc
 from lamden.logger.base import get_logger
 import decimal
-from pathlib import Path
-import uuid
-import shutil
-import os
+
 
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -37,41 +34,6 @@ CONTENDER_SERVICE = 'contenders'
 
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
-
-
-class FileQueue:
-    EXTENSION = '.tx'
-
-    def __init__(self, root='./txs'):
-        self.root = Path(root)
-        self.root.mkdir(parents=True, exist_ok=True)
-
-    def append(self, tx):
-        name = str(uuid.uuid4()) + self.EXTENSION
-        with open(self.root.joinpath(name), 'wb') as f:
-            f.write(tx)
-
-    def pop(self, idx):
-        items = sorted(self.root.iterdir(), key=os.path.getmtime)
-        item = items.pop(idx)
-
-        with open(item) as f:
-            i = decode(f.read())
-
-        os.remove(item)
-
-        return i
-
-    def flush(self):
-        shutil.rmtree(self.root)
-
-    def __len__(self):
-        try:
-            length = len(list(self.root.iterdir()))
-            return length
-        except FileNotFoundError:
-            return 0
-
 
 async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
     msg = {
@@ -201,6 +163,7 @@ class Node:
         self.new_block_processor = NewBlock(driver=self.driver)
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
+        self.file_queue = filequeue.FileQueue()
         self.main_processing_queue = []
         self.needs_validation_queue = []
         self.validation_results = {}
@@ -297,6 +260,9 @@ class Node:
 
     async def loop(self):
         #await self.hang()
+        if len(self.file_queue) > 0:
+            await self.add_tx_to_main_processing_queue(self.file_queue.pop())
+
         if len(self.main_processing_queue) > 0:
             await self.process_main_queue()
 
@@ -455,7 +421,7 @@ class Node:
             ctx=self.ctx
         )
 
-    async def add_from_webserver(self, tx):
+    async def add_tx_to_main_processing_queue(self, tx):
         signed_transaction = self.make_tx(tx)
         #self.log.info("Adding {}")
         await self.send_work(signed_transaction)
