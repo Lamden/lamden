@@ -310,7 +310,7 @@ class WebServer:
 
     async def get_latest_block(self, request):
         num = storage.get_latest_block_height(self.driver)
-        block = self.blocks.get_block(int(num), decode_=False)
+        block = self.blocks.get_block(int(num))
         return response.json(block, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
@@ -327,9 +327,9 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = self.blocks.get_block(int(num), decode_=False)
+            block = self.blocks.get_block(int(num))
         elif _hash is not None:
-            block = self.blocks.get_block(_hash, decode_=False)
+            block = self.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})

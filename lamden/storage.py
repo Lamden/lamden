@@ -27,20 +27,23 @@ log = get_logger('STATE')
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
         self.home = home
-        self.home.mkdir(exist_ok=True)
 
         self.blocks_dir = self.home.joinpath('blocks')
-        self.blocks_dir.mkdir(exist_ok=True)
-
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.blocks_alias_dir.mkdir(exist_ok=True)
-
         self.txs_dir = self.home.joinpath('txs')
-        self.txs_dir.mkdir(exist_ok=True)
+
+        self.build_directories()
+
+    def build_directories(self):
+        self.home.mkdir(exist_ok=True, parents=True)
+        self.blocks_dir.mkdir(exist_ok=True, parents=True)
+        self.blocks_alias_dir.mkdir(exist_ok=True, parents=True)
+        self.txs_dir.mkdir(exist_ok=True, parents=True)
 
     def flush(self):
         try:
             shutil.rmtree(self.home)
+            self.build_directories()
         except FileNotFoundError:
             pass
 
@@ -97,7 +100,7 @@ class BlockStorage:
                 encoded_tx = encode(data)
                 f.write(encoded_tx)
 
-    def get_block(self, v=None, no_id=True, decode_=True):
+    def get_block(self, v=None, no_id=True):
         if v is None:
             return None
 
@@ -111,10 +114,7 @@ class BlockStorage:
 
         encoded_block = f.read()
 
-        if decode_:
-            block = decode(encoded_block)
-        else:
-            block = encoded_block
+        block = decode(encoded_block)
 
         f.close()
 
@@ -132,15 +132,12 @@ class BlockStorage:
 
             subblock['transactions'] = txs
 
-    def get_tx(self, h, decode_=True):
+    def get_tx(self, h):
         try:
             f = open(self.txs_dir.joinpath(h))
             encoded_tx = f.read()
 
-            if decode_:
-                tx = decode(encoded_tx)
-            else:
-                tx = encoded_tx
+            tx = decode(encoded_tx)
 
             f.close()
         except FileNotFoundError:
