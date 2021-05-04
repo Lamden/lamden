@@ -9,15 +9,19 @@ from contracting.compilation import parser
 from lamden import storage
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
+from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-
+from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
 
 from lamden.crypto import transaction
 import decimal
+
+# Instantiate the parser
+import argparse
 
 log = get_logger("MN-WebServer")
 
@@ -45,12 +49,13 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, add_from_webserver, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks, queue=[],
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
+                 queue=FileQueue('~/txs'),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
-                 max_queue_len=10_000
+                 max_queue_len=10_000,
                  ):
 
         # Setup base Sanic class and CORS
@@ -118,8 +123,6 @@ class WebServer:
 
         self.coroutine = None
 
-        self.add_from_webserver = add_from_webserver
-
     async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
@@ -146,48 +149,16 @@ class WebServer:
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
-        ## log.debug(f'New request: {request}')
+        log.debug(f'New request: {request}')
         # Reject TX if the queue is too large
-        ''' REMOVED FOR TESTING
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
-        '''
-        body = decode(request.body)
-
-        if isinstance(body, list):
-            results = []
-            for tx in body:
-                result = await self.process_transaction(tx)
-
-                if 'tx_hash' in result:
-                    results.append({
-                        'success': 'Transaction successfully submitted to the network.',
-                        'hash': result['tx_hash']
-                    })
-                else:
-                    results.append(results)
-
-            return response.json(results, headers={'Access-Control-Allow-Origin': '*'})
-        else:
-            result = await self.process_transaction(body)
-
-            if 'tx_hash' in result:
-                return response.json({
-                    'success': 'Transaction successfully submitted to the network.',
-                    'hash': result['tx_hash']
-                }, headers={'Access-Control-Allow-Origin': '*'})
-            else:
-                return response.json(
-                    result, headers={'Access-Control-Allow-Origin': '*'}
-                )
-
-    async def process_transaction(self, tx):
-        tx_hash = tx_hash_from_tx(tx)
 
         # Check that the payload is valid JSON
+        tx = decode(request.body)
         if tx is None:
-            return {'error': 'Malformed request body.'}
+            return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
 
         # Check that the TX is correctly formatted
         try:
@@ -217,15 +188,22 @@ class WebServer:
                 processor=tx['payload']['processor'],
                 value=pending_nonce
             )
-
         except TransactionException as e:
-            log.error(f'Tx has error in webserver: {type(e)}')
-            return transaction.EXCEPTION_MAP[type(e)]
+            log.error(f'Tx has error: {type(e)}')
+            return response.json(
+                transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
+            )
 
-        # Add TX to the processing queue with hlc timestamp
-        await self.add_from_webserver(tx)
+        # Add TX to the processing queue
+        self.queue.append(request.body)
 
-        return {'tx_hash': tx_hash}
+        # Return the TX hash to the user so they can track it
+        tx_hash = tx_hash_from_tx(tx)
+
+        return response.json({
+            'success': 'Transaction successfully submitted to the network.',
+            'hash': tx_hash
+        }, headers={'Access-Control-Allow-Origin': '*'})
 
     # Network Status
     async def ping(self, request):
@@ -389,3 +367,24 @@ class WebServer:
             'masternodes': masternodes,
             'delegates': delegates
         }, headers={'Access-Control-Allow-Origin': '*'})
+
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
+
+    arg_parser.add_argument('-k', '--key', type=str, required=True)
+
+    args = arg_parser.parse_args()
+
+    sk = bytes.fromhex(args.key)
+    wallet = Wallet(seed=sk)
+
+    webserver = WebServer(
+        contracting_client=ContractingClient(),
+        driver=storage.ContractDriver(),
+        blocks=storage.BlockStorage(),
+        wallet=wallet,
+        port=18080
+    )
+
+    webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)

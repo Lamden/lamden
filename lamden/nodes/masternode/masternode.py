@@ -5,9 +5,12 @@ from lamden import router
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
 from lamden.nodes.masternode import webserver
+from lamden.nodes.masternode import contender, webserver
+from lamden.nodes.base import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
+from contracting.db.encoder import decode
 
 from lamden.logger.base import get_logger
 
@@ -47,7 +50,7 @@ class BlockService(router.Processor):
 
 
 class TransactionBatcher:
-    def __init__(self, wallet: Wallet, queue):
+    def __init__(self, wallet: Wallet, queue=FileQueue('~/txs')):
         self.wallet = wallet
         self.queue = queue
 
@@ -61,7 +64,7 @@ class TransactionBatcher:
         signature = self.wallet.sign(input_hash)
 
         batch = {
-            'transactions': transactions,
+            'transactions': [t for t in transactions],
             'timestamp': timestamp,
             'signature': signature,
             'sender': self.wallet.verifying_key,
@@ -84,9 +87,6 @@ class TransactionBatcher:
 
         return batch
 
-    def get_next_tx_in_queue(self):
-        return self.queue.pop(0)
-
 
 class Masternode(base.Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
@@ -104,6 +104,15 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
+        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue('~/txs'))
+        self.webserver.queue = self.tx_batcher.queue
+
+        self.aggregator = contender.Aggregator(
+            driver=self.driver,
+        )
+
+        self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+
         # Network upgrade flag
         self.active_upgrade = False
 
@@ -117,9 +126,6 @@ class Masternode(base.Node):
 
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
-
-        # Start the webserver to accept transactions
-        await self.webserver.start()
 
         self.log.info('Done starting...')
 
