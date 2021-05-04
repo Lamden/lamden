@@ -181,6 +181,12 @@ class Node:
         )
 
         self.router.add_service(WORK_SERVICE, self.work_validator)
+        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+
+        self.aggregator = contender.Aggregator(
+            validation_results=self.validation_results,
+            driver=self.driver,
+        )
 
         self.running = False
         self.upgrade = False
@@ -195,12 +201,6 @@ class Node:
     async def start(self):
         asyncio.ensure_future(self.router.serve())
 
-        self.aggregator = contender.Aggregator(
-            validation_results=self.validation_results,
-            driver=self.driver,
-        )
-
-        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         # Get the set of VKs we are looking for from the constitution argument
         vks = self.constitution['masternodes'] + self.constitution['delegates']

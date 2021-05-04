@@ -93,25 +93,8 @@ class Masternode(base.Node):
         super().__init__(store=True, *args, **kwargs)
         # Services
         self.webserver_port = webserver_port
-        self.webserver = webserver.WebServer(
-            add_from_webserver=self.add_from_webserver,
-            contracting_client=self.client,
-            driver=self.driver,
-            blocks=self.blocks,
-            wallet=self.wallet,
-            port=self.webserver_port
-        )
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
-
-        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue('~/txs'))
-        self.webserver.queue = self.tx_batcher.queue
-
-        self.aggregator = contender.Aggregator(
-            driver=self.driver,
-        )
-
-        self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         # Network upgrade flag
         self.active_upgrade = False
