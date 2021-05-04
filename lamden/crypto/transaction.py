@@ -143,10 +143,9 @@ def get_nonces(sender, processor, driver: storage.NonceStorage):
 
 def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_block=15):
     # Attempt to get the current block's pending nonce
-    ''' REMOVED FOR TESTING
     if tx_nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
         raise TransactionTooManyPendingException
-    '''
+
     expected_nonce = max(nonce, pending_nonce)
 
     if strict:

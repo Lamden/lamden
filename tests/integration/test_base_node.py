@@ -185,6 +185,8 @@ class TestNode(TestCase):
 
         self.assertFalse(node.should_process(block))
 
+    # TODO Remove should_process_block method and test cases?
+    ''' 
     def test_should_process_block_false_if_current_height_not_increment(self):
         block = {
             'hash': 'a' * 64,
@@ -250,7 +252,7 @@ class TestNode(TestCase):
         )
 
         self.assertFalse(node.should_process(block))
-
+    
     def test_should_process_block_true_if_expected_block_equal_to_block(self):
         block = canonical.block_from_subblocks(
             subblocks=[],
@@ -271,7 +273,7 @@ class TestNode(TestCase):
         )
 
         self.assertTrue(node.should_process(block))
-
+    '''
     def test_process_new_block_updates_state(self):
         block = canonical.block_from_subblocks(
             subblocks=[],

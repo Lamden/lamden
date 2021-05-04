@@ -6,7 +6,7 @@ from contracting.client import ContractingClient
 from lamden.crypto.transaction import TransactionException
 
 class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, add_to_main_processing_queue, get_masters, client: ContractingClient, nonces: storage.NonceStorage, debug=True, expired_batch=5,
+    def __init__(self, hlc_clock, wallet, add_to_main_processing_queue, get_masters, debug=True, expired_batch=5,
                  tx_timeout=5):
 
         self.tx_expiry_sec = 1
@@ -17,9 +17,6 @@ class WorkValidator(router.Processor):
         self.masters = []
         self.tx_timeout = tx_timeout
 
-        self.nonces = nonces
-        self.client = client
-
         self.add_to_main_processing_queue = add_to_main_processing_queue
         self.get_masters = get_masters
 
@@ -28,11 +25,8 @@ class WorkValidator(router.Processor):
 
 
     async def process_message(self, msg):
-        nodeMap = {
-            "a9d0cbe6": "master-03",
-            "92e45fb9" :"master-01"
-        }
-        self.log.info(f'Received work from {nodeMap[msg["sender"][:8]]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
+
+        self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
         ## self.log.info(msg)
 
         #if msg["sender"] == self.wallet.verifying_key:
@@ -50,19 +44,6 @@ class WorkValidator(router.Processor):
         ''' # Removed for testing
         if await self.hlc_clock.check_expired(timestamp=msg['hlc_timestamp']):
             self.log.error(f'Expired TX from master {msg["sender"][:8]}')
-            return
-        
-
-        try:
-            transaction.transaction_is_valid(
-                transaction=msg['tx'],
-                expected_processor=msg['sender'],
-                client=self.client,
-                nonces=self.nonces,
-                strict=False
-            )
-        except TransactionException as e:
-            self.log.error(f'Tx has error in work processor: {transaction.EXCEPTION_MAP[type(e)]}')
             return
         '''
 

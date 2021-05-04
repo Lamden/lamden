@@ -440,7 +440,7 @@ class TestAggregator(TestCase):
         self.loop.close()
 
     def test_gather_subblocks_all_same_blocks(self):
-        a = contender.Aggregator(driver=ContractDriver())
+        a = contender.Aggregator(validation_results={}, driver=ContractDriver())
 
         c1 = [MockSBC('input_1', 'res_1', 0).to_dict(),
               MockSBC('input_2', 'res_2', 1).to_dict(),
@@ -472,7 +472,7 @@ class TestAggregator(TestCase):
         self.assertEqual(res['subblocks'][3]['merkle_leaves'][0], 'res_4')
 
     def test_mixed_results_still_makes_quorum(self):
-        a = contender.Aggregator(driver=ContractDriver())
+        a = contender.Aggregator(validation_results={}, driver=ContractDriver())
 
         c1 = [MockSBC('input_1', 'res_X', 0).to_dict(),
               MockSBC('input_2', 'res_2', 1).to_dict(),
@@ -504,36 +504,47 @@ class TestAggregator(TestCase):
         self.assertEqual(res['subblocks'][3]['merkle_leaves'][0], 'res_4')
 
     def test_failed_block_on_one_removes_subblock_from_block(self):
-        a = contender.Aggregator(driver=ContractDriver())
+        # TODO I don't undertstand this test.
+        a = contender.Aggregator(validation_results={}, driver=ContractDriver())
 
-        c1 = [MockSBC('input_1', 'res_X', 0).to_dict(),
-                             MockSBC('input_2', 'res_2', 1).to_dict(),
-                             MockSBC('input_3', 'res_3', 2).to_dict(),
-                             MockSBC('input_4', 'res_4', 3).to_dict()]
+        c1 = [
+            MockSBC('input_1', 'res_X', 0).to_dict(),
+            MockSBC('input_2', 'res_2', 1).to_dict(),
+            MockSBC('input_3', 'res_3', 2).to_dict(),
+            MockSBC('input_4', 'res_4', 3).to_dict()
+        ]
 
-        c2 = [MockSBC('input_1', 'res_1', 0).to_dict(),
-                             MockSBC('input_2', 'res_X', 1).to_dict(),
-                             MockSBC('input_3', 'res_3', 2).to_dict(),
-                             MockSBC('input_4', 'res_4', 3).to_dict()]
+        c2 = [
+            MockSBC('input_1', 'res_1', 0).to_dict(),
+            MockSBC('input_2', 'res_X', 1).to_dict(),
+            MockSBC('input_3', 'res_3', 2).to_dict(),
+            MockSBC('input_4', 'res_4', 3).to_dict()
+        ]
 
-        c3 = [MockSBC('input_1', 'res_X', 0).to_dict(),
-                             MockSBC('input_2', 'res_2', 1).to_dict(),
-                             MockSBC('input_i', 'res_X', 2).to_dict(),
-                             MockSBC('input_4', 'res_4', 3).to_dict()]
+        c3 = [
+            MockSBC('input_1', 'res_X', 0).to_dict(),
+            MockSBC('input_2', 'res_2', 1).to_dict(),
+            MockSBC('input_i', 'res_X', 2).to_dict(),
+            MockSBC('input_4', 'res_4', 3).to_dict()
+        ]
 
-        c4 = [MockSBC('input_1', 'res_1', 0).to_dict(),
-                             MockSBC('input_2', 'res_2', 1).to_dict(),
-                             MockSBC('input_3', 'res_3', 2).to_dict(),
-                             MockSBC('input_4', 'res_X', 3).to_dict()]
+        c4 = [
+            MockSBC('input_1', 'res_1', 0).to_dict(),
+            MockSBC('input_2', 'res_2', 1).to_dict(),
+            MockSBC('input_3', 'res_3', 2).to_dict(),
+            MockSBC('input_4', 'res_X', 3).to_dict()
+        ]
 
         a.sbc_inbox.q = [c1, c2, c3, c4]
 
         res = self.loop.run_until_complete(a.gather_subblocks(4))
+        print(res)
 
         self.assertTrue(len(res['subblocks']) == 3)
 
     def test_block_never_received_goes_through_adequate_consensus(self):
         a = contender.Aggregator(
+            validation_results={},
             driver=ContractDriver(),
             seconds_to_timeout=0.5
         )
@@ -566,7 +577,7 @@ class TestSBCProcessor(TestCase):
             'subblock': 1
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertFalse(s.sbc_is_valid(sbc, 2))
 
@@ -587,7 +598,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertFalse(s.sbc_is_valid(sbc, 1))
 
@@ -620,7 +631,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertFalse(s.sbc_is_valid(sbc, 1))
 
@@ -652,7 +663,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertFalse(s.sbc_is_valid(sbc, 1))
 
@@ -680,7 +691,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertTrue(s.sbc_is_valid(sbc, 1))
 
@@ -714,7 +725,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertFalse(s.sbc_is_valid(sbc, 1))
 
@@ -746,7 +757,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         self.assertTrue(s.sbc_is_valid(sbc, 1))
 
@@ -809,7 +820,7 @@ class TestSBCProcessor(TestCase):
             }
         }
 
-        s = contender.SBCInbox()
+        s = contender.SBCInbox(validation_results={})
 
         loop = asyncio.get_event_loop()
         if loop.is_closed():

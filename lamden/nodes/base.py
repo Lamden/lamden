@@ -171,8 +171,6 @@ class Node:
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
 
         self.work_validator = work.WorkValidator(
-            client=self.client,
-            nonces=self.nonces,
             wallet=wallet,
             add_to_main_processing_queue=self.add_to_main_processing_queue,
             hlc_clock=self.hlc_clock,
@@ -528,7 +526,6 @@ class Node:
         if block['hash'] == 'f' * 64:
             self.log.error('Failed Block! Not storing.')
             return False
-
 
         return True
 

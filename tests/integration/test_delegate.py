@@ -3,7 +3,7 @@ from lamden.crypto.wallet import Wallet, verify
 from lamden.crypto import canonical
 from contracting.db.driver import decode, ContractDriver, InMemDriver
 from contracting.client import ContractingClient
-from lamden.nodes.delegate import execution, work
+from lamden.nodes import execution, work
 from lamden.nodes import masternode, delegate, base
 from lamden import storage, authentication, router
 import zmq.asyncio
