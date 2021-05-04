@@ -27,10 +27,10 @@ import argparse
 log = get_logger("MN-WebServer")
 
 
-class ByteEncoder(_json.JSONEncoder):
+class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
-        if isinstance(o, bytes):
-            return o.hex()
+        if isinstance(o, dict):
+            return int(o.get('__fixed__'))
 
         if isinstance(o, ContractingDecimal):
             if int(o._d) == o._d:
@@ -39,15 +39,6 @@ class ByteEncoder(_json.JSONEncoder):
                 return {
                     '__fixed__': str(o._d)
                 }
-
-        if isinstance(o, Datetime) or o.__class__.__name__ == Datetime.__name__:
-            return {
-                '__time__': [o.year, o.month, o.day, o.hour, o.minute, o.second, o.microsecond]
-            }
-        elif isinstance(o, Timedelta) or o.__class__.__name__ == Timedelta.__name__:
-            return {
-                '__delta__': [o._timedelta.days, o._timedelta.seconds]
-            }
 
         if isinstance(o, decimal.Decimal):
             if int(o) == o:
@@ -234,7 +225,7 @@ class WebServer:
             'nonce': latest_nonce,
             'processor': self.wallet.verifying_key,
             'sender': vk
-        }, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
+        }, dumps=NonceEncoder.encode, headers={'Access-Control-Allow-Origin': '*'})
 
     # Get all Contracts in State (list of names)
     async def get_contracts(self, request):
