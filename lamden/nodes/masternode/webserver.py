@@ -311,7 +311,7 @@ class WebServer:
     async def get_latest_block(self, request):
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
-        return response.json(block, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(encode(block), headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         num = storage.get_latest_block_height(self.driver)
@@ -338,7 +338,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(encode(block), headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
