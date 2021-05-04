@@ -231,7 +231,7 @@ class WebServer:
             'nonce': latest_nonce,
             'processor': self.wallet.verifying_key,
             'sender': vk
-        }, headers={'Access-Control-Allow-Origin': '*'})
+        }, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     # Get all Contracts in State (list of names)
     async def get_contracts(self, request):
