@@ -25,11 +25,11 @@ class TestClassWebserver(TestCase):
             driver=n
         )
         self.ws.client.flush()
-        self.ws.blocks.drop_collections()
+        self.ws.blocks.flush()
 
     def tearDown(self):
         self.ws.client.flush()
-        self.ws.blocks.drop_collections()
+        self.ws.blocks.flush()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -329,7 +329,7 @@ def get():
             'data': 'woop'
         }
 
-        self.ws.blocks.put(block)
+        self.ws.blocks.store_block(block)
 
         expected = {
             'hash': h,

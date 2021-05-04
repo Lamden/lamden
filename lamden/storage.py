@@ -97,7 +97,7 @@ class BlockStorage:
                 encoded_tx = encode(data)
                 f.write(encoded_tx)
 
-    def get_block(self, v=None, no_id=True):
+    def get_block(self, v=None, no_id=True, decode_=True):
         if v is None:
             return None
 
@@ -110,7 +110,11 @@ class BlockStorage:
             return None
 
         encoded_block = f.read()
-        block = decode(encoded_block)
+
+        if decode_:
+            block = decode(encoded_block)
+        else:
+            block = encoded_block
 
         f.close()
 
@@ -128,11 +132,15 @@ class BlockStorage:
 
             subblock['transactions'] = txs
 
-    def get_tx(self, h):
+    def get_tx(self, h, decode_=True):
         try:
             f = open(self.txs_dir.joinpath(h))
             encoded_tx = f.read()
-            tx = decode(encoded_tx)
+
+            if decode_:
+                tx = decode(encoded_tx)
+            else:
+                tx = encoded_tx
 
             f.close()
         except FileNotFoundError:

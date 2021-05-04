@@ -714,16 +714,6 @@ class TestStorage(TestCase):
 
         self.assertEqual(bb, block)
 
-    def test_q_num(self):
-        q = self.db.q(1)
-
-        self.assertEqual(q, '00000000000000000000000000000001')
-
-    def test_q_hash(self):
-        q = self.db.q('1')
-
-        self.assertEqual(q, '1')
-
     def test_get_block(self):
         block = {
             'hash': 'a',

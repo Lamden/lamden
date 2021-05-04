@@ -20,6 +20,7 @@ import asyncio
 from lamden.crypto import transaction
 import decimal
 
+import datetime
 # Instantiate the parser
 import argparse
 
@@ -39,6 +40,15 @@ class ByteEncoder(_json.JSONEncoder):
                     '__fixed__': str(o._d)
                 }
 
+        if isinstance(o, Datetime) or o.__class__.__name__ == Datetime.__name__:
+            return {
+                '__time__': [o.year, o.month, o.day, o.hour, o.minute, o.second, o.microsecond]
+            }
+        elif isinstance(o, Timedelta) or o.__class__.__name__ == Timedelta.__name__:
+            return {
+                '__delta__': [o._timedelta.days, o._timedelta.seconds]
+            }
+
         if isinstance(o, decimal.Decimal):
             if int(o) == o:
                 return int(o)
@@ -49,7 +59,7 @@ class ByteEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks: storage.BlockStorage,
                  queue=FileQueue('~/txs'),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
@@ -300,8 +310,8 @@ class WebServer:
 
     async def get_latest_block(self, request):
         num = storage.get_latest_block_height(self.driver)
-        block = self.blocks.get_block(int(num))
-        return response.json(block, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        block = self.blocks.get_block(int(num), decode_=False)
+        return response.json(block, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         num = storage.get_latest_block_height(self.driver)
@@ -317,9 +327,9 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = self.blocks.get_block(int(num))
+            block = self.blocks.get_block(int(num), decode_=False)
         elif _hash is not None:
-            block = self.blocks.get_block(_hash)
+            block = self.blocks.get_block(_hash, decode_=False)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
@@ -328,7 +338,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, dumps=ByteEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
