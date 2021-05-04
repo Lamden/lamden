@@ -17,7 +17,7 @@ from pathlib import Path
 import uuid
 import shutil
 import os
-
+import pathlib
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -29,11 +29,13 @@ CONTENDER_SERVICE = 'contenders'
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
 
+STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
+
 
 class FileQueue:
     EXTENSION = '.tx'
 
-    def __init__(self, root='./txs'):
+    def __init__(self, root=STORAGE_HOME.joinpath('txq')):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
