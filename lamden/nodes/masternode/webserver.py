@@ -165,6 +165,8 @@ class WebServer:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
+        tx_raw = _json.loads(request.body)
+        log.error(tx_raw)
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:

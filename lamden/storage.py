@@ -183,9 +183,6 @@ class NonceStorage:
         if latest_nonce is None:
             latest_nonce = 0
 
-        if type(latest_nonce) == dict:
-            latest_nonce = int(latest_nonce.get('__fixed__'))
-
         return latest_nonce
 
     def flush(self):
