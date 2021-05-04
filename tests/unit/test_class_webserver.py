@@ -325,7 +325,8 @@ def get():
         self.ws.blocks.store_block(block2)
 
         _, response = self.ws.app.test_client.get('/latest_block')
-        self.assertDictEqual(response.json, encode(b2exp))
+        print(response.json)
+        self.assertDictEqual(response.json, b2exp)
 
     def test_get_latest_block_num(self):
         storage.set_latest_block_height(1234, self.ws.driver)
@@ -378,7 +379,7 @@ def get():
 
         _, response = self.ws.app.test_client.get('/blocks?num=1')
 
-        self.assertDictEqual(response.json, encode(exp))
+        self.assertDictEqual(response.json, exp)
 
     def test_get_block_by_num_that_doesnt_exist_returns_error(self):
         _, response = self.ws.app.test_client.get('/blocks?num=1000')
@@ -423,7 +424,7 @@ def get():
         }
 
         _, response = self.ws.app.test_client.get(f'/blocks?hash={h}')
-        self.assertDictEqual(response.json, encode(expected))
+        self.assertDictEqual(response.json, expected)
 
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
         _, response = self.ws.app.test_client.get('/blocks?hash=zzz')
