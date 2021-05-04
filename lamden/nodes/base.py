@@ -342,7 +342,6 @@ class Node:
 
         # Get the current solutions
         delegate_solutions = results['delegate_solutions']
-        self.log.debug(delegate_solutions)
         total_solutions = len(delegate_solutions)
 
         # Return if we don't have enough responses to attempt a consensus check
