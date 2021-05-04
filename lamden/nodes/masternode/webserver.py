@@ -235,11 +235,15 @@ class WebServer:
 
     # Get all Contracts in State (list of names)
     async def get_contracts(self, request):
+        self.client.raw_driver.clear_pending_state()
+
         contracts = self.client.get_contracts()
         return response.json({'contracts': contracts}, headers={'Access-Control-Allow-Origin': '*'})
 
     # Get the source code of a specific contract
     async def get_contract(self, request, contract):
+        self.client.raw_driver.clear_pending_state()
+
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
@@ -249,6 +253,8 @@ class WebServer:
                              headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_methods(self, request, contract):
+        self.client.raw_driver.clear_pending_state()
+
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
@@ -260,6 +266,8 @@ class WebServer:
         return response.json({'methods': funcs}, status=200, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_variables(self, request, contract):
+        self.client.raw_driver.clear_pending_state()
+
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
@@ -271,6 +279,8 @@ class WebServer:
         return response.json(variables, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_variable(self, request, contract, variable):
+        self.client.raw_driver.clear_pending_state()
+
         contract_code = self.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
@@ -361,6 +371,8 @@ class WebServer:
         return response.json(tx, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
+        self.client.raw_driver.clear_pending_state()
+
         masternodes = self.client.get_var(
             contract='masternodes',
             variable='S',
