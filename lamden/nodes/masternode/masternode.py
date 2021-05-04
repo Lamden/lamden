@@ -101,7 +101,7 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
-        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue('~/txs'))
+        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue())
         self.webserver.queue = self.tx_batcher.queue
 
         self.aggregator = contender.Aggregator(
