@@ -221,8 +221,10 @@ class WebServer:
     async def get_nonce(self, request, vk):
         latest_nonce = self.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
 
-        if type(latest_nonce) == dict:
-            print('shit')
+        try:
+            latest_nonce = int(latest_nonce)
+        except:
+            pass
 
         return response.json({
             'nonce': latest_nonce,
