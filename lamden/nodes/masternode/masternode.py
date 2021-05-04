@@ -10,7 +10,7 @@ from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import decode
-
+import copy
 from lamden.logger.base import get_logger
 
 mn_logger = get_logger('Masternode')
@@ -253,11 +253,13 @@ class Masternode(base.Node):
             current_hash=self.current_hash
         )
 
+        original_block = copy.deepcopy(block)
+
         self.process_new_block(block)
 
         self.new_block_processor.clean(self.current_height)
 
-        return block
+        return original_block
 
     async def loop(self):
         self.log.info('=== ENTERING SEND WORK STATE ===')
