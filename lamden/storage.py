@@ -246,6 +246,7 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
     if block.get('subblocks') is not None:
         for sb in block['subblocks']:
             for tx in sb['transactions']:
+                log.error(tx)
                 update_state_with_transaction(tx, driver, nonces)
 
     # Update our block hash and block num
