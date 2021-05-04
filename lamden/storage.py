@@ -92,7 +92,10 @@ class BlockStorage:
         with open(self.blocks_dir.joinpath(name), 'w') as f:
             f.write(encoded_block)
 
-        os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
+        try:
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
+        except FileExistsError:
+            pass
 
     def write_txs(self, txs, hashes):
         for file, data in zip(hashes, txs):
