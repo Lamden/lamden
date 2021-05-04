@@ -1,31 +1,27 @@
 from lamden import storage, network, router, authentication, rewards, upgrade
-import hashlib
 from lamden.nodes import execution, work, filequeue
 from lamden.nodes.masternode import contender
 from lamden.nodes.hlc import HLC_Clock
-from contracting.execution.executor import Executor
-from lamden.crypto.wallet import Wallet
 from lamden.contracts import sync
+from lamden.logger.base import get_logger
+from lamden.crypto.canonical import merklize, block_from_subblocks
+from lamden.crypto.wallet import Wallet
+
 from contracting.db.driver import ContractDriver, encode
-import lamden
-import zmq.asyncio
-import asyncio
-import json
+from contracting.execution.executor import Executor
 from contracting.client import ContractingClient
 
-import uvloop
-import gc
-from lamden.logger.base import get_logger
-import decimal
-
-
-
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 import time
 import math
+import hashlib
+import decimal
+import uvloop
+import json
+import gc
+import zmq.asyncio
+import asyncio
 
-from lamden.crypto.canonical import merklize, block_from_subblocks
-
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
