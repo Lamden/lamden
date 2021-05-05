@@ -70,6 +70,11 @@ class SBCInbox(router.Processor):
         else:
             message = sbc['merkle_tree']['leaves'][0]
 
+        self.log.debug({
+            'vk': sbc['signer'],
+            'msg': message,
+            'signature': sbc['merkle_tree']['signature']
+        })
         valid_sig = verify(
             vk=sbc['signer'],
             msg=message,
