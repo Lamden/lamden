@@ -87,6 +87,7 @@ class BlockStorage:
 
         if type(num) == dict:
             num = num.get('__fixed__')
+            block['number'] = num
 
         name = str(num).zfill(64)
 
