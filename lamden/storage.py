@@ -123,6 +123,8 @@ class BlockStorage:
 
         self.fill_block(block)
 
+
+
         return block
 
     def fill_block(self, block):
