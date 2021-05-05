@@ -267,8 +267,8 @@ class Node:
 
     async def loop(self):
         #await self.hang()
-        if len(self.file_queue) > 0:
-            await self.main_processing_queue.append(self.file_queue.pop())
+        #if len(self.file_queue) > 0:
+            #await self.main_processing_queue.append(self.file_queue.pop())
 
         if len(self.main_processing_queue) > 0:
             await self.process_main_queue()
@@ -380,7 +380,11 @@ class Node:
             'total_solutions': total_solutions
         }
 
+    def add_to_main_processing_queue(self, item):
+        self.main_processing_queue.append(item)
 
+    def add_to_needs_validation_queue(self, item):
+        self.needs_validation_queue.append(item)
 
     async def send_block_results(self, results):
         await router.secure_multicast(
@@ -391,13 +395,6 @@ class Node:
             peer_map=self.get_all_peers(not_me=True),
             ctx=self.ctx
         )
-
-    def add_to_main_processing_queue(self, item):
-        self.main_processing_queue.append(item)
-
-    def add_to_needs_validation_queue(self, item):
-        self.needs_validation_queue.append(item)
-
 
     async def send_work(self, work):
         # Else, batch some more txs
