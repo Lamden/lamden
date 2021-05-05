@@ -273,7 +273,7 @@ class Node:
             await self.process_main_queue()
 
         if len(self.needs_validation_queue) > 0:
-            await self.process_main_queue()
+            await self.process_needs_validation_queue()
 
         await asyncio.sleep(5)
 

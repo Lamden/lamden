@@ -79,5 +79,4 @@ class TxProcessing:
         return results
 
     def __len__(self):
-        self.log.debug(f"Getting Length: {len(self.main_processing_queue)}")
         return len(self.main_processing_queue)
