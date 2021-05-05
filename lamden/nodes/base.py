@@ -292,7 +292,7 @@ class Node:
 
             # Mint new block
             results = processing_results['results']
-            block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
+            block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
             self.process_new_block(block)
 
             await self.send_block_results(results)

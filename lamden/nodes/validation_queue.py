@@ -19,13 +19,11 @@ class ValidationQueue:
 
         tx = processing_results['tx']
         results = processing_results['results']
-
-        # Store data about the tx so it can be processed for consensus later.
-        self.validation_results[tx['hlc_timestamp']] = {}
-        self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
-        self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results[0]
-        self.validation_results[tx['hlc_timestamp']]['data'] = tx
-
+        self.add_solution(
+            hlc_timestamp=tx['hlc_timestamp'],
+            tx=tx,
+            results=results
+        )
         self.needs_validation_queue.append(tx['hlc_timestamp'])
 
     def awaiting_validation(self, hlc_timestamp):
@@ -37,8 +35,14 @@ class ValidationQueue:
         except KeyError:
             return False
 
-    def add_solution(self, hlc_timestamp, node_vk, msg):
-        self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = msg
+    def add_solution(self, hlc_timestamp, tx, results):
+        # Store data about the tx so it can be processed for consensus later.
+        if hlc_timestamp not in self.validation_results:
+            self.validation_results[hlc_timestamp] = {}
+            self.validation_results[hlc_timestamp]['delegate_solutions'] = {}
+
+        self.validation_results[hlc_timestamp]['delegate_solutions'][tx['signer']] = results
+        self.validation_results[hlc_timestamp]['data'] = tx
 
     async def process_next(self):
         self.needs_validation_queue.sort()

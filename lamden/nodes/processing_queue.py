@@ -45,7 +45,7 @@ class ProcessingQueue:
 
             return {
                 'tx': tx,
-                'results': results
+                'results': results[0]
             }
 
         return None
