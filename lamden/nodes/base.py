@@ -259,7 +259,7 @@ class Node:
         '''
 
         # Wait for activity on our main processing queue or the needs validation queue
-        while len(self.main_processing_queue) <= 0 and len(self.needs_validation_queue) <= 0:
+        while len(self.main_processing_queue) <= 0 and len(self.validation_queue) <= 0:
             if not self.running:
                 return
 
@@ -275,7 +275,7 @@ class Node:
         if len(self.main_processing_queue) > 0:
             await self.process_main_queue()
 
-        if len(self.needs_validation_queue) > 0:
+        if len(self.validation_queue) > 0:
             await self.validation_queue.process_next()
 
         await asyncio.sleep(5)
