@@ -295,7 +295,7 @@ class Node:
             block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
             self.process_new_block(block)
 
-        await self.send_block_results(results)
+            await self.send_block_results(results)
 
         await asyncio.sleep(0)
 
