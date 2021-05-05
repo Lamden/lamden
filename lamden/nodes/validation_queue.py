@@ -26,6 +26,8 @@ class ValidationQueue:
         self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results[0]
         self.validation_results[tx['hlc_timestamp']]['data'] = tx
 
+        self.needs_validation_queue.append(tx['hlc_timestamp'])
+
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.needs_validation_queue
 
