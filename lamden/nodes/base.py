@@ -191,7 +191,7 @@ class Node:
 
         self.aggregator = contender.Aggregator(
             validation_queue=self.validation_queue,
-            driver=self.driver,
+            driver=self.driver
         )
 
         self.router.add_service(WORK_SERVICE, self.work_validator)
