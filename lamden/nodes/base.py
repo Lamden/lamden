@@ -268,7 +268,7 @@ class Node:
     async def loop(self):
         #await self.hang()
         if len(self.file_queue) > 0:
-            await self.main_processing_queue.append(self.file_queue.pop(0))
+            await self.work_validator.process_message(self.file_queue.pop(0))
 
         if len(self.main_processing_queue) > 0:
             await self.process_main_queue()

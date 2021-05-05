@@ -27,7 +27,7 @@ class FileQueue:
             i = decode(f.read())
 
         os.remove(item)
-
+        self.log.debug(i)
         return i
 
     def flush(self):
