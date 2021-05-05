@@ -28,6 +28,9 @@ class SBCInbox(router.Processor):
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
+        self.log.info(
+            f'Received SOLUTION from {msg["signer"][:8]}')
+
         if len(msg) != self.expected_subblocks:
             self.log.error('Contender does not have enough subblocks!')
             return
