@@ -2,8 +2,8 @@
 killall lamden python3
 git pull
 rm -r ~/cilsocks/
-cd ..
-rm -R .lamden
-cd contracting && git pull && python3 setup.py develop && cd ../lamden
-rm -R txs
+rm -R ~/.lamden
+rm -R ~/lamden/txs
+cd ../contracting && git pull && python3 setup.py develop && cd ../lamden
+
 
