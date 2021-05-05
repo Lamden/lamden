@@ -36,6 +36,8 @@ class ValidationQueue:
             return False
 
     def add_solution(self, hlc_timestamp, tx, results):
+        self.log.debug(tx)
+        self.log.debug(results)
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
