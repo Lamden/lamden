@@ -50,7 +50,7 @@ class ByteEncoder(_json.JSONEncoder):
 
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
-                 queue=FileQueue('~/txs'),
+                 queue=FileQueue(),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
