@@ -49,11 +49,12 @@ class SBCInbox(router.Processor):
                 # Get the transaction
                 tx = msg[i]['transactions'][j]
 
-
+                '''
                 if self.validation_queue.awaiting_validation(hlc_timestamp=tx['hlc_timestamp']):
                     # TODO this could be a clue we are not in consensus or something else is wrong
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
+                '''
 
                 if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer']):
                     # TODO what todo if you get another solution from the same node about the same tx
