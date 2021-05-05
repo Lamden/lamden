@@ -11,7 +11,7 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_queue, debug=True):
+    def __init__(self, validation_queue, get_all_peers, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
@@ -19,9 +19,10 @@ class SBCInbox(router.Processor):
 
         self.block_q = []
         self.validation_queue = validation_queue
+        self.get_all_peers = get_all_peers
 
     async def process_message(self, msg):
-        # self.log.debug(msg)
+        self.log.debug(msg)
         # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
@@ -31,7 +32,12 @@ class SBCInbox(router.Processor):
             self.log.error('Contender does not have enough subblocks!')
             return
 
+        peers = self.get_all_peers()
         for i in range(len(msg)):
+            if msg[i]['sender'] not in peers:
+                self.log.error('Contender sender is not a valid peer!')
+                return
+
             if not self.sbc_is_valid(msg[i], i):
                 self.log.error('Contender is not valid!')
                 return
@@ -306,10 +312,11 @@ class BlockContender:
 
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, validation_queue, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
+    def __init__(self, validation_queue, get_all_peers, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
-            validation_queue=validation_queue
+            validation_queue=validation_queue,
+            get_all_peers=get_all_peers
         )
 
         self.driver = driver

@@ -191,6 +191,7 @@ class Node:
 
         self.aggregator = contender.Aggregator(
             validation_queue=self.validation_queue,
+            get_all_peers=self.get_all_peers,
             driver=self.driver
         )
 
