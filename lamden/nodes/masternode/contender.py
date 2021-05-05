@@ -22,6 +22,7 @@ class SBCInbox(router.Processor):
 
     async def process_message(self, msg):
         self.log.debug(msg)
+        self.log(self.validation_results)
         # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
