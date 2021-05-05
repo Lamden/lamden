@@ -34,7 +34,7 @@ class SBCInbox(router.Processor):
 
         peers = self.get_all_peers()
         for i in range(len(msg)):
-            if msg[i]['sender'] not in peers:
+            if msg[i]['signer'] not in peers:
                 self.log.error('Contender sender is not a valid peer!')
                 return
 
@@ -48,12 +48,12 @@ class SBCInbox(router.Processor):
                 tx = msg[i]['transactions'][j]
 
 
-                if self.validation_queue.awaiting_validation(tx['hlc_timestamp']):
+                if self.validation_queue.awaiting_validation(hlc_timestamp=tx['hlc_timestamp']):
                     # TODO this could be a clue we are not in consensus or something else is wrong
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
-                if self.validation_queue.is_duplicate(tx['hlc_timestamp'], msg[i]['signer']):
+                if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer']):
                     # TODO what todo if you get another solution from the same node about the same tx
                     self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
                     return

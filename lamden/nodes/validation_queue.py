@@ -19,10 +19,11 @@ class ValidationQueue:
 
         tx = processing_results['tx']
         results = processing_results['results']
+
         self.add_solution(
             hlc_timestamp=tx['hlc_timestamp'],
-            tx=tx,
-            results=results
+            node_vk=self.wallet.verifying_key,
+            msg=results[0]
         )
         self.needs_validation_queue.append(tx['hlc_timestamp'])
 
@@ -35,13 +36,13 @@ class ValidationQueue:
         except KeyError:
             return False
 
-    def add_solution(self, hlc_timestamp, tx, results):
+    def add_solution(self, hlc_timestamp, node_vk, msg):
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
             self.validation_results[hlc_timestamp]['delegate_solutions'] = {}
 
-        self.validation_results[hlc_timestamp]['delegate_solutions'][tx['sender']] = results[0]
+        self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = msg[0]
 
     async def process_next(self):
         self.needs_validation_queue.sort()
