@@ -43,7 +43,7 @@ class ValidationQueue:
             self.validation_results[hlc_timestamp] = {}
             self.validation_results[hlc_timestamp]['delegate_solutions'] = {}
 
-        self.validation_results[hlc_timestamp]['delegate_solutions'][tx['signer']] = results[0]
+        self.validation_results[hlc_timestamp]['delegate_solutions'][tx['sender']] = results[0]
 
     async def process_next(self):
         self.needs_validation_queue.sort()
