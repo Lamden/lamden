@@ -72,6 +72,10 @@ class BlockStorage:
                 subblock_hashes.append(tx['hash'])
 
             subblock['transactions'] = subblock_hashes
+            try:
+                subblock['subblock'] = int(subblock['subblock'])
+            except:
+                pass
 
             txs.extend(subblock_txs)
             hashes.extend(subblock_hashes)
@@ -82,9 +86,9 @@ class BlockStorage:
         num = block.get('number')
 
         if type(num) == dict:
-            name = str(num.get('__fixed__')).zfill(64)
-        else:
-            name = str(num).zfill(64)
+            num = num.get('__fixed__')
+
+        name = str(num).zfill(64)
 
         symlink_name = block.get('hash')
 
