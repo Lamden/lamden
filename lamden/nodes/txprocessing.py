@@ -22,7 +22,7 @@ class TxProcessing:
         # TODO There are just for testing
         self.total_processed = 0
 
-    async def append(self, tx):
+    def append(self, tx):
         self.log.debug("ADDING TO QUEUE")
         self.main_processing_queue.append(tx)
 
