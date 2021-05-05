@@ -28,7 +28,7 @@ class SBCInbox(router.Processor):
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
-        if len(msg) == self.expected_subblocks:
+        if len(msg) != self.expected_subblocks:
             self.log.error(f'Contender has wrong number of subblocks! Has {len(msg)} and not {self.expected_subblocks}')
             return
 
