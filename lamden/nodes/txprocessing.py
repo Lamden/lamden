@@ -4,7 +4,7 @@ import asyncio
 from lamden.logger.base import get_logger
 
 class TxProcessing:
-    def __init__(self, client, driver, wallet, hlc_clock, send_work, processing_delay, transaction_executor,
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, transaction_executor,
                  get_current_height, get_current_hash):
 
         self.log = get_logger('TX PROCESSOR')
@@ -15,7 +15,6 @@ class TxProcessing:
         self.wallet = wallet
         self.driver = driver
         self.hlc_clock = hlc_clock
-        self.send_work = send_work
         self.transaction_executor = transaction_executor
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash

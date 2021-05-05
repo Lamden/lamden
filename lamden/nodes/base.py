@@ -167,7 +167,6 @@ class Node:
             client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
-            send_work=self.send_work,
             processing_delay=self.processing_delay,
             transaction_executor=self.transaction_executor,
             get_current_hash=lambda: self.current_hash,
@@ -182,7 +181,7 @@ class Node:
 
         self.work_validator = work.WorkValidator(
             wallet=wallet,
-            add_to_main_processing_queue=self.add_to_main_processing_queue,
+            main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
             get_masters=self.get_masternode_peers
         )
