@@ -28,15 +28,15 @@ class SBCInbox(router.Processor):
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
-        self.log.info(
-            f'Received SOLUTION from {msg["signer"][:8]}')
-
-        if len(msg) != self.expected_subblocks:
-            self.log.error('Contender does not have enough subblocks!')
+        if len(msg) == self.expected_subblocks:
+            self.log.error(f'Contender has wrong number of subblocks! Has {len(msg)} and not {self.expected_subblocks}')
             return
 
         peers = self.get_all_peers()
         for i in range(len(msg)):
+            self.log.info(
+                f'Received SOLUTION from {msg["signer"][:8]}')
+
             if msg[i]['signer'] not in peers:
                 self.log.error('Contender sender is not a valid peer!')
                 return
