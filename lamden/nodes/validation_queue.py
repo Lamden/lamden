@@ -30,7 +30,10 @@ class ValidationQueue:
         return hlc_timestamp in self.needs_validation_queue
 
     def is_duplicate(self, hlc_timestamp, node_vk):
-        return self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk]
+        try:
+            return self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk]
+        except KeyError:
+            return False
 
     def add_solution(self, hlc_timestamp, node_vk, msg):
         self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = msg
