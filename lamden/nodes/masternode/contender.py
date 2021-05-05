@@ -22,7 +22,7 @@ class SBCInbox(router.Processor):
         self.get_all_peers = get_all_peers
 
     async def process_message(self, msg):
-        self.log.debug(msg)
+        # self.log.debug(msg)
         # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
