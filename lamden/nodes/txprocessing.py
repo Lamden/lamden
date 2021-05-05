@@ -23,6 +23,7 @@ class TxProcessing:
         self.total_processed = 0
 
     async def append(self, tx):
+        self.log.debug("ADDING TO QUEUE")
         self.main_processing_queue.append(tx)
 
     def process_next(self):
@@ -78,4 +79,5 @@ class TxProcessing:
         return results
 
     def __len__(self):
+        self.log.debug(f"Getting Length: {len(self.main_processing_queue)}")
         return len(self.main_processing_queue)
