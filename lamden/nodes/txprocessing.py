@@ -24,27 +24,7 @@ class TxProcessing:
         self.total_processed = 0
 
     async def append(self, tx):
-        tx_message = self.make_tx_message(tx)
-        await self.send_work(tx_message)
         self.main_processing_queue.append(tx)
-
-    def make_tx_message(self, tx):
-        timestamp = int(time.time())
-
-        h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
-        input_hash = h.hexdigest()
-
-        signature = self.wallet.sign(input_hash)
-
-        return {
-            'tx': tx,
-            'timestamp': timestamp,
-            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
-            'signature': signature,
-            'sender': self.wallet.verifying_key,
-            'input_hash': input_hash
-        }
 
     def process_next(self):
         # run top of stack if it's older than 1 second

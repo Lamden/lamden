@@ -268,13 +268,13 @@ class Node:
     async def loop(self):
         #await self.hang()
         if len(self.file_queue) > 0:
-            await self.work_validator.process_message(self.file_queue.pop(0))
+            self.send_tx_to_network(self.file_queue.pop(0))
 
         if len(self.main_processing_queue) > 0:
-            await self.process_main_queue()
+            await self.process_main_queue().process_next()
 
         if len(self.needs_validation_queue) > 0:
-            await self.process_needs_validation_queue()
+            await self.process_main_queue()
 
         await asyncio.sleep(0)
 
@@ -396,7 +396,26 @@ class Node:
             ctx=self.ctx
         )
 
-    async def send_work(self, work):
+    def make_tx_message(self, tx):
+        timestamp = int(time.time())
+
+        h = hashlib.sha3_256()
+        h.update('{}'.format(timestamp).encode())
+        input_hash = h.hexdigest()
+
+        signature = self.wallet.sign(input_hash)
+
+        return {
+            'tx': tx,
+            'timestamp': timestamp,
+            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
+            'signature': signature,
+            'sender': self.wallet.verifying_key,
+            'input_hash': input_hash
+        }
+
+    async def send_tx_to_network(self, tx):
+        tx_message = self.make_tx_message(tx)
         # Else, batch some more txs
         ## self.log.info('Sending transaction to other nodes.')
 
@@ -404,9 +423,11 @@ class Node:
         if len(self.get_delegate_peers()) == 0:
             self.log.error('No one online!')
             return False
-        self.log.info(f'Sending work {work["hlc_timestamp"]} {work["tx"]["metadata"]["signature"][:12]}')
+
+        self.log.info(f'Sending work {tx_message["hlc_timestamp"]} {tx_message["tx"]["metadata"]["signature"][:12]}')
+
         await router.secure_multicast(
-            msg=work,
+            msg=tx_message,
             service=WORK_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
