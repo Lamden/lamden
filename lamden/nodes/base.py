@@ -1,5 +1,5 @@
-from lamden import storage, network, router, authentication, rewards, upgrade
-from lamden.nodes import execution, work, filequeue
+from lamden import storage, network, router, authentication, rewards, upgrade, contracts
+from lamden.nodes import execution, work, filequeue, txprocessing
 from lamden.nodes.masternode import contender
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
@@ -101,9 +101,10 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=lamden.contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
+                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
+        self.processing_delay = 3
 
         self.driver = driver
         self.nonces = nonces
@@ -117,6 +118,7 @@ class Node:
         self.log.propagate = debug
         self.socket_base = socket_base
         self.wallet = wallet
+        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
         self.ctx = ctx
 
         self.genesis_path = genesis_path
@@ -160,14 +162,23 @@ class Node:
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.file_queue = filequeue.FileQueue()
-        self.main_processing_queue = []
+        self.main_processing_queue = txprocessing.TxProcessing(
+            driver=self.driver,
+            client=self.client,
+            wallet=self.wallet,
+            hlc_clock=self.hlc_clock,
+            send_work=self.send_work,
+            processing_delay=self.processing_delay,
+            transaction_executor=self.transaction_executor,
+            get_current_hash=lambda: self.current_hash,
+            get_current_height=lambda: self.current_height
+        )
+
         self.needs_validation_queue = []
         self.validation_results = {}
 
         self.total_processed = 0
         # how long to hold items in queue before processing
-        self.processing_delay = 3
-        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
 
         self.work_validator = work.WorkValidator(
             wallet=wallet,
@@ -257,7 +268,7 @@ class Node:
     async def loop(self):
         #await self.hang()
         if len(self.file_queue) > 0:
-            await self.add_tx_to_main_processing_queue(self.file_queue.pop())
+            await self.main_processing_queue.append(self.file_queue.pop())
 
         if len(self.main_processing_queue) > 0:
             await self.process_main_queue()
@@ -268,21 +279,11 @@ class Node:
         await asyncio.sleep(0)
 
     async def process_main_queue(self):
-        # run top of stack if it's older than 1 second
-        ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
+        processing_results = self.main_processing_queue().process_next()
 
-        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
-        time_in_queue =  self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[0]['hlc_timestamp'])
-        time_in_queue_seconds = time_in_queue / 1000000000
-        # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
-
-        # If the next item in the queue is old enough to process it then go ahead
-        if time_in_queue_seconds > self.processing_delay:
-            # Pop it out of the main processing queue
-            tx = self.main_processing_queue.pop(0)
-
-            # Process it to get the results
-            results = self.process_tx(tx)
+        if processing_results:
+            tx = processing_results['tx']
+            results = processing_results['results']
 
             # Store data about the tx so it can be processed for consensus later.
             self.validation_results[tx['hlc_timestamp']] = {}
@@ -300,10 +301,7 @@ class Node:
             block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
             self.process_new_block(block)
 
-            await self.send_block_results(results)
-
-        # for x in range(len(self.main_processing_queue)):
-        #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
+        await self.send_block_results(results)
 
         await asyncio.sleep(0)
 
@@ -382,30 +380,7 @@ class Node:
             'total_solutions': total_solutions
         }
 
-    def process_tx(self, tx):
-        ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
 
-        # Run mini catch up here to prevent 'desyncing'
-        # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
-
-        results = self.transaction_executor.execute_work(
-            driver=self.driver,
-            work=[tx],
-            wallet=self.wallet,
-            previous_block_hash=self.current_hash,
-            current_height=self.current_height,
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
-        )
-
-        # self.log.debug(self.upgrade_manager.node_type)
-
-        self.total_processed = self.total_processed + 1
-        self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
-
-        # self.new_block_processor.clean(self.current_height)
-        # self.driver.clear_pending_state()
-
-        return results
 
     async def send_block_results(self, results):
         await router.secure_multicast(
@@ -417,37 +392,12 @@ class Node:
             ctx=self.ctx
         )
 
-    async def add_tx_to_main_processing_queue(self, tx):
-        signed_transaction = self.make_tx(tx)
-        #self.log.info("Adding {}")
-        await self.send_work(signed_transaction)
-        #await self.add_to_queue(signed_transaction)
-        #self.log.info("Added transaction")
-
     def add_to_main_processing_queue(self, item):
         self.main_processing_queue.append(item)
 
     def add_to_needs_validation_queue(self, item):
         self.needs_validation_queue.append(item)
 
-
-    def make_tx(self, tx):
-        timestamp = int(time.time())
-
-        h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
-        input_hash = h.hexdigest()
-
-        signature = self.wallet.sign(input_hash)
-
-        return {
-            'tx': tx,
-            'timestamp': timestamp,
-            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
-            'signature': signature,
-            'sender': self.wallet.verifying_key,
-            'input_hash': input_hash
-        }
 
     async def send_work(self, work):
         # Else, batch some more txs
