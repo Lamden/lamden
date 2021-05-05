@@ -415,6 +415,7 @@ class Node:
 
     async def send_tx_to_network(self, tx):
         tx_message = self.make_tx_message(tx)
+        self.log.debug(tx_message)
         # Else, batch some more txs
         ## self.log.info('Sending transaction to other nodes.')
 
