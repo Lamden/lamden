@@ -270,7 +270,7 @@ class Node:
             self.send_tx_to_network(self.file_queue.pop(0))
 
         if len(self.main_processing_queue) > 0:
-            await self.process_main_queue().process_next()
+            await self.process_main_queue()
 
         if len(self.needs_validation_queue) > 0:
             await self.process_main_queue()
@@ -278,7 +278,7 @@ class Node:
         await asyncio.sleep(0)
 
     async def process_main_queue(self):
-        processing_results = self.main_processing_queue().process_next()
+        processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
             tx = processing_results['tx']
