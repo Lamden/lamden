@@ -11,18 +11,17 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_results, debug=True):
+    def __init__(self, validation_queue, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
 
         self.block_q = []
-        self.validation_results = validation_results
+        self.validation_queue = validation_queue
 
     async def process_message(self, msg):
         self.log.debug(msg)
-        self.log(self.validation_results)
         # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
@@ -43,18 +42,22 @@ class SBCInbox(router.Processor):
                 tx = msg[i]['transactions'][j]
 
 
-
-                # TODO this could be a clue we are not in consensus or something else is wrong
-                if tx['hlc_timestamp'] not in self.validation_results:
+                if self.validation_queue.awaiting_validation(tx['hlc_timestamp']):
+                    # TODO this could be a clue we are not in consensus or something else is wrong
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
 
-                if msg[i]['signer'] in self.validation_results[tx['hlc_timestamp']]['delegate_solutions']:
+                if self.validation_queue.is_duplicate(tx['hlc_timestamp'], msg[i]['signer']):
+                    # TODO what todo if you get another solution from the same node about the same tx
                     self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
                     return
 
-                self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][msg[i]['signer']] = msg[i]
-
+                # Add solution to this validation list for this tx
+                self.validation_queue.add_solution(
+                    hlc_timestamp=tx['hlc_timestamp'],
+                    node_vk=msg[i]['signer'],
+                    msg = msg[i]
+                )
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:

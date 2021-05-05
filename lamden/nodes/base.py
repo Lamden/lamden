@@ -1,5 +1,5 @@
 from lamden import storage, network, router, authentication, rewards, upgrade, contracts
-from lamden.nodes import execution, work, filequeue, txprocessing
+from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
 from lamden.nodes.masternode import contender
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
@@ -162,7 +162,7 @@ class Node:
         self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.file_queue = filequeue.FileQueue()
-        self.main_processing_queue = txprocessing.TxProcessing(
+        self.main_processing_queue = processing_queue.ProcessingQueue(
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
@@ -173,8 +173,11 @@ class Node:
             get_current_height=lambda: self.current_height
         )
 
-        self.needs_validation_queue = []
-        self.validation_results = {}
+        self.validation_queue = validation_queue.ValidationQueue(
+            consensus_percent=self.consensus_percent,
+            get_all_peers=self.get_all_peers,
+            wallet=self.wallet
+        )
 
         self.total_processed = 0
         # how long to hold items in queue before processing
@@ -187,7 +190,7 @@ class Node:
         )
 
         self.aggregator = contender.Aggregator(
-            validation_results=self.validation_results,
+            validation_queue=self.validation_queue,
             driver=self.driver,
         )
 
@@ -273,7 +276,7 @@ class Node:
             await self.process_main_queue()
 
         if len(self.needs_validation_queue) > 0:
-            await self.process_needs_validation_queue()
+            await self.validation_queue.process_next()
 
         await asyncio.sleep(5)
 
@@ -281,109 +284,20 @@ class Node:
         processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
-            tx = processing_results['tx']
-            results = processing_results['results']
-
-            # Store data about the tx so it can be processed for consensus later.
-            self.validation_results[tx['hlc_timestamp']] = {}
-            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'] = {}
-            self.validation_results[tx['hlc_timestamp']]['delegate_solutions'][self.wallet.verifying_key] = results[0]
-            self.validation_results[tx['hlc_timestamp']]['data'] = tx
-
             # add the hlc_timestamp to the needs validation queue for processing later
-            self.add_to_needs_validation_queue(tx['hlc_timestamp'])
+            self.validation_queue.append(processing_results)
 
             # TODO This currently just udpates DB State but it should be cache
             # self.update_cache_state(results[0])
 
             # Mint new block
+            results = processing_results['results']
             block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
             self.process_new_block(block)
 
         await self.send_block_results(results)
 
         await asyncio.sleep(0)
-
-    async def process_needs_validation_queue(self):
-        self.needs_validation_queue.sort()
-
-        transaction_info = self.validation_results[self.needs_validation_queue[0]]
-
-        consensus_info = await self.check_consensus(transaction_info)
-
-        if consensus_info['has_consensus']:
-            self.log.info(f'{self.needs_validation_queue[0]} HAS A CONSENSUS OF {consensus_info["solution"]}')
-
-            # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
-            self.needs_validation_queue.pop(0)
-
-            if consensus_info['matches_me']:
-                self.log.debug('I AM IN THE CONSENSUS')
-            else:
-                # TODO What to do if the node wasn't in the consensus group?
-
-                # Get the actual solution result
-                for delegate in transaction_info['delegate_solutions']:
-                    if transaction_info['delegate_solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
-                        results = transaction_info['delegate_solutions'][delegate]
-                        # TODO Do something with the actual consensus solution
-                        break
-
-    async def check_consensus(self, results):
-        # Get the number of current delegates
-        num_of_delegate = len(self.get_delegate_peers())
-
-        # TODO How to set consensus percentage?
-        # Cal the number of current delagates that need to agree
-        consensus_needed = math.ceil(num_of_delegate * (self.consensus_percent / 100))
-
-        # Get the current solutions
-        delegate_solutions = results['delegate_solutions']
-        total_solutions = len(delegate_solutions)
-
-        # Return if we don't have enough responses to attempt a consensus check
-        if (total_solutions < consensus_needed):
-            return {
-                'has_consensus': False,
-                'consensus_needed': consensus_needed,
-                'total_solutions': total_solutions
-            }
-
-        solutions = {}
-        for delegate in delegate_solutions:
-            solution = delegate_solutions[delegate]['merkle_tree']['leaves'][0]
-
-            if solution not in solutions:
-                solutions[solution] = 1
-            else:
-                solutions[solution] += 1
-
-        for solution in solutions:
-            # if one solution has enough matches to put it over the consensus_needed
-            # then we have consensus for this solution
-            if solutions[solution] > consensus_needed:
-                my_solution = delegate_solutions[self.wallet.verifying_key]['merkle_tree']['leaves'][0]
-                return {
-                    'has_consensus': True,
-                    'consensus_needed': consensus_needed,
-                    'solution': solution,
-                    'matches_me': my_solution == solution,
-                    'total_solutions': total_solutions
-                }
-
-        # If we get here then there was either not enough responses to get consensus or we had a split
-        # TODO what if split consensus? Probably very unlikely with a bunch of delegates but could happen
-        return {
-            'has_consensus': False,
-            'consensus_needed': consensus_needed,
-            'total_solutions': total_solutions
-        }
-
-    def add_to_main_processing_queue(self, item):
-        self.main_processing_queue.append(item)
-
-    def add_to_needs_validation_queue(self, item):
-        self.needs_validation_queue.append(item)
 
     async def send_block_results(self, results):
         await router.secure_multicast(

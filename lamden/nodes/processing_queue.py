@@ -3,7 +3,7 @@ import hashlib
 import asyncio
 from lamden.logger.base import get_logger
 
-class TxProcessing:
+class ProcessingQueue:
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, transaction_executor,
                  get_current_height, get_current_hash):
 
@@ -23,7 +23,7 @@ class TxProcessing:
         self.total_processed = 0
 
     def append(self, tx):
-        self.log.debug("ADDING TO QUEUE")
+        self.log.debug("ADDING TO MAIN PROCESSING QUEUE")
         self.main_processing_queue.append(tx)
 
     def process_next(self):
