@@ -34,8 +34,7 @@ class SBCInbox(router.Processor):
 
         peers = self.get_all_peers()
         for i in range(len(msg)):
-            self.log.info(
-                f'Received SOLUTION from {msg["signer"][:8]}')
+            self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
 
             if msg[i]['signer'] not in peers:
                 self.log.error('Contender sender is not a valid peer!')
