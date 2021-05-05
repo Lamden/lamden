@@ -15,7 +15,7 @@ class FileQueue:
 
     def append(self, tx):
         name = str(uuid.uuid4()) + self.EXTENSION
-        self.log(f'Saving to {self.root.joinpath(name)}')
+        self.log.debug(f'Saving to {self.root.joinpath(name)}')
         with open(self.root.joinpath(name), 'wb') as f:
             f.write(tx)
 
