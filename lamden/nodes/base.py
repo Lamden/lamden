@@ -301,6 +301,8 @@ class Node:
         await asyncio.sleep(0)
 
     async def send_block_results(self, results):
+        self.log.info("\n------ SENDING MY SOLUTION -----------")
+        self.log.debug(results)
         await router.secure_multicast(
             msg=results,
             service=CONTENDER_SERVICE,
