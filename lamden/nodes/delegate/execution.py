@@ -1,6 +1,6 @@
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.time import Datetime
-from contracting.db.encoder import encode, safe_repr
+from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
 from datetime import datetime
@@ -407,7 +407,11 @@ class SerialExecutor(TransactionExecutor):
         # Each TX Batch is basically a subblock from this point of view and probably for the near future
         tx_data = []
         for transaction in batch['transactions']:
-            tx_data.append(self.execute_tx(transaction=transaction,
+            # serialize json objects into contracting objects
+            tx = convert_dict(transaction)
+
+            # append results
+            tx_data.append(self.execute_tx(transaction=tx,
                                            environment=environment,
                                            stamp_cost=stamp_cost)
                            )
