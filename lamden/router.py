@@ -8,6 +8,9 @@ from zmq.auth.certs import load_certificate
 from lamden.logger.base import get_logger
 import pathlib
 import os
+
+import json
+
 CERT_DIR = 'cilsocks'
 DEFAULT_DIR = pathlib.Path.home() / CERT_DIR
 
@@ -141,10 +144,13 @@ class JSONAsyncInbox(AsyncInbox):
         _id = await self.socket.recv()
         msg = await self.socket.recv()
 
-        return _id, decode(msg)
+        msg = json.loads(msg)
+
+        return _id, msg
 
     async def return_msg(self, _id, msg):
-        msg = encode(msg).encode()
+        msg = json.dumps(msg, separators=(',', ':')).encode()
+
         await super().return_msg(_id, msg)
 
 

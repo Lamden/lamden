@@ -418,6 +418,8 @@ class TestJSONAsyncInbox(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
 
+        print(res[1])
+
         self.assertDictEqual(res[1], {'whats': 'good'})
 
         authenticator.authenticator.stop()
