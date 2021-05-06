@@ -109,9 +109,9 @@ class Network:
             while len(self.provider.joined) > 0:
                 socket, domain, key = self.provider.joined.pop(0)
 
-                self.peers[key] = (domain, socket)
-
-                self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
+                if self.peers.get(key) is None:
+                    self.peers[key] = (domain, socket)
+                    self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
     async def check_subscriptions(self):
         while self.running:
