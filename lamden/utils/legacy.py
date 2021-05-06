@@ -38,7 +38,7 @@ class DecimalDecoder(TypeDecoder):
     bson_type = Decimal128
 
     def transform_bson(self, value):
-        return value.to_decimal()
+        return int(value.to_decimal())
 
 
 type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
