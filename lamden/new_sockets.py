@@ -5,6 +5,19 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 import asyncio
 
 
+class Processor:
+    async def process_message(self, msg):
+        raise NotImplementedError
+
+
+class QueueProcessor(Processor):
+    def __init__(self):
+        self.q = []
+
+    async def process_message(self, msg):
+        self.q.append(msg)
+
+
 class Publisher:
     def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50):
         if socket_id.startswith('tcp'):
@@ -78,6 +91,7 @@ class Network:
 
         self.peers = {}
         self.subscriptions = []
+        self.services = {}
 
         self.running = False
 
@@ -87,18 +101,22 @@ class Network:
         asyncio.ensure_future(self.update_peers())
         asyncio.ensure_future(self.check_subscriptions())
 
+    def add_service(self, name: str, processor: Processor):
+        self.services[name] = processor
+
     async def update_peers(self):
         while self.running:
             while len(self.provider.joined) > 0:
                 socket, domain, key = self.provider.joined.pop(0)
 
-                self.peers[key] = socket
+                self.peers[key] = (domain, socket)
 
                 self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
     async def check_subscriptions(self):
         while self.running:
-            for socket in self.peers.values():
+            for key, value in self.peers.items():
+                domain, socket = value
                 try:
                     event = await socket.poll(timeout=50, flags=zmq.POLLIN)
                     if event:
@@ -106,9 +124,13 @@ class Network:
                         self.subscriptions.append(msg)
 
                 except zmq.error.ZMQError:
-                    socket.close() # broadcast error or try to handle it?
+                    socket.close()
+                    self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
 
     async def process_subscriptions(self):
         while self.running:
             while len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
+                processor = self.services.get(topic)
+                if processor is not None:
+                    processor.process_msg(msg)
