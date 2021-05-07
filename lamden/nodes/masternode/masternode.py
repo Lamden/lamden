@@ -105,6 +105,12 @@ class Masternode(base.Node):
         await super().start()
 
         members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
+
+        self.log.info('\n------ MEMBERS ------')
+        self.log.debug(members)
+        self.log.info('\n------ ME ------')
+        self.log.debug(self.wallet.verifying_key)
+
         assert self.wallet.verifying_key in members, 'You are not a masternode!'
 
         # Start the block server so others can run catchup using our node as a seed.
