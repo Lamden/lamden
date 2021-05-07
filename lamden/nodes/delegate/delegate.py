@@ -17,6 +17,7 @@ class Delegate(base.Node):
         await super().start()
 
         members = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+
         self.log.info('\n------ MEMBERS ------')
         self.log.debug(members)
         self.log.info('\n------ ME ------')

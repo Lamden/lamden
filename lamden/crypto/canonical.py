@@ -86,6 +86,9 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
         if sb_without_sigs.get('signatures') is not None:
             del sb_without_sigs['signatures']
 
+        log.info("\n------- SUBBLOCKS WITHOUT SIGSß --------")
+        log.debug(sb_without_sigs)
+
         encoded_sb = encode(sb_without_sigs)
 
         block_hasher.update(encoded_sb.encode())
