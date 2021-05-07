@@ -1,6 +1,6 @@
 from lamden import storage, network, router, authentication, rewards, upgrade, contracts
 from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes.masternode import contender
+from lamden.nodes import contender
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
@@ -12,11 +12,8 @@ from contracting.execution.executor import Executor
 from contracting.client import ContractingClient
 
 import time
-import math
 import hashlib
-import decimal
 import uvloop
-import json
 import gc
 import zmq.asyncio
 import asyncio

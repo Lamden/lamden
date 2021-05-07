@@ -4,6 +4,7 @@ from contracting.db.encoder import encode, safe_repr
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
 from datetime import datetime
+from lamden.crypto.wallet import verify
 
 import multiprocessing as mp
 import copy
@@ -465,6 +466,22 @@ class SerialExecutor(TransactionExecutor):
                 'subblock': i % parallelism,
                 'previous': previous_block_hash
             }
+
+            valid_sig_input_hash = verify(
+                vk=sbc['signer'],
+                msg=sbc['input_hash'],
+                signature=sbc['merkle_tree']['signature']
+            )
+
+            self.log.info(f'\n---- MY INPUT_HASH SIGNATURE IS VALID {valid_sig_input_hash} ----- ')
+
+            valid_sig_leaves = verify(
+                vk=sbc['signer'],
+                msg=sbc['merkle_tree']['leaves'][0],
+                signature=sbc['merkle_tree']['signature']
+            )
+
+            self.log.info(f'\n---- MY RESULTS SIGNATURE IS VALID {valid_sig_leaves} ----- ')
 
             sbc = format_dictionary(sbc)
 
