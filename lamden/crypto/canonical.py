@@ -63,11 +63,11 @@ def verify_merkle_tree(leaves, expected_root):
 
 
 def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
-    log.info("------- SUBBLOCKS --------")
+    log.info("\n------- SUBBLOCKS --------")
     log.debug(subblocks)
-    log.info("------- PREVIOUS HASH --------")
+    log.info("\n------- PREVIOUS HASH --------")
     log.debug(previous_hash)
-    log.info("------- BLOCK NUM --------")
+    log.info("\n------- BLOCK NUM --------")
     log.debug(block_num)
 
     block_hasher = hashlib.sha3_256()
