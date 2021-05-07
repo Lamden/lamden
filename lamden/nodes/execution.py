@@ -473,7 +473,7 @@ class SerialExecutor(TransactionExecutor):
                 signature=sbc['merkle_tree']['signature']
             )
 
-            self.log.info(f'\n---- MY INPUT_HASH SIGNATURE IS VALID {valid_sig_input_hash} ----- ')
+            log.info(f'\n---- MY INPUT_HASH SIGNATURE IS VALID {valid_sig_input_hash} ----- ')
 
             valid_sig_leaves = verify(
                 vk=sbc['signer'],
@@ -481,7 +481,7 @@ class SerialExecutor(TransactionExecutor):
                 signature=sbc['merkle_tree']['signature']
             )
 
-            self.log.info(f'\n---- MY RESULTS SIGNATURE IS VALID {valid_sig_leaves} ----- ')
+            log.info(f'\n---- MY RESULTS SIGNATURE IS VALID {valid_sig_leaves} ----- ')
 
             sbc = format_dictionary(sbc)
 
