@@ -290,16 +290,16 @@ class Node:
 
             # Mint new block
             results = processing_results['results']
+            await self.send_block_results(results)
+
             self.log.info("\n------ MY RESULTS -----------")
             self.log.debug(processing_results)
             self.log.info("\n-----------------------------")
-            block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
-            self.log.info("\n------ MY BLOCK -----------")
-            self.log.debug(block)
-            self.log.info("\n-----------------------------")
-            self.process_new_block(block)
-
-            await self.send_block_results(results)
+            # block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
+            # self.log.info("\n------ MY BLOCK -----------")
+            # self.log.debug(block)
+            # self.log.info("\n-----------------------------")
+            # self.process_new_block(block)
 
         await asyncio.sleep(0)
 
