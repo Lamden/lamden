@@ -322,18 +322,6 @@ class Node:
 
         signature = self.wallet.sign(input_hash)
 
-        ### TODO remove. this is for testing
-        valid_sig = verify(
-            vk=self.wallet.verifying_key,
-            msg=input_hash,
-            signature=signature
-        )
-
-        # if valid_sig:
-        #    self.log.info("---- TX SIGNATURE VALID ---")
-        ### To here
-
-
         return {
             'tx': tx,
             'timestamp': timestamp,

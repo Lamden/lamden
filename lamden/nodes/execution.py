@@ -467,22 +467,6 @@ class SerialExecutor(TransactionExecutor):
                 'previous': previous_block_hash
             }
 
-            valid_sig_input_hash = verify(
-                vk=sbc['signer'],
-                msg=sbc['input_hash'],
-                signature=sbc['merkle_tree']['signature']
-            )
-
-            log.info(f'\n---- MY INPUT_HASH SIGNATURE IS VALID {valid_sig_input_hash} ----- ')
-
-            valid_sig_leaves = verify(
-                vk=sbc['signer'],
-                msg=sbc['merkle_tree']['leaves'][0],
-                signature=sbc['merkle_tree']['signature']
-            )
-
-            log.info(f'\n---- MY RESULTS SIGNATURE IS VALID {valid_sig_leaves} ----- ')
-
             sbc = format_dictionary(sbc)
 
             subblocks.append(sbc)

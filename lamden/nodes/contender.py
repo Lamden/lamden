@@ -75,19 +75,9 @@ class SBCInbox(router.Processor):
 
         # Make sure signer is in the delegates
         if len(sbc['transactions']) == 0:
-            self.log.info('----- USING INPUT_HASH ------')
             message = sbc['input_hash']
         else:
-            self.log.info('----- USING LEAVES ------')
             message = sbc['merkle_tree']['leaves'][0]
-
-        self.log.debug({
-            'vk': sbc['signer'],
-            'msg': message,
-            'signature': sbc['merkle_tree']['signature']
-        })
-
-        self.log.info('-----------------------')
 
         valid_sig = verify(
             vk=sbc['signer'],

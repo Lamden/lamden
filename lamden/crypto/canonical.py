@@ -63,13 +63,6 @@ def verify_merkle_tree(leaves, expected_root):
 
 
 def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
-    log.info("\n------- SUBBLOCKS --------")
-    log.debug(subblocks)
-    log.info("\n------- PREVIOUS HASH --------")
-    log.debug(previous_hash)
-    log.info("\n------- BLOCK NUM --------")
-    log.debug(block_num)
-
     block_hasher = hashlib.sha3_256()
     block_hasher.update(bytes.fromhex(previous_hash))
 
@@ -86,19 +79,9 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
         if sb_without_sigs.get('signatures') is not None:
             del sb_without_sigs['signatures']
 
-        log.info("\n------- SUBBLOCKS WITHOUT SIGSß --------")
-        log.debug(sb_without_sigs)
-
         encoded_sb = encode(sb_without_sigs)
 
         block_hasher.update(encoded_sb.encode())
-
-    log.debug({
-        'hash': block_hasher.digest().hex(),
-        'number': block_num,
-        'previous': previous_hash,
-        'subblocks': deserialized_subblocks
-    })
 
     block = {
         'hash': block_hasher.digest().hex(),
