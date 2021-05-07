@@ -293,7 +293,7 @@ class Node:
 
             # Mint new block
             results = processing_results['results']
-            self.log.info("\n------ MY RESULTS -----------")
+            # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
             block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
             self.process_new_block(block)
@@ -321,14 +321,17 @@ class Node:
 
         signature = self.wallet.sign(input_hash)
 
+        ### TODO remove. this is for testing
         valid_sig = verify(
             vk=self.wallet.verifying_key,
             msg=input_hash,
             signature=signature
         )
 
-        if valid_sig:
-            self.log.info("---- TX SIGNATURE VALID ---")
+        # if valid_sig:
+        #    self.log.info("---- TX SIGNATURE VALID ---")
+        ### To here
+
 
         return {
             'tx': tx,
