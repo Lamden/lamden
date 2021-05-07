@@ -44,7 +44,7 @@ class ValidationQueue:
 
         self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = msg
 
-        self.log.debug(self.validation_results[hlc_timestamp]['delegate_solutions'])
+        # self.log.debug(self.validation_results[hlc_timestamp]['delegate_solutions'])
 
     async def process_next(self):
         self.needs_validation_queue.sort()
