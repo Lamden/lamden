@@ -5,7 +5,7 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import merklize, block_from_subblocks
-from lamden.crypto.wallet import Wallet
+from lamden.crypto.wallet import Wallet, verify
 
 from contracting.db.driver import ContractDriver, encode
 from contracting.execution.executor import Executor
@@ -320,6 +320,15 @@ class Node:
         input_hash = h.hexdigest()
 
         signature = self.wallet.sign(input_hash)
+
+        valid_sig = verify(
+            vk=self.wallet.verifying_key,
+            msg=input_hash,
+            signature=signature
+        )
+
+        if valid_sig:
+            self.log.info("---- TX SIGNATURE VALID ---")
 
         return {
             'tx': tx,
