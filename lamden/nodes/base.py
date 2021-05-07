@@ -293,8 +293,9 @@ class Node:
 
             # Mint new block
             results = processing_results['results']
-            # self.log.info("\n------ MY RESULTS -----------")
-            # self.log.debug(processing_results)
+            self.log.info("\n------ MY RESULTS -----------")
+            self.log.debug(processing_results)
+            self.log.info("\n-----------------------------")
             block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
             self.process_new_block(block)
 
