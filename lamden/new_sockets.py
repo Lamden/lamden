@@ -42,11 +42,11 @@ class Publisher:
 
         self.socket.bind(self.address)
 
-    def publish(self, topic, msg):
+    async def publish(self, topic, msg):
         m = json.dumps(msg).encode()
 
-        self.socket.send_string(topic, flags=zmq.SNDMORE)
-        self.socket.send(m)
+        await self.socket.send_string(topic, flags=zmq.SNDMORE)
+        await self.socket.send(m)
 
 
 class CredentialProvider:
@@ -70,6 +70,7 @@ class CredentialProvider:
 
         try:
             socket.connect(domain)
+            socket.subscribe(b'')
 
             self.joined.append((socket, domain, key))
             return True
@@ -111,7 +112,7 @@ class Network:
 
                 if self.peers.get(key) is None:
                     self.peers[key] = (domain, socket)
-                    self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
+                    await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
     async def check_subscriptions(self):
         while self.running:
@@ -125,7 +126,7 @@ class Network:
 
                 except zmq.error.ZMQError:
                     socket.close()
-                    self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
+                    await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
 
     async def process_subscriptions(self):
         while self.running:
