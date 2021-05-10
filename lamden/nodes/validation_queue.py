@@ -24,7 +24,7 @@ class ValidationQueue:
         self.add_solution(
             hlc_timestamp=tx['hlc_timestamp'],
             node_vk=self.wallet.verifying_key,
-            msg=results[0]
+            results=results[0]
         )
         self.needs_validation_queue.append(tx['hlc_timestamp'])
 
