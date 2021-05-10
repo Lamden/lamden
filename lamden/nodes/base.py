@@ -97,7 +97,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), debug=True, store=False, seed=None, bypass_catchup=False, node_type=None,
+                 driver=ContractDriver(), debug=True, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
@@ -105,7 +105,6 @@ class Node:
 
         self.driver = driver
         self.nonces = nonces
-        self.store = store
 
         self.seed = seed
 
@@ -462,16 +461,14 @@ class Node:
 
         self.socket_authenticator.refresh_governance_sockets()
 
-        # Store the block if it's a masternode
-        if self.store:
-            #encoded_block = encode(block)
-            #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
+        #encoded_block = encode(block)
+        #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
 
-            self.log.info("\n------ MY NEW BLOCK -----------")
-            self.log.debug(block)
-            self.log.info("\n-----------------------------")
+        self.log.info("\n------ MY NEW BLOCK -----------")
+        self.log.debug(block)
+        self.log.info("\n-----------------------------")
 
-            self.blocks.store_block(block)
+        self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()

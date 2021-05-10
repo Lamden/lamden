@@ -22,6 +22,7 @@ class Delegate(base.Node):
         self.log.debug(members)
         self.log.info('\n------ ME ------')
         self.log.debug(self.wallet.verifying_key)
+
         assert self.wallet.verifying_key in members, 'You are not a delegate!'
 
         asyncio.ensure_future(self.run())

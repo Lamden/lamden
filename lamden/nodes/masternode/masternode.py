@@ -88,7 +88,7 @@ class TransactionBatcher:
 
 class Masternode(base.Node):
     def __init__(self, webserver_port=8080, *args, **kwargs):
-        super().__init__(store=True, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         # Services
         self.webserver_port = webserver_port
         self.upgrade_manager.webserver_port = self.webserver_port
