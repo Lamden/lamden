@@ -235,7 +235,7 @@ class Node:
                 masternode = self.constitution['masternodes'][0]
                 masternode_ip = self.network.peers[masternode]
 
-            self.log.info(f'Masternode Seed VK: {masternode}')
+            # self.log.info(f'Masternode Seed VK: {masternode}')
 
             # Use this IP to request any missed blocks
             await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
