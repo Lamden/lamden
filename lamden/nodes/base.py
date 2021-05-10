@@ -173,6 +173,7 @@ class Node:
         self.validation_queue = validation_queue.ValidationQueue(
             consensus_percent=self.consensus_percent,
             get_all_peers=self.get_all_peers,
+            process_new_block=self.process_new_block,
             wallet=self.wallet
         )
 
@@ -292,14 +293,9 @@ class Node:
             results = processing_results['results']
             await self.send_block_results(results)
 
-            self.log.info("\n------ MY RESULTS -----------")
-            self.log.debug(processing_results)
-            self.log.info("\n-----------------------------")
-            # block = block_from_subblocks(results, self.current_hash, self.current_height + 1)
-            # self.log.info("\n------ MY BLOCK -----------")
-            # self.log.debug(block)
+            # self.log.info("\n------ MY RESULTS -----------")
+            # self.log.debug(processing_results)
             # self.log.info("\n-----------------------------")
-            # self.process_new_block(block)
 
         await asyncio.sleep(0)
 
@@ -456,8 +452,9 @@ class Node:
             nonces=self.nonces
         )
 
+    def process_new_block(self, results):
+        block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
 
-    def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
         self.update_database_state(block)
 
@@ -467,6 +464,10 @@ class Node:
         if self.store:
             #encoded_block = encode(block)
             #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
+
+            self.log.info("\n------ MY NEW BLOCK -----------")
+            self.log.debug(block)
+            self.log.info("\n-----------------------------")
 
             self.blocks.store_block(block)
 

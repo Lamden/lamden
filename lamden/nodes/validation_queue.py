@@ -3,7 +3,7 @@ import math
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
-    def __init__(self, consensus_percent, get_all_peers, wallet):
+    def __init__(self, consensus_percent, get_all_peers, process_new_block, wallet):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -12,6 +12,7 @@ class ValidationQueue:
 
         self.consensus_percent = consensus_percent
         self.get_all_peers = get_all_peers
+        self.process_new_block = process_new_block
         self.wallet = wallet
 
     def append(self, processing_results):
@@ -36,32 +37,40 @@ class ValidationQueue:
         except KeyError:
             return False
 
-    def add_solution(self, hlc_timestamp, node_vk, msg):
+    def add_solution(self, hlc_timestamp, node_vk, results):
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
             self.validation_results[hlc_timestamp]['delegate_solutions'] = {}
 
-        self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = msg
+        self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = results
 
         # self.log.debug(self.validation_results[hlc_timestamp]['delegate_solutions'])
 
     async def process_next(self):
         self.needs_validation_queue.sort()
+        next_hlc_timestamp = self.needs_validation_queue[0]
 
-        transaction_info = self.validation_results[self.needs_validation_queue[0]]
+        transaction_info = self.validation_results[next_hlc_timestamp]
 
         consensus_info = await self.check_consensus(transaction_info)
 
         if consensus_info['has_consensus']:
-            self.log.info(f'{self.needs_validation_queue[0]} HAS A CONSENSUS OF {consensus_info["solution"]}')
-
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
-            self.needs_validation_queue.pop(0)
+            try:
+                self.needs_validation_queue.remove(next_hlc_timestamp)
+            except ValueError:
+                self.log.error(f'{next_hlc_timestamp} was processed for consensus but did not exist in needs_validation queue!')
+
+            self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
             if consensus_info['matches_me']:
                 self.log.debug('I AM IN THE CONSENSUS')
+                # I'm in consensus so I can use my results
+                results = transaction_info['delegate_solutions'][self.wallet.verifying_key]
+
             else:
+                self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')
                 # TODO What to do if the node wasn't in the consensus group?
 
                 # Get the actual solution result
@@ -70,6 +79,8 @@ class ValidationQueue:
                         results = transaction_info['delegate_solutions'][delegate]
                         # TODO Do something with the actual consensus solution
                         break
+
+            self.process_new_block(results)
 
     async def check_consensus(self, transaction_info):
         # Get the number of current delegates
