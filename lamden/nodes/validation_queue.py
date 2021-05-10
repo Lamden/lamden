@@ -3,7 +3,7 @@ import math
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
-    def __init__(self, consensus_percent, get_all_peers, process_new_block, wallet):
+    def __init__(self, consensus_percent, get_all_peers, create_new_block, wallet):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -12,7 +12,7 @@ class ValidationQueue:
 
         self.consensus_percent = consensus_percent
         self.get_all_peers = get_all_peers
-        self.process_new_block = process_new_block
+        self.create_new_block = create_new_block
         self.wallet = wallet
 
     def append(self, processing_results):
@@ -80,7 +80,7 @@ class ValidationQueue:
                         # TODO Do something with the actual consensus solution
                         break
 
-            self.process_new_block(results)
+            self.create_new_block(results)
 
     async def check_consensus(self, transaction_info):
         # Get the number of current delegates

@@ -173,7 +173,7 @@ class Node:
         self.validation_queue = validation_queue.ValidationQueue(
             consensus_percent=self.consensus_percent,
             get_all_peers=self.get_all_peers,
-            process_new_block=self.process_new_block,
+            create_new_block=self.create_new_block,
             wallet=self.wallet
         )
 
@@ -452,9 +452,11 @@ class Node:
             nonces=self.nonces
         )
 
-    def process_new_block(self, results):
+    def create_new_block(self, results):
         block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
+        self.process_new_block(block)
 
+    def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
         self.update_database_state(block)
 
