@@ -2,6 +2,7 @@ import time
 import hashlib
 import asyncio
 from lamden.logger.base import get_logger
+from contracting.db.encoder import encode, safe_repr, convert_dict
 
 class ProcessingQueue:
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, transaction_executor,
@@ -45,7 +46,7 @@ class ProcessingQueue:
 
             return {
                 'tx': tx,
-                'results': results
+                'results': convert_dict(results)
             }
 
         return None
