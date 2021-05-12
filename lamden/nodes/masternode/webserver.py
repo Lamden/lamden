@@ -319,16 +319,22 @@ class WebServer:
     #     return response.json({'values': values, 'next': values[-1]}, status=200)
 
     async def get_latest_block(self, request):
+        self.driver.clear_pending_state()
+
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
+        self.driver.clear_pending_state()
+
         num = storage.get_latest_block_height(self.driver)
 
         return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_hash(self, request):
+        self.driver.clear_pending_state()
+
         return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)},
                              headers={'Access-Control-Allow-Origin': '*'})
 
