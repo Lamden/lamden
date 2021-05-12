@@ -46,7 +46,7 @@ class ProcessingQueue:
 
             return {
                 'tx': tx,
-                'results': convert_dict(results)
+                'results': results
             }
 
         return None
