@@ -6,6 +6,8 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
+from lamden.logger.base import get_logger
+log = get_logger('TRANSACTION')
 import json
 
 class TransactionException(Exception):
@@ -259,6 +261,7 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     amount = transaction['payload']['kwargs'].get('amount')
     if amount is None:
         amount = 0
+
 
     # Check if they have enough stamps for the operation
     has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)

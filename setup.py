@@ -12,7 +12,8 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
-        "sanic",
+        "uvloop==0.14.0",
+        "sanic==20.6.3",
         "coloredlogs",
         "pymongo",
         "pyzmq",

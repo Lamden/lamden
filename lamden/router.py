@@ -166,7 +166,7 @@ class Router(JSONAsyncInbox):
         service = msg.get('service')
         request = msg.get('msg')
 
-        self.log.debug(f'Message recieved for: {service}.')
+        ## self.log.debug(f'Message recieved for: {service}.')
 
         if service is None:
             self.log.debug('No service found for message.')
@@ -225,7 +225,7 @@ async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.async
 
     payload = encode(message).encode()
 
-    await socket.send(payload, flags=zmq.NOBLOCK)
+    await socket.send(payload)
     socket.close()
 
 

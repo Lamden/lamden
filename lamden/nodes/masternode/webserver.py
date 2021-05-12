@@ -12,7 +12,7 @@ from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from lamden.nodes.base import FileQueue
+from lamden.nodes.filequeue import FileQueue
 
 import ssl
 import asyncio
@@ -50,7 +50,7 @@ class NonceEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks: storage.BlockStorage,
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
                  queue=FileQueue(),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',

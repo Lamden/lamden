@@ -11,28 +11,62 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, expected_subblocks=4, debug=True):
+    def __init__(self, validation_queue, get_all_peers, debug=True):
         self.q = []
-        self.expected_subblocks = expected_subblocks
+        self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
 
         self.block_q = []
+        self.validation_queue = validation_queue
+        self.get_all_peers = get_all_peers
 
     async def process_message(self, msg):
+        # self.log.debug(msg)
+        # self.log.debug(f'message length: {len(msg)}')
         # Ignore bad message types
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
+
         if len(msg) != self.expected_subblocks:
-            self.log.error('Contender does not have enough subblocks!')
+            self.log.error(f'Contender has wrong number of subblocks! Has {len(msg)} and not {self.expected_subblocks}')
             return
 
+        peers = self.get_all_peers()
         for i in range(len(msg)):
+            self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
+
+            if msg[i]['signer'] not in peers:
+                self.log.error('Contender sender is not a valid peer!')
+                return
+
             if not self.sbc_is_valid(msg[i], i):
                 self.log.error('Contender is not valid!')
                 return
 
-            self.q.append(msg)
+            # Store the results by hlc_timestamps so we can reference them from the needs_validation list
+            for j in range(len(msg[i]['transactions'])):
+                # Get the transaction
+                tx = msg[i]['transactions'][j]
+
+                '''
+                if self.validation_queue.awaiting_validation(hlc_timestamp=tx['hlc_timestamp']):
+                    # TODO this could be a clue we are not in consensus or something else is wrong
+                    self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
+                    return
+                '''
+
+                if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer']):
+                    # TODO what todo if you get another solution from the same node about the same tx
+                    self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
+                    return
+
+                # Add solution to this validation list for this tx
+                self.validation_queue.add_solution(
+                    hlc_timestamp=tx['hlc_timestamp'],
+                    node_vk=msg[i]['signer'],
+                    results = msg[i]
+                )
 
     def sbc_is_valid(self, sbc, sb_idx=0):
         if sbc['subblock'] != sb_idx:
@@ -71,7 +105,7 @@ class SBCInbox(router.Processor):
                     self.log.error(txs[i])
                     return False
 
-        self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
+        ## self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
 
         return True
 
@@ -276,10 +310,11 @@ class BlockContender:
 
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
+    def __init__(self, validation_queue, get_all_peers, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
-            expected_subblocks=self.expected_subblocks,
+            validation_queue=validation_queue,
+            get_all_peers=get_all_peers
         )
 
         self.driver = driver

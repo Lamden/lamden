@@ -4,6 +4,7 @@ from contracting.db.encoder import encode, safe_repr
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
 from datetime import datetime
+from lamden.crypto.wallet import verify
 
 import multiprocessing as mp
 import copy
@@ -64,7 +65,6 @@ class ConflictResolutionExecutor(TransactionExecutor):
             environment=environment,
             auto_commit=False
         )
-        log.debug(output)
 
         tx_hash = tx_hash_from_tx(transaction)
 
@@ -129,7 +129,8 @@ class ConflictResolutionExecutor(TransactionExecutor):
             self.start_pool()
             log.debug(f'Initialyze pool {len(pool)}')
 
-        work_pool, active_workers = self.get_pool(len(batch['transactions']))
+        #work_pool, active_workers = self.get_pool(len(batch['transactions']))
+        work_pool, active_workers = self.get_pool(1)
         i = 0
         s = time()
         global result_list2
@@ -322,7 +323,7 @@ class SerialExecutor(TransactionExecutor):
     def __init__(self, executor: Executor):
         self.executor = executor
 
-    def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
+    def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
         # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
 
         # Add AUXILIARY_SALT for more randomness
@@ -370,10 +371,15 @@ class SerialExecutor(TransactionExecutor):
         else:
             # Calculate only stamp deductions
             to_deduct = output['stamps_used'] / stamp_cost
+            new_bal = 0
+            try:
+                new_bal = balance - to_deduct
+            except TypeError:
+                pass
 
             writes = [{
                 'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                'value': balance - to_deduct
+                'value': new_bal
             }]
 
         tx_output = {
@@ -382,7 +388,8 @@ class SerialExecutor(TransactionExecutor):
             'status': output['status_code'],
             'state': writes,
             'stamps_used': output['stamps_used'],
-            'result': safe_repr(output['result'])
+            'result': safe_repr(output['result']),
+            'hlc_timestamp': hlc_timestamp
         }
 
         tx_output = format_dictionary(tx_output)
@@ -406,11 +413,19 @@ class SerialExecutor(TransactionExecutor):
 
         # Each TX Batch is basically a subblock from this point of view and probably for the near future
         tx_data = []
-        for transaction in batch['transactions']:
+        '''
+        for transaction in batch['transaction']:
             tx_data.append(self.execute_tx(transaction=transaction,
                                            environment=environment,
                                            stamp_cost=stamp_cost)
                            )
+        '''
+
+        tx_data.append(self.execute_tx(transaction=batch['tx'],
+                                       hlc_timestamp=batch['hlc_timestamp'],
+                                       environment=environment,
+                                       stamp_cost=stamp_cost)
+                       )
 
         return tx_data
 
@@ -420,12 +435,12 @@ class SerialExecutor(TransactionExecutor):
         subblocks = []
         i = 0
 
-        for tx_batch in work:
+        for tx in work:
             results = self.execute_tx_batch(
                 driver=driver,
-                batch=tx_batch,
-                timestamp=tx_batch['timestamp'],
-                input_hash=tx_batch['input_hash'],
+                batch=tx,
+                timestamp=tx['timestamp'],
+                input_hash=tx['input_hash'],
                 stamp_cost=stamp_cost,
                 bhash=previous_block_hash,
                 num=current_height
@@ -435,8 +450,8 @@ class SerialExecutor(TransactionExecutor):
                 merkle = merklize([encode(r).encode() for r in results])
                 proof = wallet.sign(merkle[0])
             else:
-                merkle = merklize([bytes.fromhex(tx_batch['input_hash'])])
-                proof = wallet.sign(tx_batch['input_hash'])
+                merkle = merklize([bytes.fromhex(tx['input_hash'])])
+                proof = wallet.sign(tx['input_hash'])
 
             merkle_tree = {
                 'leaves': merkle,
@@ -444,7 +459,7 @@ class SerialExecutor(TransactionExecutor):
             }
 
             sbc = {
-                'input_hash': tx_batch['input_hash'],
+                'input_hash': tx['input_hash'],
                 'transactions': results,
                 'merkle_tree': merkle_tree,
                 'signer': wallet.verifying_key,

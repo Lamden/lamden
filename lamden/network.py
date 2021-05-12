@@ -156,7 +156,7 @@ class Network:
                 if result is None or result == {'response': 'ok'}:
                     continue
 
-                self.log.info(result)
+                # self.log.info(result)
 
                 for peer in result['peers']:
 
@@ -170,7 +170,7 @@ class Network:
 
                     if self.peers.get(peer['vk']) is None:
                         self.peers[peer['vk']] = peer['ip']
-                        self.log.info(f'{peer["vk"]} -> {peer["ip"]}')
+                        # self.log.info(f'{peer["vk"]} -> {peer["ip"]}')
 
             self.log.info(f'{len(self.peers)}/{len(vks)} peers found.')
         self.log.info(f'All peers found. Continuing startup process.')
