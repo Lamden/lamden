@@ -61,7 +61,7 @@ class ConflictResolutionExecutor(TransactionExecutor):
             function_name=transaction['payload']['function'],
             stamps=transaction['payload']['stamps_supplied'],
             stamp_cost=stamp_cost,
-            kwargs=transaction['payload']['kwargs'],
+            kwargs=convert_dict(transaction['payload']['kwargs']),
             environment=environment,
             auto_commit=False
         )
@@ -343,7 +343,7 @@ class SerialExecutor(TransactionExecutor):
             function_name=transaction['payload']['function'],
             stamps=transaction['payload']['stamps_supplied'],
             stamp_cost=stamp_cost,
-            kwargs=transaction['payload']['kwargs'],
+            kwargs=convert_dict(transaction['payload']['kwargs']),
             environment=environment,
             auto_commit=False
         )
