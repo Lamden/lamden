@@ -367,7 +367,7 @@ class SerialExecutor(TransactionExecutor):
 
         # Only apply the writes if the tx passes
         if output['status_code'] == 0:
-            writes = [convert_dict({'key': k, 'value': v}) for k, v in output['writes'].items()]
+            writes = [{'key': k, 'value': v} for k, v in output['writes'].items()]
         else:
             # Calculate only stamp deductions
             to_deduct = output['stamps_used'] / stamp_cost
