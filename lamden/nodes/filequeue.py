@@ -3,19 +3,21 @@ import uuid
 import shutil
 import os
 from contracting.db.encoder import decode
+import pathlib
 from lamden.logger.base import get_logger
+
+STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
+
 
 class FileQueue:
     EXTENSION = '.tx'
 
-    def __init__(self, root='./txs'):
-        self.log = get_logger('FILE QUEUE')
+    def __init__(self, root=STORAGE_HOME.joinpath('txq')):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
 
     def append(self, tx):
         name = str(uuid.uuid4()) + self.EXTENSION
-        self.log.debug(f'Saving to {self.root.joinpath(name)}')
         with open(self.root.joinpath(name), 'wb') as f:
             f.write(tx)
 
@@ -27,7 +29,7 @@ class FileQueue:
             i = decode(f.read())
 
         os.remove(item)
-        #self.log.debug(i)
+
         return i
 
     def flush(self):
