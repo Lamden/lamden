@@ -68,11 +68,6 @@ class ProcessingQueue:
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
-        # TODO PUT INTO BLOCK CONTENDER
-        # call get_current_best_block
-
-        # self.log.debug(self.upgrade_manager.node_type)
-
         self.total_processed = self.total_processed + 1
         self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
 
