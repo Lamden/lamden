@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 rm -R ~/.lamden
-rm -R ~/lamden/txs
+rm -R ~/lamden/txq
