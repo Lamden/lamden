@@ -463,7 +463,7 @@ class Node:
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs(results)
 
-        block = block_from_subblocks([bc.get_current_best_block()], self.current_hash, self.current_height + 1)
+        block = block_from_subblocks([results], self.current_hash, self.current_height + 1)
         self.process_new_block(block)
 
     def process_new_block(self, block):
