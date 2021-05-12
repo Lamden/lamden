@@ -9,6 +9,7 @@ import pathlib
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 from lamden.logger.base import get_logger
 from contracting.client import ContractingClient
+from lamden.crypto.wallet import Wallet
 
 CERT_DIR = 'cilsocks'
 DEFAULT_DIR = pathlib.Path.home() / CERT_DIR
@@ -95,3 +96,6 @@ class SocketAuthenticator:
 
     def configure(self):
         self.authenticator.configure_curve(domain=self.domain, location=self.cert_dir)
+
+
+
