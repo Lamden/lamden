@@ -99,6 +99,7 @@ class Network:
     def start(self):
         self.running = True
         self.authenticator.start()
+        self.publisher.setup_socket()
         asyncio.ensure_future(self.update_peers())
         asyncio.ensure_future(self.check_subscriptions())
 
