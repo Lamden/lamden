@@ -159,9 +159,11 @@ class Node:
         )
         '''
 
+        # wallet: Wallet, ctx: zmq.Context, socket_id
+
         self.network = Network(
             wallet=wallet,
-            ip_string=socket_base,
+            socket_id=socket_base,
             ctx=self.ctx,
         )
 
