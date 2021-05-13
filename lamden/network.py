@@ -181,5 +181,6 @@ class Network:
                 return False
         return True
 
+
 def discover_peer(vk, ip):
     pass
