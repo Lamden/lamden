@@ -235,14 +235,15 @@ class Node:
 
         await self.network.start()
         for vk, domain in self.bootnodes.items():
-        # Use it to boot up the network
-            socket = self.ctx.socket(zmq.SUB)
-            self.network.connect(
-                socket=socket,
-                domain=domain,
-                key=vk,
-                wallet=self.wallet
-            )
+            if vk != self.wallet.verifying_key:
+                # Use it to boot up the network
+                socket = self.ctx.socket(zmq.SUB)
+                self.network.connect(
+                    socket=socket,
+                    domain=domain,
+                    key=vk,
+                    wallet=self.wallet
+                )
 
         if not self.bypass_catchup:
             masternode_ip = None
