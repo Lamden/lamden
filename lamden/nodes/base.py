@@ -235,6 +235,13 @@ class Node:
 
         # Use it to boot up the network
         await self.network.start()
+        socket = self.ctx.socket(zmq.SUB)
+        self.network.connect(
+            socket=socket,
+            domain="tcp://",
+            key=,
+            wallet=self.wallet
+        )
 
         if not self.bypass_catchup:
             masternode_ip = None
