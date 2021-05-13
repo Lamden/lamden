@@ -102,7 +102,7 @@ class Network:
 
         self.running = False
 
-    def start(self):
+    async def start(self):
         self.running = True
         self.authenticator.start()
         self.publisher.setup_socket()
