@@ -2,8 +2,12 @@ import zmq
 import json
 from lamden.crypto.wallet import Wallet
 from zmq.auth.asyncio import AsyncioAuthenticator
-import asyncio
 from lamden.logger.base import get_logger
+
+from zmq.utils import z85
+import zmq.asyncio
+import asyncio
+from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 
 class Processor:
@@ -69,7 +73,7 @@ class CredentialProvider:
         socket.curve_secretkey = self.wallet.curve_sk
         socket.curve_publickey = self.wallet.curve_vk
 
-        socket.curve_serverkey = key
+        socket.curve_serverkey = z85_key(key)
 
         try:
             socket.connect(domain)
@@ -152,7 +156,7 @@ class Network:
         socket.curve_secretkey = wallet.curve_sk
         socket.curve_publickey = wallet.curve_vk
 
-        socket.curve_serverkey = key
+        socket.curve_serverkey = z85_key(key)
 
         try:
             socket.connect(domain)
@@ -162,3 +166,15 @@ class Network:
         except zmq.error.Again:
             socket.close()
             return False
+
+
+def z85_key(key):
+    bvk = bytes.fromhex(key)
+    try:
+        pk = crypto_sign_ed25519_pk_to_curve25519(bvk)
+    # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
+    except RuntimeError:
+        self.log.error('ED25519 Cryptographic error. The key provided is not within the cryptographic key space.')
+        return
+
+    zvk = z85.encode(pk).decode('utf-8')
