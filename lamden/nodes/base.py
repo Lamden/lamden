@@ -233,13 +233,15 @@ class Node:
 
         self.socket_authenticator.configure()
 
+        vk, domain = list(self.bootnodes.items())[0]
+
         # Use it to boot up the network
         await self.network.start()
         socket = self.ctx.socket(zmq.SUB)
         self.network.connect(
             socket=socket,
-            domain="tcp://",
-            key=,
+            domain=domain,
+            key=vk,
             wallet=self.wallet
         )
 
