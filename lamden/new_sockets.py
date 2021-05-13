@@ -136,20 +136,20 @@ class Network:
                 if processor is not None:
                     processor.process_msg(msg)
 
+    def connect(self, socket, domain, key, wallet, linger=500):
+        socket.setsockopt(zmq.LINGER, linger)
+        socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
-def connect(socket, domain, key, wallet, linger=500):
-    socket.setsockopt(zmq.LINGER, linger)
-    socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        socket.curve_secretkey = wallet.curve_sk
+        socket.curve_publickey = wallet.curve_vk
 
-    socket.curve_secretkey = wallet.curve_sk
-    socket.curve_publickey = wallet.curve_vk
+        socket.curve_serverkey = key
 
-    socket.curve_serverkey = key
-
-    try:
-        socket.connect(domain)
-        socket.subscribe(b'')
-        return True
-    except zmq.error.Again:
-        socket.close()
-        return False
+        try:
+            socket.connect(domain)
+            socket.subscribe(b'')
+            self.peers[key] = (domain, socket)
+            return True
+        except zmq.error.Again:
+            socket.close()
+            return False
