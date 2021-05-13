@@ -177,4 +177,4 @@ def z85_key(key):
         self.log.error('ED25519 Cryptographic error. The key provided is not within the cryptographic key space.')
         return
 
-    zvk = z85.encode(pk).decode('utf-8')
+    return z85.encode(pk).decode('utf-8')
