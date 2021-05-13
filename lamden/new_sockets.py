@@ -37,9 +37,10 @@ class Publisher:
     def setup_socket(self):
         self.socket = self.ctx.socket(zmq.PUB)
 
-        self.socket.setsockopt(zmq.CURVE_PUBLICKEY, self.wallet.curve_vk)
-        self.socket.setsockopt(zmq.CURVE_SECRETKEY, self.wallet.curve_sk)
-        self.socket.setsockopt(zmq.CURVE_SERVER, True)
+        self.socket.curve_secretkey = self.wallet.curve_sk
+        self.socket.curve_publickey = self.wallet.curve_vk
+
+        self.socket.curve_server = True
 
         self.socket.bind(self.address)
 
