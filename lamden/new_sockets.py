@@ -3,6 +3,7 @@ import json
 from lamden.crypto.wallet import Wallet
 from zmq.auth.asyncio import AsyncioAuthenticator
 import asyncio
+from lamden.logger.base import get_logger
 
 
 class Processor:
@@ -57,6 +58,7 @@ class CredentialProvider:
         self.linger = linger
 
     def callback(self, domain, key):
+        self.log.debug(f"Connection from {key} {domain}")
         # Try to connect to the publisher socket.
         socket = self.ctx.socket(zmq.SUB)
 
@@ -73,6 +75,7 @@ class CredentialProvider:
             socket.subscribe(b'')
 
             self.joined.append((socket, domain, key))
+            self.log.debug(f"Connected to {key} {domain}")
             return True
         except zmq.error.Again:
             socket.close()
@@ -84,6 +87,8 @@ class Network:
         self.wallet = wallet
         self.ctx = ctx
         self.socket_id = socket_id
+
+        self.log = get_logger("NEW_SOCKETS")
 
         self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
         self.publisher = Publisher(socket_id=self.socket_id, wallet=self.wallet, ctx=self.ctx)
@@ -138,6 +143,8 @@ class Network:
                     processor.process_msg(msg)
 
     def connect(self, socket, domain, key, wallet, linger=500):
+        self.log.debug(f"Connecting to {key} {domain}")
+
         socket.setsockopt(zmq.LINGER, linger)
         socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
