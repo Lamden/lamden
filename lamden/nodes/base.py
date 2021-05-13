@@ -138,9 +138,9 @@ class Node:
 
         self.seed_genesis_contracts()
 
-        self.socket_authenticator = authentication.SocketAuthenticator(
-            bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
-        )
+        # self.socket_authenticator = authentication.SocketAuthenticator(
+        #     bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
+        # )
 
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
@@ -224,11 +224,11 @@ class Node:
         self.bypass_catchup = bypass_catchup
 
     async def start(self):
-        asyncio.ensure_future(self.router.serve())
+        #asyncio.ensure_future(self.router.serve())
 
 
         # Get the set of VKs we are looking for from the constitution argument
-        vks = self.constitution['masternodes'] + self.constitution['delegates']
+        # vks = self.constitution['masternodes'] + self.constitution['delegates']
 
         for node in self.bootnodes.keys():
             self.socket_authenticator.add_verifying_key(node)
@@ -247,27 +247,27 @@ class Node:
                     wallet=self.wallet
                 )
 
-        if not self.bypass_catchup:
-            masternode_ip = None
-            masternode = None
-
-            if self.seed is not None:
-                for k, v in self.bootnodes.items():
-                    self.log.info(k, v)
-                    if v == self.seed:
-                        masternode = k
-                        masternode_ip = v
-            else:
-                masternode = self.constitution['masternodes'][0]
-                masternode_ip = self.network.peers[masternode]
-
-            # self.log.info(f'Masternode Seed VK: {masternode}')
-
-            # Use this IP to request any missed blocks
-            await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
-
-        # Refresh the sockets to accept new nodes
-        self.socket_authenticator.refresh_governance_sockets()
+        # if not self.bypass_catchup:
+        #     masternode_ip = None
+        #     masternode = None
+        #
+        #     if self.seed is not None:
+        #         for k, v in self.bootnodes.items():
+        #             self.log.info(k, v)
+        #             if v == self.seed:
+        #                 masternode = k
+        #                 masternode_ip = v
+        #     else:
+        #         masternode = self.constitution['masternodes'][0]
+        #         masternode_ip = self.network.peers[masternode]
+        #
+        #     # self.log.info(f'Masternode Seed VK: {masternode}')
+        #
+        #     # Use this IP to request any missed blocks
+        #     await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
+        #
+        # # Refresh the sockets to accept new nodes
+        # self.socket_authenticator.refresh_governance_sockets()
 
         # Start running
         self.running = True
