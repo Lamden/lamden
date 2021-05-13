@@ -174,7 +174,6 @@ def z85_key(key):
         pk = crypto_sign_ed25519_pk_to_curve25519(bvk)
     # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
     except RuntimeError:
-        self.log.error('ED25519 Cryptographic error. The key provided is not within the cryptographic key space.')
         return
 
     return z85.encode(pk).decode('utf-8')
