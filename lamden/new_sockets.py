@@ -85,7 +85,7 @@ class Network:
         self.ctx = ctx
         self.socket_id = socket_id
 
-        self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)
+        self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
         self.publisher = Publisher(socket_id=self.socket_id, wallet=self.wallet, ctx=self.ctx)
 
         self.authenticator = AsyncioAuthenticator(context=self.ctx)

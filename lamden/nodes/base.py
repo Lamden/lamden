@@ -6,6 +6,7 @@ from lamden.contracts import sync
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import merklize, block_from_subblocks
 from lamden.crypto.wallet import Wallet, verify
+from lamden.new_sockets import Network
 
 from contracting.db.driver import ContractDriver, encode
 from contracting.execution.executor import Executor
@@ -149,12 +150,19 @@ class Node:
             wallet=wallet,
             secure=True
         )
-
+        '''
         self.network = network.Network(
             wallet=wallet,
             ip_string=socket_base,
             ctx=self.ctx,
             router=self.router
+        )
+        '''
+
+        self.network = Network(
+            wallet=wallet,
+            ip_string=socket_base,
+            ctx=self.ctx,
         )
 
         # Number of core / processes we push to
@@ -226,7 +234,7 @@ class Node:
         self.socket_authenticator.configure()
 
         # Use it to boot up the network
-        await self.network.start(bootnodes=self.bootnodes, vks=vks)
+        await self.network.start()
 
         if not self.bypass_catchup:
             masternode_ip = None
