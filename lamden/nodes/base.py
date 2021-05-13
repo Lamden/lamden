@@ -233,17 +233,16 @@ class Node:
 
         self.socket_authenticator.configure()
 
-        vk, domain = list(self.bootnodes.items())[0]
-
-        # Use it to boot up the network
         await self.network.start()
-        socket = self.ctx.socket(zmq.SUB)
-        self.network.connect(
-            socket=socket,
-            domain=domain,
-            key=vk,
-            wallet=self.wallet
-        )
+        for vk, domain in self.bootnodes.items():
+        # Use it to boot up the network
+            socket = self.ctx.socket(zmq.SUB)
+            self.network.connect(
+                socket=socket,
+                domain=domain,
+                key=vk,
+                wallet=self.wallet
+            )
 
         if not self.bypass_catchup:
             masternode_ip = None
