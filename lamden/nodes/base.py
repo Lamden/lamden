@@ -230,10 +230,10 @@ class Node:
         # Get the set of VKs we are looking for from the constitution argument
         # vks = self.constitution['masternodes'] + self.constitution['delegates']
 
-        for node in self.bootnodes.keys():
-            self.socket_authenticator.add_verifying_key(node)
-
-        self.socket_authenticator.configure()
+        # for node in self.bootnodes.keys():
+        #     self.socket_authenticator.add_verifying_key(node)
+        #
+        # self.socket_authenticator.configure()
 
         await self.network.start()
         for vk, domain in self.bootnodes.items():
