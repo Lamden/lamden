@@ -230,7 +230,7 @@ def set_latest_block_height(h, driver: ContractDriver):
 
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
+    #nonces_to_delete = []
 
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
@@ -243,10 +243,12 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
                 value=tx['transaction']['payload']['nonce'] + 1
             )
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+            #nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
 
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
+    #for n in nonces_to_delete:
+    #    nonces.set_pending_nonce(*n, value=None)
+
+    nonces.flush_pending()
 
 
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
