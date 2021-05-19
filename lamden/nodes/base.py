@@ -331,6 +331,9 @@ class Node:
         await asyncio.sleep(0)
 
     async def send_block_results(self, results):
+        await self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results)
+        self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=results)
+        '''
         await router.secure_multicast(
             msg=results,
             service=CONTENDER_SERVICE,
@@ -339,6 +342,7 @@ class Node:
             peer_map=self.get_all_peers(not_me=True),
             ctx=self.ctx
         )
+        '''
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
