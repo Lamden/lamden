@@ -157,12 +157,13 @@ class Network:
             while len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
                 self.log.info("Processing message out of queue")
-                self.log.debug(topic)
-                self.log.debug(msg)
+                self.log.debug(topic.decode("utf-8"))
+                self.log.debug(json.loads(msg))
+                self.log.debug(self.services.get(topic.decode("utf-8")))
                 processor = self.services.get(topic.decode("utf-8"))
                 if processor is not None:
                     processor.process_msg(json.loads(msg))
-            await asyncio.sleep(10)
+            await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
         self.log.debug(f"Connecting to {key} {domain}")
