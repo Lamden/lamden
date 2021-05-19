@@ -131,7 +131,7 @@ class Network:
                 domain, socket = value
                 try:
                     event = await socket.poll(timeout=50, flags=zmq.POLLIN)
-                    self.log.info("got event!")
+                    # self.log.info("got event!")
                     if event:
                         msg = await socket.recv_multipart()
                         self.log.info("appending message to subscriptions queue")
