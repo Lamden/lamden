@@ -57,7 +57,7 @@ class Delegate(base.Node):
     async def run(self):
         self.log.info('Done starting. Beginning participation in consensus.')
         while self.running:
-            tasks = asyncio.Task.all_tasks(loop=loop)
+            tasks = asyncio.Task.all_tasks()
             self.log(f"Tasks in loop: {tasks}")
             await self.loop()
             await asyncio.sleep(0)
