@@ -3,7 +3,7 @@ import math
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
-    def __init__(self, consensus_percent, get_all_peers, create_new_block, wallet):
+    def __init__(self, consensus_percent, get_all_peers, create_new_block, wallet, stop):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -13,6 +13,8 @@ class ValidationQueue:
         self.consensus_percent = consensus_percent
         self.get_all_peers = get_all_peers
         self.create_new_block = create_new_block
+        self.stop = stop
+
         self.wallet = wallet
 
     def append(self, processing_results):
@@ -71,6 +73,8 @@ class ValidationQueue:
 
             else:
                 self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')
+                self.stop()
+                return
                 # TODO What to do if the node wasn't in the consensus group?
 
                 # Get the actual solution result

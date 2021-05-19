@@ -191,7 +191,8 @@ class Node:
             consensus_percent=self.consensus_percent,
             get_all_peers=self.get_all_peers,
             create_new_block=self.create_new_block,
-            wallet=self.wallet
+            wallet=self.wallet,
+            stop=self.stop
         )
 
         self.total_processed = 0
