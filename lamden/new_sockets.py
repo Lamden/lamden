@@ -159,8 +159,8 @@ class Network:
                 self.log.info("Processing message out of queue")
                 self.log.debug(topic.decode("utf-8"))
                 self.log.debug(json.loads(msg))
-                self.log.debug(self.services.get(topic.decode("utf-8")))
                 processor = self.services.get(topic.decode("utf-8"))
+                self.log.debug(processor)
                 if processor is not None:
                     processor.process_message(json.loads(msg))
             await asyncio.sleep(0)
