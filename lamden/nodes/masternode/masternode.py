@@ -144,7 +144,7 @@ class Masternode(base.Node):
         self.log.info('Fresh blockchain boot.')
 
         while self.running:
-            tasks = asyncio.Task.all_tasks()
+            tasks = await asyncio.Task.all_tasks()
             self.log(f"Tasks in loop: {tasks}")
             await self.loop()
             await asyncio.sleep(0)

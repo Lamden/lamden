@@ -25,7 +25,6 @@ class Delegate(base.Node):
 
         assert self.wallet.verifying_key in members, 'You are not a delegate!'
 
-        self.log.info("Ensure run future")
         asyncio.ensure_future(self.run())
 
 
@@ -57,7 +56,7 @@ class Delegate(base.Node):
     async def run(self):
         self.log.info('Done starting. Beginning participation in consensus.')
         while self.running:
-            tasks = asyncio.Task.all_tasks()
+            tasks = await asyncio.Task.all_tasks()
             self.log(f"Tasks in loop: {tasks}")
             await self.loop()
             await asyncio.sleep(0)
