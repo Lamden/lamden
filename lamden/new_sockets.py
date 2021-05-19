@@ -9,6 +9,8 @@ import zmq.asyncio
 import asyncio
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
+from contracting.db.encoder import encode, decode
+
 
 class Processor:
     async def process_message(self, msg):
@@ -49,7 +51,9 @@ class Publisher:
         self.socket.bind(self.address)
 
     async def publish(self, topic, msg):
-        m = json.dumps(msg).encode()
+        # m = json.dumps(msg).encode()
+        m = encode(msg).encode()
+
 
         await self.socket.send_string(topic, flags=zmq.SNDMORE)
         await self.socket.send(m)
