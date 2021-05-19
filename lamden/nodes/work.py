@@ -33,12 +33,10 @@ class WorkValidator(router.Processor):
         # TODO validate this is from an approved master
 
         masters = self.get_masters()
-        self.log.debug(masters)
-        '''
-        if msg['sender'] not in masters:
+        if msg['sender'] not in masters and msg['sender'] != self.wallet.verifying_key:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
-        '''
+
 
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')

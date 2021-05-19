@@ -249,10 +249,6 @@ class Node:
                     key=vk,
                     wallet=self.wallet
                 )
-                if did_connect:
-                    self.log.debug(f"Connected to vk: {vk} at {domain}")
-                else:
-                    self.log.debug(f"FAILED to connect to vk: {vk} at {domain}")
 
         # if not self.bypass_catchup:
         #     masternode_ip = None
@@ -371,8 +367,6 @@ class Node:
         if len(self.get_delegate_peers()) == 0:
             self.log.error('No one online!')
             return False
-
-        self.log.info(f'Sending work {tx_message["hlc_timestamp"]} {tx_message["tx"]["metadata"]["signature"][:12]}')
 
         await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message)
         self.network.add_message_to_subscriptions_queue(topic=WORK_SERVICE, msg=tx_message)

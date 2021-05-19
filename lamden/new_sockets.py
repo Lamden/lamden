@@ -143,7 +143,6 @@ class Network:
                     # self.log.info("got event!")
                     if event:
                         msg = await socket.recv_multipart()
-                        self.log.info("appending message to subscriptions queue")
                         self.subscriptions.append(msg)
 
                 except zmq.error.ZMQError as error:
@@ -156,11 +155,7 @@ class Network:
         while self.running:
             while len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
-                self.log.info("Processing message out of queue")
-                self.log.debug(topic.decode("utf-8"))
-                self.log.debug(json.loads(msg))
                 processor = self.services.get(topic.decode("utf-8"))
-                self.log.debug(processor)
                 if processor is not None:
                     await processor.process_message(json.loads(msg))
             await asyncio.sleep(0)
