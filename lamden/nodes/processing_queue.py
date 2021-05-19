@@ -41,6 +41,9 @@ class ProcessingQueue:
             # Pop it out of the main processing queue
             tx = self.main_processing_queue.pop(0)
 
+            assert tx, 'Transaction is None!'
+
+
             # Process it to get the results
             results = self.process_tx(tx)
 
