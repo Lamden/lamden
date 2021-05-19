@@ -145,7 +145,7 @@ class Masternode(base.Node):
 
         while self.running:
             loop = asyncio.get_event_loop()
-            self.log(f"Tasks in loop: {len(loop)}")
+            self.log(f"Tasks in loop: {len(loop._scheduled)}")
             await self.loop()
             await asyncio.sleep(0)
     '''
