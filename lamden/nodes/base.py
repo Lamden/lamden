@@ -172,8 +172,8 @@ class Node:
         self.executor = Executor(driver=self.driver)
         self.transaction_executor = execution.SerialExecutor(executor=self.executor)
 
-        self.new_block_processor = NewBlock(driver=self.driver)
-        self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
+        # self.new_block_processor = NewBlock(driver=self.driver)
+        # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.file_queue = filequeue.FileQueue()
         self.main_processing_queue = processing_queue.ProcessingQueue(
@@ -210,8 +210,10 @@ class Node:
             driver=self.driver
         )
 
-        self.router.add_service(WORK_SERVICE, self.work_validator)
-        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        # self.router.add_service(WORK_SERVICE, self.work_validator)
+        # self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        self.network.add_service(WORK_SERVICE, self.work_validator)
+        self.network.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         self.running = False
         self.upgrade = False
@@ -308,7 +310,7 @@ class Node:
         if len(self.validation_queue) > 0:
             await self.validation_queue.process_next()
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(0)
 
     async def process_main_queue(self):
         processing_results = self.main_processing_queue.process_next()
