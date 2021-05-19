@@ -66,16 +66,18 @@ class ValidationQueue:
 
             # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
+
             if consensus_info['matches_me']:
-                # self.log.debug('I AM IN THE CONSENSUS')
-                # I'm in consensus so I can use my results
+                self.log.debug(f'CONSENSUS {next_hlc_timestamp} {consensus_info["solution"][:12]}')
+
+                # I'm in consensus so create new block with my results
                 results = transaction_info['solutions'][self.wallet.verifying_key]
+                self.create_new_block(results)
 
             else:
-                self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')
-                self.stop()
-                return
+                # self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')
                 # TODO What to do if the node wasn't in the consensus group?
+                self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_info["my_solution"][:12]}')
 
                 # Get the actual solution result
                 for delegate in transaction_info['solutions']:
@@ -83,8 +85,10 @@ class ValidationQueue:
                         results = transaction_info['solutions'][delegate]
                         # TODO Do something with the actual consensus solution
                         break
+                self.stop()
+                return
 
-            self.create_new_block(results)
+
 
     async def check_consensus(self, transaction_info):
         # Get the number of current nodes and add yourself
@@ -124,6 +128,7 @@ class ValidationQueue:
                     'has_consensus': True,
                     'consensus_needed': consensus_needed,
                     'solution': solution,
+                    'my_solution': my_solution,
                     'matches_me': my_solution == solution,
                     'total_solutions': total_solutions
                 }
