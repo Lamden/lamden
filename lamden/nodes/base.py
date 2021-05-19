@@ -304,7 +304,6 @@ class Node:
             await self.send_tx_to_network(self.file_queue.pop(0))
 
         if len(self.main_processing_queue) > 0:
-            self.log.debug(len(self.main_processing_queue))
             await self.process_main_queue()
 
         if len(self.validation_queue) > 0:
@@ -504,7 +503,7 @@ class Node:
         # Update the state and refresh the sockets so new nodes can join
         self.update_database_state(block)
 
-        self.socket_authenticator.refresh_governance_sockets()
+        # self.socket_authenticator.refresh_governance_sockets()
 
         #encoded_block = encode(block)
         #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
