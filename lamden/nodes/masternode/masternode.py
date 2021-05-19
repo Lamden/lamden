@@ -145,6 +145,7 @@ class Masternode(base.Node):
 
         while self.running:
             await self.loop()
+            await asyncio.sleep(0)
     '''
     async def wait_for_block(self):
         self.new_block_processor.clean(self.current_height)

@@ -50,4 +50,4 @@ class WorkValidator(router.Processor):
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)
 
-        #self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
+        self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')

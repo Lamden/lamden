@@ -300,17 +300,15 @@ class Node:
         # mn_logger.debug('Work available. Continuing.')
 
     async def loop(self):
-        #await self.hang()
         if len(self.file_queue) > 0:
             await self.send_tx_to_network(self.file_queue.pop(0))
 
         if len(self.main_processing_queue) > 0:
+            self.log.debug(len(self.main_processing_queue))
             await self.process_main_queue()
 
         if len(self.validation_queue) > 0:
             await self.validation_queue.process_next()
-
-        await asyncio.sleep(0)
 
     async def process_main_queue(self):
         processing_results = self.main_processing_queue.process_next()

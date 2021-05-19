@@ -58,6 +58,7 @@ class Delegate(base.Node):
         self.log.info('Done starting. Beginning participation in consensus.')
         while self.running:
             await self.loop()
+            await asyncio.sleep(0)
 
     def stop(self):
         self.router.stop()
