@@ -98,7 +98,7 @@ class Masternode(base.Node):
         self.active_upgrade = False
 
     async def start(self):
-        self.router.add_service(base.BLOCK_SERVICE, BlockService(self.blocks, self.driver))
+        # self.router.add_service(base.BLOCK_SERVICE, BlockService(self.blocks, self.driver))
 
         await super().start()
 

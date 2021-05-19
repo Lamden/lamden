@@ -14,7 +14,6 @@ class WorkValidator(router.Processor):
         self.log = get_logger('Work Inbox')
         self.log.propagate = debug
 
-        self.masters = []
         self.tx_timeout = tx_timeout
 
         self.main_processing_queue = main_processing_queue
@@ -28,15 +27,18 @@ class WorkValidator(router.Processor):
         #self.log.debug(msg)
         self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
-
         #if msg["sender"] == self.wallet.verifying_key:
         #    return
 
-        self.masters = self.get_masters()
+        # TODO validate this is from an approved master
 
-        if msg['sender'] not in self.masters:
+        masters = self.get_masters()
+        self.log(masters)
+        '''
+        if msg['sender'] not in masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return
+        '''
 
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
