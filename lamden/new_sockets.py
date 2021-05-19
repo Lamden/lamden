@@ -146,6 +146,7 @@ class Network:
                     self.log.error(error)
                     socket.close()
                     # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
+            await asyncio.sleep(0)
 
     async def process_subscriptions(self):
         while self.running:
@@ -157,6 +158,7 @@ class Network:
                 processor = self.services.get(topic)
                 if processor is not None:
                     processor.process_msg(msg)
+            await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
         self.log.debug(f"Connecting to {key} {domain}")
