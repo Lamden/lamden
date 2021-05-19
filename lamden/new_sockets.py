@@ -159,9 +159,9 @@ class Network:
                 self.log.info("Processing message out of queue")
                 self.log.debug(topic)
                 self.log.debug(msg)
-                processor = self.services.get(topic)
+                processor = self.services.get(topic.decode("utf-8"))
                 if processor is not None:
-                    processor.process_msg(msg)
+                    processor.process_msg(json.loads(msg))
             await asyncio.sleep(10)
 
     def connect(self, socket, domain, key, wallet, linger=500):
