@@ -156,7 +156,7 @@ class Network:
         socket.curve_secretkey = wallet.curve_sk
         socket.curve_publickey = wallet.curve_vk
 
-        # socket.curve_serverkey.setsockopt_string(key)
+        # socket.curve_serverkey = z85_key(key)
 
         try:
             socket.connect(domain)
