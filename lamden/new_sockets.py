@@ -110,7 +110,7 @@ class Network:
         self.running = True
         # self.authenticator.start()
         self.publisher.setup_socket()
-        asyncio.ensure_future(self.update_peers())
+        #asyncio.ensure_future(self.update_peers())
         asyncio.ensure_future(self.check_subscriptions())
 
     def add_service(self, name: str, processor: Processor):
