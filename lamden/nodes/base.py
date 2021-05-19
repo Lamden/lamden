@@ -372,6 +372,7 @@ class Node:
         self.log.info(f'Sending work {tx_message["hlc_timestamp"]} {tx_message["tx"]["metadata"]["signature"][:12]}')
 
         await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message)
+        self.network.add_message_to_subscriptions_queue(topic=WORK_SERVICE, msg=tx_message)
 
         '''
             await router.secure_multicast(

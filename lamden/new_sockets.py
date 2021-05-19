@@ -54,7 +54,6 @@ class Publisher:
         # m = json.dumps(msg).encode()
         m = encode(msg).encode()
 
-
         await self.socket.send_string(topic, flags=zmq.SNDMORE)
         await self.socket.send(m)
 
@@ -121,6 +120,11 @@ class Network:
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
 
+    def add_message_to_subscriptions_queue(self, topic, msg):
+        encoded_msg =  encode(msg).encode()
+        encoded_topic = bytes(topic, 'utf-8')
+        self.subscriptions.append((encoded_topic, encoded_msg))
+
     async def update_peers(self):
         while self.running:
             while len(self.provider.joined) > 0:
@@ -158,7 +162,7 @@ class Network:
                 processor = self.services.get(topic)
                 if processor is not None:
                     processor.process_msg(msg)
-            await asyncio.sleep(0)
+            await asyncio.sleep(10)
 
     def connect(self, socket, domain, key, wallet, linger=500):
         self.log.debug(f"Connecting to {key} {domain}")
