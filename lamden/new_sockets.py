@@ -145,6 +145,7 @@ class Network:
                 topic, msg = self.subscriptions.pop(0)
                 processor = self.services.get(topic)
                 if processor is not None:
+                    self.log.debug(msg)
                     processor.process_msg(msg)
 
     def connect(self, socket, domain, key, wallet, linger=500):

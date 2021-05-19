@@ -371,14 +371,18 @@ class Node:
 
         self.log.info(f'Sending work {tx_message["hlc_timestamp"]} {tx_message["tx"]["metadata"]["signature"][:12]}')
 
-        await router.secure_multicast(
-            msg=tx_message,
-            service=WORK_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_all_peers(),
-            ctx=self.ctx
-        )
+        self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message)
+
+        '''
+            await router.secure_multicast(
+                msg=tx_message,
+                service=WORK_SERVICE,
+                cert_dir=self.socket_authenticator.cert_dir,
+                wallet=self.wallet,
+                peer_map=self.get_all_peers(),
+                ctx=self.ctx
+            )
+        '''
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
