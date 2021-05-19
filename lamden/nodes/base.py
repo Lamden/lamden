@@ -503,9 +503,9 @@ class Node:
         #encoded_block = encode(block)
         #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
 
-        self.log.info("\n------ MY NEW BLOCK -----------")
-        self.log.debug(block)
-        self.log.info("\n-----------------------------")
+        #self.log.info("\n------ MY NEW BLOCK -----------")
+        self.log.debug(f'block number: {block.number} - {block.hash}')
+        #self.log.info("\n-----------------------------")
 
         self.blocks.store_block(block)
 

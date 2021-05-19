@@ -33,7 +33,7 @@ class ValidationQueue:
 
     def is_duplicate(self, hlc_timestamp, node_vk):
         try:
-            return self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk]
+            return self.validation_results[hlc_timestamp]['solutions'][node_vk]
         except KeyError:
             return False
 
@@ -41,11 +41,11 @@ class ValidationQueue:
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
-            self.validation_results[hlc_timestamp]['delegate_solutions'] = {}
+            self.validation_results[hlc_timestamp]['solutions'] = {}
 
-        self.validation_results[hlc_timestamp]['delegate_solutions'][node_vk] = results
+        self.validation_results[hlc_timestamp]['solutions'][node_vk] = results
 
-        # self.log.debug(self.validation_results[hlc_timestamp]['delegate_solutions'])
+        # self.log.debug(self.validation_results[hlc_timestamp]['solutions'])
 
     async def process_next(self):
         self.needs_validation_queue.sort()
@@ -67,32 +67,32 @@ class ValidationQueue:
             if consensus_info['matches_me']:
                 self.log.debug('I AM IN THE CONSENSUS')
                 # I'm in consensus so I can use my results
-                results = transaction_info['delegate_solutions'][self.wallet.verifying_key]
+                results = transaction_info['solutions'][self.wallet.verifying_key]
 
             else:
                 self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')
                 # TODO What to do if the node wasn't in the consensus group?
 
                 # Get the actual solution result
-                for delegate in transaction_info['delegate_solutions']:
-                    if transaction_info['delegate_solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
-                        results = transaction_info['delegate_solutions'][delegate]
+                for delegate in transaction_info['solutions']:
+                    if transaction_info['solutions'][delegate]['merkle_tree']['leaves'] == consensus_info['solution']:
+                        results = transaction_info['solutions'][delegate]
                         # TODO Do something with the actual consensus solution
                         break
 
             self.create_new_block(results)
 
     async def check_consensus(self, transaction_info):
-        # Get the number of current delegates
-        num_of_peers = len(self.get_all_peers())
+        # Get the number of current nodes and add yourself
+        num_of_peers = len(self.get_all_peers()) + 1
 
         # TODO How to set consensus percentage?
         # Cal the number of current delagates that need to agree
         consensus_needed = math.ceil(num_of_peers * (self.consensus_percent / 100))
 
         # Get the current solutions
-        delegate_solutions = transaction_info['delegate_solutions']
-        total_solutions = len(delegate_solutions)
+        solutions = transaction_info['solutions']
+        total_solutions = len(solutions)
 
         # Return if we don't have enough responses to attempt a consensus check
         if (total_solutions < consensus_needed):
@@ -102,20 +102,20 @@ class ValidationQueue:
                 'total_solutions': total_solutions
             }
 
-        solutions = {}
-        for delegate in delegate_solutions:
-            solution = delegate_solutions[delegate]['merkle_tree']['leaves'][0]
+        solution_tracker = {}
+        for node in solutions:
+            solution = solutions[node]['merkle_tree']['leaves'][0]
 
-            if solution not in solutions:
-                solutions[solution] = 1
+            if solution not in solution_tracker:
+                solution_tracker[solution] = 1
             else:
-                solutions[solution] += 1
+                solution_tracker[solution] += 1
 
-        for solution in solutions:
+        for solution in solution_tracker:
             # if one solution has enough matches to put it over the consensus_needed
             # then we have consensus for this solution
-            if solutions[solution] > consensus_needed:
-                my_solution = delegate_solutions[self.wallet.verifying_key]['merkle_tree']['leaves'][0]
+            if solution_tracker[solution] > consensus_needed:
+                my_solution = solutions[self.wallet.verifying_key]['merkle_tree']['leaves'][0]
                 return {
                     'has_consensus': True,
                     'consensus_needed': consensus_needed,

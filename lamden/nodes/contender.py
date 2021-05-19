@@ -35,7 +35,7 @@ class SBCInbox(router.Processor):
 
         peers = self.get_all_peers()
         for i in range(len(msg)):
-            self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
+            # self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
 
             if msg[i]['signer'] not in peers and msg[i]['signer'] != self.wallet.verifying_key:
                 self.log.error('Contender sender is not a valid peer!')
@@ -56,7 +56,7 @@ class SBCInbox(router.Processor):
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
                 '''
-
+                self.log.info(msg[i]['signer'])
                 if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer']):
                     # TODO what todo if you get another solution from the same node about the same tx
                     self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
@@ -172,7 +172,7 @@ class SubBlockContender:
         # Create a new potential solution if it is a new result hash
         if self.potential_solutions.get(result_hash) is None:
             self.potential_solutions[result_hash] = PotentialSolution(struct=sbc)
-            self.log.info(f'New result found. Creating a new solution: {result_hash[:8]}')
+            # self.log.info(f'New result found. Creating a new solution: {result_hash[:8]}')
 
         # Add the signature to the potential solution
         p = self.potential_solutions.get(result_hash)
@@ -181,9 +181,9 @@ class SubBlockContender:
         # Update the best solution if the current potential solution now has more votes
         if self.best_solution is None or p.votes > self.best_solution.votes:
             self.best_solution = p
-            self.log.info(f'New best result: {result_hash[:8]}')
+            # self.log.info(f'New best result: {result_hash[:8]}')
 
-        self.log.info(f'Best solution votes: {self.best_solution.votes}')
+        # self.log.info(f'Best solution votes: {self.best_solution.votes}')
 
         self.total_responses += 1
 
