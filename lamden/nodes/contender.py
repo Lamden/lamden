@@ -56,7 +56,7 @@ class SBCInbox(router.Processor):
                     self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
                     return
                 '''
-                self.log.info(msg[i]['signer'])
+                # self.log.info(msg[i]['signer'])
                 if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer'] and msg[i]['signer'] != self.wallet.verifying_key):
                     # TODO what todo if you get another solution from the same node about the same tx
                     self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
