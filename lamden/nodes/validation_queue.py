@@ -62,7 +62,7 @@ class ValidationQueue:
             except ValueError:
                 self.log.error(f'{next_hlc_timestamp} was processed for consensus but did not exist in needs_validation queue!')
 
-            self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
+            # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
             if consensus_info['matches_me']:
                 # self.log.debug('I AM IN THE CONSENSUS')
