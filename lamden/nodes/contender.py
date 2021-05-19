@@ -11,11 +11,12 @@ import time
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_queue, get_all_peers, debug=True):
+    def __init__(self, validation_queue, get_all_peers, wallet, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
         self.log.propagate = debug
+        self.wallet = wallet
 
         self.block_q = []
         self.validation_queue = validation_queue
@@ -36,7 +37,7 @@ class SBCInbox(router.Processor):
         for i in range(len(msg)):
             self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
 
-            if msg[i]['signer'] not in peers:
+            if msg[i]['signer'] not in peers and msg[i]['signer'] != self.wallet.verifying_key:
                 self.log.error('Contender sender is not a valid peer!')
                 return
 
@@ -310,11 +311,12 @@ class BlockContender:
 
 # Can probably move this into the masternode. Move the sbc inbox there and deprecate this class
 class Aggregator:
-    def __init__(self, validation_queue, get_all_peers, driver, expected_subblocks=4, seconds_to_timeout=6, debug=True):
+    def __init__(self, validation_queue, get_all_peers, driver, wallet, expected_subblocks=4, seconds_to_timeout=6, debug=True):
         self.expected_subblocks = expected_subblocks
         self.sbc_inbox = SBCInbox(
             validation_queue=validation_queue,
-            get_all_peers=get_all_peers
+            get_all_peers=get_all_peers,
+            wallet=wallet
         )
 
         self.driver = driver
