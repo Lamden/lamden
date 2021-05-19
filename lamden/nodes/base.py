@@ -213,7 +213,7 @@ class Node:
         # self.router.add_service(WORK_SERVICE, self.work_validator)
         # self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
         self.network.add_service(WORK_SERVICE, self.work_validator)
-        self.network.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        self.network.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
         self.running = False
         self.upgrade = False
