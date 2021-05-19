@@ -131,21 +131,25 @@ class Network:
                 domain, socket = value
                 try:
                     event = await socket.poll(timeout=50, flags=zmq.POLLIN)
+                    self.log.info("got event!")
                     if event:
                         msg = await socket.recv_multipart()
+                        self.log.info("appending message to subscriptions queue")
                         self.subscriptions.append(msg)
 
-                except zmq.error.ZMQError:
+                except zmq.error.ZMQError as error:
+                    self.log.error(error)
                     socket.close()
-                    await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
+                    # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
 
     async def process_subscriptions(self):
         while self.running:
             while len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
+                self.log.info("Processing message out of queue")
+                self.log.debug(msg)
                 processor = self.services.get(topic)
                 if processor is not None:
-                    self.log.debug(msg)
                     processor.process_msg(msg)
 
     def connect(self, socket, domain, key, wallet, linger=500):
