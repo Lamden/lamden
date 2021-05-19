@@ -33,7 +33,7 @@ class WorkValidator(router.Processor):
         # TODO validate this is from an approved master
 
         masters = self.get_masters()
-        self.log(masters)
+        self.log.debug(masters)
         '''
         if msg['sender'] not in masters:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
