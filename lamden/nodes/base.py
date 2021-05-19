@@ -505,7 +505,7 @@ class Node:
         #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
 
         #self.log.info("\n------ MY NEW BLOCK -----------")
-        self.log.debug(block)
+        # self.log.debug(block)
         hlc_timestamp = block['subblocks'][0]['transactions'][0]['hlc_timestamp']
         self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
         #self.log.info("\n-----------------------------")
