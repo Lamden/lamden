@@ -162,7 +162,7 @@ class Network:
                 self.log.debug(self.services.get(topic.decode("utf-8")))
                 processor = self.services.get(topic.decode("utf-8"))
                 if processor is not None:
-                    processor.process_msg(json.loads(msg))
+                    processor.process_message(json.loads(msg))
             await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
