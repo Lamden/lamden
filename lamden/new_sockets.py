@@ -116,6 +116,7 @@ class Network:
         self.publisher.setup_socket()
         #asyncio.ensure_future(self.update_peers())
         asyncio.ensure_future(self.check_subscriptions())
+        asyncio.ensure_future(self.process_subscriptions())
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
@@ -151,6 +152,7 @@ class Network:
             while len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
                 self.log.info("Processing message out of queue")
+                self.log.debug(topic)
                 self.log.debug(msg)
                 processor = self.services.get(topic)
                 if processor is not None:
