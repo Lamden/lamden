@@ -506,8 +506,8 @@ class Node:
 
         #self.log.info("\n------ MY NEW BLOCK -----------")
         # self.log.debug(block)
-        hlc_timestamp = block['subblocks'][0]['transactions'][0]['hlc_timestamp']
-        self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
+        # hlc_timestamp = block['subblocks'][0]['transactions'][0]['hlc_timestamp']
+        # self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
         #self.log.info("\n-----------------------------")
 
         self.blocks.store_block(block)
