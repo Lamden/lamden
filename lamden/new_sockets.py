@@ -41,10 +41,10 @@ class Publisher:
     def setup_socket(self):
         self.socket = self.ctx.socket(zmq.PUB)
 
-        self.socket.curve_secretkey = self.wallet.curve_sk
-        self.socket.curve_publickey = self.wallet.curve_vk
+        # self.socket.curve_secretkey = self.wallet.curve_sk
+        # self.socket.curve_publickey = self.wallet.curve_vk
 
-        self.socket.curve_server = True
+        # self.socket.curve_server = True
 
         self.socket.bind(self.address)
 
@@ -95,10 +95,10 @@ class Network:
 
         self.log = get_logger("NEW_SOCKETS")
 
-        self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
+        # self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
         self.publisher = Publisher(socket_id=self.socket_id, wallet=self.wallet, ctx=self.ctx)
 
-        self.authenticator = AsyncioAuthenticator(context=self.ctx)
+        # self.authenticator = AsyncioAuthenticator(context=self.ctx)
 
         self.peers = {}
         self.subscriptions = []
@@ -108,7 +108,7 @@ class Network:
 
     async def start(self):
         self.running = True
-        self.authenticator.start()
+        # self.authenticator.start()
         self.publisher.setup_socket()
         asyncio.ensure_future(self.update_peers())
         asyncio.ensure_future(self.check_subscriptions())
@@ -153,8 +153,8 @@ class Network:
         socket.setsockopt(zmq.LINGER, linger)
         socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
-        socket.curve_secretkey = wallet.curve_sk
-        socket.curve_publickey = wallet.curve_vk
+        # socket.curve_secretkey = wallet.curve_sk
+        # socket.curve_publickey = wallet.curve_vk
 
         # socket.curve_serverkey = z85_key(key)
 
@@ -163,7 +163,8 @@ class Network:
             socket.subscribe(b'')
             self.peers[key] = (domain, socket)
             return True
-        except zmq.error.Again:
+        except zmq.error.Again as error:
+            self.log.error(error)
             socket.close()
             return False
 

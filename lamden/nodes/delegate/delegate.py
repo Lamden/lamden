@@ -54,7 +54,6 @@ class Delegate(base.Node):
 
         await self.update_sockets()
 
-
     async def run(self):
         self.log.info('Done starting. Beginning participation in consensus.')
         while self.running:

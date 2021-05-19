@@ -236,16 +236,23 @@ class Node:
         # self.socket_authenticator.configure()
 
         await self.network.start()
+        self.log.info("Waiting 10 seconds for other nodes to start up their publishers")
+        await asyncio.sleep(10)
+
         for vk, domain in self.bootnodes.items():
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
                 socket = self.ctx.socket(zmq.SUB)
-                self.network.connect(
+                did_connect = self.network.connect(
                     socket=socket,
                     domain=domain,
                     key=vk,
                     wallet=self.wallet
                 )
+                if did_connect:
+                    self.log.debug(f"Connected to vk: {vk} at {domain}")
+                else:
+                    self.log.debug(f"FAILED to connect to vk: {vk} at {domain}")
 
         # if not self.bypass_catchup:
         #     masternode_ip = None
