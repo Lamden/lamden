@@ -238,7 +238,7 @@ class Node:
         await self.network.start()
         self.log.info("Waiting 10 seconds for other nodes to start up their publishers")
         await asyncio.sleep(10)
-
+        self.log.debug("Continuing")
         for vk, domain in self.bootnodes.items():
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
