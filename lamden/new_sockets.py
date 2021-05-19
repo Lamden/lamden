@@ -153,7 +153,7 @@ class Network:
 
     async def process_subscriptions(self):
         while self.running:
-            while len(self.subscriptions) > 0:
+            if len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
                 processor = self.services.get(topic.decode("utf-8"))
                 if processor is not None:
