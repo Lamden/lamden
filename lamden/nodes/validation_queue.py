@@ -16,7 +16,7 @@ class ValidationQueue:
         self.wallet = wallet
 
     def append(self, processing_results):
-        self.log.debug("ADDING TO NEEDS VALIDATION QUEUE")
+        # self.log.debug("ADDING TO NEEDS VALIDATION QUEUE")
 
         tx = processing_results['tx']
         results = processing_results['results']
@@ -65,7 +65,7 @@ class ValidationQueue:
             self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
             if consensus_info['matches_me']:
-                self.log.debug('I AM IN THE CONSENSUS')
+                # self.log.debug('I AM IN THE CONSENSUS')
                 # I'm in consensus so I can use my results
                 results = transaction_info['solutions'][self.wallet.verifying_key]
 

@@ -255,7 +255,7 @@ class BlockContender:
 
             # If it's the first contender, create a new object and store it
             if self.subblock_contenders[sbc['subblock']] is None:
-                self.log.info('First block. Making a new solution object.')
+                #self.log.info('First block. Making a new solution object.')
                 s = SubBlockContender(
                     input_hash=sbc['input_hash'],
                     index=sbc['subblock'],
