@@ -15,6 +15,7 @@ class FileQueue:
     def __init__(self, root=STORAGE_HOME.joinpath('txq')):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
+        self.log = get_logger("FILE QUEUE")
 
     def append(self, tx):
         name = str(uuid.uuid4()) + self.EXTENSION
@@ -29,6 +30,9 @@ class FileQueue:
             i = decode(f.read())
 
         os.remove(item)
+
+        if i:
+            self.log.info("POPPED TX")
 
         return i
 
