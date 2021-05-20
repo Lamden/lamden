@@ -504,6 +504,9 @@ class Node:
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
         self.log.debug(encode(block).encode())
         self.update_database_state(block)
+        self.driver.commit()
+        self.driver.clear_pending_state()
+        gc.collect()
 
     def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
