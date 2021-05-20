@@ -326,8 +326,6 @@ class Node:
             # self.log.debug(processing_results)
             # self.log.info("\n-----------------------------")
 
-        await asyncio.sleep(0)
-
     async def send_block_results(self, results):
         await self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results)
         self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=results)
