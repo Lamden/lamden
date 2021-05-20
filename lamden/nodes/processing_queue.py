@@ -25,7 +25,7 @@ class ProcessingQueue:
         self.total_processed = 0
 
     def append(self, tx):
-        # self.log.debug("ADDING TO MAIN PROCESSING QUEUE")
+        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE")
         self.main_processing_queue.append(tx)
 
     def process_next(self):
