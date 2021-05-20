@@ -319,7 +319,7 @@ class Node:
 
             # Mint new block
             results = processing_results['results']
-            # await self.send_block_results(results)
+            await self.send_block_results(results)
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
