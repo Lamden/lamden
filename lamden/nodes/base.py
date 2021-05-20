@@ -502,7 +502,7 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.log.debug(block)
+        self.log.debug(encode(block).encode())
         self.update_database_state(block)
 
     def process_new_block(self, block):
