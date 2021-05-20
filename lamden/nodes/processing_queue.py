@@ -20,6 +20,7 @@ class ProcessingQueue:
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
 
+
         # TODO There are just for testing
         self.total_processed = 0
 

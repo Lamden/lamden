@@ -314,12 +314,13 @@ class Node:
             # add the hlc_timestamp to the needs validation queue for processing later
             self.validation_queue.append(processing_results)
 
+            results = processing_results['results']
+
             # TODO This currently just udpates DB State but it should be cache
-            # self.update_cache_state(results[0])
+            self.save_cached_state(results=results)
 
             # Mint new block
-            results = processing_results['results']
-            await self.send_block_results(results)
+            await self.send_block_results(results=results)
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
@@ -495,9 +496,18 @@ class Node:
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
         self.process_new_block(block)
 
+    def save_cached_state(self, results):
+        bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
+        bc.add_sbcs([results])
+        subblocks = bc.get_current_best_block()
+
+        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
+        self.update_database_state(block)
+
     def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
-        self.update_database_state(block)
+        # TODO re-enable when cached state is implemented
+        # self.update_database_state(block)
 
         # self.socket_authenticator.refresh_governance_sockets()
 
