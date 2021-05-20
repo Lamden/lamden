@@ -76,7 +76,6 @@ class ProcessingQueue:
         self.total_processed = self.total_processed + 1
         self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
         self.log.info('{} Left in queue'.format(len(self.main_processing_queue)))
-        self.log.debug(results)
 
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
