@@ -110,7 +110,7 @@ class Node:
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
-        self.processing_delay = 1
+        self.processing_delay = 2
 
         self.driver = driver
         self.nonces = nonces
