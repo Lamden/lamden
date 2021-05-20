@@ -33,18 +33,19 @@ class ProcessingQueue:
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
-        time_in_queue = self.hlc_clock.check_timestamp_age(timestamp=self.main_processing_queue[0]['hlc_timestamp'])
+        # Pop it out of the main processing queue
+        tx = self.main_processing_queue.pop(0)
+        if tx is None:
+            # not sure why this would be but it's a check anyway
+            return
+
+        # determine its age
+        time_in_queue = self.hlc_clock.check_timestamp_age(timestamp=tx['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
 
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue_seconds > self.processing_delay:
-            # Pop it out of the main processing queue
-            tx = self.main_processing_queue.pop(0)
-
-            assert tx, 'Transaction is None!'
-
-
             # Process it to get the results
             results = self.process_tx(tx)
 
@@ -52,8 +53,10 @@ class ProcessingQueue:
                 'tx': tx,
                 'results': results
             }
-
-        return None
+        else:
+            #put it back in queue
+            self.main_processing_queue.append(tx)
+            return None
 
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
