@@ -157,7 +157,7 @@ class WebServer:
                                  headers={'Access-Control-Allow-Origin': '*'})
 
         tx_raw = _json.loads(request.body)
-        log.error(tx_raw)
+        log.info(tx_raw)
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:
@@ -200,7 +200,7 @@ class WebServer:
 
         # Add TX to the processing queue
         self.queue.append(request.body)
-        log.error('Added to q')
+        log.info('Added to q')
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)
