@@ -255,8 +255,9 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            if len(self.main_processing_queue) > 0:
-                await self.process_main_queue()
+            did_process = True
+            while did_process:
+                did_process = await self.process_main_queue()
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
@@ -278,11 +279,14 @@ class Node:
             self.save_cached_state(results=results)
 
             # Mint new block
-            await self.send_block_results(results=results)
+            asyncio.ensure_future(self.send_block_results(results=results))
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
             # self.log.info("\n-----------------------------")
+            return True
+        else:
+            return False
 
     async def send_block_results(self, results):
         await self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results)
@@ -458,7 +462,7 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.log.debug(encode(block).encode())
+        # self.log.debug(encode(block).encode())
         self.update_database_state(block)
         self.driver.commit()
         self.driver.clear_pending_state()
