@@ -13,6 +13,7 @@ from contracting.execution.executor import Executor
 from contracting.client import ContractingClient
 
 import time
+import json
 import hashlib
 import uvloop
 import gc
@@ -464,10 +465,10 @@ class Node:
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
 
         # REQUIRED for nodejs devops tool to determin nodes are in sync
-        self.log.debug({
-            'number': block.number,
-            'hash': block.hash
-        })
+        self.log.debug(json.dumps({
+            'number': block['number'],
+            'hash': block['hash']
+        }))
         self.update_database_state(block)
         self.driver.commit()
         self.driver.clear_pending_state()
