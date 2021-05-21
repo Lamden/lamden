@@ -277,10 +277,6 @@ class Node:
         # Start running
         self.running = True
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.main_loop())
-
-    async def main_loop(self):
         asyncio.ensure_future(self.check_tx_queue())
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
