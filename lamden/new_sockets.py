@@ -188,7 +188,7 @@ class Network:
                     self.log.error(message)
                 if processor is not None and message is not None:
                     await processor.process_message(message)
-                    self.log(f'Processed a subscription message {len(self.subscriptions)} left!')
+                    self.log.info(f'Processed a subscription message {len(self.subscriptions)} left!')
             await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
