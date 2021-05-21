@@ -277,26 +277,29 @@ class Node:
         # Start running
         self.running = True
 
-    async def hang(self):
-        # Maybe Upgrade
-        ## self.upgrade_manager.version_check(constitution=self.make_constitution())
+        asyncio.ensure_future(self.check_tx_queue())
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
 
-        # Hangs until upgrade is done
+    async def check_tx_queue(self):
+        while True:
+            if len(self.file_queue) > 0:
+                await self.send_tx_to_network(self.file_queue.pop(0))
+            asyncio.sleep(0)
 
-        '''
-        while self.upgrade_manager.upgrade:
-            await asyncio.sleep(0)
-        '''
+    async def check_main_processing_queue(self):
+        while True:
+            if len(self.main_processing_queue) > 0:
+                await self.process_main_queue()
+            asyncio.sleep(0)
 
-        # Wait for activity on our main processing queue or the needs validation queue
-        while len(self.main_processing_queue) <= 0 and len(self.validation_queue) <= 0:
-            if not self.running:
-                return
+    async def check_validation_queue(self):
+        while True:
+            if len(self.validation_queue) > 0:
+                await self.validation_queue.process_next()
+            asyncio.sleep(0)
 
-            await asyncio.sleep(0)
-
-        # mn_logger.debug('Work available. Continuing.')
-
+'''
     async def loop(self):
         if len(self.file_queue) > 0:
             await self.send_tx_to_network(self.file_queue.pop(0))
@@ -306,7 +309,7 @@ class Node:
 
         if len(self.validation_queue) > 0:
             await self.validation_queue.process_next()
-
+'''
     async def process_main_queue(self):
         processing_results = self.main_processing_queue.process_next()
 

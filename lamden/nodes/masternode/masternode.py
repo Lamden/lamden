@@ -164,8 +164,6 @@ class Masternode(base.Node):
         self.log.info('Join Quorum')
 
         # await self.intermediate_catchup()
-        #
-        # await self.hang()
         # await self.wait_for_block()
 
         members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
