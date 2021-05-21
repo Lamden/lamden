@@ -156,7 +156,8 @@ class Network:
             if len(self.subscriptions) > 0:
                 topic, msg = self.subscriptions.pop(0)
                 processor = self.services.get(topic.decode("utf-8"))
-                if processor is not None:
+                message = json.loads(msg)
+                if processor is not None and message is not None:
                     await processor.process_message(json.loads(msg))
             await asyncio.sleep(0)
 
