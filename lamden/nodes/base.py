@@ -462,12 +462,11 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        encoded_block = encode(block).encode()
 
         # REQUIRED for nodejs devops tool to determin nodes are in sync
         self.log.debug({
-            'number': encoded_block.number,
-            'hash': encoded_block.hash
+            'number': block.number,
+            'hash': block.hash
         })
         self.update_database_state(block)
         self.driver.commit()
