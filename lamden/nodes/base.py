@@ -283,7 +283,7 @@ class Node:
 
     async def check_tx_queue(self):
         while True:
-            self.log.debug("Running check_tx_queue")
+            # self.log.debug("Running check_tx_queue")
             if len(self.file_queue) > 0:
                 await self.send_tx_to_network(self.file_queue.pop(0))
             else:
