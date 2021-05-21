@@ -55,7 +55,7 @@ class ValidationQueue:
 
         transaction_info = self.validation_results[next_hlc_timestamp]
 
-        consensus_info = await self.check_consensus(transaction_info)
+        consensus_info = self.check_consensus(transaction_info)
 
         if consensus_info['has_consensus']:
             # remove the hlc_timestamp from the needs validation queue to prevent reprocessing
@@ -90,7 +90,7 @@ class ValidationQueue:
 
 
 
-    async def check_consensus(self, transaction_info):
+    def check_consensus(self, transaction_info):
         # Get the number of current nodes and add yourself
         num_of_peers = len(self.get_all_peers()) + 1
 
