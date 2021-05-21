@@ -282,28 +282,28 @@ class Node:
         asyncio.ensure_future(self.check_validation_queue())
 
     async def check_tx_queue(self):
-        while True:
-            # self.log.debug("Running check_tx_queue")
+        while self.running:
+            self.log.debug("Running check_tx_queue")
             if len(self.file_queue) > 0:
                 await self.send_tx_to_network(self.file_queue.pop(0))
             else:
-                asyncio.sleep(5)
+                await asyncio.sleep(100)
 
     async def check_main_processing_queue(self):
-        while True:
+        while self.running:
             self.log.debug("Running check_main_processing_queue")
             if len(self.main_processing_queue) > 0:
                 await self.process_main_queue()
             else:
-                asyncio.sleep(5)
+                await asyncio.sleep(100)
 
     async def check_validation_queue(self):
-        while True:
+        while self.running:
             self.log.debug("Running check_validation_queue")
             if len(self.validation_queue) > 0:
                 await self.validation_queue.process_next()
             else:
-                asyncio.sleep(5)
+                await asyncio.sleep(100)
 
     '''
     async def loop(self):
