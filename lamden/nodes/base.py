@@ -287,7 +287,7 @@ class Node:
             if len(self.file_queue) > 0:
                 await self.send_tx_to_network(self.file_queue.pop(0))
             else:
-                asyncio.sleep(0)
+                asyncio.sleep(5)
 
     async def check_main_processing_queue(self):
         while True:
@@ -295,7 +295,7 @@ class Node:
             if len(self.main_processing_queue) > 0:
                 await self.process_main_queue()
             else:
-                asyncio.sleep(0)
+                asyncio.sleep(5)
 
     async def check_validation_queue(self):
         while True:
@@ -303,7 +303,7 @@ class Node:
             if len(self.validation_queue) > 0:
                 await self.validation_queue.process_next()
             else:
-                asyncio.sleep(0)
+                asyncio.sleep(5)
 
     '''
     async def loop(self):
