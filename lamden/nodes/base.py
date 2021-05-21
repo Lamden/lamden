@@ -228,16 +228,11 @@ class Node:
         self.bypass_catchup = bypass_catchup
 
     async def start(self):
-        #asyncio.ensure_future(self.router.serve())
-
-
-        # Get the set of VKs we are looking for from the constitution argument
-        # vks = self.constitution['masternodes'] + self.constitution['delegates']
-
-        # for node in self.bootnodes.keys():
-        #     self.socket_authenticator.add_verifying_key(node)
-        #
-        # self.socket_authenticator.configure()
+        # Start running
+        self.running = True
+        asyncio.ensure_future(self.check_tx_queue())
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
 
         await self.network.start()
 
@@ -245,41 +240,12 @@ class Node:
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
                 socket = self.ctx.socket(zmq.SUB)
-                did_connect = self.network.connect(
+                self.network.connect(
                     socket=socket,
                     domain=domain,
                     key=vk,
                     wallet=self.wallet
                 )
-
-        # if not self.bypass_catchup:
-        #     masternode_ip = None
-        #     masternode = None
-        #
-        #     if self.seed is not None:
-        #         for k, v in self.bootnodes.items():
-        #             self.log.info(k, v)
-        #             if v == self.seed:
-        #                 masternode = k
-        #                 masternode_ip = v
-        #     else:
-        #         masternode = self.constitution['masternodes'][0]
-        #         masternode_ip = self.network.peers[masternode]
-        #
-        #     # self.log.info(f'Masternode Seed VK: {masternode}')
-        #
-        #     # Use this IP to request any missed blocks
-        #     await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
-        #
-        # # Refresh the sockets to accept new nodes
-        # self.socket_authenticator.refresh_governance_sockets()
-
-        # Start running
-        self.running = True
-
-        asyncio.ensure_future(self.check_tx_queue())
-        asyncio.ensure_future(self.check_main_processing_queue())
-        asyncio.ensure_future(self.check_validation_queue())
 
     async def check_tx_queue(self):
         while self.running:
@@ -304,18 +270,6 @@ class Node:
                 await self.validation_queue.process_next()
             else:
                 await asyncio.sleep(100)
-
-    '''
-    async def loop(self):
-        if len(self.file_queue) > 0:
-            await self.send_tx_to_network(self.file_queue.pop(0))
-
-        if len(self.main_processing_queue) > 0:
-            await self.process_main_queue()
-
-        if len(self.validation_queue) > 0:
-            await self.validation_queue.process_next()
-    '''
 
     async def process_main_queue(self):
         processing_results = self.main_processing_queue.process_next()
