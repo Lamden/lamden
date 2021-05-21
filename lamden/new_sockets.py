@@ -166,8 +166,8 @@ class Network:
                 event = await socket.poll(timeout=50, flags=zmq.POLLIN)
                 # self.log.info("got event!")
                 if event:
-                    msg = await socket.recv_multipart()
-                    self.subscriptions.append(msg)
+                    data = await socket.recv_multipart()
+                    await self.process_subscription(data)
 
             except zmq.error.ZMQError as error:
                 self.log.error(error)
@@ -176,6 +176,17 @@ class Network:
                 # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
 
             await asyncio.sleep(0)
+
+    async def process_subscription(self, data):
+        topic, msg = data
+        processor = self.services.get(topic.decode("utf-8"))
+        message = json.loads(msg)
+        if not message:
+            self.log.error(msg)
+            self.log.error(message)
+        if processor is not None and message is not None:
+            await processor.process_message(message)
+            #self.log.info(f'Processed a subscription message {len(self.subscriptions)} left!')
 
     async def process_subscriptions(self):
         while self.running:
