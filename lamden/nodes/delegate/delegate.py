@@ -60,5 +60,3 @@ class Delegate(base.Node):
             # await self.loop()
             # await asyncio.sleep(0)
 
-    def stop(self):
-        self.router.stop()

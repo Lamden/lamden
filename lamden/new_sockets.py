@@ -117,6 +117,9 @@ class Network:
         asyncio.ensure_future(self.check_subscriptions())
         asyncio.ensure_future(self.process_subscriptions())
 
+    def stop(self):
+        self.running = False
+
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
 

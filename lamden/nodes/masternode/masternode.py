@@ -116,24 +116,6 @@ class Masternode(base.Node):
 
         self.log.info('Done starting...')
 
-    '''
-    async def broadcast_new_blockchain_started(self):
-        # Check if it was us who recieved the first transaction.
-        # If so, multicast a block notification to wake everyone up
-        mn_logger.debug('Sending new blockchain started signal.')
-        if len(self.tx_batcher.queue) > 0:
-            await router.secure_multicast(
-                msg=get_genesis_block(),
-                service=base.NEW_BLOCK_SERVICE,
-                cert_dir=self.socket_authenticator.cert_dir,
-                wallet=self.wallet,
-                peer_map={
-                    **self.get_delegate_peers(),
-                    **self.get_masternode_peers()
-                },
-                ctx=self.ctx
-            )
-    '''
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
         self.log.info('Join Quorum')
@@ -155,12 +137,6 @@ class Masternode(base.Node):
 
         # while self.running:
             # await self.loop()
-
-    def stop(self):
-        super().stop()
-        self.router.socket.close()
-        self.webserver.coroutine.result().close()
-
 
 def get_genesis_block():
     block = {

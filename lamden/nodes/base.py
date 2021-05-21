@@ -494,7 +494,7 @@ class Node:
 
     def stop(self):
         # Kill the router and throw the running flag to stop the loop
-        self.router.stop()
+        self.network.stop()
         self.running = False
 
     def _get_member_peers(self, contract_name):
