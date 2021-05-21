@@ -116,12 +116,6 @@ class Masternode(base.Node):
 
         self.log.info('Done starting...')
 
-        # If we have no blocks in our database, we are starting a new network from scratch
-
-        asyncio.ensure_future(self.new_blockchain_boot())
-
-        self.log.debug('returned')
-
     '''
     async def broadcast_new_blockchain_started(self):
         # Check if it was us who recieved the first transaction.
@@ -139,25 +133,6 @@ class Masternode(base.Node):
                 },
                 ctx=self.ctx
             )
-    '''
-    async def new_blockchain_boot(self):
-        self.log.info('Fresh blockchain boot.')
-
-        while self.running:
-            # self.log.info(f"Tasks in loop: {len(asyncio.Task.all_tasks())}")
-            await self.loop()
-            await asyncio.sleep(0)
-    '''
-    async def wait_for_block(self):
-        self.new_block_processor.clean(self.current_height)
-
-        while len(self.new_block_processor.q) <= 0:
-            if not self.running:
-                return
-            await asyncio.sleep(0)
-
-        block = self.new_block_processor.q.pop(0)
-        self.process_new_block(block)
     '''
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
@@ -178,8 +153,8 @@ class Masternode(base.Node):
             self.process_new_block(block)
             self.new_block_processor.clean(self.current_height)
 
-        while self.running:
-            await self.loop()
+        # while self.running:
+            # await self.loop()
 
     def stop(self):
         super().stop()
