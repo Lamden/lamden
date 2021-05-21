@@ -256,9 +256,8 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            did_process = True
-            while did_process:
-                did_process = await self.process_main_queue()
+            if len(self.main_processing_queue) > 0:
+                await self.process_main_queue()
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
