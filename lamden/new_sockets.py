@@ -117,7 +117,6 @@ class Network:
         # self.authenticator.start()
         self.publisher.setup_socket()
         #asyncio.ensure_future(self.update_peers())
-        asyncio.ensure_future(self.check_subscriptions())
         asyncio.ensure_future(self.process_subscriptions())
 
     def stop(self):
@@ -161,6 +160,23 @@ class Network:
                     # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
             await asyncio.sleep(0)
 
+    async def check_subscription(self, socket, key):
+        while self.running:
+            try:
+                event = await socket.poll(timeout=50, flags=zmq.POLLIN)
+                # self.log.info("got event!")
+                if event:
+                    msg = await socket.recv_multipart()
+                    self.subscriptions.append(msg)
+
+            except zmq.error.ZMQError as error:
+                self.log.error(error)
+                socket.close()
+                self.peers.pop(key)
+                # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
+
+            await asyncio.sleep(0)
+
     async def process_subscriptions(self):
         while self.running:
             if len(self.subscriptions) > 0:
@@ -190,6 +206,7 @@ class Network:
             socket.connect(domain)
             socket.subscribe(b'')
             self.peers[key] = (domain, socket)
+            asyncio.ensure_future(self.check_subscription(socket, key))
             return True
         except zmq.error.Again as error:
             self.log.error(error)
