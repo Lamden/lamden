@@ -277,7 +277,7 @@ class Node:
         # Start running
         self.running = True
 
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
         loop.run_until_complete(self.main_loop())
 
     async def main_loop(self):
