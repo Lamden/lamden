@@ -267,6 +267,9 @@ class Node:
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
+        if len(self.main_processing_queue) == 0:
+            return False
+
         processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
