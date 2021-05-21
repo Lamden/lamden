@@ -29,6 +29,8 @@ class ProcessingQueue:
         self.main_processing_queue.append(tx)
 
     def process_next(self):
+        if len(self.main_processing_queue) == 0:
+            return
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 

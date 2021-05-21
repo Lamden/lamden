@@ -267,9 +267,6 @@ class Node:
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
-        if len(self.main_processing_queue) == 0:
-            return False
-
         processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
@@ -465,7 +462,13 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        # self.log.debug(encode(block).encode())
+        encoded_block = encode(block).encode()
+
+        # REQUIRED for nodejs devops tool to determin nodes are in sync
+        self.log.debug({
+            'number': encoded_block.number,
+            'hash': encoded_block.hash
+        })
         self.update_database_state(block)
         self.driver.commit()
         self.driver.clear_pending_state()
