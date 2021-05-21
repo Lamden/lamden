@@ -57,6 +57,9 @@ class Publisher:
         await self.socket.send_string(topic, flags=zmq.SNDMORE)
         await self.socket.send(m)
 
+    def stop(self):
+        self.socket.close()
+
 
 class CredentialProvider:
     def __init__(self, wallet: Wallet, ctx: zmq.Context, linger=500):
@@ -119,6 +122,10 @@ class Network:
 
     def stop(self):
         self.running = False
+        self.publisher.stop()
+        for key, value in self.peers.items():
+            domain, socket = value
+            socket.close()
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
@@ -162,9 +169,10 @@ class Network:
                 message = json.loads(msg)
                 if not message:
                     self.log.error(msg)
-                    self.log.debug(message)
+                    self.log.error(message)
                 if processor is not None and message is not None:
                     await processor.process_message(message)
+                    self.log(f'Processed a subscription message {len(self.subscriptions)} left!')
             await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
