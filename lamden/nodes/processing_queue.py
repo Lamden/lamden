@@ -11,7 +11,7 @@ class ProcessingQueue:
 
         self.log = get_logger('TX PROCESSOR')
         self.main_processing_queue = []
-        self.timestamps = {}
+        self.message_received_timestamps = {}
         self.processing_delay = processing_delay
 
         self.client = client
@@ -27,8 +27,9 @@ class ProcessingQueue:
         self.total_processed = 0
 
     def append(self, tx):
-        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE")
-        self.timestamps[tx['hlc_timestamp']] = time.time()
+
+        self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
+        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
 
     def process_next(self):
@@ -50,8 +51,8 @@ class ProcessingQueue:
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
         '''
-        time_in_queue = time.time() - self.timestamps[tx['hlc_timestamp']]
-        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue))
+        time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
+        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(str(time_in_queue)))
 
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > self.processing_delay:
