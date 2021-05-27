@@ -275,11 +275,11 @@ class Node:
 
             results = processing_results['results']
 
-            # TODO This currently just udpates DB State but it should be cache
-            self.save_cached_state(results=results)
-
             # Mint new block
             await self.send_block_results(results=results)
+
+            # TODO This currently just udpates DB State but it should be cache
+            self.save_cached_state(results=results)
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
