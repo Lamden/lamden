@@ -52,7 +52,7 @@ class ProcessingQueue:
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
         '''
         time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
-        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(str(time_in_queue)))
+        self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > self.processing_delay:
