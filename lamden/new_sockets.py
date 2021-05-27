@@ -200,7 +200,7 @@ class Network:
             self.log.error(msg)
             self.log.error(message)
         if processor is not None and message is not None:
-            if processor == WORK_SERVICE:
+            if topic.decode("utf-8") == WORK_SERVICE:
                 self.log.debug(json.dumps({
                     'type': 'tx_lifecycle',
                     'file': 'new_sockets',
