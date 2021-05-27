@@ -1,5 +1,6 @@
 import zmq
 import json
+import time
 from lamden.crypto.wallet import Wallet
 from zmq.auth.asyncio import AsyncioAuthenticator
 from lamden.logger.base import get_logger
@@ -51,6 +52,12 @@ class Publisher:
         self.socket.bind(self.address)
 
     async def publish(self, topic, msg):
+        self.log.debug(json.dumps({
+            'type':'tx_lifecycle',
+            'event':'publish_new_tx',
+            'hlc_timestamp': msg['hcl_timestamp'],
+            'system_time': time.time()
+        }))
         # m = json.dumps(msg).encode()
         m = encode(msg).encode()
 
@@ -130,9 +137,10 @@ class Network:
         self.services[name] = processor
 
     def add_message_to_subscriptions_queue(self, topic, msg):
-        encoded_msg =  encode(msg).encode()
+        encoded_msg = encode(msg).encode()
         encoded_topic = bytes(topic, 'utf-8')
-        self.subscriptions.append((encoded_topic, encoded_msg))
+        self.process_subscription(encoded_topic, encoded_msg)
+        # self.subscriptions.append((encoded_topic, encoded_msg))
 
     async def update_peers(self):
         while self.running:
@@ -142,7 +150,7 @@ class Network:
                 if self.peers.get(key) is None:
                     self.peers[key] = (domain, socket)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
-
+    '''
     async def check_subscriptions(self):
         while self.running:
             for key, value in self.peers.items():
@@ -159,6 +167,7 @@ class Network:
                     socket.close()
                     # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
             await asyncio.sleep(0)
+    '''
 
     async def check_subscription(self, socket, key):
         while self.running:
