@@ -54,6 +54,7 @@ class Publisher:
     async def publish(self, topic, msg):
         self.log.debug(json.dumps({
             'type':'tx_lifecycle',
+            'file':'new_sockets',
             'event':'publish_new_tx',
             'hlc_timestamp': msg['hcl_timestamp'],
             'system_time': time.time()
@@ -74,6 +75,8 @@ class CredentialProvider:
         self.joined = []
         self.wallet = wallet
         self.linger = linger
+
+        self.log = get_logger("PUBLISHER")
 
     def callback(self, domain, key):
         self.log.debug(f"Connection from {key} {domain}")
@@ -194,6 +197,13 @@ class Network:
             self.log.error(msg)
             self.log.error(message)
         if processor is not None and message is not None:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'new_sockets',
+                'event': 'processing_from_socket',
+                'hlc_timestamp': msg['hcl_timestamp'],
+                'system_time': time.time()
+            }))
             await processor.process_message(message)
             #self.log.info(f'Processed a subscription message {len(self.subscriptions)} left!')
 
