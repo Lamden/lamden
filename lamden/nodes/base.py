@@ -14,6 +14,7 @@ from contracting.client import ContractingClient
 
 import time
 import json
+from copy import deepcopy
 import hashlib
 import uvloop
 import gc
@@ -275,8 +276,9 @@ class Node:
 
             results = processing_results['results']
 
+            results_copy = deepcopy(results)
             # Mint new block
-            asyncio.ensure_future(self.send_block_results(results=json.load(encode(results).encode())))
+            asyncio.ensure_future(self.send_block_results(results=results_copy))
 
             # TODO This currently just udpates DB State but it should be cache
             self.save_cached_state(results=results)
