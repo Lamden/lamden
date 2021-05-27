@@ -87,6 +87,11 @@ class SBCInbox(router.Processor):
         )
 
         if not valid_sig:
+            self.log.debug({
+                'vk': sbc['signer'],
+                'msg': message,
+                'signature': sbc['merkle_tree']['signature']
+            })
             self.log.error(f'Subblock Contender[{sb_idx}] from {sbc["signer"][:8]} has an invalid signature.')
             return False
 
