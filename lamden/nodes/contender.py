@@ -88,6 +88,7 @@ class SBCInbox(router.Processor):
 
         if not valid_sig:
             self.log.debug({
+                'sbc':sbc,
                 'vk': sbc['signer'],
                 'msg': message,
                 'signature': sbc['merkle_tree']['signature']
