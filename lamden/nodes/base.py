@@ -276,7 +276,7 @@ class Node:
             results = processing_results['results']
 
             # Mint new block
-            await self.send_block_results(results=results)
+            await self.send_block_results(results=json.dumps(encode(results).encode()))
 
             # TODO This currently just udpates DB State but it should be cache
             self.save_cached_state(results=results)
@@ -502,8 +502,8 @@ class Node:
 
         # Finally, check and initiate an upgrade if one needs to be done
         self.driver.commit()
-        self.driver.clear_pending_state()
-        gc.collect() # Force memory cleanup every block
+        # self.driver.clear_pending_state()
+        # gc.collect() # Force memory cleanup every block
         #self.nonces.flush_pending()
 
 
