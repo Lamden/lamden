@@ -460,6 +460,13 @@ class Node:
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs(results)
         subblocks = bc.get_current_best_block()
+        if (len(subblocks)):
+            self.log.debug(subblocks)
+            self.log.debug(results)
+            self.log.debug(bc.subblock_contenders)
+            self.log.error("---------------------------------------------------------------")
+            self.log.error("--------------- NO SUB BLOCKS!!! ---------------")
+            self.log.error("--------------------------------------------------------------------")
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
 
