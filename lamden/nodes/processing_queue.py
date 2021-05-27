@@ -42,14 +42,6 @@ class ProcessingQueue:
             # not sure why this would be but it's a check anyway
             return
 
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'processing_queue',
-            'event': 'processing_from_main_queue',
-            'hlc_timestamp': tx['hlc_timestamp'],
-            'system_time': time.time()
-        }))
-
         # determine its age
         time_in_queue = self.hlc_clock.check_timestamp_age(timestamp=tx['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
@@ -59,6 +51,14 @@ class ProcessingQueue:
         if time_in_queue_seconds > self.processing_delay:
             # Process it to get the results
             results = self.process_tx(tx)
+
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'processing_queue',
+                'event': 'processed_from_main_queue',
+                'hlc_timestamp': tx['hlc_timestamp'],
+                'system_time': time.time()
+            }))
 
             return {
                 'tx': tx,
