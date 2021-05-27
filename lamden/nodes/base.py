@@ -276,7 +276,7 @@ class Node:
             results = processing_results['results']
 
             # Mint new block
-            await self.send_block_results(results=json.dumps(encode(results).encode()))
+            asyncio.ensure_future(self.send_block_results(results=json.load(encode(results).encode())))
 
             # TODO This currently just udpates DB State but it should be cache
             self.save_cached_state(results=results)
@@ -289,7 +289,7 @@ class Node:
             return False
 
     async def send_block_results(self, results):
-        await self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results)
+        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results))
         self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=results)
         '''
         await router.secure_multicast(
