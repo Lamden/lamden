@@ -58,7 +58,7 @@ class Publisher:
             'type':'tx_lifecycle',
             'file':'new_sockets',
             'event':'publish_new_tx',
-            'hlc_timestamp': msg['hcl_timestamp'],
+            'hlc_timestamp': msg['hlc_timestamp'],
             'system_time': time.time()
         }))
         # m = json.dumps(msg).encode()
@@ -201,7 +201,7 @@ class Network:
                 'type': 'tx_lifecycle',
                 'file': 'new_sockets',
                 'event': 'processing_from_socket',
-                'hlc_timestamp': msg['hcl_timestamp'],
+                'hlc_timestamp': msg['hlc_timestamp'],
                 'system_time': time.time()
             }))
             await processor.process_message(message)
