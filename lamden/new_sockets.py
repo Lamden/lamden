@@ -142,7 +142,7 @@ class Network:
     def add_message_to_subscriptions_queue(self, topic, msg):
         encoded_msg = encode(msg).encode()
         encoded_topic = bytes(topic, 'utf-8')
-        self.process_subscription(encoded_topic, encoded_msg)
+        self.process_subscription((encoded_topic, encoded_msg))
         # self.subscriptions.append((encoded_topic, encoded_msg))
 
     async def update_peers(self):
@@ -201,7 +201,7 @@ class Network:
                 'type': 'tx_lifecycle',
                 'file': 'new_sockets',
                 'event': 'processing_from_socket',
-                'hlc_timestamp': msg['hlc_timestamp'],
+                'hlc_timestamp': message['hlc_timestamp'],
                 'system_time': time.time()
             }))
             await processor.process_message(message)
