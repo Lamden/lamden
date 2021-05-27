@@ -182,6 +182,16 @@ class Network:
                 # self.log.info("got event!")
                 if event:
                     data = await socket.recv_multipart()
+                    topic, msg = data
+                    if topic.decode("utf-8") == WORK_SERVICE:
+                        message = json.loads(msg)
+                        self.log.debug(json.dumps({
+                            'type': 'tx_lifecycle',
+                            'file': 'new_sockets',
+                            'event': 'received_from_socket',
+                            'hlc_timestamp': message['hlc_timestamp'],
+                            'system_time': time.time()
+                        }))
                     await self.process_subscription(data)
 
             except zmq.error.ZMQError as error:
