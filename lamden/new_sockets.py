@@ -12,6 +12,8 @@ from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 from contracting.db.encoder import encode, decode
 
+WORK_SERVICE = 'work'
+
 
 class Processor:
     async def process_message(self, msg):
@@ -54,13 +56,14 @@ class Publisher:
         self.socket.bind(self.address)
 
     async def publish(self, topic, msg):
-        self.log.debug(json.dumps({
-            'type':'tx_lifecycle',
-            'file':'new_sockets',
-            'event':'publish_new_tx',
-            'hlc_timestamp': msg['hlc_timestamp'],
-            'system_time': time.time()
-        }))
+        if topic == WORK_SERVICE:
+            self.log.debug(json.dumps({
+                'type':'tx_lifecycle',
+                'file':'new_sockets',
+                'event':'publish_new_tx',
+                'hlc_timestamp': msg['hlc_timestamp'],
+                'system_time': time.time()
+            }))
         # m = json.dumps(msg).encode()
         m = encode(msg).encode()
 
