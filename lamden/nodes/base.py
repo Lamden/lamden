@@ -279,7 +279,7 @@ class Node:
             self.save_cached_state(results=results)
 
             # Mint new block
-            asyncio.ensure_future(self.send_block_results(results=results))
+            await self.send_block_results(results=results)
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
@@ -453,13 +453,6 @@ class Node:
         bc.add_sbcs([results])
         subblocks = bc.get_current_best_block()
 
-        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.process_new_block(block)
-
-    def save_cached_state(self, results):
-        bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
-        bc.add_sbcs(results)
-        subblocks = bc.get_current_best_block()
         if (len(subblocks) == 0):
             self.log.debug(subblocks)
             self.log.debug(results)
@@ -467,6 +460,13 @@ class Node:
             self.log.error("--------------- NO SUB BLOCKS!!! ---------------")
             self.log.error("--------------------------------------------------------------------")
 
+        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
+        self.process_new_block(block)
+
+    def save_cached_state(self, results):
+        bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
+        bc.add_sbcs(results)
+        subblocks = bc.get_current_best_block()
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
 
         # REQUIRED for nodejs devops tool to determin nodes are in sync
