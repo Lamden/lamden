@@ -2,6 +2,10 @@
 killall lamden python3
 git pull
 rm -r ~/cilsocks/
-cd ../contracting && git pull && python3 setup.py develop && cd ../lamden
-
+if [ -z "$1" ]
+then
+       cd ../contracting && git pull && python3 setup.py develop && cd ../lamden
+else
+      cd ../contracting && git pull && $1 setup.py develop && cd ../lamden
+fi
 
