@@ -11,6 +11,7 @@ class ProcessingQueue:
 
         self.log = get_logger('TX PROCESSOR')
         self.main_processing_queue = []
+        self.timestamps = {}
         self.processing_delay = processing_delay
 
         self.client = client
@@ -27,6 +28,7 @@ class ProcessingQueue:
 
     def append(self, tx):
         self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE")
+        self.timestamps[tx['hlc_timestamp']] = time.time()
         self.main_processing_queue.append(tx)
 
     def process_next(self):
@@ -43,12 +45,16 @@ class ProcessingQueue:
             return
 
         # determine its age
+        ''' Old time HLC delay checker
         time_in_queue = self.hlc_clock.check_timestamp_age(timestamp=tx['hlc_timestamp'])
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
+        '''
+        time_in_queue = time.time() - self.timestamps[tx['hlc_timestamp']]
+        self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue))
 
         # If the next item in the queue is old enough to process it then go ahead
-        if time_in_queue_seconds > self.processing_delay:
+        if time_in_queue > self.processing_delay:
             # Process it to get the results
             results = self.process_tx(tx)
 

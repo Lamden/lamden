@@ -111,7 +111,7 @@ class Node:
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
-        self.processing_delay = 1.25
+        self.processing_delay_secs = 1.25
 
         self.driver = driver
         self.nonces = nonces
@@ -124,7 +124,7 @@ class Node:
         self.log.propagate = debug
         self.socket_base = socket_base
         self.wallet = wallet
-        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
+        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay_secs)
         self.ctx = ctx
 
         self.genesis_path = genesis_path
@@ -182,7 +182,7 @@ class Node:
             client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
-            processing_delay=self.processing_delay,
+            processing_delay=self.processing_delay_secs,
             transaction_executor=self.transaction_executor,
             get_current_hash=lambda: self.current_hash,
             get_current_height=lambda: self.current_height
