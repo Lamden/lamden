@@ -145,7 +145,7 @@ class Network:
     def add_message_to_subscriptions_queue(self, topic, msg):
         encoded_msg = encode(msg).encode()
         encoded_topic = bytes(topic, 'utf-8')
-        self.process_subscription((encoded_topic, encoded_msg))
+        asyncio.ensure_future(self.process_subscription((encoded_topic, encoded_msg)))
         # self.subscriptions.append((encoded_topic, encoded_msg))
 
     async def update_peers(self):
