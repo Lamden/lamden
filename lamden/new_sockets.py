@@ -41,6 +41,8 @@ class Publisher:
 
         self.socket = None
 
+        self.log = get_logger("PUBLISHER")
+
     def setup_socket(self):
         self.socket = self.ctx.socket(zmq.PUB)
 
@@ -75,8 +77,6 @@ class CredentialProvider:
         self.joined = []
         self.wallet = wallet
         self.linger = linger
-
-        self.log = get_logger("PUBLISHER")
 
     def callback(self, domain, key):
         self.log.debug(f"Connection from {key} {domain}")
