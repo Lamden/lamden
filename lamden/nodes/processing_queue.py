@@ -64,6 +64,7 @@ class ProcessingQueue:
                 'file': 'processing_queue',
                 'event': 'processed_from_main_queue',
                 'hlc_timestamp': tx['hlc_timestamp'],
+                'results': results,
                 'system_time': time.time()
             }))
 
