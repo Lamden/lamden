@@ -505,6 +505,7 @@ class Node:
             'event': 'new_block',
             'block_num': block['number'],
             'block_hash': block['hash'],
+            'previous_block': block['previous'],
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
