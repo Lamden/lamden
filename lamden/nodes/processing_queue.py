@@ -29,7 +29,7 @@ class ProcessingQueue:
     def append(self, tx):
 
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
-        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+        # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
 
     def process_next(self):
