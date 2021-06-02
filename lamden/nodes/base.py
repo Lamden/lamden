@@ -508,6 +508,7 @@ class Node:
             'block_num': block['number'],
             'block_hash': block['hash'],
             'previous_block': block['previous'],
+            'block_info': encode(block).encode(),
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
