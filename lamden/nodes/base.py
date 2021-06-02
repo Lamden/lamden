@@ -500,7 +500,6 @@ class Node:
         #self.log.info("\n-----------------------------")
 
         block_info = json.loads(encode(block).encode())
-        self.log.info(block_info)
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
