@@ -505,9 +505,6 @@ class Node:
             'type': 'tx_lifecycle',
             'file': 'base',
             'event': 'new_block',
-            'block_num': block['number'],
-            'block_hash': block['hash'],
-            'previous_block': block['previous'],
             'block_info': block_info,
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
