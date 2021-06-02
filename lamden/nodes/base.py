@@ -499,7 +499,7 @@ class Node:
         # self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
         #self.log.info("\n-----------------------------")
 
-        block_info = encode(block).encode()
+        block_info = json.load(encode(block).encode())
         self.log.info(block_info)
 
         self.log.debug(json.dumps({
