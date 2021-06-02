@@ -463,7 +463,7 @@ class Node:
             self.log.error("--------------------------------------------------------------------")
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.process_new_block(block, results['subblocks'][0]['transactions'][0]['hlc_timestamp'])
+        self.process_new_block(block, results['transactions'][0]['hlc_timestamp'])
 
     def save_cached_state(self, results):
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
