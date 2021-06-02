@@ -64,7 +64,7 @@ class ProcessingQueue:
                 'file': 'processing_queue',
                 'event': 'processed_from_main_queue',
                 'hlc_timestamp': tx['hlc_timestamp'],
-                'my_solution': results[0]['merkle_tree']['leaves'],
+                'my_solution': results[0]['merkle_tree']['leaves'][0],
                 'system_time': time.time()
             }))
 
