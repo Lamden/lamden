@@ -499,7 +499,8 @@ class Node:
         # self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
         #self.log.info("\n-----------------------------")
 
-        self.blocks.store_block(block)
+        block_info = encode(block).encode()
+        self.log.info(block_info)
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -508,10 +509,12 @@ class Node:
             'block_num': block['number'],
             'block_hash': block['hash'],
             'previous_block': block['previous'],
-            'block_info': encode(block).encode(),
+            'block_info': block_info,
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
+
+        self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
