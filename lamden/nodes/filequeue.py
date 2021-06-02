@@ -31,9 +31,6 @@ class FileQueue:
 
         os.remove(item)
 
-        if i:
-            self.log.info("POPPED TX")
-
         return i
 
     def flush(self):
