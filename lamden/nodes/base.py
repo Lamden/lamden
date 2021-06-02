@@ -463,7 +463,8 @@ class Node:
             self.log.error("--------------------------------------------------------------------")
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.process_new_block(block)
+        self.log.debug(results)
+        self.process_new_block(block, "000")
 
     def save_cached_state(self, results):
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
@@ -481,7 +482,7 @@ class Node:
         self.driver.clear_pending_state()
         gc.collect()
 
-    def process_new_block(self, block):
+    def process_new_block(self, block, hlc_timestamp):
         # Update the state and refresh the sockets so new nodes can join
         # TODO re-enable when cached state is implemented
         # self.update_database_state(block)
@@ -499,18 +500,16 @@ class Node:
 
         self.blocks.store_block(block)
 
-        self.log.debug(block)
-        '''
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
             'file': 'base',
             'event': 'new_block',
             'block_num': block['number'],
             'block_hash': block['hash'],
-            'hlc_timestamp': block['subblocks'][0]['transactions'][0]['hlc_timestamp'],
+            'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
-        '''
+
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
 
