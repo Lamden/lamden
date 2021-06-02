@@ -1,5 +1,7 @@
 import asyncio
 import math
+import time
+import json
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
@@ -66,6 +68,14 @@ class ValidationQueue:
 
             # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'validation_queue',
+                'event': 'has_consensus',
+                'consensus_info': consensus_info,
+                'hlc_timestamp': next_hlc_timestamp,
+                'system_time': time.time()
+            }))
 
             if consensus_info['matches_me']:
                 self.log.debug(f'CONSENSUS {next_hlc_timestamp} {consensus_info["solution"][:12]}')
