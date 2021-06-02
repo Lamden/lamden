@@ -78,7 +78,7 @@ class ValidationQueue:
             }))
 
             if consensus_info['matches_me']:
-                self.log.debug(f'CONSENSUS {next_hlc_timestamp} {consensus_info["solution"][:12]}')
+                # self.log.debug(f'CONSENSUS {next_hlc_timestamp} {consensus_info["solution"][:12]}')
 
                 # I'm in consensus so create new block with my results
                 results = transaction_info['solutions'][self.wallet.verifying_key]
