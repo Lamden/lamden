@@ -499,6 +499,8 @@ class Node:
 
         self.blocks.store_block(block)
 
+        self.log.debug(block)
+        '''
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
             'file': 'base',
@@ -508,7 +510,7 @@ class Node:
             'hlc_timestamp': block['subblocks'][0]['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
         }))
-
+        '''
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
 
