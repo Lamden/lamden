@@ -276,7 +276,7 @@ class Node:
 
             # Mint new block
             self.create_new_block(deepcopy(processing_results['results']))
-            asyncio.ensure_future(self.send_solution_to_network(results=deepcopy(processing_results['results'])))
+            await self.send_solution_to_network(results=deepcopy(processing_results['results']))
 
             # TODO This currently just udpates DB State but it should be cache
             # self.save_cached_state(results=results)
