@@ -121,6 +121,17 @@ class ValidationQueue:
                 'consensus_needed': consensus_needed,
                 'total_solutions': total_solutions
             }
+        else:
+            # TODO pick higher hash number if have all responses and consensus_needed isn't reached and answers are equal
+            '''
+            a = int('754e6e6b7fac87b7773517ffb1fada3c45e57b8f87d2a0093e5dabf010fbec97', 16)
+            b = int('ca393f1b409e1116aae7c2898f5ef214e130dd23d466f5a8c9a1a4a12e469b3b', 16)
+            
+            print
+            print(a > b)
+
+            '''
+            pass
 
         solution_tracker = {}
         for node in solutions:

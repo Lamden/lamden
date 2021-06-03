@@ -22,6 +22,7 @@ setup(
         "checksumdir",
         "pynacl",
         "stdlib_list"
+        "lmdb"
     ],
     entry_points={
         'console_scripts': [
