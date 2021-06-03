@@ -461,6 +461,7 @@ class Node:
             self.log.error("--------------------------------------------------------------------")
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
+        self.log.info(block)
         self.process_new_block(block, results[0]['transactions'][0]['hlc_timestamp'])
 
     def process_new_block(self, block, hlc_timestamp):
@@ -482,7 +483,8 @@ class Node:
         }))
 
         self.blocks.store_block(block)
-        self.save_cached_state(block)
+        self.save_cached_state(block_info)
+
 
     def save_cached_state(self, block):
         self.log.info(block)
