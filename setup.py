@@ -21,7 +21,7 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list"
+        "stdlib_list",
         "lmdb"
     ],
     entry_points={
