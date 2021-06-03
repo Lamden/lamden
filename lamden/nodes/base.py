@@ -450,7 +450,7 @@ class Node:
 
     def create_new_block(self, results):
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
-        bc.add_sbcs([results])
+        bc.add_sbcs(results)
         subblocks = bc.get_current_best_block()
 
         if (len(subblocks) == 0):
