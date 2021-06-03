@@ -485,7 +485,6 @@ class Node:
         self.blocks.store_block(block)
         self.save_cached_state(block_info)
 
-
     def save_cached_state(self, block):
         self.log.info(block)
         self.update_database_state(block)
