@@ -485,6 +485,7 @@ class Node:
         self.save_cached_state(block)
 
     def save_cached_state(self, block):
+        self.log.info(block)
         self.update_database_state(block)
         self.driver.commit()
         self.driver.clear_pending_state()
