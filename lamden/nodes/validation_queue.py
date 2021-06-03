@@ -82,7 +82,9 @@ class ValidationQueue:
 
                 # I'm in consensus so create new block with my results
                 results = transaction_info['solutions'][self.wallet.verifying_key]
-                self.create_new_block(results)
+
+                # TODO create new block only after consensus is determined (or maybe not?)
+                # self.create_new_block(results)
 
             else:
                 # self.log.error(f'There was consensus on {next_hlc_timestamp} but I\'m NOT IN CONSENSUS')

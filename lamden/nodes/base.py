@@ -274,14 +274,12 @@ class Node:
             # add the hlc_timestamp to the needs validation queue for processing later
             self.validation_queue.append(processing_results)
 
-            results = processing_results['results']
-
-            results_copy = deepcopy(results)
             # Mint new block
-            asyncio.ensure_future(self.send_block_results(results=results_copy))
+            self.create_new_block(deepcopy(processing_results['results']))
+            asyncio.ensure_future(self.send_solution_to_network(results=deepcopy(processing_results['results'])))
 
             # TODO This currently just udpates DB State but it should be cache
-            self.save_cached_state(results=results)
+            # self.save_cached_state(results=results)
 
             # self.log.info("\n------ MY RESULTS -----------")
             # self.log.debug(processing_results)
@@ -290,7 +288,7 @@ class Node:
         else:
             return False
 
-    async def send_block_results(self, results):
+    async def send_solution_to_network(self, results):
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results))
         self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=results)
         '''
@@ -465,39 +463,12 @@ class Node:
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
         self.process_new_block(block, results['transactions'][0]['hlc_timestamp'])
 
-    def save_cached_state(self, results):
-        bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
-        bc.add_sbcs(results)
-        subblocks = bc.get_current_best_block()
-        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-
-        # REQUIRED for nodejs devops tool to determin nodes are in sync
-        '''
-        self.log.debug(json.dumps({
-            'number': block['number'],
-            'hash': block['hash']
-        }))
-        '''
-        self.update_database_state(block)
-        self.driver.commit()
-        self.driver.clear_pending_state()
-        gc.collect()
-
     def process_new_block(self, block, hlc_timestamp):
+        # TODO hlc_timestamp can be removed from args as it's only there for dev debugging
+
         # Update the state and refresh the sockets so new nodes can join
         # TODO re-enable when cached state is implemented
         # self.update_database_state(block)
-
-        # self.socket_authenticator.refresh_governance_sockets()
-
-        #encoded_block = encode(block)
-        #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
-
-        #self.log.info("\n------ MY NEW BLOCK -----------")
-        # self.log.debug(block)
-        # hlc_timestamp = block['subblocks'][0]['transactions'][0]['hlc_timestamp']
-        # self.log.debug(f"block number: {block['number']} - {hlc_timestamp} {block['hash'][:16]}")
-        #self.log.info("\n-----------------------------")
 
         block_info = json.loads(encode(block).encode())
 
@@ -511,16 +482,14 @@ class Node:
         }))
 
         self.blocks.store_block(block)
+        self.save_cached_state(block)
 
-        # Prepare for the next block by flushing out driver and notification state
-        # self.new_block_processor.clean()
-
-        # Finally, check and initiate an upgrade if one needs to be done
+    def save_cached_state(self, block):
+        self.update_database_state(block)
         self.driver.commit()
-        # self.driver.clear_pending_state()
-        # gc.collect() # Force memory cleanup every block
-        #self.nonces.flush_pending()
-
+        self.driver.clear_pending_state()
+        self.nonces.flush_pending()
+        gc.collect()
 
     def stop(self):
         # Kill the router and throw the running flag to stop the loop
