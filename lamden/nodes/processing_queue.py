@@ -1,5 +1,6 @@
 import time
 import json
+import hashlib
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
@@ -178,11 +179,14 @@ class ProcessingQueue:
             environment=environment
         )
 
-        merkle = merklize(encode(result).encode())
-        proof = self.wallet.sign(merkle[0])
+        h = hashlib.sha3_256()
+        h.update('{}'.format(encode(result).encode()).encode())
+        tx_hash = h.hexdigest()
+
+        proof = self.wallet.sign(tx_hash)
 
         merkle_tree = {
-            'leaves': merkle,
+            'leaves': tx_hash,
             'signature': proof
         }
 
