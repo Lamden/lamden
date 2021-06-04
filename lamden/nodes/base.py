@@ -269,7 +269,7 @@ class Node:
 
         if processing_results:
             # Mint new block
-            block_info = self.create_new_block(processing_results['results'])
+            block_info = self.create_new_block(processing_results['result'])
             # add the hlc_timestamp to the needs validation queue for processing later
             self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
             await self.send_block_to_network(block_info=block_info)
@@ -413,9 +413,9 @@ class Node:
             nonces=self.nonces
         )
 
-    def create_new_block(self, results):
+    def create_new_block(self, result):
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
-        bc.add_sbcs(results)
+        bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
@@ -426,7 +426,7 @@ class Node:
             'file': 'base',
             'event': 'new_block',
             'block_info': block_info,
-            'hlc_timestamp': results[0]['transactions'][0]['hlc_timestamp'],
+            'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
         }))
 

@@ -58,20 +58,20 @@ class ProcessingQueue:
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > self.processing_delay:
             # Process it to get the results
-            results = self.process_tx(tx=tx)
+            result = self.process_tx(tx=tx)
 
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
                 'file': 'processing_queue',
                 'event': 'processed_from_main_queue',
                 'hlc_timestamp': tx['hlc_timestamp'],
-                'my_solution': results[0]['merkle_tree']['leaves'][0],
+                'my_solution': result['merkle_tree']['leaves'][0],
                 'system_time': time.time()
             }))
 
             return {
                 'hlc_timestamp': tx['hlc_timestamp'],
-                'results': results
+                'result': result
             }
         else:
             #put it back in queue
