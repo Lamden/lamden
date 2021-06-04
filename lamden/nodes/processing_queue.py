@@ -161,7 +161,7 @@ class ProcessingQueue:
         # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
 
         now = Datetime._from_datetime(
-            datetime.utcfromtimestamp(tx['timestamp'])
+            datetime.utcfromtimestamp(tx['metadata']['timestamp'])
         )
 
         environment = {
