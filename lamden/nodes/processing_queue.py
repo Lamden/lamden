@@ -142,7 +142,7 @@ class ProcessingQueue:
 
         tx_output = {
             'hash': tx_hash,
-            'transaction': [transaction],
+            'transactions': [transaction],
             'status': output['status_code'],
             'state': writes,
             'stamps_used': output['stamps_used'],
