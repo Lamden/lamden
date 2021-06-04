@@ -453,39 +453,23 @@ class SerialExecutor(TransactionExecutor):
                 merkle = merklize([bytes.fromhex(tx['input_hash'])])
                 proof = wallet.sign(tx['input_hash'])
 
-            signatures = [
-                {
-                    'signature': proof,
-                    'signer': wallet.verifying_key
-                }
-            ]
-
-            subblock = {
-                'input_hash': tx['input_hash'],
-                'merkle_leaves': merkle,
-                'signatures': signatures,
-                'subblock': 0,
-                'transactions': tx,
-
+            merkle_tree = {
+                'leaves': merkle,
+                'signature': proof
             }
 
-            # merkle_tree = {
-            #     'leaves': merkle,
-            #     'signature': proof
-            # }
-            #
-            # sbc = {
-            #     'input_hash': tx['input_hash'],
-            #     'transactions': results,
-            #     'merkle_tree': merkle_tree,
-            #     'signer': wallet.verifying_key,
-            #     'subblock': i % parallelism,
-            #     'previous': previous_block_hash
-            # }
-            #
-            # sbc = format_dictionary(sbc)
-            #
-            # subblocks.append(sbc)
-            # i += 1
+            sbc = {
+                'input_hash': tx['input_hash'],
+                'transactions': results,
+                'merkle_tree': merkle_tree,
+                'signer': wallet.verifying_key,
+                'subblock': i % parallelism,
+                'previous': previous_block_hash
+            }
 
-        return subblock
+            sbc = format_dictionary(sbc)
+
+            subblocks.append(sbc)
+            i += 1
+
+        return subblocks
