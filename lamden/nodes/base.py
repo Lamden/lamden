@@ -172,7 +172,6 @@ class Node:
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver)
-        self.transaction_executor = execution.SerialExecutor(executor=self.executor)
 
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
@@ -184,7 +183,7 @@ class Node:
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=self.processing_delay_secs,
-            transaction_executor=self.transaction_executor,
+            executor=self.executor,
             get_current_hash=lambda: self.current_hash,
             get_current_height=lambda: self.current_height
         )
