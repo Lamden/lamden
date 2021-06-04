@@ -21,8 +21,7 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list",
-        "lmdb"
+        "stdlib_list"
     ],
     entry_points={
         'console_scripts': [

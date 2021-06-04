@@ -29,90 +29,61 @@ class SBCInbox(router.Processor):
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
+        '''
         if len(msg) != self.expected_subblocks:
             self.log.error(f'Contender has wrong number of subblocks! Has {len(msg)} and not {self.expected_subblocks}')
             return
+        '''
 
         peers = self.get_all_peers()
-        for i in range(len(msg)):
-            # self.log.info(f'Received SOLUTION from {msg[i]["signer"][:8]}')
 
-            if msg[i]['signer'] not in peers and msg[i]['signer'] != self.wallet.verifying_key:
-                self.log.error('Contender sender is not a valid peer!')
-                return
+        subblock = msg['subblocks'][0]
+        signing_data = subblock['signatures'][0]
+        # self.log.info(f'Received SOLUTION from {signing_data["signer"][:8]}')
 
-            if not self.sbc_is_valid(msg[i], i):
-                self.log.error('Contender is not valid!')
-                return
+        if signing_data['signer'] not in peers and signing_data['signer'] != self.wallet.verifying_key:
+            self.log.error('Contender sender is not a valid peer!')
+            return
 
-            # Store the results by hlc_timestamps so we can reference them from the needs_validation list
-            for j in range(len(msg[i]['transactions'])):
-                # Get the transaction
-                tx = msg[i]['transactions'][j]
+        if not self.sbc_is_valid(
+            message=msg['subblocks'][0]['input_hash'],
+            signer=signing_data['signer'],
+            signature=signing_data['signature']
+        ):
+            self.log.error('Contender is not valid!')
+            return
 
-                '''
-                if self.validation_queue.awaiting_validation(hlc_timestamp=tx['hlc_timestamp']):
-                    # TODO this could be a clue we are not in consensus or something else is wrong
-                    self.log.error(f'I have never heard of a transaction with hlc_timestamp {tx["hlc_timestamp"]}')
-                    return
-                '''
-                # self.log.info(msg[i]['signer'])
-                if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=msg[i]['signer'] and msg[i]['signer'] != self.wallet.verifying_key):
-                    # TODO what todo if you get another solution from the same node about the same tx
-                    self.log.error(f'Already received results from {msg[i]["signer"]} for {tx["hlc_timestamp"]}')
-                    return
+        # Get the transaction
+        tx = subblock['transactions'][0]
 
-                # Add solution to this validation list for this tx
-                self.validation_queue.add_solution(
-                    hlc_timestamp=tx['hlc_timestamp'],
-                    node_vk=msg[i]['signer'],
-                    results = msg[i]
-                )
+        # self.log.info(msg[i]['signer'])
+        if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=signing_data['signer']):
+            # TODO what todo if you get a duplicate result from the same node?  Possible fraud detection?
+            self.log.error(f'Already received results from {signing_data["signer"]} for {tx["hlc_timestamp"]}')
+            return
 
-    def sbc_is_valid(self, sbc, sb_idx=0):
-        if sbc['subblock'] != sb_idx:
-            self.log.error(f'Subblock Contender[{sb_idx}] is out order.')
-            return False
+        # Add solution to this validation list for this tx
+        self.validation_queue.add_solution(
+            hlc_timestamp=tx['hlc_timestamp'],
+            node_vk=signing_data['signer'],
+            results = msg
+        )
 
-        # Make sure signer is in the delegates
-        if len(sbc['transactions']) == 0:
-            message = sbc['input_hash']
-        else:
-            message = sbc['merkle_tree']['leaves'][0]
-
+    def sbc_is_valid(self, message, signer, signature):
         valid_sig = verify(
-            vk=sbc['signer'],
+            vk=signer,
             msg=message,
-            signature=sbc['merkle_tree']['signature']
+            signature=signature
         )
 
         if not valid_sig:
             self.log.debug({
-                'sbc':sbc,
-                'vk': sbc['signer'],
+                'vk': signer,
                 'msg': message,
-                'signature': sbc['merkle_tree']['signature']
+                'signature': signature
             })
-            self.log.error(f'Subblock Contender[{sb_idx}] from {sbc["signer"][:8]} has an invalid signature.')
+            self.log.error(f'Solution {message[:8]} from {signer[:8]} has an invalid signature.')
             return False
-
-        if len(sbc['merkle_tree']['leaves']) > 0:
-            txs = [encode(tx).encode() for tx in sbc['transactions']]
-            expected_tree = merklize(txs)
-
-            # Missing leaves, etc
-            if len(sbc['merkle_tree']['leaves']) != len(expected_tree) and len(sbc['transactions']) > 0:
-                self.log.error('Merkle Tree Len mismatch')
-                return False
-
-            for i in range(len(expected_tree)):
-                if expected_tree[i] != sbc['merkle_tree']['leaves'][i]:
-                    self.log.error(f'Subblock Contender[{sbc["subblock"]}] from {sbc["signer"][:8]} has an Merkle tree proof.')
-                    self.log.error(expected_tree[i])
-                    self.log.error(txs[i])
-                    return False
-
-        ## self.log.info(f'Subblock[{sbc["subblock"]}] from {sbc["signer"][:8]} is valid.')
 
         return True
 

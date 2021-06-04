@@ -214,8 +214,6 @@ class Node:
             wallet=self.wallet
         )
 
-        # self.router.add_service(WORK_SERVICE, self.work_validator)
-        # self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
 
@@ -271,36 +269,15 @@ class Node:
         processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
-            # add the hlc_timestamp to the needs validation queue for processing later
-            self.validation_queue.append(processing_results)
-
             # Mint new block
-            self.create_new_block(deepcopy(processing_results['results']))
-            await self.send_solution_to_network(results=deepcopy(processing_results['results']))
+            block_info = self.create_new_block(processing_results['results'])
+            # add the hlc_timestamp to the needs validation queue for processing later
+            self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
+            await self.send_block_to_network(block_info=block_info)
 
-            # TODO This currently just udpates DB State but it should be cache
-            # self.save_cached_state(results=results)
-
-            # self.log.info("\n------ MY RESULTS -----------")
-            # self.log.debug(processing_results)
-            # self.log.info("\n-----------------------------")
-            return True
-        else:
-            return False
-
-    async def send_solution_to_network(self, results):
-        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=results))
-        self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=results)
-        '''
-        await router.secure_multicast(
-            msg=results,
-            service=CONTENDER_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_all_peers(not_me=True),
-            ctx=self.ctx
-        )
-        '''
+    async def send_block_to_network(self, block_info):
+        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
+        self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=block_info)
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
@@ -333,17 +310,6 @@ class Node:
 
         await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message)
         self.network.add_message_to_subscriptions_queue(topic=WORK_SERVICE, msg=tx_message)
-
-        '''
-            await router.secure_multicast(
-                msg=tx_message,
-                service=WORK_SERVICE,
-                cert_dir=self.socket_authenticator.cert_dir,
-                wallet=self.wallet,
-                peer_map=self.get_all_peers(),
-                ctx=self.ctx
-            )
-        '''
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
@@ -453,23 +419,7 @@ class Node:
         bc.add_sbcs(results)
         subblocks = bc.get_current_best_block()
 
-        if (len(subblocks) == 0):
-            self.log.debug(subblocks)
-            self.log.debug(results)
-            self.log.error("---------------------------------------------------------------")
-            self.log.error("--------------- NO SUB BLOCKS!!! ---------------")
-            self.log.error("--------------------------------------------------------------------")
-
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.process_new_block(block, results[0]['transactions'][0]['hlc_timestamp'])
-
-    def process_new_block(self, block, hlc_timestamp):
-        # TODO hlc_timestamp can be removed from args as it's only there for dev debugging
-
-        # Update the state and refresh the sockets so new nodes can join
-        # TODO re-enable when cached state is implemented
-        # self.update_database_state(block)
-
         block_info = json.loads(encode(block).encode())
 
         self.log.debug(json.dumps({
@@ -477,12 +427,13 @@ class Node:
             'file': 'base',
             'event': 'new_block',
             'block_info': block_info,
-            'hlc_timestamp': hlc_timestamp,
+            'hlc_timestamp': results[0]['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
         }))
 
         self.blocks.store_block(block)
         self.save_cached_state(block_info)
+        return block_info
 
     def save_cached_state(self, block):
         self.update_database_state(block)

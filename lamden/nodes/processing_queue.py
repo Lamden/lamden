@@ -69,7 +69,7 @@ class ProcessingQueue:
             }))
 
             return {
-                'tx': tx,
+                'hlc_timestamp': tx['hlc_timestamp'],
                 'results': results
             }
         else:
