@@ -142,7 +142,7 @@ class ProcessingQueue:
 
         tx_output = {
             'hash': tx_hash,
-            'transactions': [transaction],
+            'transaction': transaction,
             'status': output['status_code'],
             'state': writes,
             'stamps_used': output['stamps_used'],
@@ -171,19 +171,15 @@ class ProcessingQueue:
             'now': now,
         }
 
-        results = self.execute_tx(
+        result = self.execute_tx(
             transaction=tx['tx'],
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
             hlc_timestamp=tx['hlc_timestamp'],
             environment=environment
         )
 
-        if len(results) > 0:
-            merkle = merklize([encode(r).encode() for r in results])
-            proof = self.wallet.sign(merkle[0])
-        else:
-            merkle = merklize([bytes.fromhex(tx['input_hash'])])
-            proof = self.wallet.sign(tx['input_hash'])
+        merkle = merklize(encode(result).encode())
+        proof = self.wallet.sign(merkle[0])
 
         merkle_tree = {
             'leaves': merkle,
@@ -192,7 +188,7 @@ class ProcessingQueue:
 
         sbc = {
             'input_hash': tx['input_hash'],
-            'transactions': results,
+            'transactions': [result],
             'merkle_tree': merkle_tree,
             'signer': self.wallet.verifying_key,
             'subblock': 0,
