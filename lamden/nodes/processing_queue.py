@@ -58,7 +58,7 @@ class ProcessingQueue:
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > self.processing_delay:
             # Process it to get the results
-            results = self.process_tx(tx)
+            results = self.process_tx(tx=tx['tx'])
 
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
