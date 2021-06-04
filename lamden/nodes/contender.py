@@ -36,7 +36,7 @@ class SBCInbox(router.Processor):
         '''
 
         peers = self.get_all_peers()
-
+        self.log.debug(msg)
         subblock = msg['subblocks'][0]
         signing_data = subblock['signatures'][0]
         # self.log.info(f'Received SOLUTION from {signing_data["signer"][:8]}')
@@ -70,6 +70,7 @@ class SBCInbox(router.Processor):
         )
 
     def sbc_is_valid(self, message, signer, signature):
+        self.log.debug({message, signer, signature})
         valid_sig = verify(
             vk=signer,
             msg=message,
