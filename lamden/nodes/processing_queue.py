@@ -178,6 +178,29 @@ class ProcessingQueue:
             environment=environment
         )
 
+        if len(results) > 0:
+            merkle = merklize([encode(r).encode() for r in results])
+            proof = self.wallet.sign(merkle[0])
+        else:
+            merkle = merklize([bytes.fromhex(tx['input_hash'])])
+            proof = self.wallet.sign(tx['input_hash'])
+
+        merkle_tree = {
+            'leaves': merkle,
+            'signature': proof
+        }
+
+        sbc = {
+            'input_hash': tx['input_hash'],
+            'transactions': results,
+            'merkle_tree': merkle_tree,
+            'signer': self.wallet.verifying_key,
+            'subblock': 0,
+            'previous': self.get_current_hash()
+        }
+
+        sbc = format_dictionary(sbc)
+
         # results = self.transaction_executor.execute_work(
         #     driver=self.driver,
         #     work=[tx],
@@ -194,7 +217,7 @@ class ProcessingQueue:
         # self.new_block_processor.clean(self.current_height)
         # self.driver.clear_pending_state()
 
-        return results
+        return sbc
 
     def __len__(self):
         return len(self.main_processing_queue)
