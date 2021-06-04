@@ -7,6 +7,7 @@ from lamden.logger.base import get_logger
 from lamden import storage
 import asyncio
 import time
+import hashlib
 
 log = get_logger('Contender')
 
@@ -38,6 +39,7 @@ class SBCInbox(router.Processor):
         peers = self.get_all_peers()
 
         subblock = msg['subblocks'][0]
+        message = subblock['transactions'][0]
         signing_data = subblock['signatures'][0]
         # self.log.info(f'Received SOLUTION from {signing_data["signer"][:8]}')
 
@@ -46,7 +48,7 @@ class SBCInbox(router.Processor):
             return
 
         if not self.sbc_is_valid(
-            message=msg['subblocks'][0]['input_hash'],
+            message=message,
             signer=signing_data['signer'],
             signature=signing_data['signature']
         ):
@@ -70,9 +72,13 @@ class SBCInbox(router.Processor):
         )
 
     def sbc_is_valid(self, message, signer, signature):
+        h = hashlib.sha3_256()
+        h.update('{}'.format(encode(message).encode()).encode())
+        message_hash = h.hexdigest()
+
         valid_sig = verify(
             vk=signer,
-            msg=message,
+            msg=message_hash,
             signature=signature
         )
 
@@ -82,7 +88,7 @@ class SBCInbox(router.Processor):
                 'msg': message,
                 'signature': signature
             })
-            self.log.error(f'Solution {message[:8]} from {signer[:8]} has an invalid signature.')
+            self.log.error(f'Solution from {signer[:8]} has an invalid signature.')
             return False
 
         return True
