@@ -58,21 +58,22 @@ class ValidationQueue:
         self.needs_validation_queue.sort()
         next_hlc_timestamp = self.needs_validation_queue.pop(0)
 
-        consensus_info = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
+        consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
+        self.log.debug(consensus_result)
 
-        if consensus_info['has_consensus']:
+        if consensus_result['has_consensus']:
             # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
 
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
                 'file': 'validation_queue',
                 'event': 'has_consensus',
-                'consensus_info': consensus_info,
+                'consensus_info': consensus_result,
                 'hlc_timestamp': next_hlc_timestamp,
                 'system_time': time.time()
             }))
 
-            if consensus_info['matches_me']:
+            if consensus_result['matches_me']:
                 # cleanup validation results
                 self.validation_results.pop(next_hlc_timestamp)
 
@@ -82,12 +83,12 @@ class ValidationQueue:
             else:
                 # TODO What to do if the node wasn't in the consensus group?
                 # TODO Run Cathup? How?
-                self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_info["my_solution"][:12]}. STOPPING NODE')
+                self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_result["my_solution"][:12]}. STOPPING NODE')
 
                 # TODO get the actual consensus solution and do something with it
                 all_block_results = self.validation_results[next_hlc_timestamp]
                 for delegate in all_block_results['solutions']:
-                    if all_block_results['solutions'][delegate]['hash'] == consensus_info['solution']:
+                    if all_block_results['solutions'][delegate]['hash'] == consensus_result['solution']:
                         results = all_block_results['solutions'][delegate]
                         # TODO do something with the actual consensus solution
                         break
@@ -112,7 +113,12 @@ class ValidationQueue:
 
         # TODO How to set consensus percentage?
         # Cal the number of current delagates that need to agree
-        consensus_needed = math.ceil(num_of_peers * (self.consensus_percent / 100))
+
+        # TODO reset consensus to commented out line
+        # consensus_needed = math.ceil(num_of_peers * (self.consensus_percent / 100))
+
+        # TODO THIS IS FOR TROUBLESHOOTING, REMOVE THIS
+        consensus_needed = num_of_peers + 1
 
         # Get the current solutions
         total_solutions_received = len(solutions)
@@ -136,6 +142,7 @@ class ValidationQueue:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+
 
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_results['ideal_consensus_possible']
 
