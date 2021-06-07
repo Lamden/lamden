@@ -62,7 +62,7 @@ class SBCInbox(router.Processor):
         self.validation_queue.add_solution(
             hlc_timestamp=tx['hlc_timestamp'],
             node_vk=signing_data['signer'],
-            results = msg
+            block_info = msg
         )
 
     def sbc_is_valid(self, message, signer, signature):
