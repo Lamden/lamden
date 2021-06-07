@@ -238,7 +238,7 @@ class ValidationQueue:
         # Sort the Tally object into a list of result objects
         results_list = []
         for solution in tallies:
-            results_list.push({
+            results_list.append({
                 'solution': solution,
                 'consensus_amount': tallies[solution]
             })
@@ -248,10 +248,10 @@ class ValidationQueue:
         top_solutions_list = []
         for i in range(len(results_list)):
             if i == 0:
-                top_solutions_list.push(results_list[0])
+                top_solutions_list.append(results_list[0])
             else:
                 if results_list[i]['consensus_amount'] == top_solutions_list[i - 1]['consensus_amount']:
-                    top_solutions_list.push(results_list[i])
+                    top_solutions_list.append(results_list[i])
                 else:
                     break
 
