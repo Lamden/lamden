@@ -172,6 +172,7 @@ class ValidationQueue:
         if top_solution['consensus_amount'] > consensus_needed:
             return {
                 'has_consensus': True,
+                'ideal_consensus_possible': True,
                 'consensus_needed': consensus_needed,
                 'solution': top_solution['solution'],
                 'my_solution': my_solution,
@@ -202,6 +203,7 @@ class ValidationQueue:
         if tally_info['results_list'][0]['consensus_amount'] > tally_info['results_list'][1]['consensus_amount'] + solutions_missing:
             return {
                 'has_consensus': True,
+                'eager_consensus_possible': True,
                 'consensus_needed': consensus_needed,
                 'solution': tally_info['results_list'][0]['solution'],
                 'my_solution': my_solution,
