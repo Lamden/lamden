@@ -242,7 +242,7 @@ class ValidationQueue:
                 'solution': solution,
                 'consensus_amount': tallies[solution]
             })
-        results_list = sorted(results_list, key=lambda x: x.consensus_amount)
+        results_list = sorted(results_list, key=lambda x: x['consensus_amount'])
 
         # Get a list of the top solution(s)
         top_solutions_list = []
