@@ -20,7 +20,7 @@ class ValidationQueue:
         self.wallet = wallet
 
     def append(self, block_info, hlc_timestamp):
-        # self.log.debug("ADDING TO NEEDS VALIDATION QUEUE")
+        self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
 
         self.add_solution(
             hlc_timestamp=hlc_timestamp,
@@ -38,7 +38,8 @@ class ValidationQueue:
         except KeyError:
             return False
 
-    def add_solution(self, hlc_timestamp, node_vk, results):
+    def add_solution(self, hlc_timestamp, node_vk, block_info):
+        self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
@@ -48,7 +49,7 @@ class ValidationQueue:
                 'eager_consensus_possible': True
             }
 
-        self.validation_results[hlc_timestamp]['solutions'][node_vk] = results
+        self.validation_results[hlc_timestamp]['solutions'][node_vk] = block_info
 
         # self.log.debug(self.validation_results[hlc_timestamp]['solutions'])
 

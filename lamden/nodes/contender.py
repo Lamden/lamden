@@ -30,18 +30,12 @@ class SBCInbox(router.Processor):
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
-        '''
-        if len(msg) != self.expected_subblocks:
-            self.log.error(f'Contender has wrong number of subblocks! Has {len(msg)} and not {self.expected_subblocks}')
-            return
-        '''
-
         peers = self.get_all_peers()
 
         subblock = msg['subblocks'][0]
         message = subblock['transactions'][0]
         signing_data = subblock['signatures'][0]
-        # self.log.info(f'Received SOLUTION from {signing_data["signer"][:8]}')
+        self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signing_data["signer"][:8]}')
 
         if signing_data['signer'] not in peers and signing_data['signer'] != self.wallet.verifying_key:
             self.log.error('Contender sender is not a valid peer!')
