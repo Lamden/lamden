@@ -45,7 +45,7 @@ class ValidationQueue:
         if hlc_timestamp not in self.validation_results:
             self.validation_results[hlc_timestamp] = {}
             self.validation_results[hlc_timestamp]['solutions'] = {}
-            self.validation_results[hlc_timestamp]['last_result'] = {
+            self.validation_results[hlc_timestamp]['last_check_result'] = {
                 'ideal_consensus_possible': True,
                 'eager_consensus_possible': True
             }
