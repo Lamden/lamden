@@ -25,7 +25,7 @@ class ValidationQueue:
         self.add_solution(
             hlc_timestamp=hlc_timestamp,
             node_vk=self.wallet.verifying_key,
-            results=block_info
+            block_info=block_info
         )
         self.needs_validation_queue.append(hlc_timestamp)
 
