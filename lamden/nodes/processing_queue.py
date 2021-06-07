@@ -161,9 +161,13 @@ class ProcessingQueue:
         # Run mini catch up here to prevent 'desyncing'
         # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
 
-        now = Datetime._from_datetime(
-            datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
-        )
+        try:
+            now = Datetime._from_datetime(
+                datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
+            )
+        except Exception as err:
+            self.log.debug(tx)
+            self.log.err(err)
 
         environment = {
             'block_hash': self.get_current_hash(),
