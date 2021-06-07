@@ -102,6 +102,8 @@ class Masternode(base.Node):
 
         await super().start()
 
+        asyncio.ensure_future(self.check_tx_queue())
+
         members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
 
         self.log.info('\n------ MEMBERS ------')

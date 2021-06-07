@@ -229,7 +229,7 @@ class Node:
     async def start(self):
         # Start running
         self.running = True
-        asyncio.ensure_future(self.check_tx_queue())
+
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
