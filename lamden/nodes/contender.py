@@ -35,7 +35,7 @@ class SBCInbox(router.Processor):
         subblock = msg['subblocks'][0]
         message = subblock['transactions'][0]
         signing_data = subblock['signatures'][0]
-        self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signing_data["signer"][:8]}')
+        # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signing_data["signer"][:8]}')
 
         if signing_data['signer'] not in peers and signing_data['signer'] != self.wallet.verifying_key:
             self.log.error('Contender sender is not a valid peer!')

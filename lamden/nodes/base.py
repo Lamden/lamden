@@ -276,7 +276,7 @@ class Node:
 
     async def send_block_to_network(self, block_info):
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
-        self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=block_info)
+        # self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=block_info)
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
