@@ -3,7 +3,7 @@ from lamden import router, storage
 from lamden.crypto.wallet import verify
 
 class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, get_last_processed_hlc):
+    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, get_last_processed_hlc, stop_node):
 
         self.log = get_logger('Work Inbox')
 
@@ -13,6 +13,7 @@ class WorkValidator(router.Processor):
 
         self.wallet = wallet
         self.hlc_clock = hlc_clock
+        self.stop_node = stop_node
 
 
     async def process_message(self, msg):
@@ -36,15 +37,17 @@ class WorkValidator(router.Processor):
 
         tx_age = self.hlc_clock.get_nanos(timestamp=msg['hlc_timestamp'])
         last_processed_age = self.hlc_clock.get_nanos(timestamp=self.get_last_processed_hlc())
+        message_hlc = msg["hlc_timestamp"]
+        last_hlc = self.get_last_processed_hlc()
+
+        self.log.debug({
+            'message_hlc': {'hlc_timestamp': message_hlc, 'age': tx_age},
+            'last_hlc': {'hlc_timestamp': last_hlc, 'age': last_processed_age}
+        })
 
         if tx_age <= last_processed_age:
-            message_hlc = msg["hlc_timestamp"]
-            last_hlc = self.get_last_processed_hlc()
-            self.log.debug({
-                'message_hlc': {'hlc_timestamp': message_hlc, 'age': tx_age},
-                'last_hlc': {'hlc_timestamp': last_hlc, 'age': last_processed_age}
-            })
             self.log.error(f'{message_hlc} received AFTER {last_hlc} was processed!')
+            self.stop_node()
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)
