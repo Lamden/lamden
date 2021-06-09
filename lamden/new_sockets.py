@@ -137,7 +137,7 @@ class Network:
         self.running = False
         self.publisher.stop()
         for peer in self.peers:
-            peer.stop()
+            self.peers[peer].stop()
 
     def disconnect_peer(self, key):
         self.peers[key].stop()
