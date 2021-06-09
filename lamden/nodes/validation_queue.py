@@ -60,9 +60,12 @@ class ValidationQueue:
         self.needs_validation_queue.sort()
         next_hlc_timestamp = self.needs_validation_queue.pop(0)
 
+        self.log.debug({
+            'should_check_again': self.should_check_again(hlc_timestamp=next_hlc_timestamp)
+        })
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
-            self.log.debug(consensus_result)
+            self.log.debug({'consensus_result': consensus_result})
 
             if consensus_result['has_consensus']:
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
@@ -125,9 +128,14 @@ class ValidationQueue:
                 eager: no one solution meets the consensus threshold. Take the highest result if no other solution could overtake it.
                 failure: Consensus is SPLIT, all results are in and the top results are tied. In this case take the numerical hex value that is the highest.
         '''
+        # Get all the stored solutions for this hlc_timestamp
         solutions = self.validation_results[hlc_timestamp]['solutions']
+
+        # Get the number of current solutions
+        total_solutions_received = len(solutions)
+
         # set the number of solutions we are checking this time
-        self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] = len(solutions)
+        self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] = total_solutions_received
 
         # Get the number of current nodes and add yourself
         num_of_peers = len(self.get_peers_for_consensus()) + 1
@@ -136,8 +144,6 @@ class ValidationQueue:
         # determine the number of matching answers we need to form consensus
         consensus_needed = math.ceil(num_of_peers * (self.consensus_percent / 100))
 
-        # Get the number of current solutions
-        total_solutions_received = len(solutions)
         '''
         Return if we don't have enough responses to attempt an ideal consensus check
         Which means consensus on any block solution doesn't start till we have at least enough respondents to get a
@@ -151,6 +157,11 @@ class ValidationQueue:
             total_solutions_received = 6 (we can now start checking consensus moving from ideal to eager to
                                           failure as more solutions arrive)
         '''
+        self.log.debug({
+            'total_solutions_received': total_solutions_received,
+            'consensus_needed': consensus_needed,
+            'num_of_peers': num_of_peers
+        })
         if total_solutions_received < consensus_needed:
             # TODO Discuss possible scenario where enough peers go offline that we never reach the consensus number..
             return {
@@ -161,6 +172,12 @@ class ValidationQueue:
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
 
+        self.log.debug({
+            'my_solution': my_solution,
+            'solutions_missing': solutions_missing,
+            'tally_info': tally_info
+        })
+
         if self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible']:
             # Check ideal situation
             ideal_consensus_results = self.check_ideal_consensus(
@@ -170,6 +187,9 @@ class ValidationQueue:
                 solutions_missing=solutions_missing
             )
 
+            self.log.debug({
+                'ideal_consensus_results': ideal_consensus_results
+            })
 
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_results['ideal_consensus_possible']
 
