@@ -1,6 +1,6 @@
 from lamden import storage, network, router, authentication, rewards, upgrade, contracts
 from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes import block_contender, contender
+from lamden.nodes import block_contender, contender, system_usage
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
@@ -131,6 +131,8 @@ class Node:
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
         self.ctx = ctx
 
+        self.system_monitor = system_usage.SystemUsage()
+
         self.genesis_path = genesis_path
 
         self.client = ContractingClient(
@@ -238,6 +240,7 @@ class Node:
         # Start running
         self.running = True
 
+        asyncio.ensure_future(self.system_monitor.start(delay_sec=0.5))
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
@@ -253,6 +256,14 @@ class Node:
                     key=vk,
                     wallet=self.wallet
                 )
+
+    def stop(self):
+        # Kill the router and throw the running flag to stop the loop
+        self.log.error("!!!!!! STOPPING NODE !!!!!!")
+        self.network.stop()
+        self.system_monitor.stop()
+        self.running = False
+
 
     async def check_tx_queue(self):
         while self.running:
@@ -448,11 +459,6 @@ class Node:
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
-
-    def stop(self):
-        # Kill the router and throw the running flag to stop the loop
-        self.network.stop()
-        self.running = False
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(

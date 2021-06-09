@@ -21,7 +21,8 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list"
+        "stdlib_list",
+        "psutil"
     ],
     entry_points={
         'console_scripts': [
