@@ -209,7 +209,7 @@ class Node:
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
             get_masters=self.get_masternode_peers,
-            get_last_processed_hlc=lambda x: self.last_processed_hlc
+            get_last_processed_hlc=lambda: self.last_processed_hlc
         )
 
         self.block_contender = block_contender.Block_Contender(
