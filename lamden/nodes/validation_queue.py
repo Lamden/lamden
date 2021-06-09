@@ -64,7 +64,7 @@ class ValidationQueue:
 
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
-            self.log.debug({'consensus_result': consensus_result})
+            # self.log.debug({'consensus_result': consensus_result})
 
             if consensus_result['has_consensus']:
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')

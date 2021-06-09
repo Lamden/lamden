@@ -131,18 +131,13 @@ class ProcessingQueue:
 
         self.executor.driver.pending_writes.clear()
 
-        if output['status_code'] == 0:
-            self.log.info(f'TX executed successfully. '
-                          f'{output["stamps_used"]} stamps used. '
-                          f'{len(output["writes"])} writes. '
-                          f'Result = {output["result"]}')
-        else:
+        if output['status_code'] > 0:
             self.log.error(f'TX executed unsuccessfully. '
                            f'{output["stamps_used"]} stamps used. '
                            f'{len(output["writes"])} writes.'
                            f' Result = {output["result"]}')
 
-        self.log.debug(output['writes'])
+        # self.log.debug(output['writes'])
 
         tx_hash = tx_hash_from_tx(transaction)
 

@@ -432,7 +432,7 @@ class Node:
         )
 
     def create_new_block(self, result):
-        self.log.debug(result)
+        # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()

@@ -52,7 +52,7 @@ class Peer:
                 event = await self.socket.poll(timeout=50, flags=zmq.POLLIN)
 
                 if event:
-                    self.log.info("got event!")
+                    # self.log.info("got event!")
 
                     data = await self.socket.recv_multipart()
                     topic, msg = data

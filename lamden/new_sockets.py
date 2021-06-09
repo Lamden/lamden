@@ -81,7 +81,7 @@ class CredentialProvider:
         self.linger = linger
 
     def callback(self, domain, key):
-        self.log.debug(f"Connection from {key} {domain}")
+        # self.log.debug(f"Connection from {key} {domain}")
         # Try to connect to the publisher socket.
         socket = self.ctx.socket(zmq.SUB)
 
