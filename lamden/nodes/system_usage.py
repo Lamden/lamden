@@ -20,13 +20,13 @@ class SystemUsage:
     def print_usage(self):
         self.log.debug({
             'type': 'system_load',
-            'System CPU load': self.get_cpu_usage_pct(),
-            'CPU frequency': self.get_cpu_frequency(),
-            'RAM usage': int(self.get_ram_usage() / 1024 / 1024),
-            'RAM usage percent': self.get_ram_usage_pct(),
-            'RAM total': int(self.get_ram_total() / 1024 / 1024),
-            'Swap usage': int(self.get_swap_usage() / 1024 / 1024),
-            'Swap total': int(self.get_swap_total() / 1024 / 1024)
+            'System_CPU_load': self.get_cpu_usage_pct(),
+            'CPU_frequency': self.get_cpu_frequency(),
+            'RAM_usage': int(self.get_ram_usage() / 1024 / 1024),
+            'RAM_usage_percent': self.get_ram_usage_pct(),
+            'RAM_total': int(self.get_ram_total() / 1024 / 1024),
+            'Swap_usage': int(self.get_swap_usage() / 1024 / 1024),
+            'Swap_total': int(self.get_swap_total() / 1024 / 1024)
         })
 
     def get_cpu_usage_pct(self):
