@@ -13,7 +13,7 @@ class SystemUsage:
         self.running = True
         while self.running:
             self.print_usage()
-            asyncio.sleep(delay_sec)
+            await asyncio.sleep(delay_sec)
 
     def stop(self):
         self.running = False
