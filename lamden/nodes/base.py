@@ -257,7 +257,7 @@ class Node:
                 tx = self.make_tx_message(tx=self.file_queue.pop(0))
 
                 # send the tx to the rest of the network
-                await self.send_tx_to_network()
+                await self.send_tx_to_network(tx=tx)
 
                 # add this tx the processing queue so we can process it
                 self.main_processing_queue.append(tx=tx)
