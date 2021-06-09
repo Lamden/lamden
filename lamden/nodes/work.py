@@ -34,19 +34,17 @@ class WorkValidator(router.Processor):
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
 
-
         tx_age = self.hlc_clock.get_nanos(timestamp=msg['hlc_timestamp'])
-        last_processed_age = self.hlc_clock.get_nanos(timestamp=self.get_last_processed_hlc())
-        message_hlc = msg["hlc_timestamp"]
         last_hlc = self.get_last_processed_hlc()
+        last_processed_age = self.hlc_clock.get_nanos(timestamp=last_hlc)
 
         self.log.debug({
-            'message_hlc': {'hlc_timestamp': message_hlc, 'age': tx_age},
+            'message_hlc': {'hlc_timestamp': msg['hlc_timestamp'], 'age': tx_age},
             'last_hlc': {'hlc_timestamp': last_hlc, 'age': last_processed_age}
         })
 
         if tx_age <= last_processed_age:
-            self.log.error(f'{message_hlc} received AFTER {last_hlc} was processed!')
+            self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
             self.stop_node()
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
