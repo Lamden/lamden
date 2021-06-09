@@ -67,8 +67,6 @@ class ProcessingQueue:
 
         #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 
-
-
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > time_delay:
             self.log.info({

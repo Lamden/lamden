@@ -497,12 +497,13 @@ class Node:
         }
 
     def get_peers_for_consensus(self):
+        allPeers = {}
         peers_from_blockchain = self.get_all_peers(not_me=True)
         for key in peers_from_blockchain:
-            if not self.network.peers[key].currently_participating():
-                del peers_from_blockchain[key]
+            if self.network.peers[key].currently_participating():
+                allPeers[key] = peers_from_blockchain[key]
 
-        return peers_from_blockchain
+        return allPeers
 
     def check_peer_in_consensus(self, key):
         try:
