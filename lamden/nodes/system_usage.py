@@ -18,7 +18,7 @@ class SystemUsage:
         self.running = False
 
     def print_usage(self):
-        print({
+        self.log.debug({
             'type': 'system_load',
             'System CPU load': self.get_cpu_usage_pct(),
             'CPU frequency': self.get_cpu_frequency(),
