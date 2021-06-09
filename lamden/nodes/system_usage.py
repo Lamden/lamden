@@ -1,5 +1,6 @@
 import psutil
 import asyncio
+import json
 from lamden.logger.base import get_logger
 
 class SystemUsage:
@@ -18,7 +19,7 @@ class SystemUsage:
         self.running = False
 
     def print_usage(self):
-        self.log.debug({
+        self.log.debug(json.dumps({
             'type': 'system_load',
             'System_CPU_load': self.get_cpu_usage_pct(),
             'CPU_frequency': self.get_cpu_frequency(),
@@ -27,7 +28,7 @@ class SystemUsage:
             'RAM_total': int(self.get_ram_total() / 1024 / 1024),
             'Swap_usage': int(self.get_swap_usage() / 1024 / 1024),
             'Swap_total': int(self.get_swap_total() / 1024 / 1024)
-        })
+        }))
 
     def get_cpu_usage_pct(self):
         """
