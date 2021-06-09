@@ -221,7 +221,7 @@ class ValidationQueue:
 
     def check_ideal_consensus(self, tally_info, my_solution, solutions_missing, consensus_needed):
         top_solution = tally_info['results_list'][0]
-        if top_solution['consensus_amount'] > consensus_needed:
+        if top_solution['consensus_amount'] >= consensus_needed:
             return {
                 'has_consensus': True,
                 'ideal_consensus_possible': True,
