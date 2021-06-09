@@ -28,7 +28,7 @@ class QueueProcessor(Processor):
         self.q.append(msg)
 
 class Peer:
-    def __init__(self, domain, socket, key, services, add_to_network_blacklist):
+    def __init__(self, domain, socket, key, services, blacklist, max_strikes):
         self.socket = socket
         self.domain = domain
         self.key = key
@@ -36,7 +36,10 @@ class Peer:
         self.in_consensus = True
         self.errored = False
 
-        self.add_to_network_blacklist = add_to_network_blacklist
+        self.max_strikes = max_strikes
+        self.strikes = 0
+
+        self.blacklist = blacklist
 
         self.log = get_logger("PEER")
         self.running = False
@@ -54,6 +57,14 @@ class Peer:
 
     def currently_participating(self):
         return self.in_consensus and self.running and not self.errored
+
+    def add_strike(self):
+        self.strikes += 1
+        self.log.error(f'Strike {self.strikes} for peer {self.key[:8]}')
+        # TODO if self.strikes == self.max_strikes then blacklist this peer or something
+        if self.strikes == self.max_strikes:
+            self.stop()
+            self.blacklist(self.key)
 
     async def check_subscription(self):
         while self.running:
@@ -213,8 +224,10 @@ class Network:
             socket.close()
 
     def disconnect_peer(self, key):
-        domain, socket = self.peersp[key]
-        socket.close()
+        self.peers[key].stop()
+
+    def remove_peer(self, key):
+        self.peers[key].pop()
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
@@ -238,6 +251,11 @@ class Network:
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
     def connect(self, socket, domain, key, wallet, linger=500):
+        if key in self.peer_blacklist:
+            # TODO how does a blacklisted peer get back in good standing?
+            self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
+            return False
+
         self.log.debug(f"Connecting to {key} {domain}")
 
         socket.setsockopt(zmq.LINGER, linger)
@@ -263,7 +281,9 @@ class Network:
             socket=socket,
             domain=domain,
             key=key,
-            services=self.get_services
+            blacklist=lambda x: self.blacklist_peer(key=x),
+            services=self.get_services,
+            max_strikes=self.max_strikes
         )
         self.peers[key].start()
 

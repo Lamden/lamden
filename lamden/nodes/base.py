@@ -508,6 +508,9 @@ class Node:
             except KeyError:
                 self.log.error(f'Cannot drop {key[:8]} from consensus because they are not a peer!')
 
+    def peer_add_strike(self, key):
+        self.network.peers[key].add_strike()
+
     def make_constitution(self):
         return {
             'masternodes': self.get_masternode_peers(),
