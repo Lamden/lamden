@@ -1,6 +1,6 @@
 from lamden import storage, network, router, authentication, rewards, upgrade, contracts
 from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes import block_contender
+from lamden.nodes import block_contender, contender
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
