@@ -281,13 +281,15 @@ class Node:
         if processing_results:
             # Mint new block
             block_info = self.create_new_block(processing_results['result'])
-            # add the hlc_timestamp to the needs validation queue for processing later
+
+            # add the hlc_timestamp to the needs validation queue for processing consensus later
             self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
-            await self.send_block_to_network(block_info=block_info)
+
+            # send my block result to the rest of the network to prove I'm in consensus
+            asyncio.ensure_future(self.send_block_to_network(block_info=block_info))
 
     async def send_block_to_network(self, block_info):
-        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
-        # self.network.add_message_to_subscriptions_queue(topic=CONTENDER_SERVICE, msg=block_info)
+        self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info)
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
