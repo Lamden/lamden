@@ -59,7 +59,7 @@ class ProcessingQueue:
         # If the next item in the queue is old enough to process it then go ahead
         if time_in_queue > self.processing_delay:
             # clear this hlc_timestamp from the received timestamps memory
-            self.message_received_timestamps[tx['hlc_timestamp']].pop()
+            del self.message_received_timestamps[tx['hlc_timestamp']]
 
             # Process it to get the results
             result = self.process_tx(tx=tx)
