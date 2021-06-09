@@ -254,7 +254,13 @@ class Node:
     async def check_tx_queue(self):
         while self.running:
             if len(self.file_queue) > 0:
-                await self.send_tx_to_network(self.file_queue.pop(0))
+                tx = self.make_tx_message(tx=self.file_queue.pop(0))
+
+                # send the tx to the rest of the network
+                await self.send_tx_to_network()
+
+                # add this tx the processing queue so we can process it
+                self.main_processing_queue.append(tx=tx)
             await asyncio.sleep(0)
 
     async def check_main_processing_queue(self):
@@ -302,18 +308,7 @@ class Node:
         }
 
     async def send_tx_to_network(self, tx):
-        tx_message = self.make_tx_message(tx)
-        # self.log.debug(tx_message)
-        # Else, batch some more txs
-        ## self.log.info('Sending transaction to other nodes.')
-
-        # LOOK AT SOCKETS CLASS
-        if len(self.get_delegate_peers()) == 0:
-            self.log.error('No one online!')
-            return False
-
-        await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message)
-        self.network.add_message_to_subscriptions_queue(topic=WORK_SERVICE, msg=tx_message)
+        await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx)
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
