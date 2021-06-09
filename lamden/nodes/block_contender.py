@@ -5,7 +5,8 @@ from lamden.logger.base import get_logger
 import hashlib
 
 class Block_Contender():
-    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, peer_add_strike, wallet, debug=True):
+    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus,
+                 peer_add_strike, wallet, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Block Contender')

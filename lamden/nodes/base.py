@@ -128,6 +128,7 @@ class Node:
         self.socket_base = socket_base
         self.wallet = wallet
         self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay_secs)
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
         self.ctx = ctx
 
         self.genesis_path = genesis_path
@@ -207,7 +208,8 @@ class Node:
             wallet=wallet,
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
-            get_masters=self.get_masternode_peers
+            get_masters=self.get_masternode_peers,
+            get_last_processed_hlc=lambda x: self.last_processed_hlc
         )
 
         self.block_contender = block_contender.Block_Contender(
@@ -279,6 +281,8 @@ class Node:
         processing_results = self.main_processing_queue.process_next()
 
         if processing_results:
+            self.last_processed_hlc = processing_results['hlc_timestamp']
+
             # Mint new block
             block_info = self.create_new_block(processing_results['result'])
 

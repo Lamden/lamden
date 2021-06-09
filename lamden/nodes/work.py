@@ -1,23 +1,15 @@
 from lamden.logger.base import get_logger
 from lamden import router, storage
 from lamden.crypto.wallet import verify
-from lamden.crypto import transaction
-from contracting.client import ContractingClient
-from lamden.crypto.transaction import TransactionException
 
 class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, debug=True, expired_batch=5,
-                 tx_timeout=5):
-
-        self.tx_expiry_sec = 1
+    def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, get_last_processed_hlc):
 
         self.log = get_logger('Work Inbox')
-        self.log.propagate = debug
-
-        self.tx_timeout = tx_timeout
 
         self.main_processing_queue = main_processing_queue
         self.get_masters = get_masters
+        self.get_last_processed_hlc = get_last_processed_hlc
 
         self.wallet = wallet
         self.hlc_clock = hlc_clock
@@ -41,11 +33,18 @@ class WorkValidator(router.Processor):
         if not verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature']):
             self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
 
-        ''' # Removed for testing
-        if await self.hlc_clock.check_expired(timestamp=msg['hlc_timestamp']):
-            self.log.error(f'Expired TX from master {msg["sender"][:8]}')
-            return
-        '''
+
+        tx_age = self.hlc_clock.get_nanos(timestamp=msg['hlc_timestamp'])
+        last_processed_age = self.hlc_clock.get_nanos(timestamp=self.get_last_processed_hlc())
+
+        if tx_age <= last_processed_age:
+            message_hlc = msg["hlc_timestamp"]
+            last_hlc = self.get_last_processed_hlc()
+            self.log.debug({
+                'message_hlc': {'hlc_timestamp': message_hlc, 'age': tx_age},
+                'last_hlc': {'hlc_timestamp': last_hlc, 'age': last_processed_age}
+            })
+            self.log.error(f'{message_hlc} received AFTER {last_hlc} was processed!')
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)

@@ -5,7 +5,8 @@ import json
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
-    def __init__(self, consensus_percent, get_peers_for_consensus, create_new_block, set_peers_not_in_consensus, wallet, stop):
+    def __init__(self, consensus_percent, get_peers_for_consensus, create_new_block,
+                 set_peers_not_in_consensus, wallet, stop):
 
         self.log = get_logger("VALIDATION QUEUE")
 

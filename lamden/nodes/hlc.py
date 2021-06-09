@@ -33,6 +33,12 @@ class HLC_Clock():
         # Return the difference
         return internal_nanoseconds - timestamp_nanoseconds
 
+    def get_nanos(self, timestamp):
+        # Convert timestamp to HLC clock then to nanoseconds
+        temp_hlc = self.timestamp_to_hlc(timestamp)
+        timestamp_nanoseconds, _ = temp_hlc.tuple()
+        return timestamp_nanoseconds
+
     def check_expired(self, timestamp):
         age = self.check_timestamp_age(timestamp)
         return age >= (self.processing_delay * 1000000000)
