@@ -70,7 +70,7 @@ class Peer:
         while self.running:
             try:
                 event = await self.socket.poll(timeout=50, flags=zmq.POLLIN)
-                # self.log.info("got event!")
+                self.log.info("got event!")
                 if event:
                     data = await self.socket.recv_multipart()
                     topic, msg = data
@@ -141,13 +141,13 @@ class Publisher:
     async def publish(self, topic, msg):
         if topic == WORK_SERVICE:
             self.log.debug(json.dumps({
-                'type':'tx_lifecycle',
-                'file':'new_sockets',
-                'event':'publish_new_tx',
+                'type': 'tx_lifecycle',
+                'file': 'new_sockets',
+                'event': 'publish_new_tx',
                 'hlc_timestamp': msg['hlc_timestamp'],
                 'system_time': time.time()
             }))
-        # m = json.dumps(msg).encode()
+
         m = encode(msg).encode()
 
         await self.socket.send_string(topic, flags=zmq.SNDMORE)
@@ -155,7 +155,6 @@ class Publisher:
 
     def stop(self):
         self.socket.close()
-
 
 class CredentialProvider:
     def __init__(self, wallet: Wallet, ctx: zmq.Context, linger=500):
