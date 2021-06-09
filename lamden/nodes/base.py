@@ -240,7 +240,7 @@ class Node:
         # Start running
         self.running = True
 
-        asyncio.ensure_future(self.system_monitor.start(delay_sec=0.5))
+        asyncio.ensure_future(self.system_monitor.start(delay_sec=5))
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
