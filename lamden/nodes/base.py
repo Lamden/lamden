@@ -112,7 +112,7 @@ class Node:
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
-        self.processing_delay_secs = .75
+        self.processing_delay_secs = 2
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
 

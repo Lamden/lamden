@@ -136,9 +136,8 @@ class Network:
     def stop(self):
         self.running = False
         self.publisher.stop()
-        for key, value in self.peers.items():
-            socket, domain = value
-            socket.close()
+        for peer in self.peers:
+            peer.stop()
 
     def disconnect_peer(self, key):
         self.peers[key].stop()
