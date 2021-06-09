@@ -112,7 +112,7 @@ class Node:
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
 
         self.consensus_percent = 51
-        self.processing_delay_secs = 2
+        self.processing_delay_msecs = 0.15
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
 
@@ -127,7 +127,7 @@ class Node:
         self.log.propagate = debug
         self.socket_base = socket_base
         self.wallet = wallet
-        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay_secs)
+        self.hlc_clock = HLC_Clock()
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
         self.ctx = ctx
 

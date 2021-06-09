@@ -29,10 +29,19 @@ class ProcessingQueue:
         self.total_processed = 0
 
     def append(self, tx):
-
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
         # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
+
+    def hold_time(self):
+        delay = len(self.main_processing_queue) * self.processing_delay
+        if delay < 0.5:
+            return 0.5
+
+        if delay > 5:
+            return 5
+
+        return delay
 
     def process_next(self):
         if len(self.main_processing_queue) == 0:
@@ -57,7 +66,7 @@ class ProcessingQueue:
         #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 
         # If the next item in the queue is old enough to process it then go ahead
-        if time_in_queue > self.processing_delay:
+        if time_in_queue > self.hold_time():
             # clear this hlc_timestamp from the received timestamps memory
             del self.message_received_timestamps[tx['hlc_timestamp']]
 
