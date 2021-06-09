@@ -113,6 +113,8 @@ class Node:
 
         self.consensus_percent = 51
         self.processing_delay_secs = .75
+        # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
+        self.max_peer_strikes = 5
 
         self.driver = driver
         self.nonces = nonces
@@ -166,6 +168,7 @@ class Node:
         self.network = Network(
             wallet=wallet,
             socket_id=socket_base,
+            max_peer_strikes=self.max_peer_strikes,
             ctx=self.ctx,
         )
 

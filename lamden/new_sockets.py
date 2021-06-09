@@ -190,8 +190,9 @@ class CredentialProvider:
 
 
 class Network:
-    def __init__(self, wallet: Wallet, ctx: zmq.Context, socket_id):
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, socket_id, max_peer_strikes):
         self.wallet = wallet
+        self.max_peer_strikes = max_peer_strikes
         self.ctx = ctx
         self.socket_id = socket_id
 
@@ -283,7 +284,7 @@ class Network:
             key=key,
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,
-            max_strikes=self.max_strikes
+            max_strikes=self.max_peer_strikes
         )
         self.peers[key].start()
 
