@@ -316,7 +316,7 @@ class ValidationQueue:
             'is_tied': len(top_solutions_list) > 1
         }
 
-    def drop_bad_peers(self, all_block_results, consensus_result):
+    async def drop_bad_peers(self, all_block_results, consensus_result):
         correct_solution = consensus_result['solution']
         out_of_consensus = []
         for node_vk in all_block_results['solutions']:
