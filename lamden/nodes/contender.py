@@ -12,7 +12,7 @@ import hashlib
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_queue, get_all_peers, wallet, debug=True):
+    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, peer_add_strike, wallet, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
@@ -22,6 +22,8 @@ class SBCInbox(router.Processor):
         self.block_q = []
         self.validation_queue = validation_queue
         self.get_all_peers = get_all_peers
+        self.check_peer_in_consensus = check_peer_in_consensus
+        self.peer_add_strike = peer_add_strike
 
     async def process_message(self, msg):
         # self.log.debug(msg)
@@ -39,6 +41,12 @@ class SBCInbox(router.Processor):
 
         if signing_data['signer'] not in peers and signing_data['signer'] != self.wallet.verifying_key:
             self.log.error('Contender sender is not a valid peer!')
+            return
+
+        if not self.check_peer_in_consensus(signing_data['signer']):
+            # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
+            # TODO ie, it's upto the peer to know they are out of consensus and attempt to resync and rejoin, if not we stop communicating with them
+            self.log.info(f'{signing_data["signer"][:8]} is not in the consensus group. Ignoring solution!')
             return
 
         if not self.sbc_is_valid(

@@ -27,6 +27,78 @@ class QueueProcessor(Processor):
     async def process_message(self, msg):
         self.q.append(msg)
 
+class Peer:
+    def __init__(self, domain, socket, key, services, add_to_network_blacklist):
+        self.socket = socket
+        self.domain = domain
+        self.key = key
+        self.services = services
+        self.in_consensus = True
+        self.errored = False
+
+        self.add_to_network_blacklist = add_to_network_blacklist
+
+        self.log = get_logger("PEER")
+        self.running = False
+
+    def start(self):
+        self.running = True
+        asyncio.ensure_future(self.check_subscription())
+
+    def stop(self):
+        self.running = False
+        self.socket.close()
+
+    def not_in_consensus(self):
+        self.in_consensus = False
+
+    def currently_participating(self):
+        return self.in_consensus and self.running and not self.errored
+
+    async def check_subscription(self):
+        while self.running:
+            try:
+                event = await self.socket.poll(timeout=50, flags=zmq.POLLIN)
+                # self.log.info("got event!")
+                if event:
+                    data = await self.socket.recv_multipart()
+                    topic, msg = data
+                    if topic.decode("utf-8") == WORK_SERVICE:
+                        message = json.loads(msg)
+                        self.log.debug(json.dumps({
+                            'type': 'tx_lifecycle',
+                            'file': 'new_sockets',
+                            'event': 'received_from_socket',
+                            'hlc_timestamp': message['hlc_timestamp'],
+                            'system_time': time.time()
+                        }))
+                    await self.process_subscription(data)
+
+            except zmq.error.ZMQError as error:
+                self.log.error(error)
+                self.stop()
+                self.errored = True
+
+            await asyncio.sleep(0)
+
+    async def process_subscription(self, data):
+        topic, msg = data
+        services = self.services()
+        processor = services.get(topic.decode("utf-8"))
+        message = json.loads(msg)
+        if not message:
+            self.log.error(msg)
+            self.log.error(message)
+        if processor is not None and message is not None:
+            if topic.decode("utf-8") == WORK_SERVICE:
+                self.log.debug(json.dumps({
+                    'type': 'tx_lifecycle',
+                    'file': 'new_sockets',
+                    'event': 'processing_from_socket',
+                    'hlc_timestamp': message['hlc_timestamp'],
+                    'system_time': time.time()
+                }))
+            await processor.process_message(message)
 
 class Publisher:
     def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50):
@@ -120,6 +192,7 @@ class Network:
         # self.authenticator = AsyncioAuthenticator(context=self.ctx)
 
         self.peers = {}
+        self.peer_blacklist = []
         self.subscriptions = []
         self.services = {}
 
@@ -129,18 +202,25 @@ class Network:
         self.running = True
         # self.authenticator.start()
         self.publisher.setup_socket()
-        #asyncio.ensure_future(self.update_peers())
-        asyncio.ensure_future(self.process_subscriptions())
+        # asyncio.ensure_future(self.update_peers())
+        # asyncio.ensure_future(self.process_subscriptions())
 
     def stop(self):
         self.running = False
         self.publisher.stop()
         for key, value in self.peers.items():
-            domain, socket = value
+            socket, domain = value
             socket.close()
+
+    def disconnect_peer(self, key):
+        domain, socket = self.peersp[key]
+        socket.close()
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
+
+    def get_services(self):
+        return self.services
 
     def add_message_to_subscriptions_queue(self, topic, msg):
         encoded_msg = encode(msg).encode()
@@ -154,86 +234,8 @@ class Network:
                 socket, domain, key = self.provider.joined.pop(0)
 
                 if self.peers.get(key) is None:
-                    self.peers[key] = (domain, socket)
+                    self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
-    '''
-    async def check_subscriptions(self):
-        while self.running:
-            for key, value in self.peers.items():
-                domain, socket = value
-                try:
-                    event = await socket.poll(timeout=50, flags=zmq.POLLIN)
-                    # self.log.info("got event!")
-                    if event:
-                        msg = await socket.recv_multipart()
-                        self.subscriptions.append(msg)
-
-                except zmq.error.ZMQError as error:
-                    self.log.error(error)
-                    socket.close()
-                    # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
-            await asyncio.sleep(0)
-    '''
-
-    async def check_subscription(self, socket, key):
-        while self.running:
-            try:
-                event = await socket.poll(timeout=50, flags=zmq.POLLIN)
-                # self.log.info("got event!")
-                if event:
-                    data = await socket.recv_multipart()
-                    topic, msg = data
-                    if topic.decode("utf-8") == WORK_SERVICE:
-                        message = json.loads(msg)
-                        self.log.debug(json.dumps({
-                            'type': 'tx_lifecycle',
-                            'file': 'new_sockets',
-                            'event': 'received_from_socket',
-                            'hlc_timestamp': message['hlc_timestamp'],
-                            'system_time': time.time()
-                        }))
-                    await self.process_subscription(data)
-
-            except zmq.error.ZMQError as error:
-                self.log.error(error)
-                socket.close()
-                self.peers.pop(key)
-                # await self.publisher.publish(topic=b'leave', msg={'domain': domain, 'key': key})
-
-            await asyncio.sleep(0)
-
-    async def process_subscription(self, data):
-        topic, msg = data
-        processor = self.services.get(topic.decode("utf-8"))
-        message = json.loads(msg)
-        if not message:
-            self.log.error(msg)
-            self.log.error(message)
-        if processor is not None and message is not None:
-            if topic.decode("utf-8") == WORK_SERVICE:
-                self.log.debug(json.dumps({
-                    'type': 'tx_lifecycle',
-                    'file': 'new_sockets',
-                    'event': 'processing_from_socket',
-                    'hlc_timestamp': message['hlc_timestamp'],
-                    'system_time': time.time()
-                }))
-            await processor.process_message(message)
-            #self.log.info(f'Processed a subscription message {len(self.subscriptions)} left!')
-
-    async def process_subscriptions(self):
-        while self.running:
-            if len(self.subscriptions) > 0:
-                topic, msg = self.subscriptions.pop(0)
-                processor = self.services.get(topic.decode("utf-8"))
-                message = json.loads(msg)
-                if not message:
-                    self.log.error(msg)
-                    self.log.error(message)
-                if processor is not None and message is not None:
-                    await processor.process_message(message)
-                    self.log.info(f'Processed a subscription message {len(self.subscriptions)} left!')
-            await asyncio.sleep(0)
 
     def connect(self, socket, domain, key, wallet, linger=500):
         self.log.debug(f"Connecting to {key} {domain}")
@@ -249,13 +251,25 @@ class Network:
         try:
             socket.connect(domain)
             socket.subscribe(b'')
-            self.peers[key] = (domain, socket)
-            asyncio.ensure_future(self.check_subscription(socket, key))
+            self.add_peer(socket=socket, domain=domain, key=key)
             return True
         except zmq.error.Again as error:
             self.log.error(error)
             socket.close()
             return False
+
+    def add_peer(self, socket, domain, key):
+        self.peers[key] = Peer(
+            socket=socket,
+            domain=domain,
+            key=key,
+            services=self.get_services
+        )
+        self.peers[key].start()
+
+    def blacklist_peer(self, key):
+        self.disconnect_peer(key)
+        self.peer_blacklist.append(key)
 
 
 def z85_key(key):
@@ -267,3 +281,6 @@ def z85_key(key):
         return
 
     return z85.encode(pk).decode('utf-8')
+
+
+

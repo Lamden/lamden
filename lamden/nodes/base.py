@@ -1,6 +1,6 @@
 from lamden import storage, network, router, authentication, rewards, upgrade, contracts
 from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes import contender
+from lamden.nodes import block_contender
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
@@ -190,8 +190,9 @@ class Node:
 
         self.validation_queue = validation_queue.ValidationQueue(
             consensus_percent=self.consensus_percent,
-            get_all_peers=self.get_all_peers,
+            get_peers_for_consensus=self.get_peers_for_consensus,
             create_new_block=self.create_new_block,
+            set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             wallet=self.wallet,
             stop=self.stop
         )
@@ -206,15 +207,16 @@ class Node:
             get_masters=self.get_masternode_peers
         )
 
-        self.aggregator = contender.Aggregator(
+        self.block_contender = block_contender.Block_Contender(
             validation_queue=self.validation_queue,
             get_all_peers=self.get_all_peers,
-            driver=self.driver,
+            check_peer_in_consensus=self.check_peer_in_consensus,
+            peer_add_strike=self.peer_add_strike,
             wallet=self.wallet
         )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
-        self.network.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
         self.running = False
         self.upgrade = False
@@ -483,6 +485,28 @@ class Node:
             ** self.get_masternode_peers(not_me)
         }
 
+    def get_peers_for_consensus(self):
+        peers_from_blockchain = self.get_all_peers(not_me=True)
+        for key in peers_from_blockchain:
+            if not self.network.peers[key].currently_participating():
+                del peers_from_blockchain[key]
+
+        return peers_from_blockchain
+
+    def check_peer_in_consensus(self, key):
+        try:
+            return self.network.peers[key].in_consensus
+        except KeyError:
+            self.log.error(f'Cannot check if {key[:8]} is in consensus because they are not a peer!')
+        return False
+
+    def set_peers_not_in_consensus(self, keys):
+        for key in keys:
+            try:
+                self.network.peers[key].not_in_consensus()
+                self.log.info(f'DROPPED {key[:8]} FROM CONSENSUS!')
+            except KeyError:
+                self.log.error(f'Cannot drop {key[:8]} from consensus because they are not a peer!')
 
     def make_constitution(self):
         return {
