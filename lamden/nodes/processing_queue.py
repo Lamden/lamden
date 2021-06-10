@@ -183,7 +183,7 @@ class ProcessingQueue:
             )
         except Exception as err:
             self.log.debug(tx)
-            self.log.err(err)
+            self.log.error(err)
 
         environment = {
             'block_hash': self.get_current_hash(),
