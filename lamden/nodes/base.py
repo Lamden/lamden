@@ -113,7 +113,7 @@ class Node:
 
         self.consensus_percent = 51
         self.processing_delay_secs = {
-            'base': 1.5,
+            'base': 0.75,
             'self': 0.75
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
