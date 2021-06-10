@@ -1,6 +1,7 @@
 import time
 import json
 import hashlib
+import asyncio
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
@@ -14,7 +15,8 @@ class ProcessingQueue:
         self.log = get_logger('TX PROCESSOR')
         self.main_processing_queue = []
         self.message_received_timestamps = {}
-        self.processing_delay = processing_delay
+        self.processing_delay_other = processing_delay['base']
+        self.processing_delay_self = processing_delay['base'] + processing_delay['self']
 
         self.client = client
         self.wallet = wallet
@@ -23,6 +25,9 @@ class ProcessingQueue:
         self.executor = executor
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
+
+        self.mock_socket_subscription = []
+
 
 
         # TODO There are just for testing
@@ -33,15 +38,11 @@ class ProcessingQueue:
         # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
 
-    def hold_time(self):
-        delay = len(self.main_processing_queue) * self.processing_delay
-        if delay < 0.5:
-            return 0.5
-
-        if delay > 5:
-            return 5
-
-        return delay
+    def hold_time(self, tx):
+        if tx['sender'] == self.wallet.verifying_key:
+            return self.processing_delay_self
+        else:
+            return self.processing_delay_other
 
     def process_next(self):
         if len(self.main_processing_queue) == 0:
