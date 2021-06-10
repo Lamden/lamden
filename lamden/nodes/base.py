@@ -274,11 +274,16 @@ class Node:
             if len(self.file_queue) > 0:
                 tx = self.make_tx_message(tx=self.file_queue.pop(0))
 
+                if tx['tx'] is None:
+                    self.log.error("TX INFO IS NONE AFTER CREATION!")
+                    self.log.debug(tx)
+                    self.stop()
+
                 # send the tx to the rest of the network
-                await self.send_tx_to_network(tx=tx)
+                await self.send_tx_to_network(tx=deepcopy(tx))
 
                 # add this tx the processing queue so we can process it
-                self.main_processing_queue.append(tx=tx)
+                self.main_processing_queue.append(tx=deepcopy(tx))
             await asyncio.sleep(0)
 
     async def check_main_processing_queue(self):
