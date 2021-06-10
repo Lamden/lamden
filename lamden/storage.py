@@ -249,6 +249,20 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
         nonces.set_pending_nonce(*n, value=None)
 
 
+def update_state_nonces(tx, nonces: NonceStorage):
+    nonces.set_nonce(
+        sender=tx['transaction']['payload']['sender'],
+        processor=tx['transaction']['payload']['processor'],
+        value=tx['transaction']['payload']['nonce'] + 1
+    )
+
+    nonces.set_pending_nonce(
+        sender=tx['transaction']['payload']['sender'],
+        processor=tx['transaction']['payload']['processor'],
+        value=None
+    )
+
+
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
     if block.get('subblocks') is not None:
         for sb in block['subblocks']:

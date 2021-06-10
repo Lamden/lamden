@@ -432,11 +432,8 @@ class Node:
         # TODO This should be the actual cache write but it's HDD for now
         self.driver.clear_pending_state()
 
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
+        storage.update_state_nonces(results['transactions'][0], nonces=self.nonces)
+        self.driver.soft_apply(results['transactions'][0]['hlc_timestamp'], results['transactions'][0]['state'])
 
     def create_new_block(self, result):
         # self.log.debug(result)
