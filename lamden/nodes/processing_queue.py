@@ -10,7 +10,7 @@ from datetime import datetime
 
 class ProcessingQueue:
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor,
-                 get_current_height, get_current_hash):
+                 get_current_height, get_current_hash, stop):
 
         self.log = get_logger('TX PROCESSOR')
         self.main_processing_queue = []
@@ -25,6 +25,7 @@ class ProcessingQueue:
         self.executor = executor
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
+        self.stop = stop
 
         self.mock_socket_subscription = []
 
@@ -53,7 +54,10 @@ class ProcessingQueue:
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
         # Pop it out of the main processing queue
         tx = self.main_processing_queue.pop(0)
-        if tx is None:
+        if tx['tx'] is None:
+            self.log.error('tx has no tx info')
+            self.log.debug(tx)
+            self.stop()
             # not sure why this would be but it's a check anyway
             return
 

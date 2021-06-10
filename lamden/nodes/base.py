@@ -194,7 +194,8 @@ class Node:
             processing_delay=self.processing_delay_secs,
             executor=self.executor,
             get_current_hash=lambda: self.current_hash,
-            get_current_height=lambda: self.current_height
+            get_current_height=lambda: self.current_height,
+            stop=self.stop
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
