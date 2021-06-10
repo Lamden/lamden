@@ -293,7 +293,7 @@ class Node:
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
-        processing_results = self.main_processing_queue.process_next()
+        processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
             self.last_processed_hlc = processing_results['hlc_timestamp']

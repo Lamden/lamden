@@ -44,7 +44,7 @@ class ProcessingQueue:
         else:
             return self.processing_delay_other
 
-    def process_next(self):
+    async def process_next(self):
         if len(self.main_processing_queue) == 0:
             return
         # run top of stack if it's older than 1 second
@@ -181,16 +181,15 @@ class ProcessingQueue:
             now = Datetime._from_datetime(
                 datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
             )
+            environment = {
+                'block_hash': self.get_current_hash(),
+                'block_num': self.get_current_height(),
+                '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
+                'now': now,
+            }
         except Exception as err:
             self.log.debug(tx)
             self.log.error(err)
-
-        environment = {
-            'block_hash': self.get_current_hash(),
-            'block_num': self.get_current_height(),
-            '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
-            'now': now,
-        }
 
         result = self.execute_tx(
             transaction=tx['tx'],
