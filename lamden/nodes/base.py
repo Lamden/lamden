@@ -195,7 +195,7 @@ class Node:
             executor=self.executor,
             get_current_hash=lambda: self.current_hash,
             get_current_height=lambda: self.current_height,
-            stop=self.stop
+            stop_node=self.stop
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -204,7 +204,7 @@ class Node:
             create_new_block=self.create_new_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             wallet=self.wallet,
-            stop=self.stop
+            stop_node=self.stop
         )
 
         self.total_processed = 0

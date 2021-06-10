@@ -47,6 +47,13 @@ class WorkValidator(router.Processor):
             self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
             self.stop_node()
 
+        if msg['tx'] is None:
+            self.log.error('tx has no tx info at before appending')
+            self.log.debug(msg)
+            self.stop_node()
+            # not sure why this would be but it's a check anyway
+            return
+
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)
 

@@ -6,7 +6,7 @@ from lamden.logger.base import get_logger
 
 class ValidationQueue:
     def __init__(self, consensus_percent, get_peers_for_consensus, create_new_block,
-                 set_peers_not_in_consensus, wallet, stop):
+                 set_peers_not_in_consensus, wallet, stop_node):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -17,7 +17,7 @@ class ValidationQueue:
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.create_new_block = create_new_block
-        self.stop = stop
+        self.stop_node = stop_node
 
         self.wallet = wallet
 
@@ -102,7 +102,7 @@ class ValidationQueue:
                             break
 
                     # TODO don't stop node, instead recover somehow
-                    self.stop()
+                    self.stop_node()
 
                 # returning here will ensure the hlc_timestamp doesnt' get added back to the validation queue and as
                 # such not reprocessed
