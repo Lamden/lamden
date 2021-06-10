@@ -113,8 +113,8 @@ class Node:
 
         self.consensus_percent = 51
         self.processing_delay_secs = {
-            'base': 2.5,
-            'self': 1
+            'base': 1.5,
+            'self': 0.75
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
