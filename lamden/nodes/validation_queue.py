@@ -62,10 +62,11 @@ class ValidationQueue:
                 'eager_consensus_possible': True,
                 'num_of_solutions': 0
             }
-            if pending_block is not None:
-                self.validation_results[hlc_timestamp]['pending_block'] = pending_block
-            if transaction_processed is not None:
-                self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
+
+        if pending_block is not None:
+            self.validation_results[hlc_timestamp]['pending_block'] = pending_block
+        if transaction_processed is not None:
+            self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
         # check if this node already gave us information
         if node_vk not in self.validation_results[hlc_timestamp]['solutions']:
