@@ -505,7 +505,7 @@ class Node:
         state_change_obj = {}
         # TODO fix the driver so it does this instead
         for state_change in state_changes:
-            state_change_obj[state_change.key] = state_change.value
+            state_change_obj[state_change['key']] = state_change['value']
 
         # Update nonces
         storage.update_state_nonces(tx, nonces=self.nonces)
