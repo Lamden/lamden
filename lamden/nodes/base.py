@@ -456,7 +456,7 @@ class Node:
             'system_time': time.time()
         }))
 
-        self.blocks.store_block(block)
+        self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
         self.save_cached_state(block_info)
         return block_info
 
