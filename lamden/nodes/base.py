@@ -466,6 +466,10 @@ class Node:
         self.driver.hard_apply(hlc_timestamp)
         self.blocks.store_block(pending_block)
 
+        self.driver.clear_pending_state()
+        self.nonces.flush_pending()
+        gc.collect()
+
     async def rollback(self):
         # Stop the processing queue and await it to be done processing its last item
         self.processing_queue.stop()
@@ -513,17 +517,14 @@ class Node:
         # Update change log
         self.driver.soft_apply(hlc_timestamp, state_change_obj)
 
-        # Do I need these?
-        '''
-        self.driver.commit()
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
-        '''
+
 
     def save_cached_state(self, block):
         self.update_database_state(block)
-        self.driver.commit()
+        self.driver.hard_apply()
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
