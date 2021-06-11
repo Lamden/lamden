@@ -457,12 +457,12 @@ class Node:
         }))
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
-        self.save_cached_state(block_info)
+        self.save_cached_state(result['transactions'][0]['hlc_timestamp'], block_info)
         return block_info
 
-    def save_cached_state(self, block):
+    def save_cached_state(self, hcl, block):
         self.update_database_state(block)
-        self.driver.commit()
+        self.driver.soft_apply(hcl, self.driver.pending_writes)
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
