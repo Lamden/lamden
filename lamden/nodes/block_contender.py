@@ -55,13 +55,6 @@ class Block_Contender():
         # Get the transaction
         tx = subblock['transactions'][0]
 
-        # self.log.info(msg[i]['signer'])
-        if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=signing_data['signer']):
-            # TODO what todo if you get a duplicate result from the same node?  Possible fraud detection?
-            # TODO maybe blacklist repeat offenders of this
-            self.log.error(f'Already received results from {signing_data["signer"]} for {tx["hlc_timestamp"]}')
-            return
-
         # Add solution to this validation list for this tx
         self.validation_queue.add_solution(
             hlc_timestamp=tx['hlc_timestamp'],

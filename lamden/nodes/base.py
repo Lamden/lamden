@@ -199,11 +199,13 @@ class Node:
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
+            rollback=self.rollback,
+            wallet=self.wallet,
             consensus_percent=self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
             create_new_block=self.create_new_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
-            wallet=self.wallet,
+            commit_pending_block=self.commit_pending_block,
             stop_node=self.stop
         )
 
@@ -286,27 +288,51 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            if len(self.main_processing_queue) > 0:
+            if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
+                self.main_processing_queue.currently_processing = True
                 await self.process_main_queue()
+                self.main_processing_queue.currently_processing = False
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
         while self.running:
-            if len(self.validation_queue) > 0:
+            if len(self.validation_queue) > 0 and self.validation_queue.running:
                 await self.validation_queue.process_next()
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
+        # attempt to process top of stack from the processing_queue
         processing_results = await self.main_processing_queue.process_next()
 
+        # If processing results is None then nothing was processed
         if processing_results:
+            # store this as the last hlc_timestamp we processed
             self.last_processed_hlc = processing_results['hlc_timestamp']
 
-            # Mint new block
-            block_info = self.create_new_block(processing_results['result'])
+            # Turn results into a new block
+            pending_block = self.create_new_pending_block(processing_results['result'])
+
+            block_info = json.loads(encode(pending_block).encode())
+
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'new_block',
+                'block_info': block_info,
+                'hlc_timestamp': processing_results['hlc_timestamp'],
+                'system_time': time.time()
+            }))
+
+            # Update the current state and also update the change log with deltas for rollback
+            self.update_current_state(block_info=block_info)
 
             # add the hlc_timestamp to the needs validation queue for processing consensus later
-            self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
+            self.validation_queue.append(
+                pending_block=pending_block,
+                block_info=block_info,
+                hlc_timestamp=processing_results['hlc_timestamp'],
+                transaction_processed=processing_results['transaction_processed']
+            )
 
             # send my block result to the rest of the network to prove I'm in consensus
             asyncio.ensure_future(self.send_block_to_network(block_info=block_info))
@@ -428,34 +454,68 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_nonces(results['transactions'][0], nonces=self.nonces)
-        self.driver.soft_apply(results['transactions'][0]['hlc_timestamp'], results['transactions'][0]['state'])
-
-    def create_new_block(self, result):
+    def create_new_pending_block(self, result):
         # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        block_info = json.loads(encode(block).encode())
+        return block
 
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'new_block',
-            'block_info': block_info,
-            'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
-            'system_time': time.time()
-        }))
+    def commit_pending_block(self, pending_block, hlc_timestamp):
+        self.driver.hard_apply(hlc_timestamp)
+        self.blocks.store_block(pending_block)
 
-        self.blocks.store_block(block)
-        self.save_cached_state(block_info)
-        return block_info
+    async def rollback(self):
+        # Stop the processing queue and await it to be done processing its last item
+        self.processing_queue.stop()
+        await self.processing_queue.stopping()
+
+        # Roll back the current state to the point of the last block consensus
+        self.driver.rollback()
+
+        # Add transactions I already processed back into the main_processing queue
+        for key, value in self.processing_queue.validation_results:
+            # Add the tx info back into the main processing queue
+            self.processing_queue.append(tx=value['transaction_processed'])
+
+            # remove my solution from the consensus results
+            del value['solutions'][self.wallet.verifying_key]
+
+            # decrement the number of solutions this will kick off consensus again when my results are added back after
+            # reprocessing by the main queue
+            value['last_check_info']['num_of_solutions'] -= 1
+
+        # Restart the processing and validation queues
+        self.processing_queue.start()
+        self.validation_queue.start()
+
+    def update_current_state(self, block_info):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+
+        try:
+            tx = block_info['subblocks'][0]['transactions'][0]
+            hlc_timestamp = tx['hlc_timestamp']
+            state_changes = tx['state']
+        except KeyError:
+            self.log.error('Malformed block from tx result')
+            self.log.debug(block_info)
+
+        # Update nonces
+        storage.update_state_nonces(tx, nonces=self.nonces)
+
+        # Update change log
+        self.driver.soft_apply(hlc_timestamp, state_changes)
+
+        # Do I need these?
+        '''
+        self.driver.commit()
+        self.driver.clear_pending_state()
+        self.nonces.flush_pending()
+        gc.collect()
+        '''
 
     def save_cached_state(self, block):
         self.update_database_state(block)

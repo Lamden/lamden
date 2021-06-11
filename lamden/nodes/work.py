@@ -52,7 +52,6 @@ class WorkValidator(router.Processor):
 
         if tx_age <= last_processed_age:
             self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
-            self.stop_node()
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)

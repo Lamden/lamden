@@ -13,6 +13,9 @@ class ProcessingQueue:
                  get_current_height, get_current_hash, stop_node):
 
         self.log = get_logger('TX PROCESSOR')
+        self.running = True
+        self.currently_processing = False
+
         self.main_processing_queue = []
         self.message_received_timestamps = {}
         self.processing_delay_other = processing_delay['base']
@@ -33,6 +36,16 @@ class ProcessingQueue:
 
         # TODO There are just for testing
         self.total_processed = 0
+
+    def start(self):
+        self.running = True
+
+    def stop(self):
+        self.running = False
+
+    async def stopping(self):
+        while self.currently_processing:
+            asyncio.sleep(0)
 
     def append(self, tx):
         if tx['tx'] is None:
@@ -103,7 +116,8 @@ class ProcessingQueue:
 
             return {
                 'hlc_timestamp': tx['hlc_timestamp'],
-                'result': result
+                'result': result,
+                'transaction_processed': tx
             }
         else:
             #put it back in queue
