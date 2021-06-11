@@ -233,8 +233,13 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
     nonces_to_delete = []
 
     if tx['state'] is not None and len(tx['state']) > 0:
+        state_change_obj = {}
+        # TODO fix the driver so it does this instead
+        for state_change in tx['state']:
+            state_change_obj[state_change['key']] = state_change['value']
+
         if not hard:
-            driver.soft_apply(tx['hlc_timestamp'], tx['state'])
+            driver.soft_apply(tx['hlc_timestamp'], state_change_obj)
         else:
             driver.hard_apply(tx['hlc_timestamp'])
 
