@@ -412,7 +412,8 @@ class Node:
             storage.update_state_with_block(
                 block=block,
                 driver=self.driver,
-                nonces=self.nonces
+                nonces=self.nonces,
+                hard=True
             )
 
             # self.log.info('Issuing rewards.')
