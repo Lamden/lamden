@@ -68,7 +68,7 @@ class ValidationQueue:
                 self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
         # check if this node already gave us information
-        if self.validation_results[hlc_timestamp]['solutions'][node_vk]:
+        if self.validation_results[hlc_timestamp]['solutions'][node_vk] is not None:
             # If so then decrement the num_of_solutions property so we can process this new info
             # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
             self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
