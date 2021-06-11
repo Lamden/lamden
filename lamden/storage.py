@@ -34,6 +34,8 @@ class BlockStorage:
 
         self.build_directories()
 
+        self.cache = {}
+
     def build_directories(self):
         self.home.mkdir(exist_ok=True, parents=True)
         self.blocks_dir.mkdir(exist_ok=True, parents=True)
@@ -128,9 +130,23 @@ class BlockStorage:
 
         self.fill_block(block)
 
-
-
         return block
+
+    def soft_store_block(self, hlc, block):
+        self.cache[hlc] = block
+
+    def commit(self, hlc):
+        to_delete = []
+        for _hlc, block in sorted(self.cache.items()):
+
+            self.store_block(block)
+
+            to_delete.append(_hlc)
+            if _hlc == hlc:
+                break
+
+        for b in to_delete:
+            self.cache.pop(b)
 
     def fill_block(self, block):
         for subblock in block['subblocks']:
