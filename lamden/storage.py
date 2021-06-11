@@ -241,6 +241,7 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
         if not hard:
             driver.soft_apply(tx['hlc_timestamp'], state_change_obj)
         else:
+            driver.soft_apply(tx['hlc_timestamp'], state_change_obj)
             driver.hard_apply(tx['hlc_timestamp'])
 
         nonces.set_nonce(
