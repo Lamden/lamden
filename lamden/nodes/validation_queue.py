@@ -140,7 +140,7 @@ class ValidationQueue:
                     # rolled back
                     self.needs_validation_queue.append(next_hlc_timestamp)
 
-                    self.rollback()
+                    asyncio.ensure_future(self.rollback())
 
 
 
