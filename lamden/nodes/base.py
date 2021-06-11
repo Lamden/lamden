@@ -543,10 +543,11 @@ class Node:
         if self.should_process(block_info):
             # self.log.info('Issuing rewards.')
             # Calculate and issue the rewards for the governance nodes
-            self.reward_manager.issue_rewards(
-                block=block_info,
-                client=self.client
-            )
+            # self.reward_manager.issue_rewards(
+            #     block=block_info,
+            #     client=self.client
+            # )
+            pass
 
         # self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
