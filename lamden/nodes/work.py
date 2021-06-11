@@ -51,6 +51,8 @@ class WorkValidator(router.Processor):
         })
 
         if tx_age <= last_processed_age:
+            # TODO for discussion, we can detect if we get an eariler hlc but there is an attack vector that a node
+            # owner could send out earlier timestamps to everyong to try and trip them up.  We should talk about this.
             self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])

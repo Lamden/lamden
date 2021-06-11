@@ -203,7 +203,6 @@ class Node:
             wallet=self.wallet,
             consensus_percent=self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            create_new_block=self.create_new_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             commit_pending_block=self.commit_pending_block,
             stop_node=self.stop
