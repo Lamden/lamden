@@ -243,6 +243,7 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
         else:
             driver.soft_apply(tx['hlc_timestamp'], state_change_obj)
             driver.hard_apply(tx['hlc_timestamp'])
+            driver.clear_pending_state()
 
         nonces.set_nonce(
             sender=tx['transaction']['payload']['sender'],
