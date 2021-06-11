@@ -6,7 +6,7 @@ from lamden.logger.base import get_logger
 
 class ValidationQueue:
     def __init__(self, wallet, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, commit_pending_block, stop_node):
+                 set_peers_not_in_consensus, commit_pending_block, rollback, stop_node):
 
         self.log = get_logger("VALIDATION QUEUE")
         self.running = True
@@ -18,6 +18,7 @@ class ValidationQueue:
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.commit_pending_block = commit_pending_block
+        self.rollback = rollback
         self.stop_node = stop_node
 
         self.wallet = wallet
