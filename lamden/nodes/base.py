@@ -479,6 +479,9 @@ class Node:
             # )
 
         # self.log.info('Updating metadata.')
+        storage.set_latest_block_height(pending_block['number'], self.driver)
+        storage.set_latest_block_hash(pending_block['hash'], self.driver)
+
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
@@ -550,6 +553,10 @@ class Node:
             pass
 
         # self.log.info('Updating metadata.')
+
+        storage.set_latest_block_height(block_info['number'], self.driver)
+        storage.set_latest_block_hash(block_info['hash'], self.driver)
+
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
