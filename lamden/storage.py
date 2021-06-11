@@ -229,31 +229,32 @@ def set_latest_block_height(h, driver: ContractDriver):
     driver.driver.set(BLOCK_NUM_HEIGHT, h)
 
 
-def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
+def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage, hard=False):
     nonces_to_delete = []
 
     if tx['state'] is not None and len(tx['state']) > 0:
-        for delta in tx['state']:
-            driver.driver.set(delta['key'], delta['value'])
-            # log.debug(f"{delta['key']} -> {delta['value']}")
+        if not hard:
+            driver.soft_apply(tx['hlc_timestamp'], tx['state'])
+        else:
+            driver.hard_apply(tx['hlc_timestamp'])
 
-            nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
+        nonces.set_nonce(
+            sender=tx['transaction']['payload']['sender'],
+            processor=tx['transaction']['payload']['processor'],
+            value=tx['transaction']['payload']['nonce'] + 1
+        )
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+        nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
 
     for n in nonces_to_delete:
         nonces.set_pending_nonce(*n, value=None)
 
 
-def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
+def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True, hard=False):
     if block.get('subblocks') is not None:
         for sb in block['subblocks']:
             for tx in sb['transactions']:
-                update_state_with_transaction(tx, driver, nonces)
+                update_state_with_transaction(tx, driver, nonces, hard)
 
     # Update our block hash and block num
     if set_hash_and_height:
