@@ -491,16 +491,16 @@ class Node:
 
     async def rollback(self):
         # Stop the processing queue and await it to be done processing its last item
-        self.processing_queue.stop()
-        await self.processing_queue.stopping()
+        self.main_processing_queue.stop()
+        await self.main_processing_queue.stopping()
 
         # Roll back the current state to the point of the last block consensus
         self.driver.rollback()
 
         # Add transactions I already processed back into the main_processing queue
-        for key, value in self.processing_queue.validation_results:
+        for key, value in self.main_processing_queue.validation_results:
             # Add the tx info back into the main processing queue
-            self.processing_queue.append(tx=value['transaction_processed'])
+            self.main_processing_queue.append(tx=value['transaction_processed'])
 
             # remove my solution from the consensus results
             del value['solutions'][self.wallet.verifying_key]
@@ -510,7 +510,7 @@ class Node:
             value['last_check_info']['num_of_solutions'] -= 1
 
         # Restart the processing and validation queues
-        self.processing_queue.start()
+        self.main_processing_queue.start()
         self.validation_queue.start()
 
     def update_current_state(self, block_info):
