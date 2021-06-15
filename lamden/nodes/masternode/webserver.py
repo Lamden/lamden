@@ -359,11 +359,14 @@ class WebServer:
     async def get_tx(self, request):
         _hash = request.args.get('hash')
 
+        log.info(f'processing request for hash {_hash}')
+
         if _hash is not None:
             try:
                 int(_hash, 16)
                 tx = self.blocks.get_tx(_hash)
-            except ValueError:
+            except ValueError as err:
+                log.error(err)
                 return response.json({'error': 'Malformed hash.'}, status=400,
                                      headers={'Access-Control-Allow-Origin': '*'})
         else:
