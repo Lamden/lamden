@@ -371,7 +371,7 @@ class Node:
         self.nonces.flush_pending()
         gc.collect()
 
-    def update_block_db_state(self, block):
+    def update_block_db(self, block):
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         self.driver.clear_pending_state()
 
