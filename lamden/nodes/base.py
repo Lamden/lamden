@@ -365,12 +365,6 @@ class Node:
 
         return block_info
 
-    def soft_apply_current_state(self, hcl, block):
-        self.driver.soft_apply(hcl, self.driver.pending_writes)
-        self.driver.clear_pending_state()
-        self.nonces.flush_pending()
-        gc.collect()
-
     def update_block_db(self, block):
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         self.driver.clear_pending_state()
@@ -397,8 +391,15 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
+    def soft_apply_current_state(self, hcl, block):
+        self.driver.soft_apply(hcl, self.driver.pending_writes)
+        self.driver.clear_pending_state()
+        self.nonces.flush_pending()
+        gc.collect()
+
     def hard_apply_block(self, hlc_timestamp):
         self.driver.hard_apply(hlc_timestamp)
+        self.blocks.commit(hlc_timestamp)
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(
