@@ -203,6 +203,7 @@ class Node:
             get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
+            validate_block_stored=self.validate_block_stored,
             wallet=self.wallet,
             stop_node=self.stop
         )
@@ -408,6 +409,15 @@ class Node:
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
+
+    def validate_block_stored(self, block_hash, tx_hash):
+        block = self.blocks.get_block(block_hash)
+        if block is None:
+            self.log.error(f'Block {block_hash} not found in Database!')
+
+        tx = self.blocks.get_tx(tx_hash)
+        if tx is None:
+            self.log.error(f'Transaction {tx_hash} not found in Database!')
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(

@@ -6,7 +6,7 @@ from lamden.logger.base import get_logger
 
 class ValidationQueue:
     def __init__(self, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, validate_block_stored):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -17,6 +17,7 @@ class ValidationQueue:
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
+        self.validate_block_stored = validate_block_stored
         self.stop_node = stop_node
 
         self.wallet = wallet
@@ -80,7 +81,14 @@ class ValidationQueue:
 
                 if consensus_result['matches_me']:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
-                    self.hard_apply_block(next_hlc_timestamp)
+                    self.hard_apply_block(hlc_timestamp=next_hlc_timestamp)
+
+                    my_results = self.validation_results[next_hlc_timestamp]['solutions'][self.wallet.verifying_key]
+
+                    self.validate_block_stored(
+                        block_hash=my_results['hash'],
+                        tx_hash=my_results['subblocks'][0]['transactions'][0]['hash']
+                    )
 
                     # Clear all block results from memory because this block has consensus
                     self.validation_results.pop(next_hlc_timestamp, None)
