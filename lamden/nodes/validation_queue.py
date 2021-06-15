@@ -213,7 +213,7 @@ class ValidationQueue:
             # This should always return a consensus result
             return self.check_failed_consensus(
                 tally_info=tally_info,
-                solutions=solutions,
+                my_solution=my_solution,
                 consensus_needed=consensus_needed
             )
 

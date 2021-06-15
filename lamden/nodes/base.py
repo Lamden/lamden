@@ -401,6 +401,14 @@ class Node:
         self.driver.hard_apply(hlc_timestamp)
         self.blocks.commit(hlc_timestamp)
 
+        self.log.debug(json.dumps({
+            'type': 'tx_lifecycle',
+            'file': 'base',
+            'event': 'commit_new_block',
+            'hlc_timestamp': hlc_timestamp,
+            'system_time': time.time()
+        }))
+
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(
             contract=contract_name,
