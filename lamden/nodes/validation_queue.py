@@ -5,8 +5,8 @@ import json
 from lamden.logger.base import get_logger
 
 class ValidationQueue:
-    def __init__(self, consensus_percent, get_peers_for_consensus, create_new_block,
-                 set_peers_not_in_consensus, wallet, stop_node):
+    def __init__(self, consensus_percent, get_peers_for_consensus,
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node):
 
         self.log = get_logger("VALIDATION QUEUE")
 
@@ -16,7 +16,7 @@ class ValidationQueue:
         self.consensus_percent = consensus_percent
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
-        self.create_new_block = create_new_block
+        self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
 
         self.wallet = wallet
@@ -79,14 +79,11 @@ class ValidationQueue:
                 }))
 
                 if consensus_result['matches_me']:
-                    # disconnect from peers that aren't in consensus
-                    asyncio.ensure_future(self.drop_bad_peers(
-                        all_block_results=self.validation_results.pop(next_hlc_timestamp),
-                        consensus_result=consensus_result
-                    ))
+                    # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
+                    self.hard_apply_block(next_hlc_timestamp)
 
-                    # TODO do something with the consensus result?
-                    # results = transaction_info['solutions'][self.wallet.verifying_key]
+                    # Clear all block results from memory because this block has consensus
+                    self.validation_results.pop(next_hlc_timestamp, None)
 
                 else:
                     # TODO What to do if the node wasn't in the consensus group?

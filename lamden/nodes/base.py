@@ -201,7 +201,7 @@ class Node:
         self.validation_queue = validation_queue.ValidationQueue(
             consensus_percent=self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            create_new_block=self.create_new_block,
+            hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             wallet=self.wallet,
             stop_node=self.stop
@@ -302,9 +302,17 @@ class Node:
         if processing_results:
             self.last_processed_hlc = processing_results['hlc_timestamp']
 
-            # Mint new block
-            block_info = self.create_new_block(processing_results['result'])
+            # ___ Change DB and State ___
+            # 1) Needs to create the new block with our result
+            block_info = self.create_new_block_from_result(processing_results['result'])
 
+            # 2) Soft Apply current state and create change log
+            self.soft_apply_current_state(processing_results['hlc_timestamp'], block_info)
+
+            # 3) Store block, create rewards and increment block number
+            self.update_block_db(block_info)
+
+            # ___ Validate and Send Block info __
             # add the hlc_timestamp to the needs validation queue for processing consensus later
             self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
 
@@ -335,110 +343,7 @@ class Node:
     async def send_tx_to_network(self, tx):
         await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx)
 
-    def seed_genesis_contracts(self):
-        self.log.info('Setting up genesis contracts.')
-        sync.setup_genesis_contracts(
-            initial_masternodes=self.constitution['masternodes'],
-            initial_delegates=self.constitution['delegates'],
-            client=self.client,
-            filename=self.genesis_path + '/genesis.json',
-            root=self.genesis_path
-        )
-
-    async def catchup(self, mn_seed, mn_vk):
-        # Get the current latest block stored and the latest block of the network
-        self.log.info('Running catchup.')
-        current = self.current_height
-        latest = await get_latest_block_height(
-            ip=mn_seed,
-            vk=mn_vk,
-            wallet=self.wallet,
-            ctx=self.ctx
-        )
-
-        self.log.info(f'Current block: {current}, Latest available block: {latest}')
-
-        if latest == 0 or latest is None or type(latest) == dict:
-            self.log.info('No need to catchup. Proceeding.')
-            return
-
-        # Increment current by one. Don't count the genesis block.
-        if current == 0:
-            current = 1
-
-        # Find the missing blocks process them
-        for i in range(current, latest + 1):
-            block = None
-            while block is None:
-                block = await get_block(
-                    block_num=i,
-                    ip=mn_seed,
-                    vk=mn_vk,
-                    wallet=self.wallet,
-                    ctx=self.ctx
-                )
-            self.process_new_block(block)
-
-        # Process any blocks that were made while we were catching up
-        while len(self.new_block_processor.q) > 0:
-            block = self.new_block_processor.q.pop(0)
-            self.process_new_block(block)
-
-    def should_process(self, block):
-        try:
-            pass
-            # self.log.info(f'Processing block #{block.get("number")}')
-        except:
-            self.log.error('Malformed block :(')
-            return False
-        # Test if block failed immediately
-        if block == {'response': 'ok'}:
-            return False
-
-        if block['hash'] == 'f' * 64:
-            self.log.error('Failed Block! Not storing.')
-            return False
-
-        return True
-
-    def update_database_state(self, block):
-        self.driver.clear_pending_state()
-
-        # Check if the block is valid
-        if self.should_process(block):
-            # self.log.info('Storing new block.')
-            # Commit the state changes and nonces to the database
-            # self.log.debug(block)
-            storage.update_state_with_block(
-                block=block,
-                driver=self.driver,
-                nonces=self.nonces
-            )
-
-            # self.log.info('Issuing rewards.')
-            # Calculate and issue the rewards for the governance nodes
-            self.reward_manager.issue_rewards(
-                block=block,
-                client=self.client
-            )
-
-        # self.log.info('Updating metadata.')
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
-
-        self.new_block_processor.clean(self.current_height)
-
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-    def create_new_block(self, result):
+    def create_new_block_from_result(self, result):
         # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
@@ -446,6 +351,8 @@ class Node:
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
         block_info = json.loads(encode(block).encode())
+
+        self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -456,16 +363,42 @@ class Node:
             'system_time': time.time()
         }))
 
-        self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
-        self.save_cached_state(result['transactions'][0]['hlc_timestamp'], block_info)
         return block_info
 
-    def save_cached_state(self, hcl, block):
-        self.update_database_state(block)
+    def soft_apply_current_state(self, hcl, block):
         self.driver.soft_apply(hcl, self.driver.pending_writes)
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
+
+    def update_block_db_state(self, block):
+        # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
+        self.driver.clear_pending_state()
+
+        # self.log.info('Storing new block.')
+        # Commit the state changes and nonces to the database
+        # self.log.debug(block)
+        storage.update_state_with_block(
+            block=block,
+            driver=self.driver,
+            nonces=self.nonces
+        )
+
+        # self.log.info('Issuing rewards.')
+        # Calculate and issue the rewards for the governance nodes
+        self.reward_manager.issue_rewards(
+            block=block,
+            client=self.client
+        )
+
+        # self.log.info('Updating metadata.')
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
+
+        self.new_block_processor.clean(self.current_height)
+
+    def hard_apply_block(self, hlc_timestamp):
+        self.driver.hard_apply(hlc_timestamp)
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(
@@ -535,3 +468,79 @@ class Node:
             'masternodes': self.get_masternode_peers(),
             'delegates': self.get_delegate_peers()
         }
+
+    def seed_genesis_contracts(self):
+        self.log.info('Setting up genesis contracts.')
+        sync.setup_genesis_contracts(
+            initial_masternodes=self.constitution['masternodes'],
+            initial_delegates=self.constitution['delegates'],
+            client=self.client,
+            filename=self.genesis_path + '/genesis.json',
+            root=self.genesis_path
+        )
+
+    async def catchup(self, mn_seed, mn_vk):
+        # Get the current latest block stored and the latest block of the network
+        self.log.info('Running catchup.')
+        current = self.current_height
+        latest = await get_latest_block_height(
+            ip=mn_seed,
+            vk=mn_vk,
+            wallet=self.wallet,
+            ctx=self.ctx
+        )
+
+        self.log.info(f'Current block: {current}, Latest available block: {latest}')
+
+        if latest == 0 or latest is None or type(latest) == dict:
+            self.log.info('No need to catchup. Proceeding.')
+            return
+
+        # Increment current by one. Don't count the genesis block.
+        if current == 0:
+            current = 1
+
+        # Find the missing blocks process them
+        for i in range(current, latest + 1):
+            block = None
+            while block is None:
+                block = await get_block(
+                    block_num=i,
+                    ip=mn_seed,
+                    vk=mn_vk,
+                    wallet=self.wallet,
+                    ctx=self.ctx
+                )
+            self.process_new_block(block)
+
+        # Process any blocks that were made while we were catching up
+        while len(self.new_block_processor.q) > 0:
+            block = self.new_block_processor.q.pop(0)
+            self.process_new_block(block)
+
+    def should_process(self, block):
+        try:
+            pass
+            # self.log.info(f'Processing block #{block.get("number")}')
+        except:
+            self.log.error('Malformed block :(')
+            return False
+        # Test if block failed immediately
+        if block == {'response': 'ok'}:
+            return False
+
+        if block['hash'] == 'f' * 64:
+            self.log.error('Failed Block! Not storing.')
+            return False
+
+        return True
+
+    def update_cache_state(self, results):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+
+        storage.update_state_with_transaction(
+            tx=results['transactions'][0],
+            driver=self.driver,
+            nonces=self.nonces
+        )
