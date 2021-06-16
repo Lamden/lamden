@@ -397,7 +397,7 @@ class Node:
             'type': 'tx_lifecycle',
             'file': 'base',
             'event': 'soft_apply_before',
-            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]),
+            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]).encode(),
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
@@ -408,7 +408,7 @@ class Node:
             'type': 'tx_lifecycle',
             'file': 'base',
             'event': 'soft_apply_after',
-            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]),
+            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]).encode(),
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
