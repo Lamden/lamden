@@ -181,6 +181,7 @@ class Node:
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver)
+        self.reward_manager = reward_manager
 
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
@@ -234,8 +235,6 @@ class Node:
 
         self.running = False
         self.upgrade = False
-
-        self.reward_manager = reward_manager
 
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
