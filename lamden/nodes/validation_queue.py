@@ -271,7 +271,7 @@ class ValidationQueue:
         for i in range(len(tally_info['top_solutions_list'])):
             tally_info['top_solutions_list'][i]['int'] = int(tally_info['top_solutions_list'][i]['solution'], 16)
 
-        tally_info['top_solutions_list'] = sorted(tally_info['top_solutions_list'], key=lambda x: x.int)
+        tally_info['top_solutions_list'] = sorted(tally_info['top_solutions_list'], key=lambda x: x['int'])
 
         return {
             'has_consensus': True,

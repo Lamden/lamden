@@ -109,6 +109,7 @@ class RewardManager:
         delegate_reward /= stamp_cost
         foundation_reward /= stamp_cost
 
+
         log.info(f'Master reward: {format(master_reward, ".4f")}t per master. '
                  f'Delegate reward: {format(delegate_reward, ".4f")}t per delegate. '
                  f'Foundation reward: {format(foundation_reward, ".4f")}t.')
