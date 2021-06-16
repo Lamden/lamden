@@ -195,7 +195,8 @@ class Node:
             executor=self.executor,
             get_current_hash=lambda: self.current_hash,
             get_current_height=lambda: self.current_height,
-            stop_node=self.stop
+            stop_node=self.stop,
+            reward_manager=self.reward_manager
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
