@@ -396,7 +396,7 @@ class Node:
         self.driver.soft_apply(hcl_timestamp, self.driver.pending_writes)
         self.log.info( {
             'hlc_timestamp': hcl_timestamp,
-            'pending_deltas': encode(self.driver.pending_deltas[hcl_timestamp]).encode()
+            'pending_deltas': encode(self.driver.pending_deltas[hcl_timestamp])
         })
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
