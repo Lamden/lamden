@@ -6,11 +6,13 @@ from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
+from lamden.rewards import RewardManager
 from datetime import datetime
+
 
 class ProcessingQueue:
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor,
-                 get_current_height, get_current_hash, stop_node):
+                 get_current_height, get_current_hash, stop_node, reward_manager: RewardManager):
 
         self.log = get_logger('TX PROCESSOR')
         self.main_processing_queue = []
@@ -29,7 +31,7 @@ class ProcessingQueue:
 
         self.mock_socket_subscription = []
 
-
+        self.reward_manager = reward_manager
 
         # TODO There are just for testing
         self.total_processed = 0
@@ -145,6 +147,13 @@ class ProcessingQueue:
                            f'{output["stamps_used"]} stamps used. '
                            f'{len(output["writes"])} writes.'
                            f' Result = {output["result"]}')
+
+        master_reward, delegate_reward, foundation_reward, developer_mapping = \
+            self.reward_manager.calculate_tx_output_rewards(output, transaction['payload']['contract'], self.client)
+
+        self.reward_manager.distribute_rewards(
+            master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
+        )
 
         # self.log.debug(output['writes'])
 
