@@ -393,14 +393,18 @@ class Node:
         self.new_block_processor.clean(self.current_height)
 
     def soft_apply_current_state(self, hlc_timestamp):
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'soft_apply_before',
-            'pending_deltas': encode(self.driver.pending_deltas[self.last_processed_hlc]).encode(),
-            'hlc_timestamp': hlc_timestamp,
-            'system_time': time.time()
-        }))
+
+        try:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'soft_apply_before',
+                'pending_deltas': encode(self.driver.pending_deltas[self.last_processed_hlc]).encode(),
+                'hlc_timestamp': hlc_timestamp,
+                'system_time': time.time()
+            }))
+        except KeyError:
+            pass
 
         self.driver.soft_apply(hlc_timestamp, self.driver.pending_writes)
 
