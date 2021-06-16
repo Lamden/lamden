@@ -62,7 +62,6 @@ class ValidationQueue:
         self.needs_validation_queue.sort()
         next_hlc_timestamp = self.needs_validation_queue.pop(0)
 
-
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
             # self.log.debug({'consensus_result': consensus_result})
