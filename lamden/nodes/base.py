@@ -392,14 +392,14 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
-    def soft_apply_current_state(self, hcl_timestamp,):
+    def soft_apply_current_state(self, hcl_timestamp):
         self.driver.soft_apply(hcl_timestamp, self.driver.pending_writes)
         self.log.info(self.driver.pending_deltas[hcl_timestamp])
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
 
-    def hard_apply_block(self, hlc_timestamp)
+    def hard_apply_block(self, hlc_timestamp):
         self.driver.hard_apply(hlc_timestamp)
         self.blocks.commit(hlc_timestamp)
 
