@@ -311,7 +311,7 @@ class Node:
             self.update_block_db(block_info)
 
             # 3) Soft Apply current state and create change log
-            self.soft_apply_current_state(processing_results['hlc_timestamp'], block_info)
+            self.soft_apply_current_state(hcl_timestamp=processing_results['hlc_timestamp'])
 
             # ___ Validate and Send Block info __
             # add the hlc_timestamp to the needs validation queue for processing consensus later
@@ -392,13 +392,14 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
-    def soft_apply_current_state(self, hcl, block):
-        self.driver.soft_apply(hcl, self.driver.pending_writes)
+    def soft_apply_current_state(self, hcl_timestamp,):
+        self.driver.soft_apply(hcl_timestamp, self.driver.pending_writes)
+        self.log.info(self.driver.pending_deltas[hcl_timestamp])
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
 
-    def hard_apply_block(self, hlc_timestamp):
+    def hard_apply_block(self, hlc_timestamp)
         self.driver.hard_apply(hlc_timestamp)
         self.blocks.commit(hlc_timestamp)
 
