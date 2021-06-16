@@ -394,7 +394,7 @@ class Node:
 
     def soft_apply_current_state(self, hcl_timestamp):
         self.driver.soft_apply(hcl_timestamp, self.driver.pending_writes)
-        self.log.info(self.driver.pending_deltas[hcl_timestamp])
+        self.log.info( encode( self.driver.pending_deltas[hcl_timestamp] ).encode() )
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
