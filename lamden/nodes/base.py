@@ -311,7 +311,7 @@ class Node:
             self.update_block_db(block_info)
 
             # 3) Soft Apply current state and create change log
-            self.soft_apply_current_state(hcl_timestamp=processing_results['hlc_timestamp'])
+            self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
             # ___ Validate and Send Block info __
             # add the hlc_timestamp to the needs validation queue for processing consensus later
@@ -392,12 +392,26 @@ class Node:
 
         self.new_block_processor.clean(self.current_height)
 
-    def soft_apply_current_state(self, hcl_timestamp):
-        self.driver.soft_apply(hcl_timestamp, self.driver.pending_writes)
-        self.log.info( {
-            'hlc_timestamp': hcl_timestamp,
-            'pending_deltas': encode(self.driver.pending_deltas[hcl_timestamp])
-        })
+    def soft_apply_current_state(self, hlc_timestamp):
+        self.log.debug(json.dumps({
+            'type': 'tx_lifecycle',
+            'file': 'base',
+            'event': 'soft_apply_before',
+            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]),
+            'hlc_timestamp': hlc_timestamp,
+            'system_time': time.time()
+        }))
+
+        self.driver.soft_apply(hlc_timestamp, self.driver.pending_writes)
+
+        self.log.debug(json.dumps({
+            'type': 'tx_lifecycle',
+            'file': 'base',
+            'event': 'soft_apply_after',
+            'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]),
+            'hlc_timestamp': hlc_timestamp,
+            'system_time': time.time()
+        }))
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
         gc.collect()
