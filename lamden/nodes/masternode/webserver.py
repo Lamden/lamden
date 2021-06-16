@@ -359,8 +359,6 @@ class WebServer:
     async def get_tx(self, request):
         _hash = request.args.get('hash')
 
-        log.info(f'processing request for hash {_hash}')
-
         if _hash is not None:
             try:
                 int(_hash, 16)
