@@ -41,17 +41,22 @@ class ProcessingQueue:
         self.total_processed = 0
 
     def start(self):
+        self.log.info("STARTING QUEUE")
         self.running = True
 
     def stop(self):
         self.running = False
 
     async def stopping(self):
+        self.log.info("STOPPING QUEUE")
         while self.currently_processing:
             asyncio.sleep(0)
+        self.log.info("STOPPED QUEUE!")
 
     def append(self, tx):
+        self.log.debug(f'adding {tx["hlc_timestamp"]} to queue')
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
+        self.log.debug(f'adding {tx["hlc_timestamp"]} to queue')
         # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
 
@@ -62,7 +67,7 @@ class ProcessingQueue:
             return self.processing_delay_other
 
     async def process_next(self):
-        if len(self.main_processing_queue) == 0:
+        if len(self.main_processing_queue) == 0 or self.currently_processing:
             return
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
@@ -87,9 +92,10 @@ class ProcessingQueue:
         try:
             time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
             time_delay = self.hold_time(tx)
-        except Exception:
+        except KeyError:
             self.log.debug(self.message_received_timestamps)
             self.log.error(tx['hlc_timestamp'])
+            self.stop_node()
 
         #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 

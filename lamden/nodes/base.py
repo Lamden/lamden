@@ -444,11 +444,12 @@ class Node:
 
         # Roll back the current state to the point of the last block consensus
         self.driver.rollback()
-
+        self.log.debug(self.validation_queue.validation_results)
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, stored_results in self.validation_queue.validation_results.items():
+
             tx_added_back = 0
-            transaction_processed = stored_results.get('transaction_processed')
+            transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
 
             if transaction_processed:
                 tx_added_back = tx_added_back + 1
