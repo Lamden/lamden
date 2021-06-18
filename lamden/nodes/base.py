@@ -187,8 +187,8 @@ class Node:
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
+        self.current_height = lambda: storage.get_latest_block_height(self.driver)
+        self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
 
         self.file_queue = filequeue.FileQueue()
         self.main_processing_queue = processing_queue.ProcessingQueue(
@@ -357,7 +357,7 @@ class Node:
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
-        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
+        block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
         block_info = encode(block)
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
@@ -387,10 +387,10 @@ class Node:
         )
 
         # self.log.info('Updating metadata.')
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
+        # self.current_height = storage.get_latest_block_height(self.driver)
+        # self.current_hash = storage.get_latest_block_hash(self.driver)
 
-        self.new_block_processor.clean(self.current_height)
+        self.new_block_processor.clean(self.current_height())
 
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp, self.driver.pending_writes)
@@ -549,7 +549,7 @@ class Node:
     async def catchup(self, mn_seed, mn_vk):
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
-        current = self.current_height
+        current = self.current_height()
         latest = await get_latest_block_height(
             ip=mn_seed,
             vk=mn_vk,

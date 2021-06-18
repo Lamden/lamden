@@ -124,6 +124,73 @@ class ProcessingQueue:
         # for x in range(len(self.main_processing_queue)):
         #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
 
+    def process_tx(self, tx):
+        ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
+
+        # Run mini catch up here to prevent 'desyncing'
+        # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
+
+        try:
+            now = Datetime._from_datetime(
+                datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
+            )
+            environment = {
+                'block_hash': self.get_current_hash(),
+                'block_num': self.get_current_height(),
+                '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
+                'now': now,
+            }
+        except Exception as err:
+            self.log.debug(tx)
+            self.log.error(err)
+
+        result = self.execute_tx(
+            transaction=tx['tx'],
+            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
+            hlc_timestamp=tx['hlc_timestamp'],
+            environment=environment
+        )
+
+        h = hashlib.sha3_256()
+        h.update('{}'.format(encode(result).encode()).encode())
+        tx_hash = h.hexdigest()
+
+        proof = self.wallet.sign(tx_hash)
+
+        merkle_tree = {
+            'leaves': tx_hash,
+            'signature': proof
+        }
+
+        sbc = {
+            'input_hash': tx['input_hash'],
+            'transactions': [result],
+            'merkle_tree': merkle_tree,
+            'signer': self.wallet.verifying_key,
+            'subblock': 0,
+            'previous': self.get_current_hash()
+        }
+
+        sbc = format_dictionary(sbc)
+
+        # results = self.transaction_executor.execute_work(
+        #     driver=self.driver,
+        #     work=[tx],
+        #     wallet=self.wallet,
+        #     previous_block_hash=self.get_current_hash(),
+        #     current_height=self.get_current_height(),
+        #     stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        # )
+
+        self.total_processed = self.total_processed + 1
+        # self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
+        # self.log.info('{} Left in queue'.format(len(self.main_processing_queue)))
+
+        # self.new_block_processor.clean(self.current_height)
+        # self.driver.clear_pending_state()
+
+        return sbc
+
     def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
         # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
 
@@ -200,73 +267,6 @@ class ProcessingQueue:
         tx_output = format_dictionary(tx_output)
 
         return tx_output
-
-    def process_tx(self, tx):
-        ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
-
-        # Run mini catch up here to prevent 'desyncing'
-        # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
-
-        try:
-            now = Datetime._from_datetime(
-                datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
-            )
-            environment = {
-                'block_hash': self.get_current_hash(),
-                'block_num': self.get_current_height(),
-                '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
-                'now': now,
-            }
-        except Exception as err:
-            self.log.debug(tx)
-            self.log.error(err)
-
-        result = self.execute_tx(
-            transaction=tx['tx'],
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
-            hlc_timestamp=tx['hlc_timestamp'],
-            environment=environment
-        )
-
-        h = hashlib.sha3_256()
-        h.update('{}'.format(encode(result).encode()).encode())
-        tx_hash = h.hexdigest()
-
-        proof = self.wallet.sign(tx_hash)
-
-        merkle_tree = {
-            'leaves': tx_hash,
-            'signature': proof
-        }
-
-        sbc = {
-            'input_hash': tx['input_hash'],
-            'transactions': [result],
-            'merkle_tree': merkle_tree,
-            'signer': self.wallet.verifying_key,
-            'subblock': 0,
-            'previous': self.get_current_hash()
-        }
-
-        sbc = format_dictionary(sbc)
-
-        # results = self.transaction_executor.execute_work(
-        #     driver=self.driver,
-        #     work=[tx],
-        #     wallet=self.wallet,
-        #     previous_block_hash=self.get_current_hash(),
-        #     current_height=self.get_current_height(),
-        #     stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
-        # )
-
-        self.total_processed = self.total_processed + 1
-        # self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
-        # self.log.info('{} Left in queue'.format(len(self.main_processing_queue)))
-
-        # self.new_block_processor.clean(self.current_height)
-        # self.driver.clear_pending_state()
-
-        return sbc
 
     def __len__(self):
         return len(self.main_processing_queue)
