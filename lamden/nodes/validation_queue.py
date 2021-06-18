@@ -96,7 +96,7 @@ class ValidationQueue:
                     'consensus_info': consensus_result,
                     'hlc_timestamp': next_hlc_timestamp,
                     'system_time': time.time()
-                })+ '\n')
+                }) + '\n')
 
                 if consensus_result['matches_me']:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
