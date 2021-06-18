@@ -450,27 +450,15 @@ class Node:
 
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            self.log.debug(hlc_timestamp)
-            self.log.debug(self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed'))
-
             tx_added_back = 0
-            transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
+            self.log.debug(hlc_timestamp)
 
-            if transaction_processed:
-                tx_added_back = tx_added_back + 1
-                # Add the tx info back into the main processing queue
+            try:
+                transaction_processed = self.validation_queue.validation_results[hlc_timestamp]['transaction_processed']
                 self.main_processing_queue.append(tx=transaction_processed)
-
-                '''
-                my_solution = stored_results['solutions'].get(self.wallet.verifying_key)
-                if my_solution:
-                    # remove my solution from the consensus results
-                    del self.validation_queue.validation_results[hlc_timestamp]['solutions'][self.wallet.verifying_key]
-
-                    # decrement the number of solutions
-                    # this ensures I will check consensus again once my new solution is added back
-                    self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
-                '''
+                tx_added_back = tx_added_back + 1
+            except KeyError:
+                pass
 
         self.log.info(f'Added back {tx_added_back} transactions for processing')
 
