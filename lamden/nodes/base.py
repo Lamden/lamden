@@ -118,6 +118,7 @@ class Node:
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
+        self.rollbacks = []
 
         self.driver = driver
         self.nonces = nonces
@@ -425,6 +426,23 @@ class Node:
         }))
 
     async def rollback(self):
+        rollback_info = {
+            'system_time': time.time(),
+            'last_processed_hlc': self.last_processed_hlc,
+            'last_hlc_in_consensus': self.validation_queue.last_hlc_in_consensus
+        }
+
+        self.rollbacks.append(rollback_info)
+
+        self.log.debug(json.dumps({
+            'type': 'node_info',
+            'file': 'base',
+            'event': 'rollback',
+            'rollback_info': rollback_info,
+            'amount_of_rollbacks': len(self.rollbacks),
+            'system_time': time.time()
+        }))
+
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()
         await self.main_processing_queue.stopping()

@@ -14,6 +14,7 @@ class ValidationQueue:
 
         self.needs_validation_queue = []
         self.validation_results = {}
+        self.last_hlc_in_consensus = ""
 
         self.consensus_percent = consensus_percent
         self.get_peers_for_consensus = get_peers_for_consensus
@@ -89,6 +90,8 @@ class ValidationQueue:
                 if consensus_result['matches_me']:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
                     self.hard_apply_block(hlc_timestamp=next_hlc_timestamp)
+
+                    self.last_hlc_in_consensus = next_hlc_timestamp
 
                     # Clear all block results from memory because this block has consensus
                     self.validation_results.pop(next_hlc_timestamp, None)
