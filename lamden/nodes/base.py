@@ -369,7 +369,7 @@ class Node:
             'block_info': block_info,
             'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
-        }) + '\n')
+        }))
 
         return block_info
 
@@ -411,7 +411,7 @@ class Node:
             'pending_deltas': encode(self.driver.pending_deltas[hlc_timestamp]),
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
-        }) + '\n')
+        }))
 
         self.driver.clear_pending_state()
         self.nonces.flush_pending()
@@ -427,7 +427,7 @@ class Node:
             'event': 'commit_new_block',
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
-        }) + '\n')
+        }))
 
     async def rollback(self):
         rollback_info = {
@@ -445,7 +445,7 @@ class Node:
             'rollback_info': rollback_info,
             'amount_of_rollbacks': len(self.rollbacks),
             'system_time': time.time()
-        }) + '\n')
+        }))
 
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()

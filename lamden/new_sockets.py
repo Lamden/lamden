@@ -63,7 +63,7 @@ class Publisher:
                 'event': 'publish_new_tx',
                 'hlc_timestamp': msg['hlc_timestamp'],
                 'system_time': time.time()
-            }) + '\n')
+            }))
 
         m = encode(msg).encode()
 

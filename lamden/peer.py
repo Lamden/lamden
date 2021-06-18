@@ -64,7 +64,7 @@ class Peer:
                             'event': 'received_from_socket',
                             'hlc_timestamp': message['hlc_timestamp'],
                             'system_time': time.time()
-                        }) + '\n')
+                        }))
                     await self.process_subscription(data)
 
             except zmq.error.ZMQError as error:
@@ -90,7 +90,7 @@ class Peer:
                     'event': 'processing_from_socket',
                     'hlc_timestamp': message['hlc_timestamp'],
                     'system_time': time.time()
-                }) + '\n')
+                }))
             await processor.process_message(message)
 
 

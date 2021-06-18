@@ -110,7 +110,7 @@ class ProcessingQueue:
                 'hlc_timestamp': tx['hlc_timestamp'],
                 'my_solution': result['merkle_tree']['leaves'][0],
                 'system_time': time.time()
-            }) + '\n')
+            }))
 
             return {
                 'hlc_timestamp': tx['hlc_timestamp'],

@@ -28,7 +28,7 @@ class SystemUsage:
             'RAM_total': int(self.get_ram_total() / 1024 / 1024),
             'Swap_usage': int(self.get_swap_usage() / 1024 / 1024),
             'Swap_total': int(self.get_swap_total() / 1024 / 1024)
-        }) + '\n')
+        }))
 
     def get_cpu_usage_pct(self):
         """
