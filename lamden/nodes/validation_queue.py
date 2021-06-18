@@ -63,6 +63,16 @@ class ValidationQueue:
                 'num_of_solutions': 0
             }
 
+        self.log.debug(json.dumps({
+            'type': 'tx_lifecycle',
+            'file': 'validation_queue',
+            'event': 'got_solution',
+            'from': node_vk,
+            'solution': block_info['hash'],
+            'num_of_solutions': self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'],
+            'system_time': time.time()
+        }))
+
         self.validation_results[hlc_timestamp]['solutions'][node_vk] = block_info
 
         # self.log.debug(self.validation_results[hlc_timestamp]['solutions'])
@@ -260,6 +270,15 @@ class ValidationQueue:
                 'my_solution': my_solution,
                 'matches_me': my_solution == top_solution['solution']
             }
+
+        # consensus needed = 4
+        # missing solutions = 1
+        # Solution A has 3 matches
+        # Solution B has 2 matches
+        # If the missing one comes in and matches A, we're in ideal consensus
+        # If the missing one comes in and matches B, we're in failed consensus
+        # If the missing one never comes in we're stuck in no mans land.
+        # TODO how to recover from this situation if the missing one never shows up (has happened a bunch in testing).
 
         # Check if ideal consensus is mathematically possible
         if top_solution['consensus_amount'] + solutions_missing >= consensus_needed:
