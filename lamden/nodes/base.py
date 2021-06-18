@@ -451,7 +451,7 @@ class Node:
         self.driver.rollback()
 
         # Add transactions I already processed back into the main_processing queue
-        for key, value in self.main_processing_queue.validation_results:
+        for key, value in self.validation_queue.validation_results:
             # Add the tx info back into the main processing queue
             self.main_processing_queue.append(tx=value['transaction_processed'])
 
