@@ -365,7 +365,7 @@ class WebServer:
                 tx = self.blocks.get_tx(_hash)
             except ValueError as err:
                 log.error(err)
-                log.debug({'hash': _hash}
+                log.debug({'hash': _hash})
                 return response.json({'error': 'Malformed hash.'}, status=400,
                                      headers={'Access-Control-Allow-Origin': '*'})
         else:
