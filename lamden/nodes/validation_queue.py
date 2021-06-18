@@ -71,7 +71,7 @@ class ValidationQueue:
             'solution': block_info['hash'],
             'num_of_solutions': self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'],
             'system_time': time.time()
-        }))
+        }) + '\n')
 
         self.validation_results[hlc_timestamp]['solutions'][node_vk] = block_info
 
@@ -95,7 +95,7 @@ class ValidationQueue:
                     'consensus_info': consensus_result,
                     'hlc_timestamp': next_hlc_timestamp,
                     'system_time': time.time()
-                }))
+                })+ '\n')
 
                 if consensus_result['matches_me']:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
