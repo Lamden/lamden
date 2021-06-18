@@ -452,6 +452,9 @@ class Node:
             if transaction_processed:
                 # Add the tx info back into the main processing queue
                 self.main_processing_queue.append(tx=transaction_processed)
+
+                # stamp with current time
+                self.main_processing_queue.message_received_timestamps[hlc_timestamp] = time.time()
                 '''
                 my_solution = stored_results['solutions'].get(self.wallet.verifying_key)
                 if my_solution:
