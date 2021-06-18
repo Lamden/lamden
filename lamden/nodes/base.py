@@ -358,7 +358,7 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
-        block_info = encode(block)
+        block_info = json.dumps(encode(block).encode())
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
