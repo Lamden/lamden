@@ -421,6 +421,13 @@ class Node:
         }))
 
     async def rollback(self):
+        # Stop the processing queue and await it to be done processing its last item
+        self.main_processing_queue.stop()
+        self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
+        await self.main_processing_queue.stopping()
+        self.log.info(f"Queue should be stopped: queue is processing... {self.main_processing_queue.currently_processing}")
+
+
         rollback_info = {
             'system_time': time.time(),
             'last_processed_hlc': self.last_processed_hlc,
@@ -438,13 +445,9 @@ class Node:
             'system_time': time.time()
         }))
 
-        # Stop the processing queue and await it to be done processing its last item
-        self.main_processing_queue.stop()
-        await self.main_processing_queue.stopping()
-
         # Roll back the current state to the point of the last block consensus
         self.driver.rollback()
-        self.log.debug(self.validation_queue.validation_results)
+
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
             self.log.debug(hlc_timestamp)

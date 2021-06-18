@@ -95,6 +95,7 @@ class ProcessingQueue:
             self.log.debug(self.message_received_timestamps)
             self.log.error(tx['hlc_timestamp'])
             self.stop_node()
+            return
 
         #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 
