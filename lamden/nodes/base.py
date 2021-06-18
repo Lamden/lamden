@@ -318,7 +318,11 @@ class Node:
 
             # ___ Validate and Send Block info __
             # add the hlc_timestamp to the needs validation queue for processing consensus later
-            self.validation_queue.append(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
+            self.validation_queue.append(
+                block_info=block_info,
+                hlc_timestamp=processing_results['hlc_timestamp'],
+                transaction_processed=processing_results['transaction_processed']
+            )
 
             # send my block result to the rest of the network to prove I'm in consensus
             asyncio.ensure_future(self.send_block_to_network(block_info=block_info))
