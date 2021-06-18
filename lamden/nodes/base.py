@@ -195,8 +195,8 @@ class Node:
             hlc_clock=self.hlc_clock,
             processing_delay=self.processing_delay_secs,
             executor=self.executor,
-            get_current_hash=lambda: self.current_hash,
-            get_current_height=lambda: self.current_height,
+            get_current_hash=self.current_hash,
+            get_current_height=self.current_height,
             stop_node=self.stop,
             reward_manager=self.reward_manager
         )
@@ -358,7 +358,7 @@ class Node:
         subblocks = bc.get_current_best_block()
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        block_info = json.loads(encode(block).encode())
+        block_info = encode(block)
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
@@ -385,15 +385,6 @@ class Node:
             driver=self.driver,
             nonces=self.nonces
         )
-
-        # self.log.info('Issuing rewards.')
-        # Calculate and issue the rewards for the governance nodes
-        '''
-        self.reward_manager.issue_rewards(
-            block=block,
-            client=self.client
-        )
-        '''
 
         # self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
@@ -461,7 +452,7 @@ class Node:
             if transaction_processed:
                 # Add the tx info back into the main processing queue
                 self.main_processing_queue.append(tx=transaction_processed)
-
+                '''
                 my_solution = stored_results['solutions'].get(self.wallet.verifying_key)
                 if my_solution:
                     # remove my solution from the consensus results
@@ -470,6 +461,7 @@ class Node:
                     # decrement the number of solutions
                     # this ensures I will check consensus again once my new solution is added back
                     self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
+                '''
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()

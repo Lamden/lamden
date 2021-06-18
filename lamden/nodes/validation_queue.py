@@ -129,8 +129,8 @@ class ValidationQueue:
                     # 4. Add transaction messages back into the main_processing_queue so they can be reprocessed
                     #    a. We have a record of all the transactions in the validate results
                     #    b. We have the current hlc_timestamp of the fail point
-                    #    c. The validation_results object will contain all transctions that have been processed
-                    #    d. We need to readd the tx message from ALL of these back into the main_processing queue
+                    #    c. The validation_results object will contain all transactions that have been processed
+                    #    d. We need to re-add the tx message from ALL of these back into the main_processing queue
                     #    e. Wipe my results from the validation results and set the num_of_solutions - 1
                     #    f. When the main processing queue starts back up it should reorder all the tx by hlc again
                     #       and continue processing them, adding my results back to the results object and sending them
@@ -146,9 +146,8 @@ class ValidationQueue:
                     # Stop validating any more block results
                     self.stop()
 
-                    # Add this HLC timestamp back into the queue so we can process it again once the state is
-                    # rolled back
-                    self.needs_validation_queue.append(next_hlc_timestamp)
+                    # wipe needs validation queue
+                    self.needs_validation_queue = []
 
                     asyncio.ensure_future(self.rollback())
                     return
