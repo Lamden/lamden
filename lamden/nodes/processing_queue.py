@@ -84,8 +84,12 @@ class ProcessingQueue:
         time_in_queue_seconds = time_in_queue / 1000000000
         # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
         '''
-        time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
-        time_delay = self.hold_time(tx)
+        try:
+            time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
+            time_delay = self.hold_time(tx)
+        except Exception:
+            self.log.debug(self.message_received_timestamps)
+            self.log.error(tx['hlc_timestamp'])
 
         #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
 

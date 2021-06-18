@@ -447,14 +447,14 @@ class Node:
 
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, stored_results in self.validation_queue.validation_results.items():
+            tx_added_back = 0
             transaction_processed = stored_results.get('transaction_processed')
 
             if transaction_processed:
+                tx_added_back = tx_added_back + 1
                 # Add the tx info back into the main processing queue
                 self.main_processing_queue.append(tx=transaction_processed)
 
-                # stamp with current time
-                self.main_processing_queue.message_received_timestamps[hlc_timestamp] = time.time()
                 '''
                 my_solution = stored_results['solutions'].get(self.wallet.verifying_key)
                 if my_solution:
@@ -465,6 +465,8 @@ class Node:
                     # this ensures I will check consensus again once my new solution is added back
                     self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
                 '''
+
+        self.log.info(f'Added back {tx_added_back} transactions for processing')
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()
