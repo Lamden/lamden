@@ -114,7 +114,8 @@ class ProcessingQueue:
 
             return {
                 'hlc_timestamp': tx['hlc_timestamp'],
-                'result': result
+                'result': result,
+                'transaction_processed': tx
             }
         else:
             #put it back in queue

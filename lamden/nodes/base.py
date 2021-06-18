@@ -455,12 +455,13 @@ class Node:
             # Add the tx info back into the main processing queue
             self.main_processing_queue.append(tx=value['transaction_processed'])
 
-            # remove my solution from the consensus results
-            del value['solutions'][self.wallet.verifying_key]
+            if self.wallet.verifying_key in value['solutions']:
+                # remove my solution from the consensus results
+                del value['solutions'][self.wallet.verifying_key]
 
-            # decrement the number of solutions this will kick off consensus again when my results are added back after
-            # reprocessing by the main queue
-            value['last_check_info']['num_of_solutions'] -= 1
+                # decrement the number of solutions this will kick off consensus again when my results are added back
+                # after reprocessing by the main queue
+                value['last_check_info']['num_of_solutions'] -= 1
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()

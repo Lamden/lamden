@@ -31,13 +31,14 @@ class ValidationQueue:
     def stop(self):
         self.running = False
 
-    def append(self, block_info, hlc_timestamp):
+    def append(self, block_info, hlc_timestamp, transaction_processed):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
 
         self.add_solution(
             hlc_timestamp=hlc_timestamp,
             node_vk=self.wallet.verifying_key,
-            block_info=block_info
+            block_info=block_info,
+            transaction_processed=transaction_processed
         )
 
         self.needs_validation_queue.append(hlc_timestamp)
@@ -51,7 +52,7 @@ class ValidationQueue:
         except KeyError:
             return False
 
-    def add_solution(self, hlc_timestamp, node_vk, block_info):
+    def add_solution(self, hlc_timestamp, node_vk, block_info, transaction_processed=None):
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
         # Store data about the tx so it can be processed for consensus later.
         if hlc_timestamp not in self.validation_results:
@@ -63,6 +64,9 @@ class ValidationQueue:
                 'num_of_solutions': 0
             }
 
+        if transaction_processed is not None:
+            self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
+
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
             'file': 'validation_queue',
@@ -73,6 +77,12 @@ class ValidationQueue:
             'num_of_solutions': self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'],
             'system_time': time.time()
         }) + '\n')
+
+        # check if this node already gave us information
+        if node_vk in self.validation_results[hlc_timestamp]['solutions']:
+            # If so then decrement the num_of_solutions property so we can process this new info
+            # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
+            self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
 
         self.validation_results[hlc_timestamp]['solutions'][node_vk] = block_info
 
