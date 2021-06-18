@@ -187,6 +187,9 @@ class Node:
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
+
         self.file_queue = filequeue.FileQueue()
         self.main_processing_queue = processing_queue.ProcessingQueue(
             driver=self.driver,
@@ -236,9 +239,6 @@ class Node:
 
         self.running = False
         self.upgrade = False
-
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
 
         self.bypass_catchup = bypass_catchup
 
