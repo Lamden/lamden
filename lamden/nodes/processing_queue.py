@@ -51,12 +51,6 @@ class ProcessingQueue:
             asyncio.sleep(0)
 
     def append(self, tx):
-        if tx['tx'] is None:
-            self.log.error('tx has no tx info at time of appending')
-            self.log.debug(tx)
-            self.stop_node()
-            # not sure why this would be but it's a check anyway
-            return
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
         # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
         self.main_processing_queue.append(tx)
@@ -76,10 +70,11 @@ class ProcessingQueue:
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
         # Pop it out of the main processing queue
         tx = self.main_processing_queue.pop(0)
+
         if tx['tx'] is None:
             self.log.error('tx has no tx info')
             self.log.debug(tx)
-            self.stop_node()
+            # self.stop_node()
             # not sure why this would be but it's a check anyway
             return
 
