@@ -455,18 +455,21 @@ class Node:
         self.driver.rollback()
 
         # Add transactions I already processed back into the main_processing queue
-        for hlc_timestamp in self.validation_queue.validation_results:
-            value = self.validation_queue.validation_results[hlc_timestamp]
-            # Add the tx info back into the main processing queue
-            self.main_processing_queue.append(tx=value['transaction_processed'])
+        for hlc_timestamp, stored_results in self.validation_queue.validation_results.items():
+            transaction_processed = stored_results.get('transaction_processed')
 
-            if self.wallet.verifying_key in value['solutions']:
-                # remove my solution from the consensus results
-                del value['solutions'][self.wallet.verifying_key]
+            if transaction_processed:
+                # Add the tx info back into the main processing queue
+                self.main_processing_queue.append(tx=transaction_processed)
 
-                # decrement the number of solutions this will kick off consensus again when my results are added back
-                # after reprocessing by the main queue
-                value['last_check_info']['num_of_solutions'] -= 1
+                my_solution = stored_results['solutions'].get(self.wallet.verifying_key)
+                if my_solution:
+                    # remove my solution from the consensus results
+                    del self.validation_queue.validation_results[hlc_timestamp]['solutions'][self.wallet.verifying_key]
+
+                    # decrement the number of solutions
+                    # this ensures I will check consensus again once my new solution is added back
+                    self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()

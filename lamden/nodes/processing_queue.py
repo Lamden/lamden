@@ -102,7 +102,6 @@ class ProcessingQueue:
             # Process it to get the results
             result = self.process_tx(tx=tx)
 
-
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
                 'file': 'processing_queue',
