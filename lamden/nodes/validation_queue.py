@@ -143,7 +143,7 @@ class ValidationQueue:
                     # 5. Restart both the main_processing queue and the validation queue and hopefully we start
                     #    processing the next block after the last consensus was confirmed
 
-                    self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_result["my_solution"][:12]}. STOPPING NODE')
+                    self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_result["my_solution"][:12]}')
 
                     # Stop validating any more block results
                     self.stop()
