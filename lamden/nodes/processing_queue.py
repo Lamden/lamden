@@ -54,10 +54,9 @@ class ProcessingQueue:
         self.log.info("STOPPED QUEUE!")
 
     def append(self, tx):
-        self.log.debug(f'adding {tx["hlc_timestamp"]} to queue')
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
-        self.log.debug(f'adding {tx["hlc_timestamp"]} to queue')
-        # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+
         self.main_processing_queue.append(tx)
 
     def hold_time(self, tx):
@@ -67,7 +66,7 @@ class ProcessingQueue:
             return self.processing_delay_other
 
     async def process_next(self):
-        if len(self.main_processing_queue) == 0 or self.currently_processing:
+        if len(self.main_processing_queue) == 0:
             return
         # run top of stack if it's older than 1 second
         ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
