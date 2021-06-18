@@ -129,6 +129,8 @@ class ProcessingQueue:
 
         # Add AUXILIARY_SALT for more randomness
 
+        self.log.debug(transaction)
+
         environment['AUXILIARY_SALT'] = transaction['metadata']['signature']
 
         balance = self.executor.driver.get_var(
