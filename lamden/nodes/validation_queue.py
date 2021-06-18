@@ -6,9 +6,11 @@ from lamden.logger.base import get_logger
 
 class ValidationQueue:
     def __init__(self, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, validate_block_stored):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback):
 
         self.log = get_logger("VALIDATION QUEUE")
+
+        self.running = True
 
         self.needs_validation_queue = []
         self.validation_results = {}
@@ -17,10 +19,16 @@ class ValidationQueue:
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
-        self.validate_block_stored = validate_block_stored
+        self.rollback = rollback
         self.stop_node = stop_node
 
         self.wallet = wallet
+
+    def start(self):
+        self.running = True
+
+    def stop(self):
+        self.running = False
 
     def append(self, block_info, hlc_timestamp):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
@@ -82,31 +90,44 @@ class ValidationQueue:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
                     self.hard_apply_block(hlc_timestamp=next_hlc_timestamp)
 
-                    my_results = self.validation_results[next_hlc_timestamp]['solutions'][self.wallet.verifying_key]
-
-                    self.validate_block_stored(
-                        block_hash=my_results['hash'],
-                        tx_hash=my_results['subblocks'][0]['transactions'][0]['hash']
-                    )
-
                     # Clear all block results from memory because this block has consensus
                     self.validation_results.pop(next_hlc_timestamp, None)
 
                 else:
-                    # TODO What to do if the node wasn't in the consensus group?
-                    # TODO Run Cathup? How?
+                    # There was consensus, and I wasn't in the consensus group.
+                    # This should be the first block I'm not in consensus
+
+                    # Steps to fix myself
+
+                    # 1. Stop validating any more blocks
+                    # 2. Rollback the current state changes to the last block we had consensus in
+                    # 3. Add this hlc timestamp back into the validation queue so it can be validated again
+                    # 4. Add transaction messages back into the main_processing_queue so they can be reprocessed
+                    #    a. We have a record of all the transactions in the validate results
+                    #    b. We have the current hlc_timestamp of the fail point
+                    #    c. The validation_results object will contain all transctions that have been processed
+                    #    d. We need to readd the tx message from ALL of these back into the main_processing queue
+                    #    e. Wipe my results from the validation results and set the num_of_solutions - 1
+                    #    f. When the main processing queue starts back up it should reorder all the tx by hlc again
+                    #       and continue processing them, adding my results back to the results object and sending them
+                    #       back out to the network
+                    #    g. This validation queue should then do its thing and start validating the consensus starting
+                    #       on this block and if there is consensus hopefully we match now, and we continue on
+                    # TODO h. This fixes "sync" issues, but for other consensus issues we might just hit a rollback loop
+                    # 5. Restart both the main_processing queue and the validation queue and hopefully we start
+                    #    processing the next block after the last consensus was confirmed
+
                     self.log.error(f'NOT IN CONSENSUS {next_hlc_timestamp} {consensus_result["my_solution"][:12]}. STOPPING NODE')
 
-                    # TODO get the actual consensus solution and do something with it
-                    all_block_results = self.validation_results[next_hlc_timestamp]
-                    for delegate in all_block_results['solutions']:
-                        if all_block_results['solutions'][delegate]['hash'] == consensus_result['solution']:
-                            results = all_block_results['solutions'][delegate]
-                            # TODO do something with the actual consensus solution
-                            break
+                    # Stop validating any more block results
+                    self.stop()
 
-                    # TODO don't stop node, instead recover somehow
-                    self.stop_node()
+                    # Add this HLC timestamp back into the queue so we can process it again once the state is
+                    # rolled back
+                    self.needs_validation_queue.append(next_hlc_timestamp)
+
+                    asyncio.ensure_future(self.rollback())
+                    return
 
                 # returning here will ensure the hlc_timestamp doesnt' get added back to the validation queue and as
                 # such not reprocessed
@@ -230,6 +251,7 @@ class ValidationQueue:
             return {
                 'has_consensus': True,
                 'ideal_consensus_possible': True,
+                'consensus_type': 'ideal',
                 'consensus_needed': consensus_needed,
                 'solution': top_solution['solution'],
                 'my_solution': my_solution,
@@ -261,6 +283,7 @@ class ValidationQueue:
             return {
                 'has_consensus': True,
                 'eager_consensus_possible': True,
+                'consensus_type': 'eager',
                 'consensus_needed': consensus_needed,
                 'solution': tally_info['results_list'][0]['solution'],
                 'my_solution': my_solution,
@@ -275,6 +298,7 @@ class ValidationQueue:
 
         return {
             'has_consensus': True,
+            'consensus_type': 'failed',
             'consensus_needed': consensus_needed,
             'solution': tally_info['top_solutions_list'][0]['solution'],
             'my_solution': my_solution,

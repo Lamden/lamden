@@ -205,7 +205,7 @@ class Node:
             get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
-            validate_block_stored=self.validate_block_stored,
+            rollback=self.rollback,
             wallet=self.wallet,
             stop_node=self.stop
         )
@@ -287,13 +287,15 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            if len(self.main_processing_queue) > 0:
+            if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
+                self.main_processing_queue.currently_processing = True
                 await self.process_main_queue()
+                self.main_processing_queue.currently_processing = False
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
         while self.running:
-            if len(self.validation_queue) > 0:
+            if len(self.validation_queue) > 0 and self.validation_queue.running:
                 await self.validation_queue.process_next()
             await asyncio.sleep(0)
 
@@ -422,14 +424,29 @@ class Node:
             'system_time': time.time()
         }))
 
-    def validate_block_stored(self, block_hash, tx_hash):
-        block = self.blocks.get_block(block_hash)
-        if block is None:
-            self.log.error(f'Block {block_hash} not found in Database!')
+    async def rollback(self):
+        # Stop the processing queue and await it to be done processing its last item
+        self.main_processing_queue.stop()
+        await self.main_processing_queue.stopping()
 
-        tx = self.blocks.get_tx(tx_hash)
-        if tx is None:
-            self.log.error(f'Transaction {tx_hash} not found in Database!')
+        # Roll back the current state to the point of the last block consensus
+        self.driver.rollback()
+
+        # Add transactions I already processed back into the main_processing queue
+        for key, value in self.main_processing_queue.validation_results:
+            # Add the tx info back into the main processing queue
+            self.main_processing_queue.append(tx=value['transaction_processed'])
+
+            # remove my solution from the consensus results
+            del value['solutions'][self.wallet.verifying_key]
+
+            # decrement the number of solutions this will kick off consensus again when my results are added back after
+            # reprocessing by the main queue
+            value['last_check_info']['num_of_solutions'] -= 1
+
+        # Restart the processing and validation queues
+        self.main_processing_queue.start()
+        self.validation_queue.start()
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(
