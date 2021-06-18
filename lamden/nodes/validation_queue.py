@@ -65,6 +65,8 @@ class ValidationQueue:
             }
 
         if transaction_processed is not None:
+            self.log.debug(f'Adding transaction_processed for {hlc_timestamp}')
+            self.log.debug(transaction_processed)
             self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
         self.log.debug(json.dumps({

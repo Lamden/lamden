@@ -446,7 +446,9 @@ class Node:
         self.driver.rollback()
         self.log.debug(self.validation_queue.validation_results)
         # Add transactions I already processed back into the main_processing queue
-        for hlc_timestamp, stored_results in self.validation_queue.validation_results.items():
+        for hlc_timestamp in self.validation_queue.validation_results.items():
+            self.log.debug(hlc_timestamp)
+            self.log.debug(self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed'))
 
             tx_added_back = 0
             transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
