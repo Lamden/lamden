@@ -69,6 +69,7 @@ class ValidationQueue:
             'event': 'got_solution',
             'from': node_vk,
             'solution': block_info['hash'],
+            'hlc_timestamp': hlc_timestamp,
             'num_of_solutions': self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'],
             'system_time': time.time()
         }) + '\n')
