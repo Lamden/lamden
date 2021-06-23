@@ -458,6 +458,7 @@ class Node:
 
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height()}")
+        self.log.debug(encode(self.driver.pending_deltas))
         self.driver.rollback()
         self.log.debug(f"Block Height After: {self.current_height()}")
 
