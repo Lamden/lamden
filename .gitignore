@@ -1,6 +1,7 @@
 #Virtual Python Environments
 /venv
 venv
+.python-version
 
 #Integrated Development Environments
 /.idea

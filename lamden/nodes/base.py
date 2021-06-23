@@ -446,13 +446,14 @@ class Node:
         }))
 
         # Roll back the current state to the point of the last block consensus
+        self.log.debug(f"Block Height Before: {self.current_height()}")
         self.driver.rollback()
+        self.log.debug(f"Block Height After: {self.current_height()}")
 
+        tx_added_back = 0
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            tx_added_back = 0
             self.log.debug(hlc_timestamp)
-
             try:
                 transaction_processed = self.validation_queue.validation_results[hlc_timestamp]['transaction_processed']
                 self.main_processing_queue.append(tx=transaction_processed)

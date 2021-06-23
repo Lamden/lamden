@@ -6,13 +6,12 @@ from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
-from lamden.rewards import RewardManager
 from datetime import datetime
 
 
 class ProcessingQueue:
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor,
-                 get_current_height, get_current_hash, stop_node, reward_manager: RewardManager):
+                 get_current_height, get_current_hash, stop_node, reward_manager):
 
         self.log = get_logger('TX PROCESSOR')
 
@@ -21,6 +20,7 @@ class ProcessingQueue:
 
         self.main_processing_queue = []
         self.message_received_timestamps = {}
+
         self.processing_delay_other = processing_delay['base']
         self.processing_delay_self = processing_delay['base'] + processing_delay['self']
 
@@ -29,15 +29,15 @@ class ProcessingQueue:
         self.driver = driver
         self.hlc_clock = hlc_clock
         self.executor = executor
+
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
-        self.stop_node = stop_node
 
-        self.mock_socket_subscription = []
+        self.stop_node = stop_node
 
         self.reward_manager = reward_manager
 
-        # TODO There are just for testing
+        # TODO This is just for testing
         self.total_processed = 0
 
     def start(self):
@@ -46,6 +46,10 @@ class ProcessingQueue:
 
     def stop(self):
         self.running = False
+
+    def flush(self):
+        self.main_processing_queue = []
+        self.message_received_timestamps = {}
 
     async def stopping(self):
         self.log.info("STOPPING QUEUE")
