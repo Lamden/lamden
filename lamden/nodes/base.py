@@ -316,6 +316,15 @@ class Node:
             # 3) Soft Apply current state and create change log
             self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'processed_from_main_queue',
+                'hlc_timestamp': processing_results['hlc_timestamp'],
+                'my_solution': block_info['hash'],
+                'system_time': time.time()
+            }))
+
             # ___ Validate and Send Block info __
             # add the hlc_timestamp to the needs validation queue for processing consensus later
             self.validation_queue.append(
