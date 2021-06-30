@@ -402,7 +402,7 @@ class Node:
         self.new_block_processor.clean(self.current_height())
 
     def soft_apply_current_state(self, hlc_timestamp):
-        self.driver.soft_apply(hlc_timestamp, self.driver.pending_writes)
+        self.driver.soft_apply(hlc_timestamp)
         self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
 
 
