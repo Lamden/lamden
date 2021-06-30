@@ -306,15 +306,15 @@ class Node:
         if processing_results:
             self.last_processed_hlc = processing_results['hlc_timestamp']
 
+            # 1) Soft Apply current state and create change log
+            self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+
             # ___ Change DB and State ___
-            # 1) Needs to create the new block with our result
+            # 2) Needs to create the new block with our result
             block_info = self.create_new_block_from_result(processing_results['result'])
 
-            # 2) Store block, create rewards and increment block number
+            # 3) Store block, create rewards and increment block number
             self.update_block_db(block_info)
-
-            # 3) Soft Apply current state and create change log
-            self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
