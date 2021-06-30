@@ -147,6 +147,9 @@ class ProcessingQueue:
                 '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
                 'now': now,
             }
+
+            self.log.info(environment)
+
         except Exception as err:
             self.log.debug(tx)
             self.log.error(err)
@@ -214,6 +217,9 @@ class ProcessingQueue:
             mark=False
         )
 
+        self.log.info('Kwargs')
+        self.log.info(convert_dict(transaction['payload']['kwargs']))
+
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -225,7 +231,7 @@ class ProcessingQueue:
             auto_commit=False
         )
 
-        # self.executor.driver.pending_writes.clear()
+        self.executor.driver.pending_writes.clear()
 
         if output['status_code'] > 0:
             self.log.error(f'TX executed unsuccessfully. '
