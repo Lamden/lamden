@@ -1,32 +1,23 @@
-from lamden import storage, network, router, authentication, rewards, upgrade, contracts
-from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes import block_contender, contender, system_usage
-from lamden.nodes.hlc import HLC_Clock
-from lamden.contracts import sync
-from lamden.logger.base import get_logger
-from lamden.crypto.canonical import merklize, block_from_subblocks
-from lamden.crypto.wallet import Wallet, verify
-from lamden.new_sockets import Network
+import asyncio
+import gc
+import hashlib
+import json
+import time
 
+import uvloop
+import zmq.asyncio
+from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, encode
 from contracting.execution.executor import Executor
-from contracting.client import ContractingClient
-
-import time
-import json
-from copy import deepcopy
-import hashlib
-import uvloop
-import gc
-import zmq.asyncio
-import asyncio
+from lamden import storage, router, rewards, upgrade, contracts
+from lamden.contracts import sync
+from lamden.crypto.canonical import block_from_subblocks
+from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-import decimal
-from pathlib import Path
-import uuid
-import shutil
-import os
-import pathlib
+from lamden.new_sockets import Network
+from lamden.nodes import block_contender, contender, system_usage
+from lamden.nodes import work, filequeue, processing_queue, validation_queue
+from lamden.nodes.hlc import HLC_Clock
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
