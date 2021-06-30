@@ -425,7 +425,9 @@ class Node:
         gc.collect()
 
     def hard_apply_block(self, hlc_timestamp):
+        # state changes hard apply
         self.driver.hard_apply(hlc_timestamp)
+        # block data hard apply
         self.blocks.commit(hlc_timestamp)
 
         self.log.debug(json.dumps({

@@ -147,6 +147,9 @@ class ProcessingQueue:
                 '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
                 'now': now,
             }
+
+            self.log.info(environment)
+
         except Exception as err:
             self.log.debug(tx)
             self.log.error(err)

@@ -245,6 +245,10 @@ def set_latest_block_height(h, driver: ContractDriver):
     log.info(f'set_latest_block_height {h}')
     driver.set(BLOCK_NUM_HEIGHT, h)
 
+    log.info(driver.cache)
+    log.info(driver.pending_writes)
+    log.info(driver.pending_deltas)
+
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
     nonces_to_delete = []
