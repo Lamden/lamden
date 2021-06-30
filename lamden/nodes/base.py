@@ -409,13 +409,6 @@ class Node:
         self.driver.soft_apply(hlc_timestamp)
         self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
 
-        self.log.info('Cache')
-        self.log.info(self.driver.cache)
-        self.log.info('Deltas')
-        self.log.info(self.driver.pending_deltas[hlc_timestamp])
-        self.log.info('Writes')
-        self.log.info(self.driver.pending_writes[hlc_timestamp])
-
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
             'file': 'base',
