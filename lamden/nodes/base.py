@@ -431,14 +431,7 @@ class Node:
             'system_time': time.time()
         }))
 
-    async def rollback(self):
-        # Stop the processing queue and await it to be done processing its last item
-        self.main_processing_queue.stop()
-        self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
-        await self.main_processing_queue.stopping()
-        self.log.info(f"Queue should be stopped: queue is processing... {self.main_processing_queue.currently_processing}")
-
-
+    def add_rollback_info(self):
         rollback_info = {
             'system_time': time.time(),
             'last_processed_hlc': self.last_processed_hlc,
@@ -447,15 +440,9 @@ class Node:
 
         self.rollbacks.append(rollback_info)
 
-        self.log.debug(json.dumps({
-            'type': 'node_info',
-            'file': 'base',
-            'event': 'rollback',
-            'rollback_info': rollback_info,
-            'amount_of_rollbacks': len(self.rollbacks),
-            'system_time': time.time()
-        }))
+        return rollback_info
 
+    def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height()}")
         self.log.debug(encode(self.driver.pending_deltas))
@@ -474,6 +461,26 @@ class Node:
                 pass
 
         self.log.info(f'Added back {tx_added_back} transactions for processing')
+
+    async def rollback(self):
+        # Stop the processing queue and await it to be done processing its last item
+        self.main_processing_queue.stop()
+        self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
+        await self.main_processing_queue.stopping()
+        self.log.info(f"Queue should be stopped: queue is processing... {self.main_processing_queue.currently_processing}")
+
+        rollback_info = self.add_rollback_info()
+
+        self.log.debug(json.dumps({
+            'type': 'node_info',
+            'file': 'base',
+            'event': 'rollback',
+            'rollback_info': rollback_info,
+            'amount_of_rollbacks': len(self.rollbacks),
+            'system_time': time.time()
+        }))
+
+        self.rollback_drivers()
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()
