@@ -225,7 +225,7 @@ class ProcessingQueue:
             auto_commit=False
         )
 
-        # self.executor.driver.pending_writes.clear()
+        self.executor.driver.pending_writes.clear()
 
         if output['status_code'] > 0:
             self.log.error(f'TX executed unsuccessfully. '

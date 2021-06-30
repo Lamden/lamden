@@ -366,6 +366,8 @@ class Node:
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
+        self.log.info(f'Current Height: {self.current_height()}')
+
         block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
         block_info = json.loads(encode(block).encode())
 
@@ -404,7 +406,6 @@ class Node:
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp)
         self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
-
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
