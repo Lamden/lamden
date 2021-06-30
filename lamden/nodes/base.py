@@ -370,7 +370,6 @@ class Node:
 
         block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
 
-        storage.set_latest_block_height(h=block['number'], driver=self.driver)
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
         block_info = json.loads(encode(block).encode())
@@ -392,7 +391,8 @@ class Node:
 
         # self.log.info('Storing new block.')
         # Commit the state changes and nonces to the database
-        # self.log.debug(block)
+        self.log.info(f'update_state_with_block {block["number"]}')
+
         storage.update_state_with_block(
             block=block,
             driver=self.driver,
