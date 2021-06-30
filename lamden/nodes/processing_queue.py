@@ -217,6 +217,9 @@ class ProcessingQueue:
             mark=False
         )
 
+        self.log.info('Kwargs')
+        self.log.info(convert_dict(transaction['payload']['kwargs']))
+
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
