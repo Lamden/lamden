@@ -418,7 +418,9 @@ class Node:
             'system_time': time.time()
         }))
 
-        self.driver.clear_pending_state()
+        # Commented out because Stu told me too
+        # self.driver.clear_pending_state()
+
         self.nonces.flush_pending()
         gc.collect()
 
