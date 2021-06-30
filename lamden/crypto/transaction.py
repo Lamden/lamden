@@ -52,6 +52,14 @@ class TransactionTrailingZerosFixedError(TransactionException):
     pass
 
 
+class TransactionStaleError(TransactionException):
+    pass
+
+
+class TransactionInvalidTimestampError(TransactionException):
+    pass
+
+
 EXCEPTION_MAP = {
     TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
     TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
@@ -60,9 +68,11 @@ EXCEPTION_MAP = {
     TransactionPOWProofInvalid: {'error': 'Transaction proof of work is invalid.'},
     TransactionSignatureInvalid: {'error': 'Transaction is not signed by the sender.'},
     TransactionStampsNegative: {'error': 'Transaction has negative stamps supplied.'},
-    TransactionException: {'error': 'Another error has occured.'},
+    TransactionException: {'error': 'Another error has occurred.'},
     TransactionFormattingError: {'error': 'Transaction is not formatted properly.'},
-    TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'}
+    TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'},
+    TransactionStaleError: {'error': 'Transaction timestamp is too old. Submit again.'},
+    TransactionInvalidTimestampError: {'error': 'Transaction timestamp is invalid.'}
 }
 
 
