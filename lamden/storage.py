@@ -220,7 +220,7 @@ class NonceStorage:
 
 
 def get_latest_block_hash(driver: ContractDriver):
-    latest_hash = driver.get(BLOCK_HASH_KEY, mark=False)
+    latest_hash = driver.get(BLOCK_HASH_KEY)
     if latest_hash is None:
         return '0' * 64
     return latest_hash
@@ -231,7 +231,7 @@ def set_latest_block_hash(h, driver: ContractDriver):
 
 
 def get_latest_block_height(driver: ContractDriver):
-    h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
+    h = driver.get(BLOCK_NUM_HEIGHT)
     if h is None:
         return 0
 

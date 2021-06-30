@@ -136,6 +136,8 @@ class ProcessingQueue:
         # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
 
         try:
+            # TODO this is a potential exploit for staking contracts.  If I can send a later time stamp my payout would
+            # be greater
             now = Datetime._from_datetime(
                 datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
             )
