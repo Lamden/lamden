@@ -188,7 +188,17 @@ def contract_name_is_valid(contract, function, name):
 
 def transaction_is_not_expired(transaction, timeout=5):
     timestamp = transaction['metadata']['timestamp']
-    return (int(time.time()) - timestamp) < timeout
+
+    now = int(time.time())
+    expired = (now - timestamp) > timeout
+    if expired:
+        raise TransactionStaleError
+
+    invalid = timestamp > now
+    if invalid:
+        raise TransactionInvalidTimestampError
+
+    return True
 
 
 def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce: int, processor: str, stamps: int):

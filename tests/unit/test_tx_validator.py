@@ -6,6 +6,7 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from contracting.client import ContractingClient
 import decimal
+import time
 
 
 class TestTransactionBuilder(TestCase):
@@ -331,8 +332,7 @@ class TestValidator(TestCase):
         )
 
         decoded = decode(tx)
-
-        self.assertTrue(transaction.transaction_is_not_expired(decoded))
+        transaction.transaction_is_not_expired(decoded)
 
     def test_transaction_is_expired_false_if_outside_timeout(self):
         w = Wallet()
@@ -353,7 +353,30 @@ class TestValidator(TestCase):
         decoded = decode(tx)
         decoded['metadata']['timestamp'] -= 1000
 
-        self.assertFalse(transaction.transaction_is_not_expired(decoded))
+        with self.assertRaises(transaction.TransactionStaleError):
+            transaction.transaction_is_not_expired(decoded)
+
+    def test_future_transactions_raise_error(self):
+        w = Wallet()
+
+        tx = build_transaction(
+            wallet=w,
+            processor='b' * 64,
+            stamps=123,
+            nonce=0,
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'amount': 123,
+                'to': 'jeff'
+            }
+        )
+
+        decoded = decode(tx)
+        decoded['metadata']['timestamp'] += 1000
+
+        with self.assertRaises(transaction.TransactionInvalidTimestampError):
+            transaction.transaction_is_not_expired(decoded)
 
     def test_transaction_is_valid_complete_test_passes(self):
         w = Wallet()
