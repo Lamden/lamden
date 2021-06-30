@@ -369,9 +369,11 @@ class Node:
         self.log.info(f'Current Height: {self.current_height()}')
 
         block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
-        block_info = json.loads(encode(block).encode())
 
+        storage.set_latest_block_height(h=block['number'], driver=self.driver)
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
+
+        block_info = json.loads(encode(block).encode())
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
