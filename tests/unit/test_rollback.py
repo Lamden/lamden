@@ -16,9 +16,6 @@ class TestRollBack(TestCase):
     def tearDown(self):
         pass
 
-    def test_init(self):
-        pass
-
     def test_add_rollback_info_adds_to_rollback_queue(self):
         self.assertEqual(len(self.node.rollbacks), 0)
 
@@ -43,3 +40,12 @@ class TestRollBack(TestCase):
         r = self.node.add_rollback_info()
 
         self.assertEqual(r, self.node.rollbacks[1])
+
+    def test_rollback_drops_database_cache(self):
+        self.node.driver.set('test', 'thing1')
+
+        self.assertEqual(self.node.driver.get('test'), 'thing1')
+
+        self.node.rollback_drivers()
+
+        self.assertEqual(self.node.driver.get('test'), None)
