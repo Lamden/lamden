@@ -261,7 +261,6 @@ class Node:
         self.system_monitor.stop()
         self.running = False
 
-
     async def check_tx_queue(self):
         while self.running:
             if len(self.file_queue) > 0:
@@ -271,7 +270,7 @@ class Node:
                     tx_message = self.make_tx_message(tx=tx_from_file)
 
                     # send the tx to the rest of the network
-                    asyncio.ensure_future(self.send_tx_to_network(tx=tx_message))
+                    asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
 
                     # add this tx the processing queue so we can process it
                     self.main_processing_queue.append(tx=tx_message)
@@ -291,44 +290,45 @@ class Node:
                 await self.validation_queue.process_next()
             await asyncio.sleep(0)
 
+    def process_result(self, processing_results):
+        self.last_processed_hlc = processing_results['hlc_timestamp']
+
+        # ___ Change DB and State ___
+        # 1) Needs to create the new block with our result
+        block_info = self.create_new_block_from_result(processing_results['result'])
+
+        # 2) Store block, create rewards and increment block number
+        self.update_block_db(block_info)
+
+        # 3) Soft Apply current state and create change log
+        self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+
+        self.log.debug(json.dumps({
+            'type': 'tx_lifecycle',
+            'file': 'base',
+            'event': 'processed_from_main_queue',
+            'hlc_timestamp': processing_results['hlc_timestamp'],
+            'my_solution': block_info['hash'],
+            'system_time': time.time()
+        }))
+
+        # ___ Validate and Send Block info __
+        # add the hlc_timestamp to the needs validation queue for processing consensus later
+        self.validation_queue.append(
+            block_info=block_info,
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            transaction_processed=processing_results['transaction_processed']
+        )
+
+        return block_info
+
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
-            self.last_processed_hlc = processing_results['hlc_timestamp']
-
-            # ___ Change DB and State ___
-            # 1) Needs to create the new block with our result
-            block_info = self.create_new_block_from_result(processing_results['result'])
-
-            # 2) Store block, create rewards and increment block number
-            self.update_block_db(block_info)
-
-            # 3) Soft Apply current state and create change log
-            self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
-
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'event': 'processed_from_main_queue',
-                'hlc_timestamp': processing_results['hlc_timestamp'],
-                'my_solution': block_info['hash'],
-                'system_time': time.time()
-            }))
-
-            # ___ Validate and Send Block info __
-            # add the hlc_timestamp to the needs validation queue for processing consensus later
-            self.validation_queue.append(
-                block_info=block_info,
-                hlc_timestamp=processing_results['hlc_timestamp'],
-                transaction_processed=processing_results['transaction_processed']
-            )
-
+            block_info = self.process_result(processing_results)
             # send my block result to the rest of the network to prove I'm in consensus
-            asyncio.ensure_future(self.send_block_to_network(block_info=block_info))
-
-    async def send_block_to_network(self, block_info):
-        await  self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info)
+            asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
@@ -347,9 +347,6 @@ class Node:
             'sender': self.wallet.verifying_key,
             'input_hash': input_hash
         }
-
-    async def send_tx_to_network(self, tx):
-        await self.network.publisher.publish(topic=WORK_SERVICE, msg=tx)
 
     def create_new_block_from_result(self, result):
         # self.log.debug(result)
