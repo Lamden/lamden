@@ -100,7 +100,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), debug=True, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
+                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4, should_seed=True):
 
         self.consensus_percent = 51
         self.processing_delay_secs = {
@@ -138,8 +138,8 @@ class Node:
         self.bootnodes = bootnodes
         self.constitution = constitution
 
-        self.seed_genesis_contracts()
-
+        if should_seed:
+            self.seed_genesis_contracts()
         # self.socket_authenticator = authentication.SocketAuthenticator(
         #     bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
         # )
