@@ -47,6 +47,12 @@ class ProcessingQueue:
     def stop(self):
         self.running = False
 
+    def start_processing(self):
+        self.currently_processing = True
+
+    def stop_processing(self):
+        self.currently_processing = False
+
     def flush(self):
         self.main_processing_queue = []
         self.message_received_timestamps = {}
