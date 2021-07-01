@@ -426,6 +426,7 @@ class Node:
             'system_time': time.time()
         }))
 
+### ROLLBACK CODE
     def add_rollback_info(self):
         rollback_info = {
             'system_time': time.time(),
@@ -480,6 +481,7 @@ class Node:
         # Restart the processing and validation queues
         self.main_processing_queue.start()
         self.validation_queue.start()
+###
 
     def _get_member_peers(self, contract_name):
         members = self.client.get_var(
