@@ -40,6 +40,9 @@ class ProcessingQueue:
         # TODO This is just for testing
         self.total_processed = 0
 
+    def __len__(self):
+        return len(self.main_processing_queue)
+
     def start(self):
         self.log.info("STARTING QUEUE")
         self.running = True
@@ -60,7 +63,7 @@ class ProcessingQueue:
     async def stopping(self):
         self.log.info("STOPPING QUEUE")
         while self.currently_processing:
-            asyncio.sleep(0)
+            await asyncio.sleep(0)
         self.log.info("STOPPED QUEUE!")
 
     def append(self, tx):
@@ -76,51 +79,32 @@ class ProcessingQueue:
             return self.processing_delay_other
 
     async def process_next(self):
+        # return if the queue is empty
         if len(self.main_processing_queue) == 0:
             return
-        # run top of stack if it's older than 1 second
-        ## self.log.debug('{} waiting items in main queue'.format(len(self.main_processing_queue)))
 
+        # sort the main processing queue by hlc_timestamp
         self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
+
         # Pop it out of the main processing queue
         tx = self.main_processing_queue.pop(0)
 
-        if tx['tx'] is None:
-            self.log.error('tx has no tx info')
-            self.log.debug(tx)
-            # self.stop_node()
-            # not sure why this would be but it's a check anyway
-            return
+        # get the amount of time the transaction has been in the queue
+        time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
 
-        # determine its age
-        ''' Old time HLC delay checker
-        time_in_queue = self.hlc_clock.check_timestamp_age(timestamp=tx['hlc_timestamp'])
-        time_in_queue_seconds = time_in_queue / 1000000000
-        # self.log.debug("First Item in queue is {} seconds old with an HLC TIMESTAMP of {}".format(time_in_queue_seconds, self.hlc_clock.get_new_hlc_timestamp()))
-        '''
-        try:
-            time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
-            time_delay = self.hold_time(tx)
-        except KeyError:
-            self.log.debug(self.message_received_timestamps)
-            self.log.error(tx['hlc_timestamp'])
-            self.stop_node()
-            return
+        # get the amount of time this node should holf the transactions
+        time_delay = self.hold_time(tx=tx)
 
-        #self.log.debug("First Item in queue is {} seconds old".format(time_in_queue))
-
-        # If the next item in the queue is old enough to process it then go ahead
+        # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
-            self.log.info({
-                'queue_length': len(self.main_processing_queue),
-                'time_in_queue': time_in_queue,
-                'time_delay': time_delay
-            })
             # clear this hlc_timestamp from the received timestamps memory
             del self.message_received_timestamps[tx['hlc_timestamp']]
 
             # Process it to get the results
             result = self.process_tx(tx=tx)
+
+            # TODO Remove this as it's for testing
+            self.total_processed = self.total_processed + 1
 
             return {
                 'hlc_timestamp': tx['hlc_timestamp'],
@@ -128,47 +112,31 @@ class ProcessingQueue:
                 'transaction_processed': tx
             }
         else:
-            #put it back in queue
+            # else, put it back in queue
             self.main_processing_queue.append(tx)
             return None
 
-        # for x in range(len(self.main_processing_queue)):
-        #    self.log.info(self.main_processing_queue[x]['hlc_timestamp'])
-
     def process_tx(self, tx):
-        ## self.log.debug("PROCESSING: {}".format(tx['input_hash']))
+        # Get the environment
+        environment = self.get_environment(tx=tx)
 
-        # Run mini catch up here to prevent 'desyncing'
-        # self.log.info(f'{len(self.new_block_processor.q)} new block(s) to process before execution.')
-
-        try:
-            # TODO this is a potential exploit for staking contracts.  If I can send a later time stamp my payout would
-            # be greater
-            now = Datetime._from_datetime(
-                datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
-            )
-            environment = {
-                'block_hash': self.get_current_hash(),
-                'block_num': self.get_current_height(),
-                '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
-                'now': now,
-            }
-
-            self.log.info(environment)
-
-        except Exception as err:
-            self.log.debug(tx)
-            self.log.error(err)
-
-        result = self.execute_tx(
+        # Execute the transaction
+        tx_result = self.execute_tx(
             transaction=tx['tx'],
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
             hlc_timestamp=tx['hlc_timestamp'],
             environment=environment
         )
 
+        # Distribute rewards
+        self.distribute_rewards(
+            tx_result=tx_result,
+            contract_name=tx_result['transaction']['payload']['contract']
+        )
+
+        # Sign our tx results
         h = hashlib.sha3_256()
-        h.update('{}'.format(encode(result).encode()).encode())
+        h.update('{}'.format(encode(tx_result).encode()).encode())
         tx_hash = h.hexdigest()
 
         proof = self.wallet.sign(tx_hash)
@@ -178,9 +146,10 @@ class ProcessingQueue:
             'signature': proof
         }
 
+        # Create sub block
         sbc = {
             'input_hash': tx['input_hash'],
-            'transactions': [result],
+            'transactions': [tx_result],
             'merkle_tree': merkle_tree,
             'signer': self.wallet.verifying_key,
             'subblock': 0,
@@ -189,33 +158,10 @@ class ProcessingQueue:
 
         sbc = format_dictionary(sbc)
 
-        # results = self.transaction_executor.execute_work(
-        #     driver=self.driver,
-        #     work=[tx],
-        #     wallet=self.wallet,
-        #     previous_block_hash=self.get_current_hash(),
-        #     current_height=self.get_current_height(),
-        #     stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
-        # )
-
-        self.total_processed = self.total_processed + 1
-        # self.log.info('{} Processed: {} {}'.format(self.total_processed, tx['hlc_timestamp'], tx['tx']['metadata']['signature'][:12]))
-        # self.log.info('{} Left in queue'.format(len(self.main_processing_queue)))
-
-        # self.new_block_processor.clean(self.current_height)
-        # self.driver.clear_pending_state()
-
         return sbc
 
     def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
-        # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
-
-        # Add AUXILIARY_SALT for more randomness
-
-        self.log.debug(transaction)
-
-        environment['AUXILIARY_SALT'] = transaction['metadata']['signature']
-
+        # Get the currency balance of the tx sender
         balance = self.executor.driver.get_var(
             contract='currency',
             variable='balances',
@@ -223,9 +169,7 @@ class ProcessingQueue:
             mark=False
         )
 
-        self.log.info('Kwargs')
-        self.log.info(convert_dict(transaction['payload']['kwargs']))
-
+        # Execute transaction
         output = self.executor.execute(
             sender=transaction['payload']['sender'],
             contract_name=transaction['payload']['contract'],
@@ -237,22 +181,15 @@ class ProcessingQueue:
             auto_commit=False
         )
 
+        # Clear pending writes
         self.executor.driver.pending_writes.clear()
 
+        # Log out to the node logs if the tx fails
         if output['status_code'] > 0:
             self.log.error(f'TX executed unsuccessfully. '
                            f'{output["stamps_used"]} stamps used. '
                            f'{len(output["writes"])} writes.'
                            f' Result = {output["result"]}')
-
-        master_reward, delegate_reward, foundation_reward, developer_mapping = \
-            self.reward_manager.calculate_tx_output_rewards(output, transaction['payload']['contract'], self.client)
-
-        self.reward_manager.distribute_rewards(
-            master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
-        )
-
-        # self.log.debug(output['writes'])
 
         tx_hash = tx_hash_from_tx(transaction)
 
@@ -287,5 +224,26 @@ class ProcessingQueue:
 
         return tx_output
 
-    def __len__(self):
-        return len(self.main_processing_queue)
+    def distribute_rewards(self, tx_result, contract_name):
+        master_reward, delegate_reward, foundation_reward, developer_mapping = \
+            self.reward_manager.calculate_tx_output_rewards(tx_result, contract_name, self.client)
+
+        self.reward_manager.distribute_rewards(
+            master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
+        )
+
+    def get_environment(self, tx):
+        now = self.get_now_from_tx(tx=tx)
+
+        return {
+            'block_hash': self.get_current_hash(),
+            'block_num': self.get_current_height(),
+            '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
+            'now': now,
+            'AUXILIARY_SALT': tx['tx']['metadata']['signature']
+        }
+
+    def get_now_from_tx(self, tx):
+        return Datetime._from_datetime(
+            datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
+        )
