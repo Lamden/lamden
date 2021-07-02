@@ -2,17 +2,17 @@ import asyncio
 import math
 import time
 import json
-from lamden.logger.base import get_logger
 
-class ValidationQueue:
+from lamden.logger.base import get_logger
+from lamden.nodes.queue_base import ProcessingQueue
+
+class ValidationQueue(ProcessingQueue):
     def __init__(self, consensus_percent, get_peers_for_consensus,
                  set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback):
+        super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
 
-        self.running = True
-
-        self.needs_validation_queue = []
         self.validation_results = {}
         self.last_hlc_in_consensus = ""
 
@@ -25,12 +25,6 @@ class ValidationQueue:
 
         self.wallet = wallet
 
-    def start(self):
-        self.running = True
-
-    def stop(self):
-        self.running = False
-
     def append(self, block_info, hlc_timestamp, transaction_processed):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
 
@@ -41,16 +35,10 @@ class ValidationQueue:
             transaction_processed=transaction_processed
         )
 
-        self.needs_validation_queue.append(hlc_timestamp)
+        super().append(hlc_timestamp)
 
     def awaiting_validation(self, hlc_timestamp):
-        return hlc_timestamp in self.needs_validation_queue
-
-    def is_duplicate(self, hlc_timestamp, node_vk):
-        try:
-            return self.validation_results[hlc_timestamp]['solutions'][node_vk]
-        except KeyError:
-            return False
+        return hlc_timestamp in self.queue
 
     def add_solution(self, hlc_timestamp, node_vk, block_info, transaction_processed=None):
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
@@ -91,8 +79,8 @@ class ValidationQueue:
         # self.log.debug(self.validation_results[hlc_timestamp]['solutions'])
 
     async def process_next(self):
-        self.needs_validation_queue.sort()
-        next_hlc_timestamp = self.needs_validation_queue.pop(0)
+        self.queue.sort()
+        next_hlc_timestamp = self.queue.pop(0)
 
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
@@ -149,7 +137,7 @@ class ValidationQueue:
                     self.stop()
 
                     # wipe needs validation queue
-                    self.needs_validation_queue = []
+                    self.flush()
 
                     asyncio.ensure_future(self.rollback())
                     return
@@ -160,7 +148,7 @@ class ValidationQueue:
 
         # Add the HLC_timestamp back to the queue to be reprocessed
         # Should only get here if we didn't need to check consensus again or if we did and no consensus was realized
-        self.needs_validation_queue.append(next_hlc_timestamp)
+        self.queue.append(next_hlc_timestamp)
 
 
     def should_check_again(self, hlc_timestamp):
@@ -387,12 +375,5 @@ class ValidationQueue:
                 out_of_consensus.append(node_vk)
         self.set_peers_not_in_consensus(out_of_consensus)
 
-
-    def __len__(self):
-        return len(self.needs_validation_queue)
-
     def __setitem__(self, key, value):
         raise ReferenceError
-
-    def __getitem__(self, item):
-        return self.validation_results[item]

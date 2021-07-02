@@ -1,24 +1,22 @@
 import time
-import json
 import hashlib
-import asyncio
+
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
 from lamden.logger.base import get_logger
+from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
 
 
-class ProcessingQueue:
+
+class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor,
                  get_current_height, get_current_hash, stop_node, reward_manager):
+        super().__init__()
 
-        self.log = get_logger('TX PROCESSOR')
+        self.log = get_logger('MAIN PROCESSING QUEUE')
 
-        self.running = True
-        self.currently_processing = False
-
-        self.main_processing_queue = []
         self.message_received_timestamps = {}
 
         self.processing_delay_other = processing_delay['base']
@@ -40,54 +38,26 @@ class ProcessingQueue:
         # TODO This is just for testing
         self.total_processed = 0
 
-    def __len__(self):
-        return len(self.main_processing_queue)
-
-    def start(self):
-        self.log.info("STARTING QUEUE")
-        self.running = True
-
-    def stop(self):
-        self.running = False
-
-    def start_processing(self):
-        self.currently_processing = True
-
-    def stop_processing(self):
-        self.currently_processing = False
-
-    def flush(self):
-        self.main_processing_queue = []
-        self.message_received_timestamps = {}
-
-    async def stopping(self):
-        self.log.info("STOPPING QUEUE")
-        while self.currently_processing:
-            await asyncio.sleep(0)
-        self.log.info("STOPPED QUEUE!")
-
     def append(self, tx):
+        super().append(tx)
+
         self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
         self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
 
-        self.main_processing_queue.append(tx)
-
-    def hold_time(self, tx):
-        if tx['sender'] == self.wallet.verifying_key:
-            return self.processing_delay_self
-        else:
-            return self.processing_delay_other
+    def flush(self):
+        super().flush()
+        self.message_received_timestamps = {}
 
     async def process_next(self):
         # return if the queue is empty
-        if len(self.main_processing_queue) == 0:
+        if len(self.queue) == 0:
             return
 
         # sort the main processing queue by hlc_timestamp
-        self.main_processing_queue.sort(key=lambda x: x['hlc_timestamp'])
+        self.queue.sort(key=lambda x: x['hlc_timestamp'])
 
         # Pop it out of the main processing queue
-        tx = self.main_processing_queue.pop(0)
+        tx = self.queue.pop(0)
 
         # get the amount of time the transaction has been in the queue
         time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
@@ -113,8 +83,14 @@ class ProcessingQueue:
             }
         else:
             # else, put it back in queue
-            self.main_processing_queue.append(tx)
+            self.queue.append(tx)
             return None
+
+    def hold_time(self, tx):
+        if tx['sender'] == self.wallet.verifying_key:
+            return self.processing_delay_self
+        else:
+            return self.processing_delay_other
 
     def process_tx(self, tx):
         # Get the environment

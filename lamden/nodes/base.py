@@ -182,7 +182,7 @@ class Node:
         self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
 
         self.file_queue = filequeue.FileQueue()
-        self.main_processing_queue = processing_queue.ProcessingQueue(
+        self.main_processing_queue = processing_queue.TxProcessingQueue(
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,

@@ -38,8 +38,8 @@ def get_new_tx():
             }
         }
 
-class TestProcessingQueue(TestCase):
 
+class TestProcessingQueue(TestCase):
     def setUp(self):
         self.driver = ContractDriver()
         self.client = ContractingClient(
@@ -62,7 +62,7 @@ class TestProcessingQueue(TestCase):
         self.current_height = lambda: storage.get_latest_block_height(self.driver)
         self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
 
-        self.main_processing_queue = processing_queue.ProcessingQueue(
+        self.main_processing_queue = processing_queue.TxProcessingQueue(
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
@@ -85,27 +85,6 @@ class TestProcessingQueue(TestCase):
     def sync(self):
         sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
 
-    async def await_queue_stopping(self):
-        print (self.main_processing_queue.currently_processing)
-        # Await the stopping of the queue
-        await self.main_processing_queue.stopping()
-
-    async def delay_processing(self, func, delay):
-        print('\n')
-        print('Starting Sleeping: ', time.time())
-        await asyncio.sleep(delay)
-        print('Done Sleeping: ', time.time())
-        if func:
-            return func()
-
-    async def delay_processing_await(self, func, delay):
-        print('\n')
-        print('Starting Sleeping: ', time.time())
-        await asyncio.sleep(delay)
-        print('Done Sleeping: ', time.time())
-        if func:
-            return await func()
-
     def make_tx_message(self, tx):
         timestamp = int(time.time())
 
@@ -124,43 +103,15 @@ class TestProcessingQueue(TestCase):
             'input_hash': input_hash
         }
 
+    async def delay_processing_await(self, func, delay):
+        print('\n')
+        print('Starting Sleeping: ', time.time())
+        await asyncio.sleep(delay)
+        print('Done Sleeping: ', time.time())
+        if func:
+            return await func()
     def stop(self):
         self.running = False
-
-    def test_can_start(self):
-        self.main_processing_queue.start()
-        self.assertEqual(self.main_processing_queue.running, True)
-
-    def test_can_stop(self):
-        self.main_processing_queue.stop()
-        self.assertEqual(self.main_processing_queue.running, False)
-
-    def test_can_start_processing(self):
-        self.main_processing_queue.start_processing()
-        self.assertEqual(self.main_processing_queue.currently_processing, True)
-
-    def test_can_stop_processing(self):
-        self.main_processing_queue.stop_processing()
-        self.assertEqual(self.main_processing_queue.currently_processing, False)
-
-    def test_can_await_stopping(self):
-        # Mark the queue as currently processing
-        self.main_processing_queue.start_processing()
-
-        # Stop the queue
-        self.main_processing_queue.stop()
-
-        # Await the queue stopping and then mark the queue as not processing after X seconds
-        tasks = asyncio.gather(
-            self.await_queue_stopping(),
-            self.delay_processing(func=self.main_processing_queue.stop_processing, delay=2)
-        )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
-
-        # Assert the queue is stopped and not processing any transactions
-        self.assertEqual(self.main_processing_queue.currently_processing, False)
-        self.assertEqual(self.main_processing_queue.running, False)
 
     def test_append(self):
         # Add a bunch of transactions to the queue
@@ -207,10 +158,10 @@ class TestProcessingQueue(TestCase):
 
             # if this is the first transaction get the HLC for it for comparison later
             if i == 0:
-                first_tx = self.main_processing_queue.main_processing_queue[0]
+                first_tx = self.main_processing_queue.queue[0]
 
         # Shuffle the processing queue so the hlcs are out of order
-        random.shuffle(self.main_processing_queue.main_processing_queue)
+        random.shuffle(self.main_processing_queue.queue)
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
