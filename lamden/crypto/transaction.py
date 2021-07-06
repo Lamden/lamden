@@ -194,7 +194,7 @@ def transaction_is_not_expired(transaction, timeout=5):
     if expired:
         raise TransactionStaleError
 
-    invalid = timestamp > now
+    invalid = now + timeout < timestamp
     if invalid:
         raise TransactionInvalidTimestampError
 
