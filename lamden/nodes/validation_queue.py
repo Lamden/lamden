@@ -40,6 +40,29 @@ class ValidationQueue(ProcessingQueue):
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.queue
 
+    def check_num_of_solutions(self, hlc_timestamp):
+        results = self.validation_results.get(hlc_timestamp)
+
+        if results is None:
+            return 0
+        return len(self.validation_results[hlc_timestamp]['solutions'])
+
+    def check_ideal_consensus_possible(self, hlc_timestamp):
+        results = self.validation_results.get(hlc_timestamp)
+
+        if results is None: return False
+        last_check_info = results.get('last_check_info')
+        if last_check_info is None: return False
+        return last_check_info['ideal_consensus_possible']
+
+    def check_eager_consensus_possible(self, hlc_timestamp):
+        results = self.validation_results.get(hlc_timestamp)
+
+        if results is None: return False
+        last_check_info = results.get('last_check_info')
+        if last_check_info is None: return False
+        return last_check_info['eager_consensus_possible']
+
     def add_solution(self, hlc_timestamp, node_vk, block_info, transaction_processed=None):
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
         # Store data about the tx so it can be processed for consensus later.
@@ -79,12 +102,14 @@ class ValidationQueue(ProcessingQueue):
         # self.log.debug(self.validation_results[hlc_timestamp]['solutions'])
 
     async def process_next(self):
+        if len(self.queue) == 0: return
+
         self.queue.sort()
         next_hlc_timestamp = self.queue.pop(0)
 
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
-            # self.log.debug({'consensus_result': consensus_result})
+            self.log.debug({'consensus_result': consensus_result})
 
             if consensus_result['has_consensus']:
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
@@ -243,6 +268,7 @@ class ValidationQueue(ProcessingQueue):
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+
             self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_results['eager_consensus_possible']
 
             # Return if we found eager consensus on a solution
@@ -260,6 +286,7 @@ class ValidationQueue(ProcessingQueue):
 
     def check_ideal_consensus(self, tally_info, my_solution, solutions_missing, consensus_needed):
         top_solution = tally_info['results_list'][0]
+
         if top_solution['consensus_amount'] >= consensus_needed:
             return {
                 'has_consensus': True,
