@@ -222,7 +222,8 @@ class Node:
             get_all_peers=self.get_all_peers,
             check_peer_in_consensus=self.check_peer_in_consensus,
             peer_add_strike=self.peer_add_strike,
-            wallet=self.wallet
+            wallet=self.wallet,
+            get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
