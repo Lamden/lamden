@@ -62,13 +62,6 @@ class Block_Contender():
             self.log.error('Contender is not valid!')
             return
 
-        # self.log.info(msg[i]['signer'])
-        if self.validation_queue.is_duplicate(hlc_timestamp=tx['hlc_timestamp'], node_vk=signing_data['signer']):
-            # TODO what todo if you get a duplicate result from the same node?  Possible fraud detection?
-            # TODO maybe blacklist repeat offenders of this
-            self.log.error(f'Already received results from {signer[:8]} for {tx["hlc_timestamp"]}')
-            return
-
         # TODO Check to see if this is for a block already in consensus
         # Add solution to this validation list for this tx
         self.validation_queue.add_solution(
