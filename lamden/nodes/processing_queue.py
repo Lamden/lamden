@@ -19,8 +19,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.message_received_timestamps = {}
 
-        self.processing_delay_other = processing_delay['base']
-        self.processing_delay_self = processing_delay['base'] + processing_delay['self']
+        self.processing_delay = processing_delay
 
         self.client = client
         self.wallet = wallet
@@ -87,10 +86,12 @@ class TxProcessingQueue(ProcessingQueue):
             return None
 
     def hold_time(self, tx):
+        processing_delay = self.processing_delay()
+
         if tx['sender'] == self.wallet.verifying_key:
-            return self.processing_delay_self
+            return processing_delay['base'] + processing_delay['self']
         else:
-            return self.processing_delay_other
+            return processing_delay['base']
 
     def process_tx(self, tx):
         # Get the environment
@@ -144,6 +145,8 @@ class TxProcessingQueue(ProcessingQueue):
             arguments=[transaction['payload']['sender']],
             mark=False
         )
+
+        print(f'sender_balance_in_execute_tx: {balance}')
 
         # Execute transaction
         output = self.executor.execute(

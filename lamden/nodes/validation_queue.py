@@ -217,7 +217,7 @@ class ValidationQueue(ProcessingQueue):
 
         # TODO What should self.consensus_percent be set to?
         # determine the number of matching answers we need to form consensus
-        consensus_needed = math.ceil(num_of_peers * (self.consensus_percent / 100))
+        consensus_needed = math.ceil(num_of_peers * (self.consensus_percent() / 100))
 
         '''
         Return if we don't have enough responses to attempt an ideal consensus check

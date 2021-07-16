@@ -16,6 +16,7 @@ import hashlib
 import random
 import asyncio
 from datetime import datetime
+from operator import itemgetter
 
 
 def get_new_tx():
@@ -53,8 +54,8 @@ class TestProcessingQueue(TestCase):
         self.hlc_clock = HLC_Clock()
 
         self.processing_delay_secs = {
-            'base': 0.75,
-            'self': 0.75
+            'base': 0.1,
+            'self': 0.1
         }
 
         self.running = True
@@ -67,7 +68,7 @@ class TestProcessingQueue(TestCase):
             client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
-            processing_delay=self.processing_delay_secs,
+            processing_delay=lambda: self.processing_delay_secs,
             executor=self.executor,
             get_current_hash=self.current_hash,
             get_current_height=self.current_height,
@@ -110,6 +111,7 @@ class TestProcessingQueue(TestCase):
         print('Done Sleeping: ', time.time())
         if func:
             return await func()
+
     def stop(self):
         self.running = False
 
@@ -174,6 +176,26 @@ class TestProcessingQueue(TestCase):
 
         # assert the first HLC entered was the one that was processed
         self.assertEqual(res[0]['hlc_timestamp'], first_tx['hlc_timestamp'])
+
+    def test_process_next_return_value(self):
+        self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+
+        hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
+
+        # Await the queue stopping and then mark the queue as not processing after X seconds
+        tasks = asyncio.gather(
+            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
+        )
+        loop = asyncio.get_event_loop()
+        processing_results = loop.run_until_complete(tasks)[0]
+
+        hlc_timestamp, result, transaction_processed = itemgetter(
+            'hlc_timestamp', 'result', 'transaction_processed'
+        )(processing_results)
+
+        self.assertIsNotNone(hlc_timestamp)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(transaction_processed)
 
     def test_process_next_returns_none_if_len_0(self):
         self.main_processing_queue.flush()

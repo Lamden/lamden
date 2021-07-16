@@ -99,11 +99,12 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), debug=True, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4, should_seed=True):
+                 driver=ContractDriver(), delay=None, debug=True, seed=None, bypass_catchup=False, node_type=None,
+                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True):
 
-        self.consensus_percent = 51
-        self.processing_delay_secs = {
+        self.consensus_percent = consensus_percent or 51
+        self.processing_delay_secs = delay or {
             'base': 0.75,
             'self': 0.75
         }
@@ -187,7 +188,7 @@ class Node:
             client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
-            processing_delay=self.processing_delay_secs,
+            processing_delay=lambda: self.processing_delay_secs,
             executor=self.executor,
             get_current_hash=self.current_hash,
             get_current_height=self.current_height,
@@ -196,7 +197,7 @@ class Node:
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
-            consensus_percent=self.consensus_percent,
+            consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
@@ -238,6 +239,9 @@ class Node:
         # Start running
         self.running = True
 
+        self.main_processing_queue.start()
+        self.validation_queue.start()
+
         asyncio.ensure_future(self.system_monitor.start(delay_sec=5))
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
@@ -261,6 +265,15 @@ class Node:
         self.network.stop()
         self.system_monitor.stop()
         self.running = False
+        self.validation_queue.stop()
+        self.main_processing_queue.stop
+        tasks = asyncio.gather(
+            self.main_processing_queue.stopping(),
+            self.validation_queue.stopping()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+        self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
     async def check_tx_queue(self):
         while self.running:
@@ -290,6 +303,14 @@ class Node:
             if len(self.validation_queue) > 0 and self.validation_queue.running:
                 await self.validation_queue.process_next()
             await asyncio.sleep(0)
+
+    async def process_main_queue(self):
+        processing_results = await self.main_processing_queue.process_next()
+
+        if processing_results:
+            block_info = self.process_result(processing_results)
+            # send my block result to the rest of the network to prove I'm in consensus
+            asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
         self.last_processed_hlc = processing_results['hlc_timestamp']
@@ -322,14 +343,6 @@ class Node:
         )
 
         return block_info
-
-    async def process_main_queue(self):
-        processing_results = await self.main_processing_queue.process_next()
-
-        if processing_results:
-            block_info = self.process_result(processing_results)
-            # send my block result to the rest of the network to prove I'm in consensus
-            asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
@@ -396,6 +409,7 @@ class Node:
 
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp)
+        print(encode(self.driver.pending_deltas[hlc_timestamp]))
         self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
 
         self.log.debug(json.dumps({
