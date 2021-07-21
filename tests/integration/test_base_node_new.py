@@ -6,6 +6,7 @@ from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 from contracting.db import encoder
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 import zmq.asyncio
 import asyncio
 import time
@@ -35,7 +36,7 @@ def generate_blocks(number_of_blocks):
 
     return blocks
 
-def get_new_tx(to=None, amount=None, sender=None):
+def get_new_tx(to=None, amount=200.1, sender=None):
     return {
             'metadata': {
                 'signature': '7eac4c17004dced6d079e260952fffa7750126d5d2c646ded886e6b1ab4f6da1e22f422aad2e1954c9529cfa71a043af8c8ef04ccfed6e34ad17c6199c0eba0e',
@@ -45,7 +46,7 @@ def get_new_tx(to=None, amount=None, sender=None):
                 'contract': 'currency',
                 'function': 'transfer',
                 'kwargs': {
-                    'amount': {'__fixed__': amount or '200.1'},
+                    'amount': amount,
                     'to': to or '6e4f96fa89c508d2842bef3f7919814cd1f64c16954d653fada04e61cc997206'
                 },
                 'sender': sender or "d48b174f71efb9194e9cd2d58de078882bd172fcc7c8ac5ae537827542ae604e",
@@ -382,7 +383,7 @@ class TestNode(TestCase):
 
         # create a transaction
         recipient_wallet = Wallet()
-        tx_amount = "100.5"
+        tx_amount = ContractingDecimal(100.5)
         tx_message = node.make_tx_message(tx=get_new_tx(
             to=recipient_wallet.verifying_key,
             amount=tx_amount,
@@ -414,7 +415,7 @@ class TestNode(TestCase):
             arguments=[recipient_wallet.verifying_key],
             mark=False
         )
-        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+        #recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
 
         # The tx that was processed was the one we expected
         self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
@@ -463,7 +464,7 @@ class TestNode(TestCase):
 
         # create a transaction
         recipient_wallet = Wallet()
-        tx_amount = "200.5"
+        tx_amount = 200.5
         tx_message = node.make_tx_message(tx=get_new_tx(
             to=recipient_wallet.verifying_key,
             amount=tx_amount,
@@ -489,7 +490,7 @@ class TestNode(TestCase):
             arguments=[recipient_wallet.verifying_key],
             mark=False
         )
-        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+        #recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
 
         # The tx that was processed was the one we expected
         self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
@@ -506,7 +507,7 @@ class TestNode(TestCase):
         # ___ SEND 1 Transaction ___
         # create a transaction
         recipient_wallet = Wallet()
-        tx_amount = "100.5"
+        tx_amount = 100.5
         tx_message = node.make_tx_message(tx=get_new_tx(
             to=recipient_wallet.verifying_key,
             amount=tx_amount,

@@ -398,16 +398,20 @@ class Node:
         # Commit the state changes and nonces to the database
         self.log.info(f'update_state_with_block {block["number"]}')
 
-        storage.update_state_with_block(
-            block=block,
-            driver=self.driver,
-            nonces=self.nonces
-        )
+        storage.set_latest_block_hash(block['hash'], driver=self.driver)
+        storage.set_latest_block_height(block['number'], driver=self.driver)
+        #
+        # storage.update_state_with_block(
+        #     block=block,
+        #     driver=self.driver,
+        #     nonces=self.nonces
+        # )
 
         self.new_block_processor.clean(self.current_height())
 
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp)
+
         print(encode(self.driver.pending_deltas[hlc_timestamp]))
         self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
 
