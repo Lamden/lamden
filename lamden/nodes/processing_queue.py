@@ -66,10 +66,12 @@ class TxProcessingQueue(ProcessingQueue):
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
+            print("!!!!!!!!!!!! PROCESSING IT !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
             del self.message_received_timestamps[tx['hlc_timestamp']]
 
             # Process it to get the results
+            # TODO what to do with the tx if any error happen during processing
             result = self.process_tx(tx=tx)
 
             # TODO Remove this as it's for testing
@@ -94,6 +96,7 @@ class TxProcessingQueue(ProcessingQueue):
             return processing_delay['base']
 
     def process_tx(self, tx):
+        # TODO better error handling of anything in here
         # Get the environment
         environment = self.get_environment(tx=tx)
 
@@ -138,6 +141,8 @@ class TxProcessingQueue(ProcessingQueue):
         return sbc
 
     def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
+        # TODO better error handling of anything in here
+
         # Get the currency balance of the tx sender
         balance = self.executor.driver.get_var(
             contract='currency',
@@ -145,8 +150,6 @@ class TxProcessingQueue(ProcessingQueue):
             arguments=[transaction['payload']['sender']],
             mark=False
         )
-
-        print(f'sender_balance_in_execute_tx: {balance}')
 
         # Execute transaction
         output = self.executor.execute(
@@ -160,8 +163,8 @@ class TxProcessingQueue(ProcessingQueue):
             auto_commit=False
         )
 
-        # Clear pending writes
-        self.executor.driver.pending_writes.clear()
+        # Clear pending writes, stu said to comment this out
+        # self.executor.driver.pending_writes.clear()
 
         # Log out to the node logs if the tx fails
         if output['status_code'] > 0:

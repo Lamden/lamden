@@ -381,7 +381,13 @@ class TestNode(TestCase):
         node.validation_queue.stop()
 
         # create a transaction
-        tx_message = node.make_tx_message(tx=get_new_tx())
+        recipient_wallet = Wallet()
+        tx_amount = "100.5"
+        tx_message = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
         hlc_timestamp = tx_message['hlc_timestamp']
 
         node.main_processing_queue.append(tx=tx_message)
@@ -400,8 +406,21 @@ class TestNode(TestCase):
         self.assertEqual(1, len(node.validation_queue))
         # block height was incremented
         self.assertEqual(1, node.current_height())
-        #
-        # TODO add test case - state was soft applied
+
+        # The the recipient balance from the driver
+        recipient_balance_after = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+
+        # The tx that was processed was the one we expected
+        self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
+        # The recipient's balance was updated
+        self.assertEqual(tx_amount, recipient_balance_after)
+        self.assertEqual(1, node.current_height())
 
     def test_process_result_validate_block_info_return_value(self):
         node = self.create_a_node()
@@ -438,33 +457,21 @@ class TestNode(TestCase):
         node = self.create_a_node()
         self.start_node(node)
 
-        client_bal = node.client.get_var(
-            contract='currency',
-            variable='balances',
-            arguments=[self.stu_wallet.verifying_key]
-        )
-
-        executor_bal = node.executor.driver.get_var(
-            contract='currency',
-            variable='balances',
-            arguments=[self.stu_wallet.verifying_key],
-            mark=False
-        )
-        print(f'sender: {self.stu_wallet.verifying_key}')
-        print(f'client_bal: {client_bal}')
-        print(f'executor_bal: {executor_bal}')
-
         #stop the queues
         node.main_processing_queue.stop()
         node.validation_queue.stop()
 
         # create a transaction
+        recipient_wallet = Wallet()
+        tx_amount = "200.5"
         tx_message = node.make_tx_message(tx=get_new_tx(
-            to=node.wallet.verifying_key,
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
             sender=self.stu_wallet.verifying_key
         ))
         hlc_timestamp = tx_message['hlc_timestamp']
 
+        # Add the tx to the stopped processing queue
         node.main_processing_queue.append(tx=tx_message)
 
         # wait the amount of delay before the queue will process the transaction
@@ -472,10 +479,98 @@ class TestNode(TestCase):
 
         # Process the transaction and get the result
         processing_results = self.await_async_process(node.main_processing_queue.process_next)[0]
-
-        print(encoder.encode(processing_results['result']))
-
-        self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
-
+        # Run the Soft Apply logic
         node.soft_apply_current_state(processing_results['hlc_timestamp'])
 
+        # Get the recipient balance from the driver
+        recipient_balance_after = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+
+        # The tx that was processed was the one we expected
+        self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
+        # The recipient's balance was updated
+        self.assertEqual(tx_amount, recipient_balance_after)
+
+        # TODO Test cases for rewarded wallet prior state changes
+
+    def test_state_values_after_multiple_transactions(self):
+        node = self.create_a_node()
+        self.start_node(node)
+
+        print("sending first transaction")
+        # ___ SEND 1 Transaction ___
+        # create a transaction
+        recipient_wallet = Wallet()
+        tx_amount = "100.5"
+        tx_message = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_1 = tx_message['hlc_timestamp']
+        # add to processing queue
+        node.main_processing_queue.append(tx=tx_message)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        print("STORAGE CURRENT HEIGHT: " + str(node.current_height()))
+        print("NODE CURRENT HEIGHT: " + str(node.driver.get('_current_block_height')))
+
+        # Get the recipient balance from the driver
+        recipient_balance_after = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+
+        # The recipient's balance was updated
+        self.assertEqual("100.5", recipient_balance_after)
+        # The block was incremented
+        self.assertEqual(1, node.current_height())
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        print("sending second transaction")
+        # ___ SEND ANOTHER Transaction ___
+        # create a transaction
+        tx_message = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_2 = tx_message['hlc_timestamp']
+
+        print({
+            'hlc_timestamp_1': hlc_timestamp_1,
+            'hlc_timestamp_2': hlc_timestamp_2
+        })
+        # add to processing queue
+        node.main_processing_queue.append(tx=tx_message)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        print("STORAGE CURRENT HEIGHT: " + str(node.current_height()))
+        print("NODE CURRENT HEIGHT: " + str(node.driver.get('_current_block_height')))
+
+
+        # Get the recipient balance from the driver
+        recipient_balance_after = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+
+        # The recipient's balance was updated
+        self.assertEqual("201.0", recipient_balance_after)
+        # The block was incremented
+        self.assertEqual(2, node.current_height())

@@ -120,8 +120,6 @@ class ValidationQueue(ProcessingQueue):
         if self.should_check_again(hlc_timestamp=next_hlc_timestamp):
             consensus_result = self.check_consensus(hlc_timestamp=next_hlc_timestamp)
 
-            print({'consensus_result': consensus_result})
-
             self.log.debug({'consensus_result': consensus_result})
 
             if consensus_result['has_consensus']:
@@ -247,12 +245,6 @@ class ValidationQueue(ProcessingQueue):
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
 
-        print ({
-            'tally_info': tally_info,
-            'solutions_missing': solutions_missing,
-            'num_of_peers': num_of_peers
-        })
-
         self.log.debug({
             'my_solution': my_solution,
             'solutions_missing': solutions_missing,
@@ -267,8 +259,6 @@ class ValidationQueue(ProcessingQueue):
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
-
-            print({'ideal_consensus_results': ideal_consensus_results})
 
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
@@ -289,8 +279,6 @@ class ValidationQueue(ProcessingQueue):
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
-
-            print ({"eager_consensus_results": eager_consensus_results})
 
             self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_results['eager_consensus_possible']
 

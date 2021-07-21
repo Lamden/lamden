@@ -308,20 +308,23 @@ class Node:
         processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
+            print({'processing_results': processing_results})
+
             block_info = self.process_result(processing_results)
             # send my block result to the rest of the network to prove I'm in consensus
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
+        print("Here_1")
         self.last_processed_hlc = processing_results['hlc_timestamp']
-
+        print("Here_2")
         # ___ Change DB and State ___
         # 1) Needs to create the new block with our result
         block_info = self.create_new_block_from_result(processing_results['result'])
-
+        print("Here_3")
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)
-
+        print("Here_4")
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
@@ -400,10 +403,6 @@ class Node:
             driver=self.driver,
             nonces=self.nonces
         )
-
-        # self.log.info('Updating metadata.')
-        # self.current_height = storage.get_latest_block_height(self.driver)
-        # self.current_hash = storage.get_latest_block_hash(self.driver)
 
         self.new_block_processor.clean(self.current_height())
 
