@@ -175,7 +175,7 @@ class TestNode(TestCase):
         # Seed initial currency balances
         self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
-        amount_of_txn = 10
+        amount_of_txn = 1000
         self.send_transactions(amount_of_txs=amount_of_txn, node=node, sender_wallet=jeff_wallet)
 
         #self.async_sleep(1)
@@ -187,8 +187,6 @@ class TestNode(TestCase):
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
-            amount, tx = self.tx_history[key]
-
             balance = node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
@@ -196,11 +194,11 @@ class TestNode(TestCase):
                 mark=False
             )
             balance = json.loads(encoder.encode(balance))
-            if balance is not None:
+            if type(balance) is dict:
                 balance = balance['__fixed__']
 
             print(f"{key}: TX = {self.tx_history[key]['amount']} | STATE = {balance}")
             if encoder.encode(balance) == "null":
                 pprint.pprint(self.tx_history[key]["tx"])
 
-            #self.assertEqual(self.tx_history[key]['amount'], json.loads(encoder.encode(balance))['__fixed__'])
+            self.assertEqual(self.tx_history[key]['amount'], balance)
