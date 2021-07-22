@@ -69,7 +69,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
-            print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
+            # print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
             del self.message_received_timestamps[tx['hlc_timestamp']]
 
@@ -194,6 +194,9 @@ class TxProcessingQueue(ProcessingQueue):
                 'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
                 'value': new_bal
             }]
+
+        if safe_repr(output['result']) != "None":
+            print(safe_repr(output['result']))
 
         tx_output = {
             'hash': tx_hash,

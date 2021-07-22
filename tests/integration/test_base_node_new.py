@@ -827,6 +827,3 @@ class TestNode(TestCase):
         self.assertTrue(node.main_processing_queue.running)
         self.assertTrue(node.validation_queue.running)
 
-
-
-

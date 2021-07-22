@@ -18,6 +18,7 @@ class WorkValidator(router.Processor):
 
     async def process_message(self, msg):
         #self.log.debug(msg)
+        # print(msg)
         # self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
         #if msg["sender"] == self.wallet.verifying_key:
@@ -45,10 +46,6 @@ class WorkValidator(router.Processor):
         last_hlc = self.get_last_processed_hlc()
         last_processed_age = self.hlc_clock.get_nanos(timestamp=last_hlc)
 
-        self.log.debug({
-            'message_hlc': {'hlc_timestamp': msg['hlc_timestamp'], 'age': tx_age},
-            'last_hlc': {'hlc_timestamp': last_hlc, 'age': last_processed_age}
-        })
 
         if tx_age <= last_processed_age:
             self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
@@ -56,4 +53,4 @@ class WorkValidator(router.Processor):
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
         self.main_processing_queue.append(msg)
 
-        # self.log.info(f'Received new work from {msg["sender"][:8]} to my queue.')
+        # print(f'Received new work from {msg["sender"][:8]} to my queue.')

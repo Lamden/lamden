@@ -313,7 +313,7 @@ class Node:
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
-        print({"processing_results":processing_results})
+        # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
         # ___ Change DB and State ___
@@ -410,8 +410,8 @@ class Node:
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp)
 
-        print({"soft_apply": hlc_timestamp})
-
+        # print({"soft_apply": hlc_timestamp})
+        ''' Can't do this event 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
             'file': 'base',
@@ -420,6 +420,8 @@ class Node:
             'hlc_timestamp': hlc_timestamp,
             'system_time': time.time()
         }))
+        '''
+
 
         # Commented out because Stu told me too
         # self.driver.clear_pending_state()
@@ -433,7 +435,7 @@ class Node:
         # block data hard apply
         self.blocks.commit(hlc_timestamp)
 
-        print({"hard_apply": hlc_timestamp})
+        # print({"hard_apply": hlc_timestamp})
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -458,20 +460,20 @@ class Node:
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height()}")
-        print(f"Block Height Before: {self.current_height()}")
+        # print(f"Block Height Before: {self.current_height()}")
         self.log.debug(encode(self.driver.pending_deltas))
 
-        print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
+        # print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
 
         self.driver.rollback()
 
         self.log.debug(f"Block Height After: {self.current_height()}")
-        print(f"Block Height After: {self.current_height()}")
+        # print(f"Block Height After: {self.current_height()}")
 
-        print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
+        # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
     def add_processed_transactions_back_into_main_queue(self):
-        print({"validation_queue_items": self.validation_queue.validation_results.items()})
+        # print({"validation_queue_items": self.validation_queue.validation_results.items()})
         tx_added_back = 0
 
         # Add transactions I already processed back into the main_processing queue
@@ -481,9 +483,9 @@ class Node:
                 tx_added_back = tx_added_back + 1
                 self.main_processing_queue.append(tx=transaction_processed)
 
-                print({"transaction_processed": transaction_processed})
+                # print({"transaction_processed": transaction_processed})
                 self.log.info(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
-                print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+                # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
 
             except KeyError:
                 pass
