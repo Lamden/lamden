@@ -47,13 +47,16 @@ class TxProcessingQueue(ProcessingQueue):
         super().flush()
         self.message_received_timestamps = {}
 
+    def sort_queue(self):
+        # sort the main processing queue by hlc_timestamp
+        self.queue.sort(key=lambda x: x['hlc_timestamp'])
+
     async def process_next(self):
         # return if the queue is empty
         if len(self.queue) == 0:
             return
 
-        # sort the main processing queue by hlc_timestamp
-        self.queue.sort(key=lambda x: x['hlc_timestamp'])
+        self.sort_queue()
 
         # Pop it out of the main processing queue
         tx = self.queue.pop(0)
@@ -66,7 +69,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
-            print("!!!!!!!!!!!! PROCESSING IT !!!!!!!!!!!!")
+            print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
             del self.message_received_timestamps[tx['hlc_timestamp']]
 

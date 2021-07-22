@@ -308,23 +308,21 @@ class Node:
         processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
-            print({'processing_results': processing_results})
-
             block_info = self.process_result(processing_results)
             # send my block result to the rest of the network to prove I'm in consensus
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
-        print("Here_1")
+        print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
-        print("Here_2")
+
         # ___ Change DB and State ___
         # 1) Needs to create the new block with our result
         block_info = self.create_new_block_from_result(processing_results['result'])
-        print("Here_3")
+
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)
-        print("Here_4")
+
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
@@ -412,8 +410,7 @@ class Node:
     def soft_apply_current_state(self, hlc_timestamp):
         self.driver.soft_apply(hlc_timestamp)
 
-        print(encode(self.driver.pending_deltas[hlc_timestamp]))
-        self.log.debug(encode(self.driver.pending_deltas[hlc_timestamp]))
+        print({"soft_apply": hlc_timestamp})
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -435,6 +432,8 @@ class Node:
         self.driver.hard_apply(hlc_timestamp)
         # block data hard apply
         self.blocks.commit(hlc_timestamp)
+
+        print({"hard_apply": hlc_timestamp})
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -459,22 +458,35 @@ class Node:
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height()}")
+        print(f"Block Height Before: {self.current_height()}")
         self.log.debug(encode(self.driver.pending_deltas))
-        self.driver.rollback()
-        self.log.debug(f"Block Height After: {self.current_height()}")
 
+        print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
+
+        self.driver.rollback()
+
+        self.log.debug(f"Block Height After: {self.current_height()}")
+        print(f"Block Height After: {self.current_height()}")
+
+        print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
+
+    def add_processed_transactions_back_into_main_queue(self):
+        print({"validation_queue_items": self.validation_queue.validation_results.items()})
         tx_added_back = 0
+
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            self.log.debug(hlc_timestamp)
             try:
                 transaction_processed = self.validation_queue.validation_results[hlc_timestamp]['transaction_processed']
-                self.main_processing_queue.append(tx=transaction_processed)
                 tx_added_back = tx_added_back + 1
+                self.main_processing_queue.append(tx=transaction_processed)
+
+                print({"transaction_processed": transaction_processed})
+                self.log.info(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+                print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+
             except KeyError:
                 pass
-
-        self.log.info(f'Added back {tx_added_back} transactions for processing')
 
     async def rollback(self):
         # Stop the processing queue and await it to be done processing its last item
@@ -495,6 +507,7 @@ class Node:
         }))
 
         self.rollback_drivers()
+        self.add_processed_transactions_back_into_main_queue()
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()

@@ -63,7 +63,8 @@ def get_new_block(
         hlc_timestamp='1',
         to=None,
         amount=None,
-        sender=None
+        sender=None,
+        tx=None
 ):
     blockinfo = {
         "hash": hash,
@@ -97,7 +98,7 @@ def get_new_block(
                   }
                 ],
                 "status": 0,
-                "transaction": get_new_tx(to=to, amount=amount, sender=sender)
+                "transaction": tx or get_new_tx(to=to, amount=amount, sender=sender)
               }
             ]
           }
@@ -189,10 +190,7 @@ class TestNode(TestCase):
         loop.run_until_complete(tasks)
 
     async def delay_processing_await(self, func, delay):
-        print('\n')
-        print('Starting Sleeping: ', time.time())
         await asyncio.sleep(delay)
-        print('Done Sleeping: ', time.time())
         if func:
             return await func()
 
@@ -520,9 +518,6 @@ class TestNode(TestCase):
         self.async_sleep(1)
         self.assertEqual(0, len(node.main_processing_queue))
 
-        print("STORAGE CURRENT HEIGHT: " + str(node.current_height()))
-        print("NODE CURRENT HEIGHT: " + str(node.driver.get('_current_block_height')))
-
         # Get the recipient balance from the driver
         recipient_balance_after = node.executor.driver.get_var(
             contract='currency',
@@ -546,21 +541,12 @@ class TestNode(TestCase):
             amount=tx_amount,
             sender=self.stu_wallet.verifying_key
         ))
-        hlc_timestamp_2 = tx_message['hlc_timestamp']
 
-        print({
-            'hlc_timestamp_1': hlc_timestamp_1,
-            'hlc_timestamp_2': hlc_timestamp_2
-        })
         # add to processing queue
         node.main_processing_queue.append(tx=tx_message)
         # wait the amount of delay before the queue will process the transaction
         self.async_sleep(1)
         self.assertEqual(0, len(node.main_processing_queue))
-
-        print("STORAGE CURRENT HEIGHT: " + str(node.current_height()))
-        print("NODE CURRENT HEIGHT: " + str(node.driver.get('_current_block_height')))
-
 
         # Get the recipient balance from the driver
         recipient_balance_after = node.executor.driver.get_var(
@@ -575,3 +561,272 @@ class TestNode(TestCase):
         self.assertEqual("201.0", recipient_balance_after)
         # The block was incremented
         self.assertEqual(2, node.current_height())
+
+    def test_rollback_drivers(self):
+        node = self.create_a_node()
+        # Set the consensus percent to 0 so all processed transactions will "be in consensus"
+        node.consensus_percent = 0
+
+        self.start_node(node)
+
+        # ___ SEND 1 Transaction ___
+        # create a transaction
+        recipient_wallet = Wallet()
+        tx_amount = 100.5
+        tx_message = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_1 = tx_message['hlc_timestamp']
+        # add to processing queue
+        node.main_processing_queue.append(tx=tx_message)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        # ___ SEND ANOTHER Transaction ___
+        # create a transaction
+        tx_message = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_2 = tx_message['hlc_timestamp']
+
+        # Stop the validation queue so this this transaction doesn't have consensus performed. The assumption is that we
+        # are not in consensus and need to rollback to previous transaction.
+        node.validation_queue.stop()
+
+        # add to processing queue
+        node.main_processing_queue.append(tx=tx_message)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        # Get the recipient balance from the driver
+        recipient_balance_after = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after = json.loads(encoder.encode(recipient_balance_after))['__fixed__']
+
+        # --- TESTS TO MAKE SURE THE SETUP BEFORE ROLLBACK IS LEGIT ---
+        # The recipient's balance was updated
+        self.assertEqual("201.0", recipient_balance_after)
+        print({"recipient_balance_after": recipient_balance_after})
+        # The block was incremented
+        self.assertEqual(2, node.current_height())
+        self.assertEqual(hlc_timestamp_2, node.last_processed_hlc)
+        # ---
+
+        # Initiate rollback to block 1 (hlc_timestamp_1) test state values
+        # to prevent auto processing and allow us to test the state of them after the rollback
+        node.main_processing_queue.stop()
+
+        node.rollback_drivers()
+
+        # --- TEST STATE AFTER ROLLBACK DRIVERS ---
+
+        # Get the recipient balance from the driver
+        recipient_balance_after_rollback = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        recipient_balance_after_rollback = json.loads(encoder.encode(recipient_balance_after_rollback))['__fixed__']
+
+        print({"recipient_balance_after_rollback": recipient_balance_after_rollback})
+        print({"node_current_height": node.current_height()})
+
+        # The recipient's balance was updated
+        self.assertEqual("100.5", recipient_balance_after_rollback)
+        # The block was incremented
+        self.assertEqual(1, node.current_height())
+
+    def test_add_processed_transactions_back_into_main_queue(self):
+        # After a rollback we need to reprocess all the transactions with a higher hlc_timestamp than the rollback point
+        # To do this test we need to simply add some transactions into the validation_queue.validation_results storage
+        # state and then call the function.  The transaction info from those results should be added back into the main
+        # queue
+
+        # The content of the block results does not matter here as we are testing the adding from one queue to another
+        # and not the processing of the results
+
+        node = self.create_a_node()
+        # Set the consensus percent to 0 so all processed transactions will "be in consensus"
+        node.consensus_percent = 0
+
+        self.start_node(node)
+        # Stop both queues to allow us to call the methods manually for this test as well as the ability to test the
+        # state afterwards.
+        node.main_processing_queue.stop()
+        node.validation_queue.stop()
+
+        # add two block results to the validation queue
+        # __ TX 1 __
+        tx_message_1 = node.make_tx_message(tx=get_new_tx(
+            to="stu",
+            amount=1,
+            sender=node.wallet.verifying_key
+        ))
+        hlc_timestamp_1 = tx_message_1['hlc_timestamp']
+        node.validation_queue.append(
+            hlc_timestamp=hlc_timestamp_1,
+            block_info=get_new_block(signer=node.wallet.verifying_key, hash="1", tx=tx_message_1),
+            transaction_processed=tx_message_1
+        )
+
+        # __ TX 2 __
+        tx_message_2 = node.make_tx_message(tx=get_new_tx(
+            to="jeff",
+            amount=2,
+            sender=node.wallet.verifying_key
+        ))
+        hlc_timestamp_2 = tx_message_2['hlc_timestamp']
+        node.validation_queue.append(
+            hlc_timestamp=hlc_timestamp_2,
+            block_info=get_new_block(signer=node.wallet.verifying_key, hash="2", tx=tx_message_2),
+            transaction_processed=tx_message_2
+        )
+        node.add_processed_transactions_back_into_main_queue()
+
+        # --- TEST STATE AFTER ROLLBACK DRIVERS ---
+        # The main processing queue now has 2transaction in it
+        self.assertEqual(2, len(node.main_processing_queue))
+
+        # The transactions are the same two added above
+        # sort the queue so we can know the order of our transactions in the queue
+        node.main_processing_queue.sort_queue()
+
+        # Transaction 1 exists in main processing queue index 0
+        self.assertEqual(hlc_timestamp_1, node.main_processing_queue[0]['hlc_timestamp'])
+
+        # Transaction 2 exists in main processing queue index 1
+        self.assertEqual(hlc_timestamp_2, node.main_processing_queue[1]['hlc_timestamp'])
+
+    def test_rollback(self):
+        # This will test the main rollback function of the node
+        # Test setup involves 3 transactions
+        # First sent 1 transactions and hard apply its result (so it "has consensus")
+        # Next send 2 more transactions, and process the first and then rolling back afterwards (the thrid will not be
+        # processed before the rollback
+        # After rollback is called the node should automatically add the second transaction back in and then process
+        # the second and thrid transactions
+        # Test the state afterwards to validate the test case.
+
+        node = self.create_a_node()
+        # Set the consensus percent to 0 so all processed transactions will "be in consensus"
+        node.consensus_percent = 0
+
+        self.start_node(node)
+
+        # ___ Transaction ONE ___
+        # create a transaction
+        recipient_wallet = Wallet()
+        tx_amount = 100.5
+        tx_message_1 = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_1 = tx_message_1['hlc_timestamp']
+        # add to main processing queue
+        node.main_processing_queue.append(tx=tx_message_1)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        # tx was processes by the main queue
+        self.assertEqual(0, len(node.main_processing_queue))
+        # result was in consensus and hard applied (this sets our rollback point)
+        self.assertEqual(hlc_timestamp_1, node.validation_queue.last_hlc_in_consensus)
+
+        # Stop the queues so we can manually run the methods for this test
+        node.validation_queue.stop()
+        node.main_processing_queue.stop()
+        self.await_async_process(node.main_processing_queue.stopping)
+
+        # Send transactions TWO and THREE to the main processing queue
+
+        # ___ Transaction TWO  ___
+        # create a transaction
+        tx_message_2 = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_2 = tx_message_2['hlc_timestamp']
+        # add to main processing queue
+        node.main_processing_queue.append(tx=tx_message_2)
+
+        # ___ Transaction THREE  ___
+        jeff_wallet = Wallet()
+        # create a transaction
+        tx_message_3 = node.make_tx_message(tx=get_new_tx(
+            to=jeff_wallet.verifying_key,
+            amount=700.5,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_3 = tx_message_3['hlc_timestamp']
+        # add to main processing queue
+        node.main_processing_queue.append(tx=tx_message_3)
+
+        # validate both transactions are in the main processing queue
+        self.assertEqual(2, len(node.main_processing_queue))
+
+        # Manually processes the second transaction, do not hard apply.
+        self.async_sleep(1)
+        self.await_async_process(node.process_main_queue)
+
+        # ___ Validate test setup state before rollback ___
+        # validate the transaction was processed from the main queue
+        self.assertEqual(hlc_timestamp_2, node.last_processed_hlc)
+
+        # validate the third transaction remains in the queue
+        self.assertEqual(1, len(node.main_processing_queue))
+
+        # validate the first transaction is still the rollback point
+        self.assertEqual(hlc_timestamp_1, node.validation_queue.last_hlc_in_consensus)
+        # ---
+
+        # ROLLBACK
+        # This will rollback state to just after the first transaction was processed
+        # Readd the second transction back into the main processing queue
+        # Restart both the main processsing and validation queues
+        # automatically re-process the second transaction and then process the third, hard applying the state on both
+
+        self.await_async_process(node.rollback)
+        self.async_sleep(2)
+
+        # ___ Validate test results ___
+        # All transactions were processed from the main queue
+        self.assertEqual(0, len(node.main_processing_queue))
+        # The third transaction was not only the last one processes but the last one in consensus
+        self.assertEqual(hlc_timestamp_3, node.last_processed_hlc)
+        self.assertEqual(hlc_timestamp_3, node.validation_queue.last_hlc_in_consensus)
+        # Validate both the recipent_wallet and jeff_wallet have the correct balances
+        recipient_balance = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[recipient_wallet.verifying_key],
+            mark=False
+        )
+        self.assertEqual("201.0", json.loads(encoder.encode(recipient_balance))['__fixed__'])
+        jeff_balance = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[jeff_wallet.verifying_key],
+            mark=False
+        )
+        self.assertEqual("700.5", json.loads(encoder.encode(jeff_balance))['__fixed__'])
+        # Validate the block height
+        self.assertEqual(3, node.current_height())
+        # Validate the queues are running
+        self.assertTrue(node.main_processing_queue.running)
+        self.assertTrue(node.validation_queue.running)
+
+
+
+

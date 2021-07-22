@@ -31,6 +31,7 @@ class ProcessingQueue:
     async def stopping(self):
         while self.currently_processing:
             await asyncio.sleep(0)
+        print("QUEUE STOPPED")
 
     def flush(self):
         self.queue = []
