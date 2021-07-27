@@ -51,7 +51,7 @@ class NonceEncoder(_json.JSONEncoder):
 
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks,
-                 queue=FileQueue(),
+                 queue=FileQueue(), host='0.0.0.0',
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
@@ -81,6 +81,7 @@ class WebServer:
         self.max_queue_len = max_queue_len
 
         self.port = port
+        self.host = host
 
         self.ssl_port = ssl_port
         self.ssl_enabled = ssl_enabled
@@ -124,12 +125,14 @@ class WebServer:
 
         self.coroutine = None
 
+        print("WEBSERVER STARTED")
+
     async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
             self.coroutine = asyncio.ensure_future(
                 self.app.create_server(
-                    host='0.0.0.0',
+                    host=self.host,
                     port=self.ssl_port,
                     debug=self.debug,
                     access_log=self.access_log,
@@ -140,7 +143,7 @@ class WebServer:
         else:
             self.coroutine = asyncio.ensure_future(
                 self.app.create_server(
-                    host='0.0.0.0',
+                    host=self.host,
                     port=self.port,
                     debug=self.debug,
                     access_log=self.access_log,
@@ -150,6 +153,7 @@ class WebServer:
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
+        print({"request":request})
         # log.debug(f'New request: {request}')
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:
@@ -417,4 +421,4 @@ if __name__ == '__main__':
         port=18080
     )
 
-    webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
+    webserver.app.run(host=webserver.host, port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)

@@ -30,11 +30,15 @@ class QueueProcessor(Processor):
 
 class Publisher:
     def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50):
+        # print({'socket_id': socket_id})
+
         if socket_id.startswith('tcp'):
             _, _, port = socket_id.split(':')
             self.address = f'tcp://*:{port}'
         else:
             self.address = socket_id
+
+        # print({'address': self.address})
 
         self.ctx = ctx
         self.wallet = wallet
@@ -166,13 +170,14 @@ class Network:
                     self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
-    def connect(self, socket, domain, key, wallet, linger=500):
+    def connect(self, socket, ip, key, wallet, linger=500):
         if key in self.peer_blacklist:
             # TODO how does a blacklisted peer get back in good standing?
             self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
             return False
 
-        self.log.debug(f"Connecting to {key} {domain}")
+        self.log.debug(f"Connecting to {key} {ip}")
+        # print(f"Connecting to {key} {ip}")
 
         socket.setsockopt(zmq.LINGER, linger)
         socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
@@ -183,19 +188,20 @@ class Network:
         # socket.curve_serverkey = z85_key(key)
 
         try:
-            socket.connect(domain)
+            # print({"ip":ip})
+            socket.connect(ip)
             socket.subscribe(b'')
-            self.add_peer(socket=socket, domain=domain, key=key)
+            self.add_peer(socket=socket, ip=ip, key=key)
             return True
         except zmq.error.Again as error:
             self.log.error(error)
             socket.close()
             return False
 
-    def add_peer(self, socket, domain, key):
+    def add_peer(self, socket, ip, key):
         self.peers[key] = Peer(
             socket=socket,
-            domain=domain,
+            ip=ip,
             key=key,
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,

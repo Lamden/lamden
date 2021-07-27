@@ -8,9 +8,9 @@ import asyncio
 WORK_SERVICE = 'work'
 
 class Peer:
-    def __init__(self, domain, socket, key, services, blacklist, max_strikes):
+    def __init__(self, ip, socket, key, services, blacklist, max_strikes):
         self.socket = socket
-        self.domain = domain
+        self.ip = ip
         self.key = key
         self.services = services
         self.in_consensus = True

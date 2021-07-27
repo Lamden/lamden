@@ -83,7 +83,8 @@ class TestNode(TestCase):
             delay={
                 'base': 0,
                 'self': 0
-            }
+            },
+            metering=False
         )
 
         self.num_of_nodes = self.num_of_nodes + 1
@@ -147,14 +148,11 @@ class TestNode(TestCase):
             }
 
     def await_all_processed(self, node, expected_block_height):
-        startTime = time.time()
         def check():
             current_height = node.current_height()
             if current_height != expected_block_height:
                 self.async_sleep(.1)
                 check()
-            else:
-                print(f"Processed {expected_block_height} transactions in {time.time() - startTime} seconds.")
         check()
 
     def test_transaction_throughput(self):
@@ -175,11 +173,14 @@ class TestNode(TestCase):
         # Seed initial currency balances
         self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
-        amount_of_txn = 25
+        amount_of_txn = 100
         self.send_transactions(amount_of_txs=amount_of_txn, node=node, sender_wallet=jeff_wallet)
 
-        #self.async_sleep(1)
+        start_time = time.time()
         self.await_all_processed(node=node, expected_block_height=amount_of_txn)
+        end_time = time.time()
+        print(f'Processing took {end_time - start_time} seconds')
+
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed

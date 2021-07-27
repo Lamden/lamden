@@ -101,7 +101,7 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True):
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=True):
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -146,14 +146,14 @@ class Node:
         # )
 
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
-
+        '''
         self.router = router.Router(
             socket_id=socket_base,
             ctx=self.ctx,
             wallet=wallet,
             secure=True
         )
-        '''
+        
         self.network = network.Network(
             wallet=wallet,
             ip_string=socket_base,
@@ -173,7 +173,7 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.executor = Executor(driver=self.driver)
+        self.executor = Executor(driver=self.driver, metering=metering)
         self.reward_manager = reward_manager
 
         self.new_block_processor = NewBlock(driver=self.driver)
@@ -248,13 +248,14 @@ class Node:
 
         await self.network.start()
 
-        for vk, domain in self.bootnodes.items():
+        for vk, ip in self.bootnodes.items():
+            # print({"vk": vk, "ip": ip})
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
                 socket = self.ctx.socket(zmq.SUB)
                 self.network.connect(
                     socket=socket,
-                    domain=domain,
+                    ip=ip,
                     key=vk,
                     wallet=self.wallet
                 )
@@ -435,7 +436,7 @@ class Node:
         # block data hard apply
         self.blocks.commit(hlc_timestamp)
 
-        # print({"hard_apply": hlc_timestamp})
+        print({"hard_apply": hlc_timestamp})
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
