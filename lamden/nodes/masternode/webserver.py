@@ -327,6 +327,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
+        print({'num': num, 'block': block})
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
@@ -396,6 +397,7 @@ class WebServer:
             variable='S',
             arguments=['members']
         )
+        print({'masternodes': masternodes, 'delegates':delegates})
 
         return response.json({
             'masternodes': masternodes,

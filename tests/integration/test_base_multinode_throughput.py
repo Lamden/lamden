@@ -1,4 +1,5 @@
 from tests.integration.mock import mocks_new
+from lamden.nodes.filequeue import FileQueue
 
 from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
@@ -33,6 +34,8 @@ class TestMultiNode(TestCase):
         self.client = ContractingClient(driver=self.driver)
         self.client.flush()
 
+        self.queue = FileQueue(root='./fixtures/.lamden/txq')
+
     def tearDown(self):
         self.client.flush()
         self.driver.flush()
@@ -54,9 +57,8 @@ class TestMultiNode(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    async def send_transaction(self, url, tx):
-        async with httpx.AsyncClient() as client:
-            await client.post(url, data=tx)
+    async def send_transaction(self, tx):
+        self.queue.append(tx)
 
     def test_mock_network_init_makes_correct_number_of_nodes(self):
         n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)

@@ -35,6 +35,7 @@ class FileQueue:
 
     def flush(self):
         shutil.rmtree(self.root)
+        os.makedirs(self.root)
 
     def __len__(self):
         try:

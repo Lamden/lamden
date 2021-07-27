@@ -243,6 +243,7 @@ def get_latest_block_height(driver: ContractDriver):
 
 def set_latest_block_height(h, driver: ContractDriver):
     log.info(f'set_latest_block_height {h}')
+    print(f'set_latest_block_height {h}')
     driver.set(BLOCK_NUM_HEIGHT, h)
 
     log.info('Driver')

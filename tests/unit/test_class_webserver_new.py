@@ -1,40 +1,53 @@
 from unittest import TestCase
+import lamden
 
+from lamden.contracts import sync
 from lamden.nodes.masternode.webserver import WebServer
 from lamden.nodes.filequeue import FileQueue
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver, decode, encode
+from contracting.db.driver import ContractDriver, decode, encode, InMemDriver
 from lamden.storage import BlockStorage
 from lamden.crypto.transaction import build_transaction
 from lamden import storage
-
-n = ContractDriver()
-
 
 class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
 
         self.blocks = BlockStorage()
-        self.driver = ContractDriver()
+        self.driver = ContractDriver(driver=InMemDriver())
+
         self.queue = FileQueue(root='./.lamden/txq')
+        self.queue.flush()
 
         self.ws = WebServer(
             wallet=self.w,
             queue=self.queue,
             contracting_client=ContractingClient(),
             blocks=self.blocks,
-            driver=n
+            driver=self.driver
         )
+
+        # Sync contracts
+        sync.setup_genesis_contracts(
+            initial_masternodes=[],
+            initial_delegates=[],
+            client=self.ws.client,
+            filename=lamden.contracts.__path__[0] + '/genesis.json',
+            root=lamden.contracts.__path__[0]
+        )
+
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
+        self.ws.queue.flush()
 
     def tearDown(self):
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
+        self.ws.queue.flush()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -618,7 +631,9 @@ def get():
             arguments=['members'],
             value=['4', '5', '6']
         )
+
         _, response = self.ws.app.test_client.get('/constitution')
+        print({"response":response.json})
 
         self.assertDictEqual(response.json, {
             'masternodes': ['1', '2', '3'],
