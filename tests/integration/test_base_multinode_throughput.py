@@ -7,40 +7,36 @@ from lamden.crypto import transaction
 
 
 from contracting.db.driver import InMemDriver, ContractDriver
+from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.client import ContractingClient
 from contracting.db import encoder
 
 import zmq.asyncio
 import asyncio
 import httpx
-import random
+from random import randrange
 import json
 import time
 import pprint
+import os
+import shutil
 
 from unittest import TestCase
 
 
 class TestMultiNode(TestCase):
     def setUp(self):
-        self.masternodes = [Wallet(), Wallet(), Wallet()]
-        self.delegates = [Wallet(), Wallet(), Wallet()]
+        self.fixture_directories = ['block_storage', 'file_queue', 'nonces', 'pending-nonces']
+        mocks_new.create_fixture_directories(self.fixture_directories)
 
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.driver = ContractDriver(driver=InMemDriver())
-        self.client = ContractingClient(driver=self.driver)
-        self.client.flush()
-
-        self.queue = FileQueue(root='./fixtures/.lamden/txq')
-
     def tearDown(self):
-        self.client.flush()
-        self.driver.flush()
         self.ctx.destroy()
         self.loop.close()
+        mocks_new.remove_fixture_directories(self.fixture_directories)
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -57,8 +53,8 @@ class TestMultiNode(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    async def send_transaction(self, tx):
-        self.queue.append(tx)
+    def send_transaction(self, node, tx):
+        node.tx_queue.append(tx)
 
     def test_mock_network_init_makes_correct_number_of_nodes(self):
         n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)
@@ -121,6 +117,7 @@ class TestMultiNode(TestCase):
 
         sender = Wallet()
         tx_amount = 1_000_000
+
         tx_1 = transaction.build_transaction(
             wallet=mocks_new.TEST_FOUNDATION_WALLET,
             contract='currency',
@@ -134,10 +131,121 @@ class TestMultiNode(TestCase):
             processor=m.wallet.verifying_key
         )
 
-        self.send_transaction(url=m.http, tx=tx_1)
+        self.send_transaction(node=m.obj, tx=tx_1.encode())
         self.async_sleep(2)
 
         # dbal = dld.get_var(contract='currency', variable='balances', arguments=['jeff'])
         mbal = m.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
-        print({'mbal': mbal, 'tx_amount': tx_amount})
+        dbal = d.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
+
+
         self.assertEqual(mbal, tx_amount)
+        self.assertEqual(dbal, tx_amount)
+
+    def test_network_linear_tx_throughput_test_founder_to_new_wallets(self):
+        # This test will transfer from the founder wallet to a bunch of new wallets and never the same wallet twice
+
+        n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        self.await_async_process(n.start)
+
+        for node in n.all_nodes():
+            self.assertTrue(node.obj.running)
+
+        test_tracker = {}
+
+        # Send a bunch of transactions
+        amount_of_transactions = 2
+
+        for i in range(amount_of_transactions):
+            tx_info = json.loads(n.send_random_currency_transaction(sender_wallet=mocks_new.TEST_FOUNDATION_WALLET))
+            to = tx_info['payload']['kwargs']['to']
+            amount = tx_info['payload']['kwargs']['amount']
+            test_tracker[to] = amount
+
+        # wait till all nodes reach the required block height
+        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=25)
+        self.async_sleep(1)
+
+        # All state values reflect the result of the processed transactions
+        for key in test_tracker:
+            balance = test_tracker[key]
+            results = n.get_vars(
+                contract='currency',
+                variable='balances',
+                arguments=[key]
+            )
+
+            self.assertTrue(balance == results[0])
+            self.assertTrue(all([balance == results[0] for balance in results]))
+
+        # All nodes are at the proper block height
+        for node in n.all_nodes():
+            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+
+        # All nodes arrived at the same block hash
+        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
+
+    def test_network_mixed_tx_throughput_test_founder_to_random_existing_wallets(self):
+        # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
+        # accumulate as the test goes on
+
+        n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        self.await_async_process(n.start)
+
+        for node in n.all_nodes():
+            self.assertTrue(node.obj.running)
+
+        test_tracker = {}
+
+        num_of_receivers = 10
+        receiver_wallets = [Wallet() for i in range(num_of_receivers)]
+
+        # Send a bunch of transactions
+        amount_of_transactions = 5
+
+        for i in range(amount_of_transactions):
+            tx_info = json.loads(n.send_random_currency_transaction(
+                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                receiver_wallet=receiver_wallets[randrange(0, num_of_receivers)]
+            ))
+            to = tx_info['payload']['kwargs']['to']
+            amount = tx_info['payload']['kwargs']['amount']['__fixed__']
+            if test_tracker.get(to) is None:
+                test_tracker[to] = ContractingDecimal(amount)
+            else:
+                test_tracker[to] = test_tracker[to] + ContractingDecimal(amount)
+
+        # wait till all nodes reach the required block height
+        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=120)
+        self.async_sleep(1)
+
+        # All state values reflect the result of the processed transactions
+        # Decode all tracker values from ContractingDecimal to string
+        for key in test_tracker:
+            test_tracker[key] = json.loads(encoder.encode(test_tracker[key]))
+
+        for key in test_tracker:
+            balance = test_tracker[key]
+            results = n.get_vars(
+                contract='currency',
+                variable='balances',
+                arguments=[key]
+            )
+
+            self.assertTrue(balance == results[0])
+            self.assertTrue(all([balance == results[0] for balance in results]))
+
+        # All nodes are at the proper block height
+        for node in n.all_nodes():
+            print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
+            print(f'block height: {node.obj.get_current_height()} hash: {node.obj.get_current_hash()}')
+            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+
+        # All nodes arrived at the same block hash
+        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        for block_hash in all_hashes:
+            print(block_hash)
+        for node in n.all_nodes():
+            print(node.obj.get_current_height())
+        self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))

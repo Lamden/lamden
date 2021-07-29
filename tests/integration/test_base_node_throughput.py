@@ -149,7 +149,7 @@ class TestNode(TestCase):
 
     def await_all_processed(self, node, expected_block_height):
         def check():
-            current_height = node.current_height()
+            current_height = node.get_current_height()
             if current_height != expected_block_height:
                 self.async_sleep(.1)
                 check()
@@ -184,7 +184,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(amount_of_txn, node.current_height())
+        self.assertEqual(amount_of_txn, node.get_current_height())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:

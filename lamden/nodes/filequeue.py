@@ -35,6 +35,9 @@ class FileQueue:
 
     def flush(self):
         shutil.rmtree(self.root)
+
+    def refresh(self):
+        self.flush()
         os.makedirs(self.root)
 
     def __len__(self):

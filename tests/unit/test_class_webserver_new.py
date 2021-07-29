@@ -41,13 +41,13 @@ class TestClassWebserver(TestCase):
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
-        self.ws.queue.flush()
+        self.ws.queue.refresh()
 
     def tearDown(self):
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
-        self.ws.queue.flush()
+        self.ws.queue.refresh()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -559,7 +559,7 @@ def get():
 
         self.assertDictEqual(response.json, {'error': 'Queue full. Resubmit shortly.'})
 
-        self.ws.queue.flush()
+        self.ws.queue.refresh()
 
     def test_get_tx_by_hash_if_it_exists(self):
         block = {

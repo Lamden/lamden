@@ -340,16 +340,16 @@ class TestNode(TestCase):
         node.main_processing_queue.append(tx_message)
 
         #wait for pocessing to complete
-        self.async_sleep(0.05)
+        self.async_sleep(1)
 
         # queue is empty because tx was processed
         self.assertEqual(0, len(node.validation_queue))
 
         # The main_processing queue can get the current block height from the node
-        self.assertEqual(node.main_processing_queue.get_current_height(), node.current_height())
+        self.assertEqual(node.main_processing_queue.get_current_height(), node.get_current_height())
 
         # Both the queue and the node report the block height is now one, as per the driver
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
         self.assertEqual(1, node.main_processing_queue.get_current_height())
 
     def test_update_block_db(self):
@@ -365,10 +365,10 @@ class TestNode(TestCase):
         self.assertEqual(0, len(node.validation_queue))
 
         # The main_processing queue can get the current block height from the node
-        self.assertEqual(node.main_processing_queue.get_current_height(), node.current_height())
+        self.assertEqual(node.main_processing_queue.get_current_height(), node.get_current_height())
 
         # Both the queue and the node report the block height is now one, as per the driver
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
         self.assertEqual(1, node.main_processing_queue.get_current_height())
 
     def test_process_result(self):
@@ -404,7 +404,7 @@ class TestNode(TestCase):
         # result was added into the validation queue for processing
         self.assertEqual(1, len(node.validation_queue))
         # block height was incremented
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
 
         # The the recipient balance from the driver
         recipient_balance_after = node.executor.driver.get_var(
@@ -419,7 +419,7 @@ class TestNode(TestCase):
         self.assertEqual(hlc_timestamp, processing_results['hlc_timestamp'])
         # The recipient's balance was updated
         self.assertEqual(tx_amount, recipient_balance_after)
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
 
     def test_process_result_validate_block_info_return_value(self):
         node = self.create_a_node()
@@ -530,7 +530,7 @@ class TestNode(TestCase):
         # The recipient's balance was updated
         self.assertEqual("100.5", recipient_balance_after)
         # The block was incremented
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
         self.assertEqual(0, len(node.main_processing_queue))
 
         print("sending second transaction")
@@ -560,7 +560,7 @@ class TestNode(TestCase):
         # The recipient's balance was updated
         self.assertEqual("201.0", recipient_balance_after)
         # The block was incremented
-        self.assertEqual(2, node.current_height())
+        self.assertEqual(2, node.get_current_height())
 
     def test_rollback_drivers(self):
         node = self.create_a_node()
@@ -618,7 +618,7 @@ class TestNode(TestCase):
         self.assertEqual("201.0", recipient_balance_after)
         print({"recipient_balance_after": recipient_balance_after})
         # The block was incremented
-        self.assertEqual(2, node.current_height())
+        self.assertEqual(2, node.get_current_height())
         self.assertEqual(hlc_timestamp_2, node.last_processed_hlc)
         # ---
 
@@ -640,12 +640,12 @@ class TestNode(TestCase):
         recipient_balance_after_rollback = json.loads(encoder.encode(recipient_balance_after_rollback))['__fixed__']
 
         print({"recipient_balance_after_rollback": recipient_balance_after_rollback})
-        print({"node_current_height": node.current_height()})
+        print({"node_current_height": node.get_current_height()})
 
         # The recipient's balance was updated
         self.assertEqual("100.5", recipient_balance_after_rollback)
         # The block was incremented
-        self.assertEqual(1, node.current_height())
+        self.assertEqual(1, node.get_current_height())
 
     def test_add_processed_transactions_back_into_main_queue(self):
         # After a rollback we need to reprocess all the transactions with a higher hlc_timestamp than the rollback point
@@ -822,7 +822,7 @@ class TestNode(TestCase):
         )
         self.assertEqual("700.5", json.loads(encoder.encode(jeff_balance))['__fixed__'])
         # Validate the block height
-        self.assertEqual(3, node.current_height())
+        self.assertEqual(3, node.get_current_height())
         # Validate the queues are running
         self.assertTrue(node.main_processing_queue.running)
         self.assertTrue(node.validation_queue.running)

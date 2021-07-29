@@ -16,7 +16,8 @@ from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.new_sockets import Network
 from lamden.nodes import block_contender, contender, system_usage
-from lamden.nodes import work, filequeue, processing_queue, validation_queue
+from lamden.nodes import work, processing_queue, validation_queue
+from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -101,7 +102,7 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=True):
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=True, tx_queue=FileQueue()):
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -111,6 +112,7 @@ class Node:
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
         self.rollbacks = []
+        self.tx_queue = tx_queue
 
         self.driver = driver
         self.nonces = nonces
@@ -179,10 +181,9 @@ class Node:
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
-        self.current_height = lambda: storage.get_latest_block_height(self.driver)
-        self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
 
-        self.file_queue = filequeue.FileQueue()
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             driver=self.driver,
             client=self.client,
@@ -190,8 +191,8 @@ class Node:
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
             executor=self.executor,
-            get_current_hash=self.current_hash,
-            get_current_height=self.current_height,
+            get_current_hash=self.get_current_hash,
+            get_current_height=self.get_current_height,
             stop_node=self.stop,
             reward_manager=self.reward_manager
         )
@@ -234,6 +235,8 @@ class Node:
         self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
+
+        self.debug_stack = []
 
     async def start(self):
         # Start running
@@ -278,8 +281,8 @@ class Node:
 
     async def check_tx_queue(self):
         while self.running:
-            if len(self.file_queue) > 0:
-                tx_from_file = self.file_queue.pop(0)
+            if len(self.tx_queue) > 0:
+                tx_from_file = self.tx_queue.pop(0)
                 # TODO sometimes the tx info taken off the filequeue is None, investigate
                 if tx_from_file is not None:
                     tx_message = self.make_tx_message(tx=tx_from_file)
@@ -314,6 +317,7 @@ class Node:
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
+        self.debug_stack.append({'method':'process_result', 'block': self.current_height})
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
@@ -365,14 +369,15 @@ class Node:
         }
 
     def create_new_block_from_result(self, result):
+        self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height})
         # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
-        self.log.info(f'Current Height: {self.current_height()}')
+        self.log.info(f'Current Height: {self.current_height}')
 
-        block = block_from_subblocks(subblocks, self.current_hash(), self.current_height() + 1)
+        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
@@ -386,10 +391,18 @@ class Node:
             'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
         }))
-
+        self.debug_stack.append({
+            'type': 'tx_lifecycle',
+            'file': 'base',
+            'event': 'new_block',
+            'block_info': block_info,
+            'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
+            'system_time': time.time()
+        })
         return block_info
 
     def update_block_db(self, block):
+        self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height})
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         # self.driver.clear_pending_state()
 
@@ -397,8 +410,15 @@ class Node:
         # Commit the state changes and nonces to the database
         self.log.info(f'update_state_with_block {block["number"]}')
 
+
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
+        self.current_hash = block['hash']
+
         storage.set_latest_block_height(block['number'], driver=self.driver)
+        self.current_height = block['number']
+
+        print({'block':{'base': self.current_hash, 'block': block['hash']}})
+        print({'hashg': {'base': self.current_hash, 'block': block['hash']}})
         #
         # storage.update_state_with_block(
         #     block=block,
@@ -406,9 +426,10 @@ class Node:
         #     nonces=self.nonces
         # )
 
-        self.new_block_processor.clean(self.current_height())
+        self.new_block_processor.clean(self.current_height)
 
     def soft_apply_current_state(self, hlc_timestamp):
+        self.debug_stack.append({'method': 'soft_apply_current_state', 'block': self.current_height})
         self.driver.soft_apply(hlc_timestamp)
 
         # print({"soft_apply": hlc_timestamp})
@@ -431,6 +452,7 @@ class Node:
         gc.collect()
 
     def hard_apply_block(self, hlc_timestamp):
+        self.debug_stack.append({'method': 'hard_apply_block', 'block': self.current_height})
         # state changes hard apply
         self.driver.hard_apply(hlc_timestamp)
         # block data hard apply
@@ -460,16 +482,20 @@ class Node:
 
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
-        self.log.debug(f"Block Height Before: {self.current_height()}")
-        # print(f"Block Height Before: {self.current_height()}")
+        self.log.debug(f"Block Height Before: {self.current_height}")
+        # print(f"Block Height Before: {self.current_height}")
         self.log.debug(encode(self.driver.pending_deltas))
 
         # print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
 
         self.driver.rollback()
 
-        self.log.debug(f"Block Height After: {self.current_height()}")
-        # print(f"Block Height After: {self.current_height()}")
+        # Reset node to the rolled back height and hash
+        self.current_height = storage.get_latest_block_height(self.driver)
+        self.current_hash = storage.get_latest_block_hash(self.driver)
+
+        self.log.debug(f"Block Height After: {self.current_height}")
+        # print(f"Block Height After: {self.current_height}")
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
@@ -492,6 +518,7 @@ class Node:
                 pass
 
     async def rollback(self):
+        print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()
         self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
@@ -599,7 +626,7 @@ class Node:
     async def catchup(self, mn_seed, mn_vk):
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
-        current = self.current_height()
+        current = self.current_height
         latest = await get_latest_block_height(
             ip=mn_seed,
             vk=mn_vk,
@@ -661,3 +688,9 @@ class Node:
             driver=self.driver,
             nonces=self.nonces
         )
+
+    def get_current_height(self):
+        return self.current_height
+
+    def get_current_hash(self):
+        return self.current_hash

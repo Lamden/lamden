@@ -202,7 +202,11 @@ class ValidationQueue(ProcessingQueue):
                 failure: Consensus is SPLIT, all results are in and the top results are tied. In this case take the numerical hex value that is the highest.
         '''
         # Get all the stored solutions for this hlc_timestamp
-        solutions = self.validation_results[hlc_timestamp]['solutions']
+        try:
+            solutions = self.validation_results[hlc_timestamp]['solutions']
+        except KeyError as err:
+            print(err)
+            return
 
         # Get the number of current solutions
         total_solutions_received = len(solutions)

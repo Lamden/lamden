@@ -21,6 +21,7 @@ class WorkValidator(router.Processor):
         # self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
         if not self.known_masternode(msg=msg):
+            print("Not Known Master")
             # TODO Probably should never happen as this filtering should probably be handled at the router level
             return
 
@@ -28,16 +29,19 @@ class WorkValidator(router.Processor):
             # TODO I assume just stopping here is good. But what to do from a node audit perspective if nodes are
             # sending bad messages??
             self.log.error('BAD MESSAGE PAYLOAD')
+            print('BAD MESSAGE PAYLOAD')
             self.log.debug(msg)
             # self.stop_node()
             # not sure why this would be but it's a check anyway
             return
 
         if not self.valid_signature(msg=msg):
-            self.log.error(f'Invalidly signed TX received from master {msg["sender"][:8]}')
+            self.log.error(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
+            print(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
             return
 
         if self.older_than_last_processed(msg=msg):
+            self.log.error('OLDER HLC RECEIVED')
             # TODO at this point we might be processing a message that is older than one that we already did (from
             # an hlc perspective)  Should we do something here?
             pass

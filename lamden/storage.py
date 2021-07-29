@@ -26,6 +26,8 @@ log = get_logger('STATE')
 
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
+        if type(home) is str:
+            home = pathlib.Path().joinpath(home)
         self.home = home
 
         self.blocks_dir = self.home.joinpath('blocks')
@@ -174,7 +176,13 @@ class BlockStorage:
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
+
+        if type(nonce_collection) is str:
+            nonce_collection = pathlib.Path().joinpath(nonce_collection)
         self.nonces = FSDriver(root=nonce_collection)
+
+        if type(pending_collection) is str:
+            pending_collection = pathlib.Path().joinpath(pending_collection)
         self.pending_nonces = FSDriver(root=pending_collection)
 
     @staticmethod
@@ -243,7 +251,6 @@ def get_latest_block_height(driver: ContractDriver):
 
 def set_latest_block_height(h, driver: ContractDriver):
     log.info(f'set_latest_block_height {h}')
-    print(f'set_latest_block_height {h}')
     driver.set(BLOCK_NUM_HEIGHT, h)
 
     log.info('Driver')

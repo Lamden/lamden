@@ -75,3 +75,6 @@ fsock
 build
 dist
 ops
+/tests/integration/fixtures/block_storage/*
+/tests/integration/fixtures/file_queue/*
+/tests/unit/.lamden/
