@@ -186,7 +186,7 @@ def contract_name_is_valid(contract, function, name):
         raise TransactionContractNameInvalid
 
 
-def transaction_is_not_expired(transaction, timeout=5):
+def transaction_is_not_expired(transaction, timeout=60):
     timestamp = transaction['metadata']['timestamp']
 
     now = int(time.time())
