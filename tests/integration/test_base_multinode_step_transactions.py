@@ -1,13 +1,19 @@
+'''
+    STEP BY STEP TESTS
+
+    These tests send transactions 1 at a time, waiting for each node to process and meet consensus before sending
+    another.  Each test case validates the state syncing of nodes after each tx is sent and then at the end
+
+'''
+
 from tests.integration.mock import mocks_new
 from lamden.nodes.filequeue import FileQueue
 
 from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import transaction
-
-
-from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 from contracting.db import encoder
 
@@ -69,6 +75,82 @@ class TestMultiNode(TestCase):
         print(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
         self.assertTrue(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
 
+    def test_network_one_recipient__step_by_step__validate_node_state_inbetween(self):
+        # This test create two networks.  network_1 is a single node network and network_2 is a multinode network
+        # I will submit the same transaction to both networks and use network_1's output to validate the output on
+        # network_2
+        test_start = time.time()
+
+        network_1 = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        self.await_async_process(network_1.start)
+
+        for node in network_1.all_nodes():
+            self.assertTrue(node.obj.running)
+
+        done_starting_networks = time.time()
+        print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
+
+        # Send a bunch of transactions
+        amount_of_transactions = 5
+        receiver_wallet = Wallet()
+
+        # Log the amounts of each transaction so we can verify state later
+        test_tracker = {}
+
+        test_start_sending_transactions = time.time()
+        for i in range(amount_of_transactions):
+            test_start_sending_transaction = time.time()
+
+            tx_info = json.loads(network_1.send_random_currency_transaction(
+                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                receiver_wallet=receiver_wallet
+            ))
+
+            to = tx_info['payload']['kwargs']['to']
+            amount = ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
+            try:
+                test_tracker[to] = test_tracker[to] + amount
+            except KeyError:
+                test_tracker[to] = amount
+
+            # wait till all nodes reach the required block height
+            mocks_new.await_all_nodes_done_processing(
+                nodes=network_1.all_nodes(),
+                block_height=i+1,
+                timeout=25
+            )
+            end_sending_transaction = time.time()
+            print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i}.")
+
+            self.async_sleep(2)
+
+            self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
+            self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+
+        # All state values reflect the result of the processed transactions
+        for key in test_tracker:
+            balance = json.loads(encoder.encode(test_tracker[key]))
+            results = network_1.get_var_from_all(
+                contract='currency',
+                variable='balances',
+                arguments=[key]
+            )
+
+            results = json.loads(encoder.encode(results))
+
+            print({'results': results})
+            print({'balance': balance})
+
+            self.assertTrue(balance == results[0])
+            self.assertTrue(all(balance == results[0] for balance in results))
+
+        # All nodes are at the proper block height
+        for node in network_1.all_nodes():
+            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+
+        # All nodes arrived at the same block hash
+        all_hashes = [node.obj.get_current_hash() for node in network_1.all_nodes()]
+        self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
     def test_network_mixed_tx__step_by_step__validate_node_state_inbetween(self):
         # This test create two networks.  network_1 is a single node network and network_2 is a multinode network

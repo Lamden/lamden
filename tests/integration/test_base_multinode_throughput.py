@@ -1,3 +1,9 @@
+'''
+    THROUGHPUT Test send all transactions AT ONCE and then wait for all nodes to process them and come to consensus
+    After all node are in sync then the test are run to validate state etc.
+
+'''
+
 from tests.integration.mock import mocks_new
 from lamden.nodes.filequeue import FileQueue
 
@@ -180,13 +186,82 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            self.assertTrue(amount_of_transactions == node.obj.get_consensus_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        all_hashes = [node.obj.get_consensus_hash() for node in n.all_nodes()]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
-    def test_network_mixed_tx_throughput_test_founder_to_random_existing_wallets(self):
+    def test_network_one_receiver__throughput_test__founder_to_one_wallet_multiple_times(self):
+        # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
+        # accumulate as the test goes on
+
+        n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        self.await_async_process(n.start)
+
+        for node in n.all_nodes():
+            self.assertTrue(node.obj.running)
+
+        test_tracker = {}
+
+        num_of_receivers = 10
+        receiver_wallet = Wallet()
+
+        # Send a bunch of transactions
+        amount_of_transactions = 5
+
+        for i in range(amount_of_transactions):
+            tx_info = json.loads(n.send_random_currency_transaction(
+                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                receiver_wallet=receiver_wallet
+            ))
+            to = tx_info['payload']['kwargs']['to']
+            amount = ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
+            try:
+                test_tracker[to] = test_tracker[to] + amount
+            except KeyError:
+                test_tracker[to] = amount
+
+        # wait till all nodes reach the required block height
+        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=120)
+        self.async_sleep(1)
+
+        # All state values reflect the result of the processed transactions
+        # Decode all tracker values from ContractingDecimal to string
+        for key in test_tracker:
+            test_tracker[key] = json.loads(encoder.encode(test_tracker[key]))
+
+        for key in test_tracker:
+            balance = json.loads(encoder.encode(test_tracker[key]))
+            results = n.get_vars(
+                contract='currency',
+                variable='balances',
+                arguments=[key]
+            )
+
+            results = json.loads(encoder.encode(results))
+
+            print({'results': results})
+            print({'balance': balance})
+
+            self.assertTrue(balance == results[0])
+            self.assertTrue(all([balance == results[0] for balance in results]))
+
+        # All nodes are at the proper block height
+        for node in n.all_nodes():
+            print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
+            print(f'block height: {node.obj.get_consensus_height()} hash: {node.obj.get_consensus_hash()}')
+            self.assertTrue(amount_of_transactions == node.obj.get_consensus_height())
+
+        # All nodes arrived at the same block hash
+        all_hashes = [node.obj.get_consensus_hash() for node in n.all_nodes()]
+        for block_hash in all_hashes:
+            print(block_hash)
+        for node in n.all_nodes():
+            print(node.obj.get_consensus_height())
+        self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
+
+    def test_network_mixed_receivers__throughput_test__founder_to_list_of_created_wallets(self):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
 
@@ -239,13 +314,13 @@ class TestMultiNode(TestCase):
         # All nodes are at the proper block height
         for node in n.all_nodes():
             print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
-            print(f'block height: {node.obj.get_current_height()} hash: {node.obj.get_current_hash()}')
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            print(f'block height: {node.obj.get_consensus_height()} hash: {node.obj.get_consensus_height()}')
+            self.assertTrue(amount_of_transactions == node.obj.get_consensus_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        all_hashes = [node.obj.get_consensus_height() for node in n.all_nodes()]
         for block_hash in all_hashes:
             print(block_hash)
         for node in n.all_nodes():
-            print(node.obj.get_current_height())
+            print(node.obj.get_consensus_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))

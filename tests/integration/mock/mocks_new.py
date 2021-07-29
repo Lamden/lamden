@@ -23,10 +23,10 @@ def await_all_nodes_done_processing(nodes, block_height, timeout):
         start = time.time()
         done = False
         while not done:
-            done = all([node.obj.get_current_height() == block_height for node in nodes])
+            done = all([node.obj.get_consensus_height() == block_height for node in nodes])
             await asyncio.sleep(0.0)
             if time.time() - start > timeout:
-                print([node.obj.get_current_height() == block_height for node in nodes])
+                print([node.obj.get_consensus_height() == block_height for node in nodes])
                 print(f"HIT TIMER and {done}")
                 done = True
 
@@ -235,32 +235,15 @@ class MockNetwork:
 
         return values
 
-    def get_var(self, contract, variable, arguments, delegates=False):
-        true_value = None
-        for master in self.masternodes:
-            value = master.driver.get_var(
-                contract=contract,
-                variable=variable,
-                arguments=arguments
-            )
-            if true_value is None:
-                true_value = value
-            else:
-                assert true_value == value, 'Masters have inconsistent state!'
+    def get_var_from_one(self, contract, variable, arguments, node):
+        return node.driver.get_var(
+            contract=contract,
+            variable=variable,
+            arguments=arguments
+        )
 
-        if delegates:
-            for delegate in self.delegates:
-                value = delegate.driver.get_var(
-                    contract=contract,
-                    variable=variable,
-                    arguments=arguments
-                )
-                if true_value is None:
-                    true_value = value
-                else:
-                    assert true_value == value, 'Masters have inconsistent state!'
-
-        return true_value
+    def get_var_from_all(self, contract, variable, arguments):
+        return [self.get_var_from_one(contract, variable, arguments, node) for node in self.all_nodes()]
 
     def set_var(self, contract, variable, arguments, value):
         for node in self.masternodes + self.delegates:

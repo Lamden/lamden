@@ -317,6 +317,18 @@ class Node:
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
+        try:
+            self.debug_stack.append({
+                'method': 'process_result_before',
+                'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
+                'pending_writes': self.driver.pending_writes,
+                'pending_reads': self.driver.pending_reads,
+                'cache': self.driver.cache,
+                'block': self.current_height,
+                'last_processed_hlc:': self.last_processed_hlc
+            })
+        except Exception as err:
+            print(err)
         self.debug_stack.append({'method':'process_result', 'block': self.current_height})
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
@@ -330,6 +342,20 @@ class Node:
 
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+
+        try:
+            self.debug_stack.append({
+                'method': 'process_result_after',
+                'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
+                'pending_writes': self.driver.pending_writes,
+                'pending_reads': self.driver.pending_reads,
+                'cache': self.driver.cache,
+                'block': self.current_height,
+                'last_processed_hlc:': self.last_processed_hlc
+            })
+        except Exception as err:
+            print(err)
+
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -417,8 +443,8 @@ class Node:
         storage.set_latest_block_height(block['number'], driver=self.driver)
         self.current_height = block['number']
 
-        print({'block':{'base': self.current_hash, 'block': block['hash']}})
-        print({'hashg': {'base': self.current_hash, 'block': block['hash']}})
+        # print({'block':{'base': self.current_hash, 'block': block['hash']}})
+        # print({'hashg': {'base': self.current_hash, 'block': block['hash']}})
         #
         # storage.update_state_with_block(
         #     block=block,
@@ -458,7 +484,7 @@ class Node:
         # block data hard apply
         self.blocks.commit(hlc_timestamp)
 
-        print({"hard_apply": hlc_timestamp})
+        # print({"hard_apply": hlc_timestamp})
 
         self.log.debug(json.dumps({
             'type': 'tx_lifecycle',
@@ -688,6 +714,12 @@ class Node:
             driver=self.driver,
             nonces=self.nonces
         )
+
+    def get_consensus_height(self):
+        return storage.get_latest_block_height(self.driver)
+
+    def get_consensus_hash(self):
+        return storage.get_latest_block_hash(self.driver)
 
     def get_current_height(self):
         return self.current_height
