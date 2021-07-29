@@ -12,6 +12,7 @@ import json
 import os
 import shutil
 import time
+import pathlib
 
 MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3a12'
 
@@ -39,7 +40,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout):
 def create_fixture_directories(dir_list):
     for d in dir_list:
         try:
-            os.mkdir(f'./fixtures/{d}')
+            pathlib.Path(f'./fixtures/{d}').mkdir(parents=True, exist_ok=True)
         except FileExistsError:
             pass
 
