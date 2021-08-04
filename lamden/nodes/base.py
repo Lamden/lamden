@@ -237,6 +237,7 @@ class Node:
         self.bypass_catchup = bypass_catchup
 
         self.debug_stack = []
+        self.debug_processed_hlcs = []
 
     async def start(self):
         # Start running
@@ -319,17 +320,19 @@ class Node:
     def process_result(self, processing_results):
         try:
             self.debug_stack.append({
-                'method': 'process_result_before',
+                'system_time': time.time(),
+                'method': 'process_result_before ' + processing_results["hlc_timestamp"],
                 'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
-                'pending_writes': self.driver.pending_writes,
-                'pending_reads': self.driver.pending_reads,
-                'cache': self.driver.cache,
+                'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
+                'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
+                'cache': json.loads(encode(self.driver.cache).encode()),
                 'block': self.current_height,
+                'consensus_block': self.get_consensus_height(),
                 'last_processed_hlc:': self.last_processed_hlc
             })
         except Exception as err:
             print(err)
-        self.debug_stack.append({'method':'process_result', 'block': self.current_height})
+
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
@@ -342,15 +345,18 @@ class Node:
 
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+        self.debug_processed_hlcs.append(processing_results['hlc_timestamp'])
 
         try:
             self.debug_stack.append({
-                'method': 'process_result_after',
+                'system_time' :time.time(),
+                'method': 'process_result_after' + processing_results["hlc_timestamp"],
                 'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
-                'pending_writes': self.driver.pending_writes,
-                'pending_reads': self.driver.pending_reads,
-                'cache': self.driver.cache,
+                'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
+                'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
+                'cache': json.loads(encode(self.driver.cache).encode()),
                 'block': self.current_height,
+                'consensus_block': self.get_consensus_height(),
                 'last_processed_hlc:': self.last_processed_hlc
             })
         except Exception as err:
@@ -395,7 +401,7 @@ class Node:
         }
 
     def create_new_block_from_result(self, result):
-        self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height})
+        #self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
         # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
@@ -428,14 +434,13 @@ class Node:
         return block_info
 
     def update_block_db(self, block):
-        self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height})
+        # self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         # self.driver.clear_pending_state()
 
         # self.log.info('Storing new block.')
         # Commit the state changes and nonces to the database
         self.log.info(f'update_state_with_block {block["number"]}')
-
 
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
         self.current_hash = block['hash']
@@ -455,9 +460,14 @@ class Node:
         self.new_block_processor.clean(self.current_height)
 
     def soft_apply_current_state(self, hlc_timestamp):
-        self.debug_stack.append({'method': 'soft_apply_current_state', 'block': self.current_height})
+        '''
+        self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_before', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
+        '''
         self.driver.soft_apply(hlc_timestamp)
-
+        '''
+        self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_after', 'block': self.current_height,
+                                 'consensus_block': self.get_consensus_height()})
+        '''
         # print({"soft_apply": hlc_timestamp})
         ''' Can't do this event 
         self.log.debug(json.dumps({
@@ -478,7 +488,8 @@ class Node:
         gc.collect()
 
     def hard_apply_block(self, hlc_timestamp):
-        self.debug_stack.append({'method': 'hard_apply_block', 'block': self.current_height})
+        self.debug_stack.append({'system_time' :time.time(), 'method': 'hard_apply_block', 'consensus_block': self.get_consensus_height(), 'hlc_timestamp': hlc_timestamp})
+
         # state changes hard apply
         self.driver.hard_apply(hlc_timestamp)
         # block data hard apply
@@ -509,6 +520,7 @@ class Node:
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height}")
+        print(f"Block Height Before: {self.current_height}")
         # print(f"Block Height Before: {self.current_height}")
         self.log.debug(encode(self.driver.pending_deltas))
 
@@ -521,6 +533,7 @@ class Node:
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
         self.log.debug(f"Block Height After: {self.current_height}")
+        print(f"Block Height After: {self.current_height}")
         # print(f"Block Height After: {self.current_height}")
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
@@ -544,6 +557,7 @@ class Node:
                 pass
 
     async def rollback(self):
+        self.debug_stack.sort(key=lambda x: x['system_time'])
         print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()

@@ -99,8 +99,8 @@ class TestMultiNode(TestCase):
         self.assertEqual(n.delegates[5].tcp, expected_ips[8])
 
     def test_startup_with_manual_node_creation_and_single_block_works(self):
-        m = mocks_new.MockMaster(ctx=self.ctx, index=1)
-        d = mocks_new.MockDelegate(ctx=self.ctx, index=2)
+        m = mocks_new.MockMaster(ctx=self.ctx, index=1, metering=False)
+        d = mocks_new.MockDelegate(ctx=self.ctx, index=2, metering=False)
 
         bootnodes = {
             m.wallet.verifying_key: m.tcp,
@@ -138,12 +138,10 @@ class TestMultiNode(TestCase):
         )
 
         self.send_transaction(node=m.obj, tx=tx_1.encode())
-        self.async_sleep(2)
+        self.async_sleep(1)
 
-        # dbal = dld.get_var(contract='currency', variable='balances', arguments=['jeff'])
         mbal = m.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
         dbal = d.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
-
 
         self.assertEqual(mbal, tx_amount)
         self.assertEqual(dbal, tx_amount)

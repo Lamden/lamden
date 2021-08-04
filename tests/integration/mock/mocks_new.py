@@ -61,8 +61,8 @@ class MockNode:
         self.http = f'http://{self.ip}:{self.port}'
         self.tcp = f'tcp://{self.ip}:{self.port}'
         self.delay = {
-            'base': 5,
-            'self': 2
+            'base': 0.1,
+            'self': 0.2
         }
 
         self.driver = ContractDriver(driver=InMemDriver())
