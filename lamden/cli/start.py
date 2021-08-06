@@ -132,6 +132,7 @@ def start_node(args):
         start_mongo()
 
         n = Masternode(
+            debug=args.debug,
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
@@ -143,6 +144,7 @@ def start_node(args):
         )
     elif args.node_type == 'delegate':
         n = Delegate(
+            debug=args.debug,
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,

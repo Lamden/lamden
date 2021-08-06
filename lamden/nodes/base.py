@@ -122,6 +122,7 @@ class Node:
         self.blocks = blocks
 
         self.log = get_logger('Base')
+        self.debug = debug
         self.testing = testing
         self.debug_stack = []
         self.debug_processed_hlcs = []
@@ -374,15 +375,15 @@ class Node:
             except Exception as err:
                 print(err)
 
-
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'processed_from_main_queue',
-            'hlc_timestamp': processing_results['hlc_timestamp'],
-            'my_solution': block_info['hash'],
-            'system_time': time.time()
-        }))
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'processed_from_main_queue',
+                'hlc_timestamp': processing_results['hlc_timestamp'],
+                'my_solution': block_info['hash'],
+                'system_time': time.time()
+            }))
 
         # ___ Validate and Send Block info __
         # add the hlc_timestamp to the needs validation queue for processing consensus later
