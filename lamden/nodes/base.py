@@ -537,6 +537,7 @@ class Node:
 
 ### ROLLBACK CODE
     def add_rollback_info(self):
+        called_from = "unknown"
         if self.main_processing_queue.detected_rollback:
             called_from = "main_processing_queue"
         if self.validation_queue.detected_rollback:

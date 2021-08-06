@@ -125,7 +125,7 @@ class TxProcessingQueue(ProcessingQueue):
                     }))
                 self.queue.append(tx)
 
-                if self.testing:
+                if self.debug or self.testing:
                     self.sort_queue()
                     self.detected_rollback = True
 
