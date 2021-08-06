@@ -325,7 +325,6 @@ class Node:
 
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
-        print({'processing_results': processing_results})
 
         if processing_results:
             block_info = self.process_result(processing_results)
@@ -468,7 +467,7 @@ class Node:
         # self.log.info('Storing new block.')
         # Commit the state changes and nonces to the database
         self.log.info(f'update_state_with_block {block["number"]}')
-        print(f'update_state_with_block {block["number"]}')
+        # print(f'update_state_with_block {block["number"]}')
 
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
         self.current_hash = block['hash']
@@ -557,7 +556,7 @@ class Node:
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.current_height}")
-        print(f"Block Height Before: {self.current_height}")
+        # print(f"Block Height Before: {self.current_height}")
         # print(f"Block Height Before: {self.current_height}")
         self.log.debug(encode(self.driver.pending_deltas))
 
@@ -570,7 +569,7 @@ class Node:
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
         self.log.debug(f"Block Height After: {self.current_height}")
-        print(f"Block Height After: {self.current_height}")
+        # print(f"Block Height After: {self.current_height}")
         # print(f"Block Height After: {self.current_height}")
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})

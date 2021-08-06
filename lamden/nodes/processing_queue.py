@@ -115,6 +115,14 @@ class TxProcessingQueue(ProcessingQueue):
                 self.currently_processing = False
 
                 # add tx back to processing queue
+                if self.debug:
+                    self.log.debug(json.dumps({
+                        'type': 'tx_lifecycle',
+                        'file': 'processing_queue',
+                        'event': 'append_new',
+                        'hlc_timestamp': tx['hlc_timestamp'],
+                        'system_time': time.time()
+                    }))
                 self.queue.append(tx)
 
                 if self.testing:
