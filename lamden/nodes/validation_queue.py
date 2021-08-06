@@ -189,7 +189,7 @@ class ValidationQueue(ProcessingQueue):
                     self.stop()
                     self.currently_processing = False
 
-                    if if self.debug or self.testing:
+                    if self.debug or self.testing:
                         self.detected_rollback = True
 
                     # wipe needs validation queue
