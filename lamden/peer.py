@@ -8,7 +8,7 @@ import asyncio
 WORK_SERVICE = 'work'
 
 class Peer:
-    def __init__(self, ip, socket, key, services, blacklist, max_strikes):
+    def __init__(self, ip, socket, key, services, blacklist, max_strikes, testing=False, debug=False):
         self.socket = socket
         self.ip = ip
         self.key = key
@@ -23,6 +23,9 @@ class Peer:
 
         self.log = get_logger("PEER")
         self.running = False
+
+        self.testing = testing
+        self.debug = debug
 
     def start(self):
         self.running = True
@@ -58,13 +61,14 @@ class Peer:
                     topic, msg = data
                     if topic.decode("utf-8") == WORK_SERVICE:
                         message = json.loads(msg)
-                        self.log.debug(json.dumps({
-                            'type': 'tx_lifecycle',
-                            'file': 'new_sockets',
-                            'event': 'received_from_socket',
-                            'hlc_timestamp': message['hlc_timestamp'],
-                            'system_time': time.time()
-                        }))
+                        if self.debug:
+                            self.log.debug(json.dumps({
+                                'type': 'tx_lifecycle',
+                                'file': 'new_sockets',
+                                'event': 'received_from_socket',
+                                'hlc_timestamp': message['hlc_timestamp'],
+                                'system_time': time.time()
+                            }))
                     await self.process_subscription(data)
 
             except zmq.error.ZMQError as error:
@@ -83,14 +87,15 @@ class Peer:
             self.log.error(msg)
             self.log.error(message)
         if processor is not None and message is not None:
-            if topic.decode("utf-8") == WORK_SERVICE:
-                self.log.debug(json.dumps({
-                    'type': 'tx_lifecycle',
-                    'file': 'new_sockets',
-                    'event': 'processing_from_socket',
-                    'hlc_timestamp': message['hlc_timestamp'],
-                    'system_time': time.time()
-                }))
+            if self.debug:
+                if topic.decode("utf-8") == WORK_SERVICE:
+                    self.log.debug(json.dumps({
+                        'type': 'tx_lifecycle',
+                        'file': 'new_sockets',
+                        'event': 'processing_from_socket',
+                        'hlc_timestamp': message['hlc_timestamp'],
+                        'system_time': time.time()
+                    }))
             await processor.process_message(message)
 
 

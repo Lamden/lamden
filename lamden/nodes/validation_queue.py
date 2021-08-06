@@ -8,7 +8,7 @@ from lamden.nodes.queue_base import ProcessingQueue
 
 class ValidationQueue(ProcessingQueue):
     def __init__(self, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, testing=False):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
@@ -28,6 +28,7 @@ class ValidationQueue(ProcessingQueue):
 
         # For debugging
         self.testing = testing
+        self.debug = debug
         self.detected_rollback = False
 
     def append(self, block_info, hlc_timestamp, transaction_processed):
@@ -96,16 +97,16 @@ class ValidationQueue(ProcessingQueue):
             self.log.debug(transaction_processed)
             self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'validation_queue',
-            'event': 'got_solution',
-            'from': node_vk,
-            'solution': block_info['hash'],
-            'hlc_timestamp': hlc_timestamp,
-            'num_of_solutions': self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'],
-            'system_time': time.time()
-        }))
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'validation_queue',
+                'event': 'got_solution',
+                'from': node_vk,
+                'solution': block_info['hash'],
+                'hlc_timestamp': hlc_timestamp,
+                'system_time': time.time()
+            }))
 
         # check if this node already gave us information
         if node_vk in self.validation_results[hlc_timestamp]['solutions']:
@@ -134,15 +135,15 @@ class ValidationQueue(ProcessingQueue):
 
             if consensus_result['has_consensus']:
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
-
-                self.log.debug(json.dumps({
-                    'type': 'tx_lifecycle',
-                    'file': 'validation_queue',
-                    'event': 'has_consensus',
-                    'consensus_info': consensus_result,
-                    'hlc_timestamp': next_hlc_timestamp,
-                    'system_time': time.time()
-                }))
+                if self.debug:
+                    self.log.debug(json.dumps({
+                        'type': 'tx_lifecycle',
+                        'file': 'validation_queue',
+                        'event': 'has_consensus',
+                        'consensus_info': consensus_result,
+                        'hlc_timestamp': next_hlc_timestamp,
+                        'system_time': time.time()
+                    }))
 
                 if consensus_result['matches_me']:
                     # Committing the block will "Hard Apply" the results to the database, creating a new rollback point.
@@ -194,7 +195,7 @@ class ValidationQueue(ProcessingQueue):
                     # wipe needs validation queue
                     self.flush()
 
-                    asyncio.ensure_future(self.rollback(hlc_timestamp=next_hlc_timestamp))
+                    asyncio.ensure_future(self.rollback())
                     return
 
                 # returning here will ensure the hlc_timestamp doesnt' get added back to the validation queue and as

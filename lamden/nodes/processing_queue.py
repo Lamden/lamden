@@ -1,6 +1,7 @@
 import time
 import asyncio
 import hashlib
+import json
 
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
@@ -12,8 +13,8 @@ from datetime import datetime
 
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height,
-                 get_current_hash, get_last_processed_hlc, stop_node, reward_manager, rollback, testing=False):
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height, stop_node,
+                 get_current_hash, get_last_processed_hlc,  reward_manager, rollback, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -40,6 +41,7 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO This is just for testing
         self.total_processed = 0
         self.testing = testing
+        self.debug = debug
         self.detected_rollback = False
         self.currently_processing_hlc = ""
 
@@ -47,6 +49,14 @@ class TxProcessingQueue(ProcessingQueue):
         super().append(tx)
 
         if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
+            if self.debug:
+                self.log.debug(json.dumps({
+                    'type': 'tx_lifecycle',
+                    'file': 'processing_queue',
+                    'event': 'append_new',
+                    'hlc_timestamp': tx['hlc_timestamp'],
+                    'system_time': time.time()
+                }))
             self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
             self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
 
@@ -81,7 +91,26 @@ class TxProcessingQueue(ProcessingQueue):
             # print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
 
+            if self.debug:
+                self.log.debug(json.dumps({
+                    'type': 'tx_lifecycle',
+                    'file': 'processing_queue',
+                    'event': 'currently_processing_hlc',
+                    'hlc_timestamp': self.currently_processing_hlc,
+                    'system_time': time.time()
+                }))
+
             if (tx['hlc_timestamp'] < self.get_last_processed_hlc()):
+                if self.debug:
+                    self.log.debug(json.dumps({
+                        'type': 'tx_lifecycle',
+                        'file': 'processing_queue',
+                        'event': 'out_of_sync_hlc',
+                        'hlc_timestamp': self.currently_processing_hlc,
+                        'last_processed_hlc': self.get_last_processed_hlc(),
+                        'system_time': time.time()
+                    }))
+
                 self.stop()
                 self.currently_processing = False
 
@@ -93,7 +122,7 @@ class TxProcessingQueue(ProcessingQueue):
                     self.detected_rollback = True
 
                 # rollback state to last consensus
-                asyncio.ensure_future(self.rollback(hlc_timestamp=tx['hlc_timestamp']))
+                asyncio.ensure_future(self.rollback())
             else:
                 del self.message_received_timestamps[tx['hlc_timestamp']]
 

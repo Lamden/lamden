@@ -29,7 +29,12 @@ class QueueProcessor(Processor):
         self.q.append(msg)
 
 class Publisher:
-    def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50):
+    def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50,
+                 testing=False, debug=False ):
+
+        self.testing = testing
+        self.debug = debug
+
         # print({'socket_id': socket_id})
 
         if socket_id.startswith('tcp'):
@@ -60,14 +65,15 @@ class Publisher:
         self.socket.bind(self.address)
 
     async def publish(self, topic, msg):
-        if topic == WORK_SERVICE:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'new_sockets',
-                'event': 'publish_new_tx',
-                'hlc_timestamp': msg['hlc_timestamp'],
-                'system_time': time.time()
-            }))
+        if self.debug:
+            if topic == WORK_SERVICE:
+                self.log.debug(json.dumps({
+                    'type': 'tx_lifecycle',
+                    'file': 'new_sockets',
+                    'event': 'publish_new_tx',
+                    'hlc_timestamp': msg['hlc_timestamp'],
+                    'system_time': time.time()
+                }))
 
         m = encode(msg).encode()
 
@@ -110,7 +116,10 @@ class CredentialProvider:
 
 
 class Network:
-    def __init__(self, wallet: Wallet, ctx: zmq.Context, socket_id, max_peer_strikes):
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, socket_id, max_peer_strikes, testing=False, debug=False):
+        self.testing = testing
+        self.debug = debug
+
         self.wallet = wallet
         self.max_peer_strikes = max_peer_strikes
         self.ctx = ctx
@@ -119,7 +128,13 @@ class Network:
         self.log = get_logger("NEW_SOCKETS")
 
         # self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
-        self.publisher = Publisher(socket_id=self.socket_id, wallet=self.wallet, ctx=self.ctx)
+        self.publisher = Publisher(
+            testing=self.testing,
+            debug=self.debug,
+            socket_id=self.socket_id,
+            wallet=self.wallet,
+            ctx=self.ctx
+        )
 
         # self.authenticator = AsyncioAuthenticator(context=self.ctx)
 
@@ -200,6 +215,8 @@ class Network:
 
     def add_peer(self, socket, ip, key):
         self.peers[key] = Peer(
+            testing=self.testing,
+            debug=self.debug,
             socket=socket,
             ip=ip,
             key=key,

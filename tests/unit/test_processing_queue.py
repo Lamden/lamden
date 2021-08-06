@@ -87,7 +87,7 @@ class TestProcessingQueue(TestCase):
         self.main_processing_queue.stop()
         self.main_processing_queue.flush()
 
-    def rollback_called(self):
+    async def rollback_called(self):
         print("ROLLBACK CALLED")
         self.rollback_was_called = True
 
@@ -283,7 +283,7 @@ class TestProcessingQueue(TestCase):
             self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
         )
         loop = asyncio.get_event_loop()
-        processing_results = loop.run_until_complete(tasks)[0]
+        loop.run_until_complete(tasks)
 
-        self.assertIsNone(processing_results)
         self.assertTrue(self.rollback_was_called)
+

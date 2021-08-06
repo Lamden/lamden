@@ -172,6 +172,8 @@ class Node:
         # wallet: Wallet, ctx: zmq.Context, socket_id
 
         self.network = Network(
+            debug=self.debug,
+            testing=self.testing,
             wallet=wallet,
             socket_id=socket_base,
             max_peer_strikes=self.max_peer_strikes,
@@ -191,6 +193,7 @@ class Node:
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             testing=self.testing,
+            debug=self.debug,
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
@@ -207,6 +210,7 @@ class Node:
 
         self.validation_queue = validation_queue.ValidationQueue(
             testing=self.testing,
+            debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
@@ -252,7 +256,9 @@ class Node:
         self.main_processing_queue.start()
         self.validation_queue.start()
 
-        asyncio.ensure_future(self.system_monitor.start(delay_sec=5))
+        if self.debug:
+            asyncio.ensure_future(self.system_monitor.start(delay_sec=5))
+
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
@@ -343,7 +349,6 @@ class Node:
             except Exception as err:
                 print(err)
 
-        print(processing_results)
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
@@ -357,7 +362,8 @@ class Node:
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
 
-        self.debug_processed_hlcs.append(processing_results['hlc_timestamp'])
+        if self.testing:
+            self.debug_processed_hlcs.append(processing_results['hlc_timestamp'])
 
         if self.testing:
             try:
@@ -421,7 +427,7 @@ class Node:
         bc.add_sbcs([result])
         subblocks = bc.get_current_best_block()
 
-        self.log.info(f'Current Height: {self.current_height}')
+        # self.log.info(f'Current Height: {self.current_height}')
 
         block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
 
@@ -429,15 +435,17 @@ class Node:
 
         block_info = json.loads(encode(block).encode())
 
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'new_block',
-            'block_info': block_info,
-            'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
-            'system_time': time.time()
-        }))
-
+        '''
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'new_block',
+                'block_info': block_info,
+                'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
+                'system_time': time.time()
+            }))
+        '''
         '''
         if self.testing:
             self.debug_stack.append({
@@ -519,21 +527,27 @@ class Node:
         self.blocks.commit(hlc_timestamp)
 
         # print({"hard_apply": hlc_timestamp})
-
-        self.log.debug(json.dumps({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'commit_new_block',
-            'hlc_timestamp': hlc_timestamp,
-            'system_time': time.time()
-        }))
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'commit_new_block',
+                'hlc_timestamp': hlc_timestamp,
+                'system_time': time.time()
+            }))
 
 ### ROLLBACK CODE
     def add_rollback_info(self):
+        if self.main_processing_queue.detected_rollback:
+            called_from = "main_processing_queue"
+        if self.validation_queue.detected_rollback:
+            called_from = "validation_queue"
+
         rollback_info = {
             'system_time': time.time(),
             'last_processed_hlc': self.last_processed_hlc,
-            'last_hlc_in_consensus': self.validation_queue.last_hlc_in_consensus
+            'last_hlc_in_consensus': self.validation_queue.last_hlc_in_consensus,
+            'called_from': called_from
         }
 
         self.rollbacks.append(rollback_info)
@@ -561,28 +575,28 @@ class Node:
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
-    async def rollback(self, hlc_timestamp=None):
+    async def rollback(self):
         if self.testing:
             self.debug_stack.sort(key=lambda x: x['system_time'])
-        print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
+            print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
+
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()
         self.validation_queue.stop()
-        self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
+
         await self.main_processing_queue.stopping()
         await self.validation_queue.stopping()
-        self.log.info(f"Queue should be stopped: queue is processing... {self.main_processing_queue.currently_processing}")
 
         rollback_info = self.add_rollback_info()
-
-        self.log.debug(json.dumps({
-            'type': 'node_info',
-            'file': 'base',
-            'event': 'rollback',
-            'rollback_info': rollback_info,
-            'amount_of_rollbacks': len(self.rollbacks),
-            'system_time': time.time()
-        }))
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'node_info',
+                'file': 'base',
+                'event': 'rollback',
+                'rollback_info': rollback_info,
+                'amount_of_rollbacks': len(self.rollbacks),
+                'system_time': time.time()
+            }))
 
         # sleep 2 seconds to see if a previous HLC tx comes in
         asyncio.sleep(2)
