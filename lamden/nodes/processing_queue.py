@@ -1,4 +1,5 @@
 import time
+import asyncio
 import hashlib
 
 from contracting.stdlib.bridge.time import Datetime
@@ -11,8 +12,8 @@ from datetime import datetime
 
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor,
-                 get_current_height, get_current_hash, stop_node, reward_manager):
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height,
+                 get_current_hash, get_last_processed_hlc, stop_node, reward_manager, rollback, testing=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -26,9 +27,11 @@ class TxProcessingQueue(ProcessingQueue):
         self.driver = driver
         self.hlc_clock = hlc_clock
         self.executor = executor
+        self.rollback = rollback
 
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
+        self.get_last_processed_hlc = get_last_processed_hlc
 
         self.stop_node = stop_node
 
@@ -36,12 +39,16 @@ class TxProcessingQueue(ProcessingQueue):
 
         # TODO This is just for testing
         self.total_processed = 0
+        self.testing = testing
+        self.detected_rollback = False
+        self.currently_processing_hlc = ""
 
     def append(self, tx):
         super().append(tx)
 
-        self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
-        self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+        if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
+            self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
+            self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
 
     def flush(self):
         super().flush()
@@ -61,6 +68,8 @@ class TxProcessingQueue(ProcessingQueue):
         # Pop it out of the main processing queue
         tx = self.queue.pop(0)
 
+        self.currently_processing_hlc = tx['hlc_timestamp']
+
         # get the amount of time the transaction has been in the queue
         time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
 
@@ -71,20 +80,35 @@ class TxProcessingQueue(ProcessingQueue):
         if time_in_queue > time_delay:
             # print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
-            del self.message_received_timestamps[tx['hlc_timestamp']]
 
-            # Process it to get the results
-            # TODO what to do with the tx if any error happen during processing
-            result = self.process_tx(tx=tx)
+            if (tx['hlc_timestamp'] < self.get_last_processed_hlc()):
+                self.stop()
+                self.currently_processing = False
 
-            # TODO Remove this as it's for testing
-            self.total_processed = self.total_processed + 1
+                # add tx back to processing queue
+                self.queue.append(tx)
 
-            return {
-                'hlc_timestamp': tx['hlc_timestamp'],
-                'result': result,
-                'transaction_processed': tx
-            }
+                if self.testing:
+                    self.sort_queue()
+                    self.detected_rollback = True
+
+                # rollback state to last consensus
+                asyncio.ensure_future(self.rollback(hlc_timestamp=tx['hlc_timestamp']))
+            else:
+                del self.message_received_timestamps[tx['hlc_timestamp']]
+
+                # Process it to get the results
+                # TODO what to do with the tx if any error happen during processing
+                result = self.process_tx(tx=tx)
+
+                # TODO Remove this as it's for testing
+                self.total_processed = self.total_processed + 1
+
+                return {
+                    'hlc_timestamp': tx['hlc_timestamp'],
+                    'result': result,
+                    'transaction_processed': tx
+                }
         else:
             # else, put it back in queue
             self.queue.append(tx)

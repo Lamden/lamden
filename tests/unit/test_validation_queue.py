@@ -1171,3 +1171,55 @@ class TestProcessingQueue(TestCase):
         self.assertEqual('failed', failed_consensus_results['consensus_type'])
         self.assertEqual('1', failed_consensus_results['solution'])
         self.assertEqual('2', failed_consensus_results['my_solution'])
+
+    def test_clear_my_solutions(self):
+        self.validation_queue.validation_results = {
+            'hlc_1': {
+                'solutions': {
+                    self.validation_queue.wallet.verifying_key: 'solution',
+                    '2': 'solution'
+                },
+                'last_check_info': {
+                    'num_of_solutions': 2
+                }
+            },
+            'hlc_2': {
+                'solutions': {
+                    self.validation_queue.wallet.verifying_key: 'solution'
+                },
+                'last_check_info': {
+                    'num_of_solutions': 1
+                }
+            },
+            'hlc_3': {
+                'solutions': {
+                    '2': 'solution'
+                }
+                ,
+                'last_check_info': {
+                    'num_of_solutions': 1
+                }
+            }
+            ,
+            'hlc_4': {
+                'solutions': {}
+                ,
+                'last_check_info': {
+                    'num_of_solutions': 0
+                }
+            }
+        }
+        self.validation_queue.clear_my_solutions()
+
+        self.assertIsNone(self.validation_queue.validation_results['hlc_1']['solutions'].get(self.validation_queue.wallet.verifying_key))
+        self.assertIsNotNone(self.validation_queue.validation_results['hlc_1']['solutions'].get('2'))
+        self.assertEqual(1, self.validation_queue.validation_results['hlc_1']['last_check_info']['num_of_solutions'])
+
+        self.assertIsNone(self.validation_queue.validation_results['hlc_2']['solutions'].get(self.validation_queue.wallet.verifying_key))
+        self.assertEqual(0, self.validation_queue.validation_results['hlc_2']['last_check_info']['num_of_solutions'])
+
+        self.assertIsNone(self.validation_queue.validation_results['hlc_3']['solutions'].get(self.validation_queue.wallet.verifying_key))
+        self.assertIsNotNone(self.validation_queue.validation_results['hlc_3']['solutions'].get('2'))
+        self.assertEqual(1, self.validation_queue.validation_results['hlc_3']['last_check_info']['num_of_solutions'])
+
+        self.assertEqual(0, self.validation_queue.validation_results['hlc_4']['last_check_info']['num_of_solutions'])

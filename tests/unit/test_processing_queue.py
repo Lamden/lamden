@@ -52,6 +52,7 @@ class TestProcessingQueue(TestCase):
         self.reward_manager = rewards.RewardManager()
 
         self.hlc_clock = HLC_Clock()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.processing_delay_secs = {
             'base': 0.1,
@@ -59,6 +60,7 @@ class TestProcessingQueue(TestCase):
         }
 
         self.running = True
+        self.rollback_was_called = False
 
         self.current_height = lambda: storage.get_latest_block_height(self.driver)
         self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
@@ -73,7 +75,9 @@ class TestProcessingQueue(TestCase):
             get_current_hash=self.current_hash,
             get_current_height=self.current_height,
             stop_node=self.stop,
-            reward_manager=self.reward_manager
+            reward_manager=self.reward_manager,
+            rollback=self.rollback_called,
+            get_last_processed_hlc=self.get_last_processed_hlc
         )
 
         self.client.flush()
@@ -82,6 +86,13 @@ class TestProcessingQueue(TestCase):
     def tearDown(self):
         self.main_processing_queue.stop()
         self.main_processing_queue.flush()
+
+    def rollback_called(self):
+        print("ROLLBACK CALLED")
+        self.rollback_was_called = True
+
+    def get_last_processed_hlc(self):
+        return self.last_processed_hlc
 
     def sync(self):
         sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
@@ -256,3 +267,23 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(environment['__input_hash'], tx['input_hash'])
         self.assertEqual(environment['now'], self.main_processing_queue.get_now_from_tx(tx=tx))
         self.assertEqual(environment['AUXILIARY_SALT'], tx['tx']['metadata']['signature'])
+
+    def test_rollback_on_process_earlier_hlc(self):
+        self.last_processed_hlc = '2'
+
+        tx_info = self.make_tx_message(get_new_tx())
+        tx_info['hlc_timestamp'] = '1'
+
+        self.main_processing_queue.append(tx=tx_info)
+
+        hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
+
+        # Await the queue stopping and then mark the queue as not processing after X seconds
+        tasks = asyncio.gather(
+            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
+        )
+        loop = asyncio.get_event_loop()
+        processing_results = loop.run_until_complete(tasks)[0]
+
+        self.assertIsNone(processing_results)
+        self.assertTrue(self.rollback_was_called)

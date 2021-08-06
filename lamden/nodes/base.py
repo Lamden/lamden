@@ -100,7 +100,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 
 class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), delay=None, debug=True, seed=None, bypass_catchup=False, node_type=None,
+                 driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
                  nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=True, tx_queue=FileQueue()):
 
@@ -122,6 +122,10 @@ class Node:
         self.blocks = blocks
 
         self.log = get_logger('Base')
+        self.testing = testing
+        self.debug_stack = []
+        self.debug_processed_hlcs = []
+
         self.log.propagate = debug
         self.socket_base = socket_base
         self.wallet = wallet
@@ -185,6 +189,7 @@ class Node:
         self.current_hash = storage.get_latest_block_hash(self.driver)
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
+            testing=self.testing,
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
@@ -193,11 +198,14 @@ class Node:
             executor=self.executor,
             get_current_hash=self.get_current_hash,
             get_current_height=self.get_current_height,
+            get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop,
-            reward_manager=self.reward_manager
+            reward_manager=self.reward_manager,
+            rollback=self.rollback,
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
+            testing=self.testing,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
@@ -215,7 +223,7 @@ class Node:
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
             get_masters=self.get_masternode_peers,
-            get_last_processed_hlc=lambda: self.last_processed_hlc,
+            get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop
         )
 
@@ -235,9 +243,6 @@ class Node:
         self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
-
-        self.debug_stack = []
-        self.debug_processed_hlcs = []
 
     async def start(self):
         # Start running
@@ -306,11 +311,14 @@ class Node:
     async def check_validation_queue(self):
         while self.running:
             if len(self.validation_queue) > 0 and self.validation_queue.running:
+                self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
+                self.validation_queue.stop_processing()
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
+        print({'processing_results': processing_results})
 
         if processing_results:
             block_info = self.process_result(processing_results)
@@ -318,21 +326,23 @@ class Node:
             asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
-        try:
-            self.debug_stack.append({
-                'system_time': time.time(),
-                'method': 'process_result_before ' + processing_results["hlc_timestamp"],
-                'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
-                'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
-                'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
-                'cache': json.loads(encode(self.driver.cache).encode()),
-                'block': self.current_height,
-                'consensus_block': self.get_consensus_height(),
-                'last_processed_hlc:': self.last_processed_hlc
-            })
-        except Exception as err:
-            print(err)
+        if self.testing:
+            try:
+                self.debug_stack.append({
+                    'system_time': time.time(),
+                    'method': 'process_result_before ' + processing_results["hlc_timestamp"],
+                    'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
+                    'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
+                    'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
+                    'cache': json.loads(encode(self.driver.cache).encode()),
+                    'block': self.current_height,
+                    'consensus_block': self.get_consensus_height(),
+                    'last_processed_hlc:': self.last_processed_hlc
+                })
+            except Exception as err:
+                print(err)
 
+        print(processing_results)
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
@@ -345,22 +355,24 @@ class Node:
 
         # 3) Soft Apply current state and create change log
         self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+
         self.debug_processed_hlcs.append(processing_results['hlc_timestamp'])
 
-        try:
-            self.debug_stack.append({
-                'system_time' :time.time(),
-                'method': 'process_result_after' + processing_results["hlc_timestamp"],
-                'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
-                'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
-                'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
-                'cache': json.loads(encode(self.driver.cache).encode()),
-                'block': self.current_height,
-                'consensus_block': self.get_consensus_height(),
-                'last_processed_hlc:': self.last_processed_hlc
-            })
-        except Exception as err:
-            print(err)
+        if self.testing:
+            try:
+                self.debug_stack.append({
+                    'system_time' :time.time(),
+                    'method': 'process_result_after' + processing_results["hlc_timestamp"],
+                    'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
+                    'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
+                    'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
+                    'cache': json.loads(encode(self.driver.cache).encode()),
+                    'block': self.current_height,
+                    'consensus_block': self.get_consensus_height(),
+                    'last_processed_hlc:': self.last_processed_hlc
+                })
+            except Exception as err:
+                print(err)
 
 
         self.log.debug(json.dumps({
@@ -401,7 +413,8 @@ class Node:
         }
 
     def create_new_block_from_result(self, result):
-        #self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
+        # if self.testing:
+        #   self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
         # self.log.debug(result)
         bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
         bc.add_sbcs([result])
@@ -423,24 +436,30 @@ class Node:
             'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
             'system_time': time.time()
         }))
-        self.debug_stack.append({
-            'type': 'tx_lifecycle',
-            'file': 'base',
-            'event': 'new_block',
-            'block_info': block_info,
-            'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
-            'system_time': time.time()
-        })
+
+        '''
+        if self.testing:
+            self.debug_stack.append({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'new_block',
+                'block_info': block_info,
+                'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
+                'system_time': time.time()
+            })
+        '''
         return block_info
 
     def update_block_db(self, block):
-        # self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
+        # if self.testing:
+        #    self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         # self.driver.clear_pending_state()
 
         # self.log.info('Storing new block.')
         # Commit the state changes and nonces to the database
         self.log.info(f'update_state_with_block {block["number"]}')
+        print(f'update_state_with_block {block["number"]}')
 
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
         self.current_hash = block['hash']
@@ -461,11 +480,13 @@ class Node:
 
     def soft_apply_current_state(self, hlc_timestamp):
         '''
-        self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_before', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
+        if self.testing:
+            self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_before', 'block': self.current_height, 'consensus_block': self.get_consensus_height()})
         '''
         self.driver.soft_apply(hlc_timestamp)
         '''
-        self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_after', 'block': self.current_height,
+        if self.testing:
+            self.debug_stack.append({'system_time' :time.time(), 'method': 'soft_apply_current_state_after', 'block': self.current_height,
                                  'consensus_block': self.get_consensus_height()})
         '''
         # print({"soft_apply": hlc_timestamp})
@@ -488,7 +509,8 @@ class Node:
         gc.collect()
 
     def hard_apply_block(self, hlc_timestamp):
-        self.debug_stack.append({'system_time' :time.time(), 'method': 'hard_apply_block', 'consensus_block': self.get_consensus_height(), 'hlc_timestamp': hlc_timestamp})
+        if self.testing:
+            self.debug_stack.append({'system_time' :time.time(), 'method': 'hard_apply_block', 'consensus_block': self.get_consensus_height(), 'hlc_timestamp': hlc_timestamp})
 
         # state changes hard apply
         self.driver.hard_apply(hlc_timestamp)
@@ -538,31 +560,16 @@ class Node:
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
-    def add_processed_transactions_back_into_main_queue(self):
-        # print({"validation_queue_items": self.validation_queue.validation_results.items()})
-        tx_added_back = 0
-
-        # Add transactions I already processed back into the main_processing queue
-        for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            try:
-                transaction_processed = self.validation_queue.validation_results[hlc_timestamp]['transaction_processed']
-                tx_added_back = tx_added_back + 1
-                self.main_processing_queue.append(tx=transaction_processed)
-
-                # print({"transaction_processed": transaction_processed})
-                self.log.info(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
-                # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
-
-            except KeyError:
-                pass
-
-    async def rollback(self):
-        self.debug_stack.sort(key=lambda x: x['system_time'])
+    async def rollback(self, hlc_timestamp=None):
+        if self.testing:
+            self.debug_stack.sort(key=lambda x: x['system_time'])
         print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()
+        self.validation_queue.stop()
         self.log.info(f"Awaiting queue stop: queue is processing... {self.main_processing_queue.currently_processing}")
         await self.main_processing_queue.stopping()
+        await self.validation_queue.stopping()
         self.log.info(f"Queue should be stopped: queue is processing... {self.main_processing_queue.currently_processing}")
 
         rollback_info = self.add_rollback_info()
@@ -576,12 +583,41 @@ class Node:
             'system_time': time.time()
         }))
 
+        # sleep 2 seconds to see if a previous HLC tx comes in
+        asyncio.sleep(2)
+
         self.rollback_drivers()
         self.add_processed_transactions_back_into_main_queue()
+        self.validation_queue.clear_my_solutions()
+
+        if self.testing:
+            self.validation_queue.detected_rollback = False
+            self.main_processing_queue.detected_rollback = False
 
         # Restart the processing and validation queues
         self.main_processing_queue.start()
         self.validation_queue.start()
+
+    def add_processed_transactions_back_into_main_queue(self):
+        # print({"validation_queue_items": self.validation_queue.validation_results.items()})
+        tx_added_back = 0
+
+        # Add transactions I already processed back into the main_processing queue
+        for hlc_timestamp, value in self.validation_queue.validation_results.items():
+            try:
+                transaction_processed = self.validation_queue.validation_results[hlc_timestamp][
+                    'transaction_processed']
+                tx_added_back = tx_added_back + 1
+                self.main_processing_queue.append(tx=transaction_processed)
+
+                # print({"transaction_processed": transaction_processed})
+                self.log.info(
+                    f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+                # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+
+            except KeyError:
+                pass
+
 ###
 
     def _get_member_peers(self, contract_name):
@@ -740,3 +776,6 @@ class Node:
 
     def get_current_hash(self):
         return self.current_hash
+
+    def get_last_processed_hlc(self):
+        return self.last_processed_hlc

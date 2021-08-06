@@ -251,7 +251,7 @@ class TestNode(TestCase):
         node.main_processing_queue.append(tx=tx_message)
 
         self.async_sleep(0.05)
-
+        node.hard_apply_block(hlc_timestamp)
         # tx was processed
         self.assertEqual(0, len(node.main_processing_queue))
         print({
@@ -333,14 +333,20 @@ class TestNode(TestCase):
         node = self.create_a_node()
         node.consensus_percent = 0
 
+        print(f'Starting HLC: {node.last_processed_hlc}')
+
         self.start_node(node)
 
         tx_message = node.make_tx_message(tx=get_new_tx())
+        hlc_timestamp = tx_message['hlc_timestamp']
 
         node.main_processing_queue.append(tx_message)
 
         #wait for pocessing to complete
         self.async_sleep(1)
+
+        # queue is empty because tx was processed
+        self.assertEqual(hlc_timestamp, node.last_processed_hlc)
 
         # queue is empty because tx was processed
         self.assertEqual(0, len(node.validation_queue))

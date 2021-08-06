@@ -26,7 +26,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout):
         while not done:
             done = all([node.obj.get_consensus_height() == block_height for node in nodes])
             await asyncio.sleep(0.0)
-            if time.time() - start > timeout:
+            if timeout > 0 and time.time() - start > timeout:
                 print([node.obj.get_consensus_height() == block_height for node in nodes])
                 print(f"HIT TIMER and {done}")
                 done = True
@@ -52,7 +52,7 @@ def remove_fixture_directories(dir_list):
             pass
 
 class MockNode:
-    def __init__(self, ctx,  wallet=None, index=1, genesis_path=os.path.dirname(os.path.abspath(__file__))):
+    def __init__(self, ctx,  wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
         self.wallet = wallet or Wallet()
         self.index = index
         port = 18000 + index
@@ -60,7 +60,7 @@ class MockNode:
         self.port = port
         self.http = f'http://{self.ip}:{self.port}'
         self.tcp = f'tcp://{self.ip}:{self.port}'
-        self.delay = {
+        self.delay = delay or {
             'base': 0.1,
             'self': 0.2
         }
@@ -95,8 +95,8 @@ class MockNode:
 
 
 class MockMaster(MockNode):
-    def __init__(self, ctx, tx_queue=None, index=1, metering=True, wallet=None):
-        super().__init__(ctx=ctx, index=index, wallet=wallet)
+    def __init__(self, ctx, tx_queue=None, index=1, metering=True, wallet=None, delay=None):
+        super().__init__(ctx=ctx, index=index, wallet=wallet, delay=delay)
 
         self.webserver_port = 18080 + index
         self.webserver_ip = f'http://0.0.0.0:{self.webserver_port}'
@@ -107,6 +107,7 @@ class MockMaster(MockNode):
         assert self.ready_to_start, 'Not ready to start!'
 
         self.obj = masternode.Masternode(
+            testing=True,
             socket_base=self.tcp,
             ctx=self.ctx,
             wallet=self.wallet,
@@ -129,8 +130,8 @@ class MockMaster(MockNode):
         self.obj.stop()
 
 class MockDelegate(MockNode):
-    def __init__(self, ctx, index=1, wallet=None, metering=True):
-        super().__init__(ctx=ctx, index=index, wallet=wallet)
+    def __init__(self, ctx, index=1, wallet=None, metering=True, delay=None):
+        super().__init__(ctx=ctx, index=index, wallet=wallet, delay=delay)
 
         self.metering = metering
 
@@ -138,6 +139,7 @@ class MockDelegate(MockNode):
         assert self.ready_to_start, 'Not ready to start!'
 
         self.obj = delegate.Delegate(
+            testing=True,
             socket_base=self.tcp,
             ctx=self.ctx,
             wallet=self.wallet,
@@ -158,7 +160,7 @@ class MockDelegate(MockNode):
 
 
 class MockNetwork:
-    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True):
+    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True, delay=None):
         self.masternodes = []
         self.delegates = []
         self.metering = metering
@@ -166,6 +168,8 @@ class MockNetwork:
         self.log = get_logger('MOCKNET')
 
         self.ctx = ctx
+
+        self.delay = delay
 
         for i in range(0, num_of_masternodes):
             self.build_masternode(i)
@@ -204,10 +208,10 @@ class MockNetwork:
         self.bootnodes = bootnodes
 
     def build_delegate(self, index):
-        self.delegates.append(MockDelegate(ctx=self.ctx, index=index, metering=self.metering))
+        self.delegates.append(MockDelegate(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay))
 
     def build_masternode(self, index):
-        self.masternodes.append(MockMaster(ctx=self.ctx, index=index, metering=self.metering))
+        self.masternodes.append(MockMaster(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay))
 
     async def fund(self, vk, amount=1_000_000):
         await self.make_and_push_tx(

@@ -8,12 +8,13 @@ from lamden.nodes.queue_base import ProcessingQueue
 
 class ValidationQueue(ProcessingQueue):
     def __init__(self, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, testing=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
 
         self.validation_results = {}
+        self.validation_results_history = {}
         self.last_hlc_in_consensus = ""
 
         self.consensus_percent = consensus_percent
@@ -24,6 +25,10 @@ class ValidationQueue(ProcessingQueue):
         self.stop_node = stop_node
 
         self.wallet = wallet
+
+        # For debugging
+        self.testing = testing
+        self.detected_rollback = False
 
     def append(self, block_info, hlc_timestamp, transaction_processed):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
@@ -72,7 +77,8 @@ class ValidationQueue(ProcessingQueue):
 
     def add_solution(self, hlc_timestamp, node_vk, block_info, transaction_processed=None):
         # don't accept this solution if it's for an hlc_timestamp we already had consensus on
-        if hlc_timestamp < self.last_hlc_in_consensus: return
+        if hlc_timestamp < self.last_hlc_in_consensus:
+            return
 
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
         # Store data about the tx so it can be processed for consensus later.
@@ -105,7 +111,11 @@ class ValidationQueue(ProcessingQueue):
         if node_vk in self.validation_results[hlc_timestamp]['solutions']:
             # If so then decrement the num_of_solutions property so we can process this new info
             # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
-            self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] -= 1
+            # Set the count to 0 so tht we reprocess this one
+            self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] = 0
+            # Set the possible consensus flags back to True
+            self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
+            self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
 
         self.validation_results[hlc_timestamp]['solutions'][node_vk] = block_info
 
@@ -141,7 +151,12 @@ class ValidationQueue(ProcessingQueue):
                     self.last_hlc_in_consensus = next_hlc_timestamp
 
                     # Clear all block results from memory because this block has consensus
-                    self.validation_results.pop(next_hlc_timestamp, None)
+                    validation_results = self.validation_results.pop(next_hlc_timestamp, None)
+
+                    # Store for debug
+                    # TODO remove this for deployment
+                    validation_results['consensus_result'] = consensus_result
+                    self.validation_results_history[next_hlc_timestamp] = validation_results
 
                 else:
                     # There was consensus, and I wasn't in the consensus group.
@@ -171,11 +186,15 @@ class ValidationQueue(ProcessingQueue):
 
                     # Stop validating any more block results
                     self.stop()
+                    self.currently_processing = False
+
+                    if self.testing:
+                        self.detected_rollback = True
 
                     # wipe needs validation queue
                     self.flush()
 
-                    asyncio.ensure_future(self.rollback())
+                    asyncio.ensure_future(self.rollback(hlc_timestamp=next_hlc_timestamp))
                     return
 
                 # returning here will ensure the hlc_timestamp doesnt' get added back to the validation queue and as
@@ -413,6 +432,18 @@ class ValidationQueue(ProcessingQueue):
             'top_solutions_list': top_solutions_list,
             'is_tied': len(top_solutions_list) > 1
         }
+
+    def clear_my_solutions(self):
+        for hlc_timestamp in self.validation_results:
+            try:
+                del self.validation_results[hlc_timestamp]['solutions'][self.wallet.verifying_key]
+                # reset the count to zero so we can do consensus on this again next cycle
+                self.validation_results[hlc_timestamp]['last_check_info']['num_of_solutions'] = 0
+                # Set the possible consensus flags back to True
+                self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
+                self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
+            except KeyError:
+                pass
 
     async def drop_bad_peers(self, all_block_results, consensus_result):
         correct_solution = consensus_result['solution']
