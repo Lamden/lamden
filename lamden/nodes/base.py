@@ -357,18 +357,10 @@ class Node:
 
         # ___ Change DB and State ___
         # 1) Needs to create the new block with our result
-        self.log.debug({'processing_results': processing_results})
         if processing_results['run_by_me']:
-            try:
-                block_info = self.create_new_block_from_result(processing_results['result'])
-
-            except Exception as err:
-                print(err)
-                self.stop()
+            block_info = self.create_new_block_from_result(processing_results['result'])
         else:
             block_info = processing_results['result']
-
-        self.log.debug({'block_info': block_info})
 
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)

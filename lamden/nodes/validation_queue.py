@@ -515,7 +515,7 @@ class ValidationQueue(ProcessingQueue):
             'hlc_timestamp': hlc_timestamp,
             'result': consensus_result,
             'transaction_processed': validation_results['transaction_processed'],
-            'run_by_me': True
+            'run_by_me': False
         }
 
     async def drop_bad_peers(self, all_block_results, consensus_result):
