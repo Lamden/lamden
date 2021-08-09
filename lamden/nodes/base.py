@@ -359,8 +359,9 @@ class Node:
         # 1) Needs to create the new block with our result
         if processing_results['run_by_me']:
             try:
+                print({'processing_results_result': processing_results['result']})
                 block_info = self.create_new_block_from_result(processing_results['result'])
-                print({'processing_results_result': processing_results['result'] })
+
             except Exception as err:
                 print(err)
                 self.stop()
