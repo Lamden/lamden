@@ -295,7 +295,8 @@ class TestNode(TestCase):
         node.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=block_info,
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=node.wallet.verifying_key
         )
 
         #wait for pocessing to complete
@@ -321,7 +322,8 @@ class TestNode(TestCase):
         node.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=block_info,
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=node.wallet.verifying_key
         )
 
         #wait for pocessing to complete
@@ -685,7 +687,8 @@ class TestNode(TestCase):
         node.validation_queue.append(
             hlc_timestamp=hlc_timestamp_1,
             block_info=get_new_block(signer=node.wallet.verifying_key, hash="1", tx=tx_message_1),
-            transaction_processed=tx_message_1
+            transaction_processed=tx_message_1,
+            node_vk=node.wallet.verifying_key
         )
 
         # __ TX 2 __
@@ -698,7 +701,8 @@ class TestNode(TestCase):
         node.validation_queue.append(
             hlc_timestamp=hlc_timestamp_2,
             block_info=get_new_block(signer=node.wallet.verifying_key, hash="2", tx=tx_message_2),
-            transaction_processed=tx_message_2
+            transaction_processed=tx_message_2,
+            node_vk=node.wallet.verifying_key
         )
         node.add_processed_transactions_back_into_main_queue()
 

@@ -98,7 +98,8 @@ class TestProcessingQueue(TestCase):
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             rollback=self.rollback,
-            stop_node=self.stop
+            stop_node=self.stop,
+            testing=True
         )
 
     def tearDown(self):
@@ -124,7 +125,7 @@ class TestProcessingQueue(TestCase):
         self.hard_apply_block_called = True
 
     def add_solution(self, hlc_timestamp, verifying_key, hash=None):
-        self.validation_queue.add_solution(
+        self.validation_queue.append(
             node_vk=verifying_key,
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=verifying_key, hash=hash),
@@ -152,7 +153,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         solution = self.validation_queue.get_solution(
@@ -176,7 +178,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="2"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
         solution = self.validation_queue.get_solution(
             hlc_timestamp=hlc_timestamp,
@@ -192,7 +195,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         solution = self.validation_queue.get_solution(
@@ -211,13 +215,15 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="2"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         solution = self.validation_queue.get_solution(
@@ -229,7 +235,7 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(len(self.validation_queue), 1)
         self.assertEqual(self.validation_queue[0], hlc_timestamp)
 
-    def test_add_solution(self):
+    def test_append(self):
         # These are solutions from peers
 
         hlc_timestamp = "1"
@@ -248,7 +254,7 @@ class TestProcessingQueue(TestCase):
         )
         self.assertEqual("1", solution['hash'])
 
-    def test_add_solution_update(self):
+    def test_append_update(self):
         # These are solutions from peers
         # Updated stored solution for a peer when update is received
 
@@ -275,7 +281,7 @@ class TestProcessingQueue(TestCase):
         )
         self.assertEqual("2", solution['hash'])
 
-    def test_add_solution_ignore_older_than_consensus(self):
+    def test_append_ignore_older_than_consensus(self):
         # These are solutions from peers
         # Updated stored solution for a peer when update is received
 
@@ -302,7 +308,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         self.assertTrue(self.validation_queue.awaiting_validation(hlc_timestamp))
@@ -315,7 +322,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Should check is true because we haven't checked yet
@@ -331,7 +339,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Await the the queue attempting consensus
@@ -350,7 +359,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         peer_wallet = Wallet()
@@ -377,19 +387,24 @@ class TestProcessingQueue(TestCase):
 
         self.assertTrue(should_check)
 
-    def test_process_next_does_not_process_without_my_results(self):
-        hlc_timestamp = "1"
-        self.num_of_peers = 2  # Does not include me
-
-        # Add another solution to the validation results object
-        self.add_solutions(hlc_timestamp, amount=2)
-
-        # Await the the queue attempting consensus
-        self.process_next()
-
-        # hard_apply_called
-        self.assertFalse(self.hard_apply_block_called)
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+    def test_get_consensus_result(self):
+        results_obj = {
+            'solutions': {
+                '1': {
+                    'hash': 'incorrect',
+                    'pass': False
+                },
+                '2': {
+                    'hash': 'correct',
+                    'pass': True
+                },
+            }
+        }
+        consensus_result = self.validation_queue.get_consensus_result(
+            results_obj=results_obj,
+            consensus_solution="correct"
+        )
+        self.assertTrue(consensus_result['pass'])
 
     def test_process_next_no_consensus(self):
         hlc_timestamp = "1"
@@ -399,7 +414,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Await the the queue attempting consensus
@@ -416,7 +432,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another solution to the validation results object
@@ -437,7 +454,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another solution to the validation results object
@@ -454,7 +472,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="2"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Process the validation queue again
@@ -472,7 +491,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         peer_wallet = Wallet()
@@ -517,7 +537,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another solution to the validation results object
@@ -546,7 +567,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash='1'),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another 2 solutions which are both in consensus
@@ -565,6 +587,29 @@ class TestProcessingQueue(TestCase):
         # results are NOT removed from the validation_results object
         self.assertIsNotNone(self.validation_queue.validation_results.get(hlc_timestamp))
 
+    def test_process_next_ideal_consensus_MISSING_me(self):
+        '''
+            Ideal consensus test setup will have 3 nodes two in consensus and I will not provide a solution
+            Consensus should still conclude even though I don't provide a solution.
+        '''
+        hlc_timestamp = "1"
+        self.num_of_peers = 2  # Does not include me
+
+        # Add another 2 solutions which are both in consensus
+        self.add_solutions(hlc_timestamp, amount=2)
+
+        # Await the the queue attempting consensus
+        self.process_next()
+
+        # Hard apply was called
+        self.assertTrue(self.hard_apply_block_called)
+        # hlc_timestamp was marked as last_hlc_in_consensus
+        self.assertEqual(self.validation_queue.last_hlc_in_consensus, hlc_timestamp)
+        # All results deleted from validation_results object
+        self.assertIsNone(self.validation_queue.validation_results.get(hlc_timestamp))
+        # Results Added to confirmed_consensus object
+        self.assertIsNotNone(self.validation_queue.confirmed_consensus.get(hlc_timestamp))
+
     def test_process_next_eager_consensus_matches_me(self):
         '''
             Eager consensus test setup will have 4 nodes. Two are in consensus and the other two differ from consensus
@@ -580,7 +625,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another result which matches me
@@ -629,7 +675,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash='1'),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another two results that match each other but not me
@@ -674,7 +721,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another result which does not match me
@@ -706,7 +754,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="2"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add another result which does not match me
@@ -740,7 +789,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
         self.process_next()
         self.assertTrue(self.validation_queue.check_ideal_consensus_possible(hlc_timestamp))
@@ -773,7 +823,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add some nodes with a particular result
@@ -805,7 +856,8 @@ class TestProcessingQueue(TestCase):
         self.validation_queue.append(
             hlc_timestamp=hlc_timestamp,
             block_info=get_new_block(signer=self.wallet.verifying_key, hash="1"),
-            transaction_processed=get_new_tx()
+            transaction_processed=get_new_tx(),
+            node_vk=self.wallet.verifying_key
         )
 
         # Add some nodes with a particular result

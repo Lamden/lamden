@@ -206,6 +206,7 @@ class Node:
             stop_node=self.stop,
             reward_manager=self.reward_manager,
             rollback=self.rollback,
+            check_if_already_has_consensus=self.check_if_already_has_consensus
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -328,8 +329,10 @@ class Node:
 
         if processing_results:
             block_info = self.process_result(processing_results)
-            # send my block result to the rest of the network to prove I'm in consensus
-            asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
+
+            # send my block result to the rest of the network to prove I'm in consensus if I ran this one
+            if processing_results['run_by_me']:
+                asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def process_result(self, processing_results):
         if self.testing:
@@ -343,6 +346,7 @@ class Node:
                     'cache': json.loads(encode(self.driver.cache).encode()),
                     'block': self.current_height,
                     'consensus_block': self.get_consensus_height(),
+                    'processing_results': processing_results,
                     'last_processed_hlc:': self.last_processed_hlc
                 })
             except Exception as err:
@@ -367,7 +371,7 @@ class Node:
         if self.testing:
             try:
                 self.debug_stack.append({
-                    'system_time' :time.time(),
+                    'system_time': time.time(),
                     'method': 'process_result_after' + processing_results["hlc_timestamp"],
                     'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
                     'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
@@ -375,6 +379,7 @@ class Node:
                     'cache': json.loads(encode(self.driver.cache).encode()),
                     'block': self.current_height,
                     'consensus_block': self.get_consensus_height(),
+                    'processing_results': processing_results,
                     'last_processed_hlc:': self.last_processed_hlc
                 })
             except Exception as err:
@@ -394,6 +399,7 @@ class Node:
         # add the hlc_timestamp to the needs validation queue for processing consensus later
         self.validation_queue.append(
             block_info=block_info,
+            node_vk=self.wallet.verifying_key,
             hlc_timestamp=processing_results['hlc_timestamp'],
             transaction_processed=processing_results['transaction_processed']
         )
@@ -799,3 +805,10 @@ class Node:
 
     def get_last_processed_hlc(self):
         return self.last_processed_hlc
+
+    def get_confirmed_consensus(self):
+        return self.validation_queue.get_confirmed_consensus
+
+    def check_if_already_has_consensus(self, hlc_timestamp):
+        return self.validation_queue.confirmed_consensus.get(hlc_timestamp)
+

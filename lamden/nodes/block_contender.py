@@ -64,10 +64,11 @@ class Block_Contender():
 
         # TODO Check to see if this is for a block already in consensus
         # Add solution to this validation list for this tx
-        self.validation_queue.add_solution(
+        self.validation_queue.append(
             hlc_timestamp=tx['hlc_timestamp'],
             node_vk=signer,
-            block_info=msg
+            block_info=msg,
+            transaction_processed=tx
         )
 
     def bc_is_valid(self, message, signer, signature):

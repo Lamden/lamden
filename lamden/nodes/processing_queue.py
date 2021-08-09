@@ -14,7 +14,8 @@ from datetime import datetime
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height, stop_node,
-                 get_current_hash, get_last_processed_hlc,  reward_manager, rollback, testing=False, debug=False):
+                 get_current_hash, get_last_processed_hlc,  reward_manager, rollback, check_if_already_has_consensus,
+                 testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -33,6 +34,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
         self.get_last_processed_hlc = get_last_processed_hlc
+        self.check_if_already_has_consensus = check_if_already_has_consensus
 
         self.stop_node = stop_node
 
@@ -134,18 +136,24 @@ class TxProcessingQueue(ProcessingQueue):
             else:
                 del self.message_received_timestamps[tx['hlc_timestamp']]
 
-                # Process it to get the results
-                # TODO what to do with the tx if any error happen during processing
-                result = self.process_tx(tx=tx)
+                consensus_results = self.check_if_already_has_consensus(hlc_timestamp=tx['hlc_timestamp'])
 
-                # TODO Remove this as it's for testing
-                self.total_processed = self.total_processed + 1
+                if consensus_results:
+                    return consensus_results
+                else:
+                    # Process it to get the results
+                    # TODO what to do with the tx if any error happen during processing
+                    result = self.process_tx(tx=tx)
 
-                return {
-                    'hlc_timestamp': tx['hlc_timestamp'],
-                    'result': result,
-                    'transaction_processed': tx
-                }
+                    # TODO Remove this as it's for testing
+                    self.total_processed = self.total_processed + 1
+
+                    return {
+                        'hlc_timestamp': tx['hlc_timestamp'],
+                        'result': result,
+                        'transaction_processed': tx,
+                        'run_by_me': True
+                    }
         else:
             # else, put it back in queue
             self.queue.append(tx)
