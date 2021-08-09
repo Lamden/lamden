@@ -209,13 +209,10 @@ class ValidationQueue(ProcessingQueue):
                         # ___ Situation 1 ___
                         # There was consensus and I didn't provide a result
                         # This is fine and means the validation queue and network in general is ahead of us
-                        try:
-                            self.store_confirmed_consensus(
-                                hlc_timestamp=next_hlc_timestamp,
-                                consensus_result_info=consensus_result
-                            )
-                        except Exception as err:
-                            print(err)
+                        self.store_confirmed_consensus(
+                            hlc_timestamp=next_hlc_timestamp,
+                            consensus_result_info=consensus_result
+                        )
 
                         self.hard_apply_block(hlc_timestamp=next_hlc_timestamp)
 
@@ -503,9 +500,6 @@ class ValidationQueue(ProcessingQueue):
             results_obj=validation_results,
             consensus_solution=consensus_result_info['solution']
         )
-
-        print({"validation_results": validation_results})
-        print({"consensus_result": consensus_result})
 
         if validation_results is None or consensus_result is None:
             self.log.error("validation_results or correct_result SHOULD NOT BE NONE!")
