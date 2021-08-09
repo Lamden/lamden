@@ -326,6 +326,7 @@ class Node:
 
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
+        print({'processing_results':processing_results})
 
         if processing_results:
             block_info = self.process_result(processing_results)
@@ -358,9 +359,15 @@ class Node:
         # ___ Change DB and State ___
         # 1) Needs to create the new block with our result
         if processing_results['run_by_me']:
-            block_info = self.create_new_block_from_result(processing_results['result'])
+            try:
+                block_info = self.create_new_block_from_result(processing_results['result'])
+                print({'processing_results_result': processing_results['result'] })
+            except Exception:
+                self.stop()
         else:
             block_info = processing_results['result']
+
+
 
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)

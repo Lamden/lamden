@@ -232,8 +232,11 @@ class BlockContender:
     def add_sbcs(self, sbcs):
         for sbc in sbcs:
             # If it's out of range, ignore
-            if sbc['subblock'] > self.total_subblocks - 1:
-                continue
+            try:
+                if sbc['subblock'] > self.total_subblocks - 1:
+                    continue
+            except Exception as err:
+                print({'sbc': sbc})
 
             if sbc['signer'] in self.received[sbc['subblock']]:
                 continue
