@@ -250,9 +250,9 @@ def get_latest_block_height(driver: ContractDriver):
 
 
 def set_latest_block_height(h, driver: ContractDriver):
-    log.info(f'set_latest_block_height {h}')
+    #log.info(f'set_latest_block_height {h}')
     driver.set(BLOCK_NUM_HEIGHT, h)
-
+    '''
     log.info('Driver')
     log.info(driver.driver)
     log.info('Cache')
@@ -261,6 +261,7 @@ def set_latest_block_height(h, driver: ContractDriver):
     log.info(driver.pending_writes)
     log.info('Deltas')
     log.info(driver.pending_deltas)
+    '''
 
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):

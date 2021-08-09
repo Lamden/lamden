@@ -598,7 +598,7 @@ class Node:
         self.log.debug(f"Block Height Before: {self.current_height}")
         # print(f"Block Height Before: {self.current_height}")
         # print(f"Block Height Before: {self.current_height}")
-        self.log.debug(encode(self.driver.pending_deltas))
+        # self.log.debug(encode(self.driver.pending_deltas))
 
         # print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
 
