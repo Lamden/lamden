@@ -287,3 +287,4 @@ class TestProcessingQueue(TestCase):
 
         self.assertTrue(self.rollback_was_called)
 
+

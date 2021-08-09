@@ -536,6 +536,45 @@ class Node:
             }))
 
 ### ROLLBACK CODE
+    async def rollback(self):
+        if self.testing:
+            self.debug_stack.sort(key=lambda x: x['system_time'])
+            print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
+
+        # Stop the processing queue and await it to be done processing its last item
+        self.main_processing_queue.stop()
+        self.validation_queue.stop()
+
+        await self.main_processing_queue.stopping()
+        await self.validation_queue.stopping()
+
+        rollback_info = self.add_rollback_info()
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'node_info',
+                'file': 'base',
+                'event': 'rollback',
+                'rollback_info': rollback_info,
+                'amount_of_rollbacks': len(self.rollbacks),
+                'system_time': time.time()
+            }))
+
+        # sleep 2 seconds to see if a previous HLC tx comes in
+        asyncio.sleep(2)
+
+        self.rollback_drivers()
+        self.add_processed_transactions_back_into_main_queue()
+        self.reset_last_hlc_processed()
+        self.validation_queue.clear_my_solutions()
+
+        if self.testing:
+            self.validation_queue.detected_rollback = False
+            self.main_processing_queue.detected_rollback = False
+
+        # Restart the processing and validation queues
+        self.main_processing_queue.start()
+        self.validation_queue.start()
+
     def add_rollback_info(self):
         called_from = "unknown"
         if self.main_processing_queue.detected_rollback:
@@ -575,44 +614,6 @@ class Node:
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
-    async def rollback(self):
-        if self.testing:
-            self.debug_stack.sort(key=lambda x: x['system_time'])
-            print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
-
-        # Stop the processing queue and await it to be done processing its last item
-        self.main_processing_queue.stop()
-        self.validation_queue.stop()
-
-        await self.main_processing_queue.stopping()
-        await self.validation_queue.stopping()
-
-        rollback_info = self.add_rollback_info()
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'node_info',
-                'file': 'base',
-                'event': 'rollback',
-                'rollback_info': rollback_info,
-                'amount_of_rollbacks': len(self.rollbacks),
-                'system_time': time.time()
-            }))
-
-        # sleep 2 seconds to see if a previous HLC tx comes in
-        asyncio.sleep(2)
-
-        self.rollback_drivers()
-        self.add_processed_transactions_back_into_main_queue()
-        self.validation_queue.clear_my_solutions()
-
-        if self.testing:
-            self.validation_queue.detected_rollback = False
-            self.main_processing_queue.detected_rollback = False
-
-        # Restart the processing and validation queues
-        self.main_processing_queue.start()
-        self.validation_queue.start()
-
     def add_processed_transactions_back_into_main_queue(self):
         # print({"validation_queue_items": self.validation_queue.validation_results.items()})
         tx_added_back = 0
@@ -632,6 +633,10 @@ class Node:
 
             except KeyError:
                 pass
+
+    def reset_last_hlc_processed(self):
+        self.main_processing_queue.sort_queue()
+        self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
 
 ###
 

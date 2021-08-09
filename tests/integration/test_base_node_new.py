@@ -155,6 +155,8 @@ class TestNode(TestCase):
             wallet=mn_wallet,
             constitution=constitution,
             driver=driver,
+            testing=True,
+            metering=False,
             delay={
                 'base': 0.01,
                 'self': 0.01
@@ -833,3 +835,62 @@ class TestNode(TestCase):
         self.assertTrue(node.main_processing_queue.running)
         self.assertTrue(node.validation_queue.running)
 
+    def test_rollback_on_process_earlier_hlc_and_continues_processing_forwards(self):
+        # create 9 transactions
+        # Submit tx 5 and let it process then submit 1-4 and 6-9.
+        # The node should detect the first tx (1) is earlier than 5 and rollback to process it. Then it should process
+        # all the transactions again from 1 to 9
+
+        # Create a node and start it
+        node = self.create_a_node()
+        self.start_node(node)
+
+        # Stop validation queue as as we don't need consensus for this test.
+        node.validation_queue.stop()
+
+        # Set current last processed HLC to 0
+        node.last_processed_hlc = '0'
+        node.validation_queue.last_hlc_in_consensus = '0'
+
+        # Create all mock transactions for the test with HCLs from 0 to 9
+        txs = []
+        jeff_wallet = Wallet()
+        for i in range(9):
+            tx_info = node.make_tx_message(tx=get_new_tx(
+                to=jeff_wallet.verifying_key,
+                amount=100.1,
+                sender=self.stu_wallet.verifying_key
+            ))
+            # Overwrite timestamp with simple int for readability
+            tx_info['hlc_timestamp'] = str(i+1)
+            txs.append(tx_info)
+
+        # Submit HLC 5 and await the node processing it
+        node.main_processing_queue.append(tx=txs.pop(4))
+        self.async_sleep(0.3)
+
+        # Assert hlc 5 is the last transaction processed
+        self.assertEqual('5', node.last_processed_hlc)
+
+        # Now submit the rest of the transactions and validate they are all processed correctly by looking at state
+
+        for tx in txs:
+            print(tx['hlc_timestamp'])
+            node.main_processing_queue.append(tx=tx)
+
+        # await processing of all transactions
+        self.async_sleep(2)
+
+        # Assert hlc 10 is the last transaction processed
+        self.assertEqual('9', node.last_processed_hlc)
+
+        # Asset the balances are correct
+        jeff_balance = node.executor.driver.get_var(
+            contract='currency',
+            variable='balances',
+            arguments=[jeff_wallet.verifying_key],
+            mark=False
+        )
+        jeff_balance = json.loads(encoder.encode(jeff_balance))
+        print({'jeff_balance': jeff_balance})
+        self.assertEqual("900.9", jeff_balance['__fixed__'])
