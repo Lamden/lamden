@@ -265,7 +265,10 @@ class ValidationQueue(ProcessingQueue):
                 'has_consensus': False
             }
 
-        my_solution = solutions[self.wallet.verifying_key]['hash']
+        try:
+            my_solution = solutions[self.wallet.verifying_key]['hash']
+        except KeyError:
+            my_solution = None
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
 
