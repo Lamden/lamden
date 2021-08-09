@@ -368,7 +368,7 @@ class Node:
         else:
             block_info = processing_results['result']
 
-
+        self.log.debug({'block_info': block_info})
 
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)
