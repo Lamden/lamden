@@ -111,18 +111,6 @@ class TxProcessingQueue(ProcessingQueue):
                         'system_time': time.time()
                     }))
 
-                print(json.dumps({
-                        'type': 'tx_lifecycle',
-                        'file': 'processing_queue',
-                        'event': 'out_of_sync_hlc',
-                        'hlc_timestamp': self.currently_processing_hlc,
-                        'last_processed_hlc': self.get_last_processed_hlc(),
-                        'system_time': time.time()
-                    }))
-
-                print(self.queue)
-                print(self.message_received_timestamps)
-
                 self.stop()
                 self.currently_processing = False
 
