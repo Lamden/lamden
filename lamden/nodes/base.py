@@ -326,7 +326,6 @@ class Node:
 
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
-        print({'processing_results':processing_results})
 
         if processing_results:
             block_info = self.process_result(processing_results)
@@ -362,7 +361,8 @@ class Node:
             try:
                 block_info = self.create_new_block_from_result(processing_results['result'])
                 print({'processing_results_result': processing_results['result'] })
-            except Exception:
+            except Exception as err:
+                print(err)
                 self.stop()
         else:
             block_info = processing_results['result']
