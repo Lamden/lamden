@@ -1,4 +1,6 @@
 '''
+    !!!! THESE TESTS ARE LONG AND COULD EACH TAKE A FEW MINUTES TO COMPLETE !!!!
+
     THROUGHPUT Test send all transactions AT ONCE and then wait for all nodes to process them and come to consensus
     After all node are in sync then the test are run to validate state etc.
 
@@ -262,7 +264,7 @@ class TestMultiNode(TestCase):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
         delay = {'base': 0.1, 'self': 0.5}
-        n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+        n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
         self.await_async_process(n.start)
 
         for node in n.all_nodes():
@@ -274,7 +276,7 @@ class TestMultiNode(TestCase):
         receiver_wallets = [Wallet() for i in range(num_of_receivers)]
 
         # Send a bunch of transactions
-        amount_of_transactions = 100
+        amount_of_transactions = 1
 
         for i in range(amount_of_transactions):
             tx_info = json.loads(n.send_random_currency_transaction(

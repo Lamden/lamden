@@ -27,6 +27,8 @@ NEW_BLOCK_SERVICE = 'new_blocks'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
+DB_CURRENT_BLOCK_HEIGHT = '_current_block_height'
+DB_CURRENT_BLOCK_HASH = '_current_block_hash'
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
 
@@ -188,9 +190,6 @@ class Node:
         self.new_block_processor = NewBlock(driver=self.driver)
         # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
-
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             testing=self.testing,
             debug=self.debug,
@@ -203,6 +202,7 @@ class Node:
             get_current_hash=self.get_current_hash,
             get_current_height=self.get_current_height,
             get_last_processed_hlc=self.get_last_processed_hlc,
+            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             stop_node=self.stop,
             reward_manager=self.reward_manager,
             rollback=self.rollback,
@@ -214,7 +214,9 @@ class Node:
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
+            process_block=self.process_block,
             hard_apply_block=self.hard_apply_block,
+            is_next_block=self.is_next_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             rollback=self.rollback,
             wallet=self.wallet,
@@ -328,11 +330,12 @@ class Node:
         processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
-            block_info = self.process_result(processing_results)
+            self.process_and_send_results(processing_results=processing_results)
 
-            # send my block result to the rest of the network to prove I'm in consensus if I ran this one
-            if processing_results['run_by_me']:
-                asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
+    def process_and_send_results(self, processing_results):
+        block_info = self.process_result(processing_results=processing_results)
+        self.process_block(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
+        self.send_solution_to_network(block_info=block_info, processing_results=processing_results)
 
     def process_result(self, processing_results):
         if self.testing:
@@ -344,60 +347,64 @@ class Node:
                     'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
                     'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
                     'cache': json.loads(encode(self.driver.cache).encode()),
-                    'block': self.current_height,
+                    'block': self.get.current_height(),
                     'consensus_block': self.get_consensus_height(),
                     'processing_results': processing_results,
                     'last_processed_hlc:': self.last_processed_hlc
                 })
             except Exception as err:
-                print(err)
+                pass
+                # print(err)
 
         # print({"processing_results":processing_results})
         self.last_processed_hlc = processing_results['hlc_timestamp']
 
         # ___ Change DB and State ___
         # 1) Needs to create the new block with our result
-        if processing_results['run_by_me']:
-            block_info = self.create_new_block_from_result(processing_results['result'])
-        else:
-            block_info = processing_results['result']
+        block_info = self.create_new_block_from_result(processing_results['result'])
 
+
+        return block_info
+
+    def process_block(self, block_info, hlc_timestamp):
         # 2) Store block, create rewards and increment block number
         self.update_block_db(block_info)
 
         # 3) Soft Apply current state and create change log
-        self.soft_apply_current_state(hlc_timestamp=processing_results['hlc_timestamp'])
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
         if self.testing:
-            self.debug_processed_hlcs.append(processing_results['hlc_timestamp'])
+            self.debug_processed_hlcs.append(hlc_timestamp)
 
         if self.testing:
             try:
                 self.debug_stack.append({
                     'system_time': time.time(),
-                    'method': 'process_result_after' + processing_results["hlc_timestamp"],
+                    'method': 'process_result_after' + hlc_timestamp,
                     'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
                     'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
                     'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
                     'cache': json.loads(encode(self.driver.cache).encode()),
-                    'block': self.current_height,
+                    'block': self.get_current_height(),
                     'consensus_block': self.get_consensus_height(),
-                    'processing_results': processing_results,
+                    'processing_results': hlc_timestamp,
                     'last_processed_hlc:': self.last_processed_hlc
                 })
             except Exception as err:
-                print(err)
+                pass
+                # print(err)
 
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
                 'file': 'base',
                 'event': 'processed_from_main_queue',
-                'hlc_timestamp': processing_results['hlc_timestamp'],
+                'hlc_timestamp': hlc_timestamp,
                 'my_solution': block_info['hash'],
                 'system_time': time.time()
             }))
 
+    def send_solution_to_network(self, block_info, processing_results):
         # ___ Validate and Send Block info __
         # add the hlc_timestamp to the needs validation queue for processing consensus later
         self.validation_queue.append(
@@ -406,8 +413,7 @@ class Node:
             hlc_timestamp=processing_results['hlc_timestamp'],
             transaction_processed=processing_results['transaction_processed']
         )
-
-        return block_info
+        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
@@ -437,7 +443,7 @@ class Node:
 
         # self.log.info(f'Current Height: {self.current_height}')
 
-        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
+        block = block_from_subblocks(subblocks, self.get_current_hash(), self.get_current_height() + 1)
 
         self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
 
@@ -479,10 +485,7 @@ class Node:
         # print(f'update_state_with_block {block["number"]}')
 
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
-        self.current_hash = block['hash']
-
         storage.set_latest_block_height(block['number'], driver=self.driver)
-        self.current_height = block['number']
 
         # print({'block':{'base': self.current_hash, 'block': block['hash']}})
         # print({'hashg': {'base': self.current_hash, 'block': block['hash']}})
@@ -493,7 +496,7 @@ class Node:
         #     nonces=self.nonces
         # )
 
-        self.new_block_processor.clean(self.current_height)
+        self.new_block_processor.clean(self.get_current_height())
 
     def soft_apply_current_state(self, hlc_timestamp):
         '''
@@ -604,7 +607,7 @@ class Node:
 
     def rollback_drivers(self):
         # Roll back the current state to the point of the last block consensus
-        self.log.debug(f"Block Height Before: {self.current_height}")
+        self.log.debug(f"Block Height Before: {self.get_current_height()}")
         # print(f"Block Height Before: {self.current_height}")
         # print(f"Block Height Before: {self.current_height}")
         # self.log.debug(encode(self.driver.pending_deltas))
@@ -614,10 +617,10 @@ class Node:
         self.driver.rollback()
 
         # Reset node to the rolled back height and hash
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
+        # self.current_height = storage.get_latest_block_height(self.driver)
+        # self.current_hash = storage.get_latest_block_hash(self.driver)
 
-        self.log.debug(f"Block Height After: {self.current_height}")
+        self.log.debug(f"Block Height After: {self.get_current_height()}")
         # print(f"Block Height After: {self.current_height}")
         # print(f"Block Height After: {self.current_height}")
 
@@ -728,6 +731,61 @@ class Node:
             root=self.genesis_path
         )
 
+    def should_process(self, block):
+        try:
+            pass
+            # self.log.info(f'Processing block #{block.get("number")}')
+        except:
+            self.log.error('Malformed block :(')
+            return False
+        # Test if block failed immediately
+        if block == {'response': 'ok'}:
+            return False
+
+        if block['hash'] == 'f' * 64:
+            self.log.error('Failed Block! Not storing.')
+            return False
+
+        return True
+
+    def update_cache_state(self, results):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+
+        storage.update_state_with_transaction(
+            tx=results['transactions'][0],
+            driver=self.driver,
+            nonces=self.nonces
+        )
+
+    def get_consensus_height(self):
+        return self.driver.driver.get(DB_CURRENT_BLOCK_HEIGHT)
+
+    def get_consensus_hash(self):
+        hash =  self.driver.driver.get(DB_CURRENT_BLOCK_HASH)
+        if hash is None:
+            return 64 * f'0'
+        return hash
+
+    def get_current_height(self):
+        return storage.get_latest_block_height(self.driver)
+
+    def get_current_hash(self):
+        return storage.get_latest_block_hash(self.driver)
+
+    def get_last_processed_hlc(self):
+        return self.last_processed_hlc
+
+    def get_last_hlc_in_consensus(self):
+        return self.validation_queue.last_hlc_in_consensus
+
+    def is_next_block(self, previous_hash):
+        return previous_hash == self.get_consensus_hash()
+
+    def check_if_already_has_consensus(self, hlc_timestamp):
+        return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
+
+    '''
     async def catchup(self, mn_seed, mn_vk):
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
@@ -766,52 +824,4 @@ class Node:
         while len(self.new_block_processor.q) > 0:
             block = self.new_block_processor.q.pop(0)
             self.process_new_block(block)
-
-    def should_process(self, block):
-        try:
-            pass
-            # self.log.info(f'Processing block #{block.get("number")}')
-        except:
-            self.log.error('Malformed block :(')
-            return False
-        # Test if block failed immediately
-        if block == {'response': 'ok'}:
-            return False
-
-        if block['hash'] == 'f' * 64:
-            self.log.error('Failed Block! Not storing.')
-            return False
-
-        return True
-
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-    def get_consensus_height(self):
-        return storage.get_latest_block_height(self.driver)
-
-    def get_consensus_hash(self):
-        return storage.get_latest_block_hash(self.driver)
-
-    def get_current_height(self):
-        return self.current_height
-
-    def get_current_hash(self):
-        return self.current_hash
-
-    def get_last_processed_hlc(self):
-        return self.last_processed_hlc
-
-    def get_confirmed_consensus(self):
-        return self.validation_queue.get_confirmed_consensus
-
-    def check_if_already_has_consensus(self, hlc_timestamp):
-        return self.validation_queue.confirmed_consensus.get(hlc_timestamp)
-
+    '''

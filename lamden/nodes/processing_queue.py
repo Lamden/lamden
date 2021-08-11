@@ -15,7 +15,7 @@ from datetime import datetime
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height, stop_node,
                  get_current_hash, get_last_processed_hlc,  reward_manager, rollback, check_if_already_has_consensus,
-                 testing=False, debug=False):
+                 get_last_hlc_in_consensus, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -34,6 +34,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.get_current_height = get_current_height
         self.get_current_hash = get_current_hash
         self.get_last_processed_hlc = get_last_processed_hlc
+        self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
 
         self.stop_node = stop_node
@@ -82,6 +83,13 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.currently_processing_hlc = tx['hlc_timestamp']
 
+        # if the last HLC in consensus was greater than this one then don't process it.
+        # Returning here will basically ignore the tx
+        if self.currently_processing_hlc < self.get_last_hlc_in_consensus():
+            print({'currently_processing_hlc': self.currently_processing_hlc,
+                   'get_last_hlc_in_consensus': self.get_last_hlc_in_consensus()})
+            return
+
         # get the amount of time the transaction has been in the queue
         time_in_queue = time.time() - self.message_received_timestamps[tx['hlc_timestamp']]
 
@@ -102,58 +110,26 @@ class TxProcessingQueue(ProcessingQueue):
                     'system_time': time.time()
                 }))
 
-            if (tx['hlc_timestamp'] < self.get_last_processed_hlc()):
-                if self.debug:
-                    self.log.debug(json.dumps({
-                        'type': 'tx_lifecycle',
-                        'file': 'processing_queue',
-                        'event': 'out_of_sync_hlc',
-                        'hlc_timestamp': self.currently_processing_hlc,
-                        'last_processed_hlc': self.get_last_processed_hlc(),
-                        'system_time': time.time()
-                    }))
-
-                self.stop()
-                self.currently_processing = False
-
-                # add tx back to processing queue
-                if self.debug:
-                    self.log.debug(json.dumps({
-                        'type': 'tx_lifecycle',
-                        'file': 'processing_queue',
-                        'event': 'append_new',
-                        'hlc_timestamp': tx['hlc_timestamp'],
-                        'system_time': time.time()
-                    }))
-                self.queue.append(tx)
-
-                if self.debug or self.testing:
-                    self.sort_queue()
-                    self.detected_rollback = True
-
-                # rollback state to last consensus
-                asyncio.ensure_future(self.rollback())
+            get_last_processed_hlc = self.get_last_processed_hlc()
+            if (self.currently_processing_hlc < self.get_last_processed_hlc()):
+                self.node_rollback(tx=tx)
             else:
                 del self.message_received_timestamps[tx['hlc_timestamp']]
 
-                consensus_results = self.check_if_already_has_consensus(hlc_timestamp=tx['hlc_timestamp'])
+                # Process it to get the results
+                # TODO what to do with the tx if any error happen during processing
+                result = self.process_tx(tx=tx)
 
-                if consensus_results:
-                    return consensus_results
-                else:
-                    # Process it to get the results
-                    # TODO what to do with the tx if any error happen during processing
-                    result = self.process_tx(tx=tx)
+                # TODO Remove this as it's for testing
+                self.total_processed = self.total_processed + 1
 
-                    # TODO Remove this as it's for testing
-                    self.total_processed = self.total_processed + 1
-
-                    return {
-                        'hlc_timestamp': tx['hlc_timestamp'],
-                        'result': result,
-                        'transaction_processed': tx,
-                        'run_by_me': True
-                    }
+                hlc_timestamp = self.currently_processing_hlc
+                self.currently_processing_hlc = ""
+                return {
+                    'hlc_timestamp': hlc_timestamp,
+                    'result': result,
+                    'transaction_processed': tx
+                }
         else:
             # else, put it back in queue
             self.queue.append(tx)
@@ -304,3 +280,35 @@ class TxProcessingQueue(ProcessingQueue):
         return Datetime._from_datetime(
             datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
         )
+
+    def node_rollback(self, tx):
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'processing_queue',
+                'event': 'out_of_sync_hlc',
+                'hlc_timestamp': self.currently_processing_hlc,
+                'last_processed_hlc': self.get_last_processed_hlc(),
+                'system_time': time.time()
+            }))
+
+        self.stop()
+        self.currently_processing = False
+
+        # add tx back to processing queue
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'processing_queue',
+                'event': 'append_new',
+                'hlc_timestamp': tx['hlc_timestamp'],
+                'system_time': time.time()
+            }))
+        self.queue.append(tx)
+
+        if self.debug or self.testing:
+            self.sort_queue()
+            self.detected_rollback = True
+
+        # rollback state to last consensus
+        asyncio.ensure_future(self.rollback())

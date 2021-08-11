@@ -53,6 +53,7 @@ class TestProcessingQueue(TestCase):
 
         self.hlc_clock = HLC_Clock()
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.last_hlc_in_consensus = '0'
 
         self.processing_delay_secs = {
             'base': 0.1,
@@ -61,6 +62,7 @@ class TestProcessingQueue(TestCase):
 
         self.running = True
         self.rollback_was_called = False
+        self.catchup_was_called = False
 
         self.current_height = lambda: storage.get_latest_block_height(self.driver)
         self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
@@ -78,6 +80,7 @@ class TestProcessingQueue(TestCase):
             reward_manager=self.reward_manager,
             rollback=self.rollback_called,
             get_last_processed_hlc=self.get_last_processed_hlc,
+            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus
         )
 
@@ -92,11 +95,18 @@ class TestProcessingQueue(TestCase):
         print("ROLLBACK CALLED")
         self.rollback_was_called = True
 
+    def catchup_called(self):
+        print("CATCHUP CALLED")
+        self.catchup_was_called = True
+
     def get_last_processed_hlc(self):
         return self.last_processed_hlc
 
+    def get_last_hlc_in_consensus(self):
+        return self.last_hlc_in_consensus
+
     def check_if_already_has_consensus(self, hlc_timestamp):
-        return None
+        return None, None
 
     def sync(self):
         sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
@@ -204,23 +214,21 @@ class TestProcessingQueue(TestCase):
         loop = asyncio.get_event_loop()
         processing_results = loop.run_until_complete(tasks)[0]
 
-        hlc_timestamp, result, transaction_processed, run_by_me = itemgetter(
-            'hlc_timestamp', 'result', 'transaction_processed', 'run_by_me'
+        hlc_timestamp, result, transaction_processed = itemgetter(
+            'hlc_timestamp', 'result', 'transaction_processed'
         )(processing_results)
 
         self.assertIsNotNone(hlc_timestamp)
         self.assertIsNotNone(result)
         self.assertIsNotNone(transaction_processed)
-        self.assertTrue(run_by_me)
 
-    def test_process_next_return_value_tx_already_in_consensus(self):
+    def test_process_next_return_value_tx_already_in_consensus_in_sync(self):
         def mock_check_if_already_has_consensus(hlc_timestamp):
             return {
                 'hlc_timestamp': hlc_timestamp,
                 'result': True,
-                'transaction_processed': True,
-                'run_by_me': False
-            }
+                'transaction_processed': True
+            }, False
 
         self.main_processing_queue.check_if_already_has_consensus = mock_check_if_already_has_consensus
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
@@ -234,14 +242,13 @@ class TestProcessingQueue(TestCase):
         loop = asyncio.get_event_loop()
         processing_results = loop.run_until_complete(tasks)[0]
 
-        hlc_timestamp, result, transaction_processed, run_by_me = itemgetter(
-            'hlc_timestamp', 'result', 'transaction_processed', 'run_by_me'
+        hlc_timestamp, result, transaction_processed = itemgetter(
+            'hlc_timestamp', 'result', 'transaction_processed'
         )(processing_results)
 
         self.assertIsNotNone(hlc_timestamp)
         self.assertIsNotNone(result)
         self.assertIsNotNone(transaction_processed)
-        self.assertFalse(run_by_me)
 
     def test_process_next_returns_none_if_len_0(self):
         self.main_processing_queue.flush()
@@ -257,6 +264,25 @@ class TestProcessingQueue(TestCase):
 
         # assert the first HLC entered was the one that was processed
         self.assertIsNone(res[0])
+
+    def test_process_next_returns_none_hlc_already_in_consensus(self):
+        self.last_hlc_in_consensus = '2'
+
+        tx= self.make_tx_message(get_new_tx())
+        tx['hlc_timestamp'] = '1'
+
+        self.main_processing_queue.append(tx=tx)
+
+        hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
+
+        # Await the queue stopping and then mark the queue as not processing after X seconds
+        tasks = asyncio.gather(
+            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
+        )
+        loop = asyncio.get_event_loop()
+        processing_results = loop.run_until_complete(tasks)[0]
+
+        self.assertIsNone(processing_results)
 
     def test_process_next_returns_none_if_less_than_delay(self):
         # load a transactions into the queue

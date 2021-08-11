@@ -1,4 +1,6 @@
 '''
+    !!!! THESE TESTS ARE LONG AND COULD EACH TAKE A FEW MINUTES TO COMPLETE !!!!
+
     STEP BY STEP TESTS
 
     These tests send transactions 1 at a time, waiting for each node to process and meet consensus before sending
@@ -63,14 +65,14 @@ class TestMultiNode(TestCase):
         node.tx_queue.append(tx)
 
     def validate_block_height_in_all_nodes(self, nodes, valid_height):
-        all_heights = [node.obj.get_current_height() for node in nodes]
+        all_heights = [node.obj.get_consensus_height() for node in nodes]
         print({'valid_height': valid_height})
         print({'all_heights': all_heights})
         print(all([valid_height == height for height in all_heights]))
         self.assertTrue(all([valid_height == height for height in all_heights]))
 
     def validate_block_hash_in_all_nodes(self, nodes):
-        all_hashes = [node.obj.get_current_hash() for node in nodes]
+        all_hashes = [node.obj.get_consensus_hash() for node in nodes]
         print({'all_hashes': all_hashes})
         print(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
         self.assertTrue(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
@@ -81,7 +83,13 @@ class TestMultiNode(TestCase):
         # network_2
         test_start = time.time()
 
-        network_1 = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        network_1 = mocks_new.MockNetwork(
+            num_of_delegates=6,
+            num_of_masternodes=3,
+            ctx=self.ctx,
+            metering=False,
+            delay={'base': 0.1, 'self': 0.1}
+        )
         self.await_async_process(network_1.start)
 
         for node in network_1.all_nodes():
@@ -91,7 +99,7 @@ class TestMultiNode(TestCase):
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 5
+        amount_of_transactions = 20
         receiver_wallet = Wallet()
 
         # Log the amounts of each transaction so we can verify state later
@@ -117,15 +125,15 @@ class TestMultiNode(TestCase):
             mocks_new.await_all_nodes_done_processing(
                 nodes=network_1.all_nodes(),
                 block_height=i+1,
-                timeout=25
+                timeout=0
             )
             end_sending_transaction = time.time()
-            print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i}.")
-
-            self.async_sleep(2)
+            print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
             self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
             self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+
+        print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
 
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
@@ -158,7 +166,13 @@ class TestMultiNode(TestCase):
         # network_2
         test_start = time.time()
 
-        network_1 = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=2, ctx=self.ctx, metering=False)
+        network_1 = mocks_new.MockNetwork(
+            num_of_delegates=6,
+            num_of_masternodes=3,
+            ctx=self.ctx,
+            metering=False,
+            delay={'base': 0.1, 'self': 0.1}
+        )
         self.await_async_process(network_1.start)
 
         for node in network_1.all_nodes():
@@ -168,7 +182,7 @@ class TestMultiNode(TestCase):
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 20
+        amount_of_transactions = 10
 
         # Log the amounts of each transaction so we can verify state later
         test_tracker = {}
@@ -187,15 +201,15 @@ class TestMultiNode(TestCase):
             mocks_new.await_all_nodes_done_processing(
                 nodes=network_1.all_nodes(),
                 block_height=i+1,
-                timeout=15
+                timeout=0
             )
             end_sending_transaction = time.time()
-            print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i}.")
-
-            self.async_sleep(2)
+            print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
             self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
             self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+
+        print(f"Took {time.time() - test_start_sending_transactions} seconds to process ALL transactions.")
 
         '''
         # All state values reflect the result of the processed transactions
