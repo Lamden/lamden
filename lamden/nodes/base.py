@@ -780,6 +780,10 @@ class Node:
         return self.validation_queue.last_hlc_in_consensus
 
     def is_next_block(self, previous_hash):
+        self.log.debug(
+            {'current_hash': self.get_consensus_hash(),
+             'previous_hash': previous_hash
+             })
         return previous_hash == self.get_consensus_hash()
 
     def check_if_already_has_consensus(self, hlc_timestamp):
