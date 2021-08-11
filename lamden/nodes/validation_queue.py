@@ -154,7 +154,7 @@ class ValidationQueue(ProcessingQueue):
             except Exception as err:
                 print(err)
 
-
+            # Check that the previous block from the this solution matches the current block hash
             if self.is_next_block(winning_result['previous']):
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
                 if self.debug:
@@ -211,8 +211,6 @@ class ValidationQueue(ProcessingQueue):
                 return
             else:
                 self.check_for_next_block()
-        else:
-            super().append(hlc_timestamp)
 
     def check_for_next_block(self):
         for hlc_timestamp in self.validation_results:
