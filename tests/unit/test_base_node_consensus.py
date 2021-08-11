@@ -305,12 +305,12 @@ class TestNode(TestCase):
         self.async_sleep(0.1)
 
         # Amount set in cache
-        driver_amount = self.get_amount_from_driver(node.driver, f"currency.balances:{receiver_wallet_1.verifying_key}")
-        self.assertEqual(str(tx_amount), driver_amount)
+        driver_amount = self.get_amount_from_driver(node.driver, f"currency.balances:lets")
+        self.assertEqual("go", driver_amount)
 
         # Amount saved to database
-        db_amount = self.get_amount_from_db(node.driver, f"currency.balances:{receiver_wallet_1.verifying_key}")
-        self.assertEqual(str(tx_amount), db_amount)
+        db_amount = self.get_amount_from_db(node.driver, f"currency.balances:lets")
+        self.assertEqual("go", db_amount)
 
         # Block height is correct
         self.assertEqual(block_info['number'], node.get_current_height())

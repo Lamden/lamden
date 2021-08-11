@@ -474,7 +474,11 @@ class Node:
         return block_info
 
     def process_from_consensus_result(self, block_info, hlc_timestamp):
-        self.blocks.soft_store_block(hlc_timestamp, block_info)
+        state_changes = block_info['subblocks'][0]['transactions'][0]['state']
+
+        for s in state_changes:
+            self.driver.set(s['key'], s['value'])
+
         self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
 
 
