@@ -164,6 +164,7 @@ class ValidationQueue(ProcessingQueue):
                         'event': 'has_consensus',
                         'consensus_info': consensus_result,
                         'hlc_timestamp': hlc_timestamp,
+                        'previous_block_hash': winning_result['previous'],
                         'system_time': time.time()
                     }))
 
