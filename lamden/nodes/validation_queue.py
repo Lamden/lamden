@@ -7,7 +7,7 @@ from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, consensus_percent, get_peers_for_consensus, is_next_block, process_block,
+    def __init__(self, consensus_percent, get_peers_for_consensus, is_next_block, process_from_consensus_result,
                  set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, testing=False, debug=False):
         super().__init__()
 
@@ -23,7 +23,7 @@ class ValidationQueue(ProcessingQueue):
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
-        self.process_block = process_block
+        self.process_from_consensus_result = process_from_consensus_result
         self.is_next_block = is_next_block
         self.rollback = rollback
         self.stop_node = stop_node
@@ -183,7 +183,7 @@ class ValidationQueue(ProcessingQueue):
                         # The block had consensus and I never processed it so process this block so the
                         # pending deltas get added to the driver and then hard apply
                         try:
-                            self.process_block(winning_result)
+                            self.process_from_consensus_result(block_info=winning_result, hlc_timestamp=hlc_timestamp)
                             self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
                         except Exception as err:
                             print(err)
@@ -237,6 +237,7 @@ class ValidationQueue(ProcessingQueue):
 
         # Get the number of current nodes and add yourself
         num_of_peers = len(self.get_peers_for_consensus()) + 1
+
 
         # TODO What should self.consensus_percent be set to?
         # determine the number of matching answers we need to form consensus

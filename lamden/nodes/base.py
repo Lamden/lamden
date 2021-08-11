@@ -214,7 +214,7 @@ class Node:
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            process_block=self.process_block,
+            process_from_consensus_result=self.process_from_consensus_result,
             hard_apply_block=self.hard_apply_block,
             is_next_block=self.is_next_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
@@ -472,6 +472,11 @@ class Node:
             })
         '''
         return block_info
+
+    def process_from_consensus_result(self, block_info, hlc_timestamp):
+        self.blocks.soft_store_block(hlc_timestamp, block_info)
+        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
+
 
     def update_block_db(self, block):
         # if self.testing:
