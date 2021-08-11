@@ -90,12 +90,8 @@ def get_new_block(
                 "stamps_used": 18,
                 "state": [
                   {
-                    "key": "lets",
-                    "value": "go"
-                  },
-                  {
-                    "key": "blue",
-                    "value": "jays"
+                    "key": to or "tester",
+                    "value": amount or "100.5"
                   }
                 ],
                 "status": 0,
@@ -278,16 +274,22 @@ class TestNode(TestCase):
 
         # create a transaction and send it to create a pending delta
         receiver_wallet_1 = Wallet()
+        to = str(receiver_wallet_1.verifying_key)
         tx_amount = 100.5
         tx_message_1 = node.make_tx_message(tx=get_new_tx(
-            to=receiver_wallet_1.verifying_key,
+            to=to,
             amount=tx_amount,
             sender=self.stu_wallet.verifying_key
         ))
         hlc_timestamp_1 = tx_message_1['hlc_timestamp']
 
         # add two solutions from other nodes
-        block_info = get_new_block(tx=tx_message_1, hlc_timestamp=hlc_timestamp_1)
+        block_info = get_new_block(
+            tx=tx_message_1,
+            hlc_timestamp=hlc_timestamp_1,
+            to=to,
+            amount=tx_amount
+        )
 
         node.validation_queue.append(
             block_info=block_info,
@@ -302,15 +304,15 @@ class TestNode(TestCase):
             transaction_processed=tx_message_1
         )
         self.assertEqual(2, len(node.validation_queue))
-        self.async_sleep(0.1)
+        self.async_sleep(0.2)
 
         # Amount set in cache
-        driver_amount = self.get_amount_from_driver(node.driver, f"currency.balances:lets")
-        self.assertEqual("go", driver_amount)
+        driver_amount = self.get_amount_from_driver(node.driver, to)
+        self.assertEqual(str(tx_amount), driver_amount)
 
         # Amount saved to database
-        db_amount = self.get_amount_from_db(node.driver, f"currency.balances:lets")
-        self.assertEqual("go", db_amount)
+        db_amount = self.get_amount_from_db(node.driver,to)
+        self.assertEqual(str(tx_amount), db_amount)
 
         # Block height is correct
         self.assertEqual(block_info['number'], node.get_current_height())
