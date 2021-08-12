@@ -330,7 +330,7 @@ class Node:
         processing_results = await self.main_processing_queue.process_next()
 
         self.log.info("THIS IS THE PROCESSING RESULT!")
-        self.log.debug(json.loads(json.dumps(processing_results)))
+        self.log.debug(json.loads(json.dumps(processing_results['transaction_processed'])))
 
         if processing_results:
             self.process_and_send_results(processing_results=processing_results)
@@ -411,7 +411,7 @@ class Node:
         # ___ Validate and Send Block info __
         # add the hlc_timestamp to the needs validation queue for processing consensus later
         self.log.info("THIS IS THE PROCESSING RESULT AGAIN!")
-        self.log.debug(json.loads(json.dumps(processing_results)))
+        self.log.debug(json.loads(json.dumps(processing_results['transaction_processed'])))
 
         self.validation_queue.append(
             block_info=block_info,
