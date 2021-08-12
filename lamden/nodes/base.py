@@ -645,6 +645,7 @@ class Node:
                 transaction_processed = self.validation_queue.validation_results[hlc_timestamp][
                     'transaction_processed']
                 tx_added_back = tx_added_back + 1
+                self.log.debug(transaction_processed)
                 self.main_processing_queue.append(tx=transaction_processed)
 
                 # print({"transaction_processed": transaction_processed})
