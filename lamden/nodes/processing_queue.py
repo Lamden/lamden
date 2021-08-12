@@ -116,9 +116,14 @@ class TxProcessingQueue(ProcessingQueue):
             else:
                 del self.message_received_timestamps[tx['hlc_timestamp']]
 
+                self.log.info("BEFORE EXECUTE")
+                self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
                 # TODO what to do with the tx if any error happen during processing
                 result = self.process_tx(tx=tx)
+                self.log.info("AFTER EXECUTE")
+                self.log.debug(json.loads(json.dumps(tx)))
+
 
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1

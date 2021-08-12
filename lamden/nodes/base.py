@@ -645,15 +645,18 @@ class Node:
                 transaction_processed = self.validation_queue.validation_results[hlc_timestamp][
                     'transaction_processed']
                 tx_added_back = tx_added_back + 1
+                self.log.info("THIS IS THE TX THAT I AM ADDING BACK_____________________________")
                 self.log.debug(transaction_processed)
                 self.main_processing_queue.append(tx=transaction_processed)
+                self.log.info("___________________________________________________________________")
 
                 # print({"transaction_processed": transaction_processed})
                 self.log.info(
                     f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
                 # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
 
-            except KeyError:
+            except KeyError as err:
+                self.log.error(err)
                 pass
 
     def reset_last_hlc_processed(self):
