@@ -329,11 +329,7 @@ class Node:
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
 
-
-
         if processing_results:
-            self.log.info("THIS IS THE PROCESSING RESULT!")
-            self.log.debug(processing_results['transaction_processed'])
             self.process_and_send_results(processing_results=processing_results)
 
     def process_and_send_results(self, processing_results):
@@ -411,8 +407,6 @@ class Node:
     def send_solution_to_network(self, block_info, processing_results):
         # ___ Validate and Send Block info __
         # add the hlc_timestamp to the needs validation queue for processing consensus later
-        self.log.info("THIS IS THE PROCESSING RESULT AGAIN!")
-        self.log.debug(processing_results['transaction_processed'])
 
         self.validation_queue.append(
             block_info=block_info,
@@ -495,22 +489,10 @@ class Node:
         # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
         # self.driver.clear_pending_state()
 
-        # self.log.info('Storing new block.')
         # Commit the state changes and nonces to the database
-        self.log.info(f'update_state_with_block {block["number"]}')
-        # print(f'update_state_with_block {block["number"]}')
 
         storage.set_latest_block_hash(block['hash'], driver=self.driver)
         storage.set_latest_block_height(block['number'], driver=self.driver)
-
-        # print({'block':{'base': self.current_hash, 'block': block['hash']}})
-        # print({'hashg': {'base': self.current_hash, 'block': block['hash']}})
-        #
-        # storage.update_state_with_block(
-        #     block=block,
-        #     driver=self.driver,
-        #     nonces=self.nonces
-        # )
 
         self.new_block_processor.clean(self.get_current_height())
 
@@ -653,15 +635,7 @@ class Node:
                 transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
                 if transaction_processed is not None:
                     tx_added_back = tx_added_back + 1
-                    self.log.info("THIS IS THE TX THAT I AM ADDING BACK_____________________________")
-                    self.log.debug(json.loads(json.dumps(transaction_processed)))
                     self.main_processing_queue.append(tx=transaction_processed)
-                    self.log.info("___________________________________________________________________")
-
-                    # print({"transaction_processed": transaction_processed})
-                    self.log.info(
-                        f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
-                    # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
 
             except KeyError as err:
                 self.log.error(err)
