@@ -150,7 +150,7 @@ class TxProcessingQueue(ProcessingQueue):
                 return processing_delay['base']
         except Exception as err:
             self.log.error(err)
-            self.debug(tx)
+            self.log.debug(tx)
 
     def process_tx(self, tx):
         # TODO better error handling of anything in here
