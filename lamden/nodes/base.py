@@ -329,10 +329,11 @@ class Node:
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
 
-        self.log.info("THIS IS THE PROCESSING RESULT!")
-        self.log.debug(processing_results['transaction_processed'])
+
 
         if processing_results:
+            self.log.info("THIS IS THE PROCESSING RESULT!")
+            self.log.debug(processing_results['transaction_processed'])
             self.process_and_send_results(processing_results=processing_results)
 
     def process_and_send_results(self, processing_results):
