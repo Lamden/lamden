@@ -104,7 +104,7 @@ class Node:
     def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=True, tx_queue=FileQueue()):
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue()):
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
