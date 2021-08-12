@@ -233,6 +233,7 @@ class TxProcessingQueue(ProcessingQueue):
                 'environment': environment,
                 'auto_commit': False
             })
+            self.stop_node()
 
         # Clear pending writes, stu said to comment this out
         # self.executor.driver.pending_writes.clear()
