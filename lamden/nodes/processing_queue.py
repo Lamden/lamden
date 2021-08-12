@@ -90,8 +90,20 @@ class TxProcessingQueue(ProcessingQueue):
                    'get_last_hlc_in_consensus': self.get_last_hlc_in_consensus()})
             return
 
-        # get the amount of time the transaction has been in the queue
-        time_in_queue = time.time() - self.message_received_timestamps[self.currently_processing_hlc]
+        try:
+            received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
+            # get the amount of time the transaction has been in the queue
+            time_in_queue = time.time() - received_timestamp
+        except Exception as err:
+            self.log.error(err)
+            self.log.debug({
+                'time_in_queue': time_in_queue,
+                'received_timestamp': received_timestamp,
+                'message_received_timestamps': self.message_received_timestamps,
+                'currently_processing_hlc': self.currently_processing_hlc
+
+            })
+
 
         # get the amount of time this node should hold the transactions
         time_delay = self.hold_time(tx=tx)
