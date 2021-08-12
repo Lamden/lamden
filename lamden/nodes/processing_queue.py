@@ -204,18 +204,32 @@ class TxProcessingQueue(ProcessingQueue):
             arguments=[transaction['payload']['sender']],
             mark=False
         )
+        try:
 
-        # Execute transaction
-        output = self.executor.execute(
-            sender=transaction['payload']['sender'],
-            contract_name=transaction['payload']['contract'],
-            function_name=transaction['payload']['function'],
-            stamps=transaction['payload']['stamps_supplied'],
-            stamp_cost=stamp_cost,
-            kwargs=convert_dict(transaction['payload']['kwargs']),
-            environment=environment,
-            auto_commit=False
-        )
+            # Execute transaction
+            output = self.executor.execute(
+                sender=transaction['payload']['sender'],
+                contract_name=transaction['payload']['contract'],
+                function_name=transaction['payload']['function'],
+                stamps=transaction['payload']['stamps_supplied'],
+                stamp_cost=stamp_cost,
+                kwargs=convert_dict(transaction['payload']['kwargs']),
+                environment=environment,
+                auto_commit=False
+            )
+        except TypeError as err:
+            self.log.error(err)
+            self.log.debug({
+                'transaction': transaction,
+                'sender': transaction['payload']['sender'],
+                'contract_name': transaction['payload']['contract'],
+                'function_name': transaction['payload']['function'],
+                'stamps': transaction['payload']['stamps_supplied'],
+                'stamp_cost': stamp_cost,
+                'kwargs': convert_dict(transaction['payload']['kwargs']),
+                'environment': environment,
+                'auto_commit': False
+            })
 
         # Clear pending writes, stu said to comment this out
         # self.executor.driver.pending_writes.clear()
