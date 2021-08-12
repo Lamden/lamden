@@ -73,7 +73,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.queue.sort(key=lambda x: x['hlc_timestamp'])
 
     def hlc_already_in_queue(self, hlc_timestamp):
-        for tx in self.queue():
+        for tx in self.queue:
             if tx['hlc_timestamp'] == hlc_timestamp:
                 return True
         return False
