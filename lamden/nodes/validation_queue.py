@@ -36,7 +36,7 @@ class ValidationQueue(ProcessingQueue):
         self.validation_results_history = {}
         self.detected_rollback = False
 
-    def append(self, block_info, node_vk, hlc_timestamp, transaction_processed):
+    def append(self, block_info, node_vk, hlc_timestamp, transaction_processed=None):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
 
         # don't accept this solution if it's for an hlc_timestamp we already had consensus on
@@ -61,7 +61,7 @@ class ValidationQueue(ProcessingQueue):
             # Is just returning an okay move?
             return
 
-        if transaction_processed is not None:
+        if transaction_processed is not None and node_vk == self.wallet.verifying_key:
             self.log.debug(f'Adding transaction_processed for {hlc_timestamp}')
             self.log.debug(transaction_processed)
             self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed

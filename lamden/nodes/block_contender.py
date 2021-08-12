@@ -67,8 +67,7 @@ class Block_Contender():
         self.validation_queue.append(
             hlc_timestamp=tx['hlc_timestamp'],
             node_vk=signer,
-            block_info=msg,
-            transaction_processed=tx
+            block_info=msg
         )
 
     def bc_is_valid(self, message, signer, signature):

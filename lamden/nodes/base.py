@@ -649,18 +649,19 @@ class Node:
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
             try:
-                transaction_processed = self.validation_queue.validation_results[hlc_timestamp][
-                    'transaction_processed']
-                tx_added_back = tx_added_back + 1
-                self.log.info("THIS IS THE TX THAT I AM ADDING BACK_____________________________")
-                self.log.debug(json.loads(json.dumps(transaction_processed)))
-                self.main_processing_queue.append(tx=transaction_processed)
-                self.log.info("___________________________________________________________________")
 
-                # print({"transaction_processed": transaction_processed})
-                self.log.info(
-                    f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
-                # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+                transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
+                if transaction_processed is not None:
+                    tx_added_back = tx_added_back + 1
+                    self.log.info("THIS IS THE TX THAT I AM ADDING BACK_____________________________")
+                    self.log.debug(json.loads(json.dumps(transaction_processed)))
+                    self.main_processing_queue.append(tx=transaction_processed)
+                    self.log.info("___________________________________________________________________")
+
+                    # print({"transaction_processed": transaction_processed})
+                    self.log.info(
+                        f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
+                    # print(f'{hlc_timestamp} was added back to main queue. {tx_added_back} transactions have been added back.')
 
             except KeyError as err:
                 self.log.error(err)
