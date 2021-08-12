@@ -49,7 +49,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.currently_processing_hlc = ""
 
     def append(self, tx):
-        super().append(tx)
+        if not self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp']):
+            super().append(tx)
 
         if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
             if self.debug:
@@ -70,6 +71,12 @@ class TxProcessingQueue(ProcessingQueue):
     def sort_queue(self):
         # sort the main processing queue by hlc_timestamp
         self.queue.sort(key=lambda x: x['hlc_timestamp'])
+
+    def hlc_already_in_queue(self, hlc_timestamp):
+        for tx in self.queue():
+            if tx['hlc_timestamp'] == hlc_timestamp:
+                return True
+        return False
 
     async def process_next(self):
         # return if the queue is empty
