@@ -93,14 +93,8 @@ class TxProcessingQueue(ProcessingQueue):
         # get the amount of time the transaction has been in the queue
         time_in_queue = time.time() - self.message_received_timestamps[self.currently_processing_hlc]
 
-        try:
-            # get the amount of time this node should hold the transactions
-            time_delay = self.hold_time(tx=tx)
-        except Exception as err:
-            print(err)
-            self.log.error(err)
-            self.log.debug(tx)
-            self.stop_node()
+        # get the amount of time this node should hold the transactions
+        time_delay = self.hold_time(tx=tx)
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
@@ -144,7 +138,7 @@ class TxProcessingQueue(ProcessingQueue):
     def hold_time(self, tx):
         processing_delay = self.processing_delay()
 
-        if tx['sender'].get('sender') == self.wallet.verifying_key:
+        if tx.get('sender') == self.wallet.verifying_key:
             return processing_delay['base'] + processing_delay['self']
         else:
             return processing_delay['base']
