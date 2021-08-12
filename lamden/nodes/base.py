@@ -329,6 +329,9 @@ class Node:
     async def process_main_queue(self):
         processing_results = await self.main_processing_queue.process_next()
 
+        self.log.info("THIS IS THE PROCESSING RESULT!")
+        self.log.debug(json.loads(json.dumps(processing_results)))
+
         if processing_results:
             self.process_and_send_results(processing_results=processing_results)
 
@@ -407,6 +410,9 @@ class Node:
     def send_solution_to_network(self, block_info, processing_results):
         # ___ Validate and Send Block info __
         # add the hlc_timestamp to the needs validation queue for processing consensus later
+        self.log.info("THIS IS THE PROCESSING RESULT AGAIN!")
+        self.log.debug(json.loads(json.dumps(processing_results)))
+
         self.validation_queue.append(
             block_info=block_info,
             node_vk=self.wallet.verifying_key,
