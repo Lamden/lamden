@@ -652,7 +652,7 @@ class Node:
                     'transaction_processed']
                 tx_added_back = tx_added_back + 1
                 self.log.info("THIS IS THE TX THAT I AM ADDING BACK_____________________________")
-                self.log.debug(transaction_processed)
+                self.log.debug(json.loads(json.dumps(transaction_processed)))
                 self.main_processing_queue.append(tx=transaction_processed)
                 self.log.info("___________________________________________________________________")
 
