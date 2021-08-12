@@ -143,14 +143,12 @@ class TxProcessingQueue(ProcessingQueue):
 
     def hold_time(self, tx):
         processing_delay = self.processing_delay()
-        try:
-            if tx['sender'] == self.wallet.verifying_key:
-                return processing_delay['base'] + processing_delay['self']
-            else:
-                return processing_delay['base']
-        except Exception as err:
-            self.log.error(err)
-            self.log.debug(tx)
+
+        if tx['sender'].get('sender') == self.wallet.verifying_key:
+            return processing_delay['base'] + processing_delay['self']
+        else:
+            return processing_delay['base']
+
 
     def process_tx(self, tx):
         # TODO better error handling of anything in here
