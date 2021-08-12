@@ -51,6 +51,9 @@ class RewardManager:
     def add_to_balance(vk, amount, client: ContractingClient):
         current_balance = client.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
 
+        if type(current_balance) is dict:
+            current_balance = ContractingDecimal(current_balance.get('__fixed__'))
+
         if current_balance is None:
             current_balance = ContractingDecimal(0)
 
