@@ -389,9 +389,9 @@ class Node:
             }))
 
         try:
-            transaction = block_info['subblocks'][0]['transactions'][0]
-            state_changes = transaction['state']
-            stamps_used = transaction['stamps_used']
+            tx_result = block_info['subblocks'][0]['transactions'][0]
+            state_changes = tx_result['state']
+            stamps_used = tx_result['stamps_used']
 
             for s in state_changes:
                 if type(s['value']) is dict:
@@ -401,12 +401,13 @@ class Node:
 
             self.main_processing_queue.distribute_rewards(
                 total_stamps_to_split=stamps_used,
-                contract_name=transaction['payload']['contract']
+                contract_name=tx_result['transaction']['payload']['contract']
             )
 
             self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
         except Exception as err:
             print(err)
+            self.log.error(err)
 
     def process_result(self, processing_results):
         if self.testing:
