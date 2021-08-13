@@ -98,7 +98,7 @@ class TestProcessingQueue(TestCase):
             wallet=self.wallet,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            process_block=self.process_block,
+            process_from_consensus_result=self.process_from_consensus_result,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             is_next_block=self.is_next_block,
@@ -122,7 +122,7 @@ class TestProcessingQueue(TestCase):
             peers[i] = i
         return peers
 
-    def set_peers_not_in_consensus(self):
+    def set_peers_not_in_consensus(self, ):
         self.set_peers_not_in_consensus = True
 
     async def rollback(self):
@@ -131,7 +131,7 @@ class TestProcessingQueue(TestCase):
     def hard_apply_block(self, hlc_timestamp):
         self.hard_apply_block_called = True
 
-    def process_block(self, block_info):
+    def process_from_consensus_result(self, block_info, hlc_timestamp):
         self.process_block_called = True
 
     def is_next_block(self, previous_block):

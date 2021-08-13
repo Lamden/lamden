@@ -5,7 +5,7 @@ import json
 
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
-from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, merklize
+from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
@@ -185,61 +185,46 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO better error handling of anything in here
         # Get the environment
         environment = self.get_environment(tx=tx)
+        transaction = tx['tx']
+        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
 
         # Execute the transaction
-        tx_result = self.execute_tx(
-            transaction=tx['tx'],
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
-            hlc_timestamp=tx['hlc_timestamp'],
+        output = self.execute_tx(
+            transaction=transaction,
+            stamp_cost=stamp_cost,
             environment=environment
+        )
+
+        # Process the result of the executor
+        tx_result = self.process_tx_output(
+            output=output,
+            hlc_timestamp=tx['hlc_timestamp'],
+            transaction=transaction,
+            stamp_cost=stamp_cost
         )
 
         # Distribute rewards
         self.distribute_rewards(
-            tx_result=tx_result,
+            total_stamps_to_split=output['stamps_used'],
             contract_name=tx_result['transaction']['payload']['contract']
         )
 
-        # Sign our tx results
-        h = hashlib.sha3_256()
-        h.update('{}'.format(encode(tx_result).encode()).encode())
-        tx_hash = h.hexdigest()
+        # Create merkle
+        merkle_tree = self.sign_tx_results(tx_result=tx_result)
 
-        proof = self.wallet.sign(tx_hash)
+        # Return a sub block
+        return self.create_subblock(
+            input_hash=tx['input_hash'],
+            tx_result=tx_result,
+            merkle_tree=merkle_tree
+        )
 
-        merkle_tree = {
-            'leaves': tx_hash,
-            'signature': proof
-        }
-
-        # Create sub block
-        sbc = {
-            'input_hash': tx['input_hash'],
-            'transactions': [tx_result],
-            'merkle_tree': merkle_tree,
-            'signer': self.wallet.verifying_key,
-            'subblock': 0,
-            'previous': self.get_current_hash()
-        }
-
-        sbc = format_dictionary(sbc)
-
-        return sbc
-
-    def execute_tx(self, transaction, stamp_cost, hlc_timestamp, environment: dict = {}):
+    def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
         # TODO better error handling of anything in here
 
-        # Get the currency balance of the tx sender
-        balance = self.executor.driver.get_var(
-            contract='currency',
-            variable='balances',
-            arguments=[transaction['payload']['sender']],
-            mark=False
-        )
         try:
-
             # Execute transaction
-            output = self.executor.execute(
+            return self.executor.execute(
                 sender=transaction['payload']['sender'],
                 contract_name=transaction['payload']['contract'],
                 function_name=transaction['payload']['function'],
@@ -264,6 +249,7 @@ class TxProcessingQueue(ProcessingQueue):
             })
             self.stop_node()
 
+    def process_tx_output(self, output, transaction, stamp_cost, hlc_timestamp):
         # Clear pending writes, stu said to comment this out
         # self.executor.driver.pending_writes.clear()
 
@@ -276,22 +262,13 @@ class TxProcessingQueue(ProcessingQueue):
 
         tx_hash = tx_hash_from_tx(transaction)
 
-        # Only apply the writes if the tx passes
-        if output['status_code'] == 0:
-            writes = [{'key': k, 'value': v} for k, v in output['writes'].items()]
-        else:
-            # Calculate only stamp deductions
-            to_deduct = output['stamps_used'] / stamp_cost
-            new_bal = 0
-            try:
-                new_bal = balance - to_deduct
-            except TypeError:
-                pass
-
-            writes = [{
-                'key': 'currency.balances:{}'.format(transaction['payload']['sender']),
-                'value': new_bal
-            }]
+        writes = self.determine_writes_from_output(
+            status_code=output['status_code'],
+            ouput_writes=output['writes'],
+            stamps_used=output['stamps_used'],
+            stamp_cost=stamp_cost,
+            tx_sender=transaction['payload']['sender']
+        )
 
         if safe_repr(output['result']) != "None":
             print(safe_repr(output['result']))
@@ -310,13 +287,68 @@ class TxProcessingQueue(ProcessingQueue):
 
         return tx_output
 
-    def distribute_rewards(self, tx_result, contract_name):
+    def determine_writes_from_output(self, status_code, ouput_writes, stamps_used, stamp_cost, tx_sender):
+        # Only apply the writes if the tx passes
+        if status_code == 0:
+            writes = [{'key': k, 'value': v} for k, v in ouput_writes.items()]
+        else:
+            sender_balance = self.executor.driver.get_var(
+                contract='currency',
+                variable='balances',
+                arguments=[tx_sender],
+                mark=False
+            )
+
+            # Calculate only stamp deductions
+            to_deduct = stamps_used / stamp_cost
+            new_bal = 0
+            try:
+                new_bal = sender_balance - to_deduct
+            except TypeError:
+                pass
+
+            writes = [{
+                'key': 'currency.balances:{}'.format(tx_sender),
+                'value': new_bal
+            }]
+
+        return writes
+
+    def distribute_rewards(self, total_stamps_to_split, contract_name):
         master_reward, delegate_reward, foundation_reward, developer_mapping = \
-            self.reward_manager.calculate_tx_output_rewards(tx_result, contract_name, self.client)
+            self.reward_manager.calculate_tx_output_rewards(
+                total_stamps_to_split=total_stamps_to_split,
+                contract=contract_name,
+                client=self.client
+            )
 
         self.reward_manager.distribute_rewards(
             master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
         )
+
+    def sign_tx_results(self, tx_result):
+        # Sign our tx results
+        h = hashlib.sha3_256()
+        h.update('{}'.format(encode(tx_result).encode()).encode())
+        tx_hash = h.hexdigest()
+
+        proof = self.wallet.sign(tx_hash)
+
+        return {
+            'leaves': tx_hash,
+            'signature': proof
+        }
+
+    def create_subblock(self, input_hash, tx_result, merkle_tree):
+        return format_dictionary({
+            'input_hash': input_hash,
+            'transactions': [tx_result],
+            'merkle_tree': merkle_tree,
+            'signer': self.wallet.verifying_key,
+            'subblock': 0,
+            'previous': self.get_current_hash()
+        })
+
 
     def get_environment(self, tx):
         now = self.get_now_from_tx(tx=tx)

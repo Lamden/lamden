@@ -264,7 +264,7 @@ class TestMultiNode(TestCase):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
         delay = {'base': 0.1, 'self': 0.5}
-        n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
+        n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
         self.await_async_process(n.start)
 
         for node in n.all_nodes():
@@ -272,11 +272,11 @@ class TestMultiNode(TestCase):
 
         test_tracker = {}
 
-        num_of_receivers = 5
+        num_of_receivers = 6
         receiver_wallets = [Wallet() for i in range(num_of_receivers)]
 
         # Send a bunch of transactions
-        amount_of_transactions = 3
+        amount_of_transactions = 6
 
         for i in range(amount_of_transactions):
             tx_info = json.loads(n.send_random_currency_transaction(
@@ -291,7 +291,7 @@ class TestMultiNode(TestCase):
                 test_tracker[to] = test_tracker[to] + ContractingDecimal(amount)
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=0)
+        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=60)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions

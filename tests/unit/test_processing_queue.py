@@ -313,7 +313,6 @@ class TestProcessingQueue(TestCase):
         result = self.main_processing_queue.execute_tx(
             transaction=tx['tx'],
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
-            hlc_timestamp=tx['hlc_timestamp'],
             environment=environment
         )
 

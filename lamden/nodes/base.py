@@ -8,6 +8,7 @@ import uvloop
 import zmq.asyncio
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, encode
+from contracting.db.encoder import convert_dict
 from contracting.execution.executor import Executor
 from lamden import storage, router, rewards, upgrade, contracts
 from lamden.contracts import sync
@@ -129,6 +130,7 @@ class Node:
         self.debug_stack = []
         self.debug_processed_hlcs = []
         self.debug_processsing_results = []
+        self.debug_blocks_processed = []
         self.debug_timeline = []
 
         self.log.propagate = debug
@@ -338,8 +340,11 @@ class Node:
             self.process_and_send_results(processing_results=processing_results)
 
     def process_and_send_results(self, processing_results):
-        # Return if the validation queue already processed this block
         hlc_timestamp = processing_results['hlc_timestamp']
+
+        # Return if the validation queue already processed this block
+        if hlc_timestamp <= self.get_last_hlc_in_consensus():
+            return
 
         if self.testing:
             self.debug_timeline.append({
@@ -348,9 +353,6 @@ class Node:
                 'last_processed': self.get_last_processed_hlc(),
                 'last_consensus': self.get_last_hlc_in_consensus()
             })
-
-        if hlc_timestamp <= self.get_last_hlc_in_consensus():
-            return
 
         block_info = self.process_result(processing_results=processing_results)
         self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
@@ -360,18 +362,30 @@ class Node:
     def process_from_consensus_result(self, block_info, hlc_timestamp):
         if self.testing:
             self.debug_timeline.append({
-                'method': "process_and_send_results",
+                'method': "process_from_consensus_result",
                 'hlc_timestamp': hlc_timestamp,
                 'last_processed': self.get_last_processed_hlc(),
                 'last_consensus': self.get_last_hlc_in_consensus()
             })
+        try:
+            transaction = block_info['subblocks'][0]['transactions'][0]
+            state_changes = transaction['state']
+            stamps_used = transaction['stamps_used']
 
-        state_changes = block_info['subblocks'][0]['transactions'][0]['state']
+            for s in state_changes:
+                if type(s['value']) is dict:
+                    s['value'] = convert_dict(s['value'])
 
-        for s in state_changes:
-            self.driver.set(s['key'], s['value'])
+                self.driver.set(s['key'], s['value'])
 
-        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
+            self.main_processing_queue.distribute_rewards(
+                total_stamps_to_split=stamps_used,
+                contract_name=transaction['payload']['contract']
+            )
+
+            self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
+        except Exception as err:
+            print(err)
 
     def process_result(self, processing_results):
         if self.testing:
@@ -411,6 +425,7 @@ class Node:
 
         if self.testing:
             self.debug_processed_hlcs.append(hlc_timestamp)
+            self.debug_blocks_processed.append(block_info)
 
         if self.testing:
             try:
@@ -581,9 +596,6 @@ class Node:
         # Stop the processing queue and await it to be done processing its last item
         self.main_processing_queue.stop()
         self.validation_queue.stop()
-
-        # TODO Remove this
-        self.stop()
 
         await self.main_processing_queue.stopping()
         await self.validation_queue.stopping()

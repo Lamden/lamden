@@ -105,8 +105,7 @@ class RewardManager:
         return master_reward, delegate_reward, foundation_reward, developer_mapping
 
     @staticmethod
-    def calculate_tx_output_rewards(tx_output, contract, client: ContractingClient):
-        total_stamps_to_split = tx_output['stamps_used']
+    def calculate_tx_output_rewards(total_stamps_to_split, contract, client: ContractingClient):
 
         master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
             client.get_var(contract='rewards', variable='S', arguments=['value'])
@@ -130,13 +129,13 @@ class RewardManager:
         )
 
         developer_mapping = RewardManager.find_developer_and_reward(
-            tx=tx_output, contract=contract, client=client, developer_ratio=developer_ratio
+            total_stamps_to_split=total_stamps_to_split, contract=contract, client=client, developer_ratio=developer_ratio
         )
 
         return master_reward, delegate_reward, foundation_reward, developer_mapping
 
     @staticmethod
-    def find_developer_and_reward(tx: dict, contract: str, developer_ratio, client: ContractingClient):
+    def find_developer_and_reward(total_stamps_to_split, contract: str, developer_ratio, client: ContractingClient):
         # Find all transactions and the developer of the contract.
         # Count all stamps used by people and multiply it by the developer ratio
         send_map = defaultdict(lambda: 0)
@@ -146,7 +145,7 @@ class RewardManager:
             variable='__developer__'
         )
 
-        send_map[recipient] += (tx['stamps_used'] * developer_ratio)
+        send_map[recipient] += (total_stamps_to_split * developer_ratio)
         send_map[recipient] /= len(send_map)
 
         return send_map
