@@ -637,9 +637,6 @@ class Node:
             }))
         '''
 
-        # sleep 2 seconds to see if a previous HLC tx comes in
-        asyncio.sleep(2)
-
         self.rollback_drivers()
         self.add_processed_transactions_back_into_main_queue()
         self.reset_last_hlc_processed()

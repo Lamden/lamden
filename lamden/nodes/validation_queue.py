@@ -181,20 +181,20 @@ class ValidationQueue(ProcessingQueue):
                         self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
                     except Exception as err:
                         print(err)
-                        self.log.error(err)
+                        self.log.debug(err)
                 else:
                     try:
                         self.process_from_consensus_result(block_info=winning_result, hlc_timestamp=hlc_timestamp)
                         self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
                     except Exception as err:
                         print(err)
-                        self.log.error(err)
+                        self.log.debug(err)
 
                     # A couple different solutions exists here
-                    if consensus_result['my_solution']:
+                    if type(consensus_result.get('my_solution')) is str:
                         # There was consensus, I provided a solution and I wasn't in the consensus group. I need to rollback
                         # and check consensus again
-                        self.log.error(f'NOT IN CONSENSUS {hlc_timestamp} {consensus_result["my_solution"][:12]}')
+                        self.log.debug(f'NOT IN CONSENSUS {hlc_timestamp} {consensus_result["my_solution"][:12]}')
 
                         # Stop validating any more block results
                         self.stop()
@@ -204,14 +204,9 @@ class ValidationQueue(ProcessingQueue):
                             self.detected_rollback = True
 
                         # wipe needs validation queue
-                        self.flush()
+                        # self.flush()
 
                         asyncio.ensure_future(self.rollback())
-                        return
-
-                # returning here will ensure the hlc_timestamp doesnt' get added back to the validation queue and as
-                # such not reprocessed
-                return
             else:
                 self.log.info("CHECKING FOR NEXT BLOCK")
                 self.check_for_next_block()
