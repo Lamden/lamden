@@ -347,3 +347,12 @@ class TestProcessingQueue(TestCase):
         loop.run_until_complete(tasks)
 
         self.assertTrue(self.rollback_was_called)
+
+    def test_hlc_already_in_queue(self):
+        tx_info = self.make_tx_message(get_new_tx())
+        tx_info['hlc_timestamp'] = '1'
+
+        self.main_processing_queue.append(tx=tx_info)
+
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue('1'))
+        self.assertFalse(self.main_processing_queue.hlc_already_in_queue('2'))

@@ -276,7 +276,7 @@ class TestMultiNode(TestCase):
         receiver_wallets = [Wallet() for i in range(num_of_receivers)]
 
         # Send a bunch of transactions
-        amount_of_transactions = 1
+        amount_of_transactions = 2
 
         for i in range(amount_of_transactions):
             tx_info = json.loads(n.send_random_currency_transaction(

@@ -128,6 +128,8 @@ class Node:
         self.testing = testing
         self.debug_stack = []
         self.debug_processed_hlcs = []
+        self.debug_processsing_results = []
+        self.debug_timeline = []
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -330,12 +332,46 @@ class Node:
         processing_results = await self.main_processing_queue.process_next()
 
         if processing_results:
+            if self.testing:
+                self.debug_processsing_results.append(processing_results)
+
             self.process_and_send_results(processing_results=processing_results)
 
     def process_and_send_results(self, processing_results):
+        # Return if the validation queue already processed this block
+        hlc_timestamp = processing_results['hlc_timestamp']
+
+        if self.testing:
+            self.debug_timeline.append({
+                'method': "process_and_send_results",
+                'hlc_timestamp': hlc_timestamp,
+                'last_processed': self.get_last_processed_hlc(),
+                'last_consensus': self.get_last_hlc_in_consensus()
+            })
+
+        if hlc_timestamp <= self.get_last_hlc_in_consensus():
+            return
+
         block_info = self.process_result(processing_results=processing_results)
-        self.process_block(block_info=block_info, hlc_timestamp=processing_results['hlc_timestamp'])
+        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
         self.send_solution_to_network(block_info=block_info, processing_results=processing_results)
+
+    # Called by validation queue
+    def process_from_consensus_result(self, block_info, hlc_timestamp):
+        if self.testing:
+            self.debug_timeline.append({
+                'method': "process_and_send_results",
+                'hlc_timestamp': hlc_timestamp,
+                'last_processed': self.get_last_processed_hlc(),
+                'last_consensus': self.get_last_hlc_in_consensus()
+            })
+
+        state_changes = block_info['subblocks'][0]['transactions'][0]['state']
+
+        for s in state_changes:
+            self.driver.set(s['key'], s['value'])
+
+        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
 
     def process_result(self, processing_results):
         if self.testing:
@@ -473,15 +509,6 @@ class Node:
             })
         '''
         return block_info
-
-    def process_from_consensus_result(self, block_info, hlc_timestamp):
-        state_changes = block_info['subblocks'][0]['transactions'][0]['state']
-
-        for s in state_changes:
-            self.driver.set(s['key'], s['value'])
-
-        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
-
 
     def update_block_db(self, block):
         # if self.testing:

@@ -41,15 +41,27 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.reward_manager = reward_manager
 
+
+
         # TODO This is just for testing
         self.total_processed = 0
         self.testing = testing
         self.debug = debug
         self.detected_rollback = False
+        self.append_history = []
         self.currently_processing_hlc = ""
 
     def append(self, tx):
+        if self.testing:
+            self.append_history.append({
+                'hlc_timestamp':tx['hlc_timestamp'],
+                'in_queue': self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp'])
+            })
         if not self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp']):
+            if self.testing:
+                tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp'])
+                self.append_history.append(tx)
+
             super().append(tx)
 
         if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
@@ -95,6 +107,7 @@ class TxProcessingQueue(ProcessingQueue):
         if self.currently_processing_hlc < self.get_last_hlc_in_consensus():
             print({'currently_processing_hlc': self.currently_processing_hlc,
                    'get_last_hlc_in_consensus': self.get_last_hlc_in_consensus()})
+            del self.message_received_timestamps[self.currently_processing_hlc]
             return
 
         try:
@@ -133,7 +146,7 @@ class TxProcessingQueue(ProcessingQueue):
             if (self.currently_processing_hlc < self.get_last_processed_hlc()):
                 self.node_rollback(tx=tx)
             else:
-                del self.message_received_timestamps[tx['hlc_timestamp']]
+                del self.message_received_timestamps[self.currently_processing_hlc]
 
                 # self.log.info("BEFORE EXECUTE")
                 # self.log.debug(json.loads(json.dumps(tx)))
