@@ -181,15 +181,17 @@ class ValidationQueue(ProcessingQueue):
                         self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
                     except Exception as err:
                         print(err)
+                        self.log.error(err)
                 else:
                     try:
                         self.process_from_consensus_result(block_info=winning_result, hlc_timestamp=hlc_timestamp)
                         self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
                     except Exception as err:
                         print(err)
+                        self.log.error(err)
 
                     # A couple different solutions exists here
-                    if consensus_result['my_solution'] is not None:
+                    if consensus_result['my_solution']:
                         # There was consensus, I provided a solution and I wasn't in the consensus group. I need to rollback
                         # and check consensus again
                         self.log.error(f'NOT IN CONSENSUS {hlc_timestamp} {consensus_result["my_solution"][:12]}')
