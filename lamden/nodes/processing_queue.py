@@ -76,7 +76,7 @@ class TxProcessingQueue(ProcessingQueue):
                 }))
             '''
             self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
-            self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+            # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
 
     def flush(self):
         super().flush()

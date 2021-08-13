@@ -62,8 +62,10 @@ class ValidationQueue(ProcessingQueue):
             return
 
         if transaction_processed is not None and node_vk == self.wallet.verifying_key:
+            '''
             self.log.debug(f'Adding transaction_processed for {hlc_timestamp}')
             self.log.debug(transaction_processed)
+            '''
             self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
         '''
@@ -260,11 +262,13 @@ class ValidationQueue(ProcessingQueue):
             total_solutions_received = 6 (we can now start checking consensus moving from ideal to eager to
                                           failure as more solutions arrive)
         '''
+        '''
         self.log.debug({
             'total_solutions_received': total_solutions_received,
             'consensus_needed': consensus_needed,
             'num_of_peers': num_of_peers
         })
+        '''
         if total_solutions_received < consensus_needed:
             # TODO Discuss possible scenario where enough peers go offline that we never reach the consensus number..
             return {
@@ -278,12 +282,13 @@ class ValidationQueue(ProcessingQueue):
 
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
-
+        '''
         self.log.debug({
             'my_solution': my_solution,
             'solutions_missing': solutions_missing,
             'tally_info': tally_info
         })
+        '''
 
         if self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible']:
             # Check ideal situation
@@ -293,11 +298,11 @@ class ValidationQueue(ProcessingQueue):
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
-
+            '''
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
             })
-
+            '''
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_results['ideal_consensus_possible']
 
             # Return if we found ideal consensus on a solution
