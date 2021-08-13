@@ -132,6 +132,8 @@ class TestNode(TestCase):
 
         self.authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
 
+        print("\n")
+
     def tearDown(self):
         self.authenticator.authenticator.stop()
         self.ctx.destroy()
@@ -922,6 +924,66 @@ class TestNode(TestCase):
         jeff_balance = json.loads(encoder.encode(jeff_balance))
         print({'jeff_balance': jeff_balance})
         self.assertEqual("900.9", jeff_balance['__fixed__'])
+
+    def test_rollback_after_our_solution_is_out_of_consensus(self):
+        # This will test the main rollback function of the node when a solution we provide is out of consensus
+        # Add two more solutions that don't agree with us
+        # State should roll back appropriately and the solution that was in consensus should be applied
+
+        node = self.create_a_node()
+        # Set the consensus percent to 0 so all processed transactions will "be in consensus"
+        node.consensus_percent = 51
+
+        # pretend there are more nodes out there than us so we expect more solutions
+        node.validation_queue.get_peers_for_consensus = lambda: ['1', '2']
+
+        self.start_node(node)
+
+        # ___ Transaction ONE ___
+        # create a transaction
+        recipient_wallet = Wallet()
+        tx_amount = 100.5
+        tx_message_1 = node.make_tx_message(tx=get_new_tx(
+            to=recipient_wallet.verifying_key,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        ))
+        hlc_timestamp_1 = tx_message_1['hlc_timestamp']
+        # add to main processing queue
+        node.main_processing_queue.append(tx=tx_message_1)
+        # wait the amount of delay before the queue will process the transaction
+        self.async_sleep(1)
+        # tx was processes by the main queue
+        self.assertEqual(0, len(node.main_processing_queue))
+
+        # result is in the validation_queue results
+        result = node.validation_queue.validation_results[hlc_timestamp_1]['solutions'][node.wallet.verifying_key]
+        self.assertIsNotNone(result)
+        self.assertEqual("", node.validation_queue.last_hlc_in_consensus)
+
+        # Append Two more results to the validation results object for this hlc
+        # ___ Result TWO and THREE  ___
+        result_2 = json.loads(json.dumps(result))
+        result_2['hash'] = "111111"
+        node.validation_queue.append(
+            block_info=result_2,
+            node_vk=Wallet().verifying_key,
+            hlc_timestamp=hlc_timestamp_1,
+            transaction_processed=None
+        )
+        node.validation_queue.append(
+            block_info=result_2,
+            node_vk=Wallet().verifying_key,
+            hlc_timestamp=hlc_timestamp_1,
+            transaction_processed=None
+        )
+
+        # Wait so consensus can happen
+        self.async_sleep(1)
+
+        self.assertTrue(1, node.get_consensus_height())
+        self.assertTrue('111111', node.get_consensus_hash())
+        self.assertEqual(hlc_timestamp_1, node.validation_queue.last_hlc_in_consensus)
 
     def test_hard_apply_block(self):
         # Create a node and start it

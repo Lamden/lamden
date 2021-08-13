@@ -600,16 +600,17 @@ class Node:
         self.blocks.commit(hlc_timestamp)
 
         # print({"hard_apply": hlc_timestamp})
-        '''
         if self.debug:
             self.log.debug(json.dumps({
+                'hlc_timestamp': hlc_timestamp,
+                'consensus_hash': self.get_consensus_hash(),
+                'current_hash': self.get_current_hash(),
+                'event': 'commit_new_block',
                 'type': 'tx_lifecycle',
                 'file': 'base',
-                'event': 'commit_new_block',
-                'hlc_timestamp': hlc_timestamp,
                 'system_time': time.time()
             }))
-        '''
+
 
 ### ROLLBACK CODE
     async def rollback(self):

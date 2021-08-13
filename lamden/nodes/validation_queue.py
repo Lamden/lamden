@@ -203,9 +203,6 @@ class ValidationQueue(ProcessingQueue):
                         if self.debug or self.testing:
                             self.detected_rollback = True
 
-                        # wipe needs validation queue
-                        # self.flush()
-
                         asyncio.ensure_future(self.rollback())
             else:
                 self.log.info("CHECKING FOR NEXT BLOCK")

@@ -528,11 +528,11 @@ class TestProcessingQueue(TestCase):
         # rollback is called
         self.assertTrue(self.rollback_called)
         # hard apply is not called
-        self.assertFalse(self.hard_apply_block_called)
+        self.assertTrue(self.hard_apply_block_called)
         # hlc_timestamp was not set as last_hlc_in_consensus
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+        self.assertEqual('1', self.validation_queue.last_hlc_in_consensus)
         # results are NOT removed from the validation_results object
-        self.assertIsNotNone(self.validation_queue.validation_results.get(hlc_timestamp))
+        self.assertIsNone(self.validation_queue.validation_results.get(hlc_timestamp))
 
     def test_process_ideal_consensus_MISSING_me(self):
         '''
@@ -632,8 +632,10 @@ class TestProcessingQueue(TestCase):
 
         # Make sure consensus wasn't reached
         self.assertFalse(self.hard_apply_block_called)
+
         self.assertFalse(self.rollback_called)
         self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+
         # Make sure ideal consensus is still possible
         self.assertTrue(self.validation_queue.check_ideal_consensus_possible(hlc_timestamp))
 
@@ -645,14 +647,14 @@ class TestProcessingQueue(TestCase):
         self.process_next()
 
         # validation queue should process consensus and I am out of consensus
-        # rollback is called
+        # hard apply is called
+        self.assertTrue(self.hard_apply_block_called)
+        # Rollback is called
         self.assertTrue(self.rollback_called)
-        # hard apply is not called
-        self.assertFalse(self.hard_apply_block_called)
         # hlc_timestamp was not set as last_hlc_in_consensus
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+        self.assertEqual('1', self.validation_queue.last_hlc_in_consensus)
         # results are not removed from the validation_results object
-        self.assertIsNotNone(self.validation_queue.validation_results.get(hlc_timestamp))
+        self.assertIsNone(self.validation_queue.validation_results.get(hlc_timestamp))
 
     def test_process_next_failed_consensus_matches_me(self):
         '''
@@ -716,11 +718,11 @@ class TestProcessingQueue(TestCase):
         # rollback is called
         self.assertTrue(self.rollback_called)
         # hard apply is not called
-        self.assertFalse(self.hard_apply_block_called)
+        self.assertTrue(self.hard_apply_block_called)
         # hlc_timestamp was not set as last_hlc_in_consensus
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+        self.assertEqual('1', self.validation_queue.last_hlc_in_consensus)
         # results are not removed from the validation_results object
-        self.assertIsNotNone(self.validation_queue.validation_results.get(hlc_timestamp))
+        self.assertIsNone(self.validation_queue.validation_results.get(hlc_timestamp))
 
     def test_process_fall_through_from_ideal_to_failure(self):
         '''
