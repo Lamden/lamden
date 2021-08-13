@@ -65,6 +65,7 @@ class Publisher:
         self.socket.bind(self.address)
 
     async def publish(self, topic, msg):
+        '''
         if self.debug:
             if topic == WORK_SERVICE:
                 self.log.debug(json.dumps({
@@ -74,7 +75,7 @@ class Publisher:
                     'hlc_timestamp': msg['hlc_timestamp'],
                     'system_time': time.time()
                 }))
-
+        '''
         m = encode(msg).encode()
 
         await self.socket.send_string(topic, flags=zmq.SNDMORE)

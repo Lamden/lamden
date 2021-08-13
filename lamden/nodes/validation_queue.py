@@ -66,6 +66,7 @@ class ValidationQueue(ProcessingQueue):
             self.log.debug(transaction_processed)
             self.validation_results[hlc_timestamp]['transaction_processed'] = transaction_processed
 
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -76,6 +77,7 @@ class ValidationQueue(ProcessingQueue):
                 'hlc_timestamp': hlc_timestamp,
                 'system_time': time.time()
             }))
+        '''
 
         # check if this node already gave us information
         if node_vk in self.validation_results[hlc_timestamp]['solutions']:
@@ -139,8 +141,10 @@ class ValidationQueue(ProcessingQueue):
 
         consensus_result = self.validation_results[hlc_timestamp]['last_consensus_result']
 
+        '''
         if self.debug:
             self.log.debug({'consensus_result': consensus_result})
+        '''
 
         if self.testing:
             print({'consensus_result': consensus_result})

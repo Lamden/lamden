@@ -346,6 +346,16 @@ class Node:
         if hlc_timestamp <= self.get_last_hlc_in_consensus():
             return
 
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'process_and_send_results',
+                'hlc_timestamp': hlc_timestamp,
+                'last_processed': self.get_last_processed_hlc(),
+                'last_consensus': self.get_last_hlc_in_consensus()
+            }))
+
         if self.testing:
             self.debug_timeline.append({
                 'method': "process_and_send_results",
@@ -367,6 +377,17 @@ class Node:
                 'last_processed': self.get_last_processed_hlc(),
                 'last_consensus': self.get_last_hlc_in_consensus()
             })
+
+        if self.debug:
+            self.log.debug(json.dumps({
+                'type': 'tx_lifecycle',
+                'file': 'base',
+                'event': 'process_from_consensus_result',
+                'hlc_timestamp': hlc_timestamp,
+                'last_processed': self.get_last_processed_hlc(),
+                'last_consensus': self.get_last_hlc_in_consensus()
+            }))
+
         try:
             transaction = block_info['subblocks'][0]['transactions'][0]
             state_changes = transaction['state']
@@ -444,7 +465,7 @@ class Node:
             except Exception as err:
                 pass
                 # print(err)
-
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -454,6 +475,7 @@ class Node:
                 'my_solution': block_info['hash'],
                 'system_time': time.time()
             }))
+        '''
 
     def send_solution_to_network(self, block_info, processing_results):
         # ___ Validate and Send Block info __
@@ -578,6 +600,7 @@ class Node:
         self.blocks.commit(hlc_timestamp)
 
         # print({"hard_apply": hlc_timestamp})
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -586,6 +609,7 @@ class Node:
                 'hlc_timestamp': hlc_timestamp,
                 'system_time': time.time()
             }))
+        '''
 
 ### ROLLBACK CODE
     async def rollback(self):
@@ -601,6 +625,7 @@ class Node:
         await self.validation_queue.stopping()
 
         rollback_info = self.add_rollback_info()
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'node_info',
@@ -610,6 +635,7 @@ class Node:
                 'amount_of_rollbacks': len(self.rollbacks),
                 'system_time': time.time()
             }))
+        '''
 
         # sleep 2 seconds to see if a previous HLC tx comes in
         asyncio.sleep(2)

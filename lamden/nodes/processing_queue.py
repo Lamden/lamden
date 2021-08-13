@@ -65,6 +65,7 @@ class TxProcessingQueue(ProcessingQueue):
             super().append(tx)
 
         if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
+            '''
             if self.debug:
                 self.log.debug(json.dumps({
                     'type': 'tx_lifecycle',
@@ -73,6 +74,7 @@ class TxProcessingQueue(ProcessingQueue):
                     'hlc_timestamp': tx['hlc_timestamp'],
                     'system_time': time.time()
                 }))
+            '''
             self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
             self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
 
@@ -133,6 +135,7 @@ class TxProcessingQueue(ProcessingQueue):
             # print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
             # clear this hlc_timestamp from the received timestamps memory
 
+            '''
             if self.debug:
                 self.log.debug(json.dumps({
                     'type': 'tx_lifecycle',
@@ -141,6 +144,7 @@ class TxProcessingQueue(ProcessingQueue):
                     'hlc_timestamp': self.currently_processing_hlc,
                     'system_time': time.time()
                 }))
+            '''
 
             get_last_processed_hlc = self.get_last_processed_hlc()
             if (self.currently_processing_hlc < self.get_last_processed_hlc()):
@@ -367,6 +371,7 @@ class TxProcessingQueue(ProcessingQueue):
         )
 
     def node_rollback(self, tx):
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -376,11 +381,13 @@ class TxProcessingQueue(ProcessingQueue):
                 'last_processed_hlc': self.get_last_processed_hlc(),
                 'system_time': time.time()
             }))
+        '''
 
         self.stop()
         self.currently_processing = False
 
         # add tx back to processing queue
+        '''
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -389,6 +396,7 @@ class TxProcessingQueue(ProcessingQueue):
                 'hlc_timestamp': tx['hlc_timestamp'],
                 'system_time': time.time()
             }))
+        '''
         self.queue.append(tx)
 
         if self.debug or self.testing:

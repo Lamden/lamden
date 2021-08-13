@@ -61,6 +61,7 @@ class Peer:
                     topic, msg = data
                     if topic.decode("utf-8") == WORK_SERVICE:
                         message = json.loads(msg)
+                        '''
                         if self.debug:
                             self.log.debug(json.dumps({
                                 'type': 'tx_lifecycle',
@@ -69,6 +70,7 @@ class Peer:
                                 'hlc_timestamp': message['hlc_timestamp'],
                                 'system_time': time.time()
                             }))
+                        '''
                     await self.process_subscription(data)
 
             except zmq.error.ZMQError as error:
@@ -87,6 +89,7 @@ class Peer:
             self.log.error(msg)
             self.log.error(message)
         if processor is not None and message is not None:
+            '''
             if self.debug:
                 if topic.decode("utf-8") == WORK_SERVICE:
                     self.log.debug(json.dumps({
@@ -96,6 +99,7 @@ class Peer:
                         'hlc_timestamp': message['hlc_timestamp'],
                         'system_time': time.time()
                     }))
+            '''
             await processor.process_message(message)
 
 
