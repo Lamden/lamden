@@ -213,6 +213,7 @@ class ValidationQueue(ProcessingQueue):
                 # such not reprocessed
                 return
             else:
+                self.log.info("CHECKING FOR NEXT BLOCK")
                 self.check_for_next_block()
 
     def check_for_next_block(self):
