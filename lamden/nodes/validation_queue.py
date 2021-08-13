@@ -143,10 +143,10 @@ class ValidationQueue(ProcessingQueue):
 
         consensus_result = self.validation_results[hlc_timestamp]['last_consensus_result']
 
-        '''
+
         if self.debug:
-            self.log.debug({'consensus_result': consensus_result})
-        '''
+            self.log.debug({'hlc_timestamp': hlc_timestamp, 'consensus_result': consensus_result})
+
 
         if self.testing:
             print({'consensus_result': consensus_result})
