@@ -705,7 +705,6 @@ class Node:
                 pass
 
     def reset_last_hlc_processed(self):
-        self.main_processing_queue.sort_queue()
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
 
 ###
