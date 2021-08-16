@@ -327,6 +327,7 @@ class Node:
             if len(self.validation_queue) > 0 and self.validation_queue.running:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
+                self.log.info(f"Done processsing next and node is running {self.validation_queue.running}")
                 self.validation_queue.stop_processing()
             await asyncio.sleep(0)
 
