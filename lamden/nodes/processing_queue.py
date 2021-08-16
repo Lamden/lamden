@@ -164,17 +164,11 @@ class TxProcessingQueue(ProcessingQueue):
                 # self.log.info("BEFORE EXECUTE")
                 # self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
-                if self.debug:
-                    h = hashlib.sha3_256()
-                    h.update('{}'.format(encode(self.driver.driver.db).encode()).encode())
-                    hash = h.hexdigest()
-                    self.log.info(f'DB State hash: {hash}')
 
                 # TODO what to do with the tx if any error happen during processing
                 result = self.process_tx(tx=tx)
                 # self.log.info("AFTER EXECUTE")
                 # self.log.debug(json.loads(json.dumps(tx)))
-
 
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
