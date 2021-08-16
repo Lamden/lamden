@@ -470,6 +470,9 @@ class ValidationQueue(ProcessingQueue):
         # Remove all instances of this HLC from the checking queue to prevent re-checking it
         self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
 
+        # Remove any HLC results in validation results that might be earlier
+        self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+
         # Clear all block results from memory because this block has consensus
         self.validation_results.pop(hlc_timestamp, None)
 
@@ -500,6 +503,10 @@ class ValidationQueue(ProcessingQueue):
     def remove_all_hlcs_from_queue(self, hlc_timestamp):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
+    def prune_earlier_results(self, consensus_hlc_timestamp):
+        for hlc_timestamp in self.validation_results:
+            if hlc_timestamp < consensus_hlc_timestamp:
+                self.validation_results.pop(hlc_timestamp, None)
 
     async def drop_bad_peers(self, all_block_results, consensus_result):
         correct_solution = consensus_result['solution']
