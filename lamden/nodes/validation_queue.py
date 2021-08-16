@@ -143,7 +143,6 @@ class ValidationQueue(ProcessingQueue):
 
         consensus_result = self.validation_results[hlc_timestamp]['last_consensus_result']
 
-
         if self.debug:
             self.log.debug({'hlc_timestamp': hlc_timestamp, 'consensus_result': consensus_result})
 
@@ -161,6 +160,7 @@ class ValidationQueue(ProcessingQueue):
                 print(err)
 
             # Check that the previous block from the this solution matches the current block hash
+            self.log.info(f"{winning_result['previous']} is next block {self.is_next_block}")
             if self.is_next_block(winning_result['previous']):
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
                 if self.debug:
@@ -211,8 +211,11 @@ class ValidationQueue(ProcessingQueue):
     def check_for_next_block(self):
         for hlc_timestamp in self.validation_results:
             if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus']:
+                self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
                 if self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get("solution")):
+                    self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
                     self.process(hlc_timestamp=hlc_timestamp)
+                    return
 
     def check_consensus(self, hlc_timestamp):
         '''
