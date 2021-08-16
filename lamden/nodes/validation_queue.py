@@ -277,13 +277,13 @@ class ValidationQueue(ProcessingQueue):
 
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
-        '''
+
         self.log.debug({
             'my_solution': my_solution,
             'solutions_missing': solutions_missing,
             'tally_info': tally_info
         })
-        '''
+
 
         if self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible']:
             # Check ideal situation
