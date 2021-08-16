@@ -619,6 +619,9 @@ class Node:
         self.main_processing_queue.stop()
         self.validation_queue.stop()
 
+        if self.debug:
+            self.log.debug(f"ROLLING BACK")
+
         await self.main_processing_queue.stopping()
         await self.validation_queue.stopping()
 
