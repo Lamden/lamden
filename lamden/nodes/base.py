@@ -619,15 +619,12 @@ class Node:
         self.main_processing_queue.stop()
         self.validation_queue.stop()
 
-        if self.debug:
-            self.log.debug(f"ROLLING BACK")
-
         await self.main_processing_queue.stopping()
         await self.validation_queue.stopping()
 
         rollback_info = self.add_rollback_info()
-        '''
         if self.debug:
+            self.log.info(f"ROLLING BACK")
             self.log.debug(json.dumps({
                 'type': 'node_info',
                 'file': 'base',
@@ -636,7 +633,6 @@ class Node:
                 'amount_of_rollbacks': len(self.rollbacks),
                 'system_time': time.time()
             }))
-        '''
 
         self.rollback_drivers()
         self.add_processed_transactions_back_into_main_queue()
