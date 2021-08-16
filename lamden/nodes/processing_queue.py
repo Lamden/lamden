@@ -52,7 +52,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.currently_processing_hlc = ""
 
     def append(self, tx):
-        hlc_timestamp: tx['hlc_timestamp']
+        hlc_timestamp = tx['hlc_timestamp']
 
         if self.testing:
             self.append_history.append({
