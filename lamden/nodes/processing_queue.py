@@ -52,14 +52,20 @@ class TxProcessingQueue(ProcessingQueue):
         self.currently_processing_hlc = ""
 
     def append(self, tx):
+        hlc_timestamp: tx['hlc_timestamp']
+
         if self.testing:
             self.append_history.append({
-                'hlc_timestamp':tx['hlc_timestamp'],
-                'in_queue': self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp'])
+                'hlc_timestamp': hlc_timestamp,
+                'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
             })
-        if not self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp']):
+
+        if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
+            return
+
+        if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
             if self.testing:
-                tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=tx['hlc_timestamp'])
+                tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
                 self.append_history.append(tx)
 
             super().append(tx)
@@ -71,12 +77,12 @@ class TxProcessingQueue(ProcessingQueue):
                     'type': 'tx_lifecycle',
                     'file': 'processing_queue',
                     'event': 'append_new',
-                    'hlc_timestamp': tx['hlc_timestamp'],
+                    'hlc_timestamp': hlc_timestamp,
                     'system_time': time.time()
                 }))
             '''
-            self.message_received_timestamps[tx['hlc_timestamp']] = time.time()
-            # self.log.debug(f"ADDING {tx['hlc_timestamp']} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[tx['hlc_timestamp']]}")
+            self.message_received_timestamps[hlc_timestamp] = time.time()
+            # self.log.debug(f"ADDING {hlc_timestamp} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[hlc_timestamp]}")
 
     def flush(self):
         super().flush()
@@ -91,6 +97,9 @@ class TxProcessingQueue(ProcessingQueue):
             if tx['hlc_timestamp'] == hlc_timestamp:
                 return True
         return False
+
+    def hlc_earlier_than_consensus(self, hlc_timestamp):
+        return hlc_timestamp < self.get_last_hlc_in_consensus()
 
     async def process_next(self):
         # return if the queue is empty
