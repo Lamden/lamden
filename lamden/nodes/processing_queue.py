@@ -15,7 +15,7 @@ from datetime import datetime
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height, stop_node,
                  get_current_hash, get_last_processed_hlc,  reward_manager, rollback, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, testing=False, debug=False):
+                 get_last_hlc_in_consensus, stop_all_queues, start_all_queues, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -36,6 +36,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.get_last_processed_hlc = get_last_processed_hlc
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
+        self.stop_all_queues = stop_all_queues
+        self.start_all_queues = start_all_queues
 
         self.stop_node = stop_node
 
@@ -114,6 +116,7 @@ class TxProcessingQueue(ProcessingQueue):
         tx = self.queue.pop(0)
 
         self.currently_processing_hlc = tx['hlc_timestamp']
+        print({'currently_processing_hlc': self.currently_processing_hlc})
 
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
@@ -142,30 +145,28 @@ class TxProcessingQueue(ProcessingQueue):
             '''
 
             if (self.currently_processing_hlc < self.get_last_processed_hlc()):
-                self.node_rollback(tx=tx)
+                await self.node_rollback(tx=tx)
             else:
                 del self.message_received_timestamps[self.currently_processing_hlc]
 
                 # self.log.info("BEFORE EXECUTE")
                 # self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
+                # TODO what to do with the tx if any error happen during processing
+                result = self.process_tx(tx=tx)
+                # self.log.info("AFTER EXECUTE")
+                # self.log.debug(json.loads(json.dumps(tx)))
 
-                if not self.check_if_already_has_consensus(self.currently_processing_hlc):
-                    # TODO what to do with the tx if any error happen during processing
-                    result = self.process_tx(tx=tx)
-                    # self.log.info("AFTER EXECUTE")
-                    # self.log.debug(json.loads(json.dumps(tx)))
+                # TODO Remove this as it's for testing
+                self.total_processed = self.total_processed + 1
 
-                    # TODO Remove this as it's for testing
-                    self.total_processed = self.total_processed + 1
-
-                    hlc_timestamp = self.currently_processing_hlc
-                    self.currently_processing_hlc = ""
-                    return {
-                        'hlc_timestamp': hlc_timestamp,
-                        'result': result,
-                        'transaction_processed': tx
-                    }
+                hlc_timestamp = self.currently_processing_hlc
+                self.currently_processing_hlc = ""
+                return {
+                    'hlc_timestamp': hlc_timestamp,
+                    'result': result,
+                    'transaction_processed': tx
+                }
         else:
             # else, put it back in queue
             self.queue.append(tx)
@@ -366,7 +367,7 @@ class TxProcessingQueue(ProcessingQueue):
             datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
         )
 
-    def node_rollback(self, tx):
+    async def node_rollback(self, tx):
         '''
         if self.debug:
             self.log.debug(json.dumps({
@@ -379,9 +380,6 @@ class TxProcessingQueue(ProcessingQueue):
             }))
         '''
 
-        self.stop()
-        self.currently_processing = False
-
         # add tx back to processing queue
         '''
         if self.debug:
@@ -393,6 +391,7 @@ class TxProcessingQueue(ProcessingQueue):
                 'system_time': time.time()
             }))
         '''
+        await self.stop_all_queues()
         self.queue.append(tx)
 
         if self.debug or self.testing:
@@ -400,4 +399,5 @@ class TxProcessingQueue(ProcessingQueue):
             self.detected_rollback = True
 
         # rollback state to last consensus
-        asyncio.ensure_future(self.rollback())
+        await self.rollback()
+        self.start_all_queues()

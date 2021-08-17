@@ -104,7 +104,9 @@ class TestProcessingQueue(TestCase):
             is_next_block=self.is_next_block,
             rollback=self.rollback,
             stop_node=self.stop,
-            testing=True
+            testing=True,
+            start_all_queues=self.start_all_queues,
+            stop_all_queues=self.stop_all_queues,
         )
 
         print("\n")
@@ -115,6 +117,12 @@ class TestProcessingQueue(TestCase):
 
     def stop(self):
         self.running = False
+
+    async def stop_all_queues(self):
+        return
+
+    def start_all_queues(self):
+        return
 
     def get_peers_for_consensus(self):
         peers = {}

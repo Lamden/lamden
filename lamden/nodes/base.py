@@ -211,7 +211,9 @@ class Node:
             stop_node=self.stop,
             reward_manager=self.reward_manager,
             rollback=self.rollback,
-            check_if_already_has_consensus=self.check_if_already_has_consensus
+            check_if_already_has_consensus=self.check_if_already_has_consensus,
+            stop_all_queues=self.stop_all_queues,
+            start_all_queues=self.start_all_queues
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -225,7 +227,10 @@ class Node:
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             rollback=self.rollback,
             wallet=self.wallet,
-            stop_node=self.stop
+            stop_node=self.stop,
+            stop_all_queues=self.stop_all_queues,
+            start_all_queues=self.start_all_queues
+
         )
 
         self.total_processed = 0
@@ -301,6 +306,17 @@ class Node:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
+
+    def start_all_queues(self):
+        self.main_processing_queue.start()
+        self.validation_queue.start()
+
+    async def stop_all_queues(self):
+        self.main_processing_queue.stop()
+        self.validation_queue.stop()
+
+        await self.main_processing_queue.stopping()
+        await self.validation_queue.stopping()
 
     async def check_tx_queue(self):
         while self.running:
@@ -627,13 +643,6 @@ class Node:
             self.debug_stack.sort(key=lambda x: x['system_time'])
             print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
 
-        # Stop the processing queue and await it to be done processing its last item
-        self.main_processing_queue.stop()
-        self.validation_queue.stop()
-
-        await self.main_processing_queue.stopping()
-        await self.validation_queue.stopping()
-
         rollback_info = self.add_rollback_info()
         if self.debug:
             self.log.info(f"ROLLING BACK")
@@ -655,9 +664,6 @@ class Node:
             self.validation_queue.detected_rollback = False
             self.main_processing_queue.detected_rollback = False
 
-        # Restart the processing and validation queues
-        self.main_processing_queue.start()
-        self.validation_queue.start()
 
     def add_rollback_info(self):
         called_from = "unknown"

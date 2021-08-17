@@ -81,7 +81,9 @@ class TestProcessingQueue(TestCase):
             rollback=self.rollback_called,
             get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
-            check_if_already_has_consensus=self.check_if_already_has_consensus
+            check_if_already_has_consensus=self.check_if_already_has_consensus,
+            start_all_queues=self.start_all_queues,
+            stop_all_queues=self.stop_all_queues,
         )
 
         self.client.flush()
@@ -90,6 +92,12 @@ class TestProcessingQueue(TestCase):
     def tearDown(self):
         self.main_processing_queue.stop()
         self.main_processing_queue.flush()
+
+    async def stop_all_queues(self):
+        return
+
+    def start_all_queues(self):
+        return
 
     async def rollback_called(self):
         print("ROLLBACK CALLED")

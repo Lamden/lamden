@@ -8,7 +8,8 @@ from lamden.nodes.queue_base import ProcessingQueue
 
 class ValidationQueue(ProcessingQueue):
     def __init__(self, consensus_percent, get_peers_for_consensus, is_next_block, process_from_consensus_result,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, testing=False, debug=False):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, rollback, stop_all_queues,
+                 start_all_queues, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
@@ -27,6 +28,8 @@ class ValidationQueue(ProcessingQueue):
         self.is_next_block = is_next_block
         self.rollback = rollback
         self.stop_node = stop_node
+        self.stop_all_queues = stop_all_queues
+        self.start_all_queues = start_all_queues
 
         self.wallet = wallet
 
@@ -185,16 +188,16 @@ class ValidationQueue(ProcessingQueue):
                         print(err)
                         self.log.debug(err)
                 else:
-                    # Stop validating any more block results
-                    self.stop()
-                    self.currently_processing = False
-
                     if self.debug or self.testing:
                         self.detected_rollback = True
+
+                    await self.stop_all_queues()
 
                     await self.rollback(consensus_hlc_timestamp=hlc_timestamp)
 
                     self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
+
+                    self.start_all_queues()
 
                     # A couple different solutions exists here
                     if type(consensus_result.get('my_solution')) is str:
