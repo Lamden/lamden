@@ -128,13 +128,13 @@ class ValidationQueue(ProcessingQueue):
         self.queue.sort()
         try:
             if self.hlc_has_solutions(self.queue[0]):
-                self.process(hlc_timestamp=self.queue.pop(0))
+                await self.process(hlc_timestamp=self.queue.pop(0))
         except IndexError:
             return
         except Exception as err:
             print(err)
 
-    def process(self, hlc_timestamp):
+    async def process(self, hlc_timestamp):
         if not self.hlc_has_consensus(hlc_timestamp):
             try:
                 self.validation_results[hlc_timestamp]['last_consensus_result'] = self.check_consensus(hlc_timestamp=hlc_timestamp)
@@ -145,10 +145,6 @@ class ValidationQueue(ProcessingQueue):
 
         if self.debug:
             self.log.debug({'hlc_timestamp': hlc_timestamp, 'consensus_result': consensus_result})
-
-
-        if self.testing:
-            print({'consensus_result': consensus_result})
 
         if self.hlc_has_consensus(hlc_timestamp):
             try:
@@ -189,28 +185,22 @@ class ValidationQueue(ProcessingQueue):
                         print(err)
                         self.log.debug(err)
                 else:
+                    # Stop validating any more block results
+                    self.stop()
+                    self.currently_processing = False
+
+                    if self.debug or self.testing:
+                        self.detected_rollback = True
+
+                    await self.rollback(consensus_hlc_timestamp=hlc_timestamp)
+
+                    self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
+
                     # A couple different solutions exists here
                     if type(consensus_result.get('my_solution')) is str:
-                        self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
-
                         if self.testing:
                             self.validation_results_history.append({hlc_timestamp: ['incorrect_solution', results]})
-
-                        # There was consensus, I provided a solution and I wasn't in the consensus group. I need to rollback
-                        # and check consensus again
-                        self.log.debug(f'NOT IN CONSENSUS {hlc_timestamp} {consensus_result["my_solution"][:12]}')
-
-                        # Stop validating any more block results
-                        self.stop()
-                        self.currently_processing = False
-
-                        if self.debug or self.testing:
-                            self.detected_rollback = True
-
-                        asyncio.ensure_future(self.rollback(consensus_hlc_timestamp=hlc_timestamp))
                     else:
-                        self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
-
                         if self.testing:
                             self.validation_results_history.append({hlc_timestamp: ['missing_solution', results]})
             else:

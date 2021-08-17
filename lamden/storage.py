@@ -141,8 +141,6 @@ class BlockStorage:
         to_delete = []
         for _hlc, block in sorted(self.cache.items()):
 
-            print({'block':block})
-
             self.store_block(block)
 
             to_delete.append(_hlc)

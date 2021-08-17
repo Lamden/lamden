@@ -132,6 +132,7 @@ class Node:
         self.debug_processsing_results = []
         self.debug_blocks_processed = []
         self.debug_timeline = []
+        self.debug_sent_solutions = []
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -240,6 +241,8 @@ class Node:
         )
 
         self.block_contender = block_contender.Block_Contender(
+            testing=self.testing,
+            debug=self.debug,
             validation_queue=self.validation_queue,
             get_all_peers=self.get_all_peers,
             check_peer_in_consensus=self.check_peer_in_consensus,
@@ -347,6 +350,10 @@ class Node:
         if hlc_timestamp <= self.get_last_hlc_in_consensus():
             return
 
+        block_info = self.process_result(processing_results=processing_results)
+        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
+        self.send_solution_to_network(block_info=block_info, processing_results=processing_results)
+
         if self.debug:
             self.log.debug(json.dumps({
                 'type': 'tx_lifecycle',
@@ -362,12 +369,10 @@ class Node:
                 'method': "process_and_send_results",
                 'hlc_timestamp': hlc_timestamp,
                 'last_processed': self.get_last_processed_hlc(),
-                'last_consensus': self.get_last_hlc_in_consensus()
+                'last_consensus': self.get_last_hlc_in_consensus(),
+                'block_info':block_info,
+                'processing_results': processing_results
             })
-
-        block_info = self.process_result(processing_results=processing_results)
-        self.process_block(block_info=block_info, hlc_timestamp=hlc_timestamp)
-        self.send_solution_to_network(block_info=block_info, processing_results=processing_results)
 
     # Called by validation queue
     def process_from_consensus_result(self, block_info, hlc_timestamp):
@@ -486,6 +491,9 @@ class Node:
             transaction_processed=processing_results['transaction_processed']
         )
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=block_info))
+
+        if self.testing:
+            self.debug_sent_solutions.append({processing_results['hlc_timestamp']: block_info.get('hash')})
 
     def make_tx_message(self, tx):
         timestamp = int(time.time())
@@ -612,6 +620,9 @@ class Node:
 
 ### ROLLBACK CODE
     async def rollback(self, consensus_hlc_timestamp=""):
+        if len(self.driver.pending_deltas) == 0:
+            return
+
         if self.testing:
             self.debug_stack.sort(key=lambda x: x['system_time'])
             print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")

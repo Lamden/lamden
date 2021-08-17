@@ -41,6 +41,8 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.reward_manager = reward_manager
 
+        self.debug_writes_log = []
+
 
 
         # TODO This is just for testing
@@ -115,35 +117,19 @@ class TxProcessingQueue(ProcessingQueue):
 
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
-        if self.currently_processing_hlc < self.get_last_hlc_in_consensus():
-            print({'currently_processing_hlc': self.currently_processing_hlc,
-                   'get_last_hlc_in_consensus': self.get_last_hlc_in_consensus()})
+        if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
             del self.message_received_timestamps[self.currently_processing_hlc]
             return
 
-        try:
-            received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
-            # get the amount of time the transaction has been in the queue
-            time_in_queue = time.time() - received_timestamp
-        except Exception as err:
-            self.log.error(err)
-            self.log.debug({
-                'time_in_queue': time_in_queue,
-                'received_timestamp': received_timestamp,
-                'message_received_timestamps': self.message_received_timestamps,
-                'currently_processing_hlc': self.currently_processing_hlc
-
-            })
-
+        # get the amount of time the transaction has been in the queue
+        received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
+        time_in_queue = time.time() - received_timestamp
 
         # get the amount of time this node should hold the transactions
         time_delay = self.hold_time(tx=tx)
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
-            # print(f"!!!!!!!!!!!! PROCESSING {tx['hlc_timestamp']} !!!!!!!!!!!!")
-            # clear this hlc_timestamp from the received timestamps memory
-
             '''
             if self.debug:
                 self.log.debug(json.dumps({
@@ -155,7 +141,6 @@ class TxProcessingQueue(ProcessingQueue):
                 }))
             '''
 
-            get_last_processed_hlc = self.get_last_processed_hlc()
             if (self.currently_processing_hlc < self.get_last_processed_hlc()):
                 self.node_rollback(tx=tx)
             else:
@@ -165,21 +150,22 @@ class TxProcessingQueue(ProcessingQueue):
                 # self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
 
-                # TODO what to do with the tx if any error happen during processing
-                result = self.process_tx(tx=tx)
-                # self.log.info("AFTER EXECUTE")
-                # self.log.debug(json.loads(json.dumps(tx)))
+                if not self.check_if_already_has_consensus(self.currently_processing_hlc):
+                    # TODO what to do with the tx if any error happen during processing
+                    result = self.process_tx(tx=tx)
+                    # self.log.info("AFTER EXECUTE")
+                    # self.log.debug(json.loads(json.dumps(tx)))
 
-                # TODO Remove this as it's for testing
-                self.total_processed = self.total_processed + 1
+                    # TODO Remove this as it's for testing
+                    self.total_processed = self.total_processed + 1
 
-                hlc_timestamp = self.currently_processing_hlc
-                self.currently_processing_hlc = ""
-                return {
-                    'hlc_timestamp': hlc_timestamp,
-                    'result': result,
-                    'transaction_processed': tx
-                }
+                    hlc_timestamp = self.currently_processing_hlc
+                    self.currently_processing_hlc = ""
+                    return {
+                        'hlc_timestamp': hlc_timestamp,
+                        'result': result,
+                        'transaction_processed': tx
+                    }
         else:
             # else, put it back in queue
             self.queue.append(tx)
@@ -283,8 +269,8 @@ class TxProcessingQueue(ProcessingQueue):
             tx_sender=transaction['payload']['sender']
         )
 
-        if safe_repr(output['result']) != "None":
-            print(safe_repr(output['result']))
+        if self.testing:
+            self.debug_writes_log.append({hlc_timestamp: [writes, self.get_last_hlc_in_consensus()]})
 
         tx_output = {
             'hash': tx_hash,

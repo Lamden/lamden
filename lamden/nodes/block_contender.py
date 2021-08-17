@@ -6,7 +6,7 @@ import hashlib
 
 class Block_Contender():
     def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, get_last_hlc_in_consensus,
-                 peer_add_strike, wallet, debug=True):
+                 peer_add_strike, wallet, debug=False, testing=False):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Block Contender')
@@ -19,6 +19,10 @@ class Block_Contender():
         self.check_peer_in_consensus = check_peer_in_consensus
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.peer_add_strike = peer_add_strike
+
+        self.debug = debug
+        self.testing = testing
+        self.debug_recieved_solutions = []
 
     async def process_message(self, msg):
         # self.log.debug(msg)
@@ -36,6 +40,8 @@ class Block_Contender():
             hlc_timestamp = tx['hlc_timestamp']
         except Exception:
             self.log.error("Malformed solution from peer.")
+
+        self.debug_recieved_solutions.append({hlc_timestamp: [signing_data['signer'], msg['hash']]})
 
         # ignore this solution if we have already determined consensus on a previous HLC
         if hlc_timestamp <= self.get_last_hlc_in_consensus(): return
