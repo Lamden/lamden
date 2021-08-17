@@ -191,6 +191,7 @@ class ValidationQueue(ProcessingQueue):
                     if self.debug or self.testing:
                         self.detected_rollback = True
 
+                    self.currently_processing = False
                     await self.stop_all_queues()
 
                     await self.rollback(consensus_hlc_timestamp=hlc_timestamp)

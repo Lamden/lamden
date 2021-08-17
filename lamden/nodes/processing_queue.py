@@ -116,7 +116,6 @@ class TxProcessingQueue(ProcessingQueue):
         tx = self.queue.pop(0)
 
         self.currently_processing_hlc = tx['hlc_timestamp']
-        print({'currently_processing_hlc': self.currently_processing_hlc})
 
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
@@ -391,6 +390,7 @@ class TxProcessingQueue(ProcessingQueue):
                 'system_time': time.time()
             }))
         '''
+        self.currently_processing = False
         await self.stop_all_queues()
         self.queue.append(tx)
 

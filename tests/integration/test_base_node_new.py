@@ -783,9 +783,7 @@ class TestNode(TestCase):
         self.assertEqual(hlc_timestamp_1, node.validation_queue.last_hlc_in_consensus)
 
         # Stop the queues so we can manually run the methods for this test
-        node.validation_queue.stop()
-        node.main_processing_queue.stop()
-        self.await_async_process(node.main_processing_queue.stopping)
+        self.await_async_process(node.stop_all_queues)
 
         # Send transactions TWO and THREE to the main processing queue
 
@@ -830,13 +828,14 @@ class TestNode(TestCase):
         self.assertEqual(hlc_timestamp_1, node.validation_queue.last_hlc_in_consensus)
         # ---
 
-        # ROLLBACK
+        #  -----  ROLLBACK  -----
         # This will rollback state to just after the first transaction was processed
         # Readd the second transction back into the main processing queue
         # Restart both the main processsing and validation queues
         # automatically re-process the second transaction and then process the third, hard applying the state on both
 
         self.await_async_process(node.rollback)
+        node.start_all_queues()
         self.async_sleep(2)
 
         # ___ Validate test results ___
@@ -862,9 +861,7 @@ class TestNode(TestCase):
         self.assertEqual("700.5", json.loads(encoder.encode(jeff_balance))['__fixed__'])
         # Validate the block height
         self.assertEqual(3, node.get_current_height())
-        # Validate the queues are running
-        self.assertTrue(node.main_processing_queue.running)
-        self.assertTrue(node.validation_queue.running)
+
 
     def test_rollback_on_process_earlier_hlc_and_continues_processing_forwards(self):
         # create 9 transactions
