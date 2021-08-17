@@ -59,13 +59,14 @@ def get_new_tx(to=None, amount=200.1, sender=None):
 
 def get_new_block(
         signer="testuser",
-        hash='f' * 64,
+        hash=64 * f'1',
         number=1,
         hlc_timestamp='1',
         to=None,
         amount=None,
         sender=None,
-        tx=None
+        tx=None,
+        state=None
 ):
     blockinfo = {
         "hash": hash,
@@ -88,7 +89,7 @@ def get_new_block(
                 "hlc_timestamp": hlc_timestamp,
                 "result": "None",
                 "stamps_used": 18,
-                "state": [
+                "state": state or [
                   {
                     "key": "lets",
                     "value": "go"
@@ -141,7 +142,7 @@ class TestNode(TestCase):
         self.b.blocks.flush()
         self.b.driver.flush()
 
-    def create_a_node(self, constitution=None):
+    def create_a_node(self, constitution=None, node_num=0):
         driver = ContractDriver(driver=InMemDriver())
 
         dl_wallet = Wallet()
@@ -153,7 +154,7 @@ class TestNode(TestCase):
             }
 
         node = base.Node(
-            socket_base=f'tcp://127.0.0.1:{self.num_of_nodes}',
+            socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
             ctx=self.ctx,
             wallet=mn_wallet,
             constitution=constitution,
@@ -1095,7 +1096,7 @@ class TestNode(TestCase):
         self.async_sleep(0.3)
 
         # Validate consensus block is None
-        self.assertEqual(None, node.get_consensus_height())
+        self.assertEqual(0, node.get_consensus_height())
         # Validate current block is 2
         self.assertEqual(2, node.get_current_height())
 
@@ -1219,7 +1220,6 @@ class TestNode(TestCase):
         # State should roll back appropriately and the solution that was in consensus should be applied
 
         node = self.create_a_node()
-        # Set the consensus percent to 0 so all processed transactions will "be in consensus"
         node.consensus_percent = 51
 
         # pretend there are more nodes out there than us so we expect more solutions
@@ -1251,3 +1251,201 @@ class TestNode(TestCase):
         self.assertEqual(1, node.get_consensus_height())
         self.assertEqual('11111', node.get_consensus_hash())
         self.assertEqual(hlc_timestamp, node.validation_queue.last_hlc_in_consensus)
+
+    def test_state_matches_when_process_from_consensus_and_normal_processing(self):
+        constitution = {
+                'masternodes': [Wallet().verifying_key],
+                'delegates': [Wallet().verifying_key]
+            }
+        # Start nodes
+        node_1 = self.create_a_node(constitution=constitution, node_num=0)
+        node_2 = self.create_a_node(constitution=constitution, node_num=1)
+        # Set the consensus percent to 0 so consensus will be achieved with 1 result present
+        node_1.consensus_percent = 0
+        node_2.consensus_percent = 0
+
+        self.start_node(node_1)
+        self.assertEqual(64 * f'0', node_1.get_consensus_hash())
+        self.assertEqual(0, node_1.get_consensus_height())
+
+        self.start_node(node_2)
+        self.assertEqual(64 * f'0', node_2.get_consensus_hash())
+        self.assertEqual(0, node_2.get_consensus_height())
+
+        receiver_vk = Wallet().verifying_key
+        tx_amount = 100.5
+
+        tx = get_new_tx(
+            to=receiver_vk,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        )
+
+        # Have Node 1 process this from the main processing queue, processing the through the normal process
+        tx_message = node_1.make_tx_message(tx=tx)
+        hlc_timestamp = tx_message['hlc_timestamp']
+        # Stop the validation queue so we can capture teh result from it
+        node_1.validation_queue.stop()
+        node_1.main_processing_queue.append(tx=tx_message)
+
+        # await processing on node 1
+        self.async_sleep(0.2)
+
+        block_info = node_1.validation_queue.validation_results[hlc_timestamp]['solutions'][node_1.wallet.verifying_key]
+        block_hash = block_info.get('hash')
+        block_number = block_info.get('number')
+
+         # start validation queue back up on node 1 to allow determining consensus
+        node_1.validation_queue.start()
+
+        # Have Node 2 process this from the validation queue, processing the result from consensus
+        node_2.validation_queue.append(
+            block_info=block_info,
+            node_vk=node_1.wallet.verifying_key,
+            hlc_timestamp=hlc_timestamp
+        )
+
+        # await processing on node 2 and consensus on nodes 1 and 2
+        self.async_sleep(0.2)
+
+        # Check that the consensus result was committed on both nodes
+        self.assertEqual(block_hash, node_1.get_consensus_hash())
+        self.assertEqual(block_number, node_1.get_consensus_height())
+
+        self.assertEqual(block_hash, node_2.get_consensus_hash())
+        self.assertEqual(block_number, node_2.get_consensus_height())
+
+        # Check drivers are in the same state
+        # Check Cache
+        self.assertEqual(len(node_1.driver.cache), len(node_2.driver.cache))
+        for item in node_1.driver.cache:
+            self.assertEqual(node_1.driver.cache.get(item), node_2.driver.cache.get(item))
+
+        # Check Pending Writes
+        self.assertEqual(len(node_1.driver.pending_writes), len(node_2.driver.pending_writes))
+        for item in node_1.driver.pending_writes:
+            self.assertEqual(node_1.driver.pending_writes.get(item), node_2.driver.pending_writes.get(item))
+
+        # Check Pending Reads
+        self.assertEqual(len(node_1.driver.pending_reads), len(node_2.driver.pending_reads))
+        for item in node_1.driver.pending_reads:
+            self.assertEqual(node_1.driver.pending_reads.get(item), node_2.driver.pending_reads.get(item))
+
+        # Check Pending Deltas
+        self.assertEqual(len(node_1.driver.pending_deltas), len(node_2.driver.pending_deltas))
+        for item in node_1.driver.pending_deltas:
+            self.assertEqual(node_1.driver.pending_deltas.get(item), node_2.driver.pending_deltas.get(item))
+
+        # Check DB
+        self.assertEqual(len(node_1.driver.driver.db), len(node_2.driver.driver.db))
+        for item in node_1.driver.driver.db:
+            # ignore the complied submission contrat code as it will always be a bit different
+            if item != b'submission.__compiled__':
+                self.assertEqual(node_1.driver.driver.db.get(item), node_2.driver.driver.db.get(item))
+
+    def test_state_matches_when_process_from_consensus_and_normal_processing__after_two_transactions(self):
+        constitution = {
+                'masternodes': [Wallet().verifying_key],
+                'delegates': [Wallet().verifying_key]
+            }
+        # Start nodes
+        node_1 = self.create_a_node(constitution=constitution, node_num=0)
+        node_2 = self.create_a_node(constitution=constitution, node_num=1)
+
+        # Set the consensus percent to 0 so consensus will be achieved with 1 result present
+        node_1.consensus_percent = 0
+        node_2.consensus_percent = 0
+
+        self.start_node(node_1)
+        self.start_node(node_2)
+
+        receiver_vk = Wallet().verifying_key
+        tx_amount = 100.5
+
+        tx_1 = get_new_tx(
+            to=receiver_vk,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        )
+        tx_message_1 = node_1.make_tx_message(tx=tx_1)
+        hlc_timestamp_1 = tx_message_1['hlc_timestamp']
+
+        tx_2 = get_new_tx(
+            to=receiver_vk,
+            amount=tx_amount,
+            sender=self.stu_wallet.verifying_key
+        )
+
+        tx_message_2 = node_1.make_tx_message(tx=tx_2)
+        hlc_timestamp_2 = tx_message_2['hlc_timestamp']
+
+        # Stop the validation queue so we can capture teh result from it
+        node_1.validation_queue.stop()
+        node_1.main_processing_queue.append(tx=tx_message_1)
+
+        # await processing on node 1
+        self.async_sleep(0.2)
+
+        block_info = node_1.validation_queue.validation_results[hlc_timestamp_1]['solutions'][node_1.wallet.verifying_key]
+        block_hash = block_info.get('hash')
+        block_number = block_info.get('number')
+
+         # start validation queue back up on node 1 to allow determining consensus
+        node_1.validation_queue.start()
+
+        # Have Node 2 process this from the validation queue, processing the result from consensus
+        node_2.validation_queue.append(
+            block_info=block_info,
+            node_vk=node_1.wallet.verifying_key,
+            hlc_timestamp=hlc_timestamp_1
+        )
+
+        # await processing on node 2 and consensus on nodes 1 and 2
+        self.async_sleep(0.2)
+
+        # Check that the consensus result was committed on both nodes
+        self.assertEqual(block_hash, node_1.get_consensus_hash())
+        self.assertEqual(block_number, node_1.get_consensus_height())
+
+        self.assertEqual(block_hash, node_2.get_consensus_hash())
+        self.assertEqual(block_number, node_2.get_consensus_height())
+
+        # Have both nodes now process a second transaction
+        node_1.main_processing_queue.append(tx=tx_message_2)
+        node_2.main_processing_queue.append(tx=tx_message_2)
+
+        # await processing on node 2 and consensus on nodes 1 and 2
+        self.async_sleep(0.2)
+
+        # Check that the consensus result was committed on both nodes
+        self.assertEqual(block_number + 1, node_1.get_consensus_height())
+        self.assertEqual(node_1.get_consensus_height(), node_2.get_consensus_height())
+        self.assertEqual(node_1.get_consensus_hash(), node_2.get_consensus_hash())
+
+        # Check drivers are in the same state
+        # Check Cache
+        self.assertEqual(len(node_1.driver.cache), len(node_2.driver.cache))
+        for item in node_1.driver.cache:
+            self.assertEqual(node_1.driver.cache.get(item), node_2.driver.cache.get(item))
+
+        # Check Pending Writes
+        self.assertEqual(len(node_1.driver.pending_writes), len(node_2.driver.pending_writes))
+        for item in node_1.driver.pending_writes:
+            self.assertEqual(node_1.driver.pending_writes.get(item), node_2.driver.pending_writes.get(item))
+
+        # Check Pending Reads
+        self.assertEqual(len(node_1.driver.pending_reads), len(node_2.driver.pending_reads))
+        for item in node_1.driver.pending_reads:
+            self.assertEqual(node_1.driver.pending_reads.get(item), node_2.driver.pending_reads.get(item))
+
+        # Check Pending Deltas
+        self.assertEqual(len(node_1.driver.pending_deltas), len(node_2.driver.pending_deltas))
+        for item in node_1.driver.pending_deltas:
+            self.assertEqual(node_1.driver.pending_deltas.get(item), node_2.driver.pending_deltas.get(item))
+
+        # Check DB
+        self.assertEqual(len(node_1.driver.driver.db), len(node_2.driver.driver.db))
+        for item in node_1.driver.driver.db:
+            # ignore the complied submission contrat code as it will always be a bit different
+            if item != b'submission.__compiled__':
+                self.assertEqual(node_1.driver.driver.db.get(item), node_2.driver.driver.db.get(item))

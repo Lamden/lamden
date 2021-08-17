@@ -125,7 +125,7 @@ class TestProcessingQueue(TestCase):
     def set_peers_not_in_consensus(self, ):
         self.set_peers_not_in_consensus = True
 
-    async def rollback(self):
+    async def rollback(self, consensus_hlc_timestamp=""):
         self.rollback_called = True
 
     def hard_apply_block(self, hlc_timestamp):

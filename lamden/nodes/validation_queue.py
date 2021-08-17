@@ -33,7 +33,7 @@ class ValidationQueue(ProcessingQueue):
         # For debugging
         self.testing = testing
         self.debug = debug
-        self.validation_results_history = {}
+        self.validation_results_history = []
         self.detected_rollback = False
 
     def append(self, block_info, node_vk, hlc_timestamp, transaction_processed=None):
@@ -176,24 +176,26 @@ class ValidationQueue(ProcessingQueue):
                         'system_time': time.time()
                     }))
 
+                results = self.validation_results[hlc_timestamp]
+
                 if consensus_result['matches_me']:
                     # if it matches us that means we did already processes this tx and the pending deltas should exist
                     # in the driver
                     try:
                         self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
+                        if self.testing:
+                            self.validation_results_history.append({hlc_timestamp: ['matched_me', results]})
                     except Exception as err:
                         print(err)
                         self.log.debug(err)
                 else:
-                    try:
-                        self.process_from_consensus_result(block_info=winning_result, hlc_timestamp=hlc_timestamp)
-                        self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
-                    except Exception as err:
-                        print(err)
-                        self.log.debug(err)
-
                     # A couple different solutions exists here
                     if type(consensus_result.get('my_solution')) is str:
+                        self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
+
+                        if self.testing:
+                            self.validation_results_history.append({hlc_timestamp: ['incorrect_solution', results]})
+
                         # There was consensus, I provided a solution and I wasn't in the consensus group. I need to rollback
                         # and check consensus again
                         self.log.debug(f'NOT IN CONSENSUS {hlc_timestamp} {consensus_result["my_solution"][:12]}')
@@ -205,7 +207,12 @@ class ValidationQueue(ProcessingQueue):
                         if self.debug or self.testing:
                             self.detected_rollback = True
 
-                        asyncio.ensure_future(self.rollback())
+                        asyncio.ensure_future(self.rollback(consensus_hlc_timestamp=hlc_timestamp))
+                    else:
+                        self.process_and_commit(block_info=winning_result, hlc_timestamp=hlc_timestamp)
+
+                        if self.testing:
+                            self.validation_results_history.append({hlc_timestamp: ['missing_solution', results]})
             else:
                 self.log.info("CHECKING FOR NEXT BLOCK")
                 self.check_for_next_block()
@@ -459,6 +466,10 @@ class ValidationQueue(ProcessingQueue):
         for node_vk in solutions:
             if solutions[node_vk]['hash'] == consensus_solution:
                 return solutions[node_vk]
+
+    def process_and_commit(self, hlc_timestamp, block_info):
+        self.process_from_consensus_result(block_info=block_info, hlc_timestamp=hlc_timestamp)
+        self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
 
     def commit_consensus_block(self, hlc_timestamp):
         # Hard apply these results on the driver

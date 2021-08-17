@@ -27,7 +27,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout):
             heights = [node.obj.get_consensus_height() for node in nodes]
             results = [node.obj.get_consensus_height() == block_height for node in nodes]
             done = all(results)
-            await asyncio.sleep(10)
+            await asyncio.sleep(30)
             if timeout > 0 and time.time() - start > timeout:
                 print([node.obj.get_consensus_height() == block_height for node in nodes])
                 print(f"HIT TIMER and {done}")

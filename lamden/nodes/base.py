@@ -399,6 +399,9 @@ class Node:
 
             self.driver.set(s['key'], s['value'])
 
+        # self.driver.pending_reads.clear()
+        # self.driver.pending_writes.clear()
+
         self.main_processing_queue.distribute_rewards(
             total_stamps_to_split=stamps_used,
             contract_name=tx_result['transaction']['payload']['contract']
@@ -444,9 +447,6 @@ class Node:
 
         if self.testing:
             self.debug_processed_hlcs.append(hlc_timestamp)
-            self.debug_blocks_processed.append(block_info)
-
-        if self.testing:
             try:
                 self.debug_stack.append({
                     'system_time': time.time(),
@@ -611,7 +611,7 @@ class Node:
 
 
 ### ROLLBACK CODE
-    async def rollback(self):
+    async def rollback(self, consensus_hlc_timestamp=""):
         if self.testing:
             self.debug_stack.sort(key=lambda x: x['system_time'])
             print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
@@ -636,7 +636,7 @@ class Node:
             }))
 
         self.rollback_drivers()
-        self.add_processed_transactions_back_into_main_queue()
+        self.add_processed_transactions_back_into_main_queue(consensus_hlc_timestamp=consensus_hlc_timestamp)
         self.reset_last_hlc_processed()
         self.validation_queue.clear_my_solutions()
 
@@ -687,22 +687,22 @@ class Node:
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
 
-    def add_processed_transactions_back_into_main_queue(self):
+    def add_processed_transactions_back_into_main_queue(self, consensus_hlc_timestamp=""):
         # print({"validation_queue_items": self.validation_queue.validation_results.items()})
         tx_added_back = 0
 
         # Add transactions I already processed back into the main_processing queue
         for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            try:
+            if hlc_timestamp > consensus_hlc_timestamp:
+                try:
+                    transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
+                    if transaction_processed is not None:
+                        tx_added_back = tx_added_back + 1
+                        self.main_processing_queue.append(tx=transaction_processed)
 
-                transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
-                if transaction_processed is not None:
-                    tx_added_back = tx_added_back + 1
-                    self.main_processing_queue.append(tx=transaction_processed)
-
-            except KeyError as err:
-                self.log.error(err)
-                pass
+                except KeyError as err:
+                    self.log.error(err)
+                    pass
 
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
@@ -710,11 +710,15 @@ class Node:
 ###
 
     def _get_member_peers(self, contract_name):
+        ''' GET FROM DB INSTEAD
         members = self.client.get_var(
             contract=contract_name,
             variable='S',
             arguments=['members']
         )
+        '''
+
+        members = self.driver.driver.get(f'{contract_name}.S:members')
 
         member_peers = dict()
 
@@ -816,7 +820,10 @@ class Node:
         )
 
     def get_consensus_height(self):
-        return self.driver.driver.get(DB_CURRENT_BLOCK_HEIGHT)
+        height = self.driver.driver.get(DB_CURRENT_BLOCK_HEIGHT)
+        if height is None:
+            return 0
+        return height
 
     def get_consensus_hash(self):
         hash =  self.driver.driver.get(DB_CURRENT_BLOCK_HASH)
