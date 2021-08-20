@@ -55,7 +55,7 @@ class WorkProcessor(router.Processor):
         good_transactions = []
         for tx in msg['transactions']:
             try:
-                transaction.transaction_is_valid(
+                transaction.transaction_is_valid_no_stale(
                     transaction=tx,
                     expected_processor=msg['sender'],
                     client=self.client,
