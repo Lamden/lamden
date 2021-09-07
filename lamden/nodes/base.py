@@ -269,6 +269,8 @@ class Node:
                 client=self.client
             )
 
+        self.nonces.flush_pending()
+
         self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
