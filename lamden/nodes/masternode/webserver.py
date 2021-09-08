@@ -184,6 +184,7 @@ class WebServer:
             )
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
+            log.error(tx)
             return response.json(
                 transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
             )
