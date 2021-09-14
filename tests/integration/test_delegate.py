@@ -2,6 +2,7 @@ from lamden.crypto import transaction
 from lamden.crypto.wallet import Wallet, verify
 from lamden.crypto import canonical
 from contracting.db.driver import decode, ContractDriver, InMemDriver
+from contracting.db.encoder import safe_repr
 from contracting.client import ContractingClient
 from lamden.nodes.delegate import execution, work
 from lamden.nodes import masternode, delegate, base
@@ -147,6 +148,31 @@ def eat_stamps():
         self.assertEqual(result['state'][0]['key'], f'currency.balances:{stu.verifying_key}')
         self.assertEqual(result['state'][0]['value'], Decimal('99950.0'))
         self.assertEqual(result['stamps_used'], 10000)
+
+    def test_bad_tx_returns_properly(self):
+        class BadTX:
+            def __init__(self, tx, err):
+                self.tx = tx
+                self.err = err
+
+        stu = Wallet()
+        tx = transaction.build_transaction(
+            wallet=stu,
+            contract='testing',
+            function='eat_stamps',
+            kwargs={},
+            stamps=10000,
+            processor='0' * 64,
+            nonce=0
+        )
+
+        exe = execution.SerialExecutor(executor=self.client.executor)
+
+        result = exe.execute_tx_batch(batch={'transactions': [BadTX(decode(tx), Exception)]}, stamp_cost=200, timestamp=int(time.time()), input_hash='A' * 32, driver=self.client.raw_driver)
+
+        self.assertEqual(result[0]['status'], 1)
+        self.assertEqual(result[0]['result'], safe_repr(str(Exception)))
+        self.assertEqual(result[0]['stamps_used'], 0)
 
     def test_generate_environment_creates_datetime_wrapped_object(self):
         timestamp = int(time.time())
