@@ -331,7 +331,7 @@ class SerialExecutor(TransactionExecutor):
             'status': 1,
             'state': {},
             'stamps_used': 0,
-            'result': safe_repr(str(error))
+            'result': error
         }
 
         tx_output = format_dictionary(tx_output)
