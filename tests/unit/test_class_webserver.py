@@ -25,11 +25,13 @@ class TestClassWebserver(TestCase):
             driver=n
         )
         self.ws.client.flush()
-        self.ws.blocks.drop_collections()
+        self.ws.blocks.flush()
+        self.ws.driver.flush()
 
     def tearDown(self):
         self.ws.client.flush()
-        self.ws.blocks.drop_collections()
+        self.ws.blocks.flush()
+        self.ws.driver.flush()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -519,6 +521,9 @@ def get():
             arguments=['members'],
             value=['4', '5', '6']
         )
+
+        self.ws.client.raw_driver.commit()
+
         _, response = self.ws.app.test_client.get('/constitution')
 
         self.assertDictEqual(response.json, {

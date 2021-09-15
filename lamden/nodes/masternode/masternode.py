@@ -5,10 +5,12 @@ from lamden import router
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
 from lamden.nodes.masternode import contender, webserver
+from lamden.nodes.base import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
 from contracting.db.driver import ContractDriver
-
+from contracting.db.encoder import decode
+import copy
 from lamden.logger.base import get_logger
 
 mn_logger = get_logger('Masternode')
@@ -46,7 +48,7 @@ class BlockService(router.Processor):
 
 
 class TransactionBatcher:
-    def __init__(self, wallet: Wallet, queue):
+    def __init__(self, wallet: Wallet, queue=FileQueue()):
         self.wallet = wallet
         self.queue = queue
 
@@ -60,7 +62,7 @@ class TransactionBatcher:
         signature = self.wallet.sign(input_hash)
 
         batch = {
-            'transactions': transactions,
+            'transactions': [t for t in transactions],
             'timestamp': timestamp,
             'signature': signature,
             'sender': self.wallet.verifying_key,
@@ -99,7 +101,7 @@ class Masternode(base.Node):
         self.upgrade_manager.webserver_port = self.webserver_port
         self.upgrade_manager.node_type = 'masternode'
 
-        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=[])
+        self.tx_batcher = TransactionBatcher(wallet=self.wallet, queue=FileQueue())
         self.webserver.queue = self.tx_batcher.queue
 
         self.aggregator = contender.Aggregator(
@@ -122,9 +124,6 @@ class Masternode(base.Node):
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
         # self.router.add_service(base.CONTENDER_SERVICE, self.aggregator.sbc_inbox)
-
-        # Start the webserver to accept transactions
-        await self.webserver.start()
 
         self.log.info('Done starting...')
 
@@ -254,11 +253,13 @@ class Masternode(base.Node):
             current_hash=self.current_hash
         )
 
+        original_block = copy.deepcopy(block)
+
         self.process_new_block(block)
 
         self.new_block_processor.clean(self.current_height)
 
-        return block
+        return original_block
 
     async def loop(self):
         self.log.info('=== ENTERING SEND WORK STATE ===')
