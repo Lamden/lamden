@@ -24,14 +24,16 @@ class DecimalEncoder(TypeEncoder):
     python_type = Decimal  # the Python type acted upon by this type codec
 
     def transform_python(self, value):
-        return Decimal128(value)
+        d = Decimal(str(value))
+        return Decimal128(d)
 
 
 class ContractingDecimalEncoder(TypeEncoder):
     python_type = ContractingDecimal  # the Python type acted upon by this type codec
 
     def transform_python(self, value):
-        return Decimal128(value._d)
+        d = Decimal(str(value._d))
+        return Decimal128(d)
 
 
 class DecimalDecoder(TypeDecoder):
