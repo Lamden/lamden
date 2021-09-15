@@ -266,6 +266,9 @@ class BlockStorage:
         self.drop_collections()
 
     def store_block(self, block):
+        if block.get('number') is not None:
+            block['number'] = int(block['number'])
+
         self.put(block, BlockStorage.BLOCK)
         self.store_txs(block)
 
