@@ -397,6 +397,10 @@ class WebServer:
         }, headers={'Access-Control-Allow-Origin': '*'})
 
 
+class Websockets:
+    pass
+
+
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
