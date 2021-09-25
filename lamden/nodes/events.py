@@ -44,11 +44,9 @@ class EventWriter:
 
 
 class EventListener:
-    def __init__(self, root=EVENTS_HOME, poll=250):
+    def __init__(self, root=EVENTS_HOME):
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
-
-        self.poll = poll / 1_000 # convert to milliseconds
 
     def get_events(self) -> List[Event]:
         dirs = sorted(self.root.iterdir(), key=os.path.getmtime)
@@ -67,12 +65,12 @@ class EventListener:
 
         events = []
         for file in files:
-            with open(file) as f:
+            with open(file, 'rb') as f:
                 payload = f.read()
 
             os.remove(file)
 
-            e = Event(name=directory, payload=payload)
+            e = Event(name=directory.parts[-1], payload=payload)
             events.append(e)
 
         os.removedirs(directory)
