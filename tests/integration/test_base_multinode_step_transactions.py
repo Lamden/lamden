@@ -65,14 +65,14 @@ class TestMultiNode(TestCase):
         node.tx_queue.append(tx)
 
     def validate_block_height_in_all_nodes(self, nodes, valid_height):
-        all_heights = [node.obj.get_consensus_height() for node in nodes]
+        all_heights = [node.obj.get_current_height() for node in nodes]
         print({'valid_height': valid_height})
         print({'all_heights': all_heights})
         print(all([valid_height == height for height in all_heights]))
         self.assertTrue(all([valid_height == height for height in all_heights]))
 
     def validate_block_hash_in_all_nodes(self, nodes):
-        all_hashes = [node.obj.get_consensus_hash() for node in nodes]
+        all_hashes = [node.obj.get_current_height() for node in nodes]
         print({'all_hashes': all_hashes})
         print(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
         self.assertTrue(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
@@ -106,6 +106,12 @@ class TestMultiNode(TestCase):
         test_tracker = {}
 
         test_start_sending_transactions = time.time()
+        for node in network_1.masternodes:
+            node.obj.validation_queue.stop()
+
+        for node in network_1.delegates:
+            node.obj.validation_queue.stop()
+
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
 

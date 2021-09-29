@@ -24,14 +24,14 @@ def await_all_nodes_done_processing(nodes, block_height, timeout):
         start = time.time()
         done = False
         while not done:
-            await asyncio.sleep(0)
-            heights = [node.obj.get_consensus_height() for node in nodes]
-            results = [node.obj.get_consensus_height() == block_height for node in nodes]
+            await asyncio.sleep(10)
+            heights = [node.obj.get_current_height() for node in nodes]
+            results = [node.obj.get_current_height() == block_height for node in nodes]
             done = all(results)
             if not done:
                 pass
             if timeout > 0 and time.time() - start > timeout:
-                print([node.obj.get_consensus_height() == block_height for node in nodes])
+                print([node.obj.get_current_height() == block_height for node in nodes])
                 print({'heights':heights})
                 print(f"HIT TIMER and {done}")
                 done = True

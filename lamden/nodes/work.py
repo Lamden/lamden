@@ -1,6 +1,7 @@
 from lamden.logger.base import get_logger
 from lamden import router, storage
 from lamden.crypto.wallet import verify
+from lamden.crypto.canonical import tx_hash_from_tx
 
 class WorkValidator(router.Processor):
     def __init__(self, hlc_clock, wallet, main_processing_queue, get_masters, get_last_processed_hlc, stop_node):
@@ -35,7 +36,7 @@ class WorkValidator(router.Processor):
             # not sure why this would be but it's a check anyway
             return
 
-        if not self.valid_signature(msg=msg):
+        if not self.valid_signature(message=msg):
             self.log.error(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
             print(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
             return
@@ -43,26 +44,22 @@ class WorkValidator(router.Processor):
         if self.older_than_last_processed(msg=msg):
             self.log.error('OLDER HLC RECEIVED')
             # TODO at this point we might be processing a message that is older than one that we already did (from
-            # an hlc perspective)  Should we do something here?
+            # UPDATE Looks like we will catch this situation later.  We can ignore it here
             pass
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
-        self.main_processing_queue.append(msg)
+        self.main_processing_queue.append(tx=msg)
 
         # print(f'Received new work from {msg["sender"][:8]} to my queue.')
 
     def valid_message_payload(self, msg):
-        if msg.get("tx") is None:
+        if msg.get("tx", None) is None:
             return False
-        if msg.get("hlc_timestamp") is None:
+        if msg.get("hlc_timestamp", None) is None:
             return False
-        if msg.get("sender") is None:
+        if msg.get("sender", None) is None:
             return False
-        if msg.get("input_hash") is None:
-            return False
-        if msg.get("signature") is None:
-            return False
-        if msg.get("timestamp") is None:
+        if msg.get("signature", None) is None:
             return False
         return True
 
@@ -73,9 +70,12 @@ class WorkValidator(router.Processor):
         else:
             return True
 
-    def valid_signature(self, msg):
+    def valid_signature(self, message):
+        tx_hash = tx_hash_from_tx(tx=message['tx'])
+        msg = f'{tx_hash}{message["hlc_timestamp"]}'
+
         try:
-            return verify(vk=msg['sender'], msg=msg['input_hash'], signature=msg['signature'])
+            return verify(vk=message['sender'], msg=msg, signature=message['signature'])
         except Exception:
             return False
         return False

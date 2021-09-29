@@ -196,7 +196,7 @@ class TestNode(TestCase):
         # Seed initial currency balances
         self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
-        amount_of_txn = 1000
+        amount_of_txn = 100
         self.send_transactions(amount_of_txs=amount_of_txn, node=node, sender_wallet=jeff_wallet)
 
         start_time = time.time()
@@ -227,6 +227,8 @@ class TestNode(TestCase):
 
             self.assertEqual(self.tx_history[key]['amount'], balance)
 
+        self.assertEqual(0, len(node.main_processing_queue.read_history))
+
 
     def test_transaction_throughput__founder_to_existing_wallet_list(self):
         # Get and start a node
@@ -247,7 +249,7 @@ class TestNode(TestCase):
         # Seed initial currency balances
         self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
-        amount_of_txn = 1000
+        amount_of_txn = 100
         for i in range(amount_of_txn):
             self.send_transaction(
                 node=node,

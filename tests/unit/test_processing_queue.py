@@ -3,6 +3,7 @@ from unittest import TestCase
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
+from contracting.stdlib.bridge.time import Datetime
 
 from lamden import storage
 from lamden import rewards
@@ -12,6 +13,7 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
 
 import time
+import math
 import hashlib
 import random
 import asyncio
@@ -61,7 +63,7 @@ class TestProcessingQueue(TestCase):
         }
 
         self.running = True
-        self.rollback_was_called = False
+        self.reprocess_was_called = False
         self.catchup_was_called = False
 
         self.current_height = lambda: storage.get_latest_block_height(self.driver)
@@ -74,11 +76,9 @@ class TestProcessingQueue(TestCase):
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
             executor=self.executor,
-            get_current_hash=self.current_hash,
-            get_current_height=self.current_height,
             stop_node=self.stop,
+            reprocess=self.reprocess_called,
             reward_manager=self.reward_manager,
-            rollback=self.rollback_called,
             get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus,
@@ -99,9 +99,9 @@ class TestProcessingQueue(TestCase):
     def start_all_queues(self):
         return
 
-    async def rollback_called(self):
+    async def reprocess_called(self, tx):
         print("ROLLBACK CALLED")
-        self.rollback_was_called = True
+        self.reprocess_was_called = tx['hlc_timestamp']
 
     def catchup_called(self):
         print("CATCHUP CALLED")
@@ -206,9 +206,16 @@ class TestProcessingQueue(TestCase):
         )
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
+        processing_results = res[0]
+
+        print(processing_results.get('hlc_timestamp'))
+
+        hlc_timestamp = processing_results.get('hlc_timestamp')
 
         # assert the first HLC entered was the one that was processed
-        self.assertEqual(res[0]['hlc_timestamp'], first_tx['hlc_timestamp'])
+        self.assertEqual(hlc_timestamp, first_tx.get('hlc_timestamp'))
+        self.assertIsNotNone(processing_results.get('proof'))
+        self.assertIsNotNone(processing_results.get('tx_result'))
 
     def test_process_next_return_value(self):
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
@@ -220,15 +227,10 @@ class TestProcessingQueue(TestCase):
             self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
         )
         loop = asyncio.get_event_loop()
-        processing_results = loop.run_until_complete(tasks)[0]
-
-        hlc_timestamp, result, transaction_processed = itemgetter(
-            'hlc_timestamp', 'result', 'transaction_processed'
-        )(processing_results)
+        hlc_timestamp = loop.run_until_complete(tasks)[0]
 
         self.assertIsNotNone(hlc_timestamp)
-        self.assertIsNotNone(result)
-        self.assertIsNotNone(transaction_processed)
+
 
     def test_process_next_return_value_tx_already_in_consensus_in_sync(self):
         def mock_check_if_already_has_consensus(hlc_timestamp):
@@ -248,15 +250,9 @@ class TestProcessingQueue(TestCase):
             self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
         )
         loop = asyncio.get_event_loop()
-        processing_results = loop.run_until_complete(tasks)[0]
-
-        hlc_timestamp, result, transaction_processed = itemgetter(
-            'hlc_timestamp', 'result', 'transaction_processed'
-        )(processing_results)
+        hlc_timestamp = loop.run_until_complete(tasks)[0]
 
         self.assertIsNotNone(hlc_timestamp)
-        self.assertIsNotNone(result)
-        self.assertIsNotNone(transaction_processed)
 
     def test_process_next_returns_none_if_len_0(self):
         self.main_processing_queue.flush()
@@ -330,17 +326,31 @@ class TestProcessingQueue(TestCase):
         tx = self.make_tx_message(get_new_tx())
         environment = self.main_processing_queue.get_environment(tx=tx)
 
-        self.assertEqual(environment['block_hash'], '0' * 64)
-        self.assertEqual(environment['block_num'], 0)
-        self.assertEqual(environment['__input_hash'], tx['input_hash'])
-        self.assertEqual(environment['now'], self.main_processing_queue.get_now_from_tx(tx=tx))
-        self.assertEqual(environment['AUXILIARY_SALT'], tx['tx']['metadata']['signature'])
+        nanos = self.main_processing_queue.hlc_clock.get_nanos(timestamp=tx['hlc_timestamp'])
+
+        h = hashlib.sha3_256()
+        h.update('{}'.format(nanos).encode())
+        nanos_hash = h.hexdigest()
+
+        h = hashlib.sha3_256()
+        h.update('{}'.format(tx['hlc_timestamp']).encode())
+        hlc_hash = h.hexdigest()
+
+        now = Datetime._from_datetime(
+                datetime.utcfromtimestamp(math.ceil(nanos / 1e9))
+            )
+
+        self.assertEqual(environment['block_hash'], nanos_hash)
+        self.assertEqual(environment['block_num'], nanos)
+        self.assertEqual(environment['__input_hash'], hlc_hash)
+        self.assertEqual(environment['now'], now)
+        self.assertEqual(environment['AUXILIARY_SALT'], tx['signature'])
 
     def test_rollback_on_process_earlier_hlc(self):
-        self.last_processed_hlc = '2'
-
         tx_info = self.make_tx_message(get_new_tx())
-        tx_info['hlc_timestamp'] = '1'
+        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
+
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.main_processing_queue.append(tx=tx_info)
 
@@ -353,13 +363,13 @@ class TestProcessingQueue(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertTrue(self.rollback_was_called)
+        self.assertTrue(self.reprocess_was_called)
 
     def test_hlc_already_in_queue(self):
         tx_info = self.make_tx_message(get_new_tx())
-        tx_info['hlc_timestamp'] = '1'
+        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
 
         self.main_processing_queue.append(tx=tx_info)
 
-        self.assertTrue(self.main_processing_queue.hlc_already_in_queue('1'))
-        self.assertFalse(self.main_processing_queue.hlc_already_in_queue('2'))
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(tx_info['hlc_timestamp']))
+        self.assertFalse(self.main_processing_queue.hlc_already_in_queue(self.hlc_clock.get_new_hlc_timestamp()))

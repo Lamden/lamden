@@ -1,6 +1,7 @@
 from contracting.db.encoder import encode
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
+from lamden.crypto.canonical import tx_hash_from_tx
 
 import hashlib
 
@@ -31,69 +32,76 @@ class Block_Contender():
         # Ignore if not enough subblocks
         # Make sure all the contenders are valid
 
+        if not self.valid_message_payload(msg=msg):
+            self.log.error(
+                f'Received Invalid Processing Results from {msg.get("proof", "No Proof provided")}'
+            )
+            return
+
         # get the tx specifics, if there is an error here then the tx is malformed
-        try:
-            subblock = msg['subblocks'][0]
-            signing_data = subblock['signatures'][0]
-            signer = signing_data['signer']
-            tx = subblock['transactions'][0]
-            hlc_timestamp = tx['hlc_timestamp']
-        except Exception:
-            self.log.error("Malformed solution from peer.")
 
-        self.debug_recieved_solutions.append({hlc_timestamp: [signing_data['signer'], msg['hash']]})
+        tx_result = msg['tx_result']
+        proof = msg["proof"]
+        hlc_timestamp = msg['hlc_timestamp']
 
-        # ignore this solution if we have already determined consensus on a previous HLC
-        if hlc_timestamp <= self.get_last_hlc_in_consensus(): return
+        self.debug_recieved_solutions.append({hlc_timestamp: [proof['signer'], proof['tx_result_hash']]})
+
+        if not self.validate_message_signature(tx_result=tx_result, proof=proof, hlc_timestamp=hlc_timestamp):
+            self.log.debug(f"Could not verify message signature {msg['proof']}")
+            return
 
         peers = self.get_all_peers()
         # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
 
-        if signer not in peers and signer != self.wallet.verifying_key:
+        if proof['signer'] not in peers and proof['signer'] != self.wallet.verifying_key:
             # TODO not sure how we would have connections from peers that are't in the quorum but we should blacklist these connection
             self.log.error('Contender sender is not a valid peer!')
             return
 
-        if not self.check_peer_in_consensus(signer):
+        if not self.check_peer_in_consensus(proof['signer']):
             # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
             # TODO ie, it's upto the peer to know they are out of consensus and attempt to resync and rejoin or be at risk of being blacklisted
-            self.log.info(f'{signer[:8]} is not in the consensus group. Ignoring solution!')
-            return
-
-        if not self.bc_is_valid(
-            message=tx,
-            signer=signer,
-            signature=signing_data['signature']
-        ):
-            self.log.error('Contender is not valid!')
+            self.log.info(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
             return
 
         # TODO Check to see if this is for a block already in consensus
-        # Add solution to this validation list for this tx
-        self.validation_queue.append(
-            hlc_timestamp=tx['hlc_timestamp'],
-            node_vk=signer,
-            block_info=msg
-        )
 
-    def bc_is_valid(self, message, signer, signature):
+        # Add solution to this validation list for this tx
+        self.validation_queue.append(processing_results=msg)
+
+    def validate_message_signature(self, tx_result, proof, hlc_timestamp):
+        # Sign our tx results
         h = hashlib.sha3_256()
-        h.update('{}'.format(encode(message).encode()).encode())
-        message_hash = h.hexdigest()
+        h.update('{}'.format(encode(tx_result).encode()).encode())
+        h.update('{}'.format(hlc_timestamp).encode())
+        tx_result_hash = h.hexdigest()
 
         valid_sig = verify(
-            vk=signer,
-            msg=message_hash,
-            signature=signature
+            vk=proof['signer'],
+            msg=tx_result_hash,
+            signature=proof['signature']
         )
 
         if not valid_sig:
-            self.log.debug({
-                'vk': signer,
-                'msg': message,
-                'signature': signature
-            })
-            self.log.error(f'Solution from {signer[:8]} has an invalid signature.')
+            self.log.debug(proof)
+            self.log.error(f"Solution from {proof['signer'][:8]} has an invalid signature.")
             return False
 
+        return True
+
+    def valid_message_payload(self, msg):
+        if msg.get("tx_result", None) is None:
+            return False
+        if msg["tx_result"].get("transaction", None) is None:
+            return False
+        if msg.get("hlc_timestamp", None) is None:
+            return False
+        if msg.get("proof", None) is None:
+            return False
+        if msg["proof"].get("signature", None) is None:
+            return False
+        if msg["proof"].get("signer", None) is None:
+            return False
+        if msg["proof"].get("tx_result_hash", None) is None:
+            return False
         return True

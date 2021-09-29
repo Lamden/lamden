@@ -1,21 +1,19 @@
 import time
-import asyncio
 import hashlib
-import json
+import math
 
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
-from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary
+from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
 
 
-
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, get_current_height, stop_node,
-                 get_current_hash, get_last_processed_hlc,  reward_manager, rollback, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, stop_all_queues, start_all_queues, testing=False, debug=False):
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, stop_node,
+                 get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
+                 get_last_hlc_in_consensus, stop_all_queues, start_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -29,10 +27,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.driver = driver
         self.hlc_clock = hlc_clock
         self.executor = executor
-        self.rollback = rollback
+        self.reprocess = reprocess
 
-        self.get_current_height = get_current_height
-        self.get_current_hash = get_current_hash
         self.get_last_processed_hlc = get_last_processed_hlc
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
@@ -40,6 +36,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.start_all_queues = start_all_queues
 
         self.stop_node = stop_node
+        self.read_history = {}
+        self.processing_results = {}
 
         self.reward_manager = reward_manager
 
@@ -152,20 +150,22 @@ class TxProcessingQueue(ProcessingQueue):
                 # self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
                 # TODO what to do with the tx if any error happen during processing
-                result = self.process_tx(tx=tx)
+                try:
+                    processing_results = self.process_tx(tx=tx)
                 # self.log.info("AFTER EXECUTE")
                 # self.log.debug(json.loads(json.dumps(tx)))
+                except Exception as err:
+                    self.log.error(err)
+                    print(err)
+                    return
+
 
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
 
-                hlc_timestamp = self.currently_processing_hlc
                 self.currently_processing_hlc = ""
-                return {
-                    'hlc_timestamp': hlc_timestamp,
-                    'result': result,
-                    'transaction_processed': tx
-                }
+
+                return processing_results
         else:
             # else, put it back in queue
             self.queue.append(tx)
@@ -186,6 +186,7 @@ class TxProcessingQueue(ProcessingQueue):
         environment = self.get_environment(tx=tx)
         transaction = tx['tx']
         stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        hlc_timestamp = tx['hlc_timestamp']
 
         # Execute the transaction
         output = self.execute_tx(
@@ -197,7 +198,7 @@ class TxProcessingQueue(ProcessingQueue):
         # Process the result of the executor
         tx_result = self.process_tx_output(
             output=output,
-            hlc_timestamp=tx['hlc_timestamp'],
+            hlc_timestamp=hlc_timestamp,
             transaction=transaction,
             stamp_cost=stamp_cost
         )
@@ -209,14 +210,18 @@ class TxProcessingQueue(ProcessingQueue):
         )
 
         # Create merkle
-        merkle_tree = self.sign_tx_results(tx_result=tx_result)
+        sign_info = self.sign_tx_results(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
 
         # Return a sub block
-        return self.create_subblock(
-            input_hash=tx['input_hash'],
-            tx_result=tx_result,
-            merkle_tree=merkle_tree
-        )
+        return {
+            'tx_result': tx_result,
+            'proof': sign_info,
+            'hlc_timestamp': hlc_timestamp,
+            'tx_message': {
+                'signature': tx['signature'],
+                'sender': tx['sender']
+            }
+        }
 
     def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
         # TODO better error handling of anything in here
@@ -278,9 +283,9 @@ class TxProcessingQueue(ProcessingQueue):
             'status': output['status_code'],
             'state': writes,
             'stamps_used': output['stamps_used'],
-            'result': safe_repr(output['result']),
-            'hlc_timestamp': hlc_timestamp
+            'result': safe_repr(output['result'])
         }
+
 
         tx_output = format_dictionary(tx_output)
 
@@ -326,78 +331,66 @@ class TxProcessingQueue(ProcessingQueue):
             master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
         )
 
-    def sign_tx_results(self, tx_result):
+    def sign_tx_results(self, tx_result, hlc_timestamp):
         # Sign our tx results
         h = hashlib.sha3_256()
         h.update('{}'.format(encode(tx_result).encode()).encode())
-        tx_hash = h.hexdigest()
+        h.update('{}'.format(hlc_timestamp).encode())
+        tx_result_hash = h.hexdigest()
 
-        proof = self.wallet.sign(tx_hash)
+        proof = self.wallet.sign(tx_result_hash)
 
         return {
-            'leaves': tx_hash,
-            'signature': proof
+            'tx_result_hash': tx_result_hash,
+            'signature': proof,
+            'signer': self.wallet.verifying_key
         }
-
-    def create_subblock(self, input_hash, tx_result, merkle_tree):
-        return format_dictionary({
-            'input_hash': input_hash,
-            'transactions': [tx_result],
-            'merkle_tree': merkle_tree,
-            'signer': self.wallet.verifying_key,
-            'subblock': 0,
-            'previous': self.get_current_hash()
-        })
-
 
     def get_environment(self, tx):
-        now = self.get_now_from_tx(tx=tx)
+        nanos = self.get_nanos_from_tx(tx=tx)
 
         return {
-            'block_hash': self.get_current_hash(),
-            'block_num': self.get_current_height(),
-            '__input_hash': tx['input_hash'],  # Used for deterministic entropy for random games
-            'now': now,
-            'AUXILIARY_SALT': tx['tx']['metadata']['signature']
+            'block_hash': self.get_nanos_hash(nanos=nanos),  # hash nanos
+            'block_num': nanos,  # hlc to nanos
+            '__input_hash': self.get_hlc_hash_from_tx(tx=tx),  # Used for deterministic entropy for random games
+            'now': self.get_now_from_nanos(nanos=nanos),
+            'AUXILIARY_SALT': tx['signature']
         }
 
-    def get_now_from_tx(self, tx):
+    def get_hlc_hash_from_tx(self, tx):
+        h = hashlib.sha3_256()
+        h.update('{}'.format(tx['hlc_timestamp']).encode())
+        return h.hexdigest()
+
+    def get_nanos_hash(self, nanos):
+        h = hashlib.sha3_256()
+        h.update('{}'.format(nanos).encode())
+        return h.hexdigest()
+
+    def get_nanos_from_tx(self, tx):
+        return self.hlc_clock.get_nanos(timestamp=tx['hlc_timestamp'])
+
+    def get_now_from_nanos(self, nanos):
         return Datetime._from_datetime(
-            datetime.utcfromtimestamp(tx['tx']['metadata']['timestamp'])
+            datetime.utcfromtimestamp(math.ceil(nanos / 1e9))
         )
 
-    async def node_rollback(self, tx):
-        '''
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'processing_queue',
-                'event': 'out_of_sync_hlc',
-                'hlc_timestamp': self.currently_processing_hlc,
-                'last_processed_hlc': self.get_last_processed_hlc(),
-                'system_time': time.time()
-            }))
-        '''
+    def prune_history(self, hlc_timestamp):
+        self.prune_processing_results(hlc_timestamp=hlc_timestamp)
+        self.prune_read_history(hlc_timestamp=hlc_timestamp)
 
-        # add tx back to processing queue
-        '''
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'processing_queue',
-                'event': 'append_new',
-                'hlc_timestamp': tx['hlc_timestamp'],
-                'system_time': time.time()
-            }))
-        '''
+    def prune_processing_results(self, hlc_timestamp):
+        for hlc in list(self.processing_results):
+            if hlc <= hlc_timestamp:
+                self.processing_results.pop(hlc, None)
+
+    def prune_read_history(self, hlc_timestamp):
+        for hlc in list(self.read_history):
+            if hlc <= hlc_timestamp:
+                self.read_history.pop(hlc, None)
+
+    async def node_rollback(self, tx):
         self.currently_processing = False
         await self.stop_all_queues()
-        self.queue.append(tx)
-
-        if self.debug or self.testing:
-            self.sort_queue()
-            self.detected_rollback = True
-
-        # rollback state to last consensus
-        await self.rollback()
+        await self.reprocess(tx=tx)
         self.start_all_queues()
