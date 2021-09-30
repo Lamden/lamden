@@ -166,14 +166,16 @@ class BlockStorage:
 
         name = str(num).zfill(64)
 
-        symlink_name = block.get('hash')
+        hash_symlink_name = block.get('hash')
+        hlc_symlink_name = block.get('hlc_timestamp')
 
         encoded_block = encode(block)
         with open(self.blocks_dir.joinpath(name), 'w') as f:
             f.write(encoded_block)
 
         try:
-            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
         except FileExistsError:
             pass
 

@@ -249,6 +249,7 @@ class Node:
             debug=self.debug,
             validation_queue=self.validation_queue,
             get_all_peers=self.get_all_peers,
+            get_block_by_hlc=self.get_block_by_hlc,
             check_peer_in_consensus=self.check_peer_in_consensus,
             peer_add_strike=self.peer_add_strike,
             wallet=self.wallet,
@@ -1026,6 +1027,9 @@ class Node:
                 member_peers[member] = ip
 
         return member_peers
+
+    def get_block_by_hlc(self, hlc_timestamp):
+        return self.blocks.get_block(v=hlc_timestamp)
 
     def get_delegate_peers(self, not_me=False):
         peers = self._get_member_peers('delegates')

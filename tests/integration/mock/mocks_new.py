@@ -19,12 +19,12 @@ MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3
 TEST_FOUNDATION_WALLET = Wallet(MOCK_FOUNDER_SK)
 
 
-def await_all_nodes_done_processing(nodes, block_height, timeout):
+def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
     async def check():
         start = time.time()
         done = False
         while not done:
-            await asyncio.sleep(10)
+            await asyncio.sleep(sleep)
             heights = [node.obj.get_current_height() for node in nodes]
             results = [node.obj.get_current_height() == block_height for node in nodes]
             done = all(results)

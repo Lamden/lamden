@@ -7,7 +7,8 @@ import hashlib
 
 class Block_Contender():
     def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, get_last_hlc_in_consensus,
-                 peer_add_strike, wallet, debug=False, testing=False):
+                 get_block_by_hlc, peer_add_strike, wallet, debug=False, testing=False):
+
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Block Contender')
@@ -17,6 +18,7 @@ class Block_Contender():
         self.block_q = []
         self.validation_queue = validation_queue
         self.get_all_peers = get_all_peers
+        self.get_block_by_hlc = get_block_by_hlc
         self.check_peer_in_consensus = check_peer_in_consensus
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.peer_add_strike = peer_add_strike
@@ -64,6 +66,11 @@ class Block_Contender():
             self.log.info(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
             return
 
+        if hlc_timestamp < self.get_last_hlc_in_consensus():
+            block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
+            if block is not None:
+                return
+
         # TODO Check to see if this is for a block already in consensus
 
         # Add solution to this validation list for this tx
@@ -76,18 +83,12 @@ class Block_Contender():
         h.update('{}'.format(hlc_timestamp).encode())
         tx_result_hash = h.hexdigest()
 
-        valid_sig = verify(
-            vk=proof['signer'],
-            msg=tx_result_hash,
-            signature=proof['signature']
-        )
-
-        if not valid_sig:
-            self.log.debug(proof)
-            self.log.error(f"Solution from {proof['signer'][:8]} has an invalid signature.")
+        try:
+            return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
+        except Exception:
             return False
+        return False
 
-        return True
 
     def valid_message_payload(self, msg):
         if msg.get("tx_result", None) is None:

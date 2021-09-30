@@ -24,14 +24,14 @@ def generate_blocks(number_of_blocks):
 
     return blocks
 
-def get_new_currency_tx(wallet, to, amount):
+def get_new_currency_tx(wallet=None, to=None, amount=None):
     txb = build_transaction(
-        wallet=wallet,
+        wallet=wallet or Wallet(),
         contract="currency",
         function="transfer",
         kwargs={
-            'to': to,
-            'amount': {'__fixed__': amount},
+            'to': to or Wallet().verifying_key,
+            'amount': {'__fixed__': amount or '100.5'},
         },
         nonce=0,
         processor='0' * 64,

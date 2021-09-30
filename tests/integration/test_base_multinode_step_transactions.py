@@ -99,18 +99,13 @@ class TestMultiNode(TestCase):
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 20
+        amount_of_transactions = 5
         receiver_wallet = Wallet()
 
         # Log the amounts of each transaction so we can verify state later
         test_tracker = {}
 
         test_start_sending_transactions = time.time()
-        for node in network_1.masternodes:
-            node.obj.validation_queue.stop()
-
-        for node in network_1.delegates:
-            node.obj.validation_queue.stop()
 
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
@@ -131,7 +126,8 @@ class TestMultiNode(TestCase):
             mocks_new.await_all_nodes_done_processing(
                 nodes=network_1.all_nodes(),
                 block_height=i+1,
-                timeout=0
+                timeout=0,
+                sleep=1
             )
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
@@ -188,7 +184,7 @@ class TestMultiNode(TestCase):
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 10
+        amount_of_transactions = 5
 
         # Log the amounts of each transaction so we can verify state later
         test_tracker = {}
@@ -217,11 +213,10 @@ class TestMultiNode(TestCase):
 
         print(f"Took {time.time() - test_start_sending_transactions} seconds to process ALL transactions.")
 
-        '''
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
             balance = test_tracker[key]
-            results = n.get_vars(
+            results = network_1.get_vars(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
@@ -231,10 +226,10 @@ class TestMultiNode(TestCase):
             self.assertTrue(all(balance == results[0] for balance in results))
 
         # All nodes are at the proper block height
-        for node in n.all_nodes():
+        for node in network_1.all_nodes():
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
-        '''
+
