@@ -13,6 +13,7 @@ from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
+import pathlib
 
 import ssl
 import asyncio
@@ -121,6 +122,13 @@ class WebServer:
 
         # TX Route
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
+
+        # State Dump file server
+        # Setup a default home
+        self.statedump_folder = pathlib.Path.home() / '.statedump'
+        self.statedump_folder.mkdir(parents=True, exist_ok=True)
+
+        self.app.static('/statedump', self.statedump_folder)
 
         self.coroutine = None
 
