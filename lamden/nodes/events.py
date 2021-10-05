@@ -123,7 +123,6 @@ class ConnectionManager:
 
         self.subscriptions[topic].add(websocket.remote_address)
 
-
     async def unsubscribe(self, websocket, topic):
         current_connection = self.connections.get(websocket.remote_address)
 
@@ -172,3 +171,19 @@ class ConnectionManager:
             subscribers = self.subscriptions[event.name]
             coroutines = [self.send_message(self.connections[w].websocket, event.payload) for w in subscribers]
             await asyncio.gather(*coroutines)
+
+
+class WebsocketServer(ConnectionManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Explicit topics are not able to be split into parts
+        # Wildcard topics are split into parts and have a * to denote
+        self.explicit_topics = set()
+        self.wildcard_topics = set()
+
+    def is_valid_topic(self, topic):
+        return True
+
+    def add_topic(self, topic):
+        pass
