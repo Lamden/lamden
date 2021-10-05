@@ -8,9 +8,9 @@ from lamden.nodes.queue_base import ProcessingQueue
 
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, get_peers_for_consensus, process_from_consensus_result,
+    def __init__(self, driver, consensus_percent, get_peers_for_consensus,
                  set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, stop_all_queues,
-                 start_all_queues, testing=False, debug=False):
+                 start_all_queues, get_block_by_hlc, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
@@ -21,11 +21,11 @@ class ValidationQueue(ProcessingQueue):
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
 
+        self.get_block_by_hlc = get_block_by_hlc
         self.consensus_percent = consensus_percent
         self.get_peers_for_consensus = get_peers_for_consensus
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
-        self.process_from_consensus_result = process_from_consensus_result
         self.stop_node = stop_node
         self.stop_all_queues = stop_all_queues
         self.start_all_queues = start_all_queues
@@ -36,16 +36,17 @@ class ValidationQueue(ProcessingQueue):
         # For debugging
         self.testing = testing
         self.debug = debug
+        self.append_history = []
         self.validation_results_history = []
         self.detected_rollback = False
 
     def append(self, processing_results):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
-
         node_vk = processing_results["proof"].get('signer')
 
         # don't accept this solution if it's for an hlc_timestamp we already had consensus on
         hlc_timestamp = processing_results.get('hlc_timestamp')
+        self.append_history.append(hlc_timestamp)
 
         # TODO how late of an HLC timestamp are we going to accept?
         '''
@@ -146,7 +147,9 @@ class ValidationQueue(ProcessingQueue):
         self.queue.sort()
         try:
             if self.hlc_has_solutions(self.queue[0]):
-                await self.process(hlc_timestamp=self.queue.pop(0))
+                hlc_timestamp = self.queue.pop(0)
+                await self.process(hlc_timestamp=hlc_timestamp)
+
         except IndexError:
             return
         except Exception as err:
@@ -277,7 +280,6 @@ class ValidationQueue(ProcessingQueue):
             'solutions_missing': solutions_missing,
             'tally_info': tally_info
         })
-
 
         if self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible']:
             # Check ideal situation
@@ -484,10 +486,6 @@ class ValidationQueue(ProcessingQueue):
         consensus_solution = consensus_results.get('solution', '')
         return validation_result['result_lookup'].get(consensus_solution, {})
 
-    def process_and_commit(self, hlc_timestamp, block_info):
-        self.process_from_consensus_result(block_info=block_info, hlc_timestamp=hlc_timestamp)
-        self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
-
     async def commit_consensus_block(self, hlc_timestamp):
         # Get the tx results for this timestamp
         processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
@@ -503,15 +501,19 @@ class ValidationQueue(ProcessingQueue):
         if hlc_timestamp > self.last_hlc_in_consensus:
             self.last_hlc_in_consensus = hlc_timestamp
 
-        # Remove all instances of this HLC from the checking queue to prevent re-checking it
-        self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
+        # remove HLC from processing
+        self.flush_hlc(hlc_timestamp=hlc_timestamp)
 
         # Remove any HLC results in validation results that might be earlier
         # TODO DO we want to do this?
         # self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
 
+    def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
-        self.validation_results.pop(hlc_timestamp, None)
+        self.validation_results.pop(hlc_timestamp)
+
+        # Remove all instances of this HLC from the checking queue to prevent re-checking it
+        self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
 
     def hlc_has_consensus(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp)

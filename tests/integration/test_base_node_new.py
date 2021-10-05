@@ -193,7 +193,7 @@ class TestNode(TestCase):
     def test_stopped(self):
         node = self.create_a_node()
         self.start_node(node)
-        node.stop()
+        self.await_async_process(process=node.stop)
 
         self.assertFalse(node.running)
 

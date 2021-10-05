@@ -23,8 +23,6 @@ class TestProcessingQueue(TestCase):
         self.hard_apply_block_called = False
         self.set_peers_not_in_consensus_called = False
 
-        self.process_block_called = False
-
         self.current_block = 64 * f'0'
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -32,13 +30,13 @@ class TestProcessingQueue(TestCase):
             wallet=self.wallet,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            process_from_consensus_result=self.process_from_consensus_result,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             stop_node=self.stop,
             testing=True,
             start_all_queues=self.start_all_queues,
             stop_all_queues=self.stop_all_queues,
+            get_block_by_hlc=lambda: None,
         )
 
         print("\n")
@@ -67,9 +65,6 @@ class TestProcessingQueue(TestCase):
 
     async def hard_apply_block(self, processing_results):
         self.hard_apply_block_called = True
-
-    def process_from_consensus_result(self, block_info, hlc_timestamp):
-        self.process_block_called = True
 
     def is_next_block(self, previous_block):
         return previous_block == self.current_block

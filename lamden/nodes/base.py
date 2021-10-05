@@ -103,7 +103,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class Node:
-    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
+    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
                  nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue()):
@@ -142,7 +142,7 @@ class Node:
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
-        self.ctx = ctx
+        self.ctx = ctx or zmq.asyncio.Context()
 
         self.system_monitor = system_usage.SystemUsage()
 
@@ -223,7 +223,7 @@ class Node:
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
             get_peers_for_consensus=self.get_peers_for_consensus,
-            process_from_consensus_result=self.process_from_consensus_result,
+            get_block_by_hlc=self.get_block_by_hlc,
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             wallet=self.wallet,
@@ -289,20 +289,15 @@ class Node:
                     wallet=self.wallet
                 )
 
-    def stop(self):
+    async def stop(self):
         # Kill the router and throw the running flag to stop the loop
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
         self.network.stop()
         self.system_monitor.stop()
         self.running = False
-        self.validation_queue.stop()
-        self.main_processing_queue.stop
-        tasks = asyncio.gather(
-            self.main_processing_queue.stopping(),
-            self.validation_queue.stopping()
-        )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+
+        await self.stop_all_queues()
+
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
     def start_all_queues(self):
@@ -353,10 +348,13 @@ class Node:
 
     async def check_validation_queue(self):
         while self.running:
-            if len(self.validation_queue) > 0 and self.validation_queue.running:
+            validation_queue_length = len(self.validation_queue)
+            validation_results_length = len(self.validation_queue.validation_results)
+            if (validation_queue_length > 0 or validation_results_length > 0) and self.validation_queue.running:
+                #if len(self.validation_queue) > 0 or len(self.validation_queue.validation_results) > 0:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
-                self.log.info(f"Done processsing next and node is running {self.validation_queue.running}")
+                # self.log.info(f"Done processsing next and node is running {self.validation_queue.running}")
                 self.validation_queue.stop_processing()
             await asyncio.sleep(0)
 
@@ -400,83 +398,6 @@ class Node:
         self.nonces.flush_pending()
         gc.collect()
 
-    # Called by validation queue
-    def process_from_consensus_result(self, hlc_timestamp):
-        if self.testing:
-            self.debug_timeline.append({
-                'method': "process_from_consensus_result",
-                'hlc_timestamp': hlc_timestamp,
-                'last_processed': self.get_last_processed_hlc(),
-                'last_consensus': self.get_last_hlc_in_consensus()
-            })
-
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'event': 'process_from_consensus_result',
-                'hlc_timestamp': hlc_timestamp,
-                'last_processed': self.get_last_processed_hlc(),
-                'last_consensus': self.get_last_hlc_in_consensus()
-            }))
-
-        processing_results = self.validation_queue.get_consensus_results(hlc_timestamp=hlc_timestamp)
-        tx_result = processing_results.get('tx_result')
-        state_changes = tx_result['state']
-        stamps_used = tx_result['stamps_used']
-
-        for s in state_changes:
-            if type(s['value']) is dict:
-                s['value'] = convert_dict(s['value'])
-
-            self.driver.set(s['key'], s['value'])
-
-        # self.driver.pending_reads.clear()
-        # self.driver.pending_writes.clear()
-
-        self.main_processing_queue.distribute_rewards(
-            total_stamps_to_split=stamps_used,
-            contract_name=tx_result['transaction']['payload']['contract']
-        )
-
-    def process_block(self, block_info, hlc_timestamp):
-        # 2) Store block, create rewards and increment block number
-        self.update_block_db(block_info)
-
-        # 3) Soft Apply current state and create change log
-        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-
-        if self.testing:
-            self.debug_processed_hlcs.append(hlc_timestamp)
-            try:
-                self.debug_stack.append({
-                    'system_time': time.time(),
-                    'method': 'process_result_after' + hlc_timestamp,
-                    'pending_deltas': json.loads(encode(self.driver.pending_deltas).encode()),
-                    'pending_writes': json.loads(encode(self.driver.pending_writes).encode()),
-                    'pending_reads': json.loads(encode(self.driver.pending_reads).encode()),
-                    'cache': json.loads(encode(self.driver.cache).encode()),
-                    'block': self.get_current_height(),
-                    'processing_results': hlc_timestamp,
-                    'last_processed_hlc:': self.last_processed_hlc
-                })
-            except Exception as err:
-                pass
-                # print(err)
-        '''
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'event': 'processed_from_main_queue',
-                'hlc_timestamp': hlc_timestamp,
-                'my_solution': block_info['hash'],
-                'system_time': time.time()
-            }))
-        '''
-
-
-
     def make_tx_message(self, tx):
         hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
         tx_hash = tx_hash_from_tx(tx=tx)
@@ -489,75 +410,6 @@ class Node:
             'signature': signature,
             'sender': self.wallet.verifying_key
         }
-
-    def create_new_block_from_result(self, result):
-        # if self.testing:
-        #   self.debug_stack.append({'method': 'create_new_block_from_result', 'block': self.current_height})
-        # self.log.debug(result)
-
-
-        # Create results copy without signatures
-        result_without_sigs = deepcopy(result)
-        result_without_sigs.pop('signatures', None)
-        encoded_sb = encode(result_without_sigs)
-
-        # Create block hash
-        block_hasher = hashlib.sha3_256()
-        block_hasher.update(encoded_sb.encode())
-
-        # TODO blah
-        ''' Committing a block
-            1) is there a newer block?
-                a) no
-                    - apply new block
-                    - return
-                b) yes
-                    - get all newer blocks in order
-                    - figure out what my block number is
-                    - take the previous hash from the next block
-                    - re do block chain nonsense for later blocks
-                    - apply state changes from current to latest
-        '''
-
-
-
-        block = {
-            'hash': hash(tx['resut_hash'] + blocknumber + previoushash),
-            'hlc': result['hlc_timestamp'],
-            'number': self.get_current_height() + 1,
-            'previous': self.get_current_hash(),
-            'tx': result
-        }
-
-        return block
-
-        self.blocks.soft_store_block(result['transactions'][0]['hlc_timestamp'], block)
-
-        block_info = json.loads(encode(block).encode())
-
-        '''
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'event': 'new_block',
-                'block_info': block_info,
-                'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
-                'system_time': time.time()
-            }))
-        '''
-        '''
-        if self.testing:
-            self.debug_stack.append({
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'event': 'new_block',
-                'block_info': block_info,
-                'hlc_timestamp': result['transactions'][0]['hlc_timestamp'],
-                'system_time': time.time()
-            })
-        '''
-        return block_info
 
     def update_block_db(self, block):
         # if self.testing:
