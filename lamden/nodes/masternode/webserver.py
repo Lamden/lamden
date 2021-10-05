@@ -128,7 +128,7 @@ class WebServer:
         self.statedump_folder = pathlib.Path.home() / '.statedump'
         self.statedump_folder.mkdir(parents=True, exist_ok=True)
 
-        self.app.static('/statedump', self.statedump_folder)
+        self.app.static('/statedump', '.')
 
         self.coroutine = None
 
