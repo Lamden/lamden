@@ -96,25 +96,7 @@ def process_target(NodeClass, index, child_conn, wallet, bootnodes, constitution
                         child_conn.send(["node_running", node.obj.running])
 
                 if action == "send_tx":
-                    sender_wallet = payload.get('sender_wallet')
-                    receiver_wallet = payload.get('receiver_wallet')
-
-                    receiver_wallet = receiver_wallet or Wallet()
-                    amount = str(round(random.uniform(1, 200), 4))
-
-                    tx = transaction.build_transaction(
-                        wallet=sender_wallet,
-                        contract='currency',
-                        function='transfer',
-                        kwargs={
-                            'to': receiver_wallet.verifying_key,
-                            'amount': {'__fixed__': amount}
-                        },
-                        stamps=100,
-                        processor=node.obj.wallet.verifying_key,
-                        nonce=1
-                    )
-                    node.obj.tx_queue.append(tx.encode())
+                    node.obj.tx_queue.append(payload)
 
                 if action == "get_block":
                     block = node.obj.blocks.get_block(v=payload)
@@ -123,11 +105,15 @@ def process_target(NodeClass, index, child_conn, wallet, bootnodes, constitution
                             'number': 0,
                             'hash': f'0' * 64
                         }
-                    child_conn.send(["get_block", block, node.obj.wallet.verifying_key])
+                    child_conn.send(["get_block", block])
 
                 if action == "current_height":
                     current_height = node.obj.get_current_height()
-                    child_conn.send(["current_height", current_height, node.obj.wallet.verifying_key])
+                    child_conn.send(["current_height", current_height])
+
+                if action == "get_last_processed_hlc":
+                    last_processed = node.obj.last_processed_hlc
+                    child_conn.send(["get_last_processed_hlc", last_processed])
 
             await asyncio.sleep(0)
 
@@ -168,6 +154,7 @@ class NodeProcess:
         self.wallet = Wallet()
 
         self.started = False
+        self.last_processed_hlc = None
 
         self.exception = None
 
@@ -176,7 +163,6 @@ class NodeProcess:
         self.constitution = constitution
 
     def init_process(self):
-        print("called")
         try:
             self.process = Process(
                 index=self.index,
@@ -203,7 +189,26 @@ class NodeProcess:
 
                 if action == "node_running":
                     self.started = payload
+
+                if action == "get_last_processed_hlc":
+                    if payload == "":
+                        self.last_processed_hlc = None
+                    else:
+                        self.last_processed_hlc = payload
             await asyncio.sleep(0)
+
+    def send_transaction(self, tx):
+        self.parent_conn.send(["send_tx", tx])
+
+    async def get_last_processed_hlc(self):
+        self.last_processed_hlc = None
+        self.parent_conn.send(["get_last_processed_hlc", None])
+
+        while self.last_processed_hlc is None:
+            await asyncio.sleep(0)
+
+        return self.last_processed_hlc
+
 
 class MockNode:
     def __init__(self, wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
@@ -354,7 +359,7 @@ class MockNetwork:
             constitution['delegates'].append(d.wallet.verifying_key)
             bootnodes[d.wallet.verifying_key] = d.tcp
 
-        for node_process in self.masternodes + self.delegates:
+        for node_process in self.all_nodes():
             node_process.set_start_variables(bootnodes=bootnodes, constitution=constitution)
 
         self.constitution = constitution
@@ -414,10 +419,10 @@ class MockNetwork:
         return [self.get_var_from_one(contract, variable, arguments, node) for node in self.all_nodes()]
 
     def set_var(self, contract, variable, arguments, value):
-        for node in self.masternodes + self.delegates:
-            assert node.started, 'All nodes must be started first to mint.'
+        for node_process in self.all_nodes():
+            assert node_process.process.started, 'All nodes must be started first to mint.'
 
-            node.driver.set_var(
+            node_process.driver.set_var(
                 contract=contract,
                 variable=variable,
                 arguments=arguments,
@@ -425,9 +430,7 @@ class MockNetwork:
             )
 
     async def start(self):
-        print(self.masternodes + self.delegates)
-        for node_process in self.masternodes + self.delegates:
-            print(node_process)
+        for node_process in self.all_nodes():
             try:
                 node_process.init_process()
                 node_process.start_process()
@@ -435,69 +438,47 @@ class MockNetwork:
                 print(err)
 
     async def stop(self):
-        for node_process in self.masternodes + self.delegates:
+        all_node_processes = self.all_nodes()
+
+        for node_process in all_node_processes:
             node_process.parent_conn.send(["STOP", None])
 
-        for node_process in self.masternodes + self.delegates:
+        for node_process in all_node_processes:
             while node_process.started:
                 node_process.parent_conn.send(["node_running", None])
                 await asyncio.sleep(0.1)
 
-        for node_process in self.masternodes + self.delegates:
+        for node_process in all_node_processes:
             node_process.child_conn.close()
             node_process.parent_conn.close()
             node_process.process.terminate()
 
     async def await_all_started(self):
+        all_node_processes = self.all_nodes()
+
         all_started = False
         while not all_started:
             done = True
             self.check_all_started()
-            for node_process in self.masternodes + self.delegates:
+            for node_process in all_node_processes:
                 if not node_process.started:
                     done = False
             all_started = done
             await asyncio.sleep(0.5)
 
     def check_all_started(self):
-        for node_process in self.masternodes + self.delegates:
+        for node_process in self.all_nodes():
             node_process.parent_conn.send(["node_running", None])
 
-    async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
-        tx = transaction.build_transaction(
-            wallet=wallet,
-            contract=contract,
-            function=function,
-            kwargs=kwargs,
-            stamps=stamps,
-            processor=node.wallet.verifying_key,
-            nonce=nonce
-        )
-
-        async with httpx.AsyncClient() as client:
-            await client.post(f'{node.webserver_ip}/', data=tx)
-
-    async def push_tx_to_tx_queue(self, node=None, wallet=None, contract=None, function=None, kwargs=None, stamps=None, nonce=None, tx_info=None):
-        tx = tx_info or transaction.build_transaction(
-            wallet=wallet,
-            contract=contract,
-            function=function,
-            kwargs=kwargs,
-            stamps=stamps,
-            processor=node.wallet.verifying_key,
-            nonce=nonce
-        )
-
-        node.obj.tx_queue.append(tx)
-
-    def send_random_currency_transaction(self, sender_wallet, receiver_wallet=None):
-        node = random.choice(self.masternodes)
+    def send_currency_transaction(self, sender_wallet=None, receiver_wallet=None, node_process=None, amount=None):
+        if node_process is None:
+            node_process = random.choice(self.masternodes)
 
         receiver_wallet = receiver_wallet or Wallet()
-        amount = str(round(random.uniform(1, 200), 4))
+        amount = amount or str(round(random.uniform(1, 200), 4))
 
         tx = transaction.build_transaction(
-            wallet=sender_wallet,
+            wallet=sender_wallet or Wallet(),
             contract='currency',
             function='transfer',
             kwargs={
@@ -505,43 +486,10 @@ class MockNetwork:
                 'amount': {'__fixed__': amount}
             },
             stamps=100,
-            processor=node.wallet.verifying_key,
+            processor=node_process.wallet.verifying_key,
             nonce=1
         )
-        node.tx_queue.append(tx.encode())
-        return tx
+        node_process.send_transaction(tx=tx.encode())
 
-    async def make_and_push_tx(self, wallet, contract, function, kwargs={}, stamps=1_000_000, mn_idx=0, random_select=False):
-        # Mint money if we have to
-        # Get our node we are going to send the tx to
-        if random_select:
-            node = random.choice(self.masternodes)
-        else:
-            node = self.masternodes[mn_idx]
+        return (node_process, tx)
 
-        processor = node.wallet.verifying_key
-
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f'{node.webserver_ip}/nonce/{wallet.verifying_key}')
-            nonce = response.json()['nonce']
-
-        self.log.info(f'Nonce is {nonce}')
-
-        await self.push_tx(
-            node=node,
-            wallet=wallet,
-            contract=contract,
-            function=function,
-            kwargs=kwargs,
-            stamps=stamps,
-            nonce=nonce
-        )
-
-    def flush(self):
-        for node in self.masternodes + self.delegates:
-            node.flush()
-
-    def refresh(self):
-        self.flush()
-        for node in self.masternodes + self.delegates:
-            node.obj.seed_genesis_contracts()
