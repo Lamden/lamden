@@ -10,6 +10,14 @@ from lamden.crypto import transaction
 from contracting.client import ContractingClient
 from lamden import storage
 from collections import defaultdict
+
+
+class InvalidTX:
+    def __init__(self, tx, err):
+        self.tx = tx
+        self.err = err
+
+
 WORK_SERVICE = 'work'
 
 
@@ -69,6 +77,7 @@ class WorkProcessor(router.Processor):
 
             except transaction.TransactionException as e:
                 self.log.error(f'TX in batch has error: {type(e)}')
+                good_transactions.append(InvalidTX(tx, e))
 
         # Replace transactions with ones that do not pass.
         msg['transactions'] = good_transactions
