@@ -28,8 +28,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
             heights = [node.obj.get_current_height() for node in nodes]
             results = [node.obj.get_current_height() == block_height for node in nodes]
             done = all(results)
-            if not done:
-                pass
+
             if timeout > 0 and time.time() - start > timeout:
                 print([node.obj.get_current_height() == block_height for node in nodes])
                 print({'heights':heights})
@@ -41,20 +40,6 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
     )
     loop = asyncio.get_event_loop()
     loop.run_until_complete(tasks)
-
-def create_fixture_directories(dir_list):
-    for d in dir_list:
-        try:
-            pathlib.Path(f'./fixtures/{d}').mkdir(parents=True, exist_ok=True)
-        except FileExistsError:
-            pass
-
-def remove_fixture_directories(dir_list):
-    for d in dir_list:
-        try:
-            shutil.rmtree(f'./fixtures/{d}')
-        except Exception:
-            pass
 
 class MockNode:
     def __init__(self, ctx,  wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
@@ -275,7 +260,7 @@ class MockNetwork:
 
     def stop(self):
         for node in self.masternodes + self.delegates:
-            node.stop()
+            asyncio.ensure_future(node.stop())
 
     async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
         tx = transaction.build_transaction(

@@ -71,6 +71,7 @@ class Process(multiprocessing.Process):
             multiprocessing.Process.run(self)
         except Exception as e:
             tb = traceback.format_exc()
+            print (f'NODE {self.index}:\n', e, tb)
             self.child_conn.send(["NODE_ERROR"], (f'NODE {self.index}:\n', e, tb))
 
 
@@ -95,8 +96,15 @@ def process_target(NodeClass, index, child_conn, wallet, bootnodes, constitution
                     else:
                         child_conn.send(["node_running", node.obj.running])
 
+                if action == "node_type":
+                    child_conn.send(["node_type", node.obj.upgrade_manager.node_type])
+
+                if action == "get_file_queue_length":
+                    child_conn.send(["get_file_queue_length", len(node.obj.tx_queue)])
+
                 if action == "send_tx":
                     node.obj.tx_queue.append(payload)
+
 
                 if action == "get_block":
                     block = node.obj.blocks.get_block(v=payload)
@@ -154,7 +162,9 @@ class NodeProcess:
         self.wallet = Wallet()
 
         self.started = False
+        self.node_type = None
         self.last_processed_hlc = None
+        self.file_queue_length = None
 
         self.exception = None
 
@@ -190,6 +200,12 @@ class NodeProcess:
                 if action == "node_running":
                     self.started = payload
 
+                if action == "node_type":
+                    self.node_type = payload
+
+                if action == "get_file_queue_length":
+                    self.file_queue_length = payload
+
                 if action == "get_last_processed_hlc":
                     if payload == "":
                         self.last_processed_hlc = None
@@ -208,6 +224,15 @@ class NodeProcess:
             await asyncio.sleep(0)
 
         return self.last_processed_hlc
+
+    async def await_get_file_queue_length(self):
+        self.file_queue_length = None
+        self.parent_conn.send(["get_file_queue_length", None])
+
+        while self.file_queue_length is None:
+            await asyncio.sleep(0)
+
+        return self.file_queue_length
 
 
 class MockNode:
@@ -469,6 +494,20 @@ class MockNetwork:
     def check_all_started(self):
         for node_process in self.all_nodes():
             node_process.parent_conn.send(["node_running", None])
+
+    async def await_get_all_node_types(self):
+        for node_process in self.all_nodes():
+            node_process.node_type = None
+            node_process.parent_conn.send(["node_type", None])
+
+        done = False
+        while not done:
+            got_all = True
+            for node_process in self.all_nodes():
+                if node_process.node_type == None:
+                    got_all = False
+            done = got_all
+            await asyncio.sleep(0)
 
     def send_currency_transaction(self, sender_wallet=None, receiver_wallet=None, node_process=None, amount=None):
         if node_process is None:

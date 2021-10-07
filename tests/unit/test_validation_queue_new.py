@@ -36,7 +36,7 @@ class TestProcessingQueue(TestCase):
             testing=True,
             start_all_queues=self.start_all_queues,
             stop_all_queues=self.stop_all_queues,
-            get_block_by_hlc=lambda: None,
+            get_block_by_hlc=self.get_block_by_hlc
         )
 
         print("\n")
@@ -47,6 +47,9 @@ class TestProcessingQueue(TestCase):
 
     def stop(self):
         self.running = False
+
+    def get_block_by_hlc(self, hlc_timestamp):
+        return None
 
     async def stop_all_queues(self):
         return

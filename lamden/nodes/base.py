@@ -34,7 +34,6 @@ DB_CURRENT_BLOCK_HASH = '_current_block_hash'
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
 
-
 async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
     msg = {
         'name': GET_HEIGHT,
@@ -115,7 +114,6 @@ class Node:
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.max_peer_strikes = 5
-        self.rollbacks = []
         self.tx_queue = tx_queue
 
         self.driver = driver
@@ -337,24 +335,15 @@ class Node:
         while self.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
                 self.main_processing_queue.start_processing()
-
-                try:
-                    await self.process_main_queue()
-                except Exception as err:
-                    self.log.error(err)
-
+                await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
         while self.running:
-            validation_queue_length = len(self.validation_queue)
-            validation_results_length = len(self.validation_queue.validation_results)
-            if (validation_queue_length > 0 or validation_results_length > 0) and self.validation_queue.running:
-                #if len(self.validation_queue) > 0 or len(self.validation_queue.validation_results) > 0:
+            if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
-                # self.log.info(f"Done processsing next and node is running {self.validation_queue.running}")
                 self.validation_queue.stop_processing()
             await asyncio.sleep(0)
 
@@ -426,6 +415,10 @@ class Node:
 
         self.driver.commit()
 
+    def get_state_changes_from_block(self, block):
+        tx_result = block.get('processed')
+        return tx_result.get('state')
+
     def apply_state_changes_from_block(self, block):
         state_changes = block['processed'].get('state', [])
         hlc_timestamp = block['processed'].get('hlc_timestamp', None)
@@ -453,7 +446,9 @@ class Node:
             })
         '''
 
+
         hlc_timestamp = processing_results.get('hlc_timestamp')
+
         next_block_num = self.current_block_height + 1
 
         prev_block = self.blocks.get_previous_block(v=self.current_block_height)
@@ -510,8 +505,7 @@ class Node:
             # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
             # had the correct value for.
             for block in later_blocks:
-                tx_result = block.get('processed')
-                block_state_changes = tx_result.get('state')
+                block_state_changes = self.get_state_changes_from_block(block=block)
 
                 for state_change in block_state_changes:
                     state_key = state_change.get('key')
@@ -543,11 +537,24 @@ class Node:
                 prev_block_hash=prev_block.get('hash')
             )
 
+            consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
+
             # Hard apply this hlc_timestamps state changes
-            if hlc_timestamp in self.driver.pending_deltas:
+            if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
                 self.driver.hard_apply(hlc_timestamp)
             else:
+                await self.stop_main_processing_queue()
+
                 self.apply_state_changes_from_block(new_block)
+
+                block_state_changes = self.get_state_changes_from_block(block=new_block)
+                new_keys_list = []
+                for state_change in block_state_changes:
+                    new_keys_list.append(state_change.get('key'))
+
+                self.reprocess_after_earlier_block(new_keys_list=new_keys_list)
+
+                self.start_main_processing_queue()
 
             # Store the block in the block db
             self.blocks.store_block(new_block)
@@ -768,55 +775,6 @@ class Node:
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
-# ROLLBACK CODE
-    def rollback(self, consensus_hlc_timestamp=""):
-        if len(self.driver.pending_deltas) == 0:
-            return
-
-        if self.testing:
-            self.debug_stack.sort(key=lambda x: x['system_time'])
-            print(f"{self.upgrade_manager.node_type} {self.socket_base} ROLLING BACK")
-
-        rollback_info = self.add_rollback_info()
-
-        if self.debug:
-            self.log.info(f"ROLLING BACK")
-            self.log.debug(json.dumps({
-                'type': 'node_info',
-                'file': 'base',
-                'event': 'rollback',
-                'rollback_info': rollback_info,
-                'amount_of_rollbacks': len(self.rollbacks),
-                'system_time': time.time()
-            }))
-
-        self.rollback_drivers()
-        self.add_processed_transactions_back_into_main_queue(consensus_hlc_timestamp=consensus_hlc_timestamp)
-        self.reset_last_hlc_processed()
-        self.validation_queue.clear_my_solutions()
-
-        if self.testing:
-            self.validation_queue.detected_rollback = False
-            self.main_processing_queue.detected_rollback = False
-
-    def add_rollback_info(self):
-        called_from = "unknown"
-        if self.main_processing_queue.detected_rollback:
-            called_from = "main_processing_queue"
-        if self.validation_queue.detected_rollback:
-            called_from = "validation_queue"
-
-        rollback_info = {
-            'system_time': time.time(),
-            'last_processed_hlc': self.last_processed_hlc,
-            'last_hlc_in_consensus': self.validation_queue.last_hlc_in_consensus,
-            'called_from': called_from
-        }
-
-        self.rollbacks.append(rollback_info)
-
-        return rollback_info
-
     def rollback_drivers(self, hlc_timestamp):
         # Roll back the current state to the point of the last block consensus
         self.log.debug(f"Block Height Before: {self.get_current_height()}")
@@ -837,23 +795,6 @@ class Node:
         # print(f"Block Height After: {self.current_height}")
 
         # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
-
-    def add_processed_transactions_back_into_main_queue(self, consensus_hlc_timestamp=""):
-        # print({"validation_queue_items": self.validation_queue.validation_results.items()})
-        tx_added_back = 0
-
-        # Add transactions I already processed back into the main_processing queue
-        for hlc_timestamp, value in self.validation_queue.validation_results.items():
-            if hlc_timestamp > consensus_hlc_timestamp:
-                try:
-                    transaction_processed = self.validation_queue.validation_results[hlc_timestamp].get('transaction_processed')
-                    if transaction_processed is not None:
-                        tx_added_back = tx_added_back + 1
-                        self.main_processing_queue.append(tx=transaction_processed)
-
-                except KeyError as err:
-                    self.log.error(err)
-                    pass
 
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus

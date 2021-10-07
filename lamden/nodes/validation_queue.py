@@ -48,6 +48,10 @@ class ValidationQueue(ProcessingQueue):
         hlc_timestamp = processing_results.get('hlc_timestamp')
         self.append_history.append(hlc_timestamp)
 
+        if hlc_timestamp <= self.last_hlc_in_consensus:
+            block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
+            return
+
         # TODO how late of an HLC timestamp are we going to accept?
         '''
         if hlc_timestamp < self.last_hlc_in_consensus:
@@ -108,9 +112,6 @@ class ValidationQueue(ProcessingQueue):
         if self.validation_results[hlc_timestamp]['result_lookup'].get(result_hash) is None:
             self.validation_results[hlc_timestamp]['result_lookup'][result_hash] = processing_results
 
-        if hlc_timestamp not in self.queue:
-            super().append(hlc_timestamp)
-
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
 
@@ -144,16 +145,21 @@ class ValidationQueue(ProcessingQueue):
         return results['solutions'].get(node_vk)
 
     async def process_next(self):
-        self.queue.sort()
-        try:
-            if self.hlc_has_solutions(self.queue[0]):
-                hlc_timestamp = self.queue.pop(0)
-                await self.process(hlc_timestamp=hlc_timestamp)
+        if len(self.validation_results) > 0:
+            next_hlc_timestamp = self[0]
 
-        except IndexError:
-            return
-        except Exception as err:
-            print(err)
+            if next_hlc_timestamp <= self.last_hlc_in_consensus:
+                block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
+                if block:
+                    self.flush_hlc(next_hlc_timestamp)
+                    return
+
+            try:
+                await self.process(hlc_timestamp=next_hlc_timestamp)
+            except IndexError:
+                return
+            except Exception as err:
+                print(err)
 
     async def process(self, hlc_timestamp):
         if not self.hlc_has_consensus(hlc_timestamp):
@@ -194,7 +200,7 @@ class ValidationQueue(ProcessingQueue):
                     await self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
 
                     if self.testing:
-                        self.validation_results_history.append({hlc_timestamp: ['matched_me', results]})
+                        self.validation_results_history.append({hlc_timestamp: [{'matched_me':consensus_result['matches_me']}, results]})
                 except Exception as err:
                     print(err)
                     self.log.debug(err)
@@ -486,6 +492,16 @@ class ValidationQueue(ProcessingQueue):
         consensus_solution = consensus_results.get('solution', '')
         return validation_result['result_lookup'].get(consensus_solution, {})
 
+    def consensus_matches_me(self, hlc_timestamp):
+        validation_result = self.validation_results.get(hlc_timestamp, {})
+        consensus_results = validation_result.get('last_consensus_result', {})
+        consensus_solution = consensus_results.get('solution', '')
+
+        solutions = validation_result.get('solutions', {})
+        my_solution = solutions.get(self.wallet.verifying_key, None)
+
+        return my_solution == consensus_solution
+
     async def commit_consensus_block(self, hlc_timestamp):
         # Get the tx results for this timestamp
         processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
@@ -513,7 +529,7 @@ class ValidationQueue(ProcessingQueue):
         self.validation_results.pop(hlc_timestamp)
 
         # Remove all instances of this HLC from the checking queue to prevent re-checking it
-        self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
+        # self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
 
     def hlc_has_consensus(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp)
@@ -557,3 +573,14 @@ class ValidationQueue(ProcessingQueue):
 
     def __setitem__(self, key, value):
         raise ReferenceError
+
+    def __len__(self):
+        return len(self.validation_results)
+
+    def __getitem__(self, index):
+        try:
+            hlcs_to_process = [key for key in self.validation_results.keys()]
+            hlcs_to_process.sort()
+            return hlcs_to_process[index]
+        except IndexError:
+            return None

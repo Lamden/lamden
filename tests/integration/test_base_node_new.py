@@ -1,7 +1,9 @@
 from lamden.nodes.masternode import masternode
-from lamden.nodes import base
+from lamden.nodes import base, filequeue
+from lamden.nodes.masternode.masternode import Masternode
 from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
+from lamden.crypto import transaction
 from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
@@ -14,7 +16,7 @@ import time
 import json
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results
-
+from tests.integration.mock.create_directories import remove_fixture_directories
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
 from operator import itemgetter
@@ -35,6 +37,12 @@ class TestNode(TestCase):
         self.blocks = storage.BlockStorage()
 
         self.driver = ContractDriver(driver=InMemDriver())
+
+        self.mn_wallet = Wallet()
+        self.fixture_directories = ['txq']
+        self.file_queue_root = "./mock/fixtures/file_queue"
+        self.tx_queue_dir = 'txq'
+        self.file_queue_path = f'{self.file_queue_root}/{self.mn_wallet.verifying_key}/{self.tx_queue_dir}'
 
         self.stu_wallet = Wallet()
         self.jeff_wallet = Wallet()
@@ -59,30 +67,52 @@ class TestNode(TestCase):
         self.b.blocks.flush()
         self.b.driver.flush()
 
-    def create_a_node(self, constitution=None, node_num=0):
+        remove_fixture_directories(
+            root=f'{self.file_queue_root}',
+            dir_list=[self.mn_wallet.verifying_key]
+        )
+
+    def create_a_node(self, constitution=None, node_num=0, node_type='base'):
         driver = ContractDriver(driver=InMemDriver())
 
         dl_wallet = Wallet()
-        mn_wallet = Wallet()
 
         constitution = constitution or {
-                'masternodes': [mn_wallet.verifying_key],
+                'masternodes': [self.mn_wallet.verifying_key],
                 'delegates': [dl_wallet.verifying_key]
             }
 
-        node = base.Node(
-            socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
-            ctx=self.ctx,
-            wallet=mn_wallet,
-            constitution=constitution,
-            driver=driver,
-            testing=True,
-            metering=False,
-            delay={
-                'base': 0,
-                'self': 0
-            }
-        )
+        if node_type == 'base':
+            node = base.Node(
+                socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+                ctx=self.ctx,
+                wallet=self.mn_wallet,
+                constitution=constitution,
+                driver=driver,
+                testing=True,
+                metering=False,
+                delay={
+                    'base': 0,
+                    'self': 0
+                },
+                tx_queue=filequeue.FileQueue(root=self.file_queue_path)
+            )
+
+        if node_type == 'masternode':
+            node = Masternode(
+                socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+                ctx=self.ctx,
+                wallet=self.mn_wallet,
+                constitution=constitution,
+                driver=driver,
+                testing=True,
+                metering=False,
+                delay={
+                    'base': 0,
+                    'self': 0
+                },
+                tx_queue=filequeue.FileQueue(root=self.file_queue_path)
+            )
 
         node.client.set_var(
             contract='currency',
@@ -103,6 +133,7 @@ class TestNode(TestCase):
         self.num_of_nodes = self.num_of_nodes + 1
 
         return node
+
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -840,3 +871,30 @@ class TestNode(TestCase):
 
         # Validate
         self.assertNotEqual(DEFAULT_HASH, node.get_current_hash())
+
+    def test_processes_transactions_from_files(self):
+        # Create a node and start it
+        node = self.create_a_node(node_type='masternode')
+        self.start_node(node)
+
+        receiver_wallet = Wallet()
+
+        tx_str = transaction.build_transaction(
+            wallet= Wallet(),
+            contract='currency',
+            function='transfer',
+            kwargs={
+                'to': receiver_wallet.verifying_key,
+                'amount': {'__fixed__': '100.5'}
+            },
+            stamps=100,
+            processor=node.wallet.verifying_key,
+            nonce=1
+        )
+
+        node.tx_queue.append(tx=tx_str.encode())
+
+        self.async_sleep(0.3)
+
+        # Validate
+        self.assertEqual(1, node.get_current_height())

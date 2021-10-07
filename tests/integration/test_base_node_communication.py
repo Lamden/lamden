@@ -1,4 +1,5 @@
-from tests.integration.mock.mocks_multip import TEST_FOUNDATION_WALLET, Process, MockNetwork, MockMaster, create_fixture_directories, remove_fixture_directories
+from tests.integration.mock.mocks_new import TEST_FOUNDATION_WALLET, MockNetwork
+from tests.integration.mock.create_directories import create_fixture_directories, remove_fixture_directories
 from lamden.nodes.filequeue import FileQueue
 
 from lamden.crypto.wallet import Wallet
@@ -15,11 +16,8 @@ from random import randrange
 import json
 import time
 import pprint
-import multiprocessing
-from unittest import TestCase
-from sys import setrecursionlimit
-setrecursionlimit(20000)
 
+from unittest import TestCase
 
 class TestMultiNode(TestCase):
     def setUp(self):
@@ -37,11 +35,12 @@ class TestMultiNode(TestCase):
         print("\n")
 
     def tearDown(self):
-        for node_process in self.network.all_nodes():
-            try:
-                node_process.process.terminate()
-            except Exception:
-                pass
+        try:
+            self.network.stop()
+        except Exception:
+            pass
+
+        self.async_sleep(1)
 
         self.ctx.destroy()
         self.loop.close()
@@ -68,32 +67,22 @@ class TestMultiNode(TestCase):
             'sender_wallet': sender_wallet or self.founder_wallet
         }])
 
-    def test_network(self):
-        self.network = MockNetwork(num_of_masternodes=2, num_of_delegates=2)
-        self.await_async_process(self.network.start)
-        self.await_async_process(self.network.await_all_started)
-
-        self.assertTrue(self.network.masternodes[0].started)
-
-        self.await_async_process(self.network.stop)
-
-'''
     def test_network_can_propagate_transactions(self):
         # Test that the network can receive a transaction and send it around to all the other nodes
 
         # Create a network
-        network_1 = MockNetwork(
+        self.network = MockNetwork(
             num_of_delegates=3,
             num_of_masternodes=3,
             ctx=self.ctx,
             metering=False,
             delay={'base': 0.1, 'self': 0.1}
         )
-        self.networks.append(network_1)
-        self.await_async_process(network_1.start)
+
+        self.await_async_process(self.network.start)
 
         # get a masternode
-        masternode_1 = network_1.masternodes[0]
+        masternode_1 = self.network.masternodes[0]
 
         receiver_wallet = Wallet()
         amount = 100.5
@@ -118,7 +107,7 @@ class TestMultiNode(TestCase):
         self.async_sleep(1)
 
         # Check that each node ran the transaction
-        all_nodes = network_1.all_nodes()
+        all_nodes = self.network.all_nodes()
         for node in all_nodes:
             self.assertEqual(masternode_1.obj.last_processed_hlc, node.obj.last_processed_hlc)
 
@@ -126,23 +115,23 @@ class TestMultiNode(TestCase):
         # Test that the network can receive a transaction and send it around to all the other nodes
 
         # Create a network
-        network_1 = MockNetwork(
+        self.network = MockNetwork(
             num_of_delegates=3,
             num_of_masternodes=3,
             ctx=self.ctx,
             metering=False,
             delay={'base': 0.1, 'self': 0.1}
         )
-        self.networks.append(network_1)
-        self.await_async_process(network_1.start)
+
+        self.await_async_process(self.network.start)
 
         # stop all nodes validation queues so that they collect all results and don't do consensus
-        all_nodes = network_1.all_nodes()
+        all_nodes = self.network.all_nodes()
         for node in all_nodes:
             node.obj.validation_queue.stop()
 
         # get a masternode
-        masternode_1 = network_1.masternodes[0]
+        masternode_1 = self.network.masternodes[0]
 
         receiver_wallet = Wallet()
         amount = 100.5
@@ -172,4 +161,3 @@ class TestMultiNode(TestCase):
         # Check that each node ran the transaction
         for node in all_nodes:
             self.assertIsNotNone(all_solutions[node.wallet.verifying_key])
-'''
