@@ -34,6 +34,9 @@ DB_CURRENT_BLOCK_HASH = '_current_block_hash'
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
 
+last_checked_main = time.time()
+last_checked_val = time.time()
+
 async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
     msg = {
         'name': GET_HEIGHT,
@@ -301,15 +304,22 @@ class Node:
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
     def start_all_queues(self):
+        self.log.info("!!!!!! STARTING ALL QUEUES !!!!!!")
         self.main_processing_queue.start()
         self.validation_queue.start()
+        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
+        self.log.info(f"validation_queue running: {self.validation_queue.running}")
 
     async def stop_all_queues(self):
+        self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
         self.main_processing_queue.stop()
         self.validation_queue.stop()
 
         await self.main_processing_queue.stopping()
         await self.validation_queue.stopping()
+
+        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
+        self.log.info(f"validation_queue running: {self.validation_queue.running}")
 
     async def stop_main_processing_queue(self):
         self.main_processing_queue.stop()
@@ -335,6 +345,9 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
+            if time.time() - last_checked_main > 30:
+                last_checked_main = time.time()
+                self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
                 self.main_processing_queue.start_processing()
                 await self.process_main_queue()
@@ -343,6 +356,10 @@ class Node:
 
     async def check_validation_queue(self):
         while self.running:
+            if time.time() - last_checked_val > 30:
+                last_checked_val = time.time()
+                self.log.info(
+                    f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
@@ -516,7 +533,7 @@ class Node:
                     'type': 'tx_lifecycle',
                     'file': 'base',
                     'system_time': time.time(),
-                    'payload': encode(new_block)
+                    'payload': encode(get_block(new_block.get('number')))
                 }))
 
             # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
@@ -542,7 +559,7 @@ class Node:
                         'type': 'tx_lifecycle',
                         'file': 'base',
                         'system_time': time.time(),
-                        'payload': encode(block)
+                        'payload': encode(get_block(block.get('number')))
                     }))
 
                 self.blocks.store_block(block)
@@ -587,7 +604,7 @@ class Node:
                     'type': 'tx_lifecycle',
                     'file': 'base',
                     'system_time': time.time(),
-                    'payload': encode(new_block)
+                    'payload': encode(get_block(new_block.get('number')))
                 }))
 
         # remove the processing results and read history from the main_processing queue memory
