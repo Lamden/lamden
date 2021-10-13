@@ -622,6 +622,8 @@ class Node:
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
         pending_delta_history = deepcopy(self.driver.pending_deltas)
 
+        self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
+
         # Get HLC of tx that needs to be run
         new_tx_hlc_timestamp = tx.get("hlc_timestamp")
 
@@ -675,6 +677,8 @@ class Node:
     def reprocess_after_earlier_block(self, new_keys_list):
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
         pending_delta_history = deepcopy(self.driver.pending_deltas)
+
+        self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
 
         # Get the read history of all transactions that were run
         changed_keys_list = new_keys_list
@@ -823,24 +827,11 @@ class Node:
 
     def rollback_drivers(self, hlc_timestamp):
         # Roll back the current state to the point of the last block consensus
-        self.log.debug(f"Block Height Before: {self.get_current_height()}")
-        # print(f"Block Height Before: {self.current_height}")
-        # print(f"Block Height Before: {self.current_height}")
-        # self.log.debug(encode(self.driver.pending_deltas))
-
-        # print({"pending_deltas_BEFORE": json.loads(encode(self.driver.pending_deltas))})
+        self.log.debug(f"Length of Pending Deltas BEFORE {len(self.driver.pending_deltas.keys())}")
 
         self.driver.rollback(hlc=hlc_timestamp)
 
-        # Reset node to the rolled back height and hash
-        # self.current_height = storage.get_latest_block_height(self.driver)
-        # self.current_hash = storage.get_latest_block_hash(self.driver)
-
-        self.log.debug(f"Block Height After: {self.get_current_height()}")
-        # print(f"Block Height After: {self.current_height}")
-        # print(f"Block Height After: {self.current_height}")
-
-        # print({"pending_deltas_AFTER": json.loads(encode(self.driver.pending_deltas))})
+        self.log.debug(f"Length of Pending Deltas AFTER {len(self.driver.pending_deltas.keys())}")
 
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus

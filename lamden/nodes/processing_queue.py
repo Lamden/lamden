@@ -385,12 +385,14 @@ class TxProcessingQueue(ProcessingQueue):
                 self.read_history.pop(hlc, None)
 
     async def node_rollback(self, tx):
+        start_time = time.time()
         try:
             self.currently_processing = False
             self.log.info('stop_all_queues')
             await self.stop_all_queues()
             self.log.info('reprocess')
             await self.reprocess(tx=tx)
+            self.log.info(f'Reprocessing took { time.time() - start_time} seconds.')
             self.log.info('start_all_queues')
             self.start_all_queues()
             self.log.info('stop_processing')
