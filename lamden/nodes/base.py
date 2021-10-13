@@ -346,7 +346,7 @@ class Node:
         while self.running:
             if time.time() - self.debug_last_checked_main > 30:
                 self.debug_last_checked_main = time.time()
-                self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
+                self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)} Running={self.main_processing_queue.running}")
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
                 self.main_processing_queue.start_processing()
                 await self.process_main_queue()
@@ -358,7 +358,7 @@ class Node:
             if time.time() - self.debug_last_checked_val > 30:
                 self.debug_last_checked_val = time.time()
                 self.log.info(
-                    f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
+                    f"!!!!!!! CHECKED check_validation_queue. Length={len(self.validation_queue.validation_results)} Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_next()
