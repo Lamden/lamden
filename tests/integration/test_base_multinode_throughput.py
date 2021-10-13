@@ -202,25 +202,19 @@ class TestMultiNode(TestCase):
         for node in n.all_nodes():
             self.assertTrue(node.obj.running)
 
-        test_tracker = {}
+        test_tracker = ContractingDecimal(0.0)
 
-        num_of_receivers = 5
-        receiver_wallets = [Wallet() for i in range(5)]
+        receiver_wallet = Wallet()
 
         # Send a bunch of transactions
         amount_of_transactions = 20
-
         for i in range(amount_of_transactions):
             tx_info = json.loads(n.send_random_currency_transaction(
                 sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
-                receiver_wallet=random.choice(receiver_wallets)
+                receiver_wallet=receiver_wallet
             ))
-            to = tx_info['payload']['kwargs']['to']
-            amount = ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
-            try:
-                test_tracker[to] = test_tracker[to] + amount
-            except KeyError:
-                test_tracker[to] = amount
+
+            test_tracker = test_tracker + ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
         mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=0)
@@ -228,30 +222,24 @@ class TestMultiNode(TestCase):
 
         # All state values reflect the result of the processed transactions
         # Decode all tracker values from ContractingDecimal to string
-        for key in test_tracker:
-            test_tracker[key] = json.loads(encoder.encode(test_tracker[key]))
 
-        all_node_results = {}
-        for key in test_tracker:
-            all_node_results[key] = n.get_vars(
-                contract='currency',
-                variable='balances',
-                arguments=[key]
-            )
+        all_node_results = n.get_vars(
+            contract='currency',
+            variable='balances',
+            arguments=[receiver_wallet.verifying_key]
+        )
 
-            all_node_results[key] = json.loads(encoder.encode(all_node_results[key]))
+        all_node_results = json.loads(encoder.encode(all_node_results))
+        balance = json.loads(encoder.encode(test_tracker))
 
-        for key in test_tracker:
-            balance = json.loads(encoder.encode(test_tracker[key]))
+        if (balance != all_node_results[0]):
+            pass
 
-            if (balance != all_node_results[key][0]):
-                pass
+        if all([balance == all_node_results[0] for balance in all_node_results]) == False:
+            pass
 
-            if all([balance == all_node_results[key][0] for balance in all_node_results[key]]) == False:
-                pass
-
-            self.assertTrue(balance == all_node_results[key][0])
-            self.assertTrue(all([balance == all_node_results[key][0] for balance in all_node_results[key]]))
+        self.assertTrue(balance == all_node_results[0])
+        self.assertTrue(all([balance == all_node_results[0] for balance in all_node_results]))
 
         # All nodes are at the proper block height
         for node in n.all_nodes():
@@ -267,64 +255,82 @@ class TestMultiNode(TestCase):
             print(node.obj.get_current_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
-    def test_network_mixed_receivers__throughput_test__founder_to_list_of_created_wallets(self):
+
+    def template_network_mixed_receivers__founder_to_list_of_created_wallets(self, test_info):
+        num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
-        delay = {'base': 1, 'self': 1.5}
-        n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+
+        n = mocks_new.MockNetwork(
+            num_of_delegates=num_of_delegates,
+            num_of_masternodes=num_of_masternodes,
+            ctx=self.ctx,
+            metering=False,
+            delay=delay
+        )
         self.await_async_process(n.start)
 
         for node in n.all_nodes():
             self.assertTrue(node.obj.running)
 
-        test_tracker = {}
+        wallet_tracker = []
 
-        num_of_receivers = 5
-        receiver_wallets = [Wallet() for i in range(num_of_receivers)]
-
-        # Send a bunch of transactions
-        amount_of_transactions = 25
+        receiver_wallets = [Wallet() for i in range(num_of_receiver_wallets)]
 
         for i in range(amount_of_transactions):
             tx_info = json.loads(n.send_random_currency_transaction(
                 sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
-                receiver_wallet=receiver_wallets[randrange(0, num_of_receivers)]
+                receiver_wallet=receiver_wallets[randrange(0, num_of_receiver_wallets)]
             ))
+
             to = tx_info['payload']['kwargs']['to']
-            amount = tx_info['payload']['kwargs']['amount']['__fixed__']
-            if test_tracker.get(to) is None:
-                test_tracker[to] = ContractingDecimal(amount)
-            else:
-                test_tracker[to] = test_tracker[to] + ContractingDecimal(amount)
+
+            if to not in wallet_tracker:
+                wallet_tracker.append(to)
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=20)
+        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=0)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
-        # Decode all tracker values from ContractingDecimal to string
-        for key in test_tracker:
-            test_tracker[key] = json.loads(encoder.encode(test_tracker[key]))
-
         all_node_results = {}
-        for key in test_tracker:
-            all_node_results[key] = n.get_vars(
+        for wallet in wallet_tracker:
+            all_node_results[wallet] = n.get_vars(
                 contract='currency',
                 variable='balances',
-                arguments=[key]
+                arguments=[wallet]
             )
 
-        for key in test_tracker:
-            balance = test_tracker[key]
-
-            if (balance != all_node_results[key][0]):
-                pass
-
-            if all([balance == all_node_results[key][0] for balance in all_node_results[key]]) != True:
-                pass
-
-            self.assertTrue(balance == all_node_results[key][0])
+        for key in all_node_results:
+            # self.assertTrue(balance == all_node_results[key][0])
             self.assertTrue(all([balance == all_node_results[key][0] for balance in all_node_results[key]]))
+
+
+        validation_history = n.masternodes[0].obj.validation_queue.validation_results_history
+
+        all_hlcs = [[k for k in item.keys()][0] for item in validation_history]
+        all_hlcs.sort()
+
+        test_tracker = {}
+        for hlc in all_hlcs:
+            for result in validation_history:
+                if result.get(hlc):
+                    result_history = result[hlc][1]
+
+            consensus_solution = result_history['last_consensus_result']['solution']
+            processed_results = result_history['result_lookup'][consensus_solution]
+
+            tx_result = processed_results.get('tx_result')
+
+            for state_change in tx_result['state']:
+                raw_key = state_change.get('key')
+                key_split = raw_key.split(":")
+                key = key_split[1]
+                test_tracker[key] = str(state_change.get('value'))
+
+        for key in test_tracker:
+            if all_node_results.get(key):
+                self.assertEqual(all_node_results[key][0]['__fixed__'], test_tracker[key])
 
         # All nodes are at the proper block height
         for node in n.all_nodes():
@@ -339,3 +345,27 @@ class TestMultiNode(TestCase):
         for node in n.all_nodes():
             print(node.obj.get_current_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
+
+    def test_network_mixed_receivers__throughput_test__low_nodes_low_txcount(self):
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
+        test_info = [2, 3, 5, 20, {'base': 1, 'self': 1.5}]
+
+        self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
+
+    def test_network_mixed_receivers__throughput_test__low_nodes_high_tx_count(self):
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
+        test_info = [2, 3, 5, 50, {'base': 1, 'self': 1.5}]
+
+        self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
+
+    def test_network_mixed_receivers__throughput_test__high_nodes_low_tx_count(self):
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
+        test_info = [4, 5, 5, 20, {'base': 1, 'self': 1.5}]
+
+        self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
+
+    def test_network_mixed_receivers__throughput_test__high_nodes_high_tx_count(self):
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
+        test_info = [4, 5, 5, 50, {'base': 1, 'self': 1.5}]
+
+        self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)

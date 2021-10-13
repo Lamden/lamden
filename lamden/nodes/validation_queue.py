@@ -104,6 +104,8 @@ class ValidationQueue(ProcessingQueue):
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
             self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
 
+            self.clean_results_lookup(hlc_timestamp=hlc_timestamp)
+
         result_hash = processing_results["proof"].get('tx_result_hash')
 
         self.validation_results[hlc_timestamp]['solutions'][node_vk] = result_hash
@@ -181,6 +183,7 @@ class ValidationQueue(ProcessingQueue):
 
             if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
                 # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
+                '''
                 if self.debug:
                     self.log.debug(json.dumps({
                         'type': 'tx_lifecycle',
@@ -191,6 +194,7 @@ class ValidationQueue(ProcessingQueue):
                         'block_number': winning_result['hlc_timestamp'],
                         'system_time': time.time()
                     }))
+                '''
 
                 results = self.validation_results[hlc_timestamp]
 
@@ -562,6 +566,12 @@ class ValidationQueue(ProcessingQueue):
         for hlc_timestamp in self.validation_results:
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
+
+    def clean_results_lookup(self, hlc_timestamp):
+        validation_results = self.validation_results.get(hlc_timestamp)
+        for solution in validation_results.get('result_lookup').keys():
+            if validation_results['solutions'].get(solution, None) is None:
+                self.validation_results['hlc_timestamp']['result_lookup'].pop(solution)
 
     async def drop_bad_peers(self, all_block_results, consensus_result):
         correct_solution = consensus_result['solution']

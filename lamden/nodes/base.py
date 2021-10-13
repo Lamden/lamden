@@ -8,8 +8,8 @@ import zmq.asyncio
 
 from copy import deepcopy
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver, encode
-from contracting.db.encoder import convert_dict
+from contracting.db.driver import ContractDriver
+from contracting.db.encoder import convert_dict, encode
 from contracting.execution.executor import Executor
 from lamden import storage, router, rewards, upgrade, contracts
 from lamden.contracts import sync
@@ -501,6 +501,16 @@ class Node:
             # Store the new block in the block db
             self.blocks.store_block(new_block)
 
+            if self.debug:
+                self.log.debug(json.dumps({
+                    'hlc_timestamp': hlc_timestamp,
+                    'event': 'commit_new_block',
+                    'type': 'tx_lifecycle',
+                    'file': 'base',
+                    'system_time': time.time(),
+                    'payload': encode(new_block)
+                }))
+
             # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
             # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
             # had the correct value for.
@@ -517,6 +527,16 @@ class Node:
 
             # Re-save each block to the database
             for block in later_blocks:
+                if self.debug:
+                    self.log.debug(json.dumps({
+                        'hlc_timestamp': hlc_timestamp,
+                        'event': 'commit_new_block',
+                        'type': 'tx_lifecycle',
+                        'file': 'base',
+                        'system_time': time.time(),
+                        'payload': encode(block)
+                    }))
+
                 self.blocks.store_block(block)
 
             # Set the current block hash and height
@@ -543,18 +563,8 @@ class Node:
             if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
                 self.driver.hard_apply(hlc_timestamp)
             else:
-                await self.stop_main_processing_queue()
-
                 self.apply_state_changes_from_block(new_block)
 
-                block_state_changes = self.get_state_changes_from_block(block=new_block)
-                new_keys_list = []
-                for state_change in block_state_changes:
-                    new_keys_list.append(state_change.get('key'))
-
-                self.reprocess_after_earlier_block(new_keys_list=new_keys_list)
-
-                self.start_main_processing_queue()
 
             # Store the block in the block db
             self.blocks.store_block(new_block)
@@ -562,25 +572,22 @@ class Node:
             # Set the current block hash and height
             self.update_block_db(block=new_block)
 
+            if self.debug:
+                self.log.debug(json.dumps({
+                    'hlc_timestamp': hlc_timestamp,
+                    'event': 'commit_new_block',
+                    'type': 'tx_lifecycle',
+                    'file': 'base',
+                    'system_time': time.time(),
+                    'payload': encode(new_block)
+                }))
+
         # remove the processing results and read history from the main_processing queue memory
         self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
 
         # Increment the internal block counter
         self.current_block_height += 1
 
-        '''
-        # print({"hard_apply": hlc_timestamp})
-        if self.debug:
-            self.log.debug(json.dumps({
-                'hlc_timestamp': hlc_timestamp,
-                'consensus_hash': self.get_consensus_hash(),
-                'current_hash': self.get_current_hash(),
-                'event': 'commit_new_block',
-                'type': 'tx_lifecycle',
-                'file': 'base',
-                'system_time': time.time()
-            }))
-        '''
 
 # Re-processing CODE
     async def reprocess(self, tx):
