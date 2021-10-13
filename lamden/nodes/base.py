@@ -382,6 +382,9 @@ class Node:
         )
 
     def send_solution_to_network(self, processing_results):
+        tx_result_hash = processing_results['proof'].get('tx_result_hash', None)
+        if tx_result_hash is None:
+            self.log.debug({"SENDING_BAD_RESULT": processing_results})
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
 
     def soft_apply_current_state(self, hlc_timestamp):
@@ -762,6 +765,7 @@ class Node:
                 if re_send_to_network:
                     # Processing results produced new results so add this key to the changed
                     # key list so we can check it against the reads of later hlcs in reprocessing
+                    self.log.debug({"RESENDING_TO_NETWORK": processing_results})
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
                 if self.testing:
