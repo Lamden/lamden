@@ -391,4 +391,5 @@ class TxProcessingQueue(ProcessingQueue):
             self.start_all_queues()
             self.stop_processing()
         except Exception as err:
+            self.log.info('node_rollback ERROR')
             self.log.error(err)
