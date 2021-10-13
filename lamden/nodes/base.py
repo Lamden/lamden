@@ -352,26 +352,26 @@ class Node:
     async def process_main_queue(self):
         try:
             processing_results = await self.main_processing_queue.process_next()
+
+            if processing_results:
+                hlc_timestamp = processing_results.get('hlc_timestamp')
+
+                if self.testing:
+                    self.debug_processing_results.append(processing_results)
+
+                if hlc_timestamp <= self.get_last_hlc_in_consensus():
+                    return
+
+                self.last_processed_hlc = hlc_timestamp
+
+                try:
+                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+                except Exception as err:
+                    print(err)
+
+                self.store_solution_and_send_to_network(processing_results=processing_results)
         except Exception as err:
-            print(err)
-
-        if processing_results:
-            hlc_timestamp = processing_results.get('hlc_timestamp')
-
-            if self.testing:
-                self.debug_processing_results.append(processing_results)
-
-            if hlc_timestamp <= self.get_last_hlc_in_consensus():
-                return
-
-            self.last_processed_hlc = hlc_timestamp
-
-            try:
-                self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-            except Exception as err:
-                print(err)
-
-            self.store_solution_and_send_to_network(processing_results=processing_results)
+            self.log.error(err)
 
     def store_solution_and_send_to_network(self, processing_results):
 
