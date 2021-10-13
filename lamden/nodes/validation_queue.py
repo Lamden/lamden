@@ -171,10 +171,10 @@ class ValidationQueue(ProcessingQueue):
                 print(err)
 
         consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
-
+        '''
         if self.debug:
             self.log.debug({'hlc_timestamp': hlc_timestamp, 'consensus_result': consensus_result})
-
+        '''
         if self.hlc_has_consensus(hlc_timestamp):
             try:
                 winning_result = self.validation_results[hlc_timestamp]['result_lookup'].get(consensus_result['solution'], None)
@@ -219,9 +219,9 @@ class ValidationQueue(ProcessingQueue):
     def check_for_next_block(self):
         for hlc_timestamp in self.validation_results:
             if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus']:
-                self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
+                # self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
                 if self.is_earliest_hlc(hlc_timestamp):
-                    self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
+                    # self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
                     self.process(hlc_timestamp=hlc_timestamp)
                     return
 
@@ -285,11 +285,13 @@ class ValidationQueue(ProcessingQueue):
         solutions_missing = num_of_peers - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
 
+        '''
         self.log.debug({
             'my_solution': my_solution,
             'solutions_missing': solutions_missing,
             'tally_info': tally_info
         })
+        '''
 
         if self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible']:
             # Check ideal situation
