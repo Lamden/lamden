@@ -2,7 +2,7 @@ from lamden.nodes.masternode import masternode
 from lamden.nodes import base
 from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
-from lamden.crypto import canonical
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 from contracting.db import encoder
@@ -328,9 +328,12 @@ class TestNode(TestCase):
             hlc_timestamp = processing_results['hlc_timestamp']
             if sent_to_network.get(hlc_timestamp, None) is None:
                 sent_to_network[hlc_timestamp] = []
-            sent_to_network[hlc_timestamp].append(processing_results['proof']['tx_result_hash'])
+            tx_result_hash = tx_result_hash_from_tx_result_object(
+                tx_result=processing_results['tx_result'],
+                hlc_timestamp=processing_results['hlc_timestamp']
+            )
+            sent_to_network[hlc_timestamp].append(tx_result_hash)
             node.mock_store_solution_and_send_to_network(processing_results=processing_results)
-
 
         node = self.create_a_node()
         self.start_node(node)

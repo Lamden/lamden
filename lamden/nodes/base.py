@@ -20,7 +20,7 @@ from lamden.nodes import block_contender, system_usage
 from lamden.nodes import work, processing_queue, validation_queue
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
-from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info
+from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -376,6 +376,11 @@ class Node:
     def store_solution_and_send_to_network(self, processing_results):
 
         self.send_solution_to_network(processing_results=processing_results)
+
+        processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp']
+        )
 
         self.validation_queue.append(
             processing_results=processing_results
