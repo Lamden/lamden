@@ -386,6 +386,7 @@ class TxProcessingQueue(ProcessingQueue):
 
     async def node_rollback(self, tx):
         try:
+            self.currently_processing = False
             self.log.info('stop_all_queues')
             await self.stop_all_queues()
             self.log.info('reprocess')

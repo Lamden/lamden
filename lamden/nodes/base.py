@@ -315,7 +315,9 @@ class Node:
         self.validation_queue.stop()
 
         await self.main_processing_queue.stopping()
+        self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
         await self.validation_queue.stopping()
+        self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
 
         self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
         self.log.info(f"validation_queue running: {self.validation_queue.running}")
