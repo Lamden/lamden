@@ -322,8 +322,10 @@ class Node:
         self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
         self.log.info(f"validation_queue running: {self.validation_queue.running}")
 
-    async def stop_main_processing_queue(self):
+    async def stop_main_processing_queue(self, force=False):
         self.main_processing_queue.stop()
+        if force:
+            self.main_processing_queue.currently_processing = False
         await self.main_processing_queue.stopping()
 
     def start_main_processing_queue(self):
@@ -484,7 +486,7 @@ class Node:
         # If there are later blocks then we need to process them
         if len(later_blocks) > 0:
             try:
-                await self.stop_main_processing_queue()
+                await self.stop_main_processing_queue(force=True)
             except Exception as err:
                 errors = err
                 print(errors)
