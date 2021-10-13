@@ -134,6 +134,15 @@ def recalc_block_info(block, new_block_num, new_prev_hash) -> dict:
 
 def remove_result_hash_from_proofs(proofs) -> list:
     for proof in proofs:
-        del proof['tx_result_hash']
+        try:
+            del proof['tx_result_hash']
+        except KeyError:
+            pass
 
     return proofs
+
+def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp):
+    h = hashlib.sha3_256()
+    h.update('{}'.format(encode(tx_result).encode()).encode())
+    h.update('{}'.format(hlc_timestamp).encode())
+    return h.hexdigest()

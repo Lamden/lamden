@@ -4,6 +4,7 @@ from lamden.nodes import validation_queue
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
 from copy import deepcopy
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
@@ -208,7 +209,10 @@ class TestProcessingQueue(TestCase):
             node_vk=node_wallet.verifying_key
         )
 
-        self.assertEqual(result_hash, processing_results['proof']['tx_result_hash'])
+        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=processing_results['tx_result'],
+                                                              hlc_timestamp=hlc_timestamp)
+
+        self.assertEqual(result_hash, tx_result_hash)
 
         self.assertEqual(len(self.validation_queue), 1)
         self.assertEqual(self.validation_queue[0], hlc_timestamp)
@@ -237,8 +241,17 @@ class TestProcessingQueue(TestCase):
             node_vk=node_wallet_2.verifying_key
         )
 
-        self.assertEqual(node_wallet_1_solution, processing_results_1['proof']['tx_result_hash'])
-        self.assertEqual(node_wallet_2_solution, processing_results_2['proof']['tx_result_hash'])
+        tx_result_hash_1 = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results_1['tx_result'],
+            hlc_timestamp=processing_results_1['hlc_timestamp']
+        )
+        tx_result_hash_2 = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results_2['tx_result'],
+            hlc_timestamp=processing_results_2['hlc_timestamp']
+        )
+
+        self.assertEqual(node_wallet_1_solution, tx_result_hash_1)
+        self.assertEqual(node_wallet_2_solution, tx_result_hash_2)
 
         self.assertEqual(len(self.validation_queue), 1)
         self.assertEqual(self.validation_queue[0], hlc_timestamp)

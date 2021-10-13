@@ -382,9 +382,6 @@ class Node:
         )
 
     def send_solution_to_network(self, processing_results):
-        tx_result_hash = processing_results['proof'].get('tx_result_hash', None)
-        if tx_result_hash is None:
-            self.log.debug({"SENDING_BAD_RESULT": processing_results})
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
 
     def soft_apply_current_state(self, hlc_timestamp):
@@ -497,6 +494,7 @@ class Node:
             # Get all the writes that this new block will make to state
             new_block_writes = []
             new_block_state_changes = processing_results['tx_result'].get('state')
+
             for state_change in new_block_state_changes:
                 new_block_writes.append(state_change.get('key'))
 

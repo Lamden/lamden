@@ -4,7 +4,7 @@ import math
 
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
-from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary
+from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary, tx_result_hash_from_tx_result_object
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
@@ -332,17 +332,12 @@ class TxProcessingQueue(ProcessingQueue):
         )
 
     def sign_tx_results(self, tx_result, hlc_timestamp):
-        # Sign our tx results
-        h = hashlib.sha3_256()
-        h.update('{}'.format(encode(tx_result).encode()).encode())
-        h.update('{}'.format(hlc_timestamp).encode())
-        tx_result_hash = h.hexdigest()
+        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
 
-        proof = self.wallet.sign(tx_result_hash)
+        signature = self.wallet.sign(tx_result_hash)
 
         return {
-            'tx_result_hash': tx_result_hash,
-            'signature': proof,
+            'signature': signature,
             'signer': self.wallet.verifying_key
         }
 

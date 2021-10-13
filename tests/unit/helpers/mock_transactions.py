@@ -1,5 +1,6 @@
 DEFAULT_BLOCK = '0000000000000000000000000000000000000000000000000000000000000000'
 from lamden.crypto.transaction import build_transaction
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.crypto.wallet import Wallet
 import json
 import zmq.asyncio
@@ -62,7 +63,13 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
         constitution={'masternodes':[],'delegates':[]},
         ctx=zmq.asyncio.Context()
     )
-    return node.main_processing_queue.process_tx(tx=tx_message)
+    processing_results = node.main_processing_queue.process_tx(tx=tx_message)
+    hlc_timestamp = processing_results.get('hlc_timestamp')
+    tx_result = processing_results.get('tx_result')
+    tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+    processing_results['proof']['tx_result_hash'] = tx_result_hash
+    return processing_results
+
 
 def get_new_block(
         signer="testuser",

@@ -1,7 +1,7 @@
 from contracting.db.encoder import encode
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
-from lamden.crypto.canonical import tx_hash_from_tx
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 
 import hashlib
 
@@ -28,12 +28,8 @@ class Block_Contender():
         self.debug_recieved_solutions = []
 
     async def process_message(self, msg):
-        # self.log.debug(msg)
-        # self.log.debug(f'message length: {len(msg)}')
-        # Ignore bad message types
-        # Ignore if not enough subblocks
-        # Make sure all the contenders are valid
 
+        # Make sure the message has the correct properties to process
         if not self.valid_message_payload(msg=msg):
             self.log.error(
                 f'Received Invalid Processing Results from {msg.get("proof", "No Proof provided")}'
@@ -41,17 +37,20 @@ class Block_Contender():
             self.log.error(msg)
             return
 
-        # get the tx specifics, if there is an error here then the tx is malformed
-
         tx_result = msg['tx_result']
         proof = msg["proof"]
         hlc_timestamp = msg['hlc_timestamp']
 
-        self.debug_recieved_solutions.append({hlc_timestamp: [proof['signer'], proof['tx_result_hash']]})
+        # Create a hash of the tx_result
+        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+        #self.debug_recieved_solutions.append({hlc_timestamp: [proof['signer'], tx_result_hash]})
 
-        if not self.validate_message_signature(tx_result=tx_result, proof=proof, hlc_timestamp=hlc_timestamp):
+        if not self.validate_message_signature(tx_result_hash=tx_result_hash, proof=proof):
             self.log.debug(f"Could not verify message signature {msg['proof']}")
             return
+
+        # tack on the tx_result_hash to the proof for this node
+        msg['proof']['tx_result_hash'] = tx_result_hash
 
         peers = self.get_all_peers()
         # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
@@ -77,13 +76,7 @@ class Block_Contender():
         # Add solution to this validation list for this tx
         self.validation_queue.append(processing_results=msg)
 
-    def validate_message_signature(self, tx_result, proof, hlc_timestamp):
-        # Sign our tx results
-        h = hashlib.sha3_256()
-        h.update('{}'.format(encode(tx_result).encode()).encode())
-        h.update('{}'.format(hlc_timestamp).encode())
-        tx_result_hash = h.hexdigest()
-
+    def validate_message_signature(self, tx_result_hash, proof):
         try:
             return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
         except Exception:
@@ -104,6 +97,5 @@ class Block_Contender():
             return False
         if msg["proof"].get("signer", None) is None:
             return False
-        if msg["proof"].get("tx_result_hash", None) is None:
-            return False
+
         return True

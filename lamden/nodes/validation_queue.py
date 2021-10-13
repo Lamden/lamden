@@ -572,8 +572,13 @@ class ValidationQueue(ProcessingQueue):
     def clean_results_lookup(self, hlc_timestamp):
         validation_results = self.validation_results.get(hlc_timestamp)
         for solution in validation_results.get('result_lookup').keys():
-            if validation_results['solutions'].get(solution, None) is None:
-                self.validation_results['hlc_timestamp']['result_lookup'].pop(solution)
+            exists = False
+            for node in validation_results['solutions'].keys():
+                if validation_results['solutions'][node] == solution:
+                    exists = True
+                    break
+            if not exists:
+                self.validation_results['result_lookup'].pop(solution)
 
     async def drop_bad_peers(self, all_block_results, consensus_result):
         correct_solution = consensus_result['solution']
