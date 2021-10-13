@@ -532,7 +532,7 @@ class Node:
                     'type': 'tx_lifecycle',
                     'file': 'base',
                     'system_time': time.time(),
-                    'payload': encode(get_block(new_block.get('number')))
+                    'payload': encode(self.blocks.get_block(v=new_block.get('number')))
                 }))
 
             # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
@@ -558,7 +558,7 @@ class Node:
                         'type': 'tx_lifecycle',
                         'file': 'base',
                         'system_time': time.time(),
-                        'payload': encode(get_block(block.get('number')))
+                        'payload': encode(self.blocks.get_block(v=block.get('number')))
                     }))
 
                 self.blocks.store_block(block)
@@ -603,7 +603,7 @@ class Node:
                     'type': 'tx_lifecycle',
                     'file': 'base',
                     'system_time': time.time(),
-                    'payload': encode(get_block(new_block.get('number')))
+                    'payload': encode(self.blocks.get_block(v=new_block.get('number')))
                 }))
 
         # remove the processing results and read history from the main_processing queue memory
