@@ -38,6 +38,7 @@ class Block_Contender():
             self.log.error(
                 f'Received Invalid Processing Results from {msg.get("proof", "No Proof provided")}'
             )
+            self.log.error(msg)
             return
 
         # get the tx specifics, if there is an error here then the tx is malformed
