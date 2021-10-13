@@ -386,9 +386,13 @@ class TxProcessingQueue(ProcessingQueue):
 
     async def node_rollback(self, tx):
         try:
+            self.log.info('stop_all_queues')
             await self.stop_all_queues()
+            self.log.info('reprocess')
             await self.reprocess(tx=tx)
+            self.log.info('start_all_queues')
             self.start_all_queues()
+            self.log.info('stop_processing')
             self.stop_processing()
         except Exception as err:
             self.log.info('node_rollback ERROR')
