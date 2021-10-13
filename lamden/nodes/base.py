@@ -34,9 +34,6 @@ DB_CURRENT_BLOCK_HASH = '_current_block_hash'
 GET_BLOCK = 'get_block'
 GET_HEIGHT = 'get_height'
 
-last_checked_main = time.time()
-last_checked_val = time.time()
-
 async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
     msg = {
         'name': GET_HEIGHT,
@@ -137,6 +134,8 @@ class Node:
         self.debug_blocks_processed = []
         self.debug_timeline = []
         self.debug_sent_solutions = []
+        self.debug_last_checked_main = time.time()
+        self.debug_last_checked_val = time.time()
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -345,8 +344,8 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            if time.time() - last_checked_main > 30:
-                last_checked_main = time.time()
+            if time.time() - self.debug_last_checked_main > 30:
+                self.debug_last_checked_main = time.time()
                 self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
                 self.main_processing_queue.start_processing()
@@ -356,8 +355,8 @@ class Node:
 
     async def check_validation_queue(self):
         while self.running:
-            if time.time() - last_checked_val > 30:
-                last_checked_val = time.time()
+            if time.time() - self.debug_last_checked_val > 30:
+                self.debug_last_checked_val = time.time()
                 self.log.info(
                     f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)}. Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
