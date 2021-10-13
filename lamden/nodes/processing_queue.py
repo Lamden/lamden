@@ -385,7 +385,10 @@ class TxProcessingQueue(ProcessingQueue):
                 self.read_history.pop(hlc, None)
 
     async def node_rollback(self, tx):
-        self.currently_processing = False
-        await self.stop_all_queues()
-        await self.reprocess(tx=tx)
-        self.start_all_queues()
+        try:
+            await self.stop_all_queues()
+            await self.reprocess(tx=tx)
+            self.start_all_queues()
+            self.stop_processing()
+        except Exception as err:
+            self.log.error(err)

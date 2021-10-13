@@ -655,11 +655,14 @@ class Node:
 
             # If HLC is greater than rollback point check it for reprocessing
             if read_history_hlc > new_tx_hlc_timestamp:
-                self.reprocess_hlc(
-                    hlc_timestamp=read_history_hlc,
-                    pending_deltas=pending_delta_history.get(read_history_hlc, {}),
-                    changed_keys_list=changed_keys_list
-                )
+                try:
+                    self.reprocess_hlc(
+                        hlc_timestamp=read_history_hlc,
+                        pending_deltas=pending_delta_history.get(read_history_hlc, {}),
+                        changed_keys_list=changed_keys_list
+                    )
+                except Exception as err:
+                    self.log.error(err)
 
     def reprocess_after_earlier_block(self, new_keys_list):
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
@@ -674,11 +677,14 @@ class Node:
 
         # Check the read_history if all HLCs that were processed, in order of oldest to newest
         for index, read_history_hlc in enumerate(pending_delta_items):
-            self.reprocess_hlc(
-                hlc_timestamp=read_history_hlc,
-                pending_deltas=pending_delta_history.get(read_history_hlc, {}),
-                changed_keys_list=changed_keys_list
-            )
+            try:
+                self.reprocess_hlc(
+                    hlc_timestamp=read_history_hlc,
+                    pending_deltas=pending_delta_history.get(read_history_hlc, {}),
+                    changed_keys_list=changed_keys_list
+                )
+            except Exception as err:
+                self.log.error(err)
 
     def reprocess_hlc(self, hlc_timestamp, pending_deltas, changed_keys_list):
         # Create a flag to determine there were any matching keys
@@ -794,7 +800,7 @@ class Node:
                     }
 
             except Exception as err:
-                print(err)
+                self.log.error(err)
         else:
             if self.testing:
                 self.debug_reprocessing_results[hlc_timestamp] = {
