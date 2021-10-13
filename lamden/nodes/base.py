@@ -639,15 +639,19 @@ class Node:
                         'reprocess_type': 'run',
                         'sent_to_network': True
                     }
-                # rollback to this point
-                self.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
 
-                # Process the transaction
-                processing_results = self.main_processing_queue.process_tx(tx=tx)
-                self.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
-                changed_keys_list = list(deepcopy(self.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
-                self.store_solution_and_send_to_network(processing_results=processing_results)
-                continue
+                try:
+                    # rollback to this point
+                    self.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
+
+                    # Process the transaction
+                    processing_results = self.main_processing_queue.process_tx(tx=tx)
+                    self.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
+                    changed_keys_list = list(deepcopy(self.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
+                    self.store_solution_and_send_to_network(processing_results=processing_results)
+                    continue
+                except Exception as err:
+                    self.log.error(err)
 
             # if the hlc is less than the hlc we need to run then leave it alone, it won't need any changes
             if read_history_hlc < new_tx_hlc_timestamp:
