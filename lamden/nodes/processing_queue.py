@@ -118,6 +118,7 @@ class TxProcessingQueue(ProcessingQueue):
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
         if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
+            self.currently_processing_hlc = ""
             del self.message_received_timestamps[self.currently_processing_hlc]
             return
 
@@ -141,7 +142,7 @@ class TxProcessingQueue(ProcessingQueue):
                 }))
             '''
 
-            if (self.currently_processing_hlc < self.get_last_processed_hlc()):
+            if self.currently_processing_hlc < self.get_last_processed_hlc():
                 await self.node_rollback(tx=tx)
             else:
                 del self.message_received_timestamps[self.currently_processing_hlc]
