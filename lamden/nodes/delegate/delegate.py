@@ -72,12 +72,12 @@ class WorkProcessor(router.Processor):
                     timeout=self.expired_batch + self.tx_timeout
                 )
                 good_transactions.append(tx)
-            except transaction.TransactionTooManyPendingException as e:
-                good_transactions.append(tx)
-
             except transaction.TransactionException as e:
                 self.log.error(f'TX in batch has error: {type(e)}')
-                good_transactions.append(InvalidTX(tx, e))
+                if isinstance(e, transaction.TransactionTooManyPendingException):
+                    good_transactions.append(tx)
+                else:
+                    good_transactions.append(InvalidTX(tx, e))
 
         # Replace transactions with ones that do not pass.
         msg['transactions'] = good_transactions
