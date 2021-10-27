@@ -401,7 +401,7 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
     arg_parser.add_argument('-k', '--key', type=str, required=True)
-    arg_parser.add_argument('-p', '--port', type=int, required=True)
+    arg_parser.add_argument('-p', '--port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
