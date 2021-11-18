@@ -401,10 +401,16 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
     arg_parser.add_argument('-k', '--key', type=str, required=True)
+    arg_parser.add_argument('-p', '--port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
     sk = bytes.fromhex(args.key)
+    port = args.port
+
+    if port is None:
+        port = 18080
+
     wallet = Wallet(seed=sk)
 
     webserver = WebServer(
@@ -412,7 +418,7 @@ if __name__ == '__main__':
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
-        port=18080
+        port=port
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
