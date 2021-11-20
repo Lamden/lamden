@@ -35,10 +35,12 @@ class TestMultiNode(TestCase):
         print("\n")
 
     def tearDown(self):
-        try:
-            self.network.stop()
-        except Exception:
-            pass
+        # try:
+        self.network.stop()
+        # give time for shutdown of sockets
+        time.sleep(0.5)
+        # except Exception:
+        #     pass
 
         self.async_sleep(1)
 
@@ -110,6 +112,9 @@ class TestMultiNode(TestCase):
         all_nodes = self.network.all_nodes()
         for node in all_nodes:
             self.assertEqual(masternode_1.obj.last_processed_hlc, node.obj.last_processed_hlc)
+            
+
+
 
     def test_network_can_propagate_results(self):
         # Test that the network can receive a transaction and send it around to all the other nodes

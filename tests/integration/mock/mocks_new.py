@@ -260,7 +260,8 @@ class MockNetwork:
 
     def stop(self):
         for node in self.masternodes + self.delegates:
-            asyncio.ensure_future(node.stop())
+            # asyncio.ensure_future(node.stop())
+            node.stop()
 
     async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
         tx = transaction.build_transaction(

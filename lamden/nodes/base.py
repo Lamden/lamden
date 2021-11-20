@@ -142,7 +142,6 @@ class Node:
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
-        self.ctx = ctx or zmq.asyncio.Context()
 
         self.system_monitor = system_usage.SystemUsage()
 
@@ -186,8 +185,7 @@ class Node:
             testing=self.testing,
             wallet=wallet,
             socket_id=socket_base,
-            max_peer_strikes=self.max_peer_strikes,
-            ctx=self.ctx,
+            max_peer_strikes=self.max_peer_strikes
         )
 
         # Number of core / processes we push to
@@ -275,15 +273,15 @@ class Node:
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
+
         await self.network.start()
 
         for vk, ip in self.bootnodes.items():
             # print({"vk": vk, "ip": ip})
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
-                socket = self.ctx.socket(zmq.SUB)
-                self.network.connect(
-                    socket=socket,
+                
+                await self.network.connect(
                     ip=ip,
                     key=vk,
                     wallet=self.wallet
@@ -880,8 +878,6 @@ class Node:
 
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
-
-###
 
     def _get_member_peers(self, contract_name):
         ''' GET FROM DB INSTEAD
