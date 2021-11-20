@@ -57,9 +57,7 @@ class Peer:
     def stop(self):
         self.running = False
         self.dealer.stop()
-        self.dealer.abort()
         self.subscriber.stop()
-        self.subscriber.abort()
 
     def not_in_consensus(self):
         self.in_consensus = False

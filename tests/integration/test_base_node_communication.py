@@ -36,18 +36,24 @@ class TestMultiNode(TestCase):
 
     def tearDown(self):
         # try:
+        print('starting tearDown')
         self.network.stop()
-        # give time for shutdown of sockets
-        time.sleep(0.5)
+        print('tearDown: network.stop complete')
         # except Exception:
         #     pass
 
         self.async_sleep(1)
 
+        print('mid tearDown')
+
         self.ctx.destroy()
         self.loop.close()
 
         remove_fixture_directories(self.fixture_directories)
+
+
+        print('finished tearDown')
+        # self.async_sleep(2)
 
     def await_async_process(self, process, args={}):
         tasks = asyncio.gather(

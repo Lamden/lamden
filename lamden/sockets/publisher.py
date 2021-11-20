@@ -45,7 +45,7 @@ class Publisher():
         self.socket.send(m)
     
     def stop(self):
-        self.socket.close()
-        self.ctx.term()
         self.running = False
+        self.socket.close()
+
         

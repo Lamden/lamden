@@ -50,22 +50,31 @@ class Router(threading.Thread):
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_server = True  # must come before bind
         self.socket.bind(self.address)
+        # Create a poller to monitor if there is any
+        poll = zmq.Poller()
+        poll.register(self.socket, zmq.POLLIN)
         while self.running:
             try:
-                ident, msg = self.socket.recv_multipart()
-                print('Router received %s from %s' % (msg, ident))
-                if msg == b'hello':
-                    print('Router sending pub_info response to %s' % ident)
-                    self.socket.send_multipart([ident, b'{"response":"pub_info", "address": "tcp://127.0.0.1:9999", '
-                                                       b'"topics": [""]}'])
+                sockets = dict(poll.poll(100))
+                # print(sockets[self.socket])
+                if self.socket in sockets:
+                    ident, msg = self.socket.recv_multipart()
+                    print('Router received %s from %s' % (msg, ident))
+                    if msg == b'hello':
+                        print('Router sending pub_info response to %s' % ident)
+                        self.socket.send_multipart([ident, b'{"response":"pub_info", "address": "tcp://127.0.0.1:9999", '
+                                                           b'"topics": [""]}'])
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     break  # Interrupted
                 else:
                     raise
 
+        self.socket.close()
+        # self.ctx.term()
+        print("router finished")
+
     def stop(self):
         print('stopping router')
         self.running = False
-        self.socket.close()
-        self.ctx.term()
+

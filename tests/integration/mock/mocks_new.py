@@ -116,8 +116,8 @@ class MockMaster(MockNode):
         await self.obj.start()
         self.started = True
 
-    def stop(self):
-        self.obj.stop()
+    async def stop(self):
+        await self.obj.stop()
 
 class MockDelegate(MockNode):
     def __init__(self, ctx, index=1, wallet=None, metering=True, delay=None):
@@ -145,8 +145,8 @@ class MockDelegate(MockNode):
         await self.obj.start()
         self.started = True
 
-    def stop(self):
-        self.obj.stop()
+    async def stop(self):
+        await self.obj.stop()
 
 
 class MockNetwork:
@@ -260,8 +260,7 @@ class MockNetwork:
 
     def stop(self):
         for node in self.masternodes + self.delegates:
-            # asyncio.ensure_future(node.stop())
-            node.stop()
+            asyncio.ensure_future(node.stop())
 
     async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
         tx = transaction.build_transaction(

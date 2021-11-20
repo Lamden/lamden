@@ -56,8 +56,8 @@ class Dealer(threading.Thread):
         connected = False
         while self.running:
             try:                
-                print('polling')
-                sockets = dict(poll.poll(1000))
+                #print('polling')
+                sockets = dict(poll.poll(100))
                 # print(sockets[self.socket])
                 if self.socket in sockets:   
                     print('self.socket in sockets: True')                     
@@ -80,6 +80,8 @@ class Dealer(threading.Thread):
                 else:
                     print('error: ' + e.strerror)
                     sleep(1)
+        print("dealer finished")
+        self.socket.close()
 
         
     def sendMsg(self, msg):
@@ -88,6 +90,3 @@ class Dealer(threading.Thread):
     def stop(self):
         print('stopping dealer: ' + self.id)
         self.running = False
-        self.socket.disconnect(self.address)
-        self.socket.close()
-        self.ctx.term()

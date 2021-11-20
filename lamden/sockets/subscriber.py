@@ -51,9 +51,9 @@ class Subscriber():
                         break           # Interrupted
                     else:
                         raise
+        self.socket.close()
+        print("subscriber finished")
+
 
     def stop(self):
         self.running = False
-        self.sub_task.cancel()
-        self.socket.close()
-        self.ctx.term()
