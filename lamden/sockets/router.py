@@ -12,29 +12,38 @@ class CredentialsProvider(object):
     def __init__(self, public_keys):
         # print('init CredentialsProvider')
         self.public_keys = public_keys
+        self.denied = []
 
     def add_key(self, new_key):
         # print(f'adding key {new_key}')
-        self.public_keys.append(new_key)
+        if new_key not in self.public_keys:
+            self.public_keys.append(new_key)
+
+    def remove_key(self, key_to_remove):
+        if key_to_remove in self.public_keys:
+            self.public_keys.remove(key_to_remove)
 
     def callback(self, domain, key):
-        print(f'checking auth for key: {key}')
+        #print(f'checking auth for key: {key}')
         valid = key in self.public_keys
         if valid:
             logging.info('Authorizing: {0}, {1}'.format(domain, key))
             return True
         else:
+            if key not in self.denied:
+                self.denied.append(key)
+            print('NOT Authorizing: {0}, {1}'.format(domain, key))
             logging.warning('NOT Authorizing: {0}, {1}'.format(domain, key))
             return False
 
 
 class Router(threading.Thread):
-    def __init__(self, address, wallet: wallet, public_keys, ctx):
+    def __init__(self, address, router_wallet: wallet, public_keys=[]):
         threading.Thread.__init__(self)
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.address = address
-        self.wallet = wallet
+        self.wallet = router_wallet
         self.publicKeys = public_keys
         self.running = False
         self.cred_provider = CredentialsProvider(self.publicKeys)

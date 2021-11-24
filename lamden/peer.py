@@ -16,7 +16,7 @@ class Peer:
         self.ctx = ctx
         self.ip = ip
         self.router_address = ip.replace(':180', ':190')
-        self.key = key
+        self.server_key = key
         self.services = services
         self.in_consensus = True
         self.errored = False
@@ -34,30 +34,36 @@ class Peer:
         self.testing = testing
         self.debug = debug
 
-        self.subRunning = False
+        self.sub_running = False
         self.subscriber = Subscriber(ip, [''], self.process_subscription)
 
     def start(self):
         # print('starting dealer connecting to: ' + self.router_address)
         self.loop = asyncio.new_event_loop()
-        self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.router_address, server_vk=self.key,
-                             wallet=self.wallet, ctx=self.ctx, _callback=self.dealerCallback)
+        self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.router_address, server_vk=self.server_key,
+                             wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback)
         self.dealer.start()
 
-    def dealerCallback(self, identity, msg):
-        print('Delegate received msg from %s : %s' % (identity, msg))
-        msgJson = json.loads(msg)
-        if (not self.subRunning and
-                'response' in msgJson and
-                msgJson['response'] == 'pub_info'):
-            self.subRunning = True
+    def dealer_callback(self, msg):
+        print('Received msg from %s : %s' % (self.router_address, msg))
+        msg_json = json.loads(msg)
+        if (not self.sub_running and
+                'response' in msg_json and
+                msg_json['response'] == 'pub_info'):
+            self.sub_running = True
             print('Received response from authorized master with pub info')
             self.subscriber.start(self.loop)
+            self.running = True
+        elif msg == Dealer.con_failed:
+            self.log.error('Peer connection failed to %s (%s)' % (self.server_key, self.router_address))
+            self.stop()
 
     def stop(self):
         self.running = False
-        self.dealer.stop()
-        self.subscriber.stop()
+        if self.dealer.running:
+            self.dealer.stop()
+        if self.subscriber.running:
+            self.subscriber.stop()
 
     def not_in_consensus(self):
         self.in_consensus = False
@@ -67,11 +73,11 @@ class Peer:
 
     def add_strike(self):
         self.strikes += 1
-        self.log.error(f'Strike {self.strikes} for peer {self.key[:8]}')
+        self.log.error(f'Strike {self.strikes} for peer {self.server_key[:8]}')
         # TODO if self.strikes == self.max_strikes then blacklist this peer or something
         if self.strikes == self.max_strikes:
             self.stop()
-            self.blacklist(self.key)
+            self.blacklist(self.server_key)
 
     async def process_subscription(self, data):
         topic, msg = data
@@ -96,12 +102,12 @@ class Peer:
             '''
             await processor.process_message(message)
 
-    def z85_key(key):
-        bvk = bytes.fromhex(key)
-        try:
-            pk = crypto_sign_ed25519_pk_to_curve25519(bvk)
-        # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
-        except RuntimeError:
-            return
-
-        return z85.encode(pk).decode('utf-8')
+    # def z85_key(key):
+    #     bvk = bytes.fromhex(key)
+    #     try:
+    #         pk = crypto_sign_ed25519_pk_to_curve25519(bvk)
+    #     # Error is thrown if the VK is not within the possibility space of the ED25519 algorithm
+    #     except RuntimeError:
+    #         return
+    #
+    #     return z85.encode(pk).decode('utf-8')

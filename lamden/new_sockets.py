@@ -66,7 +66,7 @@ class QueueProcessor(Processor):
 
 class Network:
     def __init__(self, wallet: Wallet, socket_id, max_peer_strikes, testing=False,
-                 debug=False):
+                 debug=False, boot_nodes={}):
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
@@ -85,9 +85,9 @@ class Network:
             ctx=self.ctx
         )
 
-        self.router = Router(self.router_address, self.wallet, [b'p2hAVp8T1?-pg)OaA*gbsDvl3JY(Vv?CrmcrIjqg'], self.ctx)
+        keys = list(boot_nodes.keys())
 
-        # self.authenticator = AsyncioAuthenticator(context=self.ctx)
+        self.router = Router(address=self.router_address, router_wallet=self.wallet, public_keys=keys)
 
         self.peers = {}
         self.peer_blacklist = []
@@ -137,13 +137,14 @@ class Network:
                     self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
-    async def connect(self, ip, key, wallet, linger=500):
+    async def connect(self, ip, key):
         if key in self.peer_blacklist:
             # TODO how does a blacklisted peer get back in good standing?
             self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
             return False
 
-        self.router.cred_provider.add_key(z85_key(key))
+        # Add the node to authorized list of the router in case it was not part of the boot nodes
+        # self.router.cred_provider.add_key(z85_key(key))
 
         self.log.debug(f"Connecting to {key} {ip}")
 

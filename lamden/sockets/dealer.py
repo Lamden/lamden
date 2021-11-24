@@ -9,11 +9,14 @@ from zmq.sugar.constants import NOBLOCK
 from lamden.crypto import wallet
 from contracting.db.encoder import encode
 
+
 class Dealer(threading.Thread):
-    
+
+    msg_hello = 'hello'
+    con_failed = 'con_failed'
+
     def __init__(self, _id, _address, server_vk, wallet: wallet, ctx, _callback = None):
         self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(zmq.DEALER)
         self.id = _id
         self.address = _address
         self.callback = _callback
@@ -21,58 +24,56 @@ class Dealer(threading.Thread):
         self.connected = False
         self.server_vk = server_vk
         self.wallet = wallet
+        self.socket = self.ctx.socket(zmq.DEALER)
+        self.socket.curve_secretkey = self.wallet.curve_sk
+        self.socket.curve_publickey = self.wallet.curve_vk
+        self.socket.curve_serverkey = self.server_vk
+        self.socket.identity = encode(self.id).encode()
+        self.socket.setsockopt(zmq.LINGER, 500)
         self.running = False
-
 
     def run(self):
         # Get an instance of the ZMQ Context
 
         self.running = True
 
-        self.socket.curve_secretkey = self.wallet.curve_sk
-        self.socket.curve_publickey = self.wallet.curve_vk
-
-
-        print('sever vk')
-        self.socket.curve_serverkey = self.server_vk
-
-        print('dealer id: ' + self.id)
-
-        self.socket.identity = encode(self.id).encode()
-        self.socket.setsockopt(zmq.LINGER, 500)
         print("Dealer run start: " + self.address)
 
         self.socket.connect(self.address)
-
 
         # Create a poller to monitor if there is any
         poll = zmq.Poller()
         poll.register(self.socket, zmq.POLLIN)
 
-        # TODO: When sending a message then start the poller to listen for a response...
-
-        self.socket.send_string('hello', flags=zmq.NOBLOCK)
+        # Send message to server to let it know there was a connection
+        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
 
         connected = False
+        connection_attempts = 0
+        max_attempts = 3
+        poll_time = 500
+
         while self.running:
             try:                
-                #print('polling')
-                sockets = dict(poll.poll(100))
-                # print(sockets[self.socket])
+                sockets = dict(poll.poll(poll_time))
                 if self.socket in sockets:   
                     print('self.socket in sockets: True')                     
                     msg = self.socket.recv()
                     connected = True
                     # print('Dealer %s received: %s' % (self.id, msg))
-                    if (self.callback):
-                        self.callback(self.address, msg)
+                    if self.callback:
+                        self.callback(msg)
                 else:
                     if not connected:
-                        sleep(1)   
-                        print('attempting to connect')              
+                        print('failed to received response, attempting to reconnect')
                         self.socket.disconnect(self.address)
+                        connection_attempts += 1
+                        if connection_attempts >= max_attempts:
+                            self.running = False
+                            self.callback(Dealer.con_failed)
+                            break
                         self.socket.connect(self.address)
-                        self.socket.send_string('hello', flags=zmq.NOBLOCK)
+                        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     print('Interrupted')
@@ -83,8 +84,7 @@ class Dealer(threading.Thread):
         print("dealer finished")
         self.socket.close()
 
-        
-    def sendMsg(self, msg):
+    def send_msg(self, msg):
         self.socket.send_string(msg)
 
     def stop(self):

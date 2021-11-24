@@ -185,7 +185,8 @@ class Node:
             testing=self.testing,
             wallet=wallet,
             socket_id=socket_base,
-            max_peer_strikes=self.max_peer_strikes
+            max_peer_strikes=self.max_peer_strikes,
+            boot_nodes=bootnodes
         )
 
         # Number of core / processes we push to
@@ -273,7 +274,6 @@ class Node:
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
 
-
         await self.network.start()
 
         for vk, ip in self.bootnodes.items():
@@ -283,8 +283,7 @@ class Node:
                 
                 await self.network.connect(
                     ip=ip,
-                    key=vk,
-                    wallet=self.wallet
+                    key=vk
                 )
 
     async def stop(self):

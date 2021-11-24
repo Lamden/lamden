@@ -41,6 +41,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(tasks)
 
+
 class MockNode:
     def __init__(self, ctx,  wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
         self.wallet = wallet or Wallet()
@@ -119,6 +120,7 @@ class MockMaster(MockNode):
     async def stop(self):
         await self.obj.stop()
 
+
 class MockDelegate(MockNode):
     def __init__(self, ctx, index=1, wallet=None, metering=True, delay=None):
         super().__init__(ctx=ctx, index=index, wallet=wallet, delay=delay)
@@ -150,7 +152,7 @@ class MockDelegate(MockNode):
 
 
 class MockNetwork:
-    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True, delay=None):
+    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True, delay=None, index=0):
         self.masternodes = []
         self.delegates = []
         self.metering = metering
@@ -161,10 +163,10 @@ class MockNetwork:
 
         self.delay = delay
 
-        for i in range(0, num_of_masternodes):
+        for i in range(index, index + num_of_masternodes):
             self.build_masternode(i)
 
-        for i in range(num_of_masternodes, num_of_delegates + num_of_masternodes):
+        for i in range(index + num_of_masternodes, index + num_of_delegates + num_of_masternodes):
             self.build_delegate(i)
 
         self.constitution = None
