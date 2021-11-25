@@ -151,6 +151,13 @@ class WebServer:
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
         log.debug(f'New request: {request}')
+
+        if request.method == "OPTIONS":
+            return response.text("",headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': "origin, content-type"
+            })
+
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
