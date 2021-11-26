@@ -171,29 +171,25 @@ class AsyncBlockReader:
             return {'number': v}
         return {'hash': v}
 
-    def get_block(self, v=None, no_id=True):
+    async def get_block(self, v=None, no_id=True):
         if v is None:
             return None
 
         q = self.q(v)
-        block = self.blocks.find_one(q)
+        block = await self.blocks.find_one(q)
 
         if block is not None and no_id:
             block.pop('_id')
 
         return block
 
-    def get_last_n(self, n, collection=BLOCK):
+    async def get_last_n(self, n, collection=BLOCK):
         if collection == AsyncBlockReader.BLOCK:
             c = self.blocks
         else:
             return None
 
-        block_query = c.find({}, {'_id': False}).sort(
-            'number', DESCENDING
-        ).limit(n)
-
-        blocks = [block for block in block_query]
+        blocks = [block async for block in c.find({}, {'_id': False}).sort('number', DESCENDING).limit(n)]
 
         if len(blocks) > 1:
             first_block_num = blocks[0].get('number')
@@ -203,8 +199,8 @@ class AsyncBlockReader:
 
         return blocks
 
-    def get_tx(self, h, no_id=True):
-        tx = self.txs.find_one({'hash': h})
+    async def get_tx(self, h, no_id=True):
+        tx = await self.txs.find_one({'hash': h})
 
         if tx is not None and no_id:
             tx.pop('_id')

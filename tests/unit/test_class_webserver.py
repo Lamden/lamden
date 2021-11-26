@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from lamden.nodes.masternode.webserver import WebServer
+from lamden.webserver.webserver import WebServer
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
