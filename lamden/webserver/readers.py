@@ -1,7 +1,8 @@
+# Read-only drivers that are async for improved speed
 from contracting.db.driver import ContractDriver
 from pymongo import MongoClient, DESCENDING
 
-import motor
+import motor.motor_asyncio
 
 from bson.decimal128 import Decimal128
 from bson.codec_options import TypeCodec, TypeEncoder, TypeDecoder
@@ -138,10 +139,6 @@ def get_latest_block_hash(driver: ContractDriver):
     return latest_hash
 
 
-def set_latest_block_hash(h, driver: ContractDriver):
-    driver.driver.set(BLOCK_HASH_KEY, h)
-
-
 def get_latest_block_height(driver: ContractDriver):
     h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
     if h is None:
@@ -153,43 +150,7 @@ def get_latest_block_height(driver: ContractDriver):
     return h
 
 
-def set_latest_block_height(h, driver: ContractDriver):
-    driver.driver.set(BLOCK_NUM_HEIGHT, h)
-
-
-def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
-
-    if tx['state'] is not None and len(tx['state']) > 0:
-        for delta in tx['state']:
-            driver.driver.set(delta['key'], delta['value'])
-            # log.debug(f"{delta['key']} -> {delta['value']}")
-
-            nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
-
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
-
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
-
-
-def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
-    if block.get('subblocks') is not None:
-        for sb in block['subblocks']:
-            for tx in sb['transactions']:
-                update_state_with_transaction(tx, driver, nonces)
-
-    # Update our block hash and block num
-    if set_hash_and_height:
-        set_latest_block_hash(block['hash'], driver=driver)
-        set_latest_block_height(block['number'], driver=driver)
-
-
-class BlockStorage:
+class AsyncBlockReader:
     BLOCK = 0
     TX = 1
 
@@ -199,7 +160,7 @@ class BlockStorage:
 
         self.port = port
 
-        self.client = MongoClient()
+        self.client = motor.motor_asyncio.AsyncIOMotorClient()
         self.db = self.client.get_database(db)
 
         self.blocks = self.db.get_collection(blocks_collection, codec_options=codec_options)
@@ -222,20 +183,8 @@ class BlockStorage:
 
         return block
 
-    def put(self, data, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
-            _id = self.blocks.insert_one(data)
-            del data['_id']
-        elif collection == BlockStorage.TX:
-            _id = self.txs.insert_one(data)
-            del data['_id']
-        else:
-            return False
-
-        return _id is not None
-
     def get_last_n(self, n, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
+        if collection == AsyncBlockReader.BLOCK:
             c = self.blocks
         else:
             return None
@@ -261,45 +210,3 @@ class BlockStorage:
             tx.pop('_id')
 
         return tx
-
-    def drop_collections(self):
-        self.blocks.drop()
-        self.txs.drop()
-
-    def flush(self):
-        self.drop_collections()
-
-    def store_block(self, block):
-        if block.get('number') is not None:
-            if type(block['number']) == dict:
-                block['number']['fixed'] = int(block['number'])
-            else:
-                block['number'] = int(block['number'])
-
-        self.put(block, BlockStorage.BLOCK)
-        self.store_txs(block)
-
-    def store_txs(self, block):
-        if block.get('subblocks') is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.put(tx, BlockStorage.TX)
-
-    def delete_tx(self, h):
-        self.txs.delete_one({'hash': h})
-
-    def delete_block(self, v):
-        block = self.get_block(v, no_id=False)
-
-        if block is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.delete_tx(tx['hash'])
-
-        self.blocks.delete_one({'_id': block['_id']})
-
-
