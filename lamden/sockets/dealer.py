@@ -60,7 +60,7 @@ class Dealer(threading.Thread):
                     print('self.socket in sockets: True')                     
                     msg = self.socket.recv()
                     connected = True
-                    # print('Dealer %s received: %s' % (self.id, msg))
+                    print('Dealer %s received: %s' % (self.id, msg))
                     if self.callback:
                         self.callback(msg)
                 else:

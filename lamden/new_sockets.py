@@ -76,6 +76,7 @@ class Network:
         self.ctx = zmq.asyncio.Context()
 
         self.log = get_logger("NEW_SOCKETS")
+        self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
 
         # self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
         self.publisher = Publisher(
@@ -85,9 +86,13 @@ class Network:
             ctx=self.ctx
         )
 
-        keys = list(boot_nodes.keys())
+        boot_node_vks = list(boot_nodes.keys())
+        boot_node_keys = []
+        for vk in boot_node_vks:
+            boot_node_keys.append(z85_key(vk))
 
-        self.router = Router(address=self.router_address, router_wallet=self.wallet, public_keys=keys)
+        self.router = Router(address=self.router_address, router_wallet=self.wallet,
+                             public_keys=boot_node_keys, callback=self.router_callback)
 
         self.peers = {}
         self.peer_blacklist = []
@@ -155,6 +160,11 @@ class Network:
             self.log.error(error)
             # socket.close()
             return False
+
+    def router_callback(self, ident: str, msg: str):
+        if msg == b'hello':
+            print('Router sending pub_info response to %s' % ident)
+            self.router.send_msg(ident, self.hello_response)
 
     def add_peer(self, ip, key):
         self.peers[key] = Peer(

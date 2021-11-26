@@ -46,7 +46,17 @@ class Peer:
 
     def dealer_callback(self, msg):
         print('Received msg from %s : %s' % (self.router_address, msg))
-        msg_json = json.loads(msg)
+
+        if (msg == Dealer.con_failed):
+            print(f'Peer {self.server_key} connection failed')
+            return
+
+        try:
+            msg_json = json.loads(msg)
+        except:
+            print(f'Peer {self.server_key} failed to decode json from {msg}')
+            return
+
         if (not self.sub_running and
                 'response' in msg_json and
                 msg_json['response'] == 'pub_info'):

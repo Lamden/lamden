@@ -253,6 +253,20 @@ class MockNetwork:
                 value=value
             )
 
+    async def start_masters(self):
+        coroutines = [node.start() for node in self.masternodes]
+
+        await asyncio.gather(
+            *coroutines
+        )
+
+    async def start_delegates(self):
+        coroutines = [node.start() for node in self.delegates]
+
+        await asyncio.gather(
+            *coroutines
+        )
+
     async def start(self):
         coroutines = [node.start() for node in self.masternodes + self.delegates]
 

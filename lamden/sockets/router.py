@@ -38,7 +38,7 @@ class CredentialsProvider(object):
 
 
 class Router(threading.Thread):
-    def __init__(self, address, router_wallet: wallet, public_keys=[]):
+    def __init__(self, address, router_wallet: wallet, public_keys=[], callback = None):
         threading.Thread.__init__(self)
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
@@ -47,6 +47,7 @@ class Router(threading.Thread):
         self.publicKeys = public_keys
         self.running = False
         self.cred_provider = CredentialsProvider(self.publicKeys)
+        self.callback = callback
 
     def run(self):
         self.running = True
@@ -69,10 +70,9 @@ class Router(threading.Thread):
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
                     print('Router received %s from %s' % (msg, ident))
-                    if msg == b'hello':
-                        print('Router sending pub_info response to %s' % ident)
-                        self.socket.send_multipart([ident, b'{"response":"pub_info", "address": "tcp://127.0.0.1:9999", '
-                                                           b'"topics": [""]}'])
+                    if self.callback is not None:
+                        self.callback(ident, msg)
+
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     break  # Interrupted
@@ -82,6 +82,9 @@ class Router(threading.Thread):
         self.socket.close()
         # self.ctx.term()
         print("router finished")
+
+    def send_msg(self, ident: str, msg: str):
+        self.socket.send_multipart([ident, msg])
 
     def stop(self):
         print('stopping router')
