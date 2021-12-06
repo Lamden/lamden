@@ -1,5 +1,5 @@
-from sanic import Sanic
-from sanic import response
+from aiohttp import web
+
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -27,6 +27,21 @@ import datetime
 import argparse
 
 log = get_logger("MN-WebServer")
+
+
+
+
+
+class NewWebserver:
+    def __init__(self):
+        self.app = web.Application()
+        self.app.add_routes([web.get('/', self.hello)])
+
+    async def hello(self, request):
+        return web.Response(text="Hello, world")
+
+
+
 
 
 class NonceEncoder(_json.JSONEncoder):
