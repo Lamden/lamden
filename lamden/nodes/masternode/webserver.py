@@ -11,7 +11,6 @@ from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet
 
-from lamden.webserver.readers import AsyncBlockReader
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
@@ -52,7 +51,7 @@ class NonceEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks: AsyncBlockReader,
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks: storage.BlockStorage,
                  queue=FileQueue(),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
@@ -324,7 +323,7 @@ class WebServer:
         self.driver.clear_pending_state()
 
         num = storage.get_latest_block_height(self.driver)
-        block = await self.blocks.get_block(int(num))
+        block = self.blocks.get_block(int(num))
         return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
@@ -345,9 +344,9 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = await self.blocks.get_block(int(num))
+            block = self.blocks.get_block(int(num))
         elif _hash is not None:
-            block = await self.blocks.get_block(_hash)
+            block = self.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
@@ -364,7 +363,7 @@ class WebServer:
         if _hash is not None:
             try:
                 int(_hash, 16)
-                tx = await self.blocks.get_tx(_hash)
+                tx = self.blocks.get_tx(_hash)
             except ValueError:
                 return response.json({'error': 'Malformed hash.'}, status=400,
                                      headers={'Access-Control-Allow-Origin': '*'})
