@@ -193,6 +193,8 @@ class Delegate(base.Node):
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
 
+        self.log.error(results)
+
         await router.secure_multicast(
             msg=results,
             service=base.CONTENDER_SERVICE,
