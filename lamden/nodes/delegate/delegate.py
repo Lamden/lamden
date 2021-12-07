@@ -75,6 +75,7 @@ class WorkProcessor(router.Processor):
             except transaction.TransactionException as e:
                 self.log.error(f'TX in batch has error: {type(e)}')
                 if isinstance(e, transaction.TransactionTooManyPendingException):
+                    self.log.error(f'Adding {tx} to good txs.')
                     good_transactions.append(tx)
                 else:
                     good_transactions.append(InvalidTX(tx, e))
