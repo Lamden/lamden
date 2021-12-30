@@ -53,7 +53,7 @@ class EventListener:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def get_events(self) -> List[Event]:
-        dirs = sorted(self.root.iterdir(), key=os.path.getmtime)
+        dirs = sorted(self.root.iterdir() if self.root.is_dir() else [], key=os.path.getmtime)
 
         events = []
 
@@ -102,7 +102,10 @@ class ConnectionManager:
             return
 
         async for message in websocket:
-            m = json.loads(message)
+            try:
+                m = json.loads(message)
+            except:
+                continue
             action = m.get('action')
             topic = m.get('topic')
 
@@ -133,7 +136,6 @@ class ConnectionManager:
         else:
             current_connection.subscriptions -= 1
             if current_connection.subscriptions == 0:
-                await current_connection.websocket.close()
                 del self.connections[websocket.remote_address]
 
         # Remove the topic from the subscriptions
@@ -148,6 +150,8 @@ class ConnectionManager:
             await websocket.send(message)
         except websockets.WebSocketProtocolError:
             await self.purge_connection(websocket.remote_address)
+        except websockets.exceptions.ConnectionClosedOK:
+            await self.purge_connection(websocket.remote_address)
 
     async def purge_connection(self, address):
         to_remove = []
@@ -160,8 +164,8 @@ class ConnectionManager:
             del self.subscriptions[r]
 
         try:
-            await self.connections[address].close()
             self.connections.pop(address)
+            await self.connections[address].close()
         except:
             return
 

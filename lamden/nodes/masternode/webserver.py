@@ -13,6 +13,7 @@ from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
+from lamden.nodes.events import EventListener, ConnectionManager, EventWriter
 
 import ssl
 import asyncio
@@ -124,6 +125,18 @@ class WebServer:
 
         self.coroutine = None
 
+        self.connection_manager = ConnectionManager(EventListener())
+        self.app.add_websocket_route(self.ws_connection_handler, '/')
+        self.app.add_task(self.ws_send_events)
+
+    async def ws_send_events(self):
+        while True:
+            await asyncio.sleep(0)
+            await self.connection_manager.process_events()
+
+    async def ws_connection_handler(self, request, websocket):
+        await self.connection_manager.serve(websocket, '/')
+        
     async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
@@ -399,7 +412,6 @@ class WebServer:
 
 class Websockets:
     pass
-
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
