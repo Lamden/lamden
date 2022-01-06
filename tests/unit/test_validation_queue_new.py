@@ -366,9 +366,7 @@ class TestValidationQueue(TestCase):
 
         hlc_timestamp = processing_results_1['hlc_timestamp']
 
-        processed_transaction = self.validation_queue.get_processed_transaction(
-            hlc_timestamp=hlc_timestamp
-        )
+        processed_transaction = self.validation_queue.validation_results.get(hlc_timestamp)
         self.assertIsNotNone(processed_transaction)
 
     def test_get_proofs_from_results(self):

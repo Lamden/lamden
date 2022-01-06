@@ -6,7 +6,7 @@ class DetermineConsensus:
         self.consensus_percent = consensus_percent
         self.vk = my_wallet.verifying_key
 
-    def check_consensus(self, solutions, num_of_peers, last_check_info):
+    def check_consensus(self, solutions, num_of_participants, last_check_info):
         '''
             Consensus situations:
                 ideal: one solution meets the consensus needed threshold and no more checking is required
@@ -19,7 +19,12 @@ class DetermineConsensus:
 
         # TODO What should self.consensus_percent be set to?
         # determine the number of matching answers we need to form consensus
-        consensus_needed = math.ceil(num_of_peers * (self.consensus_percent() / 100))
+        print({'num_of_participants': num_of_participants})
+        print({'consensus_amount': self.consensus_percent()})
+        print({'consensus_percent': self.consensus_percent() / 100})
+
+        consensus_needed = math.ceil(num_of_participants * (self.consensus_percent() / 100))
+        print({'consensus_needed': consensus_needed})
 
         '''
         Return if we don't have enough responses to attempt an ideal consensus check
@@ -29,7 +34,7 @@ class DetermineConsensus:
             if that is a real possibility.
 
         Example:
-            num_of_peers = 10 (there are 10 peers currently marked by the network as connected and in_conensus
+            num_of_participants = 10 (there are 10 peers currently marked by the network as connected and in_conensus
             consensus_needed = 6 (51% rounded up)
             total_solutions_received = 6 (we can now start checking consensus moving from ideal to eager to
                                           failure as more solutions arrive)
@@ -38,7 +43,7 @@ class DetermineConsensus:
         self.log.debug({
             'total_solutions_received': total_solutions_received,
             'consensus_needed': consensus_needed,
-            'num_of_peers': num_of_peers
+            'num_of_participants': num_of_participants
         })
         '''
         if total_solutions_received < consensus_needed:
@@ -47,13 +52,11 @@ class DetermineConsensus:
                 'has_consensus': False
             }
 
-        try:
-            my_solution = solutions[self.vk]
-        except KeyError:
-            my_solution = None
+        my_solution = solutions.get(self.vk, None)
 
-        solutions_missing = num_of_peers - total_solutions_received
+        solutions_missing = num_of_participants - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
+        print({'tally_info':tally_info})
 
         '''
         self.log.debug({
@@ -62,8 +65,9 @@ class DetermineConsensus:
             'tally_info': tally_info
         })
         '''
+        ideal_consensus_results = None
 
-        if last_check_info['ideal_consensus_possible']:
+        if last_check_info.get('ideal_consensus_possible', None):
             # Check ideal situation
             ideal_consensus_results = self.check_ideal_consensus(
                 tally_info=tally_info,
@@ -71,6 +75,7 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+            print({'ideal_consensus_results':ideal_consensus_results})
             '''
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
@@ -83,7 +88,7 @@ class DetermineConsensus:
             if ideal_consensus_results['has_consensus'] or ideal_consensus_results['ideal_consensus_possible']:
                 return ideal_consensus_results
 
-        if last_check_info['eager_consensus_possible']:
+        if last_check_info.get('eager_consensus_possible', None):
             # Check eager situation
             eager_consensus_results = self.check_eager_consensus(
                 tally_info=tally_info,
@@ -91,6 +96,8 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+            if ideal_consensus_results is not None:
+                eager_consensus_results['ideal_consensus_possible'] = False
             '''
             self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_results['eager_consensus_possible']
             '''
@@ -182,6 +189,8 @@ class DetermineConsensus:
             'solution': tally_info['top_solutions_list'][0]['solution'],
             'my_solution': my_solution,
             'matches_me': my_solution == tally_info['top_solutions_list'][0]['solution'],
+            'ideal_consensus_possible': False,
+            'eager_consensus_possible': False
         }
 
     def tally_solutions(self, solutions):

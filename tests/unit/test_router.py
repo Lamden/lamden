@@ -32,6 +32,7 @@ class TestRouter(TestCase):
 
         self.assertEqual(r.services['test'], q)
 
+
     def test_inbox_none_returns_default_message(self):
         r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
 

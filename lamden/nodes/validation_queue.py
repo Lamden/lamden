@@ -87,12 +87,6 @@ class ValidationQueue(ProcessingQueue):
                 'solution': None
             }
 
-            reconstructed_tx_message = processing_results['tx_message']
-            reconstructed_tx_message['tx'] = processing_results['tx_result']['transaction']
-            reconstructed_tx_message['hlc_timestamp'] = hlc_timestamp
-
-            self.validation_results[hlc_timestamp]['transaction_processed'] = reconstructed_tx_message
-
         if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus'] is True:
             # TODO why are we getting solutions from a bock in consensus??  Would we ever?
             # Is just returning an okay move?
@@ -112,7 +106,7 @@ class ValidationQueue(ProcessingQueue):
         '''
 
         # check if this node already gave us information
-        if node_vk in self.validation_results[hlc_timestamp]['solutions']:
+        if self.validation_results[hlc_timestamp]['solutions'].get(node_vk, None):
             # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
             # Set the possible consensus flags back to True
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
@@ -233,15 +227,11 @@ class ValidationQueue(ProcessingQueue):
                 self.check_for_next_block()
 
     def add_consensus_result(self, hlc_timestamp, consensus_result):
+        # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
+        if consensus_result.get('ideal_consensus_possible', None) is None and consensus_result.get('eager_consensus_possible', None) is None:
+            return
+
         self.validation_results[hlc_timestamp]['last_check_info'] = consensus_result
-
-        if consensus_result.get('ideal_consensus_possible', None) is not None:
-            self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = \
-                consensus_result.get('ideal_consensus_possible')
-
-        if consensus_result.get('eager_consensus_possible', None) is not None:
-            self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = \
-                consensus_result.get('eager_consensus_possible')
 
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
@@ -298,10 +288,6 @@ class ValidationQueue(ProcessingQueue):
                 self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
             except KeyError:
                 pass
-
-    def get_processed_transaction(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp)
-        return results.get('transaction_processed')
 
     def get_last_consensus_result(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp, None)
