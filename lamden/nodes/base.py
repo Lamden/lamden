@@ -363,7 +363,7 @@ class Node:
                     f"!!!!!!! CHECKED check_validation_queue. Length={len(self.validation_queue.validation_results)} Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
                 self.validation_queue.start_processing()
-                await self.validation_queue.process_next()
+                await self.validation_queue.process_all()
                 self.validation_queue.stop_processing()
             await asyncio.sleep(0)
 
@@ -610,6 +610,9 @@ class Node:
 
         # remove the processing results and read history from the main_processing queue memory
         self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
+
+        if self.testing:
+            self.debug_processed_hlcs.append(hlc_timestamp)
 
         # Increment the internal block counter
         self.current_block_height += 1

@@ -145,9 +145,14 @@ class ValidationQueue(ProcessingQueue):
                 print(err)
 
     async def process_all(self):
-        all_consensus_results = self.multiprocess_consensus.start(
-            validation_results=self.validation_results
-        )
+        # TODO remove this try
+        try:
+            all_consensus_results = await self.multiprocess_consensus.start(
+                validation_results=self.validation_results
+            )
+        except Exception as err:
+            error = err
+            print(err)
 
         for hlc_timestamp in all_consensus_results:
             if all_consensus_results.get(hlc_timestamp, None) is not None:
@@ -192,6 +197,7 @@ class ValidationQueue(ProcessingQueue):
         '''
 
         if self.hlc_has_consensus(hlc_timestamp):
+            results = self.validation_results.get(hlc_timestamp)
             consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
 
             #if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
@@ -210,7 +216,7 @@ class ValidationQueue(ProcessingQueue):
                     }))
                 '''
 
-                results = self.validation_results[hlc_timestamp]
+
 
                 # if it matches us that means we did already processes this tx and the pending deltas should exist
                 # in the driver
@@ -293,7 +299,7 @@ class ValidationQueue(ProcessingQueue):
         results = self.validation_results.get(hlc_timestamp, None)
         if results is None:
             return {}
-        return results.get('last_consensus_result', {})
+        return results.get('last_check_info', {})
 
     def get_proofs_from_results(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp)
@@ -316,13 +322,13 @@ class ValidationQueue(ProcessingQueue):
 
     def get_consensus_results(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp, {})
-        consensus_results = validation_result.get('last_consensus_result', {})
+        consensus_results = validation_result.get('last_check_info', {})
         consensus_solution = consensus_results.get('solution', '')
         return validation_result['result_lookup'].get(consensus_solution, {})
 
     def consensus_matches_me(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp, {})
-        consensus_results = validation_result.get('last_consensus_result', {})
+        consensus_results = validation_result.get('last_check_info', {})
         consensus_solution = consensus_results.get('solution', '')
 
         solutions = validation_result.get('solutions', {})
@@ -336,6 +342,8 @@ class ValidationQueue(ProcessingQueue):
 
         # Hard apply these results on the driver
         try:
+            if hlc_timestamp <= self.last_hlc_in_consensus:
+                print("stop")
             await self.hard_apply_block(processing_results=processing_results)
         except Exception as err:
             print(err)
@@ -363,7 +371,7 @@ class ValidationQueue(ProcessingQueue):
         validation_result = self.validation_results.get(hlc_timestamp)
         if validation_result is None:
             return False
-        return validation_result['last_consensus_result'].get('has_consensus')
+        return validation_result['last_check_info'].get('has_consensus')
 
     def hlc_has_solutions(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp)

@@ -2,6 +2,7 @@ import time
 from unittest import TestCase
 
 import hashlib
+import asyncio
 
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 from lamden.crypto.wallet import Wallet
@@ -28,6 +29,17 @@ class TestMultiProcessConsensus(TestCase):
     def tearDown(self):
         self.validation_results = {}
 
+    def await_multiprocess_consensus(self, validation_results):
+        tasks = asyncio.gather(
+            self.multiprocess_consensus.start(
+                validation_results=validation_results
+            )
+        )
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        return res[0]
+
     def test_start_includes_me(self):
         self.validation_results = ValidationResults(my_wallet=self.wallet)
 
@@ -43,7 +55,7 @@ class TestMultiProcessConsensus(TestCase):
         for i in range(100):
             self.peers.append(i)
 
-        all_consensus_results = self.multiprocess_consensus.start(
+        all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
 
@@ -71,7 +83,7 @@ class TestMultiProcessConsensus(TestCase):
         for i in range(100):
             self.peers.append(i)
 
-        all_consensus_results = self.multiprocess_consensus.start(
+        all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
 
@@ -108,7 +120,7 @@ class TestMultiProcessConsensus(TestCase):
 
         done_loading_test = time.time()
 
-        all_consensus_results = self.multiprocess_consensus.start(
+        all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
 

@@ -88,7 +88,7 @@ class MockMaster(MockNode):
     def __init__(self, ctx, tx_queue=None, index=1, metering=True, wallet=None, delay=None):
         super().__init__(ctx=ctx, index=index, wallet=wallet, delay=delay)
 
-        self.webserver_port_pub = 18080 + index
+        self.webserver_port = 18080 + index
         self.webserver_ip = f'http://0.0.0.0:{self.webserver_port}'
         self.metering = metering
         self.tx_queue = tx_queue or filequeue.FileQueue(root="./fixtures/file_queue/" + self.wallet.verifying_key + '/txq')

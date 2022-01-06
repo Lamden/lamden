@@ -45,6 +45,7 @@ class TestNode(TestCase):
         self.authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
 
         self.tx_history = {}
+        self.tx_accumulator ={}
         print("\n")
 
     def tearDown(self):
@@ -84,7 +85,8 @@ class TestNode(TestCase):
                 'base': 0,
                 'self': 0
             },
-            metering=False
+            metering=False,
+            testing=True
         )
 
         self.num_of_nodes = self.num_of_nodes + 1
@@ -147,8 +149,9 @@ class TestNode(TestCase):
                 "tx":tx
             }
 
-    def send_transaction(self, node, sender_wallet, receiver_wallet):
-            amount = str(round(random.uniform(1, 200), 4))
+    def send_transaction(self, node, sender_wallet, receiver_wallet, index=0):
+            #amount = str(round(random.uniform(1, 200), 4))
+            amount = str(random.randint(1, 20))
             tx = json.loads(build_transaction(
                 wallet=sender_wallet,
                 contract="currency",
@@ -165,10 +168,22 @@ class TestNode(TestCase):
             tx_message = node.make_tx_message(tx)
             self.await_async_process_work(node=node, msg=tx_message)
 
-            if self.tx_history.get(receiver_wallet.verifying_key) is None:
-                self.tx_history[receiver_wallet.verifying_key] = ContractingDecimal(amount)
+            if self.tx_accumulator.get(receiver_wallet.verifying_key, None) is None:
+                self.tx_history[index] = {
+                    'wallet': receiver_wallet.verifying_key,
+                    'amount': ContractingDecimal(amount),
+                    'curr': ContractingDecimal(amount),
+                    'prev': ContractingDecimal(0)
+                }
+                self.tx_accumulator[receiver_wallet.verifying_key] = ContractingDecimal(amount)
             else:
-                self.tx_history[receiver_wallet.verifying_key] += ContractingDecimal(amount)
+                self.tx_history[index] = {
+                    'wallet': receiver_wallet.verifying_key,
+                    'amount':  ContractingDecimal(amount),
+                    'curr': self.tx_accumulator[receiver_wallet.verifying_key] + ContractingDecimal(amount),
+                    'prev': self.tx_accumulator[receiver_wallet.verifying_key]
+                }
+                self.tx_accumulator[receiver_wallet.verifying_key] += ContractingDecimal(amount)
 
     def await_all_processed(self, node, expected_block_height):
         def check():
@@ -233,6 +248,7 @@ class TestNode(TestCase):
     def test_transaction_throughput__founder_to_existing_wallet_list(self):
         # Get and start a node
         node = self.create_a_node()
+        node.main_processing_queue.running = False
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
         node.consensus_percent = 0
         self.start_node(node=node)
@@ -249,15 +265,17 @@ class TestNode(TestCase):
         # Seed initial currency balances
         self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
-        amount_of_txn = 100
+        amount_of_txn = 10000
         for i in range(amount_of_txn):
             self.send_transaction(
                 node=node,
                 sender_wallet=jeff_wallet,
-                receiver_wallet=receiver_wallets[random.randint(0, num_of_receivers-1)]
+                receiver_wallet=receiver_wallets[random.randint(0, num_of_receivers-1)],
+                index=i+1
             )
 
         start_time = time.time()
+        node.main_processing_queue.start()
         self.await_all_processed(node=node, expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
@@ -267,7 +285,7 @@ class TestNode(TestCase):
         self.assertEqual(amount_of_txn, node.get_current_height())
 
         # All state values reflect the result of the processed transactions
-        for key in self.tx_history:
+        for key in self.tx_accumulator:
             balance = node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
@@ -278,7 +296,7 @@ class TestNode(TestCase):
             if type(balance) is dict:
                 balance = balance['__fixed__']
 
-            print(f"{key}: TX = {self.tx_history[key]} | STATE = {balance}")
+            result = json.loads(encoder.encode(self.tx_accumulator[key]))
+            print(f"{key}: TX ACCUMULATOR = {result['__fixed__']} | STATE = {balance}")
 
-            result = json.loads(encoder.encode(self.tx_history[key]))
             self.assertEqual(result['__fixed__'], balance)

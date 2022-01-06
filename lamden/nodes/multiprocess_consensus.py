@@ -21,7 +21,7 @@ class MultiProcessConsensus:
 
         self.all_consensus_results = {}
 
-    def start(self, validation_results):
+    async def start(self, validation_results):
         self.all_consensus_results = {}
         processes = []
         num_of_peers = len(self.get_peers_for_consensus())
@@ -44,11 +44,7 @@ class MultiProcessConsensus:
             process = process_info.get('process')
             process.start()
 
-        tasks = asyncio.gather(
-            self.check_all(processes)
-        )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        await self.check_all(processes)
 
         for process_info in processes:
             process = process_info.get('process')

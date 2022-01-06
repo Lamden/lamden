@@ -19,12 +19,12 @@ class DetermineConsensus:
 
         # TODO What should self.consensus_percent be set to?
         # determine the number of matching answers we need to form consensus
-        print({'num_of_participants': num_of_participants})
-        print({'consensus_amount': self.consensus_percent()})
-        print({'consensus_percent': self.consensus_percent() / 100})
+        # print({'num_of_participants': num_of_participants})
+        # print({'consensus_amount': self.consensus_percent()})
+        # print({'consensus_percent': self.consensus_percent() / 100})
 
         consensus_needed = math.ceil(num_of_participants * (self.consensus_percent() / 100))
-        print({'consensus_needed': consensus_needed})
+        # print({'consensus_needed': consensus_needed})
 
         '''
         Return if we don't have enough responses to attempt an ideal consensus check
@@ -56,7 +56,7 @@ class DetermineConsensus:
 
         solutions_missing = num_of_participants - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
-        print({'tally_info':tally_info})
+        # print({'tally_info':tally_info})
 
         '''
         self.log.debug({
@@ -75,7 +75,7 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
-            print({'ideal_consensus_results':ideal_consensus_results})
+            # print({'ideal_consensus_results':ideal_consensus_results})
             '''
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results

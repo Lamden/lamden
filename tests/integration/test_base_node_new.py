@@ -349,7 +349,6 @@ class TestNode(TestCase):
 
         hlc_timestamp = tx_message.get('hlc_timestamp')
 
-
         self.add_solution(
             node=node,
             tx_message=tx_message
