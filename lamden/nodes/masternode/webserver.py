@@ -13,10 +13,10 @@ from lamden.crypto.wallet import Wallet
 import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
-from lamden.nodes.events import EventListener, ConnectionManager, EventWriter
 
 import ssl
 import asyncio
+import socketio
 
 from lamden.crypto import transaction
 import decimal
@@ -26,7 +26,6 @@ import datetime
 import argparse
 
 log = get_logger("MN-WebServer")
-
 
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
@@ -58,8 +57,8 @@ class WebServer:
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
-                 ):
-
+                 event_service_port=8000,
+                 topics=[]):
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -125,18 +124,45 @@ class WebServer:
 
         self.coroutine = None
 
-        self.connection_manager = ConnectionManager(EventListener())
-        self.app.add_websocket_route(self.ws_connection_handler, '/')
-        self.app.add_task(self.ws_send_events)
+        self.topics = topics
+        self.event_service_port = event_service_port
+        self.sio = socketio.AsyncClient()
+        self.__setup_sio_event_handlers()
+        self.__register_app_listeners()
+        self.app.add_websocket_route(self.ws_handler, '/')
+    
+    def __setup_sio_event_handlers(self):
+        @self.sio.event
+        async def connect():
+            for topic in self.topics:
+                await self.sio.emit('join', {'room': topic})
 
-    async def ws_send_events(self):
-        while True:
-            await asyncio.sleep(0)
-            await self.connection_manager.process_events()
+        @self.sio.event
+        async def disconnect():
+            for topic in self.topics:
+                await self.sio.emit('leave', {'room': topic})
 
-    async def ws_connection_handler(self, request, websocket):
-        await self.connection_manager.serve(websocket, '/')
-        
+        @self.sio.event
+        def event(data):
+            # TODO(nikita): send data to each client websocket
+            pass
+
+    def __register_app_listeners(self):
+        self.app.register_listener(self.connect_to_event_service, 'after_server_start')
+
+    async def ws_handler(self, request, ws):
+        # TODO(nikita): need to keep each websocket connection to send event data
+        # we receive from event service
+        pass
+
+    async def connect_to_event_service(self, app, loop):
+        # TODO(nikita): what do we do in case event service is not running?
+        try:
+            await self.sio.connect('http://localhost:{}'.format(self.event_service_port))
+            await self.sio.wait()
+        except:
+            pass
+
     async def start(self):
         # Start server with SSL enabled or not
         if self.ssl_enabled:
@@ -428,7 +454,8 @@ if __name__ == '__main__':
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
-        port=18080
+        port=18080,
+        topics=['new_block']
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
