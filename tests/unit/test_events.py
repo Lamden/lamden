@@ -33,11 +33,7 @@ class TestEvents(TestCase):
     def test_listener_sees_file_in_directory(self):
         w = EventWriter(root=ROOT)
         w.write_event(SAMPLE_EVENT)
-
         l = EventListener(root=ROOT)
         events = l.get_events()
 
         self.assertTrue(len(events), 1)
-        self.assertTrue(SAMPLE_TOPIC in events[0].topics)
-        self.assertEqual(events[0].data['number'], SAMPLE_NUMBER)
-        self.assertEqual(events[0].data['hash'], SAMPLE_HASH)

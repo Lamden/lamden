@@ -8,8 +8,8 @@ These events are consumed by a listener and sent across websockets to other comp
 Directory scheme:
 
 /events
---- event_1
---- <empty>
+--- event_1.e
+--- event_2.e
 '''
 import pathlib
 import uuid
@@ -55,6 +55,7 @@ class EventListener:
                     event = Event(e['topics'], e['data']['number'], e['data']['hash'])
                     events.append(event)
                 except:
+                    # TODO(nikita): proper handling
                     print('failed to load event')
                 os.remove(file)
 

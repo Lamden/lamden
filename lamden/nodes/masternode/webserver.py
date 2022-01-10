@@ -1,5 +1,6 @@
 from sanic import Sanic
 from sanic import response
+from sanic.websocket import WebSocketProtocol
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -17,6 +18,7 @@ from lamden.nodes.base import FileQueue
 import ssl
 import asyncio
 import socketio
+import json
 
 from lamden.crypto import transaction
 import decimal
@@ -127,8 +129,11 @@ class WebServer:
         self.topics = topics
         self.event_service_port = event_service_port
         self.sio = socketio.AsyncClient()
+
         self.__setup_sio_event_handlers()
         self.__register_app_listeners()
+
+        self.ws_clients = set()
         self.app.add_websocket_route(self.ws_handler, '/')
     
     def __setup_sio_event_handlers(self):
@@ -143,17 +148,20 @@ class WebServer:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
-        def event(data):
-            # TODO(nikita): send data to each client websocket
-            pass
+        async def event(data):
+            for client in self.ws_clients:
+                await client.send(json.dumps(data))
 
     def __register_app_listeners(self):
         self.app.register_listener(self.connect_to_event_service, 'after_server_start')
 
     async def ws_handler(self, request, ws):
-        # TODO(nikita): need to keep each websocket connection to send event data
-        # we receive from event service
-        pass
+        self.ws_clients.add(ws)
+        try:
+            async for message in ws:
+                pass
+        finally:
+            self.ws_clients.remove(ws)
 
     async def connect_to_event_service(self, app, loop):
         # TODO(nikita): what do we do in case event service is not running?
@@ -435,9 +443,6 @@ class WebServer:
             'delegates': delegates
         }, headers={'Access-Control-Allow-Origin': '*'})
 
-
-class Websockets:
-    pass
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
