@@ -78,3 +78,4 @@ ops
 /tests/integration/fixtures/block_storage/*
 /tests/integration/fixtures/file_queue/*
 /tests/unit/.lamden/
+.vscode/settings.json
