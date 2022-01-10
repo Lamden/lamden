@@ -41,6 +41,7 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(tasks)
 
+
 class MockNode:
     def __init__(self, ctx,  wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
         self.wallet = wallet or Wallet()
@@ -116,8 +117,9 @@ class MockMaster(MockNode):
         await self.obj.start()
         self.started = True
 
-    def stop(self):
-        self.obj.stop()
+    async def stop(self):
+        await self.obj.stop()
+
 
 class MockDelegate(MockNode):
     def __init__(self, ctx, index=1, wallet=None, metering=True, delay=None):
@@ -145,12 +147,12 @@ class MockDelegate(MockNode):
         await self.obj.start()
         self.started = True
 
-    def stop(self):
-        self.obj.stop()
+    async def stop(self):
+        await self.obj.stop()
 
 
 class MockNetwork:
-    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True, delay=None):
+    def __init__(self, num_of_masternodes, num_of_delegates, ctx, metering=True, delay=None, index=0):
         self.masternodes = []
         self.delegates = []
         self.metering = metering
@@ -161,10 +163,10 @@ class MockNetwork:
 
         self.delay = delay
 
-        for i in range(0, num_of_masternodes):
+        for i in range(index, index + num_of_masternodes):
             self.build_masternode(i)
 
-        for i in range(num_of_masternodes, num_of_delegates + num_of_masternodes):
+        for i in range(index + num_of_masternodes, index + num_of_delegates + num_of_masternodes):
             self.build_delegate(i)
 
         self.constitution = None
@@ -250,6 +252,20 @@ class MockNetwork:
                 arguments=arguments,
                 value=value
             )
+
+    async def start_masters(self):
+        coroutines = [node.start() for node in self.masternodes]
+
+        await asyncio.gather(
+            *coroutines
+        )
+
+    async def start_delegates(self):
+        coroutines = [node.start() for node in self.delegates]
+
+        await asyncio.gather(
+            *coroutines
+        )
 
     async def start(self):
         coroutines = [node.start() for node in self.masternodes + self.delegates]

@@ -107,7 +107,7 @@ def start_node(args):
     assert args.node_type == 'masternode' or args.node_type == 'delegate', \
         'Provide node type as "masternode" or "delegate"'
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(args.server_key)
 
     wallet = Wallet(seed=sk)
 
@@ -163,7 +163,7 @@ def join_network(args):
     assert args.node_type == 'masternode' or args.node_type == 'delegate', \
         'Provide node type as "masternode" or "delegate"'
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(args.server_key)
 
     wallet = Wallet(seed=sk)
 
