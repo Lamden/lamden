@@ -106,8 +106,8 @@ def resolve_raw_constitution(text):
 def start_node(args):
     assert args.node_type == 'masternode' or args.node_type == 'delegate', \
         'Provide node type as "masternode" or "delegate"'
-    print(args)
-    sk = bytes.fromhex(args.k)
+
+    sk = bytes.fromhex(args.key)
 
     wallet = Wallet(seed=sk)
 
