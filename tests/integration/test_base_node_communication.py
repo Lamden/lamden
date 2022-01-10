@@ -1,6 +1,4 @@
-from unittest import TestCase
-import lamden.new_sockets
-from tests.integration.mock.mocks_new import TEST_FOUNDATION_WALLET, MockNetwork, MockDelegate
+from tests.integration.mock.mocks_new import TEST_FOUNDATION_WALLET, MockNetwork
 from tests.integration.mock.create_directories import create_fixture_directories, remove_fixture_directories
 from lamden.nodes.filequeue import FileQueue
 
@@ -10,14 +8,16 @@ from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
 from contracting.db import encoder
-from lamden.crypto import wallet
 
 import zmq.asyncio
 import asyncio
+import httpx
 from random import randrange
 import json
 import time
 import pprint
+
+from unittest import TestCase
 
 class TestMultiNode(TestCase):
     def setUp(self):
@@ -31,32 +31,21 @@ class TestMultiNode(TestCase):
 
         self.network = None
 
-        self.network2 = None
-
         self.founder_wallet = TEST_FOUNDATION_WALLET
         print("\n")
 
     def tearDown(self):
-        # try:
-        self.network.stop()
+        try:
+            self.network.stop()
+        except Exception:
+            pass
 
-        if self.network2 is not None:
-            self.network2.stop()
-        # except Exception:
-        #     pass
-
-        print('tearDown: network.stop complete')
         self.async_sleep(1)
-
-        print('mid tearDown')
 
         self.ctx.destroy()
         self.loop.close()
 
         remove_fixture_directories(self.fixture_directories)
-
-        print('finished tearDown')
-        # self.async_sleep(2)
 
     def await_async_process(self, process, args={}):
         tasks = asyncio.gather(
@@ -121,9 +110,6 @@ class TestMultiNode(TestCase):
         all_nodes = self.network.all_nodes()
         for node in all_nodes:
             self.assertEqual(masternode_1.obj.last_processed_hlc, node.obj.last_processed_hlc)
-            
-
-
 
     def test_network_can_propagate_results(self):
         # Test that the network can receive a transaction and send it around to all the other nodes
@@ -175,79 +161,3 @@ class TestMultiNode(TestCase):
         # Check that each node ran the transaction
         for node in all_nodes:
             self.assertIsNotNone(all_solutions[node.wallet.verifying_key])
-
-    def test_network_can_reject_unauthorized_delegate_node(self):
-        # Test that the network can reject a node that is not authorized
-
-        # Create a network
-        self.network = MockNetwork(
-            num_of_delegates=0,
-            num_of_masternodes=1,
-            ctx=self.ctx,
-            metering=False,
-            delay={'base': 0.1, 'self': 0.1}
-        )
-
-        self.network2 = MockNetwork(
-            num_of_delegates=1,
-            num_of_masternodes=0,
-            ctx=self.ctx,
-            metering=False,
-            delay={'base': 0.1, 'self': 0.1},
-            index=1
-        )
-
-        self.await_async_process(self.network.start)
-
-        self.await_async_process(self.network2.start)
-
-        # get a masternode
-        masternode_1 = self.network.masternodes[0]
-
-        # get a unauthorized delegate
-        unauthorized_delegate = self.network2.delegates[0]
-
-        masternode_1_id = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_sockets.z85_key(unauthorized_delegate.wallet.verifying_key)
-        self.await_async_process(unauthorized_delegate.obj.network.connect, {'ip': masternode_1.obj.network.socket_id,
-                                                                               'key': masternode_1_id})
-        # Wait for the unauthorized_delegate_key to have a chance to connect
-        self.async_sleep(1)
-        # Test that the master node denied the unauthorized delegate
-        self.assertTrue(unauthorized_delegate_key in masternode_1.obj.network.router.cred_provider.denied)
-
-    def test_network_can_reject_unauthorized_master_node(self):
-        # Test that the network can reject a node that is not authorized
-
-        # Create a network
-        self.network = MockNetwork(
-            num_of_delegates=1,
-            num_of_masternodes=1,
-            ctx=self.ctx,
-            metering=False,
-            delay={'base': 0.1, 'self': 0.1}
-        )
-
-        # get a masternode
-        masternode_1 = self.network.masternodes[0]
-
-        # get the delegate
-        delegate = self.network.delegates[0]
-
-        # start the mater node
-        self.await_async_process(self.network.start_masters)
-        # Change the wallet of the router so the delegate's public key will not match
-        masternode_1.obj.network.router.wallet = wallet.Wallet()
-
-        self.async_sleep(1)
-
-        # start the delegate node
-        self.await_async_process(self.network.start_delegates)
-
-        masternode_1_id = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_sockets.z85_key(delegate.wallet.verifying_key)
-
-        # Wait for the unauthorized_delegate_key to have a chance to connect
-        self.async_sleep(1)
-        # Test that the delegate did not connect to the master node that did not have matching wallet
-        self.assertFalse(delegate.obj.network.peers[masternode_1_id].running)

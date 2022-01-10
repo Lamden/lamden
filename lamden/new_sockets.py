@@ -13,9 +13,6 @@ from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 from contracting.db.encoder import encode, decode
 
-from lamden.sockets.publisher import Publisher
-from lamden.sockets.router import Router
-
 WORK_SERVICE = 'work'
 
 
@@ -31,68 +28,116 @@ class QueueProcessor(Processor):
     async def process_message(self, msg):
         self.q.append(msg)
 
+class Publisher:
+    def __init__(self, socket_id, ctx: zmq.Context, wallet=None, linger=1000, poll_timeout=50,
+                 testing=False, debug=False ):
 
-# class CredentialProvider:
-#     def __init__(self, wallet: Wallet, ctx: zmq.Context, linger=500):
-#         self.ctx = ctx
-#         self.joined = []
-#         self.wallet = wallet
-#         self.linger = linger
+        self.testing = testing
+        self.debug = debug
 
-#     def callback(self, domain, key):
-#         # self.log.debug(f"Connection from {key} {domain}")
-#         # Try to connect to the publisher socket.
-#         socket = self.ctx.socket(zmq.SUB)
+        # print({'socket_id': socket_id})
 
-#         socket.setsockopt(zmq.LINGER, self.linger)
-#         socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        if socket_id.startswith('tcp'):
+            _, _, port = socket_id.split(':')
+            self.address = f'tcp://*:{port}'
+        else:
+            self.address = socket_id
 
-#         socket.curve_secretkey = self.wallet.curve_sk
-#         socket.curve_publickey = self.wallet.curve_vk
+        # print({'address': self.address})
 
-#         socket.curve_serverkey = z85_key(key)
+        self.ctx = ctx
+        self.wallet = wallet
+        self.linger = linger
+        self.poll_timeout = poll_timeout
 
-#         try:
-#             socket.connect(domain)
-#             socket.subscribe(b'')
+        self.socket = None
 
-#             self.joined.append((socket, domain, key))
-#             self.log.debug(f"Connected to {key} {domain}")
-#             return True
-#         except zmq.error.Again:
-#             socket.close()
-#             return False
+        self.log = get_logger("PUBLISHER")
+
+    def setup_socket(self):
+        self.socket = self.ctx.socket(zmq.PUB)
+
+        # self.socket.curve_secretkey = self.wallet.curve_sk
+        # self.socket.curve_publickey = self.wallet.curve_vk
+
+        # self.socket.curve_server = True
+
+        self.socket.bind(self.address)
+
+    async def publish(self, topic, msg):
+        '''
+        if self.debug:
+            if topic == WORK_SERVICE:
+                self.log.debug(json.dumps({
+                    'type': 'tx_lifecycle',
+                    'file': 'new_sockets',
+                    'event': 'publish_new_tx',
+                    'hlc_timestamp': msg['hlc_timestamp'],
+                    'system_time': time.time()
+                }))
+        '''
+        m = encode(msg).encode()
+
+        await self.socket.send_string(topic, flags=zmq.SNDMORE)
+        await self.socket.send(m)
+
+    def stop(self):
+        self.socket.close()
+
+class CredentialProvider:
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, linger=500):
+        self.ctx = ctx
+        self.joined = []
+        self.wallet = wallet
+        self.linger = linger
+
+    def callback(self, domain, key):
+        # self.log.debug(f"Connection from {key} {domain}")
+        # Try to connect to the publisher socket.
+        socket = self.ctx.socket(zmq.SUB)
+
+        socket.setsockopt(zmq.LINGER, self.linger)
+        socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+
+        socket.curve_secretkey = self.wallet.curve_sk
+        socket.curve_publickey = self.wallet.curve_vk
+
+        socket.curve_serverkey = z85_key(key)
+
+        try:
+            socket.connect(domain)
+            socket.subscribe(b'')
+
+            self.joined.append((socket, domain, key))
+            self.log.debug(f"Connected to {key} {domain}")
+            return True
+        except zmq.error.Again:
+            socket.close()
+            return False
 
 
 class Network:
-    def __init__(self, wallet: Wallet, socket_id, max_peer_strikes, testing=False,
-                 debug=False, boot_nodes={}):
+    def __init__(self, wallet: Wallet, ctx: zmq.Context, socket_id, max_peer_strikes, testing=False, debug=False):
         self.testing = testing
         self.debug = debug
+
         self.wallet = wallet
-        self.max_peer_strikes = max_peer_strikes     
+        self.max_peer_strikes = max_peer_strikes
+        self.ctx = ctx
         self.socket_id = socket_id
-        self.router_address = socket_id.replace(':180', ':190')
-        self.ctx = zmq.asyncio.Context()
 
         self.log = get_logger("NEW_SOCKETS")
-        self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
 
         # self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
         self.publisher = Publisher(
             testing=self.testing,
             debug=self.debug,
             socket_id=self.socket_id,
+            wallet=self.wallet,
             ctx=self.ctx
         )
 
-        boot_node_vks = list(boot_nodes.keys())
-        boot_node_keys = []
-        for vk in boot_node_vks:
-            boot_node_keys.append(z85_key(vk))
-
-        self.router = Router(address=self.router_address, router_wallet=self.wallet,
-                             public_keys=boot_node_keys, callback=self.router_callback)
+        # self.authenticator = AsyncioAuthenticator(context=self.ctx)
 
         self.peers = {}
         self.peer_blacklist = []
@@ -103,17 +148,16 @@ class Network:
 
     async def start(self):
         self.running = True
+        # self.authenticator.start()
         self.publisher.setup_socket()
-        self.router.start()
+        # asyncio.ensure_future(self.update_peers())
+        # asyncio.ensure_future(self.process_subscriptions())
 
     def stop(self):
-        print('network.stop()')
         self.running = False
         self.publisher.stop()
-        self.router.stop()
         for peer in self.peers:
             self.peers[peer].stop()
-        self.ctx.term()
 
     def disconnect_peer(self, key):
         self.peers[key].stop()
@@ -142,41 +186,44 @@ class Network:
                     self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
-    async def connect(self, ip, key):
+    def connect(self, socket, ip, key, wallet, linger=500):
         if key in self.peer_blacklist:
             # TODO how does a blacklisted peer get back in good standing?
             self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
             return False
 
-        # Add the node to authorized list of the router in case it was not part of the boot nodes
-        # self.router.cred_provider.add_key(z85_key(key))
-
         self.log.debug(f"Connecting to {key} {ip}")
+        # print(f"Connecting to {key} {ip}")
+
+        socket.setsockopt(zmq.LINGER, linger)
+        socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+
+        # socket.curve_secretkey = wallet.curve_sk
+        # socket.curve_publickey = wallet.curve_vk
+
+        # socket.curve_serverkey = z85_key(key)
 
         try:
-            self.add_peer(ip=ip, key=key)
+            # print({"ip":ip})
+            socket.connect(ip)
+            socket.subscribe(b'')
+            self.add_peer(socket=socket, ip=ip, key=key)
             return True
         except zmq.error.Again as error:
             self.log.error(error)
-            # socket.close()
+            socket.close()
             return False
 
-    def router_callback(self, ident: str, msg: str):
-        if msg == b'hello':
-            print('Router sending pub_info response to %s' % ident)
-            self.router.send_msg(ident, self.hello_response)
-
-    def add_peer(self, ip, key):
+    def add_peer(self, socket, ip, key):
         self.peers[key] = Peer(
             testing=self.testing,
             debug=self.debug,
-            ctx=self.ctx,
+            socket=socket,
             ip=ip,
-            key=z85_key(key),
+            key=key,
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,
-            max_strikes=self.max_peer_strikes,
-            wallet=self.wallet
+            max_strikes=self.max_peer_strikes
         )
         self.peers[key].start()
 
@@ -193,4 +240,7 @@ def z85_key(key):
     except RuntimeError:
         return
 
-    return z85.encode(pk)
+    return z85.encode(pk).decode('utf-8')
+
+
+

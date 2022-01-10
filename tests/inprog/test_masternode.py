@@ -1000,7 +1000,7 @@ class TestNewMasternode(TestCase):
 
         m.nbn_inbox.q.append(block.to_dict())
 
-        k = block.subBlocks[0].transactions[0].state[0].server_key
+        k = block.subBlocks[0].transactions[0].state[0].key
         v = block.subBlocks[0].transactions[0].state[0].value
 
         self.assertIsNone(m.client.raw_driver.get_direct(k))

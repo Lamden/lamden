@@ -149,7 +149,7 @@ def get():
         print(result)
 
         self.assertEqual(result.status, 0)
-        self.assertEqual(result.state[0].server_key, b'testing.v')
+        self.assertEqual(result.state[0].key, b'testing.v')
         self.assertEqual(result.state[0].value,  b'"jeff"')
         self.assertEqual(result.stampsUsed, 0)
 
@@ -239,7 +239,7 @@ def get():
         td1, td2 = results
 
         self.assertEqual(td1.status, 0)
-        self.assertEqual(td1.state[0].server_key, b'testing.v')
+        self.assertEqual(td1.state[0].key, b'testing.v')
         self.assertEqual(td1.state[0].value, b'"howdy"')
         self.assertEqual(td1.stampsUsed, 0)
 
@@ -329,7 +329,7 @@ def get():
 
         td1, td2 = sb1.transactions
         self.assertEqual(td1.status, 0)
-        self.assertEqual(td1.state[0].server_key, b'testing.v')
+        self.assertEqual(td1.state[0].key, b'testing.v')
         self.assertEqual(td1.state[0].value, b'"howdy"')
         self.assertEqual(td1.stampsUsed, 0)
 
@@ -343,12 +343,12 @@ def get():
 
         td1, td2 = sb2.transactions
         self.assertEqual(td1.status, 0)
-        self.assertEqual(td1.state[0].server_key, b'testing.v')
+        self.assertEqual(td1.state[0].key, b'testing.v')
         self.assertEqual(td1.state[0].value, b'"123"')
         self.assertEqual(td1.stampsUsed, 0)
 
         self.assertEqual(td2.status, 0)
-        self.assertEqual(td2.state[0].server_key, b'testing.v')
+        self.assertEqual(td2.state[0].key, b'testing.v')
         self.assertEqual(td2.state[0].value, b'"poo"')
         self.assertEqual(td2.stampsUsed, 0)
 
@@ -450,7 +450,7 @@ class TestDelegate(TestCase):
 
         block = random_block()
 
-        k = block.subBlocks[0].transactions[0].state[0].server_key
+        k = block.subBlocks[0].transactions[0].state[0].key
         v = block.subBlocks[0].transactions[0].state[0].value
 
         self.assertIsNone(b.client.raw_driver.get_direct(k))
