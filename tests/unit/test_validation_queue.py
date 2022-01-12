@@ -384,7 +384,7 @@ class TestValidationQueue(TestCase):
         hlc_timestamp = processing_results_1['hlc_timestamp']
 
         # Mock that the hlc has consensus, so the method will gather the proofs
-        self.validation_queue.validation_results[hlc_timestamp]['last_consensus_result'] = {
+        self.validation_queue.validation_results[hlc_timestamp]['last_check_info'] = {
             'has_consensus': True,
             'matches_me': True,
             'solution': tx_result_hash
