@@ -41,7 +41,7 @@ class Router(threading.Thread):
     def __init__(self, address, router_wallet: wallet, public_keys=[], callback = None):
         threading.Thread.__init__(self)
         self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(zmq.ROUTER)
+
         self.address = address
         self.wallet = router_wallet
         self.publicKeys = public_keys
@@ -50,9 +50,11 @@ class Router(threading.Thread):
         self.callback = callback
 
     def run(self):
-        self.running = True
         print('router starting on: ' + self.address)
+
         # Start an authenticator for this context.
+        self.socket = self.ctx.socket(zmq.ROUTER)
+
         auth = ThreadAuthenticator(self.ctx)
         auth.start()
         auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
@@ -63,6 +65,9 @@ class Router(threading.Thread):
         # Create a poller to monitor if there is any
         poll = zmq.Poller()
         poll.register(self.socket, zmq.POLLIN)
+
+        self.running = True
+
         while self.running:
             try:
                 sockets = dict(poll.poll(100))
@@ -89,4 +94,3 @@ class Router(threading.Thread):
     def stop(self):
         print('stopping router')
         self.running = False
-
