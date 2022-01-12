@@ -19,6 +19,7 @@ import asyncio
 import socketio
 from sanic import Sanic
 import json
+import argparse
 
 EVENTS_HOME = pathlib.Path().home().joinpath('.lamden').joinpath('events')
 EXTENSION = '.e'
@@ -62,7 +63,7 @@ class EventListener:
         return events
 
 class EventService:
-    def __init__(self, port=8000, listener_timeout=5):
+    def __init__(self, port, listener_timeout=5):
         self.port = port
         self.event_listener = EventListener()
         self.listener_timeout = listener_timeout
@@ -99,5 +100,8 @@ class EventService:
             self.sio.start_background_task(self.__gather_and_send_events)
 
 if __name__ == '__main__':
-    service = EventService()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, required=True)
+    args = parser.parse_args()
+    service = EventService(port=args.port)
     service.run()
