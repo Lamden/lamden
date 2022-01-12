@@ -4,7 +4,6 @@ import hashlib
 import json
 import time
 import uvloop
-import zmq.asyncio
 
 from copy import deepcopy
 from contracting.client import ContractingClient
@@ -28,46 +27,6 @@ BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
-
-DB_CURRENT_BLOCK_HEIGHT = '_current_block_height'
-DB_CURRENT_BLOCK_HASH = '_current_block_hash'
-GET_BLOCK = 'get_block'
-GET_HEIGHT = 'get_height'
-
-async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
-    msg = {
-        'name': GET_HEIGHT,
-        'arg': ''
-    }
-
-    response = await router.secure_request(
-        ip=ip,
-        vk=vk,
-        wallet=wallet,
-        service=BLOCK_SERVICE,
-        msg=msg,
-        ctx=ctx,
-    )
-
-    return response
-
-
-async def get_block(block_num: int, wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
-    msg = {
-        'name': GET_BLOCK,
-        'arg': block_num
-    }
-
-    response = await router.secure_request(
-        ip=ip,
-        vk=vk,
-        wallet=wallet,
-        service=BLOCK_SERVICE,
-        msg=msg,
-        ctx=ctx,
-    )
-
-    return response
 
 class NewBlock(router.Processor):
     def __init__(self, driver: ContractDriver):
@@ -157,29 +116,15 @@ class Node:
 
         if should_seed:
             self.seed_genesis_contracts()
+
         # self.socket_authenticator = authentication.SocketAuthenticator(
         #     bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
         # )
 
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
-        '''
-        self.router = router.Router(
-            socket_id=socket_base,
-            ctx=self.ctx,
-            wallet=wallet,
-            secure=True
-        )
-        
-        self.network = network.Network(
-            wallet=wallet,
-            ip_string=socket_base,
-            ctx=self.ctx,
-            router=self.router
-        )
-        '''
 
         # wallet: Wallet, ctx: zmq.Context, socket_id
-
+        '''
         self.network = Network(
             debug=self.debug,
             testing=self.testing,
@@ -188,7 +133,8 @@ class Node:
             max_peer_strikes=self.max_peer_strikes,
             boot_nodes=bootnodes
         )
-
+        '''
+        self.network = None
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver, metering=metering)
@@ -255,8 +201,8 @@ class Node:
             get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )
 
-        self.network.add_service(WORK_SERVICE, self.work_validator)
-        self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+        # self.network.add_service(WORK_SERVICE, self.work_validator)
+        # self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
         self.running = False
         self.upgrade = False
