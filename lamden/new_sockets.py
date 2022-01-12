@@ -87,8 +87,7 @@ class Network:
             ctx=self.ctx
         )
 
-        self.router = Router(address=self.router_address, router_wallet=self.wallet,
-                             public_keys=self.boot_nodes, callback=self.router_callback)
+
 
         boot_node_vks = list(boot_nodes.keys())
         boot_node_keys = []
@@ -103,9 +102,12 @@ class Network:
         self.running = False
 
     async def start(self):
-        self.running = True
+        self.router = Router(address=self.router_address, router_wallet=self.wallet,
+                             public_keys=self.boot_nodes, callback=self.router_callback)
+
         self.publisher.setup_socket()
-        self.router.start()
+        self.running = True
+
 
     def stop(self):
         print('network.stop()')
