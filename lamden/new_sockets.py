@@ -74,6 +74,7 @@ class Network:
         self.socket_id = socket_id
         self.router_address = socket_id.replace(':180', ':190')
         self.ctx = zmq.asyncio.Context()
+        self.boot_nodes = boot_nodes
 
         self.log = get_logger("NEW_SOCKETS")
         self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
@@ -86,13 +87,13 @@ class Network:
             ctx=self.ctx
         )
 
+        self.router = Router(address=self.router_address, router_wallet=self.wallet,
+                             public_keys=self.boot_nodes, callback=self.router_callback)
+
         boot_node_vks = list(boot_nodes.keys())
         boot_node_keys = []
         for vk in boot_node_vks:
             boot_node_keys.append(z85_key(vk))
-
-        self.router = Router(address=self.router_address, router_wallet=self.wallet,
-                             public_keys=boot_node_keys, callback=self.router_callback)
 
         self.peers = {}
         self.peer_blacklist = []

@@ -151,11 +151,14 @@ class BlockStorage:
     def cull_tx(block):
         # Pops all transactions from the block and replaces them with the hash only for storage space
         # Returns the data and hashes for storage in a different folder. Block is modified in place
-        tx = block.get('processed', None)
-        tx_hash = tx.get('hash', None)
-        block['processed'] = tx_hash
+        try:
+            tx = block.get('processed', None)
+            tx_hash = tx.get('hash', None)
+            block['processed'] = tx_hash
 
-        return tx, tx_hash
+            return tx, tx_hash
+        except Exception:
+            return None, None
 
     def write_block(self, block):
         num = block.get('number')
@@ -176,7 +179,8 @@ class BlockStorage:
         try:
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
-        except FileExistsError:
+        except FileExistsError as err:
+            print(err)
             pass
 
     def write_txs(self, txs, hashes):

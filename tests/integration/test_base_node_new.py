@@ -28,8 +28,6 @@ DEFAULT_BLOCk = 0
 
 class TestNode(TestCase):
     def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
         self.num_of_nodes = 0

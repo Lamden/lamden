@@ -124,7 +124,6 @@ class Node:
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
         # wallet: Wallet, ctx: zmq.Context, socket_id
-        '''
         self.network = Network(
             debug=self.debug,
             testing=self.testing,
@@ -133,8 +132,7 @@ class Node:
             max_peer_strikes=self.max_peer_strikes,
             boot_nodes=bootnodes
         )
-        '''
-        self.network = None
+
         # Number of core / processes we push to
         self.parallelism = parallelism
         self.executor = Executor(driver=self.driver, metering=metering)
@@ -201,8 +199,8 @@ class Node:
             get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )
 
-        # self.network.add_service(WORK_SERVICE, self.work_validator)
-        # self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+        self.network.add_service(WORK_SERVICE, self.work_validator)
+        self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
         self.running = False
         self.upgrade = False

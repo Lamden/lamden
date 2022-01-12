@@ -41,7 +41,7 @@ class Router(threading.Thread):
     def __init__(self, address, router_wallet: wallet, public_keys=[], callback = None):
         threading.Thread.__init__(self)
         self.ctx = zmq.Context()
-        self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket = None
         self.address = address
         self.wallet = router_wallet
         self.publicKeys = public_keys
@@ -49,7 +49,9 @@ class Router(threading.Thread):
         self.cred_provider = CredentialsProvider(self.publicKeys)
         self.callback = callback
 
-    def run(self):
+    def start(self):
+        self.socket = self.ctx.socket(zmq.ROUTER)
+
         self.running = True
         print('router starting on: ' + self.address)
         # Start an authenticator for this context.
