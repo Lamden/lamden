@@ -1,5 +1,5 @@
 from unittest import TestCase
-import lamden.new_sockets
+import lamden.new_network
 from tests.integration.mock.mocks_new import TEST_FOUNDATION_WALLET, MockNetwork, MockDelegate
 from tests.integration.mock.create_directories import create_fixture_directories, remove_fixture_directories
 from lamden.nodes.filequeue import FileQueue
@@ -205,7 +205,7 @@ class TestMultiNode(TestCase):
         unauthorized_delegate = self.network2.delegates[0]
 
         masternode_1_id = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_sockets.z85_key(unauthorized_delegate.wallet.verifying_key)
+        unauthorized_delegate_key = lamden.new_network.z85_key(unauthorized_delegate.wallet.verifying_key)
         self.await_async_process(unauthorized_delegate.obj.network.connect, {'ip': masternode_1.obj.network.socket_id,
                                                                                'key': masternode_1_id})
         # Wait for the unauthorized_delegate_key to have a chance to connect
@@ -242,7 +242,7 @@ class TestMultiNode(TestCase):
         self.await_async_process(self.network.start_delegates)
 
         masternode_1_id = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_sockets.z85_key(delegate.wallet.verifying_key)
+        unauthorized_delegate_key = lamden.new_network.z85_key(delegate.wallet.verifying_key)
 
         # Wait for the unauthorized_delegate_key to have a chance to connect
         self.async_sleep(1)

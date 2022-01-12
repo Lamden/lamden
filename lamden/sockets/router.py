@@ -41,13 +41,16 @@ class Router(threading.Thread):
     def __init__(self, address, router_wallet: wallet, public_keys=[], callback = None):
         threading.Thread.__init__(self)
         self.ctx = zmq.Context()
-
+        self.socket = None
         self.address = address
         self.wallet = router_wallet
         self.publicKeys = public_keys
         self.running = False
         self.cred_provider = CredentialsProvider(self.publicKeys)
         self.callback = callback
+
+    def __del__(self):
+        print('router destroyed')
 
     def run(self):
         print('router starting on: ' + self.address)

@@ -14,7 +14,7 @@ from lamden import storage, router, rewards, upgrade, contracts
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.new_sockets import Network
+from lamden.new_network import Network
 from lamden.nodes import block_contender, system_usage
 from lamden.nodes import work, processing_queue, validation_queue
 from lamden.nodes.filequeue import FileQueue
@@ -206,6 +206,11 @@ class Node:
         self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
+
+    def __del__(self):
+        self.network.stop()
+        self.system_monitor.stop()
+
 
     async def start(self):
         # Start running
@@ -959,6 +964,7 @@ class Node:
 
     def check_if_already_has_consensus(self, hlc_timestamp):
         return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
+
 
     '''
     async def catchup(self, mn_seed, mn_vk):
