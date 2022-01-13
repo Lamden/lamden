@@ -42,7 +42,11 @@ class TestMultiNode(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
+        self.n = None
+
     def tearDown(self):
+        self.n.stop()
+
         self.ctx.destroy()
         self.loop.close()
         create_directories.remove_fixture_directories(self.fixture_directories)
@@ -149,12 +153,15 @@ class TestMultiNode(TestCase):
         self.assertEqual(mbal, tx_amount)
         self.assertEqual(dbal, tx_amount)
 
+        self.await_async_process(m.stop)
+        self.await_async_process(d.stop)
+
     def test_network_linear_tx_throughput_test_founder_to_new_wallets(self):
         # This test will transfer from the founder wallet to a bunch of new wallets and never the same wallet twice
-        n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
-        self.await_async_process(n.start)
+        self.n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
+        self.await_async_process(self.n.start)
 
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         test_tracker = {}
@@ -163,19 +170,19 @@ class TestMultiNode(TestCase):
         amount_of_transactions = 25
 
         for i in range(amount_of_transactions):
-            tx_info = json.loads(n.send_random_currency_transaction(sender_wallet=mocks_new.TEST_FOUNDATION_WALLET))
+            tx_info = json.loads(self.n.send_random_currency_transaction(sender_wallet=mocks_new.TEST_FOUNDATION_WALLET))
             to = tx_info['payload']['kwargs']['to']
             amount = tx_info['payload']['kwargs']['amount']
             test_tracker[to] = amount
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=30)
+        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=30)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
             balance = test_tracker[key]
-            results = n.get_vars(
+            results = self.n.get_vars(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
@@ -185,11 +192,11 @@ class TestMultiNode(TestCase):
             self.assertTrue(all([balance == results[0] for balance in results]))
 
         # All nodes are at the proper block height
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
     def test_network_one_receiver__throughput_test__founder_to_one_wallet_multiple_times(self):

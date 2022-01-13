@@ -22,10 +22,6 @@ from unittest import TestCase
 
 class TestNode(TestCase):
     def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
         self.num_of_nodes = 0
 
         self.blocks = storage.BlockStorage()
@@ -42,18 +38,24 @@ class TestNode(TestCase):
         self.blocks.flush()
         self.driver.flush()
 
-        self.authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
+        self.node = None
 
         self.tx_history = {}
         self.tx_accumulator ={}
         print("\n")
 
     def tearDown(self):
-        self.authenticator.authenticator.stop()
-        self.ctx.destroy()
-        self.loop.close()
+        if self.node.running:
+            self.stop_node()
+
         self.b.blocks.flush()
         self.b.driver.flush()
+
+    def start_node(self):
+            self.await_async_process(self.node.start)
+
+    def stop_node(self):
+            self.await_async_process(self.node.stop)
 
     def add_currency_balance_to_node(self, node, to, amount):
         node.client.set_var(
@@ -77,7 +79,6 @@ class TestNode(TestCase):
 
         node = base.Node(
             socket_base=f'tcp://127.0.0.1:{self.num_of_nodes}',
-            ctx=self.ctx,
             wallet=mn_wallet,
             constitution=constitution,
             driver=driver,
@@ -91,7 +92,7 @@ class TestNode(TestCase):
 
         self.num_of_nodes = self.num_of_nodes + 1
 
-        return node
+        self.node = node
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -119,10 +120,6 @@ class TestNode(TestCase):
         )
         loop = asyncio.get_event_loop()
         res =  loop.run_until_complete(tasks)
-
-    def start_node(self, node):
-        # Run process next, no consensus should be met as ideal is still possible
-        self.await_async_process(node.start)
 
     def send_transactions(self, amount_of_txs, node, sender_wallet):
         for i in range(amount_of_txs):
@@ -195,40 +192,41 @@ class TestNode(TestCase):
 
     def test_transaction_throughput__founder_to_new_wallets__queued_and_then_processed(self):
         # Get and start a node
-        node = self.create_a_node()
+        self.create_a_node()
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
-        node.consensus_percent = 0
-        self.start_node(node=node)
-        self.assertTrue(node.running)
-        self.assertTrue(node.validation_queue.running)
+        self.node.consensus_percent = 0
+        self.start_node()
 
-        node.main_processing_queue.running = False
-        self.assertFalse(node.main_processing_queue.running)
+        self.assertTrue(self.node.running)
+        self.assertTrue(self.node.validation_queue.running)
+
+        self.node.main_processing_queue.running = False
+        self.assertFalse(self.node.main_processing_queue.running)
 
         # Create a wallet with a balance
         jeff_wallet = Wallet()
         receiver_wallet = Wallet()
 
         # Seed initial currency balances
-        self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
+        self.add_currency_balance_to_node(node=self.node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
         amount_of_txn = 100
-        self.send_transactions(amount_of_txs=amount_of_txn, node=node, sender_wallet=jeff_wallet)
+        self.send_transactions(amount_of_txs=amount_of_txn, node=self.node, sender_wallet=jeff_wallet)
 
         start_time = time.time()
-        node.main_processing_queue.start()
-        self.await_all_processed(node=node, expected_block_height=amount_of_txn)
+        self.node.main_processing_queue.start()
+        self.await_all_processed(node=self.node, expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
 
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(amount_of_txn, node.get_current_height())
+        self.assertEqual(amount_of_txn, self.node.get_current_height())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
-            balance = node.executor.driver.get_var(
+            balance = self.node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
                 arguments=[key],
@@ -244,42 +242,43 @@ class TestNode(TestCase):
 
             self.assertEqual(self.tx_history[key]['amount'], balance)
 
-        self.assertEqual(0, len(node.main_processing_queue.read_history))
+        self.assertEqual(0, len(self.node.main_processing_queue.read_history))
 
     def test_transaction_throughput__founder_to_new_wallets__processing_as_added(self):
         # Get and start a node
-        node = self.create_a_node()
+        self.create_a_node()
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
-        node.consensus_percent = 0
-        self.start_node(node=node)
+        self.node.consensus_percent = 0
 
-        self.assertTrue(node.running)
-        self.assertTrue(node.main_processing_queue.running)
-        self.assertTrue(node.validation_queue.running)
+        self.start_node()
+
+        self.assertTrue(self.node.running)
+        self.assertTrue(self.node.main_processing_queue.running)
+        self.assertTrue(self.node.validation_queue.running)
 
         # Create a wallet with a balance
         jeff_wallet = Wallet()
         receiver_wallet = Wallet()
 
         # Seed initial currency balances
-        self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
+        self.add_currency_balance_to_node(node=self.node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
         amount_of_txn = 100
-        self.send_transactions(amount_of_txs=amount_of_txn, node=node, sender_wallet=jeff_wallet)
+        self.send_transactions(amount_of_txs=amount_of_txn, node=self.node, sender_wallet=jeff_wallet)
 
         start_time = time.time()
-        self.await_all_processed(node=node, expected_block_height=amount_of_txn)
+        self.await_all_processed(node=self.node, expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
 
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(amount_of_txn, node.get_current_height())
+        self.assertEqual(amount_of_txn, self.node.get_current_height())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
-            balance = node.executor.driver.get_var(
+            balance = self.node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
                 arguments=[key],
@@ -295,20 +294,20 @@ class TestNode(TestCase):
 
             self.assertEqual(self.tx_history[key]['amount'], balance)
 
-        self.assertEqual(0, len(node.main_processing_queue.read_history))
+        self.assertEqual(0, len(self.node.main_processing_queue.read_history))
 
     def test_transaction_throughput__founder_to_existing_wallet_list__queued_and_then_processed(self):
         # Get and start a node
-        node = self.create_a_node()
+        self.create_a_node()
 
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
-        node.consensus_percent = 0
-        self.start_node(node=node)
-        self.assertTrue(node.running)
-        self.assertTrue(node.validation_queue.running)
+        self.node.consensus_percent = 0
+        self.start_node()
+        self.assertTrue(self.node.running)
+        self.assertTrue(self.node.validation_queue.running)
 
-        node.main_processing_queue.running = False
-        self.assertFalse(node.main_processing_queue.running)
+        self.node.main_processing_queue.running = False
+        self.assertFalse(self.node.main_processing_queue.running)
 
 
         # Create a wallet with a balance
@@ -317,32 +316,30 @@ class TestNode(TestCase):
         receiver_wallets = [Wallet() for i in range(num_of_receivers)]
 
         # Seed initial currency balances
-        self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
+        self.add_currency_balance_to_node(node=self.node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
         amount_of_txn = 25
         for i in range(amount_of_txn):
             self.send_transaction(
-                node=node,
+                node=self.node,
                 sender_wallet=jeff_wallet,
                 receiver_wallet=receiver_wallets[random.randint(0, num_of_receivers-1)],
                 index=i+1
             )
 
         start_time = time.time()
-        node.main_processing_queue.start()
-        self.await_all_processed(node=node, expected_block_height=amount_of_txn)
+        self.node.main_processing_queue.start()
+        self.await_all_processed(node=self.node, expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(amount_of_txn, node.get_current_height())
-
-
+        self.assertEqual(amount_of_txn, self.node.get_current_height())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:
-            balance = node.executor.driver.get_var(
+            balance = self.node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
                 arguments=[key],
@@ -359,15 +356,15 @@ class TestNode(TestCase):
 
     def test_transaction_throughput__founder_to_existing_wallet_list__processing_as_added(self):
         # Get and start a node
-        node = self.create_a_node()
+        self.create_a_node()
 
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
-        node.consensus_percent = 0
-        self.start_node(node=node)
+        self.node.consensus_percent = 0
+        self.start_node()
 
-        self.assertTrue(node.running)
-        self.assertTrue(node.main_processing_queue.running)
-        self.assertTrue(node.validation_queue.running)
+        self.assertTrue(self.node.running)
+        self.assertTrue(self.node.main_processing_queue.running)
+        self.assertTrue(self.node.validation_queue.running)
 
         # Create a wallet with a balance
         jeff_wallet = Wallet()
@@ -375,31 +372,29 @@ class TestNode(TestCase):
         receiver_wallets = [Wallet() for i in range(num_of_receivers)]
 
         # Seed initial currency balances
-        self.add_currency_balance_to_node(node=node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
+        self.add_currency_balance_to_node(node=self.node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
 
         amount_of_txn = 100
         for i in range(amount_of_txn):
             self.send_transaction(
-                node=node,
+                node=self.node,
                 sender_wallet=jeff_wallet,
                 receiver_wallet=receiver_wallets[random.randint(0, num_of_receivers-1)],
                 index=i+1
             )
 
         start_time = time.time()
-        self.await_all_processed(node=node, expected_block_height=amount_of_txn)
+        self.await_all_processed(node=self.node, expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(amount_of_txn, node.get_current_height())
-
-
+        self.assertEqual(amount_of_txn, self.node.get_current_height())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:
-            balance = node.executor.driver.get_var(
+            balance = self.node.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
                 arguments=[key],

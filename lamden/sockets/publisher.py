@@ -26,7 +26,7 @@ class Publisher():
         self.log = get_logger("PUBLISHER")       
 
     def setup_socket(self): 
-        if(self.running):
+        if self.running:
             self.log.error('publisher.start: publisher already running')
             return
         self.socket = self.ctx.socket(zmq.PUB)
@@ -36,7 +36,7 @@ class Publisher():
         self.socket.bind(self.address)
     
     async def publish(self, topic, msg):
-        if(not self.running):
+        if not self.running:
             self.log.error('publisher.publish: publisher is not running')
             return
         
@@ -45,7 +45,8 @@ class Publisher():
         self.socket.send(m)
     
     def stop(self):
-        self.running = False
-        self.socket.close()
+        if self.running:
+            self.running = False
+            self.socket.close()
 
         

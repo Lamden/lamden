@@ -751,6 +751,8 @@ class TestNode(TestCase):
         recipient_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet.verifying_key}')
         self.assertEqual(str(tx_amount*3), str(recipient_balance))
 
+        self.await_async_process(node_peer.stop)
+
     def test_hard_apply_earlier_block__earlier_tx_has_new_keys(self):
         # Test hard applying blocks that come in from consensus earlier than blocks we already have
         # To do this we will create a peer node that processed the transactions in order, and then hard apply those
@@ -831,6 +833,8 @@ class TestNode(TestCase):
         # Validate new state was created
         recipient_1_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_1.verifying_key}')
         self.assertEqual(str(tx_amount), str(recipient_1_balance))
+
+        self.await_async_process(node_peer.stop)
 
     def test_get_current_height(self):
         # Create a node and start it
