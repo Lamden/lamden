@@ -82,8 +82,8 @@ class TestProcessingQueue(TestCase):
             get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus,
-            start_all_queues=self.start_all_queues,
-            stop_all_queues=self.stop_all_queues,
+            pause_all_queues=self.pause_all_queues,
+            unpause_all_queues=self.unpause_all_queues,
         )
 
         self.client.flush()
@@ -93,10 +93,10 @@ class TestProcessingQueue(TestCase):
         self.main_processing_queue.stop()
         self.main_processing_queue.flush()
 
-    async def stop_all_queues(self):
+    async def pause_all_queues(self):
         return
 
-    def start_all_queues(self):
+    def unpause_all_queues(self):
         return
 
     async def reprocess_called(self, tx):

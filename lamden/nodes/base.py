@@ -156,8 +156,8 @@ class Node:
             reward_manager=self.reward_manager,
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,
-            stop_all_queues=self.stop_all_queues,
-            start_all_queues=self.start_all_queues
+            pause_all_queues=self.pause_all_queues,
+            unpause_all_queues=self.unpause_all_queues
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -170,9 +170,7 @@ class Node:
             hard_apply_block=self.hard_apply_block,
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             wallet=self.wallet,
-            stop_node=self.stop,
-            stop_all_queues=self.stop_all_queues,
-            start_all_queues=self.start_all_queues
+            stop_node=self.stop
         )
 
         self.total_processed = 0
@@ -266,6 +264,26 @@ class Node:
         self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
         self.log.info(f"validation_queue running: {self.validation_queue.running}")
 
+    def unpause_all_queues(self):
+        self.log.info("!!!!!! UNPAUSING ALL QUEUES !!!!!!")
+        self.main_processing_queue.start()
+        self.validation_queue.start()
+        self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
+        self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
+
+    async def pause_all_queues(self):
+        self.log.info("!!!!!! PAUSING ALL QUEUES !!!!!!")
+        self.main_processing_queue.pause()
+        self.validation_queue.pause()
+
+        await self.main_processing_queue.pausing()
+        self.log.info("!!!!!! main_processing_queue PAUSED !!!!!!")
+        await self.validation_queue.pausing()
+        self.log.info("!!!!!! validation_queue PAUSED !!!!!!")
+
+        self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
+        self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
+
     async def stop_main_processing_queue(self, force=False):
         self.main_processing_queue.stop()
         if force:
@@ -295,7 +313,7 @@ class Node:
             if time.time() - self.debug_last_checked_main > 30:
                 self.debug_last_checked_main = time.time()
                 self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)} Running={self.main_processing_queue.running}")
-            if len(self.main_processing_queue) > 0 and self.main_processing_queue.running:
+            if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
@@ -307,7 +325,7 @@ class Node:
                 self.debug_last_checked_val = time.time()
                 self.log.info(
                     f"!!!!!!! CHECKED check_validation_queue. Length={len(self.validation_queue.validation_results)} Running={self.main_processing_queue.running}")
-            if len(self.validation_queue.validation_results) > 0 and self.validation_queue.running:
+            if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_all()
                 self.validation_queue.stop_processing()
@@ -668,11 +686,11 @@ class Node:
 
         if key_in_change_list:
             # Get the transaction info from the validation results queue
-            transaction = self.validation_queue.get_processed_transaction(hlc_timestamp)
+            recreated_tx_message = self.validation_queue.get_recreated_tx_message(hlc_timestamp)
 
             try:
                 # Reprocess the transaction
-                processing_results = self.main_processing_queue.process_tx(tx=transaction)
+                processing_results = self.main_processing_queue.process_tx(tx=recreated_tx_message)
 
                 # Create flag to know if anything changes so we can later resend our new results to the
                 # network

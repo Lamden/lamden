@@ -13,7 +13,7 @@ from datetime import datetime
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, stop_node,
                  get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, stop_all_queues, start_all_queues, reprocess, testing=False, debug=False):
+                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -32,8 +32,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.get_last_processed_hlc = get_last_processed_hlc
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
-        self.stop_all_queues = stop_all_queues
-        self.start_all_queues = start_all_queues
+        self.pause_all_queues = pause_all_queues
+        self.unpause_all_queues = unpause_all_queues
 
         self.stop_node = stop_node
         self.read_history = {}
@@ -389,15 +389,13 @@ class TxProcessingQueue(ProcessingQueue):
         start_time = time.time()
         try:
             self.currently_processing = False
-            self.log.info('stop_all_queues')
-            await self.stop_all_queues()
+            self.log.info('pause_all_queues')
+            await self.pause_all_queues()
             self.log.info('reprocess')
             await self.reprocess(tx=tx)
             self.log.info(f'Reprocessing took { time.time() - start_time} seconds.')
-            self.log.info('start_all_queues')
-            self.start_all_queues()
-            self.log.info('stop_processing')
-            self.stop_processing()
+            self.log.info('unpause_all_queues')
+            self.unpause_all_queues()
         except Exception as err:
             self.log.info('node_rollback ERROR')
             self.log.error(err)

@@ -35,8 +35,6 @@ class TestValidationQueue(TestCase):
             set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             stop_node=self.stop,
             testing=True,
-            start_all_queues=self.start_all_queues,
-            stop_all_queues=self.stop_all_queues,
             get_block_by_hlc=self.get_block_by_hlc
         )
 

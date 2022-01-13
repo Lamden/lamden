@@ -17,6 +17,12 @@ class TestProcessingQueue(TestCase):
         # Await the stopping of the queue
         await self.processing_queue.stopping()
 
+
+    async def await_queue_pausing(self):
+        print (self.processing_queue.currently_processing)
+        # Await the stopping of the queue
+        await self.processing_queue.pausing()
+
     async def delay_processing(self, func, delay):
         print('\n')
         print('Starting Sleeping: ', time.time())
@@ -35,6 +41,16 @@ class TestProcessingQueue(TestCase):
     def test_can_stop(self):
         self.processing_queue.stop()
         self.assertEqual(self.processing_queue.running, False)
+
+    def test_can_pause(self):
+        self.assertEqual(self.processing_queue.paused, False)
+        self.processing_queue.pause()
+        self.assertEqual(self.processing_queue.paused, True)
+
+    def test_can_unpause(self):
+        self.processing_queue.paused = True
+        self.processing_queue.unpause()
+        self.assertEqual(self.processing_queue.paused, False)
 
     def test_can_start_processing(self):
         self.processing_queue.start_processing()
@@ -62,6 +78,25 @@ class TestProcessingQueue(TestCase):
         # Assert the queue is stopped and not processing any transactions
         self.assertEqual(self.processing_queue.currently_processing, False)
         self.assertEqual(self.processing_queue.running, False)
+
+    def test_can_await_pausing(self):
+        # Mark the queue as currently processing
+        self.processing_queue.start_processing()
+
+        # Stop the queue
+        self.processing_queue.pause()
+
+        # Await the queue stopping and then mark the queue as not processing after X seconds
+        tasks = asyncio.gather(
+            self.await_queue_pausing(),
+            self.delay_processing(func=self.processing_queue.stop_processing, delay=2)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        # Assert the queue is stopped and not processing any transactions
+        self.assertEqual(self.processing_queue.currently_processing, False)
+        self.assertEqual(self.processing_queue.paused, True)
 
 
     def test_flush(self):

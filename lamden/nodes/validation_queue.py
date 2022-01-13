@@ -13,8 +13,8 @@ from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 
 class ValidationQueue(ProcessingQueue):
     def __init__(self, driver, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, stop_all_queues,
-                 start_all_queues, get_block_by_hlc, testing=False, debug=False):
+                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
+                 debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
@@ -30,8 +30,6 @@ class ValidationQueue(ProcessingQueue):
         self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
-        self.stop_all_queues = stop_all_queues
-        self.start_all_queues = start_all_queues
 
         self.determine_consensus = DetermineConsensus(
             consensus_percent=consensus_percent,
@@ -325,6 +323,18 @@ class ValidationQueue(ProcessingQueue):
         consensus_results = validation_result.get('last_check_info', {})
         consensus_solution = consensus_results.get('solution', '')
         return validation_result['result_lookup'].get(consensus_solution, {})
+
+    def get_recreated_tx_message(self, hlc_timestamp):
+        results = self.validation_results.get(hlc_timestamp)
+        my_solution = results['solutions'].get(self.wallet.verifying_key)
+        processing_results = results['result_lookup'].get(my_solution)
+
+        return {
+            'tx': processing_results['tx_result'].get('transaction'),
+            'hlc_timestamp': hlc_timestamp,
+            'signature': processing_results['tx_message'].get('signature'),
+            'sender': processing_results['tx_message'].get('signer')
+        }
 
     def consensus_matches_me(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp, {})
