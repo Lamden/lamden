@@ -1,14 +1,21 @@
 from unittest import TestCase
+import unittest
 from lamden.nodes.events import Event, EventListener, EventWriter, EventService
 import shutil
 import pathlib
 import os
+import socketio
+import asyncio
+from multiprocessing import Process
+import time
 
 ROOT = pathlib.Path().cwd().joinpath('events')
+EVENT_SERVICE_PORT = 8000
 SAMPLE_TOPIC = 'test'
 SAMPLE_NUMBER = 101
 SAMPLE_HASH = 'bb67232f70994134ed79'
 SAMPLE_EVENT = Event(topics=[SAMPLE_TOPIC], number=SAMPLE_NUMBER, hash_str=SAMPLE_HASH)
+WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT = 0.1
 
 class TestEvents(TestCase):
     def tearDown(self):
@@ -37,3 +44,75 @@ class TestEvents(TestCase):
         events = l.get_events()
 
         self.assertTrue(len(events), 1)
+
+class MockSIOClient():
+    def __init__(self):
+        self.is_connected = False
+        self.rooms = set()
+        self.events = list()
+        self.sio = socketio.AsyncClient()
+        self.__register_sio_handlers()
+
+    def __register_sio_handlers(self):
+        @self.sio.event
+        def connect():
+            self.is_connected = True
+
+        @self.sio.event
+        def disconnect():
+            self.is_connected = False
+
+        @self.sio.event
+        def message(data):
+            if data['action'] == 'joined_room':
+                self.rooms.add(data['room'])
+            elif data['action'] == 'left_room':
+                self.rooms.remove(data['room'])
+
+        @self.sio.event
+        def event(data):
+            self.events.append(event)
+
+class TestEventService(TestCase):
+    service_process = None
+
+    @staticmethod
+    def start_event_service():
+        EventService(port=EVENT_SERVICE_PORT).run()
+
+    @classmethod
+    def setUpClass(cls):
+        TestEventService.service_process = Process(target=TestEventService.start_event_service)
+        TestEventService.service_process.start()
+        time.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT)
+
+    @classmethod
+    def tearDownClass(cls):
+        TestEventService.service_process.terminate()
+        asyncio.get_event_loop().close()
+
+    def setUp(self):
+        self.client = MockSIOClient()
+        self.loop = asyncio.get_event_loop()
+
+    def test_service_is_reachable_by_clients(self):
+        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+        self.assertTrue(self.client.is_connected)
+
+    def test_client_can_join_and_leave_room(self):
+        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+        self.loop.run_until_complete(self.client.sio.emit('join', {'room': SAMPLE_TOPIC}))
+        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
+        self.assertTrue(SAMPLE_TOPIC in self.client.rooms)
+        self.loop.run_until_complete(self.client.sio.emit('leave', {'room': SAMPLE_TOPIC}))
+        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
+        self.assertTrue(SAMPLE_TOPIC not in self.client.rooms)
+
+    def test_service_sends_events_correctly(self):
+        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+        self.loop.run_until_complete(self.client.sio.emit('join', {'room': SAMPLE_TOPIC}))
+        EventWriter().write_event(SAMPLE_EVENT)
+        EventWriter().write_event(Event(topics=['other_topic', SAMPLE_TOPIC], number=101, hash_str='xoxo'))
+        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
+        self.assertEqual(len(self.client.events), 2)
+

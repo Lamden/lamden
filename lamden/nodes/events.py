@@ -63,7 +63,7 @@ class EventListener:
         return events
 
 class EventService:
-    def __init__(self, port, listener_timeout=5):
+    def __init__(self, port, listener_timeout=0.1):
         self.port = port
         self.event_listener = EventListener()
         self.listener_timeout = listener_timeout
@@ -87,12 +87,12 @@ class EventService:
         @self.sio.event
         async def join(sid, msg):
             self.sio.enter_room(sid, msg['room'])
-            await self.sio.emit('message', 'Entered room: ' + msg['room'], room=sid)
+            await self.sio.emit('message', {'action': 'joined_room', 'room': msg['room']}, room=sid)
 
         @self.sio.event
         async def leave(sid, msg):
             self.sio.leave_room(sid, msg['room'])
-            await self.sio.emit('message', 'Left room: ' + msg['room'], room=sid)
+            await self.sio.emit('message', {'action': 'left_room', 'room': msg['room']}, room=sid)
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
@@ -101,7 +101,7 @@ class EventService:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, required=True)
+    parser.add_argument('-p', '--port', type=int, required=True)
     args = parser.parse_args()
     service = EventService(port=args.port)
     service.run()
