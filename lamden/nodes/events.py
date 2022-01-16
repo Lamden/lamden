@@ -63,11 +63,12 @@ class EventListener:
         return events
 
 class EventService:
-    def __init__(self, port, listener_timeout=0.1):
+    def __init__(self, port, listener_timeout=0.1,
+                 logger=False, engineio_logger=False):
         self.port = port
         self.event_listener = EventListener()
         self.listener_timeout = listener_timeout
-        self.sio = socketio.AsyncServer(async_mode='sanic', logger=True, engineio_logger=True)
+        self.sio = socketio.AsyncServer(async_mode='sanic', logger=logger, engineio_logger=engineio_logger)
         self.app = Sanic('event_service')
         self.sio.attach(self.app)
         self.__setup_sio_event_handlers()
@@ -97,11 +98,11 @@ class EventService:
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
         def __start_event_listener_task(app, loop):
-            self.sio.start_background_task(self.__gather_and_send_events)
+            self.listener_task = self.sio.start_background_task(self.__gather_and_send_events)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--port', type=int, required=True)
     args = parser.parse_args()
-    service = EventService(port=args.port)
+    service = EventService(port=args.port, logger=True, engineio_logger=True)
     service.run()

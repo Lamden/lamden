@@ -15,7 +15,7 @@ SAMPLE_TOPIC = 'test'
 SAMPLE_NUMBER = 101
 SAMPLE_HASH = 'bb67232f70994134ed79'
 SAMPLE_EVENT = Event(topics=[SAMPLE_TOPIC], number=SAMPLE_NUMBER, hash_str=SAMPLE_HASH)
-WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT = 0.1
+TIMEOUT = 0.1
 
 class TestEvents(TestCase):
     def tearDown(self):
@@ -82,37 +82,46 @@ class TestEventService(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        TestEventService.service_process = Process(target=TestEventService.start_event_service)
+        TestEventService.service_process = Process(target=TestEventService.start_event_service, daemon=True)
         TestEventService.service_process.start()
-        time.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT)
+        time.sleep(TIMEOUT)
 
     @classmethod
     def tearDownClass(cls):
-        TestEventService.service_process.terminate()
         asyncio.get_event_loop().close()
 
     def setUp(self):
         self.client = MockSIOClient()
         self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.client.sio.disconnect())
 
     def test_service_is_reachable_by_clients(self):
-        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
         self.assertTrue(self.client.is_connected)
 
     def test_client_can_join_and_leave_room(self):
-        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
         self.loop.run_until_complete(self.client.sio.emit('join', {'room': SAMPLE_TOPIC}))
-        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
-        self.assertTrue(SAMPLE_TOPIC in self.client.rooms)
-        self.loop.run_until_complete(self.client.sio.emit('leave', {'room': SAMPLE_TOPIC}))
-        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
-        self.assertTrue(SAMPLE_TOPIC not in self.client.rooms)
+        self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
 
-    def test_service_sends_events_correctly(self):
-        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+        self.assertTrue(SAMPLE_TOPIC in self.client.rooms)
+
+        self.loop.run_until_complete(self.client.sio.emit('leave', {'room': SAMPLE_TOPIC}))
+        self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
+
+        self.assertFalse(SAMPLE_TOPIC in self.client.rooms)
+
+    def test_service_doesnt_send_event_if_not_subsribed(self):
+        EventWriter().write_event(SAMPLE_EVENT)
+        self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
+
+        self.assertEqual(len(self.client.events), 0)
+
+    def test_service_sends_event_if_subsribed(self):
         self.loop.run_until_complete(self.client.sio.emit('join', {'room': SAMPLE_TOPIC}))
         EventWriter().write_event(SAMPLE_EVENT)
-        EventWriter().write_event(Event(topics=['other_topic', SAMPLE_TOPIC], number=101, hash_str='xoxo'))
-        self.loop.run_until_complete(asyncio.sleep(WAIT_SERVICE_ACTION_COMPLETE_TIMEOUT))
-        self.assertEqual(len(self.client.events), 2)
+        self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
+
+        self.assertEqual(len(self.client.events), 1)
 
