@@ -45,7 +45,10 @@ class TestMultiNode(TestCase):
         self.n = None
 
     def tearDown(self):
-        self.n.stop()
+        if self.n:
+            for node in self.n.nodes:
+                if node.started:
+                    self.await_async_process(node.obj.stop)
 
         self.ctx.destroy()
         self.loop.close()
@@ -70,14 +73,14 @@ class TestMultiNode(TestCase):
         node.tx_queue.append(tx)
 
     def test_mock_network_init_makes_correct_number_of_nodes(self):
-        n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)
-        self.assertEqual(len(n.masternodes), 1)
-        self.assertEqual(len(n.delegates), 1)
+        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)
+        self.assertEqual(len(self.n.masternodes), 1)
+        self.assertEqual(len(self.n.delegates), 1)
 
     def test_mock_network_init_makes_correct_number_of_nodes_many_nodes(self):
-        n = mocks_new.MockNetwork(num_of_delegates=123, num_of_masternodes=143, ctx=self.ctx, metering=False)
-        self.assertEqual(len(n.masternodes), 143)
-        self.assertEqual(len(n.delegates), 123)
+        self.n = mocks_new.MockNetwork(num_of_delegates=123, num_of_masternodes=143, ctx=self.ctx, metering=False)
+        self.assertEqual(len(self.n.masternodes), 143)
+        self.assertEqual(len(self.n.delegates), 123)
 
     def test_mock_network_init_creates_correct_bootnodes(self):
         # 2 mn, 3 delegate
@@ -93,17 +96,35 @@ class TestMultiNode(TestCase):
             'tcp://127.0.0.1:18008'
         ]
 
-        n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
+        self.n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
 
-        self.assertEqual(n.masternodes[0].tcp, expected_ips[0])
-        self.assertEqual(n.masternodes[1].tcp, expected_ips[1])
-        self.assertEqual(n.masternodes[2].tcp, expected_ips[2])
-        self.assertEqual(n.delegates[0].tcp, expected_ips[3])
-        self.assertEqual(n.delegates[1].tcp, expected_ips[4])
-        self.assertEqual(n.delegates[2].tcp, expected_ips[5])
-        self.assertEqual(n.delegates[3].tcp, expected_ips[6])
-        self.assertEqual(n.delegates[4].tcp, expected_ips[7])
-        self.assertEqual(n.delegates[5].tcp, expected_ips[8])
+        self.assertEqual(self.n.masternodes[0].tcp, expected_ips[0])
+        self.assertEqual(self.n.masternodes[1].tcp, expected_ips[1])
+        self.assertEqual(self.n.masternodes[2].tcp, expected_ips[2])
+        self.assertEqual(self.n.delegates[0].tcp, expected_ips[3])
+        self.assertEqual(self.n.delegates[1].tcp, expected_ips[4])
+        self.assertEqual(self.n.delegates[2].tcp, expected_ips[5])
+        self.assertEqual(self.n.delegates[3].tcp, expected_ips[6])
+        self.assertEqual(self.n.delegates[4].tcp, expected_ips[7])
+        self.assertEqual(self.n.delegates[5].tcp, expected_ips[8])
+
+    def test_mock_network_starts(self):
+        # 2 mn, 3 delegate
+        expected_ips = [
+            'tcp://127.0.0.1:18000',
+            'tcp://127.0.0.1:18001',
+            'tcp://127.0.0.1:18002',
+            'tcp://127.0.0.1:18003'
+        ]
+
+        self.n = mocks_new.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
+
+        self.await_async_process(self.n.start)
+
+        self.assertEqual(self.n.masternodes[0].obj.running, True)
+        self.assertEqual(self.n.masternodes[1].obj.running, True)
+        self.assertEqual(self.n.delegates[0].obj.running, True)
+        self.assertEqual(self.n.delegates[1].obj.running, True)
 
     def test_startup_with_manual_node_creation_and_single_block_works(self):
         m = mocks_new.MockMaster(ctx=self.ctx, index=1, metering=False)
@@ -203,10 +224,10 @@ class TestMultiNode(TestCase):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
         delay = {'base': 1, 'self': 1.5}
-        n = mocks_new.MockNetwork(num_of_delegates=4, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
-        self.await_async_process(n.start)
+        self.n = mocks_new.MockNetwork(num_of_delegates=4, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+        self.await_async_process(self.n.start)
 
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         test_tracker = ContractingDecimal(0.0)
@@ -216,7 +237,7 @@ class TestMultiNode(TestCase):
         # Send a bunch of transactions
         amount_of_transactions = 20
         for i in range(amount_of_transactions):
-            tx_info = json.loads(n.send_random_currency_transaction(
+            tx_info = json.loads(self.n.send_random_currency_transaction(
                 sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
                 receiver_wallet=receiver_wallet
             ))
@@ -224,13 +245,13 @@ class TestMultiNode(TestCase):
             test_tracker = test_tracker + ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=0)
+        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=0)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
         # Decode all tracker values from ContractingDecimal to string
 
-        all_node_results = n.get_vars(
+        all_node_results = self.n.get_vars(
             contract='currency',
             variable='balances',
             arguments=[receiver_wallet.verifying_key]
@@ -249,16 +270,16 @@ class TestMultiNode(TestCase):
         self.assertTrue(all([balance == all_node_results[0] for balance in all_node_results]))
 
         # All nodes are at the proper block height
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
             print(f'block height: {node.obj.get_current_hash()} hash: {node.obj.get_current_hash()}')
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in n.all_nodes()]
+        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
         for block_hash in all_hashes:
             print(block_hash)
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             print(node.obj.get_current_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
@@ -268,16 +289,16 @@ class TestMultiNode(TestCase):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
 
-        n = mocks_new.MockNetwork(
+        self.n = mocks_new.MockNetwork(
             num_of_delegates=num_of_delegates,
             num_of_masternodes=num_of_masternodes,
             ctx=self.ctx,
             metering=False,
             delay=delay
         )
-        self.await_async_process(n.start)
+        self.await_async_process(self.n.start)
 
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         wallet_tracker = []
@@ -285,7 +306,7 @@ class TestMultiNode(TestCase):
         receiver_wallets = [Wallet() for i in range(num_of_receiver_wallets)]
 
         for i in range(amount_of_transactions):
-            tx_info = json.loads(n.send_random_currency_transaction(
+            tx_info = json.loads(self.n.send_random_currency_transaction(
                 sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
                 receiver_wallet=receiver_wallets[randrange(0, num_of_receiver_wallets)]
             ))
@@ -296,13 +317,13 @@ class TestMultiNode(TestCase):
                 wallet_tracker.append(to)
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=n.all_nodes(), block_height=amount_of_transactions, timeout=0)
+        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=0)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
         all_node_results = {}
         for wallet in wallet_tracker:
-            all_node_results[wallet] = n.get_vars(
+            all_node_results[wallet] = self.n.get_vars(
                 contract='currency',
                 variable='balances',
                 arguments=[wallet]
@@ -313,7 +334,7 @@ class TestMultiNode(TestCase):
             self.assertTrue(all([balance == all_node_results[key][0] for balance in all_node_results[key]]))
 
 
-        validation_history = n.masternodes[0].obj.validation_queue.validation_results_history
+        validation_history = self.n.masternodes[0].obj.validation_queue.validation_results_history
 
         all_hlcs = [[k for k in item.keys()][0] for item in validation_history]
         all_hlcs.sort()
@@ -340,16 +361,16 @@ class TestMultiNode(TestCase):
                 self.assertEqual(all_node_results[key][0]['__fixed__'], test_tracker[key])
 
         # All nodes are at the proper block height
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
             print(f'block height: {node.obj.get_current_height()} hash: {node.obj.get_current_hash()}')
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_height() for node in n.all_nodes()]
+        all_hashes = [node.obj.get_current_height() for node in self.n.all_nodes()]
         for block_hash in all_hashes:
             print(block_hash)
-        for node in n.all_nodes():
+        for node in self.n.all_nodes():
             print(node.obj.get_current_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 

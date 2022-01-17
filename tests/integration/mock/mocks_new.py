@@ -174,7 +174,11 @@ class MockNetwork:
 
         self.prepare_nodes_to_start()
 
+
     def all_nodes(self):
+        return self.masternodes + self.delegates
+    @property
+    def nodes(self):
         return self.masternodes + self.delegates
 
     def prepare_nodes_to_start(self):
