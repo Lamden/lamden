@@ -76,13 +76,9 @@ class MockSIOClient():
 class TestEventService(TestCase):
     service_process = None
 
-    @staticmethod
-    def start_event_service():
-        EventService(port=EVENT_SERVICE_PORT).run()
-
     @classmethod
     def setUpClass(cls):
-        TestEventService.service_process = Process(target=TestEventService.start_event_service, daemon=True)
+        TestEventService.service_process = Process(target=lambda: EventService(EVENT_SERVICE_PORT).run(), daemon=True)
         TestEventService.service_process.start()
         time.sleep(TIMEOUT)
 
@@ -93,7 +89,7 @@ class TestEventService(TestCase):
     def setUp(self):
         self.client = MockSIOClient()
         self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.client.sio.connect('http://localhost:{}'.format(EVENT_SERVICE_PORT)))
+        self.loop.run_until_complete(self.client.sio.connect(f'http://localhost:{EVENT_SERVICE_PORT}'))
 
     def tearDown(self):
         self.loop.run_until_complete(self.client.sio.disconnect())
@@ -112,7 +108,7 @@ class TestEventService(TestCase):
 
         self.assertFalse(SAMPLE_TOPIC in self.client.rooms)
 
-    def test_service_doesnt_send_event_if_not_subsribed(self):
+    def test_service_doesnt_send_event_if_not_subscribed(self):
         EventWriter().write_event(SAMPLE_EVENT)
         self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
 

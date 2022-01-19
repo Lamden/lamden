@@ -82,7 +82,7 @@ class EventService:
             await self.sio.sleep(self.listener_timeout)
             for event in self.event_listener.get_events():
                 for topic in event.topics:
-                    await self.sio.emit('event', event.data, room=topic)
+                    await self.sio.emit('event', {'event': topic, 'data': event.data}, room=topic)
 
     def __setup_sio_event_handlers(self):
         @self.sio.event
@@ -97,7 +97,7 @@ class EventService:
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
-        def __start_event_listener_task(app, loop):
+        def start_event_listener_task(app, loop):
             self.listener_task = self.sio.start_background_task(self.__gather_and_send_events)
 
 if __name__ == '__main__':

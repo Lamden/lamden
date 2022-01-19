@@ -153,7 +153,14 @@ class WebServer:
                 await client.send(json.dumps(data))
 
     def __register_app_listeners(self):
-        self.app.register_listener(self.connect_to_event_service, 'after_server_start')
+        @self.app.listener('after_server_start')
+        async def connect_to_event_service(app, loop):
+            # TODO(nikita): what do we do in case event service is not running?
+            try:
+                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.wait()
+            except:
+                pass
 
     async def ws_handler(self, request, ws):
         self.ws_clients.add(ws)
@@ -162,14 +169,6 @@ class WebServer:
                 pass
         finally:
             self.ws_clients.remove(ws)
-
-    async def connect_to_event_service(self, app, loop):
-        # TODO(nikita): what do we do in case event service is not running?
-        try:
-            await self.sio.connect('http://localhost:{}'.format(self.event_service_port))
-            await self.sio.wait()
-        except:
-            pass
 
     async def start(self):
         # Start server with SSL enabled or not

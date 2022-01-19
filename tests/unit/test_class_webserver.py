@@ -7,9 +7,17 @@ from contracting.db.driver import ContractDriver, decode, encode
 from lamden.storage import BlockStorage
 from lamden.crypto.transaction import build_transaction
 from lamden import storage
+from sanic import Sanic
+import asyncio
+from lamden.nodes.events import EventWriter, Event, EventService
+import websockets
+from multiprocessing import Process
+import json
+import time
 
 n = ContractDriver()
-
+EVENT_SERVICE_PORT = 8000
+SAMPLE_TOPIC = 'new_block'
 
 class TestClassWebserver(TestCase):
     def setUp(self):
@@ -27,6 +35,7 @@ class TestClassWebserver(TestCase):
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
+        self.loop = asyncio.get_event_loop()
 
     def tearDown(self):
         self.ws.client.flush()
@@ -548,3 +557,64 @@ def get():
 
     def test_js_encoded_tx_works(self):
         pass
+
+class TestWebserverWebsockets(TestCase):
+    service_process = None
+
+    @classmethod
+    def setUpClass(cls):
+        TestWebserverWebsockets.service_process = Process(target=lambda: EventService(EVENT_SERVICE_PORT).run())
+        TestWebserverWebsockets.service_process.start()
+        time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        TestWebserverWebsockets.service_process.terminate()
+
+    def setUp(self):
+        self.ws = WebServer(
+            wallet=Wallet(),
+            contracting_client=ContractingClient(),
+            blocks=BlockStorage(),
+            driver=ContractDriver(),
+            topics=[SAMPLE_TOPIC]
+        )
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        self.loop = asyncio.get_event_loop()
+        self.server = self.loop.run_until_complete(
+            asyncio.ensure_future(
+                self.ws.app.create_server(host='0.0.0.0', port=self.ws.port, return_asyncio_server=True)
+            )
+        )
+        self.loop.run_until_complete(self.ws.sio.connect(f'http://localhost:{EVENT_SERVICE_PORT}'))
+
+    def tearDown(self):
+        self.loop.run_until_complete(self.ws.sio.disconnect())
+        self.server.close()
+        self.loop.run_until_complete(self.server.wait_closed())
+        self.loop.close()
+
+    async def ws_client_connect_and_recv(self, uri):
+        async with websockets.connect(uri) as ws:
+            data = await ws.recv()
+            return data
+
+    def test_ws_client_can_connect_to_webserver(self):
+        ws_client_task = asyncio.ensure_future(self.ws_client_connect_and_recv(f'ws://localhost:{self.ws.port}'))
+        self.loop.run_until_complete(asyncio.sleep(0.1))
+
+        self.assertEqual(len(self.ws.ws_clients), 1)
+        
+        ws_client_task.cancel()
+        try:
+            self.loop.run_until_complete(ws_client_task)
+        except asyncio.CancelledError:
+            pass
+
+    def test_ws_client_receive_events_from_webserver(self):
+        ws_client_task = asyncio.ensure_future(self.ws_client_connect_and_recv(f'ws://localhost:{self.ws.port}'))
+        EventWriter().write_event(Event(topics=self.ws.topics, number=101, hash_str='xoxo'))
+        self.loop.run_until_complete(ws_client_task)
+
+        self.assertDictEqual(json.loads(ws_client_task.result()), {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})
+
