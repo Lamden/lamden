@@ -1,5 +1,6 @@
 from sanic import Sanic
 from sanic import response
+from sanic.websocket import WebSocketProtocol
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -17,6 +18,8 @@ from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
+import socketio
+import json
 
 from lamden.crypto import transaction
 import decimal
@@ -26,7 +29,6 @@ import datetime
 import argparse
 
 log = get_logger("MN-WebServer")
-
 
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
@@ -58,8 +60,8 @@ class WebServer:
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
-                 ):
-
+                 event_service_port=8000,
+                 topics=[]):
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -124,6 +126,50 @@ class WebServer:
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
 
         self.coroutine = None
+
+        self.topics = topics
+        self.event_service_port = event_service_port
+        self.sio = socketio.AsyncClient()
+
+        self.__setup_sio_event_handlers()
+        self.__register_app_listeners()
+
+        self.ws_clients = set()
+        self.app.add_websocket_route(self.ws_handler, '/')
+    
+    def __setup_sio_event_handlers(self):
+        @self.sio.event
+        async def connect():
+            for topic in self.topics:
+                await self.sio.emit('join', {'room': topic})
+
+        @self.sio.event
+        async def disconnect():
+            for topic in self.topics:
+                await self.sio.emit('leave', {'room': topic})
+
+        @self.sio.event
+        async def event(data):
+            for client in self.ws_clients:
+                await client.send(json.dumps(data))
+
+    def __register_app_listeners(self):
+        @self.app.listener('after_server_start')
+        async def connect_to_event_service(app, loop):
+            # TODO(nikita): what do we do in case event service is not running?
+            try:
+                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.wait()
+            except:
+                pass
+
+    async def ws_handler(self, request, ws):
+        self.ws_clients.add(ws)
+        try:
+            async for message in ws:
+                pass
+        finally:
+            self.ws_clients.remove(ws)
 
     async def start(self):
         # Start server with SSL enabled or not
