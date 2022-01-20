@@ -449,14 +449,19 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-k', '--key', type=str, required=True)
     arg_parser.add_argument('-p', '--port', type=int, required=False)
+    arg_parser.add_argument('-ep', '--event_port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
     sk = bytes.fromhex(args.key)
     port = args.port
+    event_port = args.event_port
 
     if port is None:
         port = 18080
+
+    if event_port is None:
+        event_port = 8000
 
     wallet = Wallet(seed=sk)
 
@@ -465,7 +470,8 @@ if __name__ == '__main__':
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
-        port=port
+        port=port,
+        event_service_port=event_port
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
