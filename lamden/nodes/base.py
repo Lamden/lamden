@@ -86,6 +86,7 @@ class Node:
         self.log = get_logger('Base')
         self.debug = debug
         self.testing = testing
+
         self.debug_stack = []
         self.debug_processed_hlcs = []
         self.debug_processing_results = []
@@ -95,6 +96,11 @@ class Node:
         self.debug_sent_solutions = []
         self.debug_last_checked_main = time.time()
         self.debug_last_checked_val = time.time()
+        self.debug_loop_counter = {
+            'main': 0,
+            'validation': 0,
+            'file_check': 0
+        }
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -306,6 +312,8 @@ class Node:
 
                     # add this tx the processing queue so we can process it
                     self.main_processing_queue.append(tx=tx_message)
+
+            self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0)
 
     async def check_main_processing_queue(self):
@@ -317,6 +325,8 @@ class Node:
                 self.main_processing_queue.start_processing()
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
+
+            self.debug_loop_counter['main'] = self.debug_loop_counter['main'] + 1
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
@@ -329,6 +339,8 @@ class Node:
                 self.validation_queue.start_processing()
                 await self.validation_queue.process_all()
                 self.validation_queue.stop_processing()
+
+            self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
@@ -873,13 +885,14 @@ class Node:
 
     def get_delegate_peers(self, not_me=False):
         peers = self._get_member_peers('delegates')
+        print({'delegate': peers})
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
         return peers
 
     def get_masternode_peers(self, not_me=False):
         peers = self._get_member_peers('masternodes')
-
+        print({'masternode': peers})
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
 
@@ -894,7 +907,11 @@ class Node:
     def get_peers_for_consensus(self):
         allPeers = {}
         peers_from_blockchain = self.get_all_peers(not_me=True)
+        print({'peers_from_blockchain': peers_from_blockchain})
+
         for key in peers_from_blockchain:
+            print(key)
+            print({'network_peers': self.network.peers})
             if self.network.peers[key].currently_participating():
                 allPeers[key] = peers_from_blockchain[key]
 

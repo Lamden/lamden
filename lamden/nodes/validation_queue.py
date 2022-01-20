@@ -1,6 +1,7 @@
 import asyncio
 import math
 import time
+import datetime
 import json
 
 import multiprocessing
@@ -51,6 +52,10 @@ class ValidationQueue(ProcessingQueue):
         self.append_history = []
         self.validation_results_history = []
         self.detected_rollback = False
+
+        self.last_time_checked = datetime.datetime.now()
+
+        self.checking = False
 
     def append(self, processing_results):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
@@ -144,6 +149,11 @@ class ValidationQueue(ProcessingQueue):
 
     async def process_all(self):
         # TODO remove this try
+        if self.checking:
+            return
+
+        self.checking = True
+
         try:
             all_consensus_results = await self.multiprocess_consensus.start(
                 validation_results=self.validation_results
@@ -151,6 +161,8 @@ class ValidationQueue(ProcessingQueue):
         except Exception as err:
             error = err
             print(err)
+
+        self.last_time_checked = datetime.datetime.now()
 
         for hlc_timestamp in all_consensus_results:
             if all_consensus_results.get(hlc_timestamp, None) is not None:
@@ -165,6 +177,8 @@ class ValidationQueue(ProcessingQueue):
         for hlc_timestamp in all_hlc_timestamps:
             await self.process(hlc_timestamp=hlc_timestamp)
 
+        self.checking = False
+
     async def check_consensus_and_process(self, hlc_timestamp, results):
 
         if not self.hlc_has_consensus(hlc_timestamp):
@@ -172,6 +186,8 @@ class ValidationQueue(ProcessingQueue):
                 solutions = results.get('solutions')
                 last_check_info = results.get('last_check_info')
                 num_of_peers = self.get_peers_for_consensus()
+
+                self.debug_peers.append(num_of_peers)
 
                 consensus_result = self.determine_consensus.check_consensus(
                     solutions,

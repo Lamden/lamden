@@ -33,6 +33,7 @@ class Peer:
 
         self.testing = testing
         self.debug = debug
+        self.debug_messages = []
 
         self.sub_running = False
         self.subscriber = Subscriber(ip, [''], self.process_subscription)
@@ -57,13 +58,15 @@ class Peer:
             print(f'Peer {self.server_key} failed to decode json from {msg}')
             return
 
+        sub_running = self.sub_running
+
         if (not self.sub_running and
                 'response' in msg_json and
                 msg_json['response'] == 'pub_info'):
             self.sub_running = True
+            self.running = True
             print('Received response from authorized master with pub info')
             self.subscriber.start(self.loop)
-            self.running = True
         elif msg == Dealer.con_failed:
             self.log.error('Peer connection failed to %s (%s)' % (self.server_key, self.router_address))
             self.stop()
@@ -94,6 +97,7 @@ class Peer:
         services = self.services()
         processor = services.get(topic.decode("utf-8"))
         message = json.loads(msg)
+        self.debug_messages.append(message)
         print('process_subscription: {}'.format(message))
         if not message:
             self.log.error(msg)

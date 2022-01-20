@@ -20,6 +20,8 @@ class Subscriber():
         self.callback = _callback
         self.sub_task = None
 
+        self.debug_events = []
+
     def start(self, loop):
         try:
             self.socket.connect(self.address)
@@ -42,7 +44,8 @@ class Subscriber():
             event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
             if(event):
                 try:
-                    data = self.socket.recv_multipart()    
+                    data = self.socket.recv_multipart()
+                    self.debug_events.append(data)
                     # print(data)
                     if(self.callback):
                         await self.callback(data)

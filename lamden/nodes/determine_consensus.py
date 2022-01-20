@@ -24,7 +24,7 @@ class DetermineConsensus:
         # print({'consensus_percent': self.consensus_percent() / 100})
 
         consensus_needed = math.ceil(num_of_participants * (self.consensus_percent() / 100))
-        # print({'consensus_needed': consensus_needed})
+        print({'consensus_needed': consensus_needed, 'consensus_percent': self.consensus_percent() })
 
         '''
         Return if we don't have enough responses to attempt an ideal consensus check

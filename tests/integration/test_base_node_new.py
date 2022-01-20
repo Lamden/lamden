@@ -66,7 +66,7 @@ class TestNode(TestCase):
             dir_list=[self.mn_wallet.verifying_key]
         )
 
-    def create_a_node(self, constitution=None, node_num=0, node_type='base'):
+    def create_a_node(self, bootnodes=None, constitution=None, node_num=0, node_type='base'):
         driver = ContractDriver(driver=InMemDriver())
 
         dl_wallet = Wallet()
@@ -75,6 +75,11 @@ class TestNode(TestCase):
                 'masternodes': [self.mn_wallet.verifying_key],
                 'delegates': [dl_wallet.verifying_key]
             }
+
+        if bootnodes is None:
+            bootnodes = {}
+            bootnodes[self.mn_wallet.verifying_key] = f'tcp://127.0.0.1:18080'
+            bootnodes[dl_wallet.verifying_key] = f'tcp://127.0.0.1:18081'
 
         if node_type == 'base':
             node = base.Node(
@@ -88,7 +93,8 @@ class TestNode(TestCase):
                     'base': 0,
                     'self': 0
                 },
-                tx_queue=filequeue.FileQueue(root=self.file_queue_path)
+                tx_queue=filequeue.FileQueue(root=self.file_queue_path),
+                bootnodes=bootnodes
             )
 
         if node_type == 'masternode':
@@ -103,7 +109,8 @@ class TestNode(TestCase):
                     'base': 0,
                     'self': 0
                 },
-                tx_queue=filequeue.FileQueue(root=self.file_queue_path)
+                tx_queue=filequeue.FileQueue(root=self.file_queue_path),
+                bootnodes=bootnodes
             )
 
         node.client.set_var(
@@ -905,3 +912,13 @@ class TestNode(TestCase):
         # Validate
         self.assertEqual(1, self.node.get_current_height())
 
+    def test_get_peers_for_consensus(self):
+        self.create_a_node(node_type='masternode')
+        self.start_node()
+
+        for vk in self.node.network.peers:
+            self.node.network.peers[vk].running = True
+
+        peers_for_consensus = self.node.get_peers_for_consensus()
+
+        self.assertEqual(1, len(peers_for_consensus))

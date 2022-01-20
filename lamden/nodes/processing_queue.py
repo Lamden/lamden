@@ -1,4 +1,5 @@
 import time
+import datetime
 import hashlib
 import math
 
@@ -42,6 +43,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.reward_manager = reward_manager
 
         self.debug_writes_log = []
+
+        # self.last_time_processed = datetime.datetime.now()
 
 
 
@@ -104,6 +107,9 @@ class TxProcessingQueue(ProcessingQueue):
         return hlc_timestamp < self.get_last_hlc_in_consensus()
 
     async def process_next(self):
+
+        # self.last_time_processed = datetime.datetime.now()
+
         # return if the queue is empty
         if len(self.queue) == 0:
             return

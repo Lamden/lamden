@@ -23,7 +23,9 @@ class Publisher():
         self.socket = None
         self.ctx = ctx
         self.running = False 
-        self.log = get_logger("PUBLISHER")       
+        self.log = get_logger("PUBLISHER")
+
+        self.debug_published = []
 
     def setup_socket(self): 
         if self.running:
@@ -39,7 +41,9 @@ class Publisher():
         if not self.running:
             self.log.error('publisher.publish: publisher is not running')
             return
-        
+
+        self.debug_published.append(msg)
+
         m = encode(msg).encode()        
         self.socket.send_string(topic, flags=zmq.SNDMORE)
         self.socket.send(m)

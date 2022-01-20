@@ -345,7 +345,7 @@ class TestMultiNode(TestCase):
                 if result.get(hlc):
                     result_history = result[hlc][1]
 
-            consensus_solution = result_history['last_consensus_result']['solution']
+            consensus_solution = result_history['last_check_info']['solution']
             processed_results = result_history['result_lookup'][consensus_solution]
 
             tx_result = processed_results.get('tx_result')
@@ -354,7 +354,13 @@ class TestMultiNode(TestCase):
                 raw_key = state_change.get('key')
                 key_split = raw_key.split(":")
                 key = key_split[1]
-                test_tracker[key] = str(state_change.get('value'))
+
+                try:
+                    value = state_change['value'].get('__fixed__')
+                except Exception:
+                    value = str(state_change.get('value'))
+
+                test_tracker[key] = value
 
         for key in test_tracker:
             if all_node_results.get(key):
@@ -395,5 +401,11 @@ class TestMultiNode(TestCase):
     def test_network_mixed_receivers__throughput_test__high_nodes_high_tx_count(self):
         # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
         test_info = [4, 5, 5, 50, {'base': 1, 'self': 1.5}]
+
+        self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
+
+    def test_network_mixed_receivers__throughput_test__2_nodes_1_tx(self):
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
+        test_info = [2, 1, 1, 1, {'base': 1, 'self': 1.5}]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
