@@ -10,6 +10,14 @@ from lamden.crypto import transaction
 from contracting.client import ContractingClient
 from lamden import storage
 from collections import defaultdict
+
+
+class InvalidTX:
+    def __init__(self, tx, err):
+        self.tx = tx
+        self.err = err
+
+
 WORK_SERVICE = 'work'
 
 
@@ -30,9 +38,9 @@ class WorkProcessor(router.Processor):
 
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
-        if msg['sender'] not in self.masters:
-            self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
-            return
+        # if msg['sender'] not in self.masters:
+        #     self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
+        #     return
 
         shim = {
             'transactions': [],
@@ -64,11 +72,13 @@ class WorkProcessor(router.Processor):
                     timeout=self.expired_batch + self.tx_timeout
                 )
                 good_transactions.append(tx)
-            except transaction.TransactionTooManyPendingException as e:
-                good_transactions.append(tx)
-
             except transaction.TransactionException as e:
                 self.log.error(f'TX in batch has error: {type(e)}')
+                if isinstance(e, transaction.TransactionTooManyPendingException):
+                    self.log.error(f'Adding {tx} to good txs.')
+                    good_transactions.append(tx)
+                else:
+                    good_transactions.append(InvalidTX(tx, e))
 
         # Replace transactions with ones that do not pass.
         msg['transactions'] = good_transactions
@@ -183,6 +193,8 @@ class Delegate(base.Node):
             current_height=self.current_height,
             stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         )
+
+        self.log.error(results)
 
         await router.secure_multicast(
             msg=results,

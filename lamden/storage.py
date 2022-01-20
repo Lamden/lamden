@@ -223,6 +223,7 @@ class BlockStorage:
     def put(self, data, collection=BLOCK):
         if collection == BlockStorage.BLOCK:
             _id = self.blocks.insert_one(data)
+            log.debug(data)
             del data['_id']
         elif collection == BlockStorage.TX:
             _id = self.txs.insert_one(data)

@@ -322,6 +322,22 @@ class SerialExecutor(TransactionExecutor):
     def __init__(self, executor: Executor):
         self.executor = executor
 
+    def generate_tx_error(self, transaction, error):
+        tx_hash = tx_hash_from_tx(transaction)
+
+        tx_output = {
+            'hash': tx_hash,
+            'transaction': transaction,
+            'status': 1,
+            'state': {},
+            'stamps_used': 0,
+            'result': safe_repr(error)
+        }
+
+        tx_output = format_dictionary(tx_output)
+
+        return tx_output
+
     def execute_tx(self, transaction, stamp_cost, environment: dict = {}):
         # Deserialize Kwargs. Kwargs should be serialized JSON moving into the future for DX.
 
@@ -407,10 +423,13 @@ class SerialExecutor(TransactionExecutor):
         # Each TX Batch is basically a subblock from this point of view and probably for the near future
         tx_data = []
         for transaction in batch['transactions']:
-            tx_data.append(self.execute_tx(transaction=transaction,
-                                           environment=environment,
-                                           stamp_cost=stamp_cost)
-                           )
+            if type(transaction) == dict:
+                tx_data.append(self.execute_tx(transaction=transaction,
+                                               environment=environment,
+                                               stamp_cost=stamp_cost)
+                               )
+            else:
+                tx_data.append(self.generate_tx_error(transaction.tx, transaction.err))
 
         return tx_data
 

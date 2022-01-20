@@ -314,7 +314,7 @@ class Node:
                 client=self.client
             )
 
-        self.nonces.flush_pending()
+        #self.nonces.flush_pending()
 
         self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
@@ -330,7 +330,7 @@ class Node:
         # Store the block if it's a masternode
         if self.store:
             encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
+            encoded_block = json.loads(encoded_block)
 
             self.blocks.store_block(encoded_block)
 
@@ -341,7 +341,8 @@ class Node:
         self.driver.commit()
         self.driver.clear_pending_state()
         gc.collect() # Force memory cleanup every block
-        #self.nonces.flush_pending()
+
+        self.nonces.flush_pending()
 
     async def start(self):
         asyncio.ensure_future(self.router.serve())

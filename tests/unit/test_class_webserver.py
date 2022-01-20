@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from lamden.nodes.masternode.webserver import WebServer
+from lamden.webserver.webserver import WebServer
+from lamden.webserver.readers import AsyncBlockReader
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
@@ -15,6 +16,8 @@ from multiprocessing import Process
 import json
 import time
 
+import asyncio
+
 n = ContractDriver()
 EVENT_SERVICE_PORT = 8000
 SAMPLE_TOPIC = 'new_block'
@@ -23,7 +26,8 @@ class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
 
-        self.blocks = BlockStorage()
+        self.blocks = AsyncBlockReader()
+        self.block_writer = BlockStorage()
         self.driver = ContractDriver()
 
         self.ws = WebServer(
@@ -32,14 +36,15 @@ class TestClassWebserver(TestCase):
             blocks=self.blocks,
             driver=n
         )
+
         self.ws.client.flush()
-        self.ws.blocks.flush()
+        self.block_writer.flush()
         self.ws.driver.flush()
         self.loop = asyncio.get_event_loop()
 
     def tearDown(self):
         self.ws.client.flush()
-        self.ws.blocks.flush()
+        self.block_writer.flush()
         self.ws.driver.flush()
 
     def test_ping(self):
@@ -286,7 +291,7 @@ def get():
             'data': 'woop'
         }
 
-        self.ws.blocks.put(block)
+        self.block_writer.put(block)
 
         block2 = {
             'hash': 'abb',
@@ -294,7 +299,7 @@ def get():
             'data': 'woop2'
         }
 
-        self.ws.blocks.put(block2)
+        self.block_writer.put(block2)
 
         _, response = self.ws.app.test_client.get('/latest_block')
         self.assertDictEqual(response.json, {'hash': 'abb', 'number': 1000, 'data': 'woop2'})
@@ -320,7 +325,7 @@ def get():
             'data': 'woop'
         }
 
-        self.ws.blocks.put(block)
+        self.block_writer.put(block)
 
         _, response = self.ws.app.test_client.get('/blocks?num=1')
 
@@ -340,7 +345,7 @@ def get():
             'data': 'woop'
         }
 
-        self.ws.blocks.put(block)
+        self.block_writer.put(block)
 
         expected = {
             'hash': h,
@@ -482,7 +487,7 @@ def get():
             'some': 'data'
         }
 
-        self.ws.blocks.put(tx, collection=self.ws.blocks.TX)
+        self.block_writer.put(tx, collection=self.ws.blocks.TX)
 
         _, response = self.ws.app.test_client.get(f'/tx?hash={b}')
         self.assertDictEqual(response.json, expected)
