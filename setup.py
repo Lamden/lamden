@@ -21,7 +21,7 @@ setup(
         "checksumdir",
         "pynacl",
         "stdlib_list",
-        "socketio"
+        "python-socketio"
     ],
     entry_points={
         'console_scripts': [
