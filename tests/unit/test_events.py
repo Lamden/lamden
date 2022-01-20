@@ -13,8 +13,10 @@ ROOT = pathlib.Path().cwd().joinpath('events')
 EVENT_SERVICE_PORT = 8000
 SAMPLE_TOPIC = 'test'
 SAMPLE_NUMBER = 101
-SAMPLE_HASH = 'bb67232f70994134ed79'
-SAMPLE_EVENT = Event(topics=[SAMPLE_TOPIC], number=SAMPLE_NUMBER, hash_str=SAMPLE_HASH)
+SAMPLE_HASH = 'fcefe7743fa70c97ae2d5290fd673070da4b0293da095f0ae8aceccf5e62b6a1'
+SAMPLE_DATA = {'number': SAMPLE_NUMBER, 'hash': SAMPLE_HASH}
+SAMPLE_EVENT = Event(topics=[SAMPLE_TOPIC], data=SAMPLE_DATA)
+
 TIMEOUT = 0.1
 
 class TestEvents(TestCase):
@@ -25,7 +27,7 @@ class TestEvents(TestCase):
             pass
 
     def test_create_event(self):
-        e = Event(topics=[SAMPLE_TOPIC], number=SAMPLE_NUMBER, hash_str=SAMPLE_HASH)
+        e = Event(topics=[SAMPLE_TOPIC], data=SAMPLE_DATA)
 
         self.assertTrue(SAMPLE_TOPIC in e.topics)
         self.assertEqual(e.data['number'], SAMPLE_NUMBER)

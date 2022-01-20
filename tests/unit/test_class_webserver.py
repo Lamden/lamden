@@ -620,7 +620,7 @@ class TestWebserverWebsockets(TestCase):
 
     def test_ws_client_receive_events_from_webserver(self):
         ws_client_task = asyncio.ensure_future(self.ws_client_connect_and_recv(f'ws://localhost:{self.ws.port}'))
-        EventWriter().write_event(Event(topics=self.ws.topics, number=101, hash_str='xoxo'))
+        EventWriter().write_event(Event(topics=self.ws.topics, data={'number': 101, 'hash': 'xoxo'}))
         self.loop.run_until_complete(ws_client_task)
 
         self.assertDictEqual(json.loads(ws_client_task.result()), {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})

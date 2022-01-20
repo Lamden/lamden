@@ -25,11 +25,9 @@ EVENTS_HOME = pathlib.Path().home().joinpath('.lamden').joinpath('events')
 EXTENSION = '.e'
 
 class Event:
-    def __init__(self, topics: list, number: int, hash_str: str):
+    def __init__(self, topics: list, data: dict):
         self.topics = topics
-        self.data = {}
-        self.data['number'] = number
-        self.data['hash'] = hash_str
+        self.data = data
 
 class EventWriter:
     def __init__(self, root=EVENTS_HOME):
@@ -53,7 +51,7 @@ class EventListener:
             with open(file, 'r') as f:
                 try:
                     e = json.load(f)
-                    event = Event(e['topics'], e['data']['number'], e['data']['hash'])
+                    event = Event(e['topics'], e['data'])
                     events.append(event)
                 except:
                     # TODO(nikita): proper handling
