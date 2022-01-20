@@ -140,16 +140,19 @@ class WebServer:
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
+            print("CONNECTED TO EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('join', {'room': topic})
 
         @self.sio.event
         async def disconnect():
+            print("DISCONNECTED FROM EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
         async def event(data):
+            print (data)
             for client in self.ws_clients:
                 await client.send(json.dumps(data))
 
@@ -465,13 +468,17 @@ if __name__ == '__main__':
 
     wallet = Wallet(seed=sk)
 
+    # These will be the topics that are sent from the event server
+    topics = ["new_block"]
+
     webserver = WebServer(
         contracting_client=ContractingClient(),
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
         port=port,
-        event_service_port=event_port
+        event_service_port=event_port,
+        topics=topics
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)
