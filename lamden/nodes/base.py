@@ -334,14 +334,13 @@ class Node:
         # Store the block if it's a masternode
         if self.store:
             encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block)
 
-            self.blocks.store_block(encoded_block)
+            self.blocks.store_block(json.loads(encoded_block))
 
             # create Event File
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
-                data=encode(block)
+                data=encode(encoded_block)
             ))
 
         # Prepare for the next block by flushing out driver and notification state
