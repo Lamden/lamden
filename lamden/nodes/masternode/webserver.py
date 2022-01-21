@@ -152,9 +152,8 @@ class WebServer:
 
         @self.sio.event
         async def event(data):
-            print (data)
             for client in self.ws_clients:
-                await client.send(json.dumps(data))
+                await client.send(data)
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
