@@ -150,6 +150,7 @@ class Node:
         self.seed = seed
 
         self.blocks = blocks
+        self.event_writer = EventWriter()
 
         self.log = get_logger('Base')
         self.log.propagate = debug
@@ -337,6 +338,12 @@ class Node:
 
             self.blocks.store_block(encoded_block)
 
+            # create Event File
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_EVENT],
+                data=encode(block)
+            ))
+
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
 
@@ -348,12 +355,6 @@ class Node:
 
         self.nonces.flush_pending()
 
-        # create Event File
-        block_data = self.blocks.get_block(block.get('number'))
-        EventWriter().write_event(Event(
-            topics=[NEW_BLOCK_EVENT],
-            data=block_data
-        ))
 
     async def start(self):
         asyncio.ensure_future(self.router.serve())
