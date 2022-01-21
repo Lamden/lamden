@@ -167,7 +167,21 @@ class WebServer:
 
     async def ws_handler(self, request, ws):
         self.ws_clients.add(ws)
+
         try:
+            self.driver.clear_pending_state()
+
+            # send the connecting socket the latest block
+            num = storage.get_latest_block_height(self.driver)
+            block = self.blocks.get_block(int(num))
+
+            eventData = {
+                'event': 'latest_block',
+                'data': block
+            }
+
+            await ws.send(json.dumps(eventData))
+
             async for message in ws:
                 pass
         finally:

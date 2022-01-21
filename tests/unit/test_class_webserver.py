@@ -595,33 +595,39 @@ class TestWebserverWebsockets(TestCase):
         )
         self.loop.run_until_complete(self.ws.sio.connect(f'http://localhost:{EVENT_SERVICE_PORT}'))
 
+        self.websocket = None
+        self.messages = []
+
     def tearDown(self):
+        self.await_async_task(self.websocket.close)
         self.loop.run_until_complete(self.ws.sio.disconnect())
         self.server.close()
         self.loop.run_until_complete(self.server.wait_closed())
         self.loop.close()
 
-    async def ws_client_connect_and_recv(self, uri):
-        async with websockets.connect(uri) as ws:
-            data = await ws.recv()
-            return data
+    def await_async_task(self, task):
+        tasks = asyncio.gather(
+            task()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
 
-    def test_ws_client_can_connect_to_webserver(self):
-        ws_client_task = asyncio.ensure_future(self.ws_client_connect_and_recv(f'ws://localhost:{self.ws.port}'))
-        self.loop.run_until_complete(asyncio.sleep(0.1))
+    async def ws_connect(self):
+        self.websocket = await websockets.connect(f'ws://localhost:{self.ws.port}')
+
+    async def ws_get_next_message(self):
+        self.messages.append(json.loads(await self.websocket.recv()))
+
+    def test_ws_can_connect_to_webserver_get_latest_block_event(self):
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
 
         self.assertEqual(len(self.ws.ws_clients), 1)
-        
-        ws_client_task.cancel()
-        try:
-            self.loop.run_until_complete(ws_client_task)
-        except asyncio.CancelledError:
-            pass
+        self.assertEqual(self.messages[0]['event'], 'latest_block')
 
     def test_ws_client_receive_events_from_webserver(self):
-        ws_client_task = asyncio.ensure_future(self.ws_client_connect_and_recv(f'ws://localhost:{self.ws.port}'))
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
         EventWriter().write_event(Event(topics=self.ws.topics, data={'number': 101, 'hash': 'xoxo'}))
-        self.loop.run_until_complete(ws_client_task)
-
-        self.assertDictEqual(json.loads(ws_client_task.result()), {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})
-
+        self.await_async_task(self.ws_get_next_message)
+        self.assertDictEqual(self.messages[1], {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})
