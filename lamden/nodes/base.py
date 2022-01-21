@@ -341,7 +341,7 @@ class Node:
             # create Event File
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
-                data=encode(encoded_block)
+                data=encoded_block
             ))
 
         # Prepare for the next block by flushing out driver and notification state
