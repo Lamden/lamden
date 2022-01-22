@@ -1,5 +1,6 @@
 from sanic import Sanic
 from sanic import response
+from sanic.websocket import WebSocketProtocol
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -17,6 +18,8 @@ from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
+import socketio
+import json
 
 from lamden.crypto import transaction
 import decimal
@@ -26,7 +29,6 @@ import datetime
 import argparse
 
 log = get_logger("MN-WebServer")
-
 
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
@@ -58,8 +60,8 @@ class WebServer:
                  ssl_key_file='~/.ssh/server.key',
                  workers=2, debug=True, access_log=False,
                  max_queue_len=10_000,
-                 ):
-
+                 event_service_port=8000,
+                 topics=[]):
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -124,6 +126,66 @@ class WebServer:
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
 
         self.coroutine = None
+
+        self.topics = topics
+        self.event_service_port = event_service_port
+        self.sio = socketio.AsyncClient()
+
+        self.__setup_sio_event_handlers()
+        self.__register_app_listeners()
+
+        self.ws_clients = set()
+        self.app.add_websocket_route(self.ws_handler, '/')
+    
+    def __setup_sio_event_handlers(self):
+        @self.sio.event
+        async def connect():
+            print("CONNECTED TO EVENT SERVER")
+            for topic in self.topics:
+                await self.sio.emit('join', {'room': topic})
+
+        @self.sio.event
+        async def disconnect():
+            print("DISCONNECTED FROM EVENT SERVER")
+            for topic in self.topics:
+                await self.sio.emit('leave', {'room': topic})
+
+        @self.sio.event
+        async def event(data):
+            for client in self.ws_clients:
+                await client.send(json.dumps(data))
+
+    def __register_app_listeners(self):
+        @self.app.listener('after_server_start')
+        async def connect_to_event_service(app, loop):
+            # TODO(nikita): what do we do in case event service is not running?
+            try:
+                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.wait()
+            except:
+                pass
+
+    async def ws_handler(self, request, ws):
+        self.ws_clients.add(ws)
+
+        try:
+            self.driver.clear_pending_state()
+
+            # send the connecting socket the latest block
+            num = storage.get_latest_block_height(self.driver)
+            block = self.blocks.get_block(int(num))
+
+            eventData = {
+                'event': 'latest_block',
+                'data': block
+            }
+
+            await ws.send(json.dumps(eventData))
+
+            async for message in ws:
+                pass
+        finally:
+            self.ws_clients.remove(ws)
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -403,23 +465,33 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('-k', '--key', type=str, required=True)
     arg_parser.add_argument('-p', '--port', type=int, required=False)
+    arg_parser.add_argument('-ep', '--event_port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
     sk = bytes.fromhex(args.key)
     port = args.port
+    event_port = args.event_port
 
     if port is None:
         port = 18080
 
+    if event_port is None:
+        event_port = 8000
+
     wallet = Wallet(seed=sk)
+
+    # These will be the topics that are sent from the event server
+    topics = ["new_block"]
 
     webserver = WebServer(
         contracting_client=ContractingClient(),
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
-        port=port
+        port=port,
+        event_service_port=event_port,
+        topics=topics
     )
 
     webserver.app.run(host='0.0.0.0', port=webserver.port, debug=webserver.debug, access_log=webserver.access_log)

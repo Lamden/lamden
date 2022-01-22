@@ -20,7 +20,8 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list"
+        "stdlib_list",
+        "python-socketio"
     ],
     entry_points={
         'console_scripts': [
