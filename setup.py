@@ -21,7 +21,8 @@ setup(
         "checksumdir",
         "pynacl",
         "stdlib_list",
-        "python-socketio"
+        "python-socketio",
+        "aiohttp"
     ],
     entry_points={
         'console_scripts': [
