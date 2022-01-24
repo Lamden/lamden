@@ -854,3 +854,30 @@ class TestMasterStorage(TestCase):
         self.assertIsNone(got_1)
         self.assertIsNone(got_2)
         self.assertIsNone(got_3)
+
+    def test_store_large_int(self):
+        tx_1 = {
+            'hash': 'something1',
+            'key': 9 ** 25
+        }
+
+        tx_2 = {
+            'hash': 'something2',
+            'key': 8 ** 25
+        }
+
+        tx_3 = {
+            'hash': 'something3',
+            'key': 7 ** 25
+        }
+
+        block = {
+            'hash': 'hello',
+            'subblocks': [
+                {
+                    'transactions': [tx_1, tx_2, tx_3]
+                }
+            ]
+        }
+
+        self.db.store_block(block)
