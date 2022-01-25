@@ -57,6 +57,9 @@ def is_valid_ip(s):
     if len(components) != 4:
         return False
 
+    if ":" in components[3]:
+        components[3] = components[3].split(':')[0]
+
     for component in components:
         if int(component) > 255:
             return False
@@ -87,7 +90,11 @@ def resolve_constitution(fp):
 
     for vk, ip in bootnodes.items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
-        formatted_bootnodes[vk] = f'tcp://{ip}:19000'
+
+        ip = ip.split(':')[0]
+        port = ip.split(':')[1]
+
+        formatted_bootnodes[vk] = f'tcp://{ip}:{port or 19000}'
 
     return const, formatted_bootnodes
 
