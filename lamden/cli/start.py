@@ -91,8 +91,11 @@ def resolve_constitution(fp):
     for vk, ip in bootnodes.items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
 
-        ip = ip.split(':')[0]
-        port = ip.split(':')[1]
+        try:
+            ip, port = ip.split(':')
+        except ValueError:
+            ip = ip.split(':')[0]
+            port = 19000
 
         formatted_bootnodes[vk] = f'tcp://{ip}:{port or 19000}'
 
