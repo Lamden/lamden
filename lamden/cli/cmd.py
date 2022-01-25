@@ -40,6 +40,7 @@ def setup_cilparser(parser):
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
     start_parser.add_argument('-p', '--pid', type=int, default=-1)
+    start_parser.add_argument('-sp', '--socket_port', type=int, default=-19000)
     start_parser.add_argument('-b', '--bypass_catchup', type=bool, default=False)
 
     flush_parser = subparser.add_parser('flush')
