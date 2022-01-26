@@ -116,6 +116,8 @@ class Masternode(base.Node):
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
 
+        self.driver.clear_pending_state()
+
         self.log.info('Done starting...')
 
     async def join_quorum(self):

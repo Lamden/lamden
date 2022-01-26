@@ -220,7 +220,8 @@ class BlockStorage:
                 f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
             else:
                 f = open(self.blocks_alias_dir.joinpath(v))
-        except Exception:
+        except Exception as err:
+            print(err)
             return None
 
         encoded_block = f.read()

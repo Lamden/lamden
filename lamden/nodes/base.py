@@ -123,13 +123,8 @@ class Node:
         if should_seed:
             self.seed_genesis_contracts()
 
-        # self.socket_authenticator = authentication.SocketAuthenticator(
-        #     bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
-        # )
-
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
-        # wallet: Wallet, ctx: zmq.Context, socket_id
         self.network = Network(
             debug=self.debug,
             testing=self.testing,
@@ -145,7 +140,6 @@ class Node:
         self.reward_manager = reward_manager
 
         self.new_block_processor = NewBlock(driver=self.driver)
-        # self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             testing=self.testing,
@@ -239,6 +233,8 @@ class Node:
                     key=vk
                 )
 
+        self.driver.clear_pending_state()
+
     async def stop(self):
         # Kill the router and throw the running flag to stop the loop
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
@@ -272,8 +268,8 @@ class Node:
 
     def unpause_all_queues(self):
         self.log.info("!!!!!! UNPAUSING ALL QUEUES !!!!!!")
-        self.main_processing_queue.start()
-        self.validation_queue.start()
+        self.main_processing_queue.unpause()
+        self.validation_queue.unpause()
         self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
         self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
 
@@ -384,7 +380,11 @@ class Node:
         asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
 
     def soft_apply_current_state(self, hlc_timestamp):
-        self.driver.soft_apply(hcl=hlc_timestamp)
+        try:
+            self.driver.soft_apply(hcl=hlc_timestamp)
+        except Exception as err:
+            print(err)
+
         self.nonces.flush_pending()
         gc.collect()
 

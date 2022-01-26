@@ -1,6 +1,6 @@
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import transaction
-from contracting.db.driver import ContractDriver, Driver, InMemDriver
+from contracting.db.driver import ContractDriver, Driver, InMemDriver, FSDriver
 from contracting.db import encoder
 from lamden import storage
 from lamden.nodes import masternode, delegate, filequeue
@@ -12,11 +12,9 @@ import json
 import os
 import shutil
 import time
-import pathlib
+from pathlib import Path
 
 MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3a12'
-
-TEST_FOUNDATION_WALLET = Wallet(MOCK_FOUNDER_SK)
 
 
 def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
@@ -56,12 +54,16 @@ class MockNode:
             'self': 0.2
         }
 
+        self.current_path = Path.cwd()
+
+        self.block_storage_path = Path(f'{self.current_path}/fixtures/block_storage/{self.wallet.verifying_key}')
+
         self.driver = ContractDriver(driver=InMemDriver())
         self.driver.flush()
 
         self.nonces = storage.NonceStorage(
-            nonce_collection=f'./fixtures/nonces/{self.wallet.verifying_key}',
-            pending_collection=f'./fixtures/pending-nonces/{self.wallet.verifying_key}'
+            nonce_collection=f'{self.current_path}/fixtures/nonces/{self.wallet.verifying_key}',
+            pending_collection=f'{self.current_path}/fixtures/pending-nonces/{self.wallet.verifying_key}'
         )
         self.nonces.flush()
 
@@ -92,7 +94,7 @@ class MockMaster(MockNode):
         self.webserver_port = 18080 + index
         self.webserver_ip = f'http://0.0.0.0:{self.webserver_port}'
         self.metering = metering
-        self.tx_queue = tx_queue or filequeue.FileQueue(root="./fixtures/file_queue/" + self.wallet.verifying_key + '/txq')
+        self.tx_queue = tx_queue or filequeue.FileQueue(root=f'{self.current_path}/fixtures/file_queue/{self.wallet.verifying_key}/txq')
 
     async def start(self):
         assert self.ready_to_start, 'Not ready to start!'
@@ -111,7 +113,7 @@ class MockMaster(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home='./fixtures/block_storage/' + self.wallet.verifying_key)
+            blocks=storage.BlockStorage(home=self.block_storage_path)
         )
 
         await self.obj.start()
@@ -141,7 +143,8 @@ class MockDelegate(MockNode):
             genesis_path=self.genesis_path,
             nonces=self.nonces,
             metering=self.metering,
-            delay=self.delay
+            delay=self.delay,
+            blocks=storage.BlockStorage(home=self.block_storage_path)
         )
 
         await self.obj.start()
@@ -163,6 +166,11 @@ class MockNetwork:
 
         self.delay = delay
 
+        self.founder_wallet = Wallet(MOCK_FOUNDER_SK)
+
+        self.fixtures_dir = Path(f'{Path.cwd()}/fixtures')
+        self.clean_fixtures_dir()
+
         for i in range(index, index + num_of_masternodes):
             self.build_masternode(i)
 
@@ -172,8 +180,11 @@ class MockNetwork:
         self.constitution = None
         self.bootnodes = None
 
+
         self.prepare_nodes_to_start()
 
+    def clean_fixtures_dir(self):
+        shutil.rmtree(self.fixtures_dir)
 
     def all_nodes(self):
         return self.masternodes + self.delegates
@@ -211,7 +222,7 @@ class MockNetwork:
 
     async def fund(self, vk, amount=1_000_000):
         await self.make_and_push_tx(
-            wallet=TEST_FOUNDATION_WALLET,
+            wallet=self.founder_wallet,
             contract='currency',
             function='transfer',
             kwargs={
@@ -356,11 +367,32 @@ class MockNetwork:
             nonce=nonce
         )
 
+    async def pause_all_queues(self):
+        for node in self.nodes:
+            await node.obj.pause_all_queues()
+
+    async def pause_all_validation_queues(self):
+        for node in self.nodes:
+            node.obj.validation_queue.pause()
+            await node.obj.validation_queue.pausing()
+
+    def unpause_all_queues(self):
+        for node in self.nodes:
+            node.obj.unpause_all_queues()
+
+    def unpause_all_main_processing_queues(self):
+        for node in self.nodes:
+            node.obj.main_processing_queue.unpause()
+
+    def unpause_all_validation_queues(self):
+        for node in self.nodes:
+            node.obj.validation_queue.unpause()
+
     def flush(self):
-        for node in self.masternodes + self.delegates:
+        for node in self.nodes:
             node.flush()
 
     def refresh(self):
         self.flush()
-        for node in self.masternodes + self.delegates:
+        for node in self.nodes:
             node.obj.seed_genesis_contracts()

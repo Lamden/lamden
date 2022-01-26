@@ -25,6 +25,8 @@ class Delegate(base.Node):
 
         assert self.wallet.verifying_key in members, 'You are not a delegate!'
 
+        self.driver.clear_pending_state()
+
         self.log.info('Done starting...')
 
 
