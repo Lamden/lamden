@@ -5,6 +5,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
+from contracting.db.encoder import convert_dict
 import zmq.asyncio
 import asyncio
 
@@ -319,6 +320,9 @@ class TestNode(TestCase):
         )
 
         node.process_new_block(block)
+        b = node.blocks.get_block(1)
+        
+        self.assertDictEqual(block, convert_dict(b))
 
     def test_process_new_block_stores_block_if_should_store(self):
         block = canonical.block_from_subblocks(
