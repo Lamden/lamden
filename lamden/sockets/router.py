@@ -64,7 +64,9 @@ class Router(threading.Thread):
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_server = True  # must come before bind
-        self.socket.bind(self.address)
+
+        self.socket.bind('tcp://127.0.0.1:19000')
+
         # Create a poller to monitor if there is any
         poll = zmq.Poller()
         poll.register(self.socket, zmq.POLLIN)
