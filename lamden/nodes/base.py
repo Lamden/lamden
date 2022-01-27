@@ -333,7 +333,8 @@ class Node:
                     f"!!!!!!! CHECKED check_validation_queue. Length={len(self.validation_queue.validation_results)} Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 self.validation_queue.start_processing()
-                await self.validation_queue.process_all()
+                await self.validation_queue.check_all()
+                await self.validation_queue.process_next()
                 self.validation_queue.stop_processing()
 
             self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
@@ -883,16 +884,19 @@ class Node:
     def get_block_by_hlc(self, hlc_timestamp):
         return self.blocks.get_block(v=hlc_timestamp)
 
+    def get_block_by_number(self, block_number):
+        return self.blocks.get_block(v=block_number)
+
     def get_delegate_peers(self, not_me=False):
         peers = self._get_member_peers('delegates')
-        print({'delegate': peers})
+        # print({'delegate': peers})
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
         return peers
 
     def get_masternode_peers(self, not_me=False):
         peers = self._get_member_peers('masternodes')
-        print({'masternode': peers})
+        # print({'masternode': peers})
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
 
@@ -907,11 +911,11 @@ class Node:
     def get_peers_for_consensus(self):
         allPeers = {}
         peers_from_blockchain = self.get_all_peers(not_me=True)
-        print({'peers_from_blockchain': peers_from_blockchain})
+        # print({'peers_from_blockchain': peers_from_blockchain})
 
         for key in peers_from_blockchain:
-            print(key)
-            print({'network_peers': self.network.peers})
+            # print(key)
+            # print({'network_peers': self.network.peers})
             if self.network.peers[key].currently_participating():
                 allPeers[key] = peers_from_blockchain[key]
 

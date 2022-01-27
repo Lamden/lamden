@@ -53,7 +53,7 @@ class Router(threading.Thread):
         print('router destroyed')
 
     def run(self):
-        print('router starting on: ' + self.address)
+        # print('router starting on: ' + self.address)
 
         # Start an authenticator for this context.
         self.socket = self.ctx.socket(zmq.ROUTER)
@@ -77,7 +77,7 @@ class Router(threading.Thread):
                 # print(sockets[self.socket])
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
-                    print('Router received %s from %s' % (msg, ident))
+                    # print('Router received %s from %s' % (msg, ident))
                     if self.callback is not None:
                         self.callback(ident, msg)
 
@@ -89,11 +89,11 @@ class Router(threading.Thread):
 
         self.socket.close()
         # self.ctx.term()
-        print("router finished")
+        # print("router finished")
 
     def send_msg(self, ident: str, msg: str):
         self.socket.send_multipart([ident, msg])
 
     def stop(self):
-        print('stopping router')
+        # print('stopping router')
         self.running = False

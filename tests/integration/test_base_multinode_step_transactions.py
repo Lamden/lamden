@@ -33,9 +33,6 @@ from unittest import TestCase
 
 class TestMultiNode(TestCase):
     def setUp(self):
-        self.fixture_directories = ['block_storage', 'file_queue', 'nonces', 'pending-nonces']
-        create_directories.create_fixture_directories(self.fixture_directories)
-
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -45,7 +42,6 @@ class TestMultiNode(TestCase):
     def tearDown(self):
         self.ctx.destroy()
         self.loop.close()
-        create_directories.remove_fixture_directories(self.fixture_directories)
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -114,7 +110,7 @@ class TestMultiNode(TestCase):
             test_start_sending_transaction = time.time()
 
             tx_info = json.loads(network_1.send_random_currency_transaction(
-                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                sender_wallet=network_1.founder_wallet,
                 receiver_wallet=receiver_wallet
             ))
 
@@ -199,7 +195,7 @@ class TestMultiNode(TestCase):
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
 
-            tx_info = json.loads(network_1.send_random_currency_transaction(sender_wallet=mocks_new.TEST_FOUNDATION_WALLET))
+            tx_info = json.loads(network_1.send_random_currency_transaction(sender_wallet=network_1.founder_wallet))
 
             to = tx_info['payload']['kwargs']['to']
             amount = tx_info['payload']['kwargs']['amount']
@@ -275,7 +271,7 @@ class TestMultiNode(TestCase):
             test_start_sending_transaction = time.time()
 
             tx_info = json.loads(network_1.send_random_currency_transaction(
-                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                sender_wallet=network_1.founder_wallet,
                 receiver_wallet=random.choice(receiver_wallets)
             ))
 

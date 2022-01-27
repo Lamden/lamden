@@ -125,7 +125,7 @@ class WebServer:
 
         self.coroutine = None
 
-        print("WEBSERVER STARTED")
+        # print("WEBSERVER STARTED")
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -153,7 +153,7 @@ class WebServer:
 
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
-        print({"request":request})
+        # print({"request":request})
         # log.debug(f'New request: {request}')
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:

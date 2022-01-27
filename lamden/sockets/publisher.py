@@ -32,7 +32,7 @@ class Publisher():
             self.log.error('publisher.start: publisher already running')
             return
         self.socket = self.ctx.socket(zmq.PUB)
-        print('publisher.start: publisher starting on {}'.format(self.address))
+        # print('publisher.start: publisher starting on {}'.format(self.address))
         self.log.info('publisher.start: publisher starting on {}'.format(self.address))
         self.running = True
         self.socket.bind(self.address)

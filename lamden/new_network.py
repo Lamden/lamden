@@ -107,7 +107,7 @@ class Network:
         self.router.start()
 
     def stop(self):
-        print('network.stop()')
+        # print('network.stop()')
         self.running = False
         self.publisher.stop()
         self.router.stop()
@@ -163,7 +163,7 @@ class Network:
 
     def router_callback(self, ident: str, msg: str):
         if msg == b'hello':
-            print('Router sending pub_info response to %s' % ident)
+            # print('Router sending pub_info response to %s' % ident)
             self.router.send_msg(ident, self.hello_response)
 
     def add_peer(self, ip, key):

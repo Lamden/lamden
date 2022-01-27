@@ -37,7 +37,7 @@ class Dealer(threading.Thread):
 
         self.running = True
 
-        print("Dealer run start: " + self.address)
+        # print("Dealer run start: " + self.address)
 
         self.socket.connect(self.address)
 
@@ -57,10 +57,10 @@ class Dealer(threading.Thread):
             try:                
                 sockets = dict(poll.poll(poll_time))
                 if self.socket in sockets:   
-                    print('self.socket in sockets: True')                     
+                    # print('self.socket in sockets: True')
                     msg = self.socket.recv()
                     connected = True
-                    print('Dealer %s received: %s' % (self.id, msg))
+                    # print('Dealer %s received: %s' % (self.id, msg))
                     if self.callback:
                         self.callback(msg)
                 else:
@@ -81,12 +81,12 @@ class Dealer(threading.Thread):
                 else:
                     print('error: ' + e.strerror)
                     sleep(1)
-        print("dealer finished")
+        # print("dealer finished")
         self.socket.close()
 
     def send_msg(self, msg):
         self.socket.send_string(msg)
 
     def stop(self):
-        print('stopping dealer: ' + self.id)
+        # print('stopping dealer: ' + self.id)
         self.running = False

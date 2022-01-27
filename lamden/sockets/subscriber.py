@@ -36,7 +36,7 @@ class Subscriber():
         self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
 
     async def subscriber_thread(self):      
-        print("starting subscriber_thread")
+        # print("starting subscriber_thread")
         for topic in self.topics:
             self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
         self.running = True    
@@ -55,7 +55,7 @@ class Subscriber():
                     else:
                         raise
         self.socket.close()
-        print("subscriber finished")
+        # print("subscriber finished")
 
 
     def stop(self):

@@ -133,21 +133,12 @@ class ValidationQueue(ProcessingQueue):
                 block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
                 if block:
                     self.flush_hlc(next_hlc_timestamp)
-                    return
+                    await self.process_next()
 
-            try:
-                results = self.validation_results.get(next_hlc_timestamp, None)
-                if results:
-                    await self.check_consensus_and_process(
-                        hlc_timestamp=next_hlc_timestamp,
-                        results=results
-                    )
-            except IndexError:
-                return
-            except Exception as err:
-                print(err)
+            if self.hlc_has_consensus(next_hlc_timestamp):
+                await self.process(hlc_timestamp=next_hlc_timestamp)
 
-    async def process_all(self):
+    async def check_all(self):
         # TODO remove this try
         if self.checking:
             return
@@ -155,8 +146,11 @@ class ValidationQueue(ProcessingQueue):
         self.checking = True
 
         try:
+            results_not_in_consensus = self.results_not_in_consensus
+            if len(results_not_in_consensus) == 0:
+                return
             all_consensus_results = await self.multiprocess_consensus.start(
-                validation_results=self.validation_results
+                validation_results=results_not_in_consensus
             )
         except Exception as err:
             error = err
@@ -171,38 +165,7 @@ class ValidationQueue(ProcessingQueue):
                     consensus_result=all_consensus_results[hlc_timestamp]
                 )
 
-        all_hlc_timestamps = self.get_key_list()
-        all_hlc_timestamps.sort()
-
-        for hlc_timestamp in all_hlc_timestamps:
-            await self.process(hlc_timestamp=hlc_timestamp)
-
         self.checking = False
-
-    async def check_consensus_and_process(self, hlc_timestamp, results):
-
-        if not self.hlc_has_consensus(hlc_timestamp):
-            try:
-                solutions = results.get('solutions')
-                last_check_info = results.get('last_check_info')
-                num_of_peers = self.get_peers_for_consensus()
-
-                self.debug_peers.append(num_of_peers)
-
-                consensus_result = self.determine_consensus.check_consensus(
-                    solutions,
-                    num_of_peers,
-                    last_check_info
-                )
-
-                self.add_consensus_result(hlc_timestamp, consensus_result)
-
-            except Exception as err:
-                print(err)
-
-        await self.process(
-            hlc_timestamp=hlc_timestamp
-        )
 
     async def process(self, hlc_timestamp):
         '''
@@ -255,6 +218,14 @@ class ValidationQueue(ProcessingQueue):
 
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
+
+    @property
+    def results_not_in_consensus(self):
+        results = {}
+        for hlc_timestamp in self.validation_results.keys():
+            if not self.hlc_has_consensus(hlc_timestamp=hlc_timestamp):
+                results[hlc_timestamp] = self.validation_results[hlc_timestamp]
+        return results
 
     def check_num_of_solutions(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp)

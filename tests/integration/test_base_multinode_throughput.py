@@ -153,7 +153,7 @@ class TestMultiNode(TestCase):
         tx_amount = 1_000_000
 
         tx_1 = transaction.build_transaction(
-            wallet=mocks_new.TEST_FOUNDATION_WALLET,
+            wallet=self.n.founder_wallet,
             contract='currency',
             function='transfer',
             kwargs={
@@ -191,7 +191,7 @@ class TestMultiNode(TestCase):
         amount_of_transactions = 25
 
         for i in range(amount_of_transactions):
-            tx_info = json.loads(self.n.send_random_currency_transaction(sender_wallet=mocks_new.TEST_FOUNDATION_WALLET))
+            tx_info = json.loads(self.n.send_random_currency_transaction(sender_wallet=self.n.founder_wallet))
             to = tx_info['payload']['kwargs']['to']
             amount = tx_info['payload']['kwargs']['amount']
             test_tracker[to] = amount
@@ -238,7 +238,7 @@ class TestMultiNode(TestCase):
         amount_of_transactions = 20
         for i in range(amount_of_transactions):
             tx_info = json.loads(self.n.send_random_currency_transaction(
-                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                sender_wallet=self.n.founder_wallet,
                 receiver_wallet=receiver_wallet
             ))
 
@@ -307,7 +307,7 @@ class TestMultiNode(TestCase):
 
         for i in range(amount_of_transactions):
             tx_info = json.loads(self.n.send_random_currency_transaction(
-                sender_wallet=mocks_new.TEST_FOUNDATION_WALLET,
+                sender_wallet=self.n.founder_wallet,
                 receiver_wallet=receiver_wallets[randrange(0, num_of_receiver_wallets)]
             ))
 

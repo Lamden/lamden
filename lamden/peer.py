@@ -46,7 +46,7 @@ class Peer:
         self.dealer.start()
 
     def dealer_callback(self, msg):
-        print('Received msg from %s : %s' % (self.router_address, msg))
+        # print('Received msg from %s : %s' % (self.router_address, msg))
 
         if (msg == Dealer.con_failed):
             print(f'Peer {self.server_key} connection failed')
@@ -65,7 +65,7 @@ class Peer:
                 msg_json['response'] == 'pub_info'):
             self.sub_running = True
             self.running = True
-            print('Received response from authorized master with pub info')
+            # print('Received response from authorized master with pub info')
             self.subscriber.start(self.loop)
         elif msg == Dealer.con_failed:
             self.log.error('Peer connection failed to %s (%s)' % (self.server_key, self.router_address))
@@ -98,7 +98,7 @@ class Peer:
         processor = services.get(topic.decode("utf-8"))
         message = json.loads(msg)
         self.debug_messages.append(message)
-        print('process_subscription: {}'.format(message))
+        # print('process_subscription: {}'.format(message))
         if not message:
             self.log.error(msg)
             self.log.error(message)
