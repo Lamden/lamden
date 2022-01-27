@@ -37,9 +37,15 @@ class TestMultiNode(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
+        self.n = None
+
         print("\n")
 
     def tearDown(self):
+        if self.n:
+            for node in self.n.nodes:
+                self.await_async_process(node.stop)
+
         self.ctx.destroy()
         self.loop.close()
 
@@ -82,23 +88,23 @@ class TestMultiNode(TestCase):
 
         test_start = time.time()
 
-        network_1 = mocks_new.MockNetwork(
-            num_of_delegates=6,
+        self.n = mocks_new.MockNetwork(
+            num_of_delegates=2,
             num_of_masternodes=3,
             ctx=self.ctx,
             metering=False,
             delay={'base': 0.1, 'self': 0.1}
         )
-        self.await_async_process(network_1.start)
+        self.await_async_process(self.n.start)
 
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 10
+        amount_of_transactions = 25
         receiver_wallet = Wallet()
 
         # Log the amounts of each transaction so we can verify state later
@@ -109,8 +115,8 @@ class TestMultiNode(TestCase):
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
 
-            tx_info = json.loads(network_1.send_random_currency_transaction(
-                sender_wallet=network_1.founder_wallet,
+            tx_info = json.loads(self.n.send_random_currency_transaction(
+                sender_wallet=self.n.founder_wallet,
                 receiver_wallet=receiver_wallet
             ))
 
@@ -123,16 +129,16 @@ class TestMultiNode(TestCase):
 
             # wait till all nodes reach the required block height
             mocks_new.await_all_nodes_done_processing(
-                nodes=network_1.all_nodes(),
+                nodes=self.n.all_nodes(),
                 block_height=i+1,
                 timeout=0,
-                sleep=1
+                sleep=0
             )
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
-            self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+            self.validate_block_height_in_all_nodes(nodes=self.n.all_nodes(), valid_height=i+1)
+            self.validate_block_hash_in_all_nodes(nodes=self.n.all_nodes())
             pass
 
         print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
@@ -140,7 +146,7 @@ class TestMultiNode(TestCase):
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
             balance = json.loads(encoder.encode(test_tracker[key]))
-            results = network_1.get_var_from_all(
+            results = self.n.get_var_from_all(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
@@ -155,11 +161,11 @@ class TestMultiNode(TestCase):
             self.assertTrue(all(balance == results[0] for balance in results))
 
         # All nodes are at the proper block height
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in network_1.all_nodes()]
+        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
     def test_network_mixed_tx__step_by_step__validate_node_state_inbetween(self):
@@ -170,23 +176,23 @@ class TestMultiNode(TestCase):
 
         test_start = time.time()
 
-        network_1 = mocks_new.MockNetwork(
-            num_of_delegates=6,
+        self.n = mocks_new.MockNetwork(
+            num_of_delegates=2,
             num_of_masternodes=3,
             ctx=self.ctx,
             metering=False,
             delay={'base': 0.1, 'self': 0.1}
         )
-        self.await_async_process(network_1.start)
+        self.await_async_process(self.n.start)
 
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 5
+        amount_of_transactions = 25
 
         # Log the amounts of each transaction so we can verify state later
         test_tracker = {}
@@ -195,7 +201,7 @@ class TestMultiNode(TestCase):
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
 
-            tx_info = json.loads(network_1.send_random_currency_transaction(sender_wallet=network_1.founder_wallet))
+            tx_info = json.loads(self.n.send_random_currency_transaction(sender_wallet=self.n.founder_wallet))
 
             to = tx_info['payload']['kwargs']['to']
             amount = tx_info['payload']['kwargs']['amount']
@@ -203,22 +209,22 @@ class TestMultiNode(TestCase):
 
             # wait till all nodes reach the required block height
             mocks_new.await_all_nodes_done_processing(
-                nodes=network_1.all_nodes(),
+                nodes=self.n.all_nodes(),
                 block_height=i+1,
                 timeout=0
             )
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
-            self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+            self.validate_block_height_in_all_nodes(nodes=self.n.all_nodes(), valid_height=i+1)
+            self.validate_block_hash_in_all_nodes(nodes=self.n.all_nodes())
 
         print(f"Took {time.time() - test_start_sending_transactions} seconds to process ALL transactions.")
 
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
             balance = test_tracker[key]
-            results = network_1.get_vars(
+            results = self.n.get_vars(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
@@ -228,11 +234,11 @@ class TestMultiNode(TestCase):
             self.assertTrue(all(balance == results[0] for balance in results))
 
         # All nodes are at the proper block height
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in network_1.all_nodes()]
+        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
     def test_network_mixed_tx_set_group_step_by_step__validate_node_state_inbetween(self):
@@ -243,23 +249,23 @@ class TestMultiNode(TestCase):
 
         test_start = time.time()
 
-        network_1 = mocks_new.MockNetwork(
-            num_of_delegates=6,
+        self.n = mocks_new.MockNetwork(
+            num_of_delegates=2,
             num_of_masternodes=3,
             ctx=self.ctx,
             metering=False,
             delay={'base': 0.1, 'self': 0.1}
         )
-        self.await_async_process(network_1.start)
+        self.await_async_process(self.n.start)
 
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(node.obj.running)
 
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 20
+        amount_of_transactions = 25
 
         # Log the amounts of each transaction so we can verify state later
         test_tracker = {}
@@ -270,8 +276,8 @@ class TestMultiNode(TestCase):
         for i in range(amount_of_transactions):
             test_start_sending_transaction = time.time()
 
-            tx_info = json.loads(network_1.send_random_currency_transaction(
-                sender_wallet=network_1.founder_wallet,
+            tx_info = json.loads(self.n.send_random_currency_transaction(
+                sender_wallet=self.n.founder_wallet,
                 receiver_wallet=random.choice(receiver_wallets)
             ))
 
@@ -285,22 +291,22 @@ class TestMultiNode(TestCase):
 
             # wait till all nodes reach the required block height
             mocks_new.await_all_nodes_done_processing(
-                nodes=network_1.all_nodes(),
+                nodes=self.n.all_nodes(),
                 block_height=i+1,
                 timeout=0
             )
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=network_1.all_nodes(), valid_height=i+1)
-            self.validate_block_hash_in_all_nodes(nodes=network_1.all_nodes())
+            self.validate_block_height_in_all_nodes(nodes=self.n.all_nodes(), valid_height=i+1)
+            self.validate_block_hash_in_all_nodes(nodes=self.n.all_nodes())
 
         print(f"Took {time.time() - test_start_sending_transactions} seconds to process ALL transactions.")
 
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
             balance = str(test_tracker[key])
-            results = network_1.get_vars(
+            results = self.n.get_vars(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
@@ -310,9 +316,9 @@ class TestMultiNode(TestCase):
             self.assertTrue(all(balance['__fixed__'] == results[0]['__fixed__'] for balance in results))
 
         # All nodes are at the proper block height
-        for node in network_1.all_nodes():
+        for node in self.n.all_nodes():
             self.assertTrue(amount_of_transactions == node.obj.get_current_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in network_1.all_nodes()]
+        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))

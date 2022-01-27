@@ -27,6 +27,9 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
             results = [node.obj.get_current_height() == block_height for node in nodes]
             done = all(results)
 
+            if done and block_height == 25:
+                print('Done')
+
             if timeout > 0 and time.time() - start > timeout:
                 print([node.obj.get_current_height() == block_height for node in nodes])
                 print({'heights':heights})
@@ -289,9 +292,12 @@ class MockNetwork:
             *coroutines
         )
 
-    def stop(self):
-        for node in self.masternodes + self.delegates:
-            asyncio.ensure_future(node.stop())
+    async def stop(self):
+        coroutines = [node.stop() for node in self.masternodes]
+
+        await asyncio.gather(
+            *coroutines
+        )
 
     async def push_tx(self, node, wallet, contract, function, kwargs, stamps, nonce):
         tx = transaction.build_transaction(

@@ -7,7 +7,7 @@
 '''
 import random
 
-from tests.integration.mock import mocks_new, create_directories
+from tests.integration.mock import mocks_new
 from lamden.nodes.filequeue import FileQueue
 
 from lamden import router, storage, network, authentication
@@ -35,9 +35,6 @@ from unittest import TestCase
 
 class TestMultiNode(TestCase):
     def setUp(self):
-        self.fixture_directories = ['block_storage', 'file_queue', 'nonces', 'pending-nonces']
-        create_directories.create_fixture_directories(self.fixture_directories)
-
         self.ctx = zmq.asyncio.Context()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -52,7 +49,6 @@ class TestMultiNode(TestCase):
 
         self.ctx.destroy()
         self.loop.close()
-        create_directories.remove_fixture_directories(self.fixture_directories)
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -130,6 +126,8 @@ class TestMultiNode(TestCase):
         m = mocks_new.MockMaster(ctx=self.ctx, index=1, metering=False)
         d = mocks_new.MockDelegate(ctx=self.ctx, index=2, metering=False)
 
+        founder_waller = Wallet(seed=mocks_new.MOCK_FOUNDER_SK)
+
         bootnodes = {
             m.wallet.verifying_key: m.tcp,
             d.wallet.verifying_key: d.tcp
@@ -153,7 +151,7 @@ class TestMultiNode(TestCase):
         tx_amount = 1_000_000
 
         tx_1 = transaction.build_transaction(
-            wallet=self.n.founder_wallet,
+            wallet=founder_waller,
             contract='currency',
             function='transfer',
             kwargs={

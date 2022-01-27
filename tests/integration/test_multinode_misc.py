@@ -24,9 +24,7 @@ class TestMultiNode(TestCase):
 
     def tearDown(self):
         if self.n:
-            for node in self.n.nodes:
-                if node.started:
-                    self.await_async_process(node.obj.stop)
+            self.await_async_process(self.n.stop)
 
         self.ctx.destroy()
         self.loop.close()
