@@ -31,39 +31,6 @@ class QueueProcessor(Processor):
     async def process_message(self, msg):
         self.q.append(msg)
 
-
-# class CredentialProvider:
-#     def __init__(self, wallet: Wallet, ctx: zmq.Context, linger=500):
-#         self.ctx = ctx
-#         self.joined = []
-#         self.wallet = wallet
-#         self.linger = linger
-
-#     def callback(self, domain, key):
-#         # self.log.debug(f"Connection from {key} {domain}")
-#         # Try to connect to the publisher socket.
-#         socket = self.ctx.socket(zmq.SUB)
-
-#         socket.setsockopt(zmq.LINGER, self.linger)
-#         socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-
-#         socket.curve_secretkey = self.wallet.curve_sk
-#         socket.curve_publickey = self.wallet.curve_vk
-
-#         socket.curve_serverkey = z85_key(key)
-
-#         try:
-#             socket.connect(domain)
-#             socket.subscribe(b'')
-
-#             self.joined.append((socket, domain, key))
-#             self.log.debug(f"Connected to {key} {domain}")
-#             return True
-#         except zmq.error.Again:
-#             socket.close()
-#             return False
-
-
 class Network:
     def __init__(self, wallet: Wallet, socket_id, max_peer_strikes, testing=False,
                  debug=False, boot_nodes={}):
