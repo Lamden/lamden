@@ -87,7 +87,7 @@ def resolve_constitution(fp):
 
     for vk, ip in bootnodes.items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
-        formatted_bootnodes[vk] = f'tcp://{ip}:19000'
+        formatted_bootnodes[vk] = f'tcp://{ip}'
 
     return const, formatted_bootnodes
 

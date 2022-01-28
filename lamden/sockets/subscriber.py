@@ -7,13 +7,13 @@ class Subscriber():
     def __init__(
         self,
         _address: str,  # example: "tcp://localhost:6000"
-        _topics = [],
+        _topics = [''],
         _callback = None,
         _ctx = zmq.Context.instance()
     ):        
         # Configure the listening socket
         self.running = False
-        self.address = _address
+        self.address = f'{_address}:19081'
         self.ctx = _ctx
         self.socket = self.ctx.socket(zmq.SUB)    
         self.topics = _topics

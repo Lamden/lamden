@@ -14,11 +14,8 @@ class Publisher():
         debug=False      
     ):        
         # Configure the listening socket
-        if socket_id.startswith('tcp'):
-            _, _, port = socket_id.split(':')
-            self.address = f'tcp://*:{port}'
-        else:
-            self.address = socket_id
+
+        self.address = socket_id
         
         self.socket = None
         self.ctx = ctx

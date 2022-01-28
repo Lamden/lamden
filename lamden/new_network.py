@@ -39,17 +39,22 @@ class Network:
         self.wallet = wallet
         self.max_peer_strikes = max_peer_strikes     
         self.socket_id = socket_id
-        self.router_address = socket_id.replace(':180', ':190')
+        self.socket_ports = {
+            'router': 19000,
+            'publisher': 19080
+        }
         self.ctx = zmq.asyncio.Context()
 
         self.log = get_logger("NEW_SOCKETS")
         self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
 
-        # self.provider = CredentialProvider(wallet=self.wallet, ctx=self.ctx)  # zap
+        self.log.info(self.publisher_address)
+        self.log.info(self.router_address)
+
         self.publisher = Publisher(
             testing=self.testing,
             debug=self.debug,
-            socket_id=self.socket_id,
+            socket_id=self.publisher_address,
             ctx=self.ctx
         )
 
@@ -67,6 +72,14 @@ class Network:
         self.services = {}
 
         self.running = False
+
+    @property
+    def publisher_address(self):
+        return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('publisher'))
+
+    @property
+    def router_address(self):
+        return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('router'))
 
     async def start(self):
         self.running = True
@@ -139,6 +152,7 @@ class Network:
             debug=self.debug,
             ctx=self.ctx,
             ip=ip,
+            socket_ports=self.socket_ports,
             key=z85_key(key),
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,

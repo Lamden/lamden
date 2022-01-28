@@ -12,10 +12,10 @@ WORK_SERVICE = 'work'
 
 
 class Peer:
-    def __init__(self, ip, ctx, key, services, blacklist, max_strikes, wallet, testing=False, debug=False):
+    def __init__(self, ip, socket_ports, ctx, key, services, blacklist, max_strikes, wallet, testing=False, debug=False):
         self.ctx = ctx
         self.ip = ip
-        self.router_address = ip.replace(':180', ':190')
+        self.socket_ports = socket_ports
         self.server_key = key
         self.services = services
         self.in_consensus = True
@@ -36,14 +36,28 @@ class Peer:
         self.debug_messages = []
 
         self.sub_running = False
-        self.subscriber = Subscriber(ip, [''], self.process_subscription)
+        self.subscriber = Subscriber(
+            _address=self.subscriber_address,
+            _callback=self.process_subscription
+        )
+
+    @property
+    def subscriber_address(self):
+        self.log.info('PEER PUBLISHER ADDRESS: {}:{}'.format(self.ip, self.socket_ports.get('publisher')))
+        return '{}:{}'.format(self.ip, self.socket_ports.get('publisher'))
+
+    @property
+    def dealer_address(self):
+        self.log.info('PEER ROUTER ADDRESSS: {}:{}'.format(self.ip, self.socket_ports.get('router')))
+        return '{}:{}'.format(self.ip, self.socket_ports.get('router'))
 
     def start(self):
         # print('starting dealer connecting to: ' + self.router_address)
         self.loop = asyncio.new_event_loop()
-        self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.router_address, server_vk=self.server_key,
+        self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
                              wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback)
         self.dealer.start()
+
 
     def dealer_callback(self, msg):
         # print('Received msg from %s : %s' % (self.router_address, msg))
