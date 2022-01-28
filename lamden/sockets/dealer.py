@@ -37,7 +37,7 @@ class Dealer(threading.Thread):
 
         self.running = True
 
-        # print("Dealer run start: " + self.address)
+        logging.info("DEALER STARTING ON: " + self.address)
 
         self.socket.connect(self.address)
 
@@ -60,12 +60,12 @@ class Dealer(threading.Thread):
                     # print('self.socket in sockets: True')
                     msg = self.socket.recv()
                     connected = True
-                    # print('Dealer %s received: %s' % (self.id, msg))
+                    logging.info('Dealer %s received: %s' % (self.id, msg))
                     if self.callback:
                         self.callback(msg)
                 else:
                     if not connected:
-                        print('failed to received response, attempting to reconnect')
+                        logging.info('failed to received response, attempting to reconnect')
                         self.socket.disconnect(self.address)
                         connection_attempts += 1
                         if connection_attempts >= max_attempts:
@@ -76,10 +76,10 @@ class Dealer(threading.Thread):
                         self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
-                    print('Interrupted')
+                    logging.info('Interrupted')
                     break           # Interrupted
                 else:
-                    print('error: ' + e.strerror)
+                    logging.info('error: ' + e.strerror)
                     sleep(1)
         # print("dealer finished")
         self.socket.close()

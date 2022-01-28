@@ -314,9 +314,6 @@ class Node:
 
     async def check_main_processing_queue(self):
         while self.running:
-            if time.time() - self.debug_last_checked_main > 30:
-                self.debug_last_checked_main = time.time()
-                self.log.info(f"!!!!!!! CHECKED main_processing_queue. Length={len(self.main_processing_queue)} Running={self.main_processing_queue.running}")
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
                 await self.process_main_queue()
@@ -327,10 +324,6 @@ class Node:
 
     async def check_validation_queue(self):
         while self.running:
-            if time.time() - self.debug_last_checked_val > 30:
-                self.debug_last_checked_val = time.time()
-                self.log.info(
-                    f"!!!!!!! CHECKED check_validation_queue. Length={len(self.validation_queue.validation_results)} Running={self.main_processing_queue.running}")
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 self.validation_queue.start_processing()
                 await self.validation_queue.check_all()
