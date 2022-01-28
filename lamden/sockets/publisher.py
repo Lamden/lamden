@@ -8,14 +8,14 @@ from contracting.db.encoder import encode
 class Publisher():
     def __init__(
         self,
-        socket_id, 
+        address,
         ctx: zmq.Context,     
         testing=False,
         debug=False      
     ):        
         # Configure the listening socket
 
-        self.address = socket_id
+        self.address = address
         
         self.socket = None
         self.ctx = ctx

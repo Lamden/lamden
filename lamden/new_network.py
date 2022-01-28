@@ -54,7 +54,7 @@ class Network:
         self.publisher = Publisher(
             testing=self.testing,
             debug=self.debug,
-            socket_id=self.publisher_address,
+            address=self.publisher_address,
             ctx=self.ctx
         )
 
