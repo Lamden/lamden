@@ -318,8 +318,6 @@ class Node:
                 client=self.client
             )
 
-        #self.nonces.flush_pending()
-
         self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
@@ -333,10 +331,10 @@ class Node:
 
         # Store the block if it's a masternode
         if self.store:
-            encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block)
+            #encoded_block = encode(block)
+            #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
 
-            self.blocks.store_block(encoded_block)
+            self.blocks.store_block(block)
 
             # create Event File
             self.event_writer.write_event(Event(

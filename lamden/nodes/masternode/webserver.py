@@ -386,7 +386,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         self.driver.clear_pending_state()
@@ -417,7 +417,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
@@ -437,7 +437,7 @@ class WebServer:
             return response.json({'error': 'Transaction not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(tx, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(tx, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
         self.client.raw_driver.clear_pending_state()

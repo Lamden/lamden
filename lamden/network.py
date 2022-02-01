@@ -180,3 +180,6 @@ class Network:
             if self.peers.get(vk) is None:
                 return False
         return True
+
+def discover_peer(vk, ip):
+    pass
