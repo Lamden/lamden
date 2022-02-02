@@ -24,10 +24,10 @@ class CredentialsProvider(object):
             self.public_keys.remove(key_to_remove)
 
     def callback(self, domain, key):
-        #print(f'checking auth for key: {key}')
         valid = key in self.public_keys
         if valid:
             logging.info('Authorizing: {0}, {1}'.format(domain, key))
+            print('Authorizing: {0}, {1}'.format(domain, key))
             return True
         else:
             if key not in self.denied:
@@ -53,7 +53,7 @@ class Router(threading.Thread):
         print('router destroyed')
 
     def run(self):
-        # print('router starting on: ' + self.address)
+        print('router starting on: ' + self.address)
 
         # Start an authenticator for this context.
         self.socket = self.ctx.socket(zmq.ROUTER)
@@ -79,6 +79,7 @@ class Router(threading.Thread):
                 # print(sockets[self.socket])
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
+                    print (f'[{self.address}] [{ident}] {msg}')
                     # print('Router received %s from %s' % (msg, ident))
                     if self.callback is not None:
                         self.callback(ident, msg)

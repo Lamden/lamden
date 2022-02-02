@@ -47,11 +47,14 @@ class MockNode:
     def __init__(self, ctx,  wallet=None, index=1, delay=None, genesis_path=os.path.dirname(os.path.abspath(__file__))):
         self.wallet = wallet or Wallet()
         self.index = index
-        port = 18000 + index
+        self.socket_ports = {
+            'router': 19000 + self.index,
+            'publisher': 19080 + self.index,
+            'webserver': 18080 + self.index
+        }
         self.ip = '127.0.0.1'
-        self.port = port
-        self.http = f'http://{self.ip}:{self.port}'
-        self.tcp = f'tcp://{self.ip}:{self.port}'
+        self.tcp = f'tcp://{self.ip}'
+        self.http = f'http://{self.ip}:{self.socket_ports.get("webserver")}'
         self.delay = delay or {
             'base': 0.1,
             'self': 0.2
@@ -104,8 +107,8 @@ class MockMaster(MockNode):
 
         self.obj = masternode.Masternode(
             testing=True,
-            socket_base=self.tcp,
             ctx=self.ctx,
+            socket_base=self.tcp,
             wallet=self.wallet,
             constitution=self.constitution,
             bootnodes=self.bootnodes,
@@ -119,7 +122,12 @@ class MockMaster(MockNode):
             blocks=storage.BlockStorage(home=self.block_storage_path)
         )
 
+        self.obj.network.socket_ports = self.socket_ports
+        self.obj.network.router.address = self.obj.network.router_address
+        self.obj.network.publisher.address = self.obj.network.publisher_address
+
         await self.obj.start()
+
         self.started = True
 
     async def stop(self):
@@ -149,6 +157,10 @@ class MockDelegate(MockNode):
             delay=self.delay,
             blocks=storage.BlockStorage(home=self.block_storage_path)
         )
+
+        self.obj.network.socket_ports = self.socket_ports
+        self.obj.network.router.address = self.obj.network.router_address
+        self.obj.network.publisher.address = self.obj.network.publisher_address
 
         await self.obj.start()
         self.started = True
@@ -205,11 +217,11 @@ class MockNetwork:
 
         for m in self.masternodes:
             constitution['masternodes'].append(m.wallet.verifying_key)
-            bootnodes[m.wallet.verifying_key] = m.tcp
+            bootnodes[m.wallet.verifying_key] = f'{m.tcp}:{m.socket_ports.get("router")}'
 
         for d in self.delegates:
             constitution['delegates'].append(d.wallet.verifying_key)
-            bootnodes[d.wallet.verifying_key] = d.tcp
+            bootnodes[d.wallet.verifying_key] = f'{d.tcp}:{d.socket_ports.get("router")}'
 
         for node in self.masternodes + self.delegates:
             node.set_start_variables(bootnodes=bootnodes, constitution=constitution)

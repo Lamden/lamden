@@ -32,13 +32,13 @@ class QueueProcessor(Processor):
         self.q.append(msg)
 
 class Network:
-    def __init__(self, wallet: Wallet, socket_id, max_peer_strikes, testing=False,
+    def __init__(self, wallet: Wallet, socket_base, max_peer_strikes, testing=False,
                  debug=False, boot_nodes={}):
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
         self.max_peer_strikes = max_peer_strikes     
-        self.socket_id = socket_id
+        self.socket_base = socket_base
         self.socket_ports = {
             'router': 19000,
             'publisher': 19080
@@ -46,7 +46,7 @@ class Network:
         self.ctx = zmq.asyncio.Context()
 
         self.log = get_logger("NEW_SOCKETS")
-        self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
+        self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.router_address).encode()
 
         self.log.info(self.publisher_address)
         self.log.info(self.router_address)

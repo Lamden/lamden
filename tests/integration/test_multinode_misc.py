@@ -49,31 +49,33 @@ class TestMultiNode(TestCase):
 
     def test_all_transactions_propegate_to_all_nodes(self):
         delay = {'base': 0.1, 'self': 0.2}
-        self.n = mocks_new.MockNetwork(num_of_delegates=3, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False, delay=delay)
 
         self.await_async_process(self.n.start)
         self.await_async_process(self.n.pause_all_queues)
 
-        num_of_transactions_to_send = 100
+        num_of_transactions_to_send = 5
+
+        self.async_sleep(5)
 
         for i in range(num_of_transactions_to_send):
             self.n.send_random_currency_transaction(
                 sender_wallet=Wallet()
             )
 
-        self.async_sleep(25)
+        self.async_sleep(5)
 
         for node in self.n.nodes:
-            self.assertEqual(len(node.obj.main_processing_queue), num_of_transactions_to_send)
+            self.assertEqual( num_of_transactions_to_send, len(node.obj.main_processing_queue))
 
     def test_all_results_propegate_to_all_nodes(self):
         delay = {'base': 0.1, 'self': 0.2}
-        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
 
         self.await_async_process(self.n.start)
         self.await_async_process(self.n.pause_all_validation_queues)
 
-        num_of_transactions_to_send = 75
+        num_of_transactions_to_send = 50
 
         for i in range(num_of_transactions_to_send):
             self.n.send_random_currency_transaction(

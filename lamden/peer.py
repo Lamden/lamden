@@ -14,8 +14,11 @@ WORK_SERVICE = 'work'
 class Peer:
     def __init__(self, ip, socket_ports, ctx, key, services, blacklist, max_strikes, wallet, testing=False, debug=False):
         self.ctx = ctx
+
         self.ip = ip
         self.socket_ports = socket_ports
+        self.check_ip_for_port()
+
         self.server_key = key
         self.services = services
         self.in_consensus = True
@@ -44,12 +47,27 @@ class Peer:
     @property
     def subscriber_address(self):
         self.log.info('PEER PUBLISHER ADDRESS: {}:{}'.format(self.ip, self.socket_ports.get('publisher')))
+        print('PEER PUBLISHER ADDRESS: {}:{}'.format(self.ip, self.socket_ports.get('publisher')))
         return '{}:{}'.format(self.ip, self.socket_ports.get('publisher'))
 
     @property
     def dealer_address(self):
         self.log.info('PEER ROUTER ADDRESSS: {}:{}'.format(self.ip, self.socket_ports.get('router')))
+        print('PEER ROUTER ADDRESSS: {}:{}'.format(self.ip, self.socket_ports.get('router')))
         return '{}:{}'.format(self.ip, self.socket_ports.get('router'))
+
+    def check_ip_for_port(self):
+        try:
+            protocol, ip, port = self.ip.split(":")
+
+            self.socket_ports['router'] = int(port)
+            self.socket_ports['publisher'] = 19080 + (int(port) - 19000)
+            self.socket_ports['webserver'] = 18080 + (int(port) - 19000)
+
+            self.ip = '{}:{}'.format(protocol, ip)
+
+        except ValueError:
+            return
 
     def start(self):
         # print('starting dealer connecting to: ' + self.router_address)
@@ -57,7 +75,6 @@ class Peer:
         self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
                              wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback)
         self.dealer.start()
-
 
     def dealer_callback(self, msg):
         # print('Received msg from %s : %s' % (self.router_address, msg))

@@ -51,7 +51,7 @@ class Dealer(threading.Thread):
         connected = False
         connection_attempts = 0
         max_attempts = 50000
-        poll_time = 100
+        poll_time = 1000
 
         while self.running:
             try:                

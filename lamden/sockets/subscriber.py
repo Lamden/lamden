@@ -13,7 +13,7 @@ class Subscriber():
     ):        
         # Configure the listening socket
         self.running = False
-        self.address = f'{_address}:19081'
+        self.address = _address
         self.ctx = _ctx
         self.socket = self.ctx.socket(zmq.SUB)    
         self.topics = _topics

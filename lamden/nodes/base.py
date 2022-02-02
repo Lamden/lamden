@@ -129,7 +129,7 @@ class Node:
             debug=self.debug,
             testing=self.testing,
             wallet=wallet,
-            socket_id=socket_base,
+            socket_base=socket_base,
             max_peer_strikes=self.max_peer_strikes,
             boot_nodes=bootnodes
         )
