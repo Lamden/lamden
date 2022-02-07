@@ -216,7 +216,7 @@ class Node:
         self.start_all_queues()
 
         if self.debug:
-            asyncio.ensure_future(self.system_monitor.start(delay_sec=0.1))
+            asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())
@@ -224,10 +224,12 @@ class Node:
         await self.network.start()
 
         for vk, ip in self.bootnodes.items():
-            # print({"vk": vk, "ip": ip})
+
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
+
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
-                
                 await self.network.connect(
                     ip=ip,
                     key=vk
