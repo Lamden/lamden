@@ -223,6 +223,8 @@ class Node:
 
         await self.network.start()
 
+        await asyncio.sleep(2)
+
         for vk, ip in self.bootnodes.items():
 
             print({"vk": vk, "ip": ip})
