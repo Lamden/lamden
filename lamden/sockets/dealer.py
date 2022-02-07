@@ -32,8 +32,8 @@ class Dealer(threading.Thread):
         self.socket.setsockopt(zmq.LINGER, 500)
         self.running = False
 
-        self.max_attempts = 5000
-        self.poll_time = 500
+        self.max_attempts = 99999
+        self.poll_time = 2000
 
     def run(self):
         # Get an instance of the ZMQ Context
