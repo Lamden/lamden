@@ -33,7 +33,7 @@ class Dealer(threading.Thread):
         self.running = False
 
         self.max_attempts = 99999
-        self.poll_time = 2000
+        self.poll_time = 600000
 
     def run(self):
         # Get an instance of the ZMQ Context
