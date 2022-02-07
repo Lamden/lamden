@@ -16,8 +16,7 @@ class Dealer(threading.Thread):
 
         self.log = logger or get_logger('DEALER')
 
-        # self.ctx = zmq.Context()
-        self.ctx = ctx
+        self.ctx = zmq.Context()
 
         self.id = _id
         self.address = _address
