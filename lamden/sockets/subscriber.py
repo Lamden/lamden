@@ -16,7 +16,9 @@ class Subscriber():
         self.running = False
         self.address = _address
         self.ctx = _ctx
-        self.socket = self.ctx.socket(zmq.SUB)    
+
+        self.socket = self.ctx.socket(zmq.SUB)
+
         self.topics = _topics
         self.callback = _callback
         self.sub_task = None
@@ -25,8 +27,8 @@ class Subscriber():
 
     def start(self, loop):
         try:
-            self.log.info(f'[SUBSCRIBER] Connecting to {self.address}')
-            print(f'[{self.log.name}][SUBSCRIBER] Connecting to {self.address}')
+            self.log.info(f'[SUBSCRIBER] STARTING for PEER {self.address}')
+            print(f'[{self.log.name}][SUBSCRIBER] STARTING for PEER {self.address}')
 
             self.socket.connect(self.address)
         except zmq.error.Again as error:

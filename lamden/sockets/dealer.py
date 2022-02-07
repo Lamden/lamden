@@ -16,31 +16,37 @@ class Dealer(threading.Thread):
 
         self.log = logger or get_logger('DEALER')
 
-        self.ctx = zmq.Context()
+        # self.ctx = zmq.Context()
+        self.ctx = ctx
+
         self.id = _id
         self.address = _address
         self.callback = _callback
+
         threading.Thread.__init__ (self)
+
         self.connected = False
         self.server_vk = server_vk
         self.wallet = wallet
+
         self.socket = self.ctx.socket(zmq.DEALER)
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_serverkey = self.server_vk
         self.socket.identity = encode(self.id).encode()
-        self.socket.setsockopt(zmq.LINGER, 500)
+        self.socket.setsockopt(zmq.LINGER, 2000)
+
         self.running = False
 
         self.max_attempts = 99999
-        self.poll_time = 60000
+        self.poll_time = 5000
 
     def run(self):
         # Get an instance of the ZMQ Context
 
         self.running = True
 
-        self.log.info("[DEALER] STARTING ON: " + self.address)
+        self.log.info("[DEALER] STARTING FOR PEER: " + self.address)
 
         self.socket.connect(self.address)
 
@@ -57,9 +63,10 @@ class Dealer(threading.Thread):
         while self.running:
             try:                
                 sockets = dict(poll.poll(self.poll_time))
+                self.log.info(sockets)
                 if self.socket in sockets:   
                     # print('self.socket in sockets: True')
-                    msg = self.socket.recv(zmq.DONTWAIT)
+                    msg = self.socket.recv()
                     connected = True
                     self.log.info('[DEALER] %s received: %s' % (self.id, msg))
                     print(f'[{self.log.name}][DEALER] %s received: %s' % (self.id, msg))

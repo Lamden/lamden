@@ -78,7 +78,7 @@ class Router(threading.Thread):
         # Create a poller to monitor if there is any
         poll = zmq.Poller()
         poll.register(self.socket, zmq.POLLIN)
-        self.poll_time = 60000
+        self.poll_time = 500
 
         self.running = True
 
