@@ -59,7 +59,7 @@ class Dealer(threading.Thread):
                 sockets = dict(poll.poll(self.poll_time))
                 if self.socket in sockets:   
                     # print('self.socket in sockets: True')
-                    msg = self.socket.recv()
+                    msg = self.socket.recv(zmq.DONTWAIT)
                     connected = True
                     self.log.info('[DEALER] %s received: %s' % (self.id, msg))
                     print(f'[{self.log.name}][DEALER] %s received: %s' % (self.id, msg))
