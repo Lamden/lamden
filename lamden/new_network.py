@@ -73,11 +73,11 @@ class Network:
 
     @property
     def publisher_address(self):
-        return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('publisher'))
+        return '{}:{}'.format('tcp://*', self.socket_ports.get('publisher'))
 
     @property
     def router_address(self):
-        return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('router'))
+        return '{}:{}'.format('tcp://*', self.socket_ports.get('router'))
 
     @property
     def hello_response(self):
