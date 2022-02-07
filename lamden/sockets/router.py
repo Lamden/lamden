@@ -78,12 +78,13 @@ class Router(threading.Thread):
         # Create a poller to monitor if there is any
         poll = zmq.Poller()
         poll.register(self.socket, zmq.POLLIN)
+        self.poll_time = 60000
 
         self.running = True
 
         while self.running:
             try:
-                sockets = dict(poll.poll(100))
+                sockets = dict(poll.poll(self.poll_time))
                 # print(sockets[self.socket])
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
