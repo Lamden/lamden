@@ -5,7 +5,7 @@
     After all node are in sync then the test are run to validate state etc.
 
 '''
-from tests.integration.mock import mocks_new, create_directories
+from tests.integration.mock import mocks_new
 from lamden.crypto.wallet import Wallet
 
 import zmq.asyncio
@@ -24,7 +24,8 @@ class TestMultiNode(TestCase):
 
     def tearDown(self):
         if self.n:
-            self.await_async_process(self.n.stop)
+            for node in self.n.nodes:
+                self.await_async_process(node.stop)
 
         self.ctx.destroy()
         self.loop.close()
@@ -49,12 +50,12 @@ class TestMultiNode(TestCase):
 
     def test_all_transactions_propegate_to_all_nodes(self):
         delay = {'base': 0.1, 'self': 0.2}
-        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False, delay=delay)
+        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
 
         self.await_async_process(self.n.start)
         self.await_async_process(self.n.pause_all_queues)
 
-        num_of_transactions_to_send = 5
+        num_of_transactions_to_send = 10
 
         self.async_sleep(5)
 
@@ -75,14 +76,16 @@ class TestMultiNode(TestCase):
         self.await_async_process(self.n.start)
         self.await_async_process(self.n.pause_all_validation_queues)
 
-        num_of_transactions_to_send = 50
+        num_of_transactions_to_send = 10
+
+        self.async_sleep(10)
 
         for i in range(num_of_transactions_to_send):
             self.n.send_random_currency_transaction(
                 sender_wallet=self.n.founder_wallet
             )
 
-        self.async_sleep(25)
+        self.async_sleep(15)
 
         for node in self.n.nodes:
             self.assertEqual(num_of_transactions_to_send, len(node.obj.validation_queue))
@@ -93,19 +96,21 @@ class TestMultiNode(TestCase):
 
     def test_all_nodes_create_blocks_from_results(self):
         delay = {'base': 0.1, 'self': 0.2}
-        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=3, ctx=self.ctx, metering=False,
+        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=2, ctx=self.ctx, metering=False,
                                        delay=delay)
 
         self.await_async_process(self.n.start)
 
-        num_of_transactions_to_send = 55
+        num_of_transactions_to_send = 10
+
+        self.async_sleep(5)
 
         for i in range(num_of_transactions_to_send):
             self.n.send_random_currency_transaction(
                 sender_wallet=Wallet()
             )
 
-        self.async_sleep(25)
+        self.async_sleep(60)
 
         # test all nodes have blocks ordered by hlc and the correct number of blocks
         for node in self.n.nodes:

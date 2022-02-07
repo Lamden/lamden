@@ -1,7 +1,6 @@
 import zmq
 import zmq.auth
-from threading import Thread
-import asyncio
+from lamden.logger.base import get_logger
 
 class Subscriber():
     def __init__(
@@ -9,8 +8,10 @@ class Subscriber():
         _address: str,  # example: "tcp://localhost:6000"
         _topics = [''],
         _callback = None,
-        _ctx = zmq.Context.instance()
-    ):        
+        _ctx = zmq.Context.instance(),
+        logger=None
+    ):
+        self.log = logger or get_logger("SUBSCRIBER")
         # Configure the listening socket
         self.running = False
         self.address = _address
@@ -24,9 +25,14 @@ class Subscriber():
 
     def start(self, loop):
         try:
+            self.log.info(f'[SUBSCRIBER] Connecting to {self.address}')
+            print(f'[{self.log.name}][SUBSCRIBER] Connecting to {self.address}')
+
             self.socket.connect(self.address)
         except zmq.error.Again as error:
-            self.log.error(error)
+            self.log.error(f'[SUBSCRIBER] {error}')
+            print(f'[{self.log.name}][SUBSCRIBER] {error}')
+
             # socket.close()
             return False
         self.sub_task = loop.run_until_complete(self.subscriber_thread())
@@ -39,6 +45,9 @@ class Subscriber():
         # print("starting subscriber_thread")
         for topic in self.topics:
             self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
+            self.log.info(f'[SUBSCRIBER] Subscribed to topic "{topic}" on {self.address}')
+            print(f'[{self.log.name}][SUBSCRIBER] Subscribed to topic "{topic}" on {self.address}')
+
         self.running = True    
         while self.running:
             event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
@@ -46,7 +55,10 @@ class Subscriber():
                 try:
                     data = self.socket.recv_multipart()
                     self.debug_events.append(data)
-                    # print(data)
+
+                    self.log.info(f'[SUBSCRIBER] Got event from {self.address}')
+                    print(f'[{self.log.name}][SUBSCRIBER] Got event from {self.address}')
+
                     if(self.callback):
                         await self.callback(data)
                 except zmq.ZMQError as e:
@@ -59,4 +71,8 @@ class Subscriber():
 
 
     def stop(self):
-        self.running = False
+        if self.running:
+            self.log.info('[SUBSCRIBER] Stopping.')
+            print(f'[{self.log.name}][SUBSCRIBER] Stopping.')
+
+            self.running = False

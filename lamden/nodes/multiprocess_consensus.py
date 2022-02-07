@@ -24,38 +24,44 @@ class MultiProcessConsensus:
         self.debug_peers = []
 
     async def start(self, validation_results):
-        self.all_consensus_results = {}
-        processes = []
-        num_of_peers = len(self.get_peers_for_consensus())
+        try:
+            self.all_consensus_results = {}
+            processes = []
+            num_of_peers = len(self.get_peers_for_consensus())
 
-        self.debug_peers.append(num_of_peers)
+            self.debug_peers.append(num_of_peers)
 
-        for hlc_timestamp in validation_results:
-            parent_conn, child_conn = multiprocessing.Pipe()
-            results = validation_results[hlc_timestamp]
-            p = multiprocessing.Process(
-                target=self.run_it,
-                args=[results, num_of_peers, child_conn]
-            )
-            processes.append({
-                'parent_conn': parent_conn,
-                'child_conn': child_conn,
-                'process': p,
-                'hlc_timestamp': hlc_timestamp
-            })
+            for hlc_timestamp in validation_results:
+                parent_conn, child_conn = multiprocessing.Pipe()
+                results = validation_results[hlc_timestamp]
+                p = multiprocessing.Process(
+                    target=self.run_it,
+                    args=[results, num_of_peers, child_conn]
+                )
+                processes.append({
+                    'parent_conn': parent_conn,
+                    'child_conn': child_conn,
+                    'process': p,
+                    'hlc_timestamp': hlc_timestamp
+                })
 
-        for process_info in processes:
-            process = process_info.get('process')
-            process.start()
+            for process_info in processes:
+                process = process_info.get('process')
+                process.start()
 
-        await self.check_all(processes)
+            await self.check_all(processes)
 
-        for process_info in processes:
-            process = process_info.get('process')
-            process.terminate()
-            process.join()
+            for process_info in processes:
+                process = process_info.get('process')
+                process.terminate()
+                process.join()
 
-        return self.all_consensus_results
+            return self.all_consensus_results
+
+        except Exception as err:
+            self.log.error(err)
+            print(err)
+            return {}
 
     async def check(self, process_info):
         hlc_timestamp = process_info.get('hlc_timestamp')

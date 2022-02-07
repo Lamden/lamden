@@ -53,8 +53,6 @@ class ValidationQueue(ProcessingQueue):
         self.validation_results_history = []
         self.detected_rollback = False
 
-        self.last_time_checked = datetime.datetime.now()
-
         self.checking = False
 
     def append(self, processing_results):
@@ -67,7 +65,8 @@ class ValidationQueue(ProcessingQueue):
 
         if hlc_timestamp <= self.last_hlc_in_consensus:
             block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
-            return
+            if block:
+                return
 
         # TODO how late of an HLC timestamp are we going to accept?
         '''
@@ -148,22 +147,23 @@ class ValidationQueue(ProcessingQueue):
         try:
             results_not_in_consensus = self.results_not_in_consensus
             if len(results_not_in_consensus) == 0:
+                self.checking = False
                 return
+
             all_consensus_results = await self.multiprocess_consensus.start(
                 validation_results=results_not_in_consensus
             )
+
+            for hlc_timestamp in all_consensus_results:
+                if all_consensus_results.get(hlc_timestamp, None) is not None:
+                    self.add_consensus_result(
+                        hlc_timestamp=hlc_timestamp,
+                        consensus_result=all_consensus_results[hlc_timestamp]
+                    )
+
         except Exception as err:
-            error = err
+            self.log.error(err)
             print(err)
-
-        self.last_time_checked = datetime.datetime.now()
-
-        for hlc_timestamp in all_consensus_results:
-            if all_consensus_results.get(hlc_timestamp, None) is not None:
-                self.add_consensus_result(
-                    hlc_timestamp=hlc_timestamp,
-                    consensus_result=all_consensus_results[hlc_timestamp]
-                )
 
         self.checking = False
 

@@ -216,7 +216,7 @@ class Node:
         self.start_all_queues()
 
         if self.debug:
-            asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
+            asyncio.ensure_future(self.system_monitor.start(delay_sec=0.1))
 
         asyncio.ensure_future(self.check_main_processing_queue())
         asyncio.ensure_future(self.check_validation_queue())

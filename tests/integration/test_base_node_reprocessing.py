@@ -53,7 +53,7 @@ class TestNode(TestCase):
         self.b.blocks.flush()
         self.b.driver.flush()
 
-    def create_a_node(self, constitution=None, node_num=0):
+    def create_a_node(self, constitution=None, bootnodes = None, node_num=0):
         driver = ContractDriver(driver=InMemDriver())
 
         dl_wallet = Wallet()
@@ -64,10 +64,16 @@ class TestNode(TestCase):
                 'delegates': [dl_wallet.verifying_key]
             }
 
+        if bootnodes is None:
+            bootnodes = {}
+            bootnodes[mn_wallet.verifying_key] = f'tcp://127.0.0.1:19000'
+            bootnodes[dl_wallet.verifying_key] = f'tcp://127.0.0.1:19001'
+
         node = base.Node(
-            socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+            socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
             wallet=mn_wallet,
             constitution=constitution,
+            bootnodes=bootnodes,
             driver=driver,
             testing=True,
             metering=False,
@@ -76,6 +82,10 @@ class TestNode(TestCase):
                 'self': 0
             }
         )
+
+        node.network.socket_ports['router'] = 19000 + node_num
+        node.network.socket_ports['webserver'] = 18080 + node_num
+        node.network.socket_ports['publisher'] = 19080 + node_num
 
         node.client.set_var(
             contract='currency',
@@ -540,7 +550,21 @@ class TestNode(TestCase):
 
         # Create and start the nodes
         self.create_a_node(node_num=0)
-        node_peer = self.create_a_node(node_num=1)
+
+        m_wallet = Wallet()
+        constitution = {
+                'masternodes': [m_wallet.verifying_key],
+                'delegates': []
+            }
+
+        bootnodes = {}
+        bootnodes[m_wallet.verifying_key] = 'tcp://127.0.0.1:19002'
+
+        node_peer = self.create_a_node(
+            node_num=2,
+            constitution=constitution,
+            bootnodes=bootnodes
+        )
 
         self.start_all_nodes()
 

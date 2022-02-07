@@ -1,9 +1,7 @@
 import zmq
-import json
-import time
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
-from zmq.auth.asyncio import AsyncioAuthenticator
+
 from lamden.logger.base import get_logger
 
 from zmq.utils import z85
@@ -17,7 +15,6 @@ from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 
 WORK_SERVICE = 'work'
-
 
 class Processor:
     async def process_message(self, msg):
@@ -37,25 +34,22 @@ class Network:
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
-        self.max_peer_strikes = max_peer_strikes     
+
+        self.max_peer_strikes = max_peer_strikes
+
         self.socket_base = socket_base
         self.socket_ports = {
             'router': 19000,
-            'publisher': 19080
+            'publisher': 19080,
+            'webserver': 18080
         }
         self.ctx = zmq.asyncio.Context()
-
-        self.log = get_logger("NEW_SOCKETS")
-        self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.router_address).encode()
-
-        self.log.info(self.publisher_address)
-        self.log.info(self.router_address)
 
         self.publisher = Publisher(
             testing=self.testing,
             debug=self.debug,
-            address=self.publisher_address,
-            ctx=self.ctx
+            ctx=self.ctx,
+            logger=self.log
         )
 
         boot_node_vks = list(boot_nodes.keys())
@@ -63,8 +57,12 @@ class Network:
         for vk in boot_node_vks:
             boot_node_keys.append(z85_key(vk))
 
-        self.router = Router(address=self.router_address, router_wallet=self.wallet,
-                             public_keys=boot_node_keys, callback=self.router_callback)
+        self.router = Router(
+            router_wallet=self.wallet,
+            public_keys=boot_node_keys,
+            callback=self.router_callback,
+            logger=self.log
+        )
 
         self.peers = {}
         self.peer_blacklist = []
@@ -81,8 +79,26 @@ class Network:
     def router_address(self):
         return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('router'))
 
+    @property
+    def hello_response(self):
+        return ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.router_address).encode()
+
+    @property
+    def log(self):
+        return get_logger(self.router_address)
+
     async def start(self):
         self.running = True
+
+        self.log.info(self.publisher_address)
+        self.log.info(self.router_address)
+
+        self.publisher.log = self.log
+        self.router.log = self.log
+
+        self.publisher.address = self.publisher_address
+        self.router.address = self.router_address
+
         self.publisher.setup_socket()
         self.router.start()
 
@@ -106,6 +122,9 @@ class Network:
 
     def get_services(self):
         return self.services
+
+    def set_socket_port(self, service, port_num):
+        self.socket_ports[service] = port_num
 
     def add_message_to_subscriptions_queue(self, topic, msg):
         encoded_msg = encode(msg).encode()
@@ -152,12 +171,12 @@ class Network:
             debug=self.debug,
             ctx=self.ctx,
             ip=ip,
-            socket_ports=self.socket_ports,
             key=z85_key(key),
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,
             max_strikes=self.max_peer_strikes,
-            wallet=self.wallet
+            wallet=self.wallet,
+            logger=self.log
         )
         self.peers[key].start()
 

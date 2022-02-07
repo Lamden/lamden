@@ -8,35 +8,40 @@ from contracting.db.encoder import encode
 class Publisher():
     def __init__(
         self,
-        address,
-        ctx: zmq.Context,     
+        ctx: zmq.Context,
+        logger=None,
         testing=False,
         debug=False      
     ):        
         # Configure the listening socket
-
-        self.address = address
+        self.log = logger or get_logger("PUBLISHER")
+        self.address = None
         
         self.socket = None
         self.ctx = ctx
-        self.running = False 
-        self.log = get_logger("PUBLISHER")
+        self.running = False
 
         self.debug_published = []
 
     def setup_socket(self): 
         if self.running:
-            self.log.error('publisher.start: publisher already running')
+            self.log.warning(f'[PUBLISHER] Already running.')
+            print(f'[{self.log.name}][PUBLISHER] Already running.')
+
             return
         self.socket = self.ctx.socket(zmq.PUB)
-        print('publisher.start: publisher starting on {}'.format(self.address))
-        self.log.info('publisher.start: publisher starting on {}'.format(self.address))
+
+        self.log.info(f'[PUBLISHER] Starting on {self.address}')
+        print(f'[{self.log.name}][PUBLISHER] Starting on {self.address}')
+
         self.running = True
         self.socket.bind(self.address)
     
     async def publish(self, topic, msg):
         if not self.running:
-            self.log.error('publisher.publish: publisher is not running')
+            self.log.error(f'[PUBLISHER] Publisher is not running.')
+            print(f'[{self.log.name}][PUBLISHER] Publisher is not running.')
+
             return
 
         self.debug_published.append(msg)
@@ -48,6 +53,10 @@ class Publisher():
     def stop(self):
         if self.running:
             self.running = False
+
+            self.log.info('[PUBLISHER] Stopping.')
+            print(f'[{self.log.name}][PUBLISHER] Stopping.')
+
             self.socket.close()
 
         

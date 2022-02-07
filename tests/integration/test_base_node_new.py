@@ -12,6 +12,7 @@ from contracting.db import encoder
 import asyncio
 
 import json
+from pathlib import Path
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results
 from tests.integration.mock.create_directories import remove_fixture_directories
@@ -34,9 +35,10 @@ class TestNode(TestCase):
 
         self.mn_wallet = Wallet()
         self.fixture_directories = ['txq']
-        self.file_queue_root = "./mock/fixtures/file_queue"
-        self.tx_queue_dir = 'txq'
-        self.file_queue_path = f'{self.file_queue_root}/{self.mn_wallet.verifying_key}/{self.tx_queue_dir}'
+
+        self.current_path = Path.cwd()
+        self.file_queue_path = f'{self.current_path}/fixtures/file_queue'
+        self.tx_queue_path = f'{self.file_queue_path}/{self.mn_wallet.verifying_key}/txq'
 
         self.stu_wallet = Wallet()
         self.jeff_wallet = Wallet()
@@ -51,18 +53,20 @@ class TestNode(TestCase):
         self.driver.flush()
 
         self.node = None
+        self.nodes = []
 
         print("\n")
 
     def tearDown(self):
-        if (self.node.running):
-            self.stop_node()
+        for node in self.nodes:
+            if (node.running):
+                self.await_async_process(node.stop)
 
         self.b.blocks.flush()
         self.b.driver.flush()
 
         remove_fixture_directories(
-            root=f'{self.file_queue_root}',
+            root=self.file_queue_path,
             dir_list=[self.mn_wallet.verifying_key]
         )
 
@@ -73,17 +77,16 @@ class TestNode(TestCase):
 
         constitution = constitution or {
                 'masternodes': [self.mn_wallet.verifying_key],
-                'delegates': [dl_wallet.verifying_key]
+                'delegates': []
             }
 
         if bootnodes is None:
             bootnodes = {}
-            bootnodes[self.mn_wallet.verifying_key] = f'tcp://127.0.0.1:18080'
-            bootnodes[dl_wallet.verifying_key] = f'tcp://127.0.0.1:18081'
+            bootnodes[self.mn_wallet.verifying_key] = f'tcp://127.0.0.1:{19000 + node_num}'
 
         if node_type == 'base':
             node = base.Node(
-                socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+                socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
                 wallet=self.mn_wallet,
                 constitution=constitution,
                 driver=driver,
@@ -93,13 +96,13 @@ class TestNode(TestCase):
                     'base': 0,
                     'self': 0
                 },
-                tx_queue=filequeue.FileQueue(root=self.file_queue_path),
+                tx_queue=filequeue.FileQueue(root=self.tx_queue_path),
                 bootnodes=bootnodes
             )
 
         if node_type == 'masternode':
             node = Masternode(
-                socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+                socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
                 wallet=self.mn_wallet,
                 constitution=constitution,
                 driver=driver,
@@ -109,9 +112,14 @@ class TestNode(TestCase):
                     'base': 0,
                     'self': 0
                 },
-                tx_queue=filequeue.FileQueue(root=self.file_queue_path),
+                tx_queue=filequeue.FileQueue(root=self.tx_queue_path),
                 bootnodes=bootnodes
             )
+
+        if node_num > 0:
+            node.network.set_socket_port(service='router', port_num=19000 + node_num)
+            node.network.set_socket_port(service='webserver', port_num=18080 + node_num)
+            node.network.set_socket_port(service='publisher', port_num=19080 + node_num)
 
         node.client.set_var(
             contract='currency',
@@ -128,6 +136,8 @@ class TestNode(TestCase):
         )
 
         node.driver.commit()
+
+        self.nodes.append(node)
 
         self.num_of_nodes = self.num_of_nodes + 1
 
@@ -164,6 +174,10 @@ class TestNode(TestCase):
         res =  loop.run_until_complete(tasks)
         print(res)
         return res[0]
+
+    def start_nodes(self):
+        for node in self.nodes:
+            self.await_async_process(node.start)
 
     def start_node(self, node=None):
         if (node):
@@ -700,7 +714,20 @@ class TestNode(TestCase):
         self.create_a_node()
         self.start_node()
 
-        node_peer = self.create_a_node(node_num=1)
+        m_wallet = Wallet()
+        constitution = {
+                'masternodes': [m_wallet.verifying_key],
+                'delegates': []
+            }
+
+        bootnodes = {}
+        bootnodes[m_wallet.verifying_key] = 'tcp://127.0.0.1:19002'
+
+        node_peer = self.create_a_node(
+            node_num=2,
+            constitution=constitution,
+            bootnodes=bootnodes
+        )
         self.start_node(node=node_peer)
 
         recipient_wallet = Wallet()
@@ -769,8 +796,7 @@ class TestNode(TestCase):
         self.create_a_node(node_num=0)
         node_peer = self.create_a_node(node_num=1)
 
-        self.start_node()
-        self.start_node(node_peer)
+        self.start_nodes()
 
         recipient_wallet_1 = Wallet()
         recipient_wallet_2 = Wallet()
@@ -913,7 +939,18 @@ class TestNode(TestCase):
         self.assertEqual(1, self.node.get_current_height())
 
     def test_get_peers_for_consensus(self):
-        self.create_a_node(node_type='masternode')
+        d_wallet = Wallet()
+        constitution = {
+                'masternodes': [self.mn_wallet.verifying_key],
+                'delegates': [d_wallet.verifying_key]
+            }
+
+        bootnodes = {}
+        bootnodes[self.mn_wallet.verifying_key] = f'tcp://127.0.0.1:19000'
+        bootnodes[d_wallet.verifying_key] = f'tcp://127.0.0.1:19001'
+
+
+        self.create_a_node(constitution=constitution, bootnodes=bootnodes, node_type='masternode')
         self.start_node()
 
         for vk in self.node.network.peers:

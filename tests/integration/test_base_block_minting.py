@@ -1,19 +1,18 @@
 from lamden.nodes.masternode import masternode
 from lamden.nodes import base
-from lamden import router, storage, network, authentication
+from lamden import storage
 from lamden.crypto.wallet import Wallet
-from lamden.crypto import canonical
+
 from contracting.db.driver import InMemDriver, ContractDriver
-from contracting.client import ContractingClient
-from contracting.db import encoder
-from contracting.db.driver import encode
-from contracting.stdlib.bridge.decimal import ContractingDecimal
+
 import zmq.asyncio
 import asyncio
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
+from tests.integration.mock.create_directories import remove_fixture_directories
 
 from unittest import TestCase
+from pathlib import Path
 
 class TestNode(TestCase):
     def setUp(self):
@@ -23,8 +22,6 @@ class TestNode(TestCase):
 
         self.num_of_nodes = 0
 
-        self.blocks = storage.BlockStorage(home="./.lamden/")
-
         self.driver = ContractDriver(driver=InMemDriver())
 
         self.stu_wallet = Wallet()
@@ -32,38 +29,48 @@ class TestNode(TestCase):
         self.archer_wallet = Wallet()
         self.oliver_wallet = Wallet()
 
-        self.b = masternode.BlockService(
-            blocks=self.blocks,
-            driver=self.driver
+        self.current_path = Path.cwd()
+        self.fixtures_path = f'{self.current_path}/fixtures'
+        self.block_storage_path = f'{self.fixtures_path}/block_storage'
+
+        remove_fixture_directories(
+            root=self.fixtures_path,
+            dir_list=['block_storage'],
+
         )
 
-        self.blocks.flush()
-        self.driver.flush()
+        self.nodes = []
 
-        self.authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
 
         print("\n")
 
     def tearDown(self):
-        self.authenticator.authenticator.stop()
+        for node in self.nodes:
+            self.await_async_process(node.stop)
+            remove_fixture_directories(
+                root=self.block_storage_path,
+                dir_list=[node.wallet.verifying_key],
+
+            )
+
         self.ctx.destroy()
         self.loop.close()
-        self.b.blocks.flush()
-        self.b.driver.flush()
 
     def create_a_node(self, constitution=None, node_num=0):
         driver = ContractDriver(driver=InMemDriver())
 
-        dl_wallet = Wallet()
         mn_wallet = Wallet()
 
         constitution = constitution or {
                 'masternodes': [mn_wallet.verifying_key],
-                'delegates': [dl_wallet.verifying_key]
+                'delegates': []
             }
 
+        bootnodes = {}
+        bootnodes[mn_wallet.verifying_key] = f'tcp://127.0.0.1:{19000 + node_num}'
+
         node = base.Node(
-            socket_base=f'tcp://127.0.0.1:180{80 + node_num}',
+            socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
             ctx=self.ctx,
             wallet=mn_wallet,
             constitution=constitution,
@@ -73,8 +80,13 @@ class TestNode(TestCase):
             delay={
                 'base': 0,
                 'self': 0
-            }
+            },
+            blocks=storage.BlockStorage(home=f'{self.block_storage_path}/{mn_wallet.verifying_key}')
         )
+
+        node.network.socket_ports['router'] = 19000 + node_num
+        node.network.socket_ports['webserver'] = 18080 + node_num
+        node.network.socket_ports['publisher'] = 19080 + node_num
 
         node.client.set_var(
             contract='currency',
@@ -86,6 +98,8 @@ class TestNode(TestCase):
         node.driver.commit()
 
         self.num_of_nodes = self.num_of_nodes + 1
+
+        self.nodes.append(node)
 
         return node
 
@@ -145,8 +159,11 @@ class TestNode(TestCase):
 
     def get_validation_result(self, hlc_timestamp, node, node_vk=None):
         node_vk = node_vk or node.wallet.verifying_key
-        solution = node.validation_queue.validation_results[hlc_timestamp]['solutions'][node_vk]
-        return node.validation_queue.validation_results[hlc_timestamp]['result_lookup'][solution]
+        for result in node.validation_queue.validation_results_history:
+            if hlc_timestamp in result.keys():
+                solution = result[hlc_timestamp][1]['solutions'].get(node_vk)
+                return result[hlc_timestamp][1]['result_lookup'].get(solution, None)
+        return None
 
     def test_hard_apply_block(self):
         # Hard Apply will mint a new block, apply state and increment block height

@@ -1,11 +1,8 @@
 from time import sleep
 import zmq
 import threading
-from random import randint, random
-import os
-import logging
-from zmq.auth.thread import ThreadAuthenticator
-from zmq.sugar.constants import NOBLOCK
+from lamden.logger.base import get_logger
+
 from lamden.crypto import wallet
 from contracting.db.encoder import encode
 
@@ -15,7 +12,10 @@ class Dealer(threading.Thread):
     msg_hello = 'hello'
     con_failed = 'con_failed'
 
-    def __init__(self, _id, _address, server_vk, wallet: wallet, ctx, _callback = None):
+    def __init__(self, _id, _address, server_vk, wallet: wallet, ctx, _callback = None, logger=None):
+
+        self.log = logger or get_logger('DEALER')
+
         self.ctx = zmq.Context()
         self.id = _id
         self.address = _address
@@ -32,12 +32,15 @@ class Dealer(threading.Thread):
         self.socket.setsockopt(zmq.LINGER, 500)
         self.running = False
 
+        self.max_attempts = 5000
+        self.poll_time = 500
+
     def run(self):
         # Get an instance of the ZMQ Context
 
         self.running = True
 
-        logging.info("DEALER STARTING ON: " + self.address)
+        self.log.info("[DEALER] STARTING ON: " + self.address)
 
         self.socket.connect(self.address)
 
@@ -50,25 +53,25 @@ class Dealer(threading.Thread):
 
         connected = False
         connection_attempts = 0
-        max_attempts = 50000
-        poll_time = 1000
 
         while self.running:
             try:                
-                sockets = dict(poll.poll(poll_time))
+                sockets = dict(poll.poll(self.poll_time))
                 if self.socket in sockets:   
                     # print('self.socket in sockets: True')
                     msg = self.socket.recv()
                     connected = True
-                    logging.info('Dealer %s received: %s' % (self.id, msg))
+                    self.log.info('[DEALER] %s received: %s' % (self.id, msg))
+                    print(f'[{self.log.name}][DEALER] %s received: %s' % (self.id, msg))
                     if self.callback:
                         self.callback(msg)
                 else:
                     if not connected:
-                        logging.info('failed to received response, attempting to reconnect')
+                        self.log.info('[DEALER] failed to received response, attempting to reconnect')
+                        print(f'[{self.log.name}][DEALER] failed to received response, attempting to reconnect')
                         self.socket.disconnect(self.address)
                         connection_attempts += 1
-                        if connection_attempts >= max_attempts:
+                        if connection_attempts >= self.max_attempts:
                             self.running = False
                             self.callback(Dealer.con_failed)
                             break
@@ -76,10 +79,12 @@ class Dealer(threading.Thread):
                         self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
-                    logging.info('Interrupted')
+                    self.log.info('[DEALER] Interrupted')
+                    print(f'[{self.log.name}][DEALER] Interrupted')
                     break           # Interrupted
                 else:
-                    logging.info('error: ' + e.strerror)
+                    self.log.info('[DEALER] error: ' + e.strerror)
+                    print(f'[{self.log.name}][DEALER] error: ' + e.strerror)
                     sleep(1)
         # print("dealer finished")
         self.socket.close()
@@ -88,5 +93,7 @@ class Dealer(threading.Thread):
         self.socket.send_string(msg)
 
     def stop(self):
-        # print('stopping dealer: ' + self.id)
-        self.running = False
+        if self.running:
+            self.log.info('[DEALER] Stopping.')
+            print(f'[{self.log.name}][DEALER] Stopping.')
+            self.running = False

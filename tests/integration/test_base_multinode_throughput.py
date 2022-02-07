@@ -5,30 +5,20 @@
     After all node are in sync then the test are run to validate state etc.
 
 '''
-import random
 
 from tests.integration.mock import mocks_new
-from lamden.nodes.filequeue import FileQueue
 
-from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import transaction
 
-
-from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.client import ContractingClient
 from contracting.db import encoder
 
 import zmq.asyncio
 import asyncio
-import httpx
 from random import randrange
 import json
-import time
-import pprint
-import os
-import shutil
+
 
 from unittest import TestCase
 
@@ -81,36 +71,36 @@ class TestMultiNode(TestCase):
     def test_mock_network_init_creates_correct_bootnodes(self):
         # 2 mn, 3 delegate
         expected_ips = [
-            'tcp://127.0.0.1:18000',
-            'tcp://127.0.0.1:18001',
-            'tcp://127.0.0.1:18002',
-            'tcp://127.0.0.1:18003',
-            'tcp://127.0.0.1:18004',
-            'tcp://127.0.0.1:18005',
-            'tcp://127.0.0.1:18006',
-            'tcp://127.0.0.1:18007',
-            'tcp://127.0.0.1:18008'
+            'tcp://127.0.0.1:19000',
+            'tcp://127.0.0.1:19001',
+            'tcp://127.0.0.1:19002',
+            'tcp://127.0.0.1:19003',
+            'tcp://127.0.0.1:19004',
+            'tcp://127.0.0.1:19005',
+            'tcp://127.0.0.1:19006',
+            'tcp://127.0.0.1:19007',
+            'tcp://127.0.0.1:19008'
         ]
 
         self.n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
 
-        self.assertEqual(self.n.masternodes[0].tcp, expected_ips[0])
-        self.assertEqual(self.n.masternodes[1].tcp, expected_ips[1])
-        self.assertEqual(self.n.masternodes[2].tcp, expected_ips[2])
-        self.assertEqual(self.n.delegates[0].tcp, expected_ips[3])
-        self.assertEqual(self.n.delegates[1].tcp, expected_ips[4])
-        self.assertEqual(self.n.delegates[2].tcp, expected_ips[5])
-        self.assertEqual(self.n.delegates[3].tcp, expected_ips[6])
-        self.assertEqual(self.n.delegates[4].tcp, expected_ips[7])
-        self.assertEqual(self.n.delegates[5].tcp, expected_ips[8])
+        self.assertEqual(self.n.masternodes[0].obj.network.router.address, expected_ips[0])
+        self.assertEqual(self.n.masternodes[1].obj.network.router.address, expected_ips[1])
+        self.assertEqual(self.n.masternodes[2].obj.network.router.address, expected_ips[2])
+        self.assertEqual(self.n.delegates[0].obj.network.router.address, expected_ips[3])
+        self.assertEqual(self.n.delegates[1].obj.network.router.address, expected_ips[4])
+        self.assertEqual(self.n.delegates[2].obj.network.router.address, expected_ips[5])
+        self.assertEqual(self.n.delegates[3].obj.network.router.address, expected_ips[6])
+        self.assertEqual(self.n.delegates[4].obj.network.router.address, expected_ips[7])
+        self.assertEqual(self.n.delegates[5].obj.network.router.address, expected_ips[8])
 
     def test_mock_network_starts(self):
         # 2 mn, 3 delegate
         expected_ips = [
-            'tcp://127.0.0.1:18000',
-            'tcp://127.0.0.1:18001',
-            'tcp://127.0.0.1:18002',
-            'tcp://127.0.0.1:18003'
+            'tcp://127.0.0.1:19000',
+            'tcp://127.0.0.1:19001',
+            'tcp://127.0.0.1:19002',
+            'tcp://127.0.0.1:19003'
         ]
 
         self.n = mocks_new.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
@@ -222,7 +212,7 @@ class TestMultiNode(TestCase):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
         delay = {'base': 1, 'self': 1.5}
-        self.n = mocks_new.MockNetwork(num_of_delegates=4, num_of_masternodes=3, ctx=self.ctx, metering=False, delay=delay)
+        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
         self.await_async_process(self.n.start)
 
         for node in self.n.all_nodes():
@@ -380,25 +370,25 @@ class TestMultiNode(TestCase):
 
     def test_network_mixed_receivers__throughput_test__low_nodes_low_txcount(self):
         # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [2, 3, 5, 20, {'base': 1, 'self': 1.5}]
+        test_info = [1, 1, 5, 20, {'base': 1, 'self': 1.5}]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__low_nodes_high_tx_count(self):
         # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [2, 3, 5, 50, {'base': 1, 'self': 1.5}]
+        test_info = [1, 1, 5, 50, {'base': 1, 'self': 1.5}]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__high_nodes_low_tx_count(self):
         # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [4, 5, 5, 20, {'base': 1, 'self': 1.5}]
+        test_info = [2, 2, 5, 20, {'base': 1, 'self': 1.5}]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__high_nodes_high_tx_count(self):
         # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [4, 5, 5, 50, {'base': 1, 'self': 1.5}]
+        test_info = [2, 2, 5, 50, {'base': 1, 'self': 1.5}]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
