@@ -5,6 +5,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.client import ContractingClient
+from contracting.db.encoder import convert_dict
 import zmq.asyncio
 import asyncio
 
@@ -295,6 +296,33 @@ class TestNode(TestCase):
 
         self.assertEqual(storage.get_latest_block_height(node.driver), 1)
         self.assertEqual(storage.get_latest_block_hash(node.driver), block['hash'])
+
+    def test_process_new_block_with_bigint_doesnt_fail(self):
+        block = canonical.block_from_subblocks(
+            subblocks=[],
+            previous_hash='0' * 64,
+            block_num=1
+        )
+        block['bi'] = 2 ** 65
+
+        driver = ContractDriver(driver=InMemDriver())
+        node = base.Node(
+            socket_base='tcp://127.0.0.1:18002',
+            ctx=self.ctx,
+            wallet=Wallet(),
+            constitution={
+                'masternodes': [Wallet().verifying_key],
+                'delegates': [Wallet().verifying_key]
+            },
+            driver=driver,
+            store=True,
+            blocks=self.blocks
+        )
+
+        node.process_new_block(block)
+        b = node.blocks.get_block(1)
+        
+        self.assertDictEqual(block, convert_dict(b))
 
     def test_process_new_block_stores_block_if_should_store(self):
         block = canonical.block_from_subblocks(
