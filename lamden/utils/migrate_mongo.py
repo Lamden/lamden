@@ -1,8 +1,8 @@
-from . import legacy
+import legacy
 
 from lamden import storage, rewards
 from lamden.contracts import sync
-from contracting.db.driver import ContractDriver, encode, Driver, FSDriver, LMDBDriver
+from contracting.db.driver import ContractDriver, encode, Driver, FSDriver
 import lamden
 import json
 from contracting.client import ContractingClient
@@ -13,7 +13,6 @@ import decimal
 import pathlib
 
 log = get_logger('MIGRATE')
-
 
 class MigrationNode:
     def __init__(self,
@@ -30,7 +29,7 @@ class MigrationNode:
 
         # Has the new FSDriver
         self.new_driver = ContractDriver()
-        self.new_driver.driver = LMDBDriver()
+        self.new_driver.driver = FSDriver()
 
         # Does not have the new FSDriver
         self.old_driver = ContractDriver()
@@ -144,3 +143,7 @@ class MigrationNode:
         self.driver.commit()
         self.driver.clear_pending_state()
         gc.collect()
+
+if __name__ == '__main__':
+    mn = MigrationNode()
+    mn.catchup()
