@@ -331,11 +331,10 @@ class Node:
 
         # Store the block if it's a masternode
         if self.store:
-            #encoded_block = encode(block)
-            #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
-
             self.blocks.store_block(block)
 
+            encoded_block = encode(block)
+            encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
             # create Event File
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
