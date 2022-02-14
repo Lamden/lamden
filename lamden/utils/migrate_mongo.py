@@ -60,6 +60,8 @@ class MigrationNode:
         with open(constitution) as f:
             self.constitution = json.load(f)
 
+        self.seed_genesis_contracts()
+
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
         sync.setup_genesis_contracts(
