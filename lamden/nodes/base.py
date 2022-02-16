@@ -20,11 +20,14 @@ from lamden.nodes import work, processing_queue, validation_queue
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.nodes.events import Event, EventWriter
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
+NEW_BLOCK_EVENT = 'new_block'
+NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
@@ -501,6 +504,17 @@ class Node:
             # Store the new block in the block db
             self.blocks.store_block(new_block)
 
+            # Emit a block reorg event
+
+            # create a NEW_BLOCK_REORG_EVENT
+            encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
+
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_REORG_EVENT],
+                data=encoded_block
+            ))
+
             if self.debug:
                 self.log.debug(json.dumps({
                     'hlc_timestamp': hlc_timestamp,
@@ -539,6 +553,15 @@ class Node:
 
                 self.blocks.store_block(block)
 
+                # create a NEW_BLOCK_REORG_EVENT
+                encoded_block = encode(block)
+                encoded_block = json.loads(encoded_block)
+
+                self.event_writer.write_event(Event(
+                    topics=[NEW_BLOCK_REORG_EVENT],
+                    data=encoded_block
+                ))
+
             # Set the current block hash and height
             self.update_block_db(block=later_blocks[-1])
 
@@ -571,6 +594,15 @@ class Node:
 
             # Set the current block hash and height
             self.update_block_db(block=new_block)
+
+            # create New Block Event
+            encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
+
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_EVENT],
+                data=encoded_block
+            ))
 
             if self.debug:
                 self.log.debug(json.dumps({

@@ -484,7 +484,7 @@ if __name__ == '__main__':
     wallet = Wallet(seed=sk)
 
     # These will be the topics that are sent from the event server
-    topics = ["new_block"]
+    topics = ["new_block", "block_reorg"]
 
     webserver = WebServer(
         contracting_client=ContractingClient(),
