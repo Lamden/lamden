@@ -600,8 +600,6 @@ class Node:
             self.update_block_db(block=encoded_block)
 
             # create New Block Event
-            encoded_block = json.loads(encoded_block)
-
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
                 data=encoded_block
