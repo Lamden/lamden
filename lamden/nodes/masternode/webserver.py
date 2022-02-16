@@ -177,9 +177,13 @@ class WebServer:
             num = storage.get_latest_block_height(self.driver)
             block = self.blocks.get_block(int(num))
 
+            log.info(block)
+            encoded_block = encode(block)
+            log.info(encoded_block)
+
             eventData = {
                 'event': 'latest_block',
-                'data': block
+                'data': encoded_block
             }
 
             await ws.send(json.dumps(eventData))
