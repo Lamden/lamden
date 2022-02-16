@@ -178,7 +178,10 @@ class WebServer:
             block = self.blocks.get_block(int(num))
 
             log.info(block)
+
             encoded_block = encode(block)
+            encoded_block = json.loads(encoded_block)
+
             log.info(encoded_block)
 
             eventData = {

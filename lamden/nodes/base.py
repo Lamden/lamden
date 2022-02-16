@@ -592,11 +592,12 @@ class Node:
 
             # Store the block in the block db
             encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
 
-            self.blocks.store_block(new_block)
+            self.blocks.store_block(encoded_block)
 
             # Set the current block hash and height
-            self.update_block_db(block=new_block)
+            self.update_block_db(block=encoded_block)
 
             # create New Block Event
             encoded_block = json.loads(encoded_block)
