@@ -502,29 +502,19 @@ class Node:
             # Apply the state changes from the block to the db
             self.apply_state_changes_from_block(new_block)
 
-            # Store the new block in the block db
-            self.blocks.store_block(new_block)
-
             # Emit a block reorg event
 
             # create a NEW_BLOCK_REORG_EVENT
             encoded_block = encode(new_block)
             encoded_block = json.loads(encoded_block)
 
+            # Store the new block in the block db
+            self.blocks.store_block(encoded_block)
+
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_REORG_EVENT],
                 data=encoded_block
             ))
-
-            if self.debug:
-                self.log.debug(json.dumps({
-                    'hlc_timestamp': hlc_timestamp,
-                    'event': 'commit_new_block',
-                    'type': 'tx_lifecycle',
-                    'file': 'base',
-                    'system_time': time.time(),
-                    'payload': encode(self.blocks.get_block(v=new_block.get('number')))
-                }))
 
             # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
             # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
@@ -542,21 +532,11 @@ class Node:
 
             # Re-save each block to the database
             for block in later_blocks:
-                if self.debug:
-                    self.log.debug(json.dumps({
-                        'hlc_timestamp': hlc_timestamp,
-                        'event': 'commit_new_block',
-                        'type': 'tx_lifecycle',
-                        'file': 'base',
-                        'system_time': time.time(),
-                        'payload': encode(self.blocks.get_block(v=block.get('number')))
-                    }))
-
-                self.blocks.store_block(block)
-
                 # create a NEW_BLOCK_REORG_EVENT
                 encoded_block = encode(block)
                 encoded_block = json.loads(encoded_block)
+
+                self.blocks.store_block(encoded_block)
 
                 self.event_writer.write_event(Event(
                     topics=[NEW_BLOCK_REORG_EVENT],
@@ -604,16 +584,6 @@ class Node:
                 topics=[NEW_BLOCK_EVENT],
                 data=encoded_block
             ))
-
-            if self.debug:
-                self.log.debug(json.dumps({
-                    'hlc_timestamp': hlc_timestamp,
-                    'event': 'commit_new_block',
-                    'type': 'tx_lifecycle',
-                    'file': 'base',
-                    'system_time': time.time(),
-                    'payload': encode(self.blocks.get_block(v=new_block.get('number')))
-                }))
 
         # remove the processing results and read history from the main_processing queue memory
         self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
