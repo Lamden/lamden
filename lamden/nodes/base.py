@@ -502,14 +502,14 @@ class Node:
             # Apply the state changes from the block to the db
             self.apply_state_changes_from_block(new_block)
 
+            # Store the new block in the block db
+            self.blocks.store_block(new_block)
+
             # Emit a block reorg event
 
             # create a NEW_BLOCK_REORG_EVENT
             encoded_block = encode(new_block)
             encoded_block = json.loads(encoded_block)
-
-            # Store the new block in the block db
-            self.blocks.store_block(encoded_block)
 
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_REORG_EVENT],
@@ -532,11 +532,11 @@ class Node:
 
             # Re-save each block to the database
             for block in later_blocks:
+                self.blocks.store_block(block)
+
                 # create a NEW_BLOCK_REORG_EVENT
                 encoded_block = encode(block)
                 encoded_block = json.loads(encoded_block)
-
-                self.blocks.store_block(encoded_block)
 
                 self.event_writer.write_event(Event(
                     topics=[NEW_BLOCK_REORG_EVENT],
