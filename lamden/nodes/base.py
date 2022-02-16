@@ -80,6 +80,7 @@ class Node:
 
         self.driver = driver
         self.nonces = nonces
+        self.event_writer = EventWriter()
 
         self.seed = seed
 
