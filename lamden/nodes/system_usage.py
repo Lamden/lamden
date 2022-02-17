@@ -28,6 +28,7 @@ class SystemUsage:
         diff = now - self.last_print
         if diff.seconds < self.print_delay:
             return
+
         self.log.debug(json.dumps({
             'type': 'system_load',
             'System_CPU_load': self.get_cpu_usage_pct(),

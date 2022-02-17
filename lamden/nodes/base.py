@@ -594,6 +594,8 @@ class Node:
         # Increment the internal block counter
         self.current_block_height += 1
 
+        gc.collect()
+
 
 # Re-processing CODE
     async def reprocess(self, tx):

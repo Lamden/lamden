@@ -193,8 +193,6 @@ class ValidationQueue(ProcessingQueue):
                     }))
                 '''
 
-
-
                 # if it matches us that means we did already processes this tx and the pending deltas should exist
                 # in the driver
                 try:
