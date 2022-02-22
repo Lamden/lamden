@@ -190,7 +190,7 @@ class Network:
         self.log.info(f'Establishing connection with {num_of_peers} peers...')
 
         while num_of_peers_connected < num_of_peers:
-            asyncio.sleep(10)
+            asyncio.sleep(5000)
             num_of_peers_connected = 0
 
             for vk in self.peers:
