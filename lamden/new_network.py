@@ -141,7 +141,7 @@ class Network:
                     self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
-    async def connect(self, ip, key):
+    def connect(self, ip, key):
         if key in self.peer_blacklist:
             # TODO how does a blacklisted peer get back in good standing?
             self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
@@ -184,6 +184,23 @@ class Network:
         self.disconnect_peer(key)
         self.peer_blacklist.append(key)
 
+    async def connected_to_all_peers(self):
+        num_of_peers = len(self.peers)
+        num_of_peers_connected = 0
+        self.log.info(f'Establishing connection with {num_of_peers} peers...')
+
+        while num_of_peers_connected < num_of_peers:
+            asyncio.sleep(10)
+            num_of_peers_connected = 0
+
+            for vk in self.peers:
+                peer = self.peers[vk]
+                if peer.sub_running:
+                    num_of_peers_connected += 1
+                else:
+                    self.log.info(f'Waiting to connect to {peer.ip}...')
+
+            self.log.info(f'Connected to {num_of_peers_connected}/{num_of_peers} peers.')
 
 def z85_key(key):
     bvk = bytes.fromhex(key)

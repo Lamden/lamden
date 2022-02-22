@@ -236,10 +236,12 @@ class Node:
 
             if vk != self.wallet.verifying_key:
                 # Use it to boot up the network
-                await self.network.connect(
+                self.network.connect(
                     ip=ip,
                     key=vk
                 )
+
+        await self.network.connected_to_all_peers()
 
         self.driver.clear_pending_state()
 
