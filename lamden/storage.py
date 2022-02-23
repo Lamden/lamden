@@ -14,8 +14,8 @@ import os
 
 import shutil
 
-BLOCK_HASH_KEY = '_current_block_hash._current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height._current_block_height'
+BLOCK_HASH_KEY = '_current_block_hash'
+BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
