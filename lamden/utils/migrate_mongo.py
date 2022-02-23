@@ -118,8 +118,7 @@ class MigrationNode:
             storage.update_state_with_block(
                 block=block,
                 driver=self.driver,
-                nonces=self.nonces,
-                set_hash_and_height=False
+                nonces=self.nonces
             )
 
             self.log.info('Issuing rewards.')

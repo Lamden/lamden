@@ -14,8 +14,8 @@ import os
 
 import shutil
 
-BLOCK_HASH_KEY = '_current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height'
+BLOCK_HASH_KEY = '_current_block_hash._current_block_hash'
+BLOCK_NUM_HEIGHT = '_current_block_height._current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
@@ -209,10 +209,8 @@ def get_latest_block_hash(driver: ContractDriver):
         return '0' * 64
     return latest_hash
 
-
 def set_latest_block_hash(h, driver: ContractDriver):
     driver.driver.set(BLOCK_HASH_KEY, h)
-
 
 def get_latest_block_height(driver: ContractDriver):
     h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
@@ -224,10 +222,8 @@ def get_latest_block_height(driver: ContractDriver):
 
     return h
 
-
 def set_latest_block_height(h, driver: ContractDriver):
     driver.driver.set(BLOCK_NUM_HEIGHT, h)
-
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
     #nonces_to_delete = []
@@ -249,7 +245,6 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
     #    nonces.set_pending_nonce(*n, value=None)
 
     nonces.flush_pending()
-
 
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
     if block.get('subblocks') is not None:
