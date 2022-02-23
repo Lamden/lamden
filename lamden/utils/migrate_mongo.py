@@ -85,8 +85,9 @@ class MigrationNode:
             current = 1
 
         # Find the missing blocks process them
-        for i in range(current, latest + 1):
+        for i in range(current, latest+1):
             block = self.old_blocks.get_block(v=i)
+            log.info(f'current: {i}, block: {block}')
 
             if block is not None:
                 self.process_new_block(block)
@@ -117,7 +118,8 @@ class MigrationNode:
             storage.update_state_with_block(
                 block=block,
                 driver=self.driver,
-                nonces=self.nonces
+                nonces=self.nonces,
+                set_hash_and_height=False
             )
 
             self.log.info('Issuing rewards.')
@@ -131,20 +133,16 @@ class MigrationNode:
 
     def process_new_block(self, block):
         # Update the state and refresh the sockets so new nodes can join
-        #self.update_state(block)
+        self.update_state(block)
 
         # Store the block if it's a masternode
         if self.store:
-            #encoded_block = encode(block)
-            #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal) ### BAD BAD NOT GOOD
             self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
-
-        # Finally, check and initiate an upgrade if one needs to be done
-        #self.driver.commit()
-        #self.driver.clear_pending_state()
-        #gc.collect()
+        self.driver.commit()
+        self.driver.clear_pending_state()
+        gc.collect()
 
 if __name__ == '__main__':
     mn = MigrationNode()
