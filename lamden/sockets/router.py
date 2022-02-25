@@ -1,4 +1,6 @@
 import traceback
+from datetime import datetime
+from time import sleep
 
 import zmq
 import threading
@@ -12,12 +14,12 @@ from lamden.crypto import wallet
 class CredentialsProvider(object):
 
     def __init__(self, public_keys):
-        print('init CredentialsProvider: ' + str(public_keys))
+        # print('init CredentialsProvider: ' + str(public_keys))
         self.public_keys = public_keys
         self.denied = []
 
     def add_key(self, new_key):
-        print(f'adding key {new_key}')
+        # print(f'adding key {new_key}')
         if new_key not in self.public_keys:
             self.public_keys.append(new_key)
 
@@ -26,7 +28,7 @@ class CredentialsProvider(object):
             self.public_keys.remove(key_to_remove)
 
     def callback(self, domain, key):
-        print(f'CredentialsProvider: checking auth for key: {key}')
+        # print(f'CredentialsProvider: checking auth for key: {key}')
         valid = key in self.public_keys
         if valid:
             logging.info('Authorizing: {0}, {1}'.format(domain, key))
@@ -57,7 +59,7 @@ class Router(threading.Thread):
         print('router destroyed')
 
     def run(self):
-        # print('router starting on: ' + self.address)
+        print(self.wallet.verifying_key + ': router starting on: ' + self.address)
 
         # Start an authenticator for this context.
         self.socket = self.ctx.socket(zmq.ROUTER)
@@ -77,19 +79,18 @@ class Router(threading.Thread):
 
         self.running = True
 
-
-
         while self.running:
             try:
                 sockets = dict(poll.poll(100))
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
-                    print('Router received %s from %s' % (msg, ident))
+                    print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'Router %s received %s from %s' % (self.wallet.verifying_key, msg, ident))
                     if self.callback is not None:
-                        print('Router triggering callback')
+                        print('Router %s triggering callback' % self.wallet.verifying_key)
                         self.callback(ident, msg)
-                # if(len(self.msg_queue) > 0):
-                #     self.socket.send_multipart(self.msg_queue.pop(0), flags=zmq.NOBLOCK)
+                else:
+                    # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'Router %s received no msgs in polling peroid' % self.wallet.verifying_key)
+                    sleep(0.1)
 
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
@@ -106,7 +107,7 @@ class Router(threading.Thread):
 
     def send_msg(self, ident: str, msg: str):
         try:
-            print(f'router send message to {ident}: {msg}')
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + f'router send message to {ident}: {msg}')
             self.socket.send_multipart([ident, msg], flags=zmq.NOBLOCK)
             # self.msg_queue.append([ident, msg])
         except:

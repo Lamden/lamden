@@ -54,7 +54,7 @@ class Peer:
         return '{}:{}'.format(self.ip, self.socket_ports.get('router'))
 
     def start(self):
-        # print('starting dealer connecting to: ' + self.router_address)
+        print('starting dealer connecting to: ' + self.dealer_address)
         self.loop = asyncio.new_event_loop()
         self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
                              wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback)
@@ -62,7 +62,7 @@ class Peer:
 
 
     def dealer_callback(self, msg):
-        # print('Received msg from %s : %s' % (self.router_address, msg))
+        print('Peer received msg from %s : %s' % (self.dealer_address, msg))
 
         if (msg == Dealer.con_failed):
             print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + f': Peer {self.server_key} connection failed to {self.dealer_address}')
@@ -81,7 +81,7 @@ class Peer:
                 msg_json['response'] == 'pub_info'):
             self.sub_running = True
             self.running = True
-            # print('Received response from authorized master with pub info')
+            print('Received response from authorized master with pub info')
             self.subscriber.start(self.loop)
         elif msg == Dealer.con_failed:
             self.log.error('Peer connection failed to %s (%s)' % (self.server_key, self.router_address))

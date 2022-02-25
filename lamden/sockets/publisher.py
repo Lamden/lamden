@@ -40,7 +40,7 @@ class Publisher():
             return
 
         self.debug_published.append(msg)
-
+        print(f'publisher sending msg: {msg}')
         m = encode(msg).encode()        
         self.socket.send_string(topic, flags=zmq.SNDMORE)
         self.socket.send(m)

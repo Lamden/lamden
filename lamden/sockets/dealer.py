@@ -1,3 +1,5 @@
+import traceback
+from datetime import datetime
 from time import sleep
 import zmq
 import threading
@@ -28,8 +30,8 @@ class Dealer(threading.Thread):
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_serverkey = self.server_vk
-        self.socket.identity = encode(self.id).encode()
-        self.socket.setsockopt(zmq.LINGER, 500)
+        self.socket.identity = self.id.encode()
+        self.socket.setsockopt(zmq.LINGER, 100)
         self.running = False
 
     def run(self):
@@ -38,6 +40,7 @@ class Dealer(threading.Thread):
         self.running = True
 
         logging.info("DEALER STARTING ON: " + self.address)
+        print(f'Dealer {self.wallet.verifying_key} connecting to router {self.address} : {self.server_vk}')
 
         self.socket.connect(self.address)
 
@@ -46,26 +49,30 @@ class Dealer(threading.Thread):
         poll.register(self.socket, zmq.POLLIN)
 
         # Send message to server to let it know there was a connection
-        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
+        self.send_msg(Dealer.msg_hello)
 
         connected = False
         connection_attempts = 0
-        max_attempts = 3
-        poll_time = 500
-        print(f'Dealer {self.wallet.verifying_key} connecting to router {self.address} : {self.server_vk}')
+        max_attempts = 5
+        poll_time = 100
 
         while self.running:
-            try:                
+            # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + f'--DEALER-- {self.id} polling')
+            try:
                 sockets = dict(poll.poll(poll_time))
-                # print('dealer polling: ' + self.id)
-                if self.socket in sockets:   
+                # print('dealer poll done')
+                if self.socket in sockets:
+                    # event = self.socket.poll(timeout=100, flags=zmq.POLLIN)
+                    # if(event):
                     # print('self.socket in sockets: True')
                     msg = self.socket.recv()
                     connected = True
-                    print('Dealer %s received: %s' % (self.id, msg))
-                    logging.info('Dealer %s received: %s' % (self.id, msg))
+                    print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'Dealer %s received: %s' % (self.id, msg))
+                    # logging.info('Dealer %s received: %s' % (self.id, msg))
                     if self.callback:
+                        print('Dealer calling callback')
                         self.callback(msg)
+                    print('dealer after callback')
                 else:
                     if not connected:
                         print('Dealer failed to received response, attempting to reconnect')
@@ -77,7 +84,12 @@ class Dealer(threading.Thread):
                             self.callback(Dealer.con_failed)
                             break
                         self.socket.connect(self.address)
-                        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
+                        self.send_msg(Dealer.msg_hello)
+                    else:
+                        # print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': '
+                        #       + 'Dealer %s did not receive msg in polling period' % self.id)
+                        # print('dealer sleep for 0.01')
+                        sleep(0.01)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     logging.info('Interrupted')
@@ -85,11 +97,19 @@ class Dealer(threading.Thread):
                 else:
                     logging.info('error: ' + e.strerror)
                     sleep(1)
-        print("dealer finished")
+            except:
+                print('dealer exception')
+                traceback.print_exc()
+
+        print("dealer finished: " + self.id)
         self.socket.close()
 
     def send_msg(self, msg):
-        self.socket.send_string(msg, flags=zmq.NOBLOCK)
+        try:
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + f'dealer {self.wallet.verifying_key} send_msg: ' + msg)
+            self.socket.send_string(msg, flags=zmq.NOBLOCK)
+        except:
+            print('dealer send_msg exception')
 
     def stop(self):
         logging.info('dealer stop: ' + self.id)
