@@ -1,3 +1,6 @@
+import threading
+from asyncio import create_task
+
 import zmq
 import zmq.auth
 from threading import Thread
@@ -13,7 +16,7 @@ class Subscriber():
     ):        
         # Configure the listening socket
         self.running = False
-        self.address = f'{_address}:19081'
+        self.address = _address
         self.ctx = _ctx
         self.socket = self.ctx.socket(zmq.SUB)    
         self.topics = _topics
@@ -29,14 +32,22 @@ class Subscriber():
             self.log.error(error)
             # socket.close()
             return False
-        self.sub_task = loop.run_until_complete(self.subscriber_thread())
+        # asyncio.create_task(self.subscriber_thread())
+        # self.sub_task = loop.run_until_complete(self.subscriber_thread())
+        print('subscriber start')
+        self.sub_task = threading.Thread(target=self.start2, args=[loop])
+        self.sub_task.start()
         return True
-        
+
+    def start2(self, loop):
+        print('subscriber start2')
+        loop.run_until_complete(self.subscriber_thread())
+
     def add_topic(self, topic):
         self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
 
-    async def subscriber_thread(self):      
-        # print("starting subscriber_thread")
+    async def subscriber_thread(self):
+        print("starting subscriber_thread, subbing to : " + self.address)
         for topic in self.topics:
             self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
         self.running = True    
@@ -46,7 +57,7 @@ class Subscriber():
                 try:
                     data = self.socket.recv_multipart()
                     self.debug_events.append(data)
-                    # print(data)
+                    print('sub data received: ' + str(data))
                     if(self.callback):
                         await self.callback(data)
                 except zmq.ZMQError as e:
@@ -54,6 +65,8 @@ class Subscriber():
                         break           # Interrupted
                     else:
                         raise
+            # else:
+            #     print('subscriber:  no message received in polling period')
         self.socket.close()
         # print("subscriber finished")
 
