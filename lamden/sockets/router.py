@@ -104,7 +104,7 @@ class Router(threading.Thread):
 
         self.socket.close()
 
-    def send_msg(self, ident: str, msg: str):
+    def send_msg(self, ident: str, msg):
         self.socket.send_multipart([ident, msg])
 
     def stop(self):

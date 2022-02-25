@@ -1,3 +1,5 @@
+import asyncio
+import threading
 import zmq
 import zmq.auth
 from lamden.logger.base import get_logger
@@ -27,18 +29,21 @@ class Subscriber():
 
     def start(self, loop):
         try:
-            self.log.info(f'[SUBSCRIBER] STARTING for PEER {self.address}')
-            print(f'[{self.log.name}][SUBSCRIBER] STARTING for PEER {self.address}')
-
             self.socket.connect(self.address)
         except zmq.error.Again as error:
-            self.log.error(f'[SUBSCRIBER] {error}')
-            print(f'[{self.log.name}][SUBSCRIBER] {error}')
-
+            self.log.error(error)
             # socket.close()
             return False
-        self.sub_task = loop.run_until_complete(self.subscriber_thread())
+        # asyncio.create_task(self.subscriber_thread())
+        # self.sub_task = loop.run_until_complete(self.subscriber_thread())
+        print('subscriber start')
+        self.sub_task = threading.Thread(target=self.start2, args=[loop])
+        self.sub_task.start()
         return True
+
+    def start2(self, loop):
+        print('subscriber start2')
+        loop.run_until_complete(self.subscriber_thread())
         
     def add_topic(self, topic):
         self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
@@ -55,7 +60,7 @@ class Subscriber():
             event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
             if(event):
                 try:
-                    data = self.socket.recv_multipart()
+                    data = await self.socket.recv_multipart()
                     self.debug_events.append(data)
 
                     self.log.info(f'[SUBSCRIBER] Got event from {self.address}')
@@ -68,6 +73,9 @@ class Subscriber():
                         break           # Interrupted
                     else:
                         raise
+
+            await asyncio.sleep(0)
+
         self.socket.close()
         # print("subscriber finished")
 

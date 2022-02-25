@@ -1,3 +1,4 @@
+import json
 from time import sleep
 import zmq
 import threading
@@ -8,8 +9,6 @@ from contracting.db.encoder import encode
 
 
 class Dealer(threading.Thread):
-
-    msg_hello = 'hello'
     con_failed = 'con_failed'
 
     def __init__(self, _id, _address, server_vk, wallet: wallet, ctx, _callback = None, logger=None):
@@ -38,7 +37,9 @@ class Dealer(threading.Thread):
         self.running = False
 
         self.max_attempts = 99999
-        self.poll_time = 5000
+        self.poll_time = 500
+
+        self.msg_hello = json.dumps({'action': 'hello'})
 
     def run(self):
         # Get an instance of the ZMQ Context
@@ -54,12 +55,13 @@ class Dealer(threading.Thread):
         poll.register(self.socket, zmq.POLLIN)
 
         # Send message to server to let it know there was a connection
-        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
+        self.socket.send_string(self.msg_hello, flags=zmq.NOBLOCK)
 
         connected = False
         connection_attempts = 0
 
         while self.running:
+            print("I'm Running")
             try:                
                 sockets = dict(poll.poll(self.poll_time))
                 self.log.info(sockets)
@@ -69,6 +71,7 @@ class Dealer(threading.Thread):
                     connected = True
                     self.log.info('[DEALER] %s received: %s' % (self.id, msg))
                     print(f'[{self.log.name}][DEALER] %s received: %s' % (self.id, msg))
+
                     if self.callback:
                         self.callback(msg)
                 else:
@@ -82,7 +85,7 @@ class Dealer(threading.Thread):
                             self.callback(Dealer.con_failed)
                             break
                         self.socket.connect(self.address)
-                        self.socket.send_string(Dealer.msg_hello, flags=zmq.NOBLOCK)
+                        self.socket.send_string(self.msg_hello, flags=zmq.NOBLOCK)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     self.log.info('[DEALER] Interrupted')
@@ -92,6 +95,10 @@ class Dealer(threading.Thread):
                     self.log.info('[DEALER] error: ' + e.strerror)
                     print(f'[{self.log.name}][DEALER] error: ' + e.strerror)
                     sleep(1)
+            except Exception as err:
+                self.log.error(f'[DEALER] {err}')
+                print(f'[{self.log.name}][DEALER] {err}')
+
         # print("dealer finished")
         self.socket.close()
 

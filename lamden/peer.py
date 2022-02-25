@@ -4,8 +4,13 @@ import asyncio
 from lamden.sockets.subscriber import Subscriber
 from lamden.sockets.dealer import Dealer
 
+
+LATEST_BLOCK_NUM = 'latest_block_num'
+GET_BLOCK = 'get_block'
+
 class Peer:
-    def __init__(self, ip, ctx, key, services, blacklist, max_strikes, wallet, logger=None, testing=False, debug=False):
+    def __init__(self, ip, ctx, key, services, blacklist, max_strikes, wallet, network_services,
+                 logger=None, testing=False, debug=False):
         self.ctx = ctx
 
         self.ip = ip
@@ -27,8 +32,11 @@ class Peer:
 
         self.blacklist = blacklist
 
+        self.network_services = network_services
+
         self.running = False
         self.sub_running = False
+        self.catchup = False
 
         self.testing = testing
         self.debug = debug
@@ -40,6 +48,19 @@ class Peer:
             _callback=self.process_subscription,
             logger=self.log
         )
+
+        self.latest_block_info = {
+            'number': 0,
+            'hlc_timestamp': "0"
+        }
+
+    @property
+    def latest_block(self):
+        return self.latest_block_info.get('number')
+
+    @property
+    def latest_hlc_timestamp(self):
+        return self.latest_block_info.get('hlc_timestamp')
 
     @property
     def subscriber_address(self):
@@ -77,8 +98,12 @@ class Peer:
         # print('Received msg from %s : %s' % (self.router_address, msg))
 
         if (msg == Dealer.con_failed):
-            self.log.info(f'[DEALER] {self.server_key} connection failed')
-            print(f'[{self.log.name}][DEALER] {self.server_key} connection failed')
+            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
+            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
+
+            if self.running:
+                self.stop()
+
             return
 
         try:
@@ -91,22 +116,29 @@ class Peer:
         self.log.info(f'[DEALER] {msg_json}')
         print(f'[{self.log.name}][DEALER] {msg_json}')
 
-        if (not self.sub_running and
-                'response' in msg_json and
-                msg_json['response'] == 'pub_info'):
-            self.sub_running = True
-            self.running = True
+        response = msg_json.get('response')
 
-            self.log.info(f'[DEALER] Received response from authorized node with pub info')
-            print(f'[{self.log.name}][DEALER] Received response from authorized node with pub info')
+        if response:
+            if response == 'pub_info':
+                self.running = True
+                self.latest_block_info['number'] = msg_json.get('latest_block_num')
+                self.latest_block_info['hlc_timestamp'] = msg_json.get('latest_hlc_timestamp')
 
+                self.log.info(f'[DEALER] Received response from authorized node with pub info')
+                print(f'[{self.log.name}][DEALER] Received response from authorized node with pub info')
 
-            self.subscriber.start(self.loop)
-        elif msg == Dealer.con_failed:
-            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
-            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
+                if not self.sub_running:
+                    self.sub_running = True
+                    self.subscriber.start(self.loop)
+            else:
+                # only process these requests if the peer is running
+                if self.running:
+                    if response == LATEST_BLOCK_NUM:
+                        self.latest_block = msg_json.get(LATEST_BLOCK_NUM)
 
-            self.stop()
+                    if response == GET_BLOCK:
+                        if self.catchup:
+                            self.network_services[GET_BLOCK].process_message(msg_json)
 
     def stop(self):
         self.running = False
@@ -141,4 +173,12 @@ class Peer:
             self.log.error(message)
         if processor is not None and message is not None:
             await processor.process_message(message)
+
+    def get_latest_block(self):
+        msg = json.dumps({'action': 'latest_block_info'})
+        self.dealer.send_msg(msg=msg)
+
+    def get_block(self, block_num):
+        msg = json.dumps({'action': 'get_block', 'block_num': block_num})
+        self.dealer.send_msg(msg=msg)
 

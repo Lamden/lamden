@@ -15,8 +15,9 @@ from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.new_network import Network
-from lamden.nodes import block_contender, system_usage
-from lamden.nodes import work, processing_queue, validation_queue
+from lamden.nodes import system_usage
+from lamden.nodes import processing_queue, validation_queue
+from lamden.nodes.processors import work, block_contender, catchup
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
@@ -25,6 +26,8 @@ from lamden.nodes.events import Event, EventWriter
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
+GET_LATEST_BLOCK = 'get_latest_block'
+GET_BLOCK = "get_block"
 NEW_BLOCK_SERVICE = 'new_blocks'
 NEW_BLOCK_EVENT = 'new_block'
 NEW_BLOCK_REORG_EVENT = 'block_reorg'
@@ -201,8 +204,19 @@ class Node:
             get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )
 
+        self.catchup_block_processor = catchup.CatchupProcessor(
+            apply_state_changes_from_block=self.apply_state_changes_from_block,
+            update_block_db=self.update_block_db,
+            blocks=self.blocks
+
+        )
+
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+        self.network.add_service(GET_BLOCK, self.catchup_block_processor)
+
+        self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
+        self.network.add_action(GET_BLOCK, self.blocks.get_block)
 
         self.running = False
         self.upgrade = False
@@ -222,9 +236,6 @@ class Node:
         if self.debug:
             asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
-        asyncio.ensure_future(self.check_main_processing_queue())
-        asyncio.ensure_future(self.check_validation_queue())
-
         await self.network.start()
 
         await asyncio.sleep(2)
@@ -243,7 +254,12 @@ class Node:
 
         await self.network.connected_to_all_peers()
 
+        await self.catchup()
+
         self.driver.clear_pending_state()
+
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
 
     async def stop(self):
         # Kill the router and throw the running flag to stop the loop
@@ -255,6 +271,53 @@ class Node:
         await self.stop_all_queues()
 
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
+
+    async def catchup(self, peer_vk=None):
+        # Get the current latest block stored and the latest block of the network
+        self.log.info('Running catchup.')
+
+        # Get the Node's current height
+        current = self.get_current_height()
+
+        catchup_peer = None
+
+        if peer_vk:
+            catchup_peer = self.network.peers[peer_vk]
+        else:
+            # get the peer at the highest block height
+            for _, peer in self.network.peers.items():
+                if not peer.running:
+                    continue
+
+                if not catchup_peer:
+                    catchup_peer = peer
+
+                if peer.latest_block > catchup_peer.latest_block:
+                    catchup_peer = peer
+
+        if not catchup_peer:
+            self.log.error(f'No peers available for catchup!')
+
+        self.log.info(f'Contacting Peer {catchup_peer.ip} for catchup.')
+
+        self.log.info({'current': current})
+
+        await self.run_catchup(peer=catchup_peer)
+
+
+    async def run_catchup(self, peer):
+        current = self.get_current_height()
+        peer.catchup = True
+        while current < peer.latest_block:
+            next_block_num = current + 1
+            peer.get_block(block_num=next_block_num)
+
+            while self.get_current_height() != next_block_num:
+                asyncio.sleep(0.1)
+
+            current = next_block_num
+        peer.catchup = False
+
 
     def start_all_queues(self):
         self.log.info("!!!!!! STARTING ALL QUEUES !!!!!!")
@@ -991,6 +1054,11 @@ class Node:
 
     def get_current_hash(self):
         return storage.get_latest_block_hash(self.driver)
+
+    def get_latest_block(self):
+        latest_block_num = self.get_current_height()
+        block = self.blocks.get_block(v=latest_block_num)
+        return block
 
     def get_last_processed_hlc(self):
         return self.last_processed_hlc

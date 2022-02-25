@@ -1,9 +1,6 @@
-from contracting.db.encoder import encode
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
-
-import hashlib
 
 class Block_Contender():
     def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, get_last_hlc_in_consensus,

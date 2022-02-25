@@ -1,3 +1,5 @@
+import json
+
 import zmq
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
@@ -15,6 +17,9 @@ from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 
 WORK_SERVICE = 'work'
+LATEST_BLOCK_INFO = 'latest_block_info'
+GET_LATEST_BLOCK = 'get_latest_block'
+GET_BLOCK = "get_block"
 
 class Processor:
     async def process_message(self, msg):
@@ -68,6 +73,7 @@ class Network:
         self.peer_blacklist = []
         self.subscriptions = []
         self.services = {}
+        self.actions = {}
 
         self.running = False
 
@@ -81,7 +87,10 @@ class Network:
 
     @property
     def hello_response(self):
-        return ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.router_address).encode()
+        latest_block_info = self.get_latest_block_info()
+        block_num = latest_block_info.get('number')
+        hlc_timestamp = latest_block_info.get("hlc_timestamp")
+        return ('{"response":"pub_info", "topics": [""], "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (block_num, hlc_timestamp)).encode()
 
     @property
     def log(self):
@@ -123,6 +132,21 @@ class Network:
     def get_services(self):
         return self.services
 
+    def add_action(self, name: str, processor: Processor):
+        self.actions[name] = processor
+
+    def get_actions(self):
+        return self.actions
+
+    def get_latest_block_info(self):
+        latest_block = self.actions[GET_LATEST_BLOCK]()
+        if not latest_block:
+            latest_block = {}
+        return {
+                'number': latest_block.get('number', 0),
+                'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
+            }
+
     def set_socket_port(self, service, port_num):
         self.socket_ports[service] = port_num
 
@@ -161,9 +185,35 @@ class Network:
             return False
 
     def router_callback(self, ident: str, msg: str):
-        if msg == b'hello':
+        try:
+            msg = json.loads(msg)
+            action = msg.get('action')
+        except Exception as err:
+            print(err)
+            self.log.error(err)
+            return
+
+        if action == 'hello':
             # print('Router sending pub_info response to %s' % ident)
             self.router.send_msg(ident, self.hello_response)
+
+        if action == LATEST_BLOCK_INFO:
+            latest_block_info = self.get_latest_block_info()
+            block_num = latest_block_info.get('number')
+            hlc_timestamp = latest_block_info.get("hlc_timestamp")
+            msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (LATEST_BLOCK_INFO, block_num, hlc_timestamp)).encode()
+            self.router.send_msg(ident, msg)
+
+        if action == GET_BLOCK:
+            block_num = msg.get('block_num', None)
+            hlc_timestamp = msg.get('hlc_timestamp', None)
+            if block_num or hlc_timestamp:
+                block_info = self.actions[GET_BLOCK](v=block_num or hlc_timestamp)
+                block_info = json.dumps(block_info)
+                self.router.send_msg(
+                    ident,
+                    ('{"response": "%s", "block_info": %s}' % (GET_BLOCK, block_info)).encode()
+                )
 
     def add_peer(self, ip, key):
         self.peers[key] = Peer(
@@ -176,7 +226,8 @@ class Network:
             services=self.get_services,
             max_strikes=self.max_peer_strikes,
             wallet=self.wallet,
-            logger=self.log
+            logger=self.log,
+            network_services=self.services
         )
         self.peers[key].start()
 
@@ -201,6 +252,7 @@ class Network:
                     self.log.info(f'Waiting to connect to {peer.ip}...')
 
             self.log.info(f'Connected to {num_of_peers_connected}/{num_of_peers} peers.')
+
 
 def z85_key(key):
     bvk = bytes.fromhex(key)

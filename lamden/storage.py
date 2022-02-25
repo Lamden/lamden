@@ -115,7 +115,7 @@ class BlockStorage:
         tx, tx_hash = self.cull_tx(block)
 
         if tx is None or tx_hash is None:
-            raise ValueError('Block has no processes transaction or malformed tx data.')
+            raise ValueError('Block has no transaction information or malformed tx data.')
 
         self.write_block(block)
         self.write_txs([tx], [tx_hash])
