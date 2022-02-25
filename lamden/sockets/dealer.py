@@ -57,6 +57,7 @@ class Dealer(threading.Thread):
         while self.running:
             try:                
                 sockets = dict(poll.poll(poll_time))
+                # print('dealer polling: ' + self.id)
                 if self.socket in sockets:   
                     # print('self.socket in sockets: True')
                     msg = self.socket.recv()
@@ -67,6 +68,7 @@ class Dealer(threading.Thread):
                         self.callback(msg)
                 else:
                     if not connected:
+                        print('Dealer failed to received response, attempting to reconnect')
                         logging.info('failed to received response, attempting to reconnect')
                         self.socket.disconnect(self.address)
                         connection_attempts += 1
@@ -83,13 +85,13 @@ class Dealer(threading.Thread):
                 else:
                     logging.info('error: ' + e.strerror)
                     sleep(1)
-        # print("dealer finished")
+        print("dealer finished")
         self.socket.close()
 
     def send_msg(self, msg):
-        self.socket.send_string(msg)
+        self.socket.send_string(msg, flags=zmq.NOBLOCK)
 
     def stop(self):
         logging.info('dealer stop: ' + self.id)
-        # print('stopping dealer: ' + self.id)
+        print('stopping dealer: ' + self.id)
         self.running = False

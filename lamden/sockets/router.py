@@ -1,3 +1,5 @@
+import traceback
+
 import zmq
 import threading
 from random import randint, random
@@ -49,6 +51,7 @@ class Router(threading.Thread):
         print('Router public keys: ' + str(self.publicKeys) + "address: " + address)
         self.cred_provider = CredentialsProvider(self.publicKeys)
         self.callback = callback
+        self.msg_queue = []
 
     def __del__(self):
         print('router destroyed')
@@ -74,30 +77,43 @@ class Router(threading.Thread):
 
         self.running = True
 
+
+
         while self.running:
             try:
                 sockets = dict(poll.poll(100))
-                # print(sockets[self.socket])
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
                     print('Router received %s from %s' % (msg, ident))
                     if self.callback is not None:
                         print('Router triggering callback')
                         self.callback(ident, msg)
+                # if(len(self.msg_queue) > 0):
+                #     self.socket.send_multipart(self.msg_queue.pop(0), flags=zmq.NOBLOCK)
 
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     break  # Interrupted
                 else:
                     raise
+            except:
+                print('router exception')
+                traceback.print_exc()
 
         self.socket.close()
         # self.ctx.term()
         # print("router finished")
 
     def send_msg(self, ident: str, msg: str):
-        self.socket.send_multipart([ident, msg])
+        try:
+            print(f'router send message to {ident}: {msg}')
+            self.socket.send_multipart([ident, msg], flags=zmq.NOBLOCK)
+            # self.msg_queue.append([ident, msg])
+        except:
+            print('router exception')
+            traceback.print_exc()
+
 
     def stop(self):
-        # print('stopping router')
+        print('stopping router')
         self.running = False

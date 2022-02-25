@@ -141,9 +141,12 @@ class Network:
             return False
 
     def router_callback(self, ident: str, msg: str):
+        print(f'router_callback {ident}, {msg}')
         if msg == b'hello':
             # print('Router sending pub_info response to %s' % ident)
             self.router.send_msg(ident, self.hello_response)
+        else:
+            self.router.send_msg(ident, ('{"response":"unhandled msg: ' + str(msg, 'utf-8') + '"}').encode())
 
     def add_peer(self, ip, ports, key):
         self.peers[key] = Peer(

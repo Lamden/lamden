@@ -76,14 +76,19 @@ class TestNewNetwork(unittest.TestCase):
         self.assertTrue(network1.running)
 
         dealer = Dealer(_id=dealer_wallet.verifying_key, _address='tcp://127.0.0.1:19000',
-                        server_vk=wallet.curve_vk, wallet=dealer_wallet, _callback=self.callback)
+                        server_vk=wallet.curve_vk, wallet=dealer_wallet, _callback=self.dealer_callback)
 
         dealer.start()
 
         self.async_sleep(1)
+        self.assertEquals('pub_info', self.dealerCallbackMsg)
 
-        # Router is receiving this message, but the callback doesn't appear to be executing
-        dealer.send_msg('test message')
+        test_str = 'test message'
+        self.dealerCallbackMsg = ''
+        dealer.send_msg(test_str)
+        self.async_sleep(1)
+
+        self.assertEquals('unhandled msg: ' + test_str, self.dealerCallbackMsg)
 
         self.async_sleep(2)
 
@@ -92,12 +97,16 @@ class TestNewNetwork(unittest.TestCase):
         self.async_sleep(1)
         self.assertFalse(network1.running)
 
-    def callback(self, msg):
+    def dealer_callback(self, msg):
         msg = str(msg, 'utf-8')
-        print('callback: ' + msg)
-        msg_json = json.loads(msg)
-        self.callbackMsg = msg_json['response']
-        print(self.callbackMsg)
+        print('dealer callback: ' + msg)
+        try:
+            msg_json = json.loads(msg)
+            self.dealerCallbackMsg = msg_json['response']
+        except:
+            print('error decoding json')
+
+
 
     def test_connect(self):
         rootLogger = logging.getLogger()
