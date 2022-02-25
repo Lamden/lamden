@@ -10,12 +10,12 @@ from lamden.crypto import wallet
 class CredentialsProvider(object):
 
     def __init__(self, public_keys):
-        # print('init CredentialsProvider')
+        print('init CredentialsProvider: ' + str(public_keys))
         self.public_keys = public_keys
         self.denied = []
 
     def add_key(self, new_key):
-        # print(f'adding key {new_key}')
+        print(f'adding key {new_key}')
         if new_key not in self.public_keys:
             self.public_keys.append(new_key)
 
@@ -24,7 +24,7 @@ class CredentialsProvider(object):
             self.public_keys.remove(key_to_remove)
 
     def callback(self, domain, key):
-        #print(f'checking auth for key: {key}')
+        print(f'CredentialsProvider: checking auth for key: {key}')
         valid = key in self.public_keys
         if valid:
             logging.info('Authorizing: {0}, {1}'.format(domain, key))
@@ -46,6 +46,7 @@ class Router(threading.Thread):
         self.wallet = router_wallet
         self.publicKeys = public_keys
         self.running = False
+        print('Router public keys: ' + str(self.publicKeys) + "address: " + address)
         self.cred_provider = CredentialsProvider(self.publicKeys)
         self.callback = callback
 
@@ -79,8 +80,9 @@ class Router(threading.Thread):
                 # print(sockets[self.socket])
                 if self.socket in sockets:
                     ident, msg = self.socket.recv_multipart()
-                    # print('Router received %s from %s' % (msg, ident))
+                    print('Router received %s from %s' % (msg, ident))
                     if self.callback is not None:
+                        print('Router triggering callback')
                         self.callback(ident, msg)
 
             except zmq.ZMQError as e:

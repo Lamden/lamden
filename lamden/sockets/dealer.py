@@ -15,7 +15,7 @@ class Dealer(threading.Thread):
     msg_hello = 'hello'
     con_failed = 'con_failed'
 
-    def __init__(self, _id, _address, server_vk, wallet: wallet, ctx, _callback = None):
+    def __init__(self, _id, _address, server_vk, wallet: wallet, ctx=None, _callback = None):
         self.ctx = zmq.Context()
         self.id = _id
         self.address = _address
@@ -52,6 +52,7 @@ class Dealer(threading.Thread):
         connection_attempts = 0
         max_attempts = 3
         poll_time = 500
+        print(f'Dealer {self.wallet.verifying_key} connecting to router {self.address} : {self.server_vk}')
 
         while self.running:
             try:                
@@ -60,6 +61,7 @@ class Dealer(threading.Thread):
                     # print('self.socket in sockets: True')
                     msg = self.socket.recv()
                     connected = True
+                    print('Dealer %s received: %s' % (self.id, msg))
                     logging.info('Dealer %s received: %s' % (self.id, msg))
                     if self.callback:
                         self.callback(msg)
@@ -88,5 +90,6 @@ class Dealer(threading.Thread):
         self.socket.send_string(msg)
 
     def stop(self):
+        logging.info('dealer stop: ' + self.id)
         # print('stopping dealer: ' + self.id)
         self.running = False

@@ -33,23 +33,20 @@ class QueueProcessor(Processor):
 
 class Network:
     def __init__(self, wallet: Wallet, socket_id, max_peer_strikes, testing=False,
-                 debug=False, boot_nodes={}):
+                 debug=False, boot_nodes={}, socket_ports={'router': 19000,'publisher': 19080}):
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
         self.max_peer_strikes = max_peer_strikes     
         self.socket_id = socket_id
-        self.socket_ports = {
-            'router': 19000,
-            'publisher': 19080
-        }
+        self.socket_ports = socket_ports
         self.ctx = zmq.asyncio.Context()
 
         self.log = get_logger("NEW_SOCKETS")
         self.hello_response = ('{"response":"pub_info", "address": "%s", "topics": [""]}' % self.socket_id).encode()
 
-        self.log.info(self.publisher_address)
-        self.log.info(self.router_address)
+        self.log.info(wallet.verifying_key + ' pub address: ' + self.publisher_address)
+        self.log.info(wallet.verifying_key + ' router address: ' + self.router_address)
 
         self.publisher = Publisher(
             testing=self.testing,
@@ -122,19 +119,21 @@ class Network:
                     self.add_peer(socket=socket, domain=domain, key=key)
                     await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': key})
 
-    async def connect(self, ip, key):
+    async def connect(self, ip, key, ports=None):
         if key in self.peer_blacklist:
             # TODO how does a blacklisted peer get back in good standing?
             self.log.error(f'Attempted connection from blacklisted peer {key[:8]}!!')
             return False
 
+        if ports is None:
+            ports = self.socket_ports
         # Add the node to authorized list of the router in case it was not part of the boot nodes
         # self.router.cred_provider.add_key(z85_key(key))
 
         self.log.debug(f"Connecting to {key} {ip}")
 
         try:
-            self.add_peer(ip=ip, key=key)
+            self.add_peer(ip=ip, key=key, ports=ports)
             return True
         except zmq.error.Again as error:
             self.log.error(error)
@@ -146,13 +145,13 @@ class Network:
             # print('Router sending pub_info response to %s' % ident)
             self.router.send_msg(ident, self.hello_response)
 
-    def add_peer(self, ip, key):
+    def add_peer(self, ip, ports, key):
         self.peers[key] = Peer(
             testing=self.testing,
             debug=self.debug,
             ctx=self.ctx,
             ip=ip,
-            socket_ports=self.socket_ports,
+            socket_ports=ports,
             key=z85_key(key),
             blacklist=lambda x: self.blacklist_peer(key=x),
             services=self.get_services,

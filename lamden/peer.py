@@ -1,4 +1,6 @@
 import json
+from datetime import datetime
+
 from lamden.logger.base import get_logger
 import asyncio
 from lamden.sockets.subscriber import Subscriber
@@ -63,7 +65,7 @@ class Peer:
         # print('Received msg from %s : %s' % (self.router_address, msg))
 
         if (msg == Dealer.con_failed):
-            print(f'Peer {self.server_key} connection failed')
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + f': Peer {self.server_key} connection failed to {self.dealer_address}')
             return
 
         try:
