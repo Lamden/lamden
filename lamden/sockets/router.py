@@ -87,14 +87,14 @@ class Router(threading.Thread):
                 sockets = dict(poll.poll(self.poll_time))
                 # print(sockets[self.socket])
                 if self.socket in sockets:
-                    ident, msg = self.socket.recv_multipart()
+                    ident, empty, msg = self.socket.recv_multipart()
 
-                    print(f'[{self.log.name}][ROUTER] [{ident}] {msg}')
+                    print(f'[{self.log.name}][ROUTER] received: {ident}] {msg}')
                     self.log.info(f'[ROUTER] {ident} {msg}')
 
                     # print('Router received %s from %s' % (msg, ident))
                     if self.callback is not None:
-                        self.callback(ident, msg)
+                        self.callback(self, ident, msg)
 
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
@@ -105,7 +105,7 @@ class Router(threading.Thread):
         self.socket.close()
 
     def send_msg(self, ident: str, msg):
-        self.socket.send_multipart([ident, msg])
+        self.socket.send_multipart([ident, b'', msg])
 
     def stop(self):
         if self.running:
