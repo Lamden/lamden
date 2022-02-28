@@ -9,6 +9,11 @@ from contracting.db.encoder import encode
 import threading
 import asyncio
 
+class Result:
+    def __init__(self, success, response):
+        self.success = success
+        self.response = response
+
 
 class Request(threading.Thread):
     con_failed = 'con_failed'
@@ -119,15 +124,68 @@ class Request(threading.Thread):
             return False
 
     def send_msg_await(self, msg, time_out: int, retries: int):
+        self.result = False
+        self.response = ''
         self.max_attempts = retries
         self.poll_time = time_out
         self.msg = msg
         self.connection_attempts = 0
         self.state = 1
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.run())
-        return {self.result, self.response}
+        return self.send()
+        # print(f'request {result}, {response}')
+        # return {result, response}
 
+    def send(self):
+        self.running = True
+        self.log.info("[REQUEST] STARTING FOR PEER: " + self.address)
+        while self.connection_attempts < self.max_attempts and self.running:
+            print('request: attempting to send msg: ' + self.msg)
+            self.create_socket()
+            try:
+                poll = zmq.Poller()
+                poll.register(self.socket, zmq.POLLIN)
+                self.socket.connect(self.address)
+                self.socket.send_string(self.msg)
+                sockets = dict(poll.poll(self.poll_time))
+                # self.log.info(sockets)
+                if self.socket in sockets:
+                    msg = self.socket.recv()
+                    self.log.info(' %s received: %s' % (self.id, msg))
+                    print(f'[{self.log.name}] %s received: %s' % (self.id, msg))
+                    # return {'successful': True, 'response': msg}
+                    return Result(True, msg)
+                    # self.response = msg
+                    # self.result = True
+                    self.state = 0
+                    self.socket.close()
+                    return
+                else:
+                    print('no response in poll time')
+                    self.connection_attempts += 1
+                    self.socket.close()
+                    sleep(0.5)
+            except zmq.ZMQError as e:
+                if e.errno == zmq.ETERM:
+                    self.log.info('[REQUEST] Interrupted')
+                    print(f'[{self.log.name}][REQUEST] Interrupted')
+                    break  # Interrupted
+                else:
+                    self.log.info('[DEALER] error: ' + e.strerror)
+                    print(f'[{self.log.name}][REQUEST] error: ' + e.strerror)
+                    sleep(1)
+                    self.connection_attempts += 1
+                    self.socket.close()
+                    sleep(0.5)
+            except Exception as err:
+                self.log.error(f'[REQUEST] {err}')
+                print(f'[{self.log.name}][REQUEST] {err}')
+                self.connection_attempts += 1
+                self.socket.close()
+                sleep(0.5)
+        response = f'Request Socket Error: Failed to receive response after {self.max_attempts} attempts each waiting {self.poll_time}'
+        print(response)
+        self.state = 0
+        return Result(False, response)
 
     def stop(self):
         if self.running:

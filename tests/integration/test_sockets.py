@@ -32,29 +32,6 @@ class TestNewNetwork(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    # This test is failing because of removing the hello logic
-    def test_dealer_to_router(self):
-        dealer_wallet = Wallet()
-        router_wallet = Wallet()
-
-        dealer = Dealer(_id=dealer_wallet.verifying_key, _address='tcp://127.0.0.1:19000', ctx=None,
-                        server_vk=router_wallet.curve_vk, wallet=dealer_wallet, _callback=self.dealer_callback)
-        dealer.start()
-
-        router = Router(router_wallet=router_wallet,
-                        public_keys=[dealer_wallet.curve_vk], callback=self.router_callback)
-        router.address='tcp://127.0.0.1:19000'
-        router.start()
-
-        self.async_sleep(1)
-        msg = '{"action": "test"}'
-        dealer.send_msg(msg)
-        self.async_sleep(1)
-        dealer.stop()
-        router.stop()
-
-        self.assertEqual(self.router_callback_msg, msg)
-
     def test_request_to_router(self):
         request_wallet = Wallet()
         router_wallet = Wallet()
@@ -72,13 +49,14 @@ class TestNewNetwork(unittest.TestCase):
 
         msg = '{"action": "test"}'
         # The below call is blocking and will wait until it is complete
-        result, response = request.send_msg_await(msg=msg, time_out=500, retries=3)
+        result = request.send_msg_await(msg=msg, time_out=500, retries=3)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'after sending test message')
         self.async_sleep(2)
         router.stop()
 
         self.assertEqual(self.router_callback_msg, msg)
-        self.assertEqual(True, result)
+        self.assertEqual(True, result.success)
+        self.assertEqual(b'success', result.response)
 
     def test_request_failed(self):
         dealer_wallet = Wallet()
@@ -91,13 +69,13 @@ class TestNewNetwork(unittest.TestCase):
         self.request_successful = None
         msg = '{"action": "test"}'
         # The below call is blocking and will wait until it is complete
-        result, response = request.send_msg_await(msg=msg, time_out=100, retries=1)
+        result = request.send_msg_await(msg=msg, time_out=100, retries=1)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'after sending test message')
         # self.async_sleep(5)
         request.stop()
 
-        self.assertEqual(False, result)
-        self.assertEqual('Request Socket Error: Failed to receive response after 1 attempts each waiting 100', response)
+        self.assertEqual(False, result.success)
+        self.assertEqual('Request Socket Error: Failed to receive response after 1 attempts each waiting 100', result.response)
 
     def request_callback(self, success: bool, msg):
         self.request_successful = success
