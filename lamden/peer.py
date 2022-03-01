@@ -1,6 +1,8 @@
 import json
 from lamden.logger.base import get_logger
 import asyncio
+
+from lamden.sockets.request import Request
 from lamden.sockets.subscriber import Subscriber
 from lamden.sockets.dealer import Dealer
 
@@ -87,27 +89,29 @@ class Peer:
         except ValueError:
             return
 
+    # def start(self):
+    #     # print('starting dealer connecting to: ' + self.router_address)
+    #     self.loop = asyncio.new_event_loop()
+    #     self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
+    #                          wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback, logger=self.log)
+    #     self.dealer.start()
+
     def start(self):
-        # print('starting dealer connecting to: ' + self.router_address)
-        self.loop = asyncio.new_event_loop()
-        self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
-                             wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback, logger=self.log)
-        self.dealer.start()
-
-    def dealer_callback(self, msg):
         # print('Received msg from %s : %s' % (self.router_address, msg))
+        self.dealer = Request(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
+                              wallet=self.wallet, ctx=self.ctx, logger=self.log)
+        result = self.dealer.send_msg_await(msg='{"action": "hello"}', time_out=500, retries=3)
 
-        if (msg == Dealer.con_failed):
-            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
-            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.router_address})')
+        if (result.success is False):
+            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
+            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
 
             if self.running:
                 self.stop()
-
             return
 
         try:
-            msg_json = json.loads(msg)
+            msg_json = json.loads(result.response)
         except:
             self.log.info(f'[DEALER] failed to decode json from {msg}')
             print(f'[{self.log.name}][DEALER] failed to decode json from {msg}')
@@ -129,16 +133,8 @@ class Peer:
 
                 if not self.sub_running:
                     self.sub_running = True
+                    self.loop = asyncio.new_event_loop()
                     self.subscriber.start(self.loop)
-            else:
-                # only process these requests if the peer is running
-                if self.running:
-                    if response == LATEST_BLOCK_NUM:
-                        self.latest_block = msg_json.get(LATEST_BLOCK_NUM)
-
-                    if response == GET_BLOCK:
-                        if self.catchup:
-                            self.network_services[GET_BLOCK].process_message(msg_json)
 
     def stop(self):
         self.running = False
@@ -176,9 +172,26 @@ class Peer:
 
     def get_latest_block(self):
         msg = json.dumps({'action': 'latest_block_info'})
-        self.dealer.send_msg(msg=msg)
+        msg_json = self.send_request(msg)
+        if (msg_json):
+            if msg_json.get('response') == LATEST_BLOCK_NUM:
+                self.latest_block = msg_json.get(LATEST_BLOCK_NUM)
 
     def get_block(self, block_num):
         msg = json.dumps({'action': 'get_block', 'block_num': block_num})
-        self.dealer.send_msg(msg=msg)
+        msg_json = self.send_request(msg)
+        if(msg_json):
+            if  msg_json.get('response') == GET_BLOCK:
+                if self.catchup:
+                    self.network_services[GET_BLOCK].process_message(msg_json)
 
+    def send_request(self, msg):
+        result = self.dealer.send_msg_await(msg=msg, time_out=500, retries=3)
+        if (result.success):
+            try:
+                msg_json = json.loads(result.response)
+                return msg_json
+            except:
+                self.log.info(f'[PEER] failed to decode json from {self.dealer_address}: {response}')
+                print(f'[{self.log.name}][PEER] failed to decode json from {self.dealer_address}: {response}')
+                return None

@@ -184,8 +184,9 @@ class Network:
             # socket.close()
             return False
 
-    def router_callback(self, ident: str, msg: str):
+    def router_callback(self, router: Router, ident: str, msg: str):
         try:
+            # msg = str(msg, 'utf-8')
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
