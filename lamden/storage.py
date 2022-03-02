@@ -14,8 +14,8 @@ import os
 
 import shutil
 
-BLOCK_HASH_KEY = 'current_block.current_block_hash'
-BLOCK_NUM_HEIGHT = 'current_block.current_block_height'
+BLOCK_HASH_KEY = '__latest_block.hash'
+BLOCK_NUM_HEIGHT = '__latest_block.height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
@@ -163,11 +163,11 @@ class NonceStorage:
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'nonces.{processor}/{sender}')
+        return db.get(f'__nonces.{processor}/{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'nonces.{processor}/{sender}', value)
+        return db.set(f'__nonces.{processor}/{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
