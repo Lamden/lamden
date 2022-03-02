@@ -20,6 +20,7 @@ import socketio
 from sanic import Sanic
 import json
 import argparse
+from contracting.db.encoder import encode, decode
 
 EVENTS_HOME = pathlib.Path().home().joinpath('.lamden').joinpath('events')
 EXTENSION = '.e'
@@ -37,7 +38,7 @@ class EventWriter:
     def write_event(self, event: Event):
         filename = str(uuid.uuid4()) + EXTENSION
         with open(self.root.joinpath(filename), 'w') as f:
-            json.dump(event.__dict__, f)
+            json.dump(encode(event.__dict__), f)
 
 class EventListener:
     def __init__(self, root=EVENTS_HOME):
@@ -50,9 +51,8 @@ class EventListener:
         for file in files:
             with open(file, 'r') as f:
                 try:
-                    e = json.load(f)
-                    event = Event(e['topics'], e['data'])
-                    events.append(event)
+                    e = decode(json.load(f))
+                    events.append(Event(e['topics'], e['data']))
                 except:
                     # TODO(nikita): proper handling
                     print('failed to load event')
