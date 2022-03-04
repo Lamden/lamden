@@ -1,21 +1,23 @@
 import zmq
 import threading
-from random import randint, random
-import os
-import logging
+
 from lamden.logger.base import get_logger
 from zmq.auth.thread import ThreadAuthenticator
 from lamden.crypto import wallet
+from lamden.crypto.z85 import z85_key
 
 
 class CredentialsProvider(object):
 
-    def __init__(self, public_keys, logger=None):
+    def __init__(self, get_all_peers, logger=None):
         # print('init CredentialsProvider')
         self.log = logger or get_logger("ROUTER")
-
-        self.public_keys = public_keys
+        self.get_all_peers = get_all_peers
         self.denied = []
+
+    @property
+    def approved_nodes(self):
+        return [z85_key(vk) for vk in self.get_all_peers()]
 
     def add_key(self, new_key):
         # print(f'adding key {new_key}')
@@ -27,7 +29,7 @@ class CredentialsProvider(object):
             self.public_keys.remove(key_to_remove)
 
     def callback(self, domain, key):
-        valid = key in self.public_keys
+        valid = key in self.approved_nodes
         if valid:
             print(f'[{self.log.name}][ROUTER] Authorizing: {domain}, {key}')
             self.log.info(f'[ROUTER] Authorizing: {domain}, {key}')
@@ -43,16 +45,15 @@ class CredentialsProvider(object):
 
 
 class Router(threading.Thread):
-    def __init__(self, router_wallet: wallet, public_keys=[], callback = None, logger=None):
+    def __init__(self, router_wallet: wallet, get_all_peers, callback = None, logger=None):
         threading.Thread.__init__(self)
         self.log = logger or get_logger('ROUTER')
         self.ctx = zmq.Context()
         self.socket = None
         self.address = None
         self.wallet = router_wallet
-        self.publicKeys = public_keys
         self.running = False
-        self.cred_provider = CredentialsProvider(public_keys=self.publicKeys, logger=self.log)
+        self.cred_provider = CredentialsProvider(get_all_peers=get_all_peers, logger=self.log)
         self.callback = callback
 
     def __del__(self):

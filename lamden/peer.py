@@ -11,10 +11,14 @@ LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
 
 class Peer:
-    def __init__(self, ip, ctx, key, services, blacklist, max_strikes, wallet, network_services,
-                 logger=None, testing=False, debug=False):
+    def __init__(self, ip, ctx, server_key, vk, services, blacklist, max_strikes, wallet, network_services,
+                 get_network_ip, logger=None, testing=False, debug=False):
         self.ctx = ctx
 
+        self.server_key = server_key
+        self.vk = vk
+
+        self.get_network_ip = get_network_ip
         self.ip = ip
         self.socket_ports = {
             'router': 19000,
@@ -23,7 +27,6 @@ class Peer:
         }
         self.check_ip_for_port()
 
-        self.server_key = key
         self.services = services
         self.in_consensus = True
         self.errored = False
@@ -76,6 +79,10 @@ class Peer:
         print('[{}][PEER] ROUTER ADDRESSS: {}:{}'.format(self.log.name, self.ip, self.socket_ports.get('router')))
         return '{}:{}'.format(self.ip, self.socket_ports.get('router'))
 
+    def is_available(self):
+        pong = self.ping()
+        return pong
+
     def check_ip_for_port(self):
         try:
             protocol, ip, port = self.ip.split(":")
@@ -100,9 +107,13 @@ class Peer:
         # print('Received msg from %s : %s' % (self.router_address, msg))
         self.dealer = Request(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
                               wallet=self.wallet, ctx=self.ctx, logger=self.log)
-        result = self.dealer.send_msg_await(msg='{"action": "hello"}', time_out=500, retries=3)
 
-        if (result.success is False):
+        response = self.hello()
+
+        if not response:
+            return
+
+        if not response.get('success'):
             self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
             print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
 
@@ -110,31 +121,20 @@ class Peer:
                 self.stop()
             return
 
-        try:
-            msg_json = json.loads(result.response)
-        except:
-            self.log.info(f'[DEALER] failed to decode json from {msg}')
-            print(f'[{self.log.name}][DEALER] failed to decode json from {msg}')
-            return
+        response_type = response.get('response')
 
-        self.log.info(f'[DEALER] {msg_json}')
-        print(f'[{self.log.name}][DEALER] {msg_json}')
+        if response_type == 'pub_info':
+            self.running = True
+            self.latest_block_info['number'] = response.get('latest_block_num')
+            self.latest_block_info['hlc_timestamp'] = response.get('latest_hlc_timestamp')
 
-        response = msg_json.get('response')
+            self.log.info(f'[DEALER] Received response from authorized node with pub info')
+            print(f'[{self.log.name}][DEALER] Received response from authorized node with pub info')
 
-        if response:
-            if response == 'pub_info':
-                self.running = True
-                self.latest_block_info['number'] = msg_json.get('latest_block_num')
-                self.latest_block_info['hlc_timestamp'] = msg_json.get('latest_hlc_timestamp')
-
-                self.log.info(f'[DEALER] Received response from authorized node with pub info')
-                print(f'[{self.log.name}][DEALER] Received response from authorized node with pub info')
-
-                if not self.sub_running:
-                    self.sub_running = True
-                    self.loop = asyncio.new_event_loop()
-                    self.subscriber.start(self.loop)
+            if not self.sub_running:
+                self.sub_running = True
+                self.loop = asyncio.new_event_loop()
+                self.subscriber.start(self.loop)
 
     def stop(self):
         self.running = False
@@ -170,6 +170,16 @@ class Peer:
         if processor is not None and message is not None:
             await processor.process_message(message)
 
+    def ping(self):
+        msg = json.dumps({'action': 'ping'})
+        msg_json = self.send_request(msg, timeout=500, retries=5)
+        return msg_json
+
+    def hello(self):
+        msg = json.dumps({'action': 'hello', 'ip': self.get_network_ip()})
+        msg_json = self.send_request(msg, timeout=500, retries=5)
+        return msg_json
+
     def get_latest_block(self):
         msg = json.dumps({'action': 'latest_block_info'})
         msg_json = self.send_request(msg)
@@ -180,18 +190,21 @@ class Peer:
     def get_block(self, block_num):
         msg = json.dumps({'action': 'get_block', 'block_num': block_num})
         msg_json = self.send_request(msg)
-        if(msg_json):
-            if  msg_json.get('response') == GET_BLOCK:
-                if self.catchup:
-                    self.network_services[GET_BLOCK].process_message(msg_json)
+        return msg_json
 
-    def send_request(self, msg):
-        result = self.dealer.send_msg_await(msg=msg, time_out=500, retries=3)
+    def get_node_list(self):
+        msg = json.dumps({'action': 'get_node_list'})
+        msg_json = self.send_request(msg)
+        return msg_json
+
+    def send_request(self, msg, timeout=200, retries=3):
+        result = self.dealer.send_msg_await(msg=msg, time_out=timeout, retries=retries)
         if (result.success):
             try:
                 msg_json = json.loads(result.response)
+                msg_json['success'] = result.success
                 return msg_json
             except:
-                self.log.info(f'[PEER] failed to decode json from {self.dealer_address}: {response}')
-                print(f'[{self.log.name}][PEER] failed to decode json from {self.dealer_address}: {response}')
+                self.log.info(f'[PEER] failed to decode json from {self.dealer_address}: {msg_json}')
+                print(f'[{self.log.name}][PEER] failed to decode json from {self.dealer_address}: {msg_json}')
                 return None

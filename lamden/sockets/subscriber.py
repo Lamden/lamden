@@ -60,7 +60,7 @@ class Subscriber():
             event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
             if(event):
                 try:
-                    data = await self.socket.recv_multipart()
+                    data = self.socket.recv_multipart()
                     self.debug_events.append(data)
 
                     self.log.info(f'[SUBSCRIBER] Got event from {self.address}')

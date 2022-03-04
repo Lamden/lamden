@@ -40,6 +40,21 @@ def get_new_currency_tx(wallet=None, to=None, amount=None):
     )
     return json.loads(txb)
 
+def get_new_vote_tx(type, vk, sender):
+    txb = build_transaction(
+        wallet=sender,
+        contract=f'{type}s',
+        function="transfer",
+        kwargs={
+            'to': to or Wallet().verifying_key,
+            'amount': {'__fixed__': amount or '100.5'},
+        },
+        nonce=0,
+        processor='0' * 64,
+        stamps=50
+    )
+    return json.loads(txb)
+
 def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None):
     if tx is None:
         tx = get_new_currency_tx(

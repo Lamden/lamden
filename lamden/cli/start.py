@@ -167,10 +167,7 @@ def join_network(args):
 
     wallet = Wallet(seed=sk)
 
-    response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/constitution')
-
-    const = response.json()
-
+    # REMOVED FOR LAMDEN 2.0. The constitution will be taken from a bootnode directly using ZMQ
     mn_seed = f'tcp://{args.mn_seed}:19000'
 
     mn_id_response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/id')
@@ -193,11 +190,12 @@ def join_network(args):
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
-            constitution=const,
+            constitution={},
             webserver_port=args.webserver_port,
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type
+            node_type=args.node_type,
+            should_seed=False
         )
     elif args.node_type == 'delegate':
         start_mongo()
@@ -205,10 +203,11 @@ def join_network(args):
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
-            constitution=const,
+            constitution={},
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type
+            node_type=args.node_type,
+            should_seed=False
         )
 
     loop = asyncio.get_event_loop()

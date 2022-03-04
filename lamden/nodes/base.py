@@ -17,7 +17,7 @@ from lamden.logger.base import get_logger
 from lamden.new_network import Network
 from lamden.nodes import system_usage
 from lamden.nodes import processing_queue, validation_queue
-from lamden.nodes.processors import work, block_contender, catchup
+from lamden.nodes.processors import work, block_contender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
@@ -28,6 +28,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 BLOCK_SERVICE = 'catchup'
 GET_LATEST_BLOCK = 'get_latest_block'
 GET_BLOCK = "get_block"
+GET_CONSTITUTION = "get_constitution"
+GET_ALL_PEERS = "get_all_peers"
 NEW_BLOCK_SERVICE = 'new_blocks'
 NEW_BLOCK_EVENT = 'new_block'
 NEW_BLOCK_REORG_EVENT = 'block_reorg'
@@ -70,7 +72,8 @@ class Node:
     def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue()):
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
+                 socket_ports=None):
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -126,8 +129,9 @@ class Node:
 
         self.bootnodes = bootnodes
         self.constitution = constitution
+        self.should_seed = should_seed
 
-        if should_seed:
+        if self.should_seed:
             self.seed_genesis_contracts()
 
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
@@ -137,6 +141,7 @@ class Node:
             testing=self.testing,
             wallet=wallet,
             socket_base=socket_base,
+            socket_ports=socket_ports,
             max_peer_strikes=self.max_peer_strikes,
             boot_nodes=bootnodes
         )
@@ -204,19 +209,15 @@ class Node:
             get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )
 
-        self.catchup_block_processor = catchup.CatchupProcessor(
-            apply_state_changes_from_block=self.apply_state_changes_from_block,
-            update_block_db=self.update_block_db,
-            blocks=self.blocks
-
-        )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
-        self.network.add_service(GET_BLOCK, self.catchup_block_processor)
 
         self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
         self.network.add_action(GET_BLOCK, self.blocks.get_block)
+        self.network.add_action(GET_CONSTITUTION, self.make_constitution)
+        self.network.add_action(GET_ALL_PEERS, self.get_peer_list)
+
 
         self.running = False
         self.upgrade = False
@@ -227,11 +228,13 @@ class Node:
         self.network.stop()
         self.system_monitor.stop()
 
+    @property
+    def node_type(self):
+        return self.upgrade_manager.node_type
 
     async def start(self):
         # Start running
         self.running = True
-        self.start_all_queues()
 
         if self.debug:
             asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
@@ -240,8 +243,20 @@ class Node:
 
         await asyncio.sleep(2)
 
-        for vk, ip in self.bootnodes.items():
+        if self.should_seed:
+            await self.start_new_network()
+        else:
+            await self.join_existing_network()
+            await self.catchup()
 
+        self.driver.clear_pending_state()
+
+        self.start_all_queues()
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
+
+    async def start_new_network(self):
+        for vk, ip in self.bootnodes.items():
             print({"vk": vk, "ip": ip})
             self.log.info({"vk": vk, "ip": ip})
 
@@ -249,17 +264,81 @@ class Node:
                 # Use it to boot up the network
                 self.network.connect(
                     ip=ip,
-                    key=vk
+                    vk=vk
                 )
 
         await self.network.connected_to_all_peers()
 
-        await self.catchup()
+    async def join_existing_network(self):
+        bootnode = None
 
-        self.driver.clear_pending_state()
+        # Connect to a node on the network
+        for vk, ip in self.bootnodes.items():
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
 
-        asyncio.ensure_future(self.check_main_processing_queue())
-        asyncio.ensure_future(self.check_validation_queue())
+            if vk != self.wallet.verifying_key:
+                # Use it to boot up the network
+                self.network.connect(
+                    ip=ip,
+                    vk=vk
+                )
+                await asyncio.sleep(5)
+
+                # We only need one bootnode, so if we connected then we're good
+                if self.network.peers[vk].running:
+                    bootnode = self.network.peers[vk]
+                    break
+
+        if bootnode is None:
+            print("Could not connect to any bootnodes!")
+            print(self.bootnodes)
+            self.log.error("Could not connect to any bootnodes!")
+            self.log.error(self.bootnodes)
+
+            return False
+
+        # Get the rest of the nodes from our bootnode
+        response = bootnode.get_node_list()
+        node_list = response.get('node_list')
+
+        # Create a constitution file
+        self.constitution = {
+            'masternodes': [],
+            'delegates':  []
+        }
+
+        # Populate constitution with node info
+        for node_info in node_list:
+            node_type = node_info.get('node_type')
+            vk = node_info.get('vk')
+            if node_type and vk:
+                self.constitution[f'{node_type}s'].append(vk)
+
+        self.constitution[f'{self.node_type}s'].append(self.wallet.verifying_key)
+
+        # Create genesis contracts
+        self.seed_genesis_contracts()
+
+        # Connect to all nodes in the network
+        for node_info in node_list:
+            vk = node_info.get('vk')
+            ip = node_info.get('ip')
+
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
+
+            if vk != self.wallet.verifying_key:
+                # connect to peer
+                self.network.connect(
+                    ip=ip,
+                    vk=vk
+                )
+
+        # await self.network.connected_to_all_peers()
+
+        return True
+
 
     async def stop(self):
         # Kill the router and throw the running flag to stop the loop
@@ -297,9 +376,9 @@ class Node:
 
         if not catchup_peer:
             self.log.error(f'No peers available for catchup!')
+            return
 
         self.log.info(f'Contacting Peer {catchup_peer.ip} for catchup.')
-
         self.log.info({'current': current})
 
         await self.run_catchup(peer=catchup_peer)
@@ -307,16 +386,45 @@ class Node:
 
     async def run_catchup(self, peer):
         current = self.get_current_height()
-        peer.catchup = True
+
         while current < peer.latest_block:
             next_block_num = current + 1
-            peer.get_block(block_num=next_block_num)
+            response = peer.get_block(block_num=next_block_num)
+            self.log.info(response)
 
-            while self.get_current_height() != next_block_num:
-                asyncio.sleep(0.1)
+            if type(response) is dict:
+                new_block = response.get("block_info")
+                self.log.info(new_block)
+
+                if new_block:
+                    if new_block.get('number') == next_block_num:
+                        # Apply state to DB
+                        self.apply_state_changes_from_block(block=new_block)
+
+                        # Store the block in the block db
+                        encoded_block = encode(new_block)
+                        encoded_block = json.loads(encoded_block)
+
+                        self.blocks.store_block(block=encoded_block)
+
+                        # Set the current block hash and height
+                        self.update_block_db(block=encoded_block)
+
+                        # create New Block Event
+                        self.event_writer.write_event(Event(
+                            topics=[NEW_BLOCK_EVENT],
+                            data=encoded_block
+                        ))
+                    else:
+                        self.log.error("Incorrect Block Number response in catchup!")
+                        print("Incorrect Block Number response in catchup!")
+            else:
+                self.log.error(f"Cannot find block {next_block_num} on node {peer.vk}.  Trying again...")
+                print(f"Cannot find block {next_block_num} on node {peer.vk}.  Trying again...")
+
+                await asyncio.sleep(5)
 
             current = next_block_num
-        peer.catchup = False
 
 
     def start_all_queues(self):
@@ -941,10 +1049,14 @@ class Node:
 
         member_peers = dict()
 
-        for member in members:
-            ip = self.network.peers.get(member)
-            if ip is not None:
-                member_peers[member] = ip
+        for vk in members:
+            if vk == self.wallet.verifying_key:
+                member_peers[vk] = self.network.ip
+            else:
+                peer = self.network.peers.get(vk, None)
+                if peer is not None:
+                    if peer.ip is not None:
+                        member_peers[vk] = peer.ip
 
         return member_peers
 
@@ -968,6 +1080,12 @@ class Node:
             del peers[self.wallet.verifying_key]
 
         return peers
+
+    def get_peer_list(self):
+        delegates = self.driver.driver.get(f'delegates.S:members') or []
+        masternodes = self.driver.driver.get(f'masternodes.S:members') or []
+        all_nodes = masternodes + delegates
+        return all_nodes
 
     def get_all_peers(self, not_me=False):
         return {

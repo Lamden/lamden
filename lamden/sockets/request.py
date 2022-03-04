@@ -38,8 +38,8 @@ class Request(threading.Thread):
         self.connection_attempts = 0
         self.running = False
         self.socket = None
-        self.max_attempts = 3
-        self.poll_time = 500
+        self.max_attempts = 5
+        self.poll_time = 250
         self.response = ''
         self.result = False
 

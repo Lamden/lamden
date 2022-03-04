@@ -16,14 +16,15 @@ class Delegate(base.Node):
         self.log.debug('Starting')
         await super().start()
 
-        members = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+        if self.should_seed:
+            members = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
 
-        self.log.info('\n------ MEMBERS ------')
-        self.log.debug(members)
-        self.log.info('\n------ ME ------')
-        self.log.debug(self.wallet.verifying_key)
+            self.log.info('\n------ MEMBERS ------')
+            self.log.debug(members)
+            self.log.info('\n------ ME ------')
+            self.log.debug(self.wallet.verifying_key)
 
-        assert self.wallet.verifying_key in members, 'You are not a delegate!'
+            assert self.wallet.verifying_key in members, 'You are not a delegate!'
 
         self.driver.clear_pending_state()
 

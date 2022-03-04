@@ -4,6 +4,7 @@ from contracting.db.driver import ContractDriver, Driver, InMemDriver, FSDriver
 from contracting.db import encoder
 from lamden import storage
 from lamden.nodes import masternode, delegate, filequeue
+from tests.unit.helpers.mock_transactions import get_new_vote_tx
 import asyncio
 import random
 import httpx
@@ -102,7 +103,7 @@ class MockMaster(MockNode):
         self.metering = metering
         self.tx_queue = tx_queue or filequeue.FileQueue(root=f'{self.current_path}/fixtures/file_queue/{self.wallet.verifying_key}/txq')
 
-    async def start(self):
+    async def start(self, should_seed=True):
         assert self.ready_to_start, 'Not ready to start!'
 
         self.obj = masternode.Masternode(
@@ -119,13 +120,12 @@ class MockMaster(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path)
+            blocks=storage.BlockStorage(home=self.block_storage_path),
+            socket_ports=self.socket_ports,
+            should_seed=should_seed
         )
 
-        self.obj.network.socket_ports = self.socket_ports
-        self.obj.network.router.address = self.obj.network.router_address
-        self.obj.network.publisher.address = self.obj.network.publisher_address
-
+        self.obj.network.ip = '127.0.0.1'
         await self.obj.start()
 
         self.started = True
@@ -140,7 +140,7 @@ class MockDelegate(MockNode):
 
         self.metering = metering
 
-    async def start(self):
+    async def start(self, should_seed=True):
         assert self.ready_to_start, 'Not ready to start!'
 
         self.obj = delegate.Delegate(
@@ -155,12 +155,12 @@ class MockDelegate(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path)
+            blocks=storage.BlockStorage(home=self.block_storage_path),
+            socket_ports=self.socket_ports,
+            should_seed=should_seed
         )
 
-        self.obj.network.socket_ports = self.socket_ports
-        self.obj.network.router.address = self.obj.network.router_address
-        self.obj.network.publisher.address = self.obj.network.publisher_address
+        self.obj.network.ip = '127.0.0.1'
 
         await self.obj.start()
         self.started = True
@@ -230,10 +230,51 @@ class MockNetwork:
         self.bootnodes = bootnodes
 
     def build_delegate(self, index):
-        self.delegates.append(MockDelegate(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay))
+        node = MockDelegate(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay)
+        self.delegates.append(node)
+        return node
 
     def build_masternode(self, index):
-        self.masternodes.append(MockMaster(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay))
+        node = MockMaster(ctx=self.ctx, index=index, metering=self.metering, delay=self.delay)
+        self.masternodes.append(node)
+        return node
+
+    def vote_in_new_node(self):
+        masternodes = [node.wallet.verifying_key for node in self.masternodes]
+        delegetes = [node.wallet.verifying_key for node in self.delegates]
+
+        for node in self.nodes:
+            if node.obj:
+                node.obj.driver.driver.set(
+                    key='masternodes.S:members',
+                    value=masternodes
+                )
+                node.obj.driver.driver.set(
+                    key='delegetes.S:members',
+                    value=delegetes
+                )
+
+    async def join_network(self, type_of_node, node=None):
+        if not node:
+            index = len(self.masternodes) + len(self.delegates) + 1
+            if type_of_node == 'masternode':
+                node = self.build_masternode(index=index)
+            else:
+                node = self.build_delegate(index=index)
+        else:
+            if type_of_node == 'masternode':
+                self.masternodes.append(node)
+            if type_of_node == 'delegate':
+                self.delegates.append(node)
+
+        node.set_start_variables(
+            bootnodes=self.nodes[0].bootnodes,
+            constitution={}
+        )
+
+        self.vote_in_new_node()
+        await node.start(should_seed=False)
+        return node
 
     async def fund(self, vk, amount=1_000_000):
         await self.make_and_push_tx(
@@ -303,6 +344,7 @@ class MockNetwork:
         await asyncio.gather(
             *coroutines
         )
+
 
     async def stop(self):
         coroutines = [node.stop() for node in self.masternodes]

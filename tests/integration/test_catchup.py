@@ -13,6 +13,8 @@ import zmq.asyncio
 import asyncio
 import json
 
+from tests.unit.helpers.mock_transactions import get_new_currency_tx
+
 from unittest import TestCase
 
 def make_block(block_num, hlc_timestamp):
@@ -49,6 +51,22 @@ class TestMultiNode(TestCase):
     def await_async_process(self, process):
         tasks = asyncio.gather(
             process()
+        )
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+        return res
+
+    def send_message_to_node(self, node, msg):
+        tasks = asyncio.gather(
+            node.work_validator.process_message(msg=msg)
+        )
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+        return res
+
+    def await_join_new_node(self, type_of_node, node=None):
+        tasks = asyncio.gather(
+            self.n.join_network(type_of_node, node)
         )
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
@@ -104,7 +122,7 @@ class TestMultiNode(TestCase):
         self.async_sleep(5)
 
         # Test the blockheight is correct
-        self.assertEqual(self.n.delegates[0].obj.get_current_height(), 5)
+        self.assertEqual(5, self.n.delegates[0].obj.get_current_height())
 
         # Test the state changes were applied correctly
         state_value = self.n.delegates[0].obj.driver.get_var(
@@ -112,7 +130,40 @@ class TestMultiNode(TestCase):
             variable='test',
             arguments=['test']
         )
-        self.assertEqual(state_value, 5)
+        self.assertEqual(5, state_value)
+
+    def test_join_existing_network(self):
+        delay = {'base': 0.1, 'self': 0.2}
+        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False,
+                                       delay=delay)
+        # Start network
+        self.await_async_process(self.n.start)
+        self.async_sleep(1)
+
+        # Push transactions
+        tx_args = {
+            'to': Wallet().verifying_key,
+            'wallet': self.n.founder_wallet,
+            'amount': 200.1
+        }
+
+        # add this tx the processing queue so we can process it
+        for i in range(10):
+            tx_message = self.n.masternodes[0].obj.make_tx_message(tx=get_new_currency_tx(**tx_args))
+            self.send_message_to_node(node=self.n.masternodes[0].obj, msg=tx_message)
+
+        # await network processing
+        self.async_sleep(2)
+
+        self.assertEqual(10, self.n.masternodes[0].obj.get_current_height())
+        self.assertEqual(10, self.n.delegates[0].obj.get_current_height())
+
+        # join a new node
+        self.await_join_new_node(type_of_node='masternode')
+
+        # wait for catchup
+        self.async_sleep(5)
+        self.assertEqual(10, self.n.masternodes[1].obj.get_current_height())
 
 
 
