@@ -36,13 +36,14 @@ class TestNewNetwork(unittest.TestCase):
         request_wallet = Wallet()
         router_wallet = Wallet()
 
-        request = Request(_id=request_wallet.verifying_key, _address='tcp://127.0.0.1:19000',
+        address = 'tcp://127.0.0.1:19000'
+        request = Request(_id=request_wallet.verifying_key, _address=address,
                           server_vk=router_wallet.curve_vk, wallet=request_wallet)
 
-        router = Router(router_wallet=router_wallet, public_keys=[request_wallet.curve_vk],
+        self.public_keys = [request_wallet.verifying_key]
+        router = Router(router_wallet=router_wallet, get_all_peers=self.get_all_peers,
                         callback=self.router_callback)
-        router.address = 'tcp://127.0.0.1:19000'
-
+        router.address = address
         router.start()
         # Wait for router to start
         self.async_sleep(0.5)
@@ -58,11 +59,15 @@ class TestNewNetwork(unittest.TestCase):
         self.assertEqual(True, result.success)
         self.assertEqual(b'success', result.response)
 
+    def get_all_peers(self):
+        return self.public_keys;
+
     def test_request_failed(self):
         dealer_wallet = Wallet()
         router_wallet = Wallet()
 
-        request = Request(_id=dealer_wallet.verifying_key, _address='tcp://127.0.0.1:19000',
+        address = 'tcp://127.0.0.1:19000'
+        request = Request(_id=dealer_wallet.verifying_key, _address=address,
                           server_vk=router_wallet.curve_vk, wallet=dealer_wallet)
 
         self.async_sleep(0.5)
@@ -71,7 +76,6 @@ class TestNewNetwork(unittest.TestCase):
         # The below call is blocking and will wait until it is complete
         result = request.send_msg_await(msg=msg, time_out=100, retries=1)
         print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'after sending test message')
-        # self.async_sleep(5)
         request.stop()
 
         self.assertEqual(False, result.success)
