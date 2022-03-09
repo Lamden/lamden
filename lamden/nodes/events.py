@@ -38,7 +38,7 @@ class EventWriter:
     def write_event(self, event: Event):
         filename = str(uuid.uuid4()) + EXTENSION
         with open(self.root.joinpath(filename), 'w') as f:
-            json.dump(encode(event.__dict__), f)
+            json.dump(event.__dict__, f)
 
 class EventListener:
     def __init__(self, root=EVENTS_HOME):
@@ -51,7 +51,7 @@ class EventListener:
         for file in files:
             with open(file, 'r') as f:
                 try:
-                    e = decode(json.load(f))
+                    e = json.load(f)
                     events.append(Event(e['topics'], e['data']))
                 except:
                     # TODO(nikita): proper handling

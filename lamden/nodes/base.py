@@ -331,15 +331,15 @@ class Node:
 
         # Store the block if it's a masternode
         if self.store:
-            self.blocks.store_block(block)
-
             encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
+            encoded_block = json.loads(encoded_block)
             # create Event File
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
                 data=encoded_block
             ))
+
+            self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()

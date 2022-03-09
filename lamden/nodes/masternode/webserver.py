@@ -153,7 +153,7 @@ class WebServer:
         @self.sio.event
         async def event(data):
             for client in self.ws_clients:
-                await client.send(json.dumps(data))
+                await client.send(encode(data))
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
@@ -180,7 +180,7 @@ class WebServer:
                 'data': block
             }
 
-            await ws.send(json.dumps(eventData))
+            await ws.send(encode(eventData))
 
             async for message in ws:
                 pass
