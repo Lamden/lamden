@@ -245,7 +245,8 @@ class Node:
                     wallet=self.wallet,
                     ctx=self.ctx
                 )
-            self.process_new_block(block)
+            if not block.get('error'):
+                self.process_new_block(block)
 
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:
