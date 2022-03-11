@@ -320,11 +320,11 @@ class NonceStorage:
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{processor}/{sender}')
+        return db.get(f'{processor}.{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{processor}/{sender}', value)
+        return db.set(f'{processor}.{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
