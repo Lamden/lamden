@@ -1,21 +1,35 @@
 from unittest import TestCase
 
+# from lamden.webserver.webserver import WebServer
 from lamden.nodes.masternode.webserver import WebServer
+# from lamden.webserver.readers import AsyncBlockReader
+from lamden.storage import BlockStorage
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
 from lamden.storage import BlockStorage
 from lamden.crypto.transaction import build_transaction
 from lamden import storage
+from sanic import Sanic
+import asyncio
+from lamden.nodes.events import EventWriter, Event, EventService
+import websockets
+from multiprocessing import Process
+import json
+import time
+
+import asyncio
 
 n = ContractDriver()
-
+EVENT_SERVICE_PORT = 8000
+SAMPLE_TOPIC = 'new_block'
 
 class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
 
         self.blocks = BlockStorage()
+        # self.block_writer = BlockStorage()
         self.driver = ContractDriver()
 
         self.ws = WebServer(
@@ -24,6 +38,7 @@ class TestClassWebserver(TestCase):
             blocks=self.blocks,
             driver=n
         )
+
         self.ws.client.flush()
         self.ws.blocks.flush()
         self.ws.driver.flush()
@@ -615,6 +630,9 @@ def get():
             arguments=['members'],
             value=['4', '5', '6']
         )
+
+        self.ws.client.raw_driver.commit()
+
         _, response = self.ws.app.test_client.get('/constitution')
 
         self.assertDictEqual(response.json, {
@@ -639,3 +657,70 @@ def get():
 
     def test_js_encoded_tx_works(self):
         pass
+
+class TestWebserverWebsockets(TestCase):
+    service_process = None
+
+    @classmethod
+    def setUpClass(cls):
+        TestWebserverWebsockets.service_process = Process(target=lambda: EventService(EVENT_SERVICE_PORT).run())
+        TestWebserverWebsockets.service_process.start()
+        time.sleep(0.1)
+
+    @classmethod
+    def tearDownClass(cls):
+        TestWebserverWebsockets.service_process.terminate()
+
+    def setUp(self):
+        self.ws = WebServer(
+            wallet=Wallet(),
+            contracting_client=ContractingClient(),
+            blocks=BlockStorage(),
+            driver=ContractDriver(),
+            topics=[SAMPLE_TOPIC]
+        )
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        self.loop = asyncio.get_event_loop()
+        self.server = self.loop.run_until_complete(
+            asyncio.ensure_future(
+                self.ws.app.create_server(host='0.0.0.0', port=self.ws.port, return_asyncio_server=True)
+            )
+        )
+        self.loop.run_until_complete(self.ws.sio.connect(f'http://localhost:{EVENT_SERVICE_PORT}'))
+
+        self.websocket = None
+        self.messages = []
+
+    def tearDown(self):
+        self.await_async_task(self.websocket.close)
+        self.loop.run_until_complete(self.ws.sio.disconnect())
+        self.server.close()
+        self.loop.run_until_complete(self.server.wait_closed())
+        self.loop.close()
+
+    def await_async_task(self, task):
+        tasks = asyncio.gather(
+            task()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+    async def ws_connect(self):
+        self.websocket = await websockets.connect(f'ws://localhost:{self.ws.port}')
+
+    async def ws_get_next_message(self):
+        self.messages.append(json.loads(await self.websocket.recv()))
+
+    def test_ws_can_connect_to_webserver_get_latest_block_event(self):
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
+
+        self.assertEqual(len(self.ws.ws_clients), 1)
+        self.assertEqual(self.messages[0]['event'], 'latest_block')
+
+    def test_ws_client_receive_events_from_webserver(self):
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
+        EventWriter().write_event(Event(topics=self.ws.topics, data={'number': 101, 'hash': 'xoxo'}))
+        self.await_async_task(self.ws_get_next_message)
+        self.assertDictEqual(self.messages[1], {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})

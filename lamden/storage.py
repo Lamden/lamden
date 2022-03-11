@@ -62,8 +62,8 @@ import shutil
   }        
 '''
 
-BLOCK_HASH_KEY = '_current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height'
+BLOCK_HASH_KEY = '__latest_block.hash'
+BLOCK_NUM_HEIGHT = '__latest_block.height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
@@ -321,11 +321,11 @@ class NonceStorage:
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{processor}{config.INDEX_SEPARATOR}{sender}')
+        return db.get(f'__nonces.{processor}{config.INDEX_SEPARATOR}{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{processor}{config.INDEX_SEPARATOR}{sender}', value)
+        return db.set(f'__nonces.{processor}{config.INDEX_SEPARATOR}{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
@@ -367,10 +367,8 @@ def get_latest_block_hash(driver: ContractDriver):
         return '0' * 64
     return latest_hash
 
-
 def set_latest_block_hash(h, driver: ContractDriver):
     driver.set(BLOCK_HASH_KEY, h)
-
 
 def get_latest_block_height(driver: ContractDriver):
     h = driver.get(BLOCK_NUM_HEIGHT)
@@ -381,7 +379,6 @@ def get_latest_block_height(driver: ContractDriver):
         h = int(h._d)
 
     return h
-
 
 def set_latest_block_height(h, driver: ContractDriver):
     #log.info(f'set_latest_block_height {h}')
@@ -397,9 +394,8 @@ def set_latest_block_height(h, driver: ContractDriver):
     log.info(driver.pending_deltas)
     '''
 
-
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
+    #nonces_to_delete = []
 
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
@@ -412,11 +408,12 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
                 value=tx['transaction']['payload']['nonce'] + 1
             )
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+            #nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
 
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
+    #for n in nonces_to_delete:
+    #    nonces.set_pending_nonce(*n, value=None)
 
+    nonces.flush_pending()
 
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
     if block.get('subblocks') is not None:

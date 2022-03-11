@@ -122,3 +122,4 @@ class TestEventService(TestCase):
         self.loop.run_until_complete(asyncio.sleep(TIMEOUT))
 
         self.assertEqual(len(self.client.events), 1)
+

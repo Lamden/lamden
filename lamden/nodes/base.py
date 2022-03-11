@@ -23,6 +23,8 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
 from lamden.nodes.events import Event, EventWriter
 
+from lamden.nodes.events import Event, EventWriter
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
@@ -1141,7 +1143,8 @@ class Node:
                     wallet=self.wallet,
                     ctx=self.ctx
                 )
-            self.process_new_block(block)
+            if not block.get('error'):
+                self.process_new_block(block)
 
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:

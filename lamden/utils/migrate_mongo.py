@@ -1,8 +1,8 @@
-from . import legacy
+import legacy
 
 from lamden import storage, rewards
 from lamden.contracts import sync
-from contracting.db.driver import ContractDriver, encode, Driver, FSDriver, LMDBDriver
+from contracting.db.driver import ContractDriver, encode, Driver, FSDriver
 import lamden
 import json
 from contracting.client import ContractingClient
@@ -13,7 +13,6 @@ import decimal
 import pathlib
 
 log = get_logger('MIGRATE')
-
 
 class MigrationNode:
     def __init__(self,
@@ -30,7 +29,7 @@ class MigrationNode:
 
         # Has the new FSDriver
         self.new_driver = ContractDriver()
-        self.new_driver.driver = LMDBDriver()
+        self.new_driver.driver = FSDriver()
 
         # Does not have the new FSDriver
         self.old_driver = ContractDriver()
@@ -61,6 +60,8 @@ class MigrationNode:
         with open(constitution) as f:
             self.constitution = json.load(f)
 
+        self.seed_genesis_contracts()
+
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
         sync.setup_genesis_contracts(
@@ -84,8 +85,9 @@ class MigrationNode:
             current = 1
 
         # Find the missing blocks process them
-        for i in range(current, latest + 1):
+        for i in range(current, latest+1):
             block = self.old_blocks.get_block(v=i)
+            log.info(f'current: {i}, block: {block}')
 
             if block is not None:
                 self.process_new_block(block)
@@ -134,13 +136,13 @@ class MigrationNode:
 
         # Store the block if it's a masternode
         if self.store:
-            #encoded_block = encode(block)
-            #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal) ### BAD BAD NOT GOOD
             self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
-
-        # Finally, check and initiate an upgrade if one needs to be done
         self.driver.commit()
         self.driver.clear_pending_state()
         gc.collect()
+
+if __name__ == '__main__':
+    mn = MigrationNode()
+    mn.catchup()
