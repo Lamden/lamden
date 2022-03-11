@@ -11,15 +11,12 @@ from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
 from .filequeue import STORAGE_HOME
 
-PROCESSING_QUEUE_STORAGE = STORAGE_HOME.joinpath('proc_q')
-
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, stop_node,
                  get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False,
-                 root=PROCESSING_QUEUE_STORAGE):
-        super().__init__(root=root)
+                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
+        super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
 

@@ -28,7 +28,8 @@ class TestMultiNode(TestCase):
         network.add_action(GET_ALL_PEERS, self.get_peer_list)
         network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
         self.networks.append(network)
-        return  network
+
+        return network
 
     def get_peer_list(self):
         return [network.wallet.verifying_key for network in self.networks]

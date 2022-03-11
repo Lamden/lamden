@@ -1,15 +1,12 @@
 import asyncio
-import pathlib
-from .filequeue import FileQueue, STORAGE_HOME
-
 
 class ProcessingQueue:
-    def __init__(self, root=STORAGE_HOME.joinpath('q')):
+    def __init__(self):
         self.running = False
         self.paused = False
         self.currently_processing = False
 
-        self.queue = FileQueue(root=root, write_bytes=False)
+        self.queue = []
 
     def __len__(self):
         return len(self.queue)
@@ -51,7 +48,7 @@ class ProcessingQueue:
             await asyncio.sleep(0)
 
     def flush(self):
-        self.queue.flush()
+        self.queue = []
 
     def append(self, item):
         self.queue.append(item)
