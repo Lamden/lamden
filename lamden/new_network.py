@@ -47,7 +47,7 @@ class NewPeerProcessor(Processor):
         self.new_peer_callback(msg=msg)
 
 class Network:
-    def __init__(self, wallet: Wallet, socket_base, driver: ContractDriver, socket_ports=None, testing=False, debug=False):
+    def __init__(self, wallet: Wallet, socket_base, driver: ContractDriver=ContractDriver(), socket_ports=None, testing=False, debug=False):
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
