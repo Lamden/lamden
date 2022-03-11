@@ -81,7 +81,6 @@ class Node:
             'self': 0.75
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
-        self.max_peer_strikes = 5
         self.tx_queue = tx_queue
 
         self.driver = driver
@@ -141,9 +140,7 @@ class Node:
             testing=self.testing,
             wallet=wallet,
             socket_base=socket_base,
-            socket_ports=socket_ports,
-            max_peer_strikes=self.max_peer_strikes,
-            boot_nodes=bootnodes
+            socket_ports=socket_ports
         )
 
         # Number of core / processes we push to

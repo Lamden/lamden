@@ -1,6 +1,6 @@
 from unittest import TestCase
 from contracting.db.driver import ContractDriver
-from lamden.nodes import block_contender
+from lamden.nodes.processors import block_contender
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
 from copy import deepcopy

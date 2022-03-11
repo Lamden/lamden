@@ -84,15 +84,10 @@ class TestMultiNode(TestCase):
 
         self.n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
 
-        self.assertEqual(self.n.masternodes[0].obj.network.router.address, expected_ips[0])
-        self.assertEqual(self.n.masternodes[1].obj.network.router.address, expected_ips[1])
-        self.assertEqual(self.n.masternodes[2].obj.network.router.address, expected_ips[2])
-        self.assertEqual(self.n.delegates[0].obj.network.router.address, expected_ips[3])
-        self.assertEqual(self.n.delegates[1].obj.network.router.address, expected_ips[4])
-        self.assertEqual(self.n.delegates[2].obj.network.router.address, expected_ips[5])
-        self.assertEqual(self.n.delegates[3].obj.network.router.address, expected_ips[6])
-        self.assertEqual(self.n.delegates[4].obj.network.router.address, expected_ips[7])
-        self.assertEqual(self.n.delegates[5].obj.network.router.address, expected_ips[8])
+        for i in range(9):
+            node = self.n.nodes[i]
+            self.assertEqual('{}:{}'.format(node.tcp, node.socket_ports['router']), expected_ips[i])
+
 
     def test_mock_network_starts(self):
         # 2 mn, 3 delegate

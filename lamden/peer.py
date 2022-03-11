@@ -5,48 +5,50 @@ import asyncio
 from lamden.sockets.request import Request
 from lamden.sockets.subscriber import Subscriber
 from lamden.sockets.dealer import Dealer
+from urllib.parse import urlparse
 
 
 LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
 
 class Peer:
-    def __init__(self, ip, ctx, server_key, vk, services, blacklist, max_strikes, wallet, network_services,
-                 get_network_ip, logger=None, testing=False, debug=False):
+    def __init__(self, ip, ctx, server_key, vk, services, blacklist, wallet,
+                 get_network_ip, connected_callback, logger=None, testing=False, debug=False):
         self.ctx = ctx
 
         self.server_key = server_key
         self.vk = vk
 
         self.get_network_ip = get_network_ip
-        self.ip = ip
+
+        self.protocol = 'tcp://'
         self.socket_ports = {
             'router': 19000,
             'publisher': 19080,
             'webserver': 18080
         }
-        self.check_ip_for_port()
+
+        self.url = None
+        self.set_ip(ip)
 
         self.services = services
         self.in_consensus = True
         self.errored = False
         self.wallet = wallet
 
-        self.max_strikes = max_strikes
-        self.strikes = 0
-
         self.blacklist = blacklist
-
-        self.network_services = network_services
 
         self.running = False
         self.sub_running = False
-        self.catchup = False
+        self.reconnecting = False
+        self.connected_callback = connected_callback
 
         self.testing = testing
         self.debug = debug
         self.debug_messages = []
         self.log = logger or get_logger("PEER")
+
+        self.dealer = None
 
         self.subscriber = Subscriber(
             _address=self.subscriber_address,
@@ -60,53 +62,60 @@ class Peer:
         }
 
     @property
+    def ip(self):
+        if not self.url:
+            return None
+
+        return self.url.hostname
+
+    @property
     def latest_block(self):
-        return self.latest_block_info.get('number')
+        try:
+            block_num = self.latest_block_info.get('number')
+        except Exception:
+            pass
+        return block_num
 
     @property
     def latest_hlc_timestamp(self):
-        return self.latest_block_info.get('hlc_timestamp')
+        try:
+            hlc_timestamp = self.latest_block_info.get('hlc_timestamp')
+        except Exception:
+            pass
+        return hlc_timestamp
 
     @property
     def subscriber_address(self):
-        self.log.info('[PEER] PUBLISHER ADDRESS: {}:{}'.format(self.ip, self.socket_ports.get('publisher')))
-        print('[{}][PEER] PUBLISHER ADDRESS: {}:{}'.format(self.log.name, self.ip, self.socket_ports.get('publisher')))
-        return '{}:{}'.format(self.ip, self.socket_ports.get('publisher'))
+        self.log.info('[PEER] PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
+        print('[{}][PEER] PUBLISHER ADDRESS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('publisher')))
+        return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher'))
 
     @property
     def dealer_address(self):
-        self.log.info('[PEER] ROUTER ADDRESSS: {}:{}'.format(self.ip, self.socket_ports.get('router')))
-        print('[{}][PEER] ROUTER ADDRESSS: {}:{}'.format(self.log.name, self.ip, self.socket_ports.get('router')))
-        return '{}:{}'.format(self.ip, self.socket_ports.get('router'))
+        self.log.info('[PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
+        print('[{}][PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('router')))
+        return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
     def is_available(self):
         pong = self.ping()
         return pong
 
-    def check_ip_for_port(self):
-        try:
-            protocol, ip, port = self.ip.split(":")
+    def set_ip(self, address):
+        self.url = urlparse(address)
 
-            self.socket_ports['router'] = int(port)
-            self.socket_ports['publisher'] = 19080 + (int(port) - 19000)
-            self.socket_ports['webserver'] = 18080 + (int(port) - 19000)
+        if self.url.port:
+            self.socket_ports['router'] = self.url.port
+            self.calc_ports()
 
-            self.ip = '{}:{}'.format(protocol, ip)
-
-        except ValueError:
-            return
-
-    # def start(self):
-    #     # print('starting dealer connecting to: ' + self.router_address)
-    #     self.loop = asyncio.new_event_loop()
-    #     self.dealer = Dealer(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
-    #                          wallet=self.wallet, ctx=self.ctx, _callback=self.dealer_callback, logger=self.log)
-    #     self.dealer.start()
+    def calc_ports(self):
+        self.socket_ports['publisher'] = 19080 + (self.socket_ports['router'] - 19000)
+        self.socket_ports['webserver'] = 18080 + (self.socket_ports['router'] - 19000)
 
     def start(self):
         # print('Received msg from %s : %s' % (self.router_address, msg))
-        self.dealer = Request(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
-                              wallet=self.wallet, ctx=self.ctx, logger=self.log)
+        if not self.dealer:
+            self.dealer = Request(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
+                                  wallet=self.wallet, ctx=self.ctx, logger=self.log)
 
         response = self.hello()
 
@@ -133,6 +142,8 @@ class Peer:
 
             if not self.sub_running:
                 self.sub_running = True
+                self.reconnecting = False
+                self.connected_callback(vk=self.vk)
                 self.loop = asyncio.new_event_loop()
                 self.subscriber.start(self.loop)
 
@@ -149,14 +160,6 @@ class Peer:
     def currently_participating(self):
         return self.in_consensus and self.running and not self.errored
 
-    def add_strike(self):
-        self.strikes += 1
-        self.log.error(f'Strike {self.strikes} for peer {self.server_key[:8]}')
-        # TODO if self.strikes == self.max_strikes then blacklist this peer or something
-        if self.strikes == self.max_strikes:
-            self.stop()
-            self.blacklist(self.server_key)
-
     async def process_subscription(self, data):
         topic, msg = data
         services = self.services()
@@ -170,9 +173,21 @@ class Peer:
         if processor is not None and message is not None:
             await processor.process_message(message)
 
+    async def reconnect_loop(self):
+        self.reconnecting = True
+        while self.reconnecting and not self.running:
+            self.stop()
+            self.start()
+            await asyncio.sleep(1)
+        self.reconnecting = False
+
     def ping(self):
         msg = json.dumps({'action': 'ping'})
         msg_json = self.send_request(msg, timeout=500, retries=5)
+        if msg_json is None and not self.reconnecting:
+            asyncio.ensure_future(self.reconnect_loop())
+            self.log.info(f'[PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
+            print(f'[{self.log.name}][PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
         return msg_json
 
     def hello(self):

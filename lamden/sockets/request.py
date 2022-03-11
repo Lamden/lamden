@@ -61,7 +61,8 @@ class Request(threading.Thread):
                 sleep(0.1)
             elif(self.state == 1):
                 while self.connection_attempts < self.max_attempts and self.running:
-                    print('request: attempting to send msg: ' + self.msg)
+                    self.log.info(f'[REQUEST] attempting to send msg: ' + self.msg)
+                    print(f'[{self.log.name}][REQUEST] attempting to send msg: ' + self.msg)
                     self.create_socket()
                     try:
                         poll = zmq.Poller()
@@ -139,7 +140,7 @@ class Request(threading.Thread):
         self.running = True
         self.log.info("[REQUEST] STARTING FOR PEER: " + self.address)
         while self.connection_attempts < self.max_attempts and self.running:
-            print('request: attempting to send msg: ' + self.msg)
+            print('[REQUEST] attempting to send msg: ' + self.msg)
             self.create_socket()
             try:
                 poll = zmq.Poller()
@@ -170,7 +171,7 @@ class Request(threading.Thread):
                     print(f'[{self.log.name}][REQUEST] Interrupted')
                     break  # Interrupted
                 else:
-                    self.log.info('[DEALER] error: ' + e.strerror)
+                    self.log.info('[REQUEST] error: ' + e.strerror)
                     print(f'[{self.log.name}][REQUEST] error: ' + e.strerror)
                     sleep(1)
                     self.connection_attempts += 1
