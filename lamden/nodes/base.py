@@ -992,7 +992,7 @@ class Node:
         if hlc_timestamp is None:
             # Returns to disk state which should be whatever it was prior to any write sessions
             self.driver.cache.clear()
-            self.driver.pending_reads = {}
+            self.driver.reads = set()
             self.driver.pending_writes.clear()
             self.driver.pending_deltas.clear()
         else:
@@ -1000,7 +1000,7 @@ class Node:
             for _hlc, _deltas in sorted(self.driver.pending_deltas.items())[::-1]:
                 # Clears the current reads/writes, and the reads/writes that get made when rolling back from the
                 # last HLC
-                self.driver.pending_reads = {}
+                self.driver.reads = set()
                 self.driver.pending_writes.clear()
 
 
