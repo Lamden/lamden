@@ -4,7 +4,7 @@ from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 
 class Block_Contender():
     def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, get_last_hlc_in_consensus,
-                 get_block_by_hlc, peer_add_strike, wallet, debug=False, testing=False):
+                 get_block_by_hlc, wallet, debug=False, testing=False):
 
         self.q = []
         self.expected_subblocks = 1
@@ -18,7 +18,6 @@ class Block_Contender():
         self.get_block_by_hlc = get_block_by_hlc
         self.check_peer_in_consensus = check_peer_in_consensus
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
-        self.peer_add_strike = peer_add_strike
 
         self.debug = debug
         self.testing = testing

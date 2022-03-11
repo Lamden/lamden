@@ -57,7 +57,13 @@ class Subscriber():
 
         self.running = True    
         while self.running:
-            event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
+            try:
+                event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
+            except zmq.error.ZMQError:
+                self.socket.close()
+                self.running = False
+                return
+
             if(event):
                 try:
                     data = self.socket.recv_multipart()
@@ -85,4 +91,8 @@ class Subscriber():
             self.log.info('[SUBSCRIBER] Stopping.')
             print(f'[{self.log.name}][SUBSCRIBER] Stopping.')
 
+            self.socket.close()
+            if self.sub_task:
+                self.sub_task.join()
+                self.sub_task = None
             self.running = False

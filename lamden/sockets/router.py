@@ -98,10 +98,14 @@ class Router(threading.Thread):
                         self.callback(self, ident, msg)
 
             except zmq.ZMQError as e:
-                if e.errno == zmq.ETERM:
-                    break  # Interrupted
-                else:
-                    raise
+                if e.errno == zmq.ETERM: # Interrupted
+                    break
+
+                if e.errno == 38: # "Socket operation on non-socket"
+                    print (e.errno)
+                    self.stop()
+                    return
+                raise
 
         self.socket.close()
 
@@ -112,5 +116,5 @@ class Router(threading.Thread):
         if self.running:
             print(f'[{self.log.name}][ROUTER] Stopping.')
             self.log.info(f'[ROUTER] Stopping.')
-
             self.running = False
+            self.socket.close()

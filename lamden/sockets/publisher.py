@@ -49,6 +49,18 @@ class Publisher():
         m = encode(msg).encode()        
         self.socket.send_string(topic, flags=zmq.SNDMORE)
         self.socket.send(m)
+
+    def announce_new_peer_connection(self, vk, ip):
+        topic = "new_peer_connection"
+        msg = {
+            'vk': vk,
+            'ip': ip
+        }
+
+        asyncio.ensure_future(self.publish(
+            topic=topic,
+            msg=msg
+        ))
     
     def stop(self):
         if self.running:

@@ -81,7 +81,6 @@ class Node:
             'self': 0.75
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
-        self.max_peer_strikes = 5
         self.tx_queue = tx_queue
 
         self.driver = driver
@@ -141,9 +140,7 @@ class Node:
             testing=self.testing,
             wallet=wallet,
             socket_base=socket_base,
-            socket_ports=socket_ports,
-            max_peer_strikes=self.max_peer_strikes,
-            boot_nodes=bootnodes
+            socket_ports=socket_ports
         )
 
         # Number of core / processes we push to
@@ -204,7 +201,6 @@ class Node:
             get_all_peers=self.get_all_peers,
             get_block_by_hlc=self.get_block_by_hlc,
             check_peer_in_consensus=self.check_peer_in_consensus,
-            peer_add_strike=self.peer_add_strike,
             wallet=self.wallet,
             get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
         )

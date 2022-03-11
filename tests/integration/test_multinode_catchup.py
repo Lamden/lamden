@@ -165,5 +165,10 @@ class TestMultiNode(TestCase):
         self.async_sleep(5)
         self.assertEqual(10, self.n.masternodes[1].obj.get_current_height())
 
+        # Check that all node are connected to each other
+        for node in self.n.nodes:
+            self.assertEqual(2, len(node.obj.network.peers))
+            for peer in node.obj.network.peers.values():
+                self.assertTrue(peer.running)
 
 
