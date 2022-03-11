@@ -93,6 +93,9 @@ class Subscriber():
 
             self.socket.close()
             if self.sub_task:
-                self.sub_task.join()
+                try:
+                    self.sub_task.join()
+                except RuntimeError:
+                    pass
                 self.sub_task = None
             self.running = False

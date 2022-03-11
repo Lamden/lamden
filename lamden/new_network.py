@@ -140,7 +140,10 @@ class Network:
         self.running = False
         self.publisher.stop()
         self.router.stop()
-        self.router.join()
+        try:
+            self.router.join()
+        except RuntimeError:
+            pass
         for peer in self.peers:
             self.peers[peer].stop()
         self.ctx.term()
@@ -432,13 +435,6 @@ class Network:
         masternodes = self.driver.driver.get(f'masternodes.S:members') or []
         all_nodes = masternodes + delegates
         return all_nodes
-
-    def check_peer_in_consensus(self, key):
-        try:
-            return self.peers[key].in_consensus
-        except KeyError:
-            self.log.error(f'Cannot check if {key[:8]} is in consensus because they are not a peer!')
-        return False
 
     def set_peers_not_in_consensus(self, keys):
         for key in keys:

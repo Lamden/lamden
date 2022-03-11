@@ -55,13 +55,15 @@ class Block_Contender():
             self.log.error('Contender sender is not a valid peer!')
             return
 
+        '''
         if not self.network.check_peer_in_consensus(proof['signer']):
             # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
             # TODO ie, it's upto the peer to know they are out of consensus and attempt to resync and rejoin or be at risk of being blacklisted
             self.log.info(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
             return
+        '''
 
-        if hlc_timestamp < self.validation_queue.last_hlc_in_consensus():
+        if hlc_timestamp < self.validation_queue.last_hlc_in_consensus:
             block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
             if block is not None:
                 return

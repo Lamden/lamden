@@ -208,7 +208,6 @@ class Node:
         self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
         self.network.add_action(GET_BLOCK, self.blocks.get_block)
         self.network.add_action(GET_CONSTITUTION, self.make_constitution)
-        self.network.add_action(GET_ALL_PEERS, self.get_peer_list)
 
 
         self.running = False

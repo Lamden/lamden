@@ -404,13 +404,6 @@ class ValidationQueue(ProcessingQueue):
             if not exists:
                 self.validation_results['result_lookup'].pop(solution)
 
-    async def drop_bad_peers(self, all_block_results, consensus_result):
-        correct_solution = consensus_result['solution']
-        out_of_consensus = []
-        for node_vk in all_block_results['solutions']:
-            if all_block_results['solutions'][node_vk] != correct_solution:
-                out_of_consensus.append(node_vk)
-        self.network.set_peers_not_in_consensus(out_of_consensus)
 
     def get_key_list(self):
         return [key for key in self.validation_results.keys()]

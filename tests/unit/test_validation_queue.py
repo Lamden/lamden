@@ -3,11 +3,10 @@ from contracting.db.driver import ContractDriver
 from lamden.nodes import validation_queue
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
+from lamden.new_network import Network
 from copy import deepcopy
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
-
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
-
 import asyncio
 
 class TestValidationQueue(TestCase):
@@ -26,15 +25,21 @@ class TestValidationQueue(TestCase):
 
         self.current_block = 64 * f'0'
 
+        network = Network(
+            wallet=Wallet(),
+            socket_base='tcp://127.0.0.1',
+            testing=True,
+            debug=True
+        )
+
         self.validation_queue = validation_queue.ValidationQueue(
             driver=self.driver,
             wallet=self.wallet,
             consensus_percent=lambda: self.consensus_percent,
-            get_peers_for_consensus=self.get_peers_for_consensus,
             hard_apply_block=self.hard_apply_block,
-            set_peers_not_in_consensus=self.set_peers_not_in_consensus,
             stop_node=self.stop,
             testing=True,
+            network=network,
             get_block_by_hlc=self.get_block_by_hlc
         )
 
