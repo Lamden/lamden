@@ -3,6 +3,7 @@ from contracting.db.driver import ContractDriver
 from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
+from contracting import config
 
 from contracting.db.encoder import encode, decode, encode_kv
 
@@ -320,11 +321,11 @@ class NonceStorage:
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{processor}.{sender}')
+        return db.get(f'{processor}{config.INDEX_SEPARATOR}{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{processor}.{sender}', value)
+        return db.set(f'{processor}{config.INDEX_SEPARATOR}{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
