@@ -13,6 +13,7 @@ import asyncio
 from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 from contracting.db.encoder import encode, decode
+from contracting.db.driver import ContractDriver
 
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
@@ -39,10 +40,12 @@ class QueueProcessor(Processor):
 
 class Network:
     def __init__(self, wallet: Wallet, socket_base, max_peer_strikes, socket_ports=None, testing=False,
-                 debug=False, boot_nodes={}):
+                 debug=False, boot_nodes={}, driver=ContractDriver()):
         self.testing = testing
         self.debug = debug
         self.wallet = wallet
+
+        self.driver = driver
 
         self.max_peer_strikes = max_peer_strikes
 
@@ -335,3 +338,85 @@ class Network:
                     self.log.info(f'Waiting to connect to {peer.ip}...')
 
             self.log.info(f'Connected to {num_of_peers_connected}/{num_of_peers} peers.')
+
+    def get_peers_for_consensus(self):
+        allPeers = {}
+        peers_from_blockchain = self.get_all_peers(not_me=True)
+        # print({'peers_from_blockchain': peers_from_blockchain})
+
+        for key in peers_from_blockchain:
+            # print(key)
+            # print({'network_peers': self.network.peers})
+            if self.peers[key].currently_participating():
+                allPeers[key] = peers_from_blockchain[key]
+
+        return allPeers
+
+    def get_all_peers(self, not_me=False):
+        return {
+            ** self.get_delegate_peers(not_me),
+            ** self.get_masternode_peers(not_me)
+        }
+
+    def _get_member_peers(self, contract_name):
+        ''' GET FROM DB INSTEAD
+        members = self.client.get_var(
+            contract=contract_name,
+            variable='S',
+            arguments=['members']
+        )
+        '''
+
+        members = self.driver.driver.get(f'{contract_name}.S:members')
+
+        member_peers = dict()
+
+        for vk in members:
+            if vk == self.wallet.verifying_key:
+                member_peers[vk] = self.ip
+            else:
+                peer = self.peers.get(vk, None)
+                if peer is not None:
+                    if peer.ip is not None:
+                        member_peers[vk] = peer.ip
+
+        return member_peers
+
+    def get_delegate_peers(self, not_me=False):
+        peers = self._get_member_peers('delegates')
+        # print({'delegate': peers})
+        if not_me and self.wallet.verifying_key in peers:
+            del peers[self.wallet.verifying_key]
+        return peers
+
+    def get_masternode_peers(self, not_me=False):
+        peers = self._get_member_peers('masternodes')
+        # print({'masternode': peers})
+        if not_me and self.wallet.verifying_key in peers:
+            del peers[self.wallet.verifying_key]
+
+        return peers
+
+    def get_peer_list(self):
+        delegates = self.driver.driver.get(f'delegates.S:members') or []
+        masternodes = self.driver.driver.get(f'masternodes.S:members') or []
+        all_nodes = masternodes + delegates
+        return all_nodes
+
+    def check_peer_in_consensus(self, key):
+        try:
+            return self.peers[key].in_consensus
+        except KeyError:
+            self.log.error(f'Cannot check if {key[:8]} is in consensus because they are not a peer!')
+        return False
+
+    def set_peers_not_in_consensus(self, keys):
+        for key in keys:
+            try:
+                self.peers[key].not_in_consensus()
+                self.log.info(f'DROPPED {key[:8]} FROM CONSENSUS!')
+            except KeyError:
+                self.log.error(f'Cannot drop {key[:8]} from consensus because they are not a peer!')
+
+    def peer_add_strike(self, key):
+        self.peers[key].add_strike()

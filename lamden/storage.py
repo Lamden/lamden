@@ -305,6 +305,7 @@ class BlockStorage:
 
         return blocks
 
+
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):

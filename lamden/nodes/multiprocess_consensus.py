@@ -5,7 +5,6 @@ from time import time
 from lamden.nodes.determine_consensus import DetermineConsensus
 
 from lamden.logger.base import get_logger
-from lamden.nodes.queue_base import ProcessingQueue
 
 
 class MultiProcessConsensus:

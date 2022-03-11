@@ -162,12 +162,12 @@ class Node:
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
             executor=self.executor,
-            get_last_processed_hlc=self.get_last_processed_hlc,
-            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
+            get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
+            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
             reward_manager=self.reward_manager,
             reprocess=self.reprocess,
-            check_if_already_has_consensus=self.check_if_already_has_consensus,
+            check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
             pause_all_queues=self.pause_all_queues,
             unpause_all_queues=self.unpause_all_queues
         )
@@ -177,12 +177,11 @@ class Node:
             driver=self.driver,
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
-            get_peers_for_consensus=self.get_peers_for_consensus,
-            get_block_by_hlc=self.get_block_by_hlc,
-            hard_apply_block=self.hard_apply_block,
-            set_peers_not_in_consensus=self.set_peers_not_in_consensus,
+            get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
+            hard_apply_block=self.hard_apply_block,                                     # Abstract
             wallet=self.wallet,
-            stop_node=self.stop
+            stop_node=self.stop,
+            network=self.network
         )
 
         self.total_processed = 0
@@ -192,23 +191,19 @@ class Node:
             wallet=wallet,
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
-            get_masters=self.get_masternode_peers,
             get_last_processed_hlc=self.get_last_processed_hlc,
-            stop_node=self.stop
+            stop_node=self.stop,
+            network=self.network
         )
 
         self.block_contender = block_contender.Block_Contender(
             testing=self.testing,
             debug=self.debug,
             validation_queue=self.validation_queue,
-            get_all_peers=self.get_all_peers,
             get_block_by_hlc=self.get_block_by_hlc,
-            check_peer_in_consensus=self.check_peer_in_consensus,
-            peer_add_strike=self.peer_add_strike,
             wallet=self.wallet,
-            get_last_hlc_in_consensus=lambda: self.validation_queue.last_hlc_in_consensus
+            network=self.network
         )
-
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
@@ -382,7 +377,6 @@ class Node:
         self.log.info({'current': current})
 
         await self.run_catchup(peer=catchup_peer)
-
 
     async def run_catchup(self, peer):
         current = self.get_current_height()
@@ -1036,98 +1030,18 @@ class Node:
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
 
-    def _get_member_peers(self, contract_name):
-        ''' GET FROM DB INSTEAD
-        members = self.client.get_var(
-            contract=contract_name,
-            variable='S',
-            arguments=['members']
-        )
-        '''
-
-        members = self.driver.driver.get(f'{contract_name}.S:members')
-
-        member_peers = dict()
-
-        for vk in members:
-            if vk == self.wallet.verifying_key:
-                member_peers[vk] = self.network.ip
-            else:
-                peer = self.network.peers.get(vk, None)
-                if peer is not None:
-                    if peer.ip is not None:
-                        member_peers[vk] = peer.ip
-
-        return member_peers
-
+    # Put into 'super driver'
     def get_block_by_hlc(self, hlc_timestamp):
         return self.blocks.get_block(v=hlc_timestamp)
 
+    # Put into 'super driver'
     def get_block_by_number(self, block_number):
         return self.blocks.get_block(v=block_number)
 
-    def get_delegate_peers(self, not_me=False):
-        peers = self._get_member_peers('delegates')
-        # print({'delegate': peers})
-        if not_me and self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
-        return peers
-
-    def get_masternode_peers(self, not_me=False):
-        peers = self._get_member_peers('masternodes')
-        # print({'masternode': peers})
-        if not_me and self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
-
-        return peers
-
-    def get_peer_list(self):
-        delegates = self.driver.driver.get(f'delegates.S:members') or []
-        masternodes = self.driver.driver.get(f'masternodes.S:members') or []
-        all_nodes = masternodes + delegates
-        return all_nodes
-
-    def get_all_peers(self, not_me=False):
-        return {
-            ** self.get_delegate_peers(not_me),
-            ** self.get_masternode_peers(not_me)
-        }
-
-    def get_peers_for_consensus(self):
-        allPeers = {}
-        peers_from_blockchain = self.get_all_peers(not_me=True)
-        # print({'peers_from_blockchain': peers_from_blockchain})
-
-        for key in peers_from_blockchain:
-            # print(key)
-            # print({'network_peers': self.network.peers})
-            if self.network.peers[key].currently_participating():
-                allPeers[key] = peers_from_blockchain[key]
-
-        return allPeers
-
-    def check_peer_in_consensus(self, key):
-        try:
-            return self.network.peers[key].in_consensus
-        except KeyError:
-            self.log.error(f'Cannot check if {key[:8]} is in consensus because they are not a peer!')
-        return False
-
-    def set_peers_not_in_consensus(self, keys):
-        for key in keys:
-            try:
-                self.network.peers[key].not_in_consensus()
-                self.log.info(f'DROPPED {key[:8]} FROM CONSENSUS!')
-            except KeyError:
-                self.log.error(f'Cannot drop {key[:8]} from consensus because they are not a peer!')
-
-    def peer_add_strike(self, key):
-        self.network.peers[key].add_strike()
-
     def make_constitution(self):
         return {
-            'masternodes': self.get_masternode_peers(),
-            'delegates': self.get_delegate_peers()
+            'masternodes': self.network.get_masternode_peers(),
+            'delegates': self.network.get_delegate_peers()
         }
 
     def seed_genesis_contracts(self):
@@ -1167,12 +1081,15 @@ class Node:
             nonces=self.nonces
         )
 
+    # Put into 'super driver'
     def get_current_height(self):
         return storage.get_latest_block_height(self.driver)
 
+    # Put into 'super driver'
     def get_current_hash(self):
         return storage.get_latest_block_hash(self.driver)
 
+    # Put into 'super driver'
     def get_latest_block(self):
         latest_block_num = self.get_current_height()
         block = self.blocks.get_block(v=latest_block_num)

@@ -1,10 +1,10 @@
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
+from lamden.new_network import Network
 
 class Block_Contender():
-    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, get_last_hlc_in_consensus,
-                 get_block_by_hlc, peer_add_strike, wallet, debug=False, testing=False):
+    def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
 
         self.q = []
         self.expected_subblocks = 1
@@ -14,11 +14,9 @@ class Block_Contender():
 
         self.block_q = []
         self.validation_queue = validation_queue
-        self.get_all_peers = get_all_peers
         self.get_block_by_hlc = get_block_by_hlc
-        self.check_peer_in_consensus = check_peer_in_consensus
-        self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
-        self.peer_add_strike = peer_add_strike
+
+        self.network = network
 
         self.debug = debug
         self.testing = testing
@@ -49,7 +47,7 @@ class Block_Contender():
         # tack on the tx_result_hash to the proof for this node
         msg['proof']['tx_result_hash'] = tx_result_hash
 
-        peers = self.get_all_peers()
+        peers = self.network.get_all_peers()
         # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
 
         if proof['signer'] not in peers and proof['signer'] != self.wallet.verifying_key:
@@ -57,13 +55,13 @@ class Block_Contender():
             self.log.error('Contender sender is not a valid peer!')
             return
 
-        if not self.check_peer_in_consensus(proof['signer']):
+        if not self.network.check_peer_in_consensus(proof['signer']):
             # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
             # TODO ie, it's upto the peer to know they are out of consensus and attempt to resync and rejoin or be at risk of being blacklisted
             self.log.info(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
             return
 
-        if hlc_timestamp < self.get_last_hlc_in_consensus():
+        if hlc_timestamp < self.validation_queue.last_hlc_in_consensus():
             block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
             if block is not None:
                 return

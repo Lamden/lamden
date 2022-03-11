@@ -10,11 +10,10 @@ from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
-
+from lamden.new_network import Network
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, get_peers_for_consensus,
-                 set_peers_not_in_consensus, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
+    def __init__(self, driver, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
                  debug=False):
         super().__init__()
 
@@ -27,10 +26,10 @@ class ValidationQueue(ProcessingQueue):
         self.last_hlc_in_consensus = ""
 
         self.get_block_by_hlc = get_block_by_hlc
-        self.get_peers_for_consensus = get_peers_for_consensus
-        self.set_peers_not_in_consensus = set_peers_not_in_consensus
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
+
+        self.network = network
 
         self.determine_consensus = DetermineConsensus(
             consensus_percent=consensus_percent,
@@ -40,7 +39,7 @@ class ValidationQueue(ProcessingQueue):
         self.multiprocess_consensus = MultiProcessConsensus(
             consensus_percent=consensus_percent,
             my_wallet=wallet,
-            get_peers_for_consensus=get_peers_for_consensus
+            get_peers_for_consensus=self.network.get_peers_for_consensus
         )
 
         self.driver = driver
@@ -411,7 +410,7 @@ class ValidationQueue(ProcessingQueue):
         for node_vk in all_block_results['solutions']:
             if all_block_results['solutions'][node_vk] != correct_solution:
                 out_of_consensus.append(node_vk)
-        self.set_peers_not_in_consensus(out_of_consensus)
+        self.network.set_peers_not_in_consensus(out_of_consensus)
 
     def get_key_list(self):
         return [key for key in self.validation_results.keys()]
