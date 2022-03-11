@@ -108,5 +108,37 @@ class TestNewNetwork(unittest.TestCase):
 
         self.assertEqual(False, result.success)
         self.assertEqual('Request Socket Error: Failed to receive response after 1 attempts each waiting 100', result.response)
+
+    def request_callback(self, success: bool, msg):
+        self.request_successful = success
+        if(success):
+            msg = str(msg, 'utf-8')
+            print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'request callback: ' + msg)
+            try:
+                msg_json = json.loads(msg)
+                self.dealerCallbackMsg = msg_json['action']
+            except:
+                print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' +
+                      'request call back error decoding json')
+        else:
+            print('request failed: ' + msg)
+
+    def dealer_callback(self, msg):
+        msg = str(msg, 'utf-8')
+        print(datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] + ': ' + 'dealer callback: ' + msg)
+        try:
+            msg_json = json.loads(msg)
+            self.dealerCallbackMsg = msg_json['action']
+        except:
+            print('error decoding json')
+
+    def router_callback(self, router: Router, identity, msg):
+        msgStr = str(msg, 'utf-8')
+        print(f'router callback, ident: {str(identity)}, msg: {msgStr}')
+        self.router_callback_msg = msgStr
+        msg = b'success'
+        router.send_msg(identity, msg)
+
+
 if __name__ == '__main__':
     unittest.main()
