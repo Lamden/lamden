@@ -74,7 +74,7 @@ class Network:
         )
 
         self.router = Router(
-            get_all_peers=self.get_all_peers,
+            get_all_peers=self.get_peer_list,
             router_wallet=self.wallet,
             callback=self.router_callback,
             logger=self.log
