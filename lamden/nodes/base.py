@@ -226,7 +226,7 @@ class Node:
 
         self.log.info(f'Current block: {current}, Latest available block: {latest}')
 
-        if latest == 0 or latest is None or type(latest) == dict:
+        if latest == 0 or latest is None or type(latest) == dict or current == latest:
             self.log.info('No need to catchup. Proceeding.')
             return
 
