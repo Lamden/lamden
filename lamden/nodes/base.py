@@ -230,23 +230,11 @@ class Node:
             self.log.info('No need to catchup. Proceeding.')
             return
 
-        # Increment current by one. Don't count the genesis block.
-        if current == 0:
-            current = 1
-
-        # Find the missing blocks process them
-        for i in range(current, latest + 1):
-            block = None
-            while block is None:
-                block = await get_block(
-                    block_num=i,
-                    ip=mn_seed,
-                    vk=mn_vk,
-                    wallet=self.wallet,
-                    ctx=self.ctx
-                )
-            if not block.get('error'):
-                self.process_new_block(block)
+        ip = mn_seed.split('//')[1].split[':'][0]
+        self.log.info(f'fetching current state from rsync server: {ip}')
+        os.system(f'rsync -av {ip}::fs /root/fs')
+        if self.store:
+            os.system(f'rsync -av {ip}::lamden /root/lamden')
 
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:
