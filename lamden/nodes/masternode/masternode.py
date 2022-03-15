@@ -290,7 +290,7 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        # self.aggregator.sbc_inbox.q.clear()
+        self.aggregator.sbc_inbox.q.clear()
 
     def stop(self):
         super().stop()
