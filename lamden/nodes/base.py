@@ -230,11 +230,13 @@ class Node:
             self.log.info('No need to catchup. Proceeding.')
             return
 
-        ip = mn_seed.split('//')[1].split(':')[0]
-        self.log.info(f'fetching current state from rsync server: {ip}')
-        os.system(f'rsync -av {ip}::fs /root/fs')
+        host = mn_seed.split('//')[1].split(':')[0]
+        self.log.info(f'rsync daemon ip: {host}')
+        self.log.info(f'fetching state to: {self.driver.driver.root}')
+        os.system(f'rsync -aq --delete {host}::state {self.driver.driver.root}')
         if self.store:
-            os.system(f'rsync -av {ip}::lamden /root/lamden')
+            self.log.info(f'fetching blocks to: {STORAGE_HOME}')
+            os.system(f'rsync -aq --delete {host}::blocks {STORAGE_HOME}')
 
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:

@@ -29,9 +29,8 @@ def start_mongo():
         print('Starting MongoDB...')
         time.sleep(3)
 
-def cfg_and_start_rsync_daemon():
-    os.system('cp rsyncd.conf /etc/')
-    os.system('rsync --daemon')
+def setup_and_start_rsync_daemon():
+    os.system('cp rsyncd.conf /etc/ && rsync --daemon &>/dev/null')
 
 def print_ascii_art():
     print('''
@@ -133,7 +132,7 @@ def start_node(args):
     if args.node_type == 'masternode':
         # Start mongo
         start_mongo()
-        cfg_and_start_rsync_daemon()
+        setup_and_start_rsync_daemon()
 
         n = Masternode(
             wallet=wallet,
@@ -190,7 +189,7 @@ def join_network(args):
     if args.node_type == 'masternode':
         # Start mongo
         start_mongo()
-        cfg_and_start_rsync_daemon()
+        setup_and_start_rsync_daemon()
 
         n = Masternode(
             wallet=wallet,
