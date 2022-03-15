@@ -261,6 +261,7 @@ class Masternode(base.Node):
         self.process_new_block(block)
 
         self.new_block_processor.clean(self.current_height)
+        self.aggregator.sbc_inbox.q.clear()
 
         return original_block
 
@@ -290,7 +291,6 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        self.aggregator.sbc_inbox.q.clear()
 
     def stop(self):
         super().stop()
