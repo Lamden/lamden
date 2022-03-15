@@ -230,7 +230,7 @@ class Node:
             self.log.info('No need to catchup. Proceeding.')
             return
 
-        ip = mn_seed.split('//')[1].split[':'][0]
+        ip = mn_seed.split('//')[1].split(':')[0]
         self.log.info(f'fetching current state from rsync server: {ip}')
         os.system(f'rsync -av {ip}::fs /root/fs')
         if self.store:
