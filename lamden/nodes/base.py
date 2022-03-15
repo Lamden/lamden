@@ -216,28 +216,35 @@ class Node:
     async def catchup(self, mn_seed, mn_vk):
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
-        current = self.current_height
-        latest = await get_latest_block_height(
-            ip=mn_seed,
-            vk=mn_vk,
-            wallet=self.wallet,
-            ctx=self.ctx
-        )
+        for i in range(3):
+            current = self.current_height
+            latest = await get_latest_block_height(
+                ip=mn_seed,
+                vk=mn_vk,
+                wallet=self.wallet,
+                ctx=self.ctx
+            )
 
-        self.log.info(f'Current block: {current}, Latest available block: {latest}')
+            self.log.info(f'Current block: {current}, Latest available block: {latest}')
 
-        if latest == 0 or latest is None or type(latest) == dict or current == latest:
-            self.log.info('No need to catchup. Proceeding.')
-            return
+            if latest == 0 or latest is None or type(latest) == dict or current == latest:
+                self.log.info('No need to catchup. Proceeding.')
+                break
 
-        host = mn_seed.split('//')[1].split(':')[0]
-        self.log.info(f'rsync daemon ip: {host}')
-        self.log.info(f'fetching state to: {self.driver.driver.root}')
-        os.system(RSYNC_CMD.format(host=host, module='state', dst_loc=self.driver.driver.root))
-        if self.store:
-            self.log.info(f'fetching blocks to: {STORAGE_HOME}')
-            os.system(RSYNC_CMD.format(host=host, module='blocks', dst_loc=STORAGE_HOME))
+            host = mn_seed.split('//')[1].split(':')[0]
+            self.log.info(f'rsync daemon ip: {host}')
+            os.system(RSYNC_CMD.format(host=host, module='blocks', dst_loc=self.blocks.blocks_dir))
+            os.system(RSYNC_CMD.format(host=host, module='txs', dst_loc=self.blocks.txs_dir))
 
+            # Increment current by one. Don't count the genesis block.
+            if current == 0:
+                current = 1
+            # Update state
+            for i in range(current, latest + 1):
+                block = self.blocks.get_block(i)
+                if block is not None:
+                    self.update_state(block)
+                
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:
             block = self.new_block_processor.q.pop(0)
