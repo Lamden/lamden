@@ -223,6 +223,8 @@ class Masternode(base.Node):
 
         tx_batch = self.tx_batcher.pack_current_queue()
 
+        self.log.info(f'TX BATCH: {tx_batch}')
+
         # LOOK AT SOCKETS CLASS
         if len(self.get_delegate_peers()) == 0:
             self.log.error('No one online!')
