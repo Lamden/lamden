@@ -261,7 +261,6 @@ class Masternode(base.Node):
         self.process_new_block(block)
 
         self.new_block_processor.clean(self.current_height)
-        self.aggregator.sbc_inbox.q.clear()
 
         return original_block
 
@@ -269,6 +268,7 @@ class Masternode(base.Node):
         self.log.info('=== ENTERING SEND WORK STATE ===')
         self.upgrade_manager.version_check(constitution=self.make_constitution())
 
+        self.aggregator.sbc_inbox.q.clear()
         block = await self.get_work_processed()
 
         await router.secure_multicast(
@@ -290,7 +290,6 @@ class Masternode(base.Node):
             peer_map=self.get_masternode_peers(),
             ctx=self.ctx
         )
-
 
     def stop(self):
         super().stop()
