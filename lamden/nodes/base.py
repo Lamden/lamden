@@ -19,10 +19,13 @@ import shutil
 import os
 import pathlib
 
+from lamden.nodes.events import Event, EventWriter
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
 NEW_BLOCK_SERVICE = 'new_blocks'
+NEW_BLOCK_EVENT = 'new_block'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
@@ -147,6 +150,7 @@ class Node:
         self.seed = seed
 
         self.blocks = blocks
+        self.event_writer = EventWriter()
 
         self.log = get_logger('Base')
         self.log.propagate = debug
@@ -334,15 +338,23 @@ class Node:
 
             self.blocks.store_block(encoded_block)
 
+            # create Event File
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_EVENT],
+                data=encoded_block
+            ))
+
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
 
         # Finally, check and initiate an upgrade if one needs to be done
         self.driver.commit()
+
         self.driver.clear_pending_state()
         gc.collect() # Force memory cleanup every block
 
         self.nonces.flush_pending()
+
 
     async def start(self):
         asyncio.ensure_future(self.router.serve())
