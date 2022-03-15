@@ -223,6 +223,8 @@ class Masternode(base.Node):
 
         tx_batch = self.tx_batcher.pack_current_queue()
 
+        input_hash = tx_batch['input_hash']
+
         self.log.info(f'TX BATCH: {tx_batch}')
 
         # LOOK AT SOCKETS CLASS
@@ -239,10 +241,12 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
+        return input_hash
+
     async def get_work_processed(self):
         await asyncio.sleep(1)
 
-        await self.send_work()
+        input_hash = await self.send_work()
 
         # this really should just give us a block straight up
         masters = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
@@ -253,7 +257,8 @@ class Masternode(base.Node):
             total_contacts=len(self.get_delegate_peers()),
             expected_subblocks=len(masters),
             current_height=self.current_height,
-            current_hash=self.current_hash
+            current_hash=self.current_hash,
+            input_hash=input_hash
         )
 
         original_block = copy.deepcopy(block)
@@ -290,7 +295,7 @@ class Masternode(base.Node):
             ctx=self.ctx
         )
 
-        self.aggregator.sbc_inbox.q.clear()
+        # self.aggregator.sbc_inbox.q.clear()
 
     def stop(self):
         super().stop()

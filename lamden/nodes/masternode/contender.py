@@ -193,7 +193,7 @@ class SubBlockContender:
 
 
 class BlockContender:
-    def __init__(self, total_contacts, total_subblocks, required_consensus=0.66, acceptable_consensus=0.5):
+    def __init__(self, total_contacts, total_subblocks, input_hash, required_consensus=0.66, acceptable_consensus=0.5):
         self.total_contacts = total_contacts
         self.total_subblocks = total_subblocks
 
@@ -209,9 +209,14 @@ class BlockContender:
 
         self.received = defaultdict(set)
 
+        self.input_hash = input_hash
+
     def add_sbcs(self, sbcs):
         for sbc in sbcs:
             # If it's out of range, ignore
+            if sbc['input_hash'] != self.input_hash:
+                continue
+
             if sbc['subblock'] > self.total_subblocks - 1:
                 continue
 
@@ -289,7 +294,7 @@ class Aggregator:
         self.log = get_logger('AGG')
         self.log.propagate = debug
 
-    async def gather_subblocks(self, total_contacts, current_height=0, current_hash='0' * 64, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
+    async def gather_subblocks(self, total_contacts, input_hash, current_height=0, current_hash='0' * 64, quorum_ratio=0.66, adequate_ratio=0.5, expected_subblocks=4):
         self.sbc_inbox.expected_subblocks = expected_subblocks
 
         block = storage.get_latest_block_height(self.driver)
@@ -300,7 +305,8 @@ class Aggregator:
             total_contacts=total_contacts,
             required_consensus=quorum_ratio,
             total_subblocks=expected_subblocks,
-            acceptable_consensus=adequate_ratio
+            acceptable_consensus=adequate_ratio,
+            input_hash=input_hash
         )
 
         # Add timeout condition.
