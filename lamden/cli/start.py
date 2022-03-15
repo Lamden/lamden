@@ -30,7 +30,7 @@ def start_mongo():
         time.sleep(3)
 
 def setup_and_start_rsync_daemon():
-    os.system('cp rsyncd.conf /etc/ && rsync --daemon &>/dev/null')
+    os.system('cp rsyncd.conf /etc/ && rsync --daemon > /dev/null 2>&1')
 
 def print_ascii_art():
     print('''
