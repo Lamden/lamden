@@ -30,7 +30,7 @@ class BlockStorage:
 
         self.blocks_dir = self.home.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.txs_dir = self.home.joinpath('txs')
+        self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.build_directories()
 
