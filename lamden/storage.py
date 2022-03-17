@@ -125,7 +125,7 @@ class MetaDataDriver(FSDriver):
         self.set(BLOCK_NUM_HEIGHT, h)
 
     def get_last_processed_hlc(self):
-        self.get(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}')
+        return self.get(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}')
 
     def set_last_processed_hlc(self, h):
         self.set(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}', h)
