@@ -1,10 +1,15 @@
 DEFAULT_BLOCK = '0000000000000000000000000000000000000000000000000000000000000000'
 from lamden.crypto.transaction import build_transaction
-from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, tx_hash_from_tx
 from lamden.crypto.wallet import Wallet
 import json
 import zmq.asyncio
-from lamden.nodes.base import Node
+from lamden.nodes.hlc import HLC_Clock
+from lamden.nodes.processing_queue import TxProcessingQueue
+from contracting.db.driver import ContractDriver
+from contracting.client import ContractingClient
+from contracting.execution.executor import Executor
+from lamden import rewards
 
 def generate_blocks(number_of_blocks):
     previous_hash = '0' * 64
@@ -56,6 +61,8 @@ def get_new_vote_tx(type, vk, sender):
     return json.loads(txb)
 
 def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None):
+    wallet = wallet or Wallet()
+
     if tx is None:
         tx = get_new_currency_tx(
             wallet=wallet,
@@ -63,26 +70,53 @@ def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None)
             amount=amount
         )
 
-    node = Node(
-        wallet=node_wallet or Wallet(),
-        socket_base=f'',
-        constitution={'masternodes':[],'delegates':[]},
-        ctx=zmq.asyncio.Context()
-    )
-    return node.make_tx_message(tx=tx)
+
+    hlc_clock = HLC_Clock()
+    hlc_timestamp = hlc_clock.get_new_hlc_timestamp()
+    tx_hash = tx_hash_from_tx(tx=tx)
+
+    signature = wallet.sign(f'{tx_hash}{hlc_timestamp}')
+
+    return {
+        'tx': tx,
+        'hlc_timestamp': hlc_timestamp,
+        'signature': signature,
+        'sender': wallet.verifying_key
+    }
 
 def get_processing_results(tx_message, node_wallet=None, node=None):
-    node = node or Node(
-        wallet=node_wallet or Wallet(),
-        socket_base=f'',
-        constitution={'masternodes':[],'delegates':[]},
-        ctx=zmq.asyncio.Context()
-    )
-    processing_results = node.main_processing_queue.process_tx(tx=tx_message)
-    hlc_timestamp = processing_results.get('hlc_timestamp')
-    tx_result = processing_results.get('tx_result')
-    tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
-    processing_results['proof']['tx_result_hash'] = tx_result_hash
+    if node:
+        processing_results = node.main_processing_queue.process_tx(tx=tx_message)
+    else:
+        driver = ContractDriver()
+        client = ContractingClient(driver=driver)
+        executor = Executor(driver=driver, metering=False)
+
+
+        main_processing_queue = TxProcessingQueue(
+            testing=True,
+            debug=True,
+            driver=driver,
+            client=client,
+            wallet=node_wallet or Wallet(),
+            hlc_clock=HLC_Clock(),
+            processing_delay=lambda: 0,
+            executor=executor,
+            get_last_processed_hlc=lambda: "0",
+            get_last_hlc_in_consensus=lambda: "0",
+            stop_node=lambda: True,
+            reward_manager=rewards,
+            reprocess=lambda: True,
+            check_if_already_has_consensus=lambda: False,
+            pause_all_queues=lambda: True,
+            unpause_all_queues=lambda: True
+        )
+
+        processing_results = main_processing_queue.process_tx(tx=tx_message)
+        hlc_timestamp = processing_results.get('hlc_timestamp')
+        tx_result = processing_results.get('tx_result')
+        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+        processing_results['proof']['tx_result_hash'] = tx_result_hash
     return processing_results
 
 
