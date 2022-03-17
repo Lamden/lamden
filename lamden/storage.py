@@ -68,7 +68,7 @@ BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
-LAST_PROCESSED_HLC = 'metadata.__last_processed_hlc'
+LAST_PROCESSED_HLC = '__last_processed_hlc'
 
 STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
