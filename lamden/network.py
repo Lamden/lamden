@@ -1,6 +1,7 @@
 import json
 import requests
 import zmq
+from lamden.nodes.filequeue import FileQueue, STORAGE_HOME
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
@@ -446,3 +447,29 @@ class Network:
 
     def peer_add_strike(self, key):
         self.peers[key].add_strike()
+
+
+class MessageProcessor:
+    def __init__(self):
+        self.queues = {}
+        self.services = {}
+        self.is_running = False
+
+    def add_service(self, name: str, processor: Processor):
+        self.services[name] = processor
+        self.queues[name] = FileQueue(root=STORAGE_HOME.joinpath(name))
+
+    def check_inbox(self):
+        for k, v in self.queues.items():
+            try:
+                item = v.pop(0)
+                self.services[k].process_message(item)
+            except IndexError:
+                pass
+
+    async def loop(self):
+        self.is_running = True
+
+        while self.is_running:
+            self.check_inbox()
+            await asyncio.sleep(0)

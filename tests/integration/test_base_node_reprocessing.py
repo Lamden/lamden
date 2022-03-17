@@ -1,6 +1,6 @@
 from lamden.nodes.masternode import masternode
 from lamden.nodes import base
-from lamden import storage, authentication
+from lamden import storage
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from contracting.db.driver import InMemDriver, ContractDriver

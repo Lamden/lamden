@@ -172,6 +172,7 @@ class Peer:
             self.log.error(msg)
             self.log.error(message)
         if processor is not None and message is not None:
+            ## Change this to writing on a file queue
             await processor.process_message(message)
 
     async def reconnect_loop(self):
