@@ -1,10 +1,12 @@
 import hashlib
 from lamden.nodes.hlc import HLC_Clock
 
-def generate_mock_block(block_num, prev_block_hlc, prev_block_hash):
-    hlc_clock = HLC_Clock()
-    hlc_clock.merge_hlc_timestamp(prev_block_hlc)
-    hlc_timestamp = hlc_clock.get_new_hlc_timestamp()
+def generate_mock_block(block_num, prev_block_hash, hlc_timestamp=None, prev_block_hlc="0"):
+
+    if not hlc_timestamp:
+        hlc_clock = HLC_Clock()
+        hlc_clock.merge_hlc_timestamp(prev_block_hlc)
+        hlc_timestamp = hlc_timestamp or hlc_clock.get_new_hlc_timestamp()
 
     h = hashlib.sha3_256()
 

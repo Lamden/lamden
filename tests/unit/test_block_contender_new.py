@@ -8,6 +8,7 @@ from copy import deepcopy
 from lamden import storage
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
+from tests.unit.helpers.mock_blocks import generate_mock_block
 
 import asyncio
 
@@ -158,7 +159,14 @@ class TestProcessingQueue(TestCase):
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
         self.validation_queue.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
-        self.blocks[hlc_timestamp] = True
+
+        block = generate_mock_block(
+            block_num=1,
+            prev_block_hash="0",
+            hlc_timestamp=hlc_timestamp
+        )
+        self.validation_queue.state.blocks.store_block(block=block)
+
 
         self.await_process_message(msg=processing_results)
 
