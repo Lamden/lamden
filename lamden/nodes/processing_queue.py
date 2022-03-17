@@ -193,7 +193,7 @@ class TxProcessingQueue(ProcessingQueue):
         # Get the environment
         environment = self.get_environment(tx=tx)
         transaction = tx['tx']
-        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']) or 1
         hlc_timestamp = tx['hlc_timestamp']
 
         # Execute the transaction
