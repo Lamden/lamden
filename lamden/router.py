@@ -8,7 +8,7 @@ from zmq.auth.certs import load_certificate
 from lamden.logger.base import get_logger
 import pathlib
 import os
-
+from .nodes.filequeue import FileQueue, STORAGE_HOME
 import json
 
 CERT_DIR = 'cilsocks'
@@ -194,6 +194,32 @@ class Router(JSONAsyncInbox):
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
+
+
+class MessageProcessor:
+    def __init__(self):
+        self.queues = {}
+        self.services = {}
+        self.is_running = False
+
+    def add_service(self, name: str, processor: Processor):
+        self.services[name] = processor
+        self.queues[name] = FileQueue(root=STORAGE_HOME.joinpath(name))
+
+    def check_inbox(self):
+        for k, v in self.queues.items():
+            try:
+                item = v.pop(0)
+                self.services[k].process_message(item)
+            except IndexError:
+                pass
+
+    async def loop(self):
+        self.is_running = True
+
+        while self.is_running:
+            self.check_inbox()
+            await asyncio.sleep(0)
 
 
 async def secure_send(msg: dict, service, wallet: Wallet, vk, ip, ctx: zmq.asyncio.Context, linger=500, cert_dir=DEFAULT_DIR):

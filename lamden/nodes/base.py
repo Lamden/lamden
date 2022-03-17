@@ -150,6 +150,8 @@ class Node:
             secure=True
         )
 
+        self.message_processor = router.Inbox()
+
         self.network = network.Network(
             wallet=wallet,
             ip_string=socket_base,
@@ -370,6 +372,8 @@ class Node:
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
         current = self.current_height
+
+        ## Only place where this is used
         latest = await get_latest_block_height(
             ip=mn_seed,
             vk=mn_vk,

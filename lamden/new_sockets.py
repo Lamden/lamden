@@ -3,6 +3,7 @@ import json
 from lamden.crypto.wallet import Wallet
 from zmq.auth.asyncio import AsyncioAuthenticator
 import asyncio
+from .nodes.filequeue import FileQueue, STORAGE_HOME
 
 
 class Processor:
