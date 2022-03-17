@@ -32,6 +32,12 @@ def tx_hash_from_tx(tx):
     h.update(encoded_tx)
     return h.hexdigest()
 
+def hash_from_results(formatted_results):
+    h = hashlib.sha3_256()
+    encoded_tx = encode(formatted_results).encode()
+    h.update(encoded_tx)
+    return h.hexdigest()
+
 
 def merklize(leaves):
     # Make space for the parent hashes
@@ -64,7 +70,7 @@ def verify_merkle_tree(leaves, expected_root):
 
 def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
     block_hasher = hashlib.sha3_256()
-    block_hasher.update(bytes.fromhex(previous_hash))
+    # block_hasher.update(bytes.fromhex(previous_hash))
 
     deserialized_subblocks = []
 
@@ -91,3 +97,52 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
     }
 
     return block
+
+def block_from_tx_results(processing_results, proofs, block_num, prev_block_hash) -> dict:
+    tx_result = processing_results.get('tx_result')
+    hlc_timestamp = processing_results.get('hlc_timestamp')
+
+    h = hashlib.sha3_256()
+
+    h.update('{}{}{}'.format(hlc_timestamp, block_num, prev_block_hash).encode())
+
+    pruned_proofs = remove_result_hash_from_proofs(proofs)
+
+    block = {
+        'hash': h.hexdigest(),
+        'number': block_num,
+        'hlc_timestamp': hlc_timestamp,
+        'previous': prev_block_hash,
+        'proofs': pruned_proofs,
+        'processed': tx_result
+    }
+
+    return block
+
+def recalc_block_info(block, new_block_num, new_prev_hash) -> dict:
+    hlc_timestamp = block.get('hlc_timestamp')
+
+    h = hashlib.sha3_256()
+
+    h.update('{}{}{}'.format(hlc_timestamp, new_block_num, new_prev_hash).encode())
+
+    block['hash'] = h.hexdigest()
+    block['previous'] = new_prev_hash
+    block['number'] = new_block_num
+
+    return block
+
+def remove_result_hash_from_proofs(proofs) -> list:
+    for proof in proofs:
+        try:
+            del proof['tx_result_hash']
+        except KeyError:
+            pass
+
+    return proofs
+
+def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp):
+    h = hashlib.sha3_256()
+    h.update('{}'.format(encode(tx_result).encode()).encode())
+    h.update('{}'.format(hlc_timestamp).encode())
+    return h.hexdigest()

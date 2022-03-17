@@ -3,6 +3,7 @@ from contracting.db.driver import ContractDriver
 from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
+from contracting import config
 
 from contracting.db.encoder import encode, decode, encode_kv
 
@@ -14,6 +15,53 @@ import os
 
 import shutil
 
+## Block Format
+'''
+{
+    "hash": "hashed(hlc_timestamp + number + previous_hash)",
+    "number": number,
+    "hlc_timestamp": "some hlc_timestamp",
+    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
+    "proofs": [
+        {
+            'signature': "node_1_sig",
+            'signer': "node_1_vk"
+        },
+        {
+            'signature': "node_5_sig",
+            'signer': "node_5_vk"
+        },
+        {
+            'signature': "node_25_sig",
+            'signer': "node_25_vk"
+        }
+    ],
+    'processed': {
+        "hash": "467ebaa7304d6bc9871ba0ef530e5e8b6dd7331f6c3ae7a58fa3e482c77275f3",
+        "hlc_timestamp": hlc_timestamp,
+        "result": "None",
+        "stamps_used": 18,
+        "state": [
+              {
+                "key": "lets",
+                "value": "go"
+              },
+              {
+                "key": "blue",
+                "value": "jays"
+              }
+        ],
+        "status": 0,
+        "transaction": {
+            "metadata":{
+                "signature": "some sig"
+            },
+            "payload" : { LAMDEN PAYLOAD OBJ }
+        }
+      }
+  }        
+'''
+
 BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
@@ -23,9 +71,16 @@ STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
 log = get_logger('STATE')
 
+BLOCK_0 = {
+    'number': 0,
+    'hash': '0' * 64
+}
+
 
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
+        if type(home) is str:
+            home = pathlib.Path().joinpath(home)
         self.home = home
 
         self.blocks_dir = self.home.joinpath('blocks')
@@ -33,6 +88,8 @@ class BlockStorage:
         self.txs_dir = self.home.joinpath('txs')
 
         self.build_directories()
+
+        self.cache = {}
 
     def build_directories(self):
         self.home.mkdir(exist_ok=True, parents=True)
@@ -47,13 +104,22 @@ class BlockStorage:
         except FileNotFoundError:
             pass
 
-    def store_block(self, block):
+    def store_block_old(self, block):
         if block.get('subblocks') is None:
             return
 
         txs, hashes = self.cull_txs(block)
         self.write_block(block)
         self.write_txs(txs, hashes)
+
+    def store_block(self, block):
+        tx, tx_hash = self.cull_tx(block)
+
+        if tx is None or tx_hash is None:
+            raise ValueError('Block has no transaction information or malformed tx data.')
+
+        self.write_block(block)
+        self.write_txs([tx], [tx_hash])
 
     @staticmethod
     def cull_txs(block):
@@ -82,6 +148,19 @@ class BlockStorage:
 
         return txs, hashes
 
+    @staticmethod
+    def cull_tx(block):
+        # Pops all transactions from the block and replaces them with the hash only for storage space
+        # Returns the data and hashes for storage in a different folder. Block is modified in place
+        try:
+            tx = block.get('processed', None)
+            tx_hash = tx.get('hash', None)
+            block['processed'] = tx_hash
+
+            return tx, tx_hash
+        except Exception:
+            return None, None
+
     def write_block(self, block):
         num = block.get('number')
 
@@ -91,15 +170,18 @@ class BlockStorage:
 
         name = str(num).zfill(64)
 
-        symlink_name = block.get('hash')
+        hash_symlink_name = block.get('hash')
+        hlc_symlink_name = block.get('hlc_timestamp')
 
         encoded_block = encode(block)
         with open(self.blocks_dir.joinpath(name), 'w') as f:
             f.write(encoded_block)
 
         try:
-            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
-        except FileExistsError:
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
+        except FileExistsError as err:
+            print(err)
             pass
 
     def write_txs(self, txs, hashes):
@@ -108,7 +190,7 @@ class BlockStorage:
                 encoded_tx = encode(data)
                 f.write(encoded_tx)
 
-    def get_block(self, v=None, no_id=True):
+    def get_block_old(self, v=None, no_id=True):
         if v is None:
             return None
 
@@ -128,19 +210,59 @@ class BlockStorage:
 
         self.fill_block(block)
 
+        return block
 
+    def get_block(self, v=None):
+        if v is None:
+            return None
+
+        try:
+            if isinstance(v, int):
+                f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
+            else:
+                f = open(self.blocks_alias_dir.joinpath(v))
+        except Exception as err:
+            print(err)
+            return None
+
+        encoded_block = f.read()
+
+        block = decode(encoded_block)
+
+        f.close()
+
+        self.fill_block(block)
 
         return block
 
+    def get_previous_block(self, v=None):
+        block = self.get_block(v=v)
+
+        if block is None:
+            return BLOCK_0
+
+        return block
+
+    def soft_store_block(self, hlc, block):
+        self.cache[hlc] = block
+
+    def commit(self, hlc):
+        to_delete = []
+        for _hlc, block in sorted(self.cache.items()):
+
+            self.store_block(block)
+
+            to_delete.append(_hlc)
+            if _hlc == hlc:
+                break
+
+        for b in to_delete:
+            self.cache.pop(b)
+
     def fill_block(self, block):
-        for subblock in block['subblocks']:
-            txs = []
-            for i in range(len(subblock['transactions'])):
-                tx = self.get_tx(subblock['transactions'][i])
-
-                txs.append(tx)
-
-            subblock['transactions'] = txs
+        tx_hash = block.get('processed')
+        tx = self.get_tx(tx_hash)
+        block['processed'] = tx
 
     def get_tx(self, h):
         try:
@@ -155,19 +277,55 @@ class BlockStorage:
 
         return tx
 
+    def get_later_blocks(self, block_height, hlc_timestamp):
+        blocks = []
+
+        current_block = self.get_block(v=block_height)
+        if current_block is None:
+            return blocks
+
+        current_block_hlc_timestamp = current_block.get('hlc_timestamp')
+
+        if current_block_hlc_timestamp < hlc_timestamp:
+            return blocks
+
+        blocks.append(current_block)
+        while hlc_timestamp < current_block_hlc_timestamp:
+            block_height -= 1
+            block = self.get_block(v=block_height)
+
+            if block is None:
+                break
+
+            current_block_hlc_timestamp = block.get('hlc_timestamp', '')
+
+            if hlc_timestamp < current_block_hlc_timestamp:
+                blocks.insert(0, block)
+            else:
+                break
+
+        return blocks
+
+
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
+
+        if type(nonce_collection) is str:
+            nonce_collection = pathlib.Path().joinpath(nonce_collection)
         self.nonces = FSDriver(root=nonce_collection)
+
+        if type(pending_collection) is str:
+            pending_collection = pathlib.Path().joinpath(pending_collection)
         self.pending_nonces = FSDriver(root=pending_collection)
 
     @staticmethod
     def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{processor}/{sender}')
+        return db.get(f'{processor}{config.INDEX_SEPARATOR}{sender}')
 
     @staticmethod
     def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{processor}/{sender}', value)
+        return db.set(f'{processor}{config.INDEX_SEPARATOR}{sender}', value)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
@@ -204,18 +362,18 @@ class NonceStorage:
 
 
 def get_latest_block_hash(driver: ContractDriver):
-    latest_hash = driver.get(BLOCK_HASH_KEY, mark=False)
+    latest_hash = driver.get(BLOCK_HASH_KEY)
     if latest_hash is None:
         return '0' * 64
     return latest_hash
 
 
 def set_latest_block_hash(h, driver: ContractDriver):
-    driver.driver.set(BLOCK_HASH_KEY, h)
+    driver.set(BLOCK_HASH_KEY, h)
 
 
 def get_latest_block_height(driver: ContractDriver):
-    h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
+    h = driver.get(BLOCK_NUM_HEIGHT)
     if h is None:
         return 0
 
@@ -226,7 +384,18 @@ def get_latest_block_height(driver: ContractDriver):
 
 
 def set_latest_block_height(h, driver: ContractDriver):
-    driver.driver.set(BLOCK_NUM_HEIGHT, h)
+    #log.info(f'set_latest_block_height {h}')
+    driver.set(BLOCK_NUM_HEIGHT, h)
+    '''
+    log.info('Driver')
+    log.info(driver.driver)
+    log.info('Cache')
+    log.info(driver.cache)
+    log.info('Writes')
+    log.info(driver.pending_writes)
+    log.info('Deltas')
+    log.info(driver.pending_deltas)
+    '''
 
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
@@ -234,7 +403,7 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
 
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
-            driver.driver.set(delta['key'], delta['value'])
+            driver.set(delta['key'], delta['value'])
             # log.debug(f"{delta['key']} -> {delta['value']}")
 
             nonces.set_nonce(

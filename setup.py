@@ -21,7 +21,10 @@ setup(
         "contracting",
         "checksumdir",
         "pynacl",
-        "stdlib_list"
+        "stdlib_list",
+        "psutil",
+        "python-socketio",
+        "aiohttp"
     ],
     entry_points={
         'console_scripts': [

@@ -1,75 +1,40 @@
-from lamden import storage, network, router, authentication, rewards, upgrade, contracts
-from lamden.nodes import execution, work, filequeue, processing_queue, validation_queue
-from lamden.nodes import contender
-from lamden.nodes.hlc import HLC_Clock
-from lamden.contracts import sync
-from lamden.logger.base import get_logger
-from lamden.crypto.canonical import merklize, block_from_subblocks
-from lamden.crypto.wallet import Wallet, verify
-
-from contracting.db.driver import ContractDriver, encode
-from contracting.execution.executor import Executor
-from contracting.client import ContractingClient
-
-import time
-import hashlib
-import uvloop
-import gc
-import zmq.asyncio
 import asyncio
+import gc
+import hashlib
+import json
+import time
+import uvloop
+
+from copy import deepcopy
+from contracting.client import ContractingClient
+from contracting.db.driver import ContractDriver
+from contracting.db.encoder import convert_dict, encode
+from contracting.execution.executor import Executor
+from lamden import storage, router, rewards, upgrade, contracts
+from lamden.contracts import sync
+from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-import decimal
-from pathlib import Path
-import uuid
-import shutil
-import os
-import pathlib
+from lamden.new_network import Network
+from lamden.nodes import system_usage
+from lamden.nodes import processing_queue, validation_queue
+from lamden.nodes.processors import work, block_contender
+from lamden.nodes.filequeue import FileQueue
+from lamden.nodes.hlc import HLC_Clock
+from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.nodes.events import Event, EventWriter
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 BLOCK_SERVICE = 'catchup'
+GET_LATEST_BLOCK = 'get_latest_block'
+GET_BLOCK = "get_block"
+GET_CONSTITUTION = "get_constitution"
+GET_ALL_PEERS = "get_all_peers"
 NEW_BLOCK_SERVICE = 'new_blocks'
+NEW_BLOCK_EVENT = 'new_block'
+NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
-
-GET_BLOCK = 'get_block'
-GET_HEIGHT = 'get_height'
-
-
-async def get_latest_block_height(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
-    msg = {
-        'name': GET_HEIGHT,
-        'arg': ''
-    }
-
-    response = await router.secure_request(
-        ip=ip,
-        vk=vk,
-        wallet=wallet,
-        service=BLOCK_SERVICE,
-        msg=msg,
-        ctx=ctx,
-    )
-
-    return response
-
-
-async def get_block(block_num: int, wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context):
-    msg = {
-        'name': GET_BLOCK,
-        'arg': block_num
-    }
-
-    response = await router.secure_request(
-        ip=ip,
-        vk=vk,
-        wallet=wallet,
-        service=BLOCK_SERVICE,
-        msg=msg,
-        ctx=ctx,
-    )
-
-    return response
 
 class NewBlock(router.Processor):
     def __init__(self, driver: ContractDriver):
@@ -104,26 +69,55 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class Node:
-    def __init__(self, socket_base, ctx: zmq.asyncio.Context, wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), debug=True, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), nonces=storage.NonceStorage(), parallelism=4):
+    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, blocks=storage.BlockStorage(),
+                 driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
+                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
+                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
+                 socket_ports=None):
 
-        self.consensus_percent = 51
-        self.processing_delay = 3
+        self.consensus_percent = consensus_percent or 51
+        self.processing_delay_secs = delay or {
+            'base': 0.75,
+            'self': 0.75
+        }
+        # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
+        self.tx_queue = tx_queue
 
         self.driver = driver
         self.nonces = nonces
+        self.event_writer = EventWriter()
 
         self.seed = seed
 
         self.blocks = blocks
+        self.current_block_height = 0
 
         self.log = get_logger('Base')
+        self.debug = debug
+        self.testing = testing
+
+        self.debug_stack = []
+        self.debug_processed_hlcs = []
+        self.debug_processing_results = []
+        self.debug_reprocessing_results = {}
+        self.debug_blocks_processed = []
+        self.debug_timeline = []
+        self.debug_sent_solutions = []
+        self.debug_last_checked_main = time.time()
+        self.debug_last_checked_val = time.time()
+        self.debug_loop_counter = {
+            'main': 0,
+            'validation': 0,
+            'file_check': 0
+        }
+
         self.log.propagate = debug
         self.socket_base = socket_base
         self.wallet = wallet
-        self.hlc_clock = HLC_Clock(processing_delay=self.processing_delay)
-        self.ctx = ctx
+        self.hlc_clock = HLC_Clock()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        self.system_monitor = system_usage.SystemUsage()
 
         self.genesis_path = genesis_path
 
@@ -134,56 +128,57 @@ class Node:
 
         self.bootnodes = bootnodes
         self.constitution = constitution
+        self.should_seed = should_seed
 
-        self.seed_genesis_contracts()
-
-        self.socket_authenticator = authentication.SocketAuthenticator(
-            bootnodes=self.bootnodes, ctx=self.ctx, client=self.client
-        )
+        if self.should_seed:
+            self.seed_genesis_contracts()
 
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
-        self.router = router.Router(
-            socket_id=socket_base,
-            ctx=self.ctx,
+        self.network = Network(
+            debug=self.debug,
+            testing=self.testing,
             wallet=wallet,
-            secure=True
-        )
-
-        self.message_processor = router.Inbox()
-
-        self.network = network.Network(
-            wallet=wallet,
-            ip_string=socket_base,
-            ctx=self.ctx,
-            router=self.router
+            socket_base=socket_base,
+            socket_ports=socket_ports
         )
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.executor = Executor(driver=self.driver)
-        self.transaction_executor = execution.SerialExecutor(executor=self.executor)
+        self.executor = Executor(driver=self.driver, metering=metering)
+        self.reward_manager = reward_manager
 
         self.new_block_processor = NewBlock(driver=self.driver)
-        self.router.add_service(NEW_BLOCK_SERVICE, self.new_block_processor)
 
-        self.file_queue = filequeue.FileQueue()
-        self.main_processing_queue = processing_queue.ProcessingQueue(
+        self.main_processing_queue = processing_queue.TxProcessingQueue(
+            testing=self.testing,
+            debug=self.debug,
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
-            processing_delay=self.processing_delay,
-            transaction_executor=self.transaction_executor,
-            get_current_hash=lambda: self.current_hash,
-            get_current_height=lambda: self.current_height
+            processing_delay=lambda: self.processing_delay_secs,
+            executor=self.executor,
+            get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
+            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
+            stop_node=self.stop,
+            reward_manager=self.reward_manager,
+            reprocess=self.reprocess,
+            check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
+            pause_all_queues=self.pause_all_queues,
+            unpause_all_queues=self.unpause_all_queues
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
-            consensus_percent=self.consensus_percent,
-            get_all_peers=self.get_all_peers,
-            create_new_block=self.create_new_block,
-            wallet=self.wallet
+            testing=self.testing,
+            driver=self.driver,
+            debug=self.debug,
+            consensus_percent=lambda: self.consensus_percent,
+            get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
+            hard_apply_block=self.hard_apply_block,                                     # Abstract
+            wallet=self.wallet,
+            stop_node=self.stop,
+            network=self.network
         )
 
         self.total_processed = 0
@@ -193,170 +188,857 @@ class Node:
             wallet=wallet,
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
-            get_masters=self.get_masternode_peers
+            get_last_processed_hlc=self.get_last_processed_hlc,
+            stop_node=self.stop,
+            network=self.network
         )
 
-        self.aggregator = contender.Aggregator(
+        self.block_contender = block_contender.Block_Contender(
+            testing=self.testing,
+            debug=self.debug,
             validation_queue=self.validation_queue,
-            get_all_peers=self.get_all_peers,
-            driver=self.driver
+            get_block_by_hlc=self.get_block_by_hlc,
+            wallet=self.wallet,
+            network=self.network
         )
 
-        self.router.add_service(WORK_SERVICE, self.work_validator)
-        self.router.add_service(CONTENDER_SERVICE, self.aggregator.sbc_inbox)
+        self.network.add_service(WORK_SERVICE, self.work_validator)
+        self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+
+        self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
+        self.network.add_action(GET_BLOCK, self.blocks.get_block)
+        self.network.add_action(GET_CONSTITUTION, self.make_constitution)
+
 
         self.running = False
         self.upgrade = False
 
-        self.reward_manager = reward_manager
-
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
-
         self.bypass_catchup = bypass_catchup
 
+    def __del__(self):
+        self.network.stop()
+        self.system_monitor.stop()
+
+    @property
+    def node_type(self):
+        return self.upgrade_manager.node_type
+
     async def start(self):
-        asyncio.ensure_future(self.router.serve())
-
-
-        # Get the set of VKs we are looking for from the constitution argument
-        vks = self.constitution['masternodes'] + self.constitution['delegates']
-
-        for node in self.bootnodes.keys():
-            self.socket_authenticator.add_verifying_key(node)
-
-        self.socket_authenticator.configure()
-
-        # Use it to boot up the network
-        await self.network.start(bootnodes=self.bootnodes, vks=vks)
-
-        if not self.bypass_catchup:
-            masternode_ip = None
-            masternode = None
-
-            if self.seed is not None:
-                for k, v in self.bootnodes.items():
-                    self.log.info(k, v)
-                    if v == self.seed:
-                        masternode = k
-                        masternode_ip = v
-            else:
-                masternode = self.constitution['masternodes'][0]
-                masternode_ip = self.network.peers[masternode]
-
-            # self.log.info(f'Masternode Seed VK: {masternode}')
-
-            # Use this IP to request any missed blocks
-            await self.catchup(mn_seed=masternode_ip, mn_vk=masternode)
-
-        # Refresh the sockets to accept new nodes
-        self.socket_authenticator.refresh_governance_sockets()
-
         # Start running
         self.running = True
 
-    async def hang(self):
-        # Maybe Upgrade
-        ## self.upgrade_manager.version_check(constitution=self.make_constitution())
+        if self.debug:
+            asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
-        # Hangs until upgrade is done
+        await self.network.start()
 
-        '''
-        while self.upgrade_manager.upgrade:
+        await asyncio.sleep(2)
+
+        if self.should_seed:
+            await self.start_new_network()
+        else:
+            await self.join_existing_network()
+            await self.catchup()
+
+        self.driver.clear_pending_state()
+
+        self.start_all_queues()
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
+
+    async def start_new_network(self):
+        for vk, ip in self.bootnodes.items():
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
+
+            if vk != self.wallet.verifying_key:
+                # Use it to boot up the network
+                self.network.connect(
+                    ip=ip,
+                    vk=vk
+                )
+
+        await self.network.connected_to_all_peers()
+
+    async def join_existing_network(self):
+        bootnode = None
+
+        # Connect to a node on the network
+        for vk, ip in self.bootnodes.items():
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
+
+            if vk != self.wallet.verifying_key:
+                # Use it to boot up the network
+                self.network.connect(
+                    ip=ip,
+                    vk=vk
+                )
+                await asyncio.sleep(5)
+
+                # We only need one bootnode, so if we connected then we're good
+                if self.network.peers[vk].running:
+                    bootnode = self.network.peers[vk]
+                    break
+
+        if bootnode is None:
+            print("Could not connect to any bootnodes!")
+            print(self.bootnodes)
+            self.log.error("Could not connect to any bootnodes!")
+            self.log.error(self.bootnodes)
+
+            return False
+
+        # Get the rest of the nodes from our bootnode
+        response = bootnode.get_node_list()
+        node_list = response.get('node_list')
+
+        # Create a constitution file
+        self.constitution = {
+            'masternodes': [],
+            'delegates':  []
+        }
+
+        # Populate constitution with node info
+        for node_info in node_list:
+            node_type = node_info.get('node_type')
+            vk = node_info.get('vk')
+            if node_type and vk:
+                self.constitution[f'{node_type}s'].append(vk)
+
+        self.constitution[f'{self.node_type}s'].append(self.wallet.verifying_key)
+
+        # Create genesis contracts
+        self.seed_genesis_contracts()
+
+        # Connect to all nodes in the network
+        for node_info in node_list:
+            vk = node_info.get('vk')
+            ip = node_info.get('ip')
+
+            print({"vk": vk, "ip": ip})
+            self.log.info({"vk": vk, "ip": ip})
+
+            if vk != self.wallet.verifying_key:
+                # connect to peer
+                self.network.connect(
+                    ip=ip,
+                    vk=vk
+                )
+
+        # await self.network.connected_to_all_peers()
+
+        return True
+
+
+    async def stop(self):
+        # Kill the router and throw the running flag to stop the loop
+        self.log.error("!!!!!! STOPPING NODE !!!!!!")
+        self.network.stop()
+        self.system_monitor.stop()
+        self.running = False
+
+        await self.stop_all_queues()
+
+        self.log.error("!!!!!! STOPPED NODE !!!!!!")
+
+    async def catchup(self, peer_vk=None):
+        # Get the current latest block stored and the latest block of the network
+        self.log.info('Running catchup.')
+
+        # Get the Node's current height
+        current = self.get_current_height()
+
+        catchup_peer = None
+
+        if peer_vk:
+            catchup_peer = self.network.peers[peer_vk]
+        else:
+            # get the peer at the highest block height
+            for _, peer in self.network.peers.items():
+                if not peer.running:
+                    continue
+
+                if not catchup_peer:
+                    catchup_peer = peer
+
+                if peer.latest_block > catchup_peer.latest_block:
+                    catchup_peer = peer
+
+        if not catchup_peer:
+            self.log.error(f'No peers available for catchup!')
+            return
+
+        self.log.info(f'Contacting Peer {catchup_peer.ip} for catchup.')
+        self.log.info({'current': current})
+
+        await self.run_catchup(peer=catchup_peer)
+
+    async def run_catchup(self, peer):
+        current = self.get_current_height()
+
+        while current < peer.latest_block:
+            next_block_num = current + 1
+            response = peer.get_block(block_num=next_block_num)
+            self.log.info(response)
+
+            if type(response) is dict:
+                new_block = response.get("block_info")
+                self.log.info(new_block)
+
+                if new_block:
+                    if new_block.get('number') == next_block_num:
+                        # Apply state to DB
+                        self.apply_state_changes_from_block(block=new_block)
+
+                        # Store the block in the block db
+                        encoded_block = encode(new_block)
+                        encoded_block = json.loads(encoded_block)
+
+                        self.blocks.store_block(block=encoded_block)
+
+                        # Set the current block hash and height
+                        self.update_block_db(block=encoded_block)
+
+                        # create New Block Event
+                        self.event_writer.write_event(Event(
+                            topics=[NEW_BLOCK_EVENT],
+                            data=encoded_block
+                        ))
+                    else:
+                        self.log.error("Incorrect Block Number response in catchup!")
+                        print("Incorrect Block Number response in catchup!")
+            else:
+                self.log.error(f"Cannot find block {next_block_num} on node {peer.vk}.  Trying again...")
+                print(f"Cannot find block {next_block_num} on node {peer.vk}.  Trying again...")
+
+                await asyncio.sleep(5)
+
+            current = next_block_num
+
+
+    def start_all_queues(self):
+        self.log.info("!!!!!! STARTING ALL QUEUES !!!!!!")
+        self.main_processing_queue.start()
+        self.validation_queue.start()
+        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
+        self.log.info(f"validation_queue running: {self.validation_queue.running}")
+
+    async def stop_all_queues(self):
+        self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
+        self.main_processing_queue.stop()
+        self.validation_queue.stop()
+
+        await self.main_processing_queue.stopping()
+        self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
+        await self.validation_queue.stopping()
+        self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
+
+        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
+        self.log.info(f"validation_queue running: {self.validation_queue.running}")
+
+    def unpause_all_queues(self):
+        self.log.info("!!!!!! UNPAUSING ALL QUEUES !!!!!!")
+        self.main_processing_queue.unpause()
+        self.validation_queue.unpause()
+        self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
+        self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
+
+    async def pause_all_queues(self):
+        self.log.info("!!!!!! PAUSING ALL QUEUES !!!!!!")
+        self.main_processing_queue.pause()
+        self.validation_queue.pause()
+
+        await self.main_processing_queue.pausing()
+        self.log.info("!!!!!! main_processing_queue PAUSED !!!!!!")
+        await self.validation_queue.pausing()
+        self.log.info("!!!!!! validation_queue PAUSED !!!!!!")
+
+        self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
+        self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
+
+    async def stop_main_processing_queue(self, force=False):
+        self.main_processing_queue.stop()
+        if force:
+            self.main_processing_queue.currently_processing = False
+        await self.main_processing_queue.stopping()
+
+    def start_main_processing_queue(self):
+        self.main_processing_queue.start()
+
+    async def check_tx_queue(self):
+        while self.running:
+            if len(self.tx_queue) > 0:
+                tx_from_file = self.tx_queue.pop(0)
+                # TODO sometimes the tx info taken off the filequeue is None, investigate
+                if tx_from_file is not None:
+                    tx_message = self.make_tx_message(tx=tx_from_file)
+
+                    # send the tx to the rest of the network
+                    asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
+
+                    # add this tx the processing queue so we can process it
+                    self.main_processing_queue.append(tx=tx_message)
+
+            self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0)
-        '''
 
-        # Wait for activity on our main processing queue or the needs validation queue
-        while len(self.main_processing_queue) <= 0 and len(self.validation_queue) <= 0:
-            if not self.running:
-                return
+    async def check_main_processing_queue(self):
+        while self.running:
+            if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
+                self.main_processing_queue.start_processing()
+                await self.process_main_queue()
+                self.main_processing_queue.stop_processing()
 
+            self.debug_loop_counter['main'] = self.debug_loop_counter['main'] + 1
             await asyncio.sleep(0)
 
-        # mn_logger.debug('Work available. Continuing.')
+    async def check_validation_queue(self):
+        while self.running:
+            if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
+                self.validation_queue.start_processing()
+                await self.validation_queue.check_all()
+                await self.validation_queue.process_next()
+                self.validation_queue.stop_processing()
 
-    async def loop(self):
-        #await self.hang()
-        if len(self.file_queue) > 0:
-            await self.send_tx_to_network(self.file_queue.pop(0))
-
-        if len(self.main_processing_queue) > 0:
-            await self.process_main_queue()
-
-        if len(self.validation_queue) > 0:
-            await self.validation_queue.process_next()
-
-        await asyncio.sleep(5)
+            self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
+            await asyncio.sleep(0)
 
     async def process_main_queue(self):
-        processing_results = self.main_processing_queue.process_next()
+        try:
+            processing_results = await self.main_processing_queue.process_next()
 
-        if processing_results:
-            # add the hlc_timestamp to the needs validation queue for processing later
-            self.validation_queue.append(processing_results)
+            if processing_results:
+                hlc_timestamp = processing_results.get('hlc_timestamp')
 
-            # TODO This currently just udpates DB State but it should be cache
-            # self.update_cache_state(results[0])
+                if self.testing:
+                    self.debug_processing_results.append(processing_results)
 
-            # Mint new block
-            results = processing_results['results']
-            await self.send_block_results(results)
+                if hlc_timestamp <= self.get_last_hlc_in_consensus():
+                    return
 
-            # self.log.info("\n------ MY RESULTS -----------")
-            # self.log.debug(processing_results)
-            # self.log.info("\n-----------------------------")
+                self.last_processed_hlc = hlc_timestamp
 
-        await asyncio.sleep(0)
+                try:
+                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+                except Exception as err:
+                    print(err)
 
-    async def send_block_results(self, results):
-        await router.secure_multicast(
-            msg=results,
-            service=CONTENDER_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_all_peers(not_me=True),
-            ctx=self.ctx
+                self.store_solution_and_send_to_network(processing_results=processing_results)
+        except Exception as err:
+            self.log.error(err)
+
+    def store_solution_and_send_to_network(self, processing_results):
+
+        self.send_solution_to_network(processing_results=processing_results)
+
+        processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp']
         )
 
+        self.validation_queue.append(
+            processing_results=processing_results
+        )
+
+    def send_solution_to_network(self, processing_results):
+        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
+
+    def soft_apply_current_state(self, hlc_timestamp):
+        try:
+            self.driver.soft_apply(hcl=hlc_timestamp)
+        except Exception as err:
+            print(err)
+
+        self.nonces.flush_pending()
+        gc.collect()
+
     def make_tx_message(self, tx):
-        timestamp = int(time.time())
+        hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+        tx_hash = tx_hash_from_tx(tx=tx)
 
-        h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
-        input_hash = h.hexdigest()
-
-        signature = self.wallet.sign(input_hash)
+        signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')
 
         return {
             'tx': tx,
-            'timestamp': timestamp,
-            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
+            'hlc_timestamp': hlc_timestamp,
             'signature': signature,
-            'sender': self.wallet.verifying_key,
-            'input_hash': input_hash
+            'sender': self.wallet.verifying_key
         }
 
-    async def send_tx_to_network(self, tx):
-        tx_message = self.make_tx_message(tx)
-        # self.log.debug(tx_message)
-        # Else, batch some more txs
-        ## self.log.info('Sending transaction to other nodes.')
+    def update_block_db(self, block):
+        # if self.testing:
+        #    self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height})
+        # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
+        # self.driver.clear_pending_state()
 
-        # LOOK AT SOCKETS CLASS
-        if len(self.get_delegate_peers()) == 0:
-            self.log.error('No one online!')
-            return False
+        # Commit the state changes and nonces to the database
 
-        self.log.info(f'Sending work {tx_message["hlc_timestamp"]} {tx_message["tx"]["metadata"]["signature"][:12]}')
+        storage.set_latest_block_hash(block['hash'], driver=self.driver)
+        storage.set_latest_block_height(block['number'], driver=self.driver)
 
-        await router.secure_multicast(
-            msg=tx_message,
-            service=WORK_SERVICE,
-            cert_dir=self.socket_authenticator.cert_dir,
-            wallet=self.wallet,
-            peer_map=self.get_all_peers(),
-            ctx=self.ctx
-        )
+        self.new_block_processor.clean(self.get_current_height())
+
+        self.driver.commit()
+
+    def get_state_changes_from_block(self, block):
+        tx_result = block.get('processed')
+        return tx_result.get('state')
+
+    def apply_state_changes_from_block(self, block):
+        state_changes = block['processed'].get('state', [])
+        hlc_timestamp = block['processed'].get('hlc_timestamp', None)
+
+        if hlc_timestamp is None:
+            hlc_timestamp = block.get('hlc_timestamp')
+
+        for s in state_changes:
+            if type(s['value']) is dict:
+                s['value'] = convert_dict(s['value'])
+
+            self.driver.set(s['key'], s['value'])
+
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        self.driver.hard_apply(hlc=hlc_timestamp)
+
+    async def hard_apply_block(self, processing_results):
+        '''
+        if self.testing:
+
+            self.debug_stack.append({
+                'system_time' :time.time(), 
+                'method': 'hard_apply_block',
+                'hlc_timestamp': hlc_timestamp
+            })
+        '''
+
+
+        hlc_timestamp = processing_results.get('hlc_timestamp')
+
+        next_block_num = self.current_block_height + 1
+
+        prev_block = self.blocks.get_previous_block(v=self.current_block_height)
+
+        # Get any blocks that have been commited that are later than this hlc_timestamp
+        later_blocks = self.blocks.get_later_blocks(block_height=self.current_block_height, hlc_timestamp=hlc_timestamp)
+
+        # If there are later blocks then we need to process them
+        if len(later_blocks) > 0:
+            try:
+                await self.stop_main_processing_queue(force=True)
+            except Exception as err:
+                errors = err
+                print(errors)
+                pass
+
+            # Get the block number of the block right after where we want to put this tx this will be the block number
+            # for our new block
+            next_block_num = later_blocks[0].get('number')
+            prev_block = self.blocks.get_previous_block(v=later_blocks[0].get('number') - 1)
+
+            new_block = block_from_tx_results(
+                processing_results=processing_results,
+                block_num=next_block_num,
+                proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
+                prev_block_hash=prev_block.get('hash')
+            )
+
+            for i in range(len(later_blocks)):
+                if i is 0:
+                    prev_block_in_list = new_block
+                else:
+                    prev_block_in_list = later_blocks[i - 1]
+
+                later_blocks[i] = recalc_block_info(
+                    block=later_blocks[i],
+                    new_block_num=later_blocks[i].get('number') + 1,
+                    new_prev_hash=prev_block_in_list.get('hash')
+                )
+
+            # Get all the writes that this new block will make to state
+            new_block_writes = []
+            new_block_state_changes = processing_results['tx_result'].get('state')
+
+            for state_change in new_block_state_changes:
+                new_block_writes.append(state_change.get('key'))
+
+            # Apply the state changes from the block to the db
+            self.apply_state_changes_from_block(new_block)
+
+            # Store the new block in the block db
+            self.blocks.store_block(new_block)
+
+            # Emit a block reorg event
+
+            # create a NEW_BLOCK_REORG_EVENT
+            encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
+
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_REORG_EVENT],
+                data=encoded_block
+            ))
+
+            # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
+            # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
+            # had the correct value for.
+            for block in later_blocks:
+                block_state_changes = self.get_state_changes_from_block(block=block)
+
+                for state_change in block_state_changes:
+                    state_key = state_change.get('key')
+                    if state_key in new_block_writes:
+                        new_block_writes.remove(state_key)
+
+                # Apply the state changes for this block to the db
+                self.apply_state_changes_from_block(block)
+
+            # Re-save each block to the database
+            for block in later_blocks:
+                self.blocks.store_block(block)
+
+                # create a NEW_BLOCK_REORG_EVENT
+                encoded_block = encode(block)
+                encoded_block = json.loads(encoded_block)
+
+                self.event_writer.write_event(Event(
+                    topics=[NEW_BLOCK_REORG_EVENT],
+                    data=encoded_block
+                ))
+
+            # Set the current block hash and height
+            self.update_block_db(block=later_blocks[-1])
+
+            # if there are new keys that have been applied to state then we need to reassess everything we have
+            # processed thus far
+            if len(new_block_writes) > 0:
+                self.reprocess_after_earlier_block(new_keys_list=new_block_writes)
+
+            self.start_main_processing_queue()
+
+        else:
+            new_block = block_from_tx_results(
+                processing_results=processing_results,
+                block_num=next_block_num,
+                proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
+                prev_block_hash=prev_block.get('hash')
+            )
+
+            consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
+
+            # Hard apply this hlc_timestamps state changes
+            if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
+                self.driver.hard_apply(hlc_timestamp)
+            else:
+                self.apply_state_changes_from_block(new_block)
+
+
+            # Store the block in the block db
+            encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
+
+            self.blocks.store_block(encoded_block)
+
+            # Set the current block hash and height
+            self.update_block_db(block=encoded_block)
+
+            # create New Block Event
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_EVENT],
+                data=encoded_block
+            ))
+
+        # remove the processing results and read history from the main_processing queue memory
+        self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
+
+        if self.testing:
+            self.debug_processed_hlcs.append(hlc_timestamp)
+
+        # Increment the internal block counter
+        self.current_block_height += 1
+
+        gc.collect()
+
+
+# Re-processing CODE
+    async def reprocess(self, tx):
+        # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
+        pending_delta_history = deepcopy(self.driver.pending_deltas)
+        self.log.debug(f"pending_delta_history: {pending_delta_history}")
+
+        self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
+
+        # Get HLC of tx that needs to be run
+        new_tx_hlc_timestamp = tx.get("hlc_timestamp")
+        self.log.debug(f"new_tx_hlc_timestamp: {new_tx_hlc_timestamp}")
+
+        # Get the read history of all transactions that were run
+        changed_keys_list = []
+
+        # Add the New HLC to the list of hlcs so we can process it in order
+        pending_delta_items = list(pending_delta_history.keys())
+        pending_delta_items.append(new_tx_hlc_timestamp)
+        pending_delta_items.sort()
+
+        # Check the read_history if all HLCs that were processed, in order of oldest to newest
+        for index, read_history_hlc in enumerate(pending_delta_items):
+            self.log.debug(f"read_history_hlc: {read_history_hlc}")
+
+            # if this is the transaction we have to rerun,
+            if read_history_hlc == new_tx_hlc_timestamp:
+                self.log.debug(f"read_history_hlc: EQUALS")
+                if self.testing:
+                    self.debug_reprocessing_results[read_history_hlc] = {
+                        'reprocess_type': 'run',
+                        'sent_to_network': True
+                    }
+                try:
+                    # rollback to this point
+                    self.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
+
+                    # Process the transaction
+                    processing_results = self.main_processing_queue.process_tx(tx=tx)
+                    self.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
+                    changed_keys_list = list(deepcopy(self.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
+                    self.store_solution_and_send_to_network(processing_results=processing_results)
+                    continue
+                except Exception as err:
+                    self.log.error(err)
+
+            # if the hlc is less than the hlc we need to run then leave it alone, it won't need any changes
+            if read_history_hlc < new_tx_hlc_timestamp:
+                self.log.debug(f"read_history_hlc: LESS THAN")
+                continue
+
+            # If HLC is greater than rollback point check it for reprocessing
+            if read_history_hlc > new_tx_hlc_timestamp:
+                self.log.debug(f"read_history_hlc: GREATER THAN")
+                try:
+                    self.reprocess_hlc(
+                        hlc_timestamp=read_history_hlc,
+                        pending_deltas=pending_delta_history.get(read_history_hlc, {}),
+                        changed_keys_list=changed_keys_list
+                    )
+                except Exception as err:
+                    self.log.error(err)
+
+    def reprocess_after_earlier_block(self, new_keys_list):
+        # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
+        pending_delta_history = deepcopy(self.driver.pending_deltas)
+
+        self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
+
+        # Get the read history of all transactions that were run
+        changed_keys_list = new_keys_list
+
+        # Get and sort the list of HLCs so we can process it in order
+        pending_delta_items = list(self.driver.pending_deltas.keys())
+        pending_delta_items.sort()
+
+        # Check the read_history if all HLCs that were processed, in order of oldest to newest
+        for index, read_history_hlc in enumerate(pending_delta_items):
+            try:
+                self.reprocess_hlc(
+                    hlc_timestamp=read_history_hlc,
+                    pending_deltas=pending_delta_history.get(read_history_hlc, {}),
+                    changed_keys_list=changed_keys_list
+                )
+            except Exception as err:
+                self.log.error(err)
+
+    def reprocess_hlc(self, hlc_timestamp, pending_deltas, changed_keys_list):
+        # Create a flag to determine there were any matching keys
+        key_in_change_list = False
+        prev_pending_deltas = pending_deltas
+
+        # Get the keys that tx read from
+        read_history_keys = list(prev_pending_deltas.get('reads', {}).keys())
+
+        # Look at each key this hlc read and see if it was a key that was changed earlier either by the hlc
+        # that triggered this reprocessing or due to reprocessing
+        for read_key in read_history_keys:
+            if read_key in changed_keys_list:
+                # Flag that we matched a key
+                key_in_change_list = True
+                break
+
+        if key_in_change_list:
+            # Get the transaction info from the validation results queue
+            recreated_tx_message = self.validation_queue.get_recreated_tx_message(hlc_timestamp)
+
+            try:
+                # Reprocess the transaction
+                processing_results = self.main_processing_queue.process_tx(tx=recreated_tx_message)
+
+                # Create flag to know if anything changes so we can later resend our new results to the
+                # network
+                re_send_to_network = False
+
+                # Check if the previous run had any pending deltas
+                pending_deltas_writes = prev_pending_deltas.get('writes', {})
+                pending_writes = self.driver.pending_writes
+
+                # FOR TESTING
+                reprocess_type = ""
+
+                # If there were no previous writes but reprocessing had writes then just add then all to
+                # the changed_keys_list and flag to resend our results to the network
+                if len(pending_deltas_writes) is 0 and len(pending_writes) > 0:
+                    reprocess_type = 'no_deltas'
+
+                    # Flag that we need to resend our results to the network
+                    re_send_to_network = True
+
+                    # Add all the keys from the pending_writes to the changed_keys_list
+                    for pending_writes_key in pending_writes.keys():
+                        if pending_writes_key not in changed_keys_list:
+                            changed_keys_list.append(pending_writes_key)
+
+                # If there WERE writes before AND reprocessing had no writes then add all the before
+                # writes to the changed_keys_list and flag to resend our results to the network
+                if len(pending_deltas_writes) > 0 and len(pending_writes) is 0:
+                    reprocess_type = 'no_writes'
+
+                    # Flag that we need to resend our results to the network
+                    re_send_to_network = True
+
+                    # Add all the keys from the pending_writes to the changed_keys_list
+                    for pending_deltas_key in pending_deltas_writes.keys():
+                        if pending_deltas_key not in changed_keys_list:
+                            changed_keys_list.append(pending_deltas_key)
+
+                # If there were writes previously and after reprocessing then compare then to see if
+                # anything changed
+                if len(pending_deltas_writes) > 0 and len(pending_writes) > 0:
+                    reprocess_type = 'has_both'
+
+                    # check the value of each key written during processing against the value of the
+                    # previous run
+                    for pending_writes_key, new_write_value in pending_writes.items():
+                        has_changed = False
+                        # Removed this value from the dict so we can see if there are leftovers afterwards
+                        prev_write_deltas = pending_deltas_writes.pop(pending_writes_key, None)
+
+                        if prev_write_deltas is None:
+                            has_changed = True
+                        else:
+                            prev_write_value = prev_write_deltas[1]
+                            if prev_write_value != new_write_value:
+                                has_changed = True
+
+                        if has_changed:
+                            # Processing results produced changed results so add this key to the changed
+                            # key list so we can check it against the reads of later hlcs in reprocessing
+                            if pending_writes_key not in changed_keys_list:
+                                changed_keys_list.append(pending_writes_key)
+
+                            # Set flag to sent new results to the network
+                            re_send_to_network = True
+
+                    # Check if there are any pending deltas we didn't deal with. This is a situation where
+                    # there were writes that happened previously and not during reprocessing
+                    if len(pending_deltas_writes) > 0:
+                        reprocess_type = 'has_extra_deltas'
+
+                        # Add all the the extra keys to the changed key list because they will now be None
+                        # and could effect transactions later on
+                        for pending_deltas_key in pending_deltas_writes.keys():
+                            changed_keys_list.append(pending_deltas_key)
+
+                # If there were changes to the writes above then we need to re-communicate our results to the
+                # rest of the nodes
+                if re_send_to_network:
+                    # Processing results produced new results so add this key to the changed
+                    # key list so we can check it against the reads of later hlcs in reprocessing
+                    self.log.debug({"RESENDING_TO_NETWORK": processing_results})
+                    self.store_solution_and_send_to_network(processing_results=processing_results)
+
+                self.log.debug({
+                        'reprocess_type': reprocess_type,
+                        'sent_to_network': re_send_to_network
+                    })
+
+                if self.testing:
+                    self.debug_reprocessing_results[hlc_timestamp] = {
+                        'reprocess_type': reprocess_type,
+                        'sent_to_network': re_send_to_network
+                    }
+
+            except Exception as err:
+                self.log.error(err)
+        else:
+            if self.testing:
+                self.debug_reprocessing_results[hlc_timestamp] = {
+                    'reprocess_type': "no_match",
+                    'sent_to_network': False
+                }
+
+            self.log.debug({
+                    'reprocess_type': "no_match",
+                    'sent_to_network': False
+                })
+
+            for pending_delta_key, pending_delta_value in pending_deltas.items():
+                self.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
+
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+
+    def rollback_drivers(self, hlc_timestamp):
+        # Roll back the current state to the point of the last block consensus
+        self.log.debug(f"Length of Pending Deltas BEFORE {len(self.driver.pending_deltas.keys())}")
+        self.log.debug(f"rollback to hlc_timestamp: {hlc_timestamp}")
+
+        if hlc_timestamp is None:
+            # Returns to disk state which should be whatever it was prior to any write sessions
+            self.driver.cache.clear()
+            self.driver.reads = set()
+            self.driver.pending_writes.clear()
+            self.driver.pending_deltas.clear()
+        else:
+            to_delete = []
+            for _hlc, _deltas in sorted(self.driver.pending_deltas.items())[::-1]:
+                # Clears the current reads/writes, and the reads/writes that get made when rolling back from the
+                # last HLC
+                self.driver.reads = set()
+                self.driver.pending_writes.clear()
+
+
+                if _hlc < hlc_timestamp:
+                    self.log.debug(f"{_hlc} is less than {hlc_timestamp}, breaking!")
+                    # if we are less than the HLC then top processing anymore, this is our rollback point
+                    break
+                else:
+                    # if we are still greater than or equal to then mark this as delete and rollback its changes
+                    to_delete.append(_hlc)
+                    # Run through all state changes, taking the second value, which is the post delta
+                    for key, delta in _deltas['writes'].items():
+                        # self.set(key, delta[0])
+                        self.driver.cache[key] = delta[0]
+
+            # Remove the deltas from the set
+            self.log.debug(to_delete)
+            [self.driver.pending_deltas.pop(key) for key in to_delete]
+
+        #self.driver.rollback(hlc=hlc_timestamp)
+
+        self.log.debug(f"Length of Pending Deltas AFTER {len(self.driver.pending_deltas.keys())}")
+
+    def reset_last_hlc_processed(self):
+        self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
+
+    # Put into 'super driver'
+    def get_block_by_hlc(self, hlc_timestamp):
+        return self.blocks.get_block(v=hlc_timestamp)
+
+    # Put into 'super driver'
+    def get_block_by_number(self, block_number):
+        return self.blocks.get_block(v=block_number)
+
+    def make_constitution(self):
+        return {
+            'masternodes': self.network.get_masternode_peers(),
+            'delegates': self.network.get_delegate_peers()
+        }
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
@@ -368,12 +1050,69 @@ class Node:
             root=self.genesis_path
         )
 
+    def should_process(self, block):
+        try:
+            pass
+            # self.log.info(f'Processing block #{block.get("number")}')
+        except:
+            self.log.error('Malformed block :(')
+            return False
+        # Test if block failed immediately
+        if block == {'response': 'ok'}:
+            return False
+
+        if block['hash'] == 'f' * 64:
+            self.log.error('Failed Block! Not storing.')
+            return False
+
+        return True
+
+    def update_cache_state(self, results):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+
+        storage.update_state_with_transaction(
+            tx=results['transactions'][0],
+            driver=self.driver,
+            nonces=self.nonces
+        )
+
+    # Put into 'super driver'
+    def get_current_height(self):
+        return storage.get_latest_block_height(self.driver)
+
+    # Put into 'super driver'
+    def get_current_hash(self):
+        return storage.get_latest_block_hash(self.driver)
+
+    # Put into 'super driver'
+    def get_latest_block(self):
+        latest_block_num = self.get_current_height()
+        block = self.blocks.get_block(v=latest_block_num)
+        return block
+
+    def get_last_processed_hlc(self):
+        return self.last_processed_hlc
+
+    def get_last_hlc_in_consensus(self):
+        return self.validation_queue.last_hlc_in_consensus
+
+    def is_next_block(self, previous_hash):
+        self.log.debug({
+            'current_hash': self.get_consensus_hash(),
+            'previous_hash': previous_hash
+        })
+        return previous_hash == self.get_consensus_hash()
+
+    def check_if_already_has_consensus(self, hlc_timestamp):
+        return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
+
+
+    '''
     async def catchup(self, mn_seed, mn_vk):
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
         current = self.current_height
-
-        ## Only place where this is used
         latest = await get_latest_block_height(
             ip=mn_seed,
             vk=mn_vk,
@@ -408,138 +1147,4 @@ class Node:
         while len(self.new_block_processor.q) > 0:
             block = self.new_block_processor.q.pop(0)
             self.process_new_block(block)
-
-    def should_process(self, block):
-        try:
-            pass
-            # self.log.info(f'Processing block #{block.get("number")}')
-        except:
-            self.log.error('Malformed block :(')
-            return False
-        # Test if block failed immediately
-        if block == {'response': 'ok'}:
-            return False
-
-        if block['hash'] == 'f' * 64:
-            self.log.error('Failed Block! Not storing.')
-            return False
-
-        return True
-
-    def update_database_state(self, block):
-        self.driver.clear_pending_state()
-
-        # Check if the block is valid
-        if self.should_process(block):
-            # self.log.info('Storing new block.')
-            # Commit the state changes and nonces to the database
-            # self.log.debug(block)
-            storage.update_state_with_block(
-                block=block,
-                driver=self.driver,
-                nonces=self.nonces
-            )
-
-            # self.log.info('Issuing rewards.')
-            # Calculate and issue the rewards for the governance nodes
-            self.reward_manager.issue_rewards(
-                block=block,
-                client=self.client
-            )
-
-        # self.log.info('Updating metadata.')
-        self.current_height = storage.get_latest_block_height(self.driver)
-        self.current_hash = storage.get_latest_block_hash(self.driver)
-
-        self.new_block_processor.clean(self.current_height)
-
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-    def create_new_block(self, results):
-        bc = contender.BlockContender(total_contacts=1, total_subblocks=1)
-        bc.add_sbcs([results])
-        subblocks = bc.get_current_best_block()
-
-        block = block_from_subblocks(subblocks, self.current_hash, self.current_height + 1)
-        self.process_new_block(block)
-
-    def process_new_block(self, block):
-        # Update the state and refresh the sockets so new nodes can join
-        self.update_database_state(block)
-
-        self.socket_authenticator.refresh_governance_sockets()
-
-        #encoded_block = encode(block)
-        #encoded_block = json.loads(encoded_block, parse_int=decimal.Decimal)
-
-        self.log.info("\n------ MY NEW BLOCK -----------")
-        self.log.debug(block)
-        self.log.info("\n-----------------------------")
-
-        self.blocks.store_block(block)
-
-        # Prepare for the next block by flushing out driver and notification state
-        # self.new_block_processor.clean()
-
-        # Finally, check and initiate an upgrade if one needs to be done
-        self.driver.commit()
-        self.driver.clear_pending_state()
-        gc.collect() # Force memory cleanup every block
-        #self.nonces.flush_pending()
-
-
-    def stop(self):
-        # Kill the router and throw the running flag to stop the loop
-        self.router.stop()
-        self.running = False
-
-    def _get_member_peers(self, contract_name):
-        members = self.client.get_var(
-            contract=contract_name,
-            variable='S',
-            arguments=['members']
-        )
-
-        member_peers = dict()
-
-        for member in members:
-            ip = self.network.peers.get(member)
-            if ip is not None:
-                member_peers[member] = ip
-
-        return member_peers
-
-    def get_delegate_peers(self, not_me=False):
-        peers = self._get_member_peers('delegates')
-        if not_me and self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
-        return peers
-
-    def get_masternode_peers(self, not_me=False):
-        peers = self._get_member_peers('masternodes')
-
-        if not_me and self.wallet.verifying_key in peers:
-            del peers[self.wallet.verifying_key]
-
-        return peers
-
-    def get_all_peers(self, not_me=False):
-        return {
-            ** self.get_delegate_peers(not_me),
-            ** self.get_masternode_peers(not_me)
-        }
-
-
-    def make_constitution(self):
-        return {
-            'masternodes': self.get_masternode_peers(),
-            'delegates': self.get_delegate_peers()
-        }
+    '''

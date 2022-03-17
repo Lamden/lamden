@@ -9,10 +9,10 @@ from lamden.contracts import sync
 def flush(args):
     if args.storage_type == 'blocks':
         BlockStorage().drop_collections()
-        print('All blocks deleted.')
+        # print('All blocks deleted.')
     elif args.storage_type == 'state':
         ContractDriver().flush()
-        print('State deleted.')
+        # print('State deleted.')
     elif args.storage_type == 'all':
         b = BlockStorage()
         dbs = b.client.database_names()
@@ -22,8 +22,8 @@ def flush(args):
             b.client.drop_database(db)
 
         ContractDriver().flush()
-        print('All blocks deleted.')
-        print('State deleted.')
+        # print('All blocks deleted.')
+        # print('State deleted.')
     else:
         print('Invalid option. < blocks | state | all >')
 
@@ -41,6 +41,7 @@ def setup_cilparser(parser):
     start_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
     start_parser.add_argument('-p', '--pid', type=int, default=-1)
     start_parser.add_argument('-b', '--bypass_catchup', type=bool, default=False)
+    start_parser.add_argument('-d', '--debug', type=bool, default=False)
 
     flush_parser = subparser.add_parser('flush')
     flush_parser.add_argument('storage_type', type=str)
@@ -64,7 +65,6 @@ def main():
 
     # implementation
     if vars(args).get('command') is None:
-        print('Howdy.︎')
         return
 
     if args.command == 'start':

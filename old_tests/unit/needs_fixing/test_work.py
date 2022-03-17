@@ -75,7 +75,7 @@ class TestWorkValidator(TestCase):
         )
 
         loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
+        loop.run_until_complete(tasks)
 
         self.assertEqual(len(main_processing_queue), 1)
 

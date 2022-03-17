@@ -51,6 +51,9 @@ class RewardManager:
     def add_to_balance(vk, amount, client: ContractingClient):
         current_balance = client.get_var(contract='currency', variable='balances', arguments=[vk], mark=False)
 
+        if type(current_balance) is dict:
+            current_balance = ContractingDecimal(current_balance.get('__fixed__'))
+
         if current_balance is None:
             current_balance = ContractingDecimal(0)
 
@@ -102,17 +105,65 @@ class RewardManager:
         return master_reward, delegate_reward, foundation_reward, developer_mapping
 
     @staticmethod
+    def calculate_tx_output_rewards(total_stamps_to_split, contract, client: ContractingClient):
+
+        master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
+            client.get_var(contract='rewards', variable='S', arguments=['value'])
+
+        master_reward = RewardManager.calculate_participant_reward(
+            participant_ratio=master_ratio,
+            number_of_participants=len(client.get_var(contract='masternodes', variable='S', arguments=['members'])),
+            total_stamps_to_split=total_stamps_to_split
+        )
+
+        delegate_reward = RewardManager.calculate_participant_reward(
+            participant_ratio=delegate_ratio,
+            number_of_participants=len(client.get_var(contract='delegates', variable='S', arguments=['members'])),
+            total_stamps_to_split=total_stamps_to_split
+        )
+
+        foundation_reward = RewardManager.calculate_participant_reward(
+            participant_ratio=foundation_ratio,
+            number_of_participants=1,
+            total_stamps_to_split=total_stamps_to_split
+        )
+
+        developer_mapping = RewardManager.find_developer_and_reward(
+            total_stamps_to_split=total_stamps_to_split, contract=contract, client=client, developer_ratio=developer_ratio
+        )
+
+        return master_reward, delegate_reward, foundation_reward, developer_mapping
+
+    @staticmethod
+    def find_developer_and_reward(total_stamps_to_split, contract: str, developer_ratio, client: ContractingClient):
+        # Find all transactions and the developer of the contract.
+        # Count all stamps used by people and multiply it by the developer ratio
+        send_map = defaultdict(lambda: 0)
+
+        recipient = client.get_var(
+            contract=contract,
+            variable='__developer__'
+        )
+
+        send_map[recipient] += (total_stamps_to_split * developer_ratio)
+        send_map[recipient] /= len(send_map)
+
+        return send_map
+
+    @staticmethod
     def distribute_rewards(master_reward, delegate_reward, foundation_reward, developer_mapping, client: ContractingClient):
         stamp_cost = client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
 
         master_reward /= stamp_cost
         delegate_reward /= stamp_cost
         foundation_reward /= stamp_cost
+
         '''
         log.info(f'Master reward: {format(master_reward, ".4f")}t per master. '
                  f'Delegate reward: {format(delegate_reward, ".4f")}t per delegate. '
                  f'Foundation reward: {format(foundation_reward, ".4f")}t.')
         '''
+
         for m in client.get_var(contract='masternodes', variable='S', arguments=['members']):
             RewardManager.add_to_balance(vk=m, amount=master_reward, client=client)
 

@@ -1,8 +1,9 @@
 from unittest import TestCase
-from lamden import rewards
+
 from contracting.client import ContractingClient
+
+from lamden import rewards
 from lamden.contracts import sync
-import lamden
 
 BLOCK = {
             'number': 1,

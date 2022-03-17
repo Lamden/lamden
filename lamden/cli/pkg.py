@@ -15,7 +15,7 @@ def build_pepper(pkg_dir_path):
     contracting_dir_path = pkg_dir_path + '/../../contracting/contracting'
     pepper2 = dirhash(contracting_dir_path, 'sha256', excluded_extensions = ['pyc'])
     pepper = hashlib.sha256( (pepper1 + pepper2).encode('utf-8')).hexdigest()
-    print(pepper)
+    # print(pepper)
     return pepper
 
 

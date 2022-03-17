@@ -1,6 +1,7 @@
 #Virtual Python Environments
 /venv
 venv
+.python-version
 
 #Integrated Development Environments
 /.idea
@@ -74,3 +75,7 @@ fsock
 build
 dist
 ops
+/tests/integration/fixtures/block_storage/*
+/tests/integration/fixtures/file_queue/*
+/tests/unit/.lamden/
+.vscode/settings.json

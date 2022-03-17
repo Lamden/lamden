@@ -16,16 +16,19 @@ class Delegate(base.Node):
         self.log.debug('Starting')
         await super().start()
 
-        members = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+        if self.should_seed:
+            members = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
 
-        self.log.info('\n------ MEMBERS ------')
-        self.log.debug(members)
-        self.log.info('\n------ ME ------')
-        self.log.debug(self.wallet.verifying_key)
+            self.log.info('\n------ MEMBERS ------')
+            self.log.debug(members)
+            self.log.info('\n------ ME ------')
+            self.log.debug(self.wallet.verifying_key)
 
-        assert self.wallet.verifying_key in members, 'You are not a delegate!'
+            assert self.wallet.verifying_key in members, 'You are not a delegate!'
 
-        asyncio.ensure_future(self.run())
+        self.driver.clear_pending_state()
+
+        self.log.info('Done starting...')
 
 
     async def update_sockets(self):
@@ -53,11 +56,10 @@ class Delegate(base.Node):
 
         await self.update_sockets()
 
-
     async def run(self):
         self.log.info('Done starting. Beginning participation in consensus.')
-        while self.running:
-            await self.loop()
+        # while self.running:
+            # self.log.info(f"Tasks in loop: {len(asyncio.Task.all_tasks())}")
+            # await self.loop()
+            # await asyncio.sleep(0)
 
-    def stop(self):
-        self.router.stop()

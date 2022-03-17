@@ -26,7 +26,7 @@ def start_mongo():
         subprocess.Popen(['mongod', '--dbpath ~/blocks', '--logpath /dev/null', '--bind_ip_all'],
                          stdout=open('/dev/null', 'w'),
                          stderr=open('/dev/null', 'w'))
-        print('Starting MongoDB...')
+        # print('Starting MongoDB...')
         time.sleep(3)
 
 
@@ -87,7 +87,7 @@ def resolve_constitution(fp):
 
     for vk, ip in bootnodes.items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
-        formatted_bootnodes[vk] = f'tcp://{ip}:19000'
+        formatted_bootnodes[vk] = f'tcp://{ip}'
 
     return const, formatted_bootnodes
 
@@ -132,6 +132,7 @@ def start_node(args):
         start_mongo()
 
         n = Masternode(
+            debug=args.debug,
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
@@ -143,6 +144,7 @@ def start_node(args):
         )
     elif args.node_type == 'delegate':
         n = Delegate(
+            debug=args.debug,
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
@@ -161,14 +163,11 @@ def join_network(args):
     assert args.node_type == 'masternode' or args.node_type == 'delegate', \
         'Provide node type as "masternode" or "delegate"'
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(args.server_key)
 
     wallet = Wallet(seed=sk)
 
-    response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/constitution')
-
-    const = response.json()
-
+    # REMOVED FOR LAMDEN 2.0. The constitution will be taken from a bootnode directly using ZMQ
     mn_seed = f'tcp://{args.mn_seed}:19000'
 
     mn_id_response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/id')
@@ -191,11 +190,12 @@ def join_network(args):
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
-            constitution=const,
+            constitution={},
             webserver_port=args.webserver_port,
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type
+            node_type=args.node_type,
+            should_seed=False
         )
     elif args.node_type == 'delegate':
         start_mongo()
@@ -203,10 +203,11 @@ def join_network(args):
             wallet=wallet,
             ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
-            constitution=const,
+            constitution={},
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type
+            node_type=args.node_type,
+            should_seed=False
         )
 
     loop = asyncio.get_event_loop()

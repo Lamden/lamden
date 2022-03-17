@@ -98,72 +98,34 @@ class Masternode(base.Node):
         self.active_upgrade = False
 
     async def start(self):
-        self.router.add_service(base.BLOCK_SERVICE, BlockService(self.blocks, self.driver))
+        # self.router.add_service(base.BLOCK_SERVICE, BlockService(self.blocks, self.driver))
 
         await super().start()
 
-        members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
+        asyncio.ensure_future(self.check_tx_queue())
 
-        self.log.info('\n------ MEMBERS ------')
-        self.log.debug(members)
-        self.log.info('\n------ ME ------')
-        self.log.debug(self.wallet.verifying_key)
+        if self.should_seed:
+            members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
 
-        assert self.wallet.verifying_key in members, 'You are not a masternode!'
+            self.log.info('\n------ MEMBERS ------')
+            self.log.debug(members)
+            self.log.info('\n------ ME ------')
+            self.log.debug(self.wallet.verifying_key)
+
+            assert self.wallet.verifying_key in members, 'You are not a masternode!'
 
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
 
+        self.driver.clear_pending_state()
+
         self.log.info('Done starting...')
 
-        # If we have no blocks in our database, we are starting a new network from scratch
-
-        asyncio.ensure_future(self.new_blockchain_boot())
-
-        self.log.debug('returned')
-
-    '''
-    async def broadcast_new_blockchain_started(self):
-        # Check if it was us who recieved the first transaction.
-        # If so, multicast a block notification to wake everyone up
-        mn_logger.debug('Sending new blockchain started signal.')
-        if len(self.tx_batcher.queue) > 0:
-            await router.secure_multicast(
-                msg=get_genesis_block(),
-                service=base.NEW_BLOCK_SERVICE,
-                cert_dir=self.socket_authenticator.cert_dir,
-                wallet=self.wallet,
-                peer_map={
-                    **self.get_delegate_peers(),
-                    **self.get_masternode_peers()
-                },
-                ctx=self.ctx
-            )
-    '''
-    async def new_blockchain_boot(self):
-        self.log.info('Fresh blockchain boot.')
-
-        while self.running:
-            await self.loop()
-    '''
-    async def wait_for_block(self):
-        self.new_block_processor.clean(self.current_height)
-
-        while len(self.new_block_processor.q) <= 0:
-            if not self.running:
-                return
-            await asyncio.sleep(0)
-
-        block = self.new_block_processor.q.pop(0)
-        self.process_new_block(block)
-    '''
     async def join_quorum(self):
         # Catchup with NBNs until you have work, the join the quorum
         self.log.info('Join Quorum')
 
         # await self.intermediate_catchup()
-        #
-        # await self.hang()
         # await self.wait_for_block()
 
         members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
@@ -178,14 +140,8 @@ class Masternode(base.Node):
             self.process_new_block(block)
             self.new_block_processor.clean(self.current_height)
 
-        while self.running:
-            await self.loop()
-
-    def stop(self):
-        super().stop()
-        self.router.socket.close()
-        self.webserver.coroutine.result().close()
-
+        # while self.running:
+            # await self.loop()
 
 def get_genesis_block():
     block = {
