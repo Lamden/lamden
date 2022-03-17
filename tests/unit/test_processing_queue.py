@@ -76,7 +76,6 @@ class TestProcessingQueue(TestCase):
             processing_delay=lambda: self.processing_delay_secs,
             stop_node=self.stop,
             reprocess=self.reprocess_called,
-            reward_manager=self.reward_manager,
             get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus,

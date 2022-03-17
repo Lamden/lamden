@@ -13,7 +13,7 @@ from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 from lamden.network import Network
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
+    def __init__(self, consensus_percent, state, network: Network, wallet, hard_apply_block, stop_node, testing=False,
                  debug=False):
         super().__init__()
 
@@ -25,7 +25,6 @@ class ValidationQueue(ProcessingQueue):
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
 
-        self.get_block_by_hlc = get_block_by_hlc
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
 
@@ -62,7 +61,7 @@ class ValidationQueue(ProcessingQueue):
         self.append_history.append(hlc_timestamp)
 
         if hlc_timestamp <= self.last_hlc_in_consensus:
-            block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
+            block = self.state.blocks.get_block(v=hlc_timestamp)
             if block:
                 return
 

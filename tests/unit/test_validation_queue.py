@@ -8,6 +8,7 @@ from copy import deepcopy
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 import asyncio
+from lamden import storage
 
 class TestValidationQueue(TestCase):
     def setUp(self):
@@ -39,7 +40,7 @@ class TestValidationQueue(TestCase):
             stop_node=self.stop,
             testing=True,
             network=network,
-            get_block_by_hlc=self.get_block_by_hlc
+            state=storage.StateManager()
         )
 
         print("\n")

@@ -38,6 +38,7 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
+
 class NewBlock(Processor):
     def __init__(self):
         self.q = []
@@ -69,9 +70,28 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
+
+class Debug:
+    def __init__(self):
+        self.stack = []
+        self.processed_hlcs = []
+        self.processing_results = []
+        self.reprocessing_results = {}
+        self.blocks_processed = []
+        self.timeline = []
+        self.sent_solutions = []
+        self.last_checked_main = time.time()
+        self.last_checked_val = time.time()
+        self.loop_counter = {
+            'main': 0,
+            'validation': 0,
+            'file_check': 0
+        }
+
+
 class Node:
     def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None, parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
+                 genesis_path=contracts.__path__[0], consensus_percent=None, parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
                  socket_ports=None):
 
         self.consensus_percent = consensus_percent or 51
@@ -83,7 +103,6 @@ class Node:
         self.tx_queue = tx_queue
 
         self.state = storage.StateManager()
-
         self.event_writer = EventWriter()
 
         self.seed = seed
@@ -94,20 +113,7 @@ class Node:
         self.debug = debug
         self.testing = testing
 
-        self.debug_stack = []
-        self.debug_processed_hlcs = []
-        self.debug_processing_results = []
-        self.debug_reprocessing_results = {}
-        self.debug_blocks_processed = []
-        self.debug_timeline = []
-        self.debug_sent_solutions = []
-        self.debug_last_checked_main = time.time()
-        self.debug_last_checked_val = time.time()
-        self.debug_loop_counter = {
-            'main': 0,
-            'validation': 0,
-            'file_check': 0
-        }
+        self.debug = Debug()
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -138,7 +144,7 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.reward_manager = reward_manager
+        self.reward_manager = rewards.RewardManager()
 
         self.new_block_processor = NewBlock()
 
@@ -151,7 +157,6 @@ class Node:
             get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
-            reward_manager=self.reward_manager,
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
             pause_all_queues=self.pause_all_queues,
@@ -163,7 +168,7 @@ class Node:
             testing=self.testing,
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
-            get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
+            state=self.state,
             hard_apply_block=self.hard_apply_block,                                     # Abstract
             wallet=self.wallet,
             stop_node=self.stop,
@@ -186,7 +191,6 @@ class Node:
             testing=self.testing,
             debug=self.debug,
             validation_queue=self.validation_queue,
-            get_block_by_hlc=self.get_block_by_hlc,
             wallet=self.wallet,
             network=self.network
         )
@@ -469,7 +473,7 @@ class Node:
                     # add this tx the processing queue so we can process it
                     self.main_processing_queue.append(tx=tx_message)
 
-            self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
+            self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
             await asyncio.sleep(0)
 
     async def check_main_processing_queue(self):
@@ -479,7 +483,7 @@ class Node:
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
 
-            self.debug_loop_counter['main'] = self.debug_loop_counter['main'] + 1
+            self.debug.loop_counter['main'] = self.debug.loop_counter['main'] + 1
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
@@ -490,7 +494,7 @@ class Node:
                 await self.validation_queue.process_next()
                 self.validation_queue.stop_processing()
 
-            self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
+            self.debug.loop_counter['validation'] = self.debug.loop.counter['validation'] + 1
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
@@ -501,7 +505,7 @@ class Node:
                 hlc_timestamp = processing_results.get('hlc_timestamp')
 
                 if self.testing:
-                    self.debug_processing_results.append(processing_results)
+                    self.debug.processing_results.append(processing_results)
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
                     return
@@ -741,7 +745,7 @@ class Node:
         self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
 
         if self.testing:
-            self.debug_processed_hlcs.append(hlc_timestamp)
+            self.debug.processed_hlcs.append(hlc_timestamp)
 
         # Increment the internal block counter
         self.current_block_height += 1
@@ -752,7 +756,7 @@ class Node:
 # Re-processing CODE
     async def reprocess(self, tx):
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
-        pending_delta_history = deepcopy(self.driver.pending_deltas)
+        pending_delta_history = deepcopy(self.state.driver.pending_deltas)
         self.log.debug(f"pending_delta_history: {pending_delta_history}")
 
         self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
@@ -777,7 +781,7 @@ class Node:
             if read_history_hlc == new_tx_hlc_timestamp:
                 self.log.debug(f"read_history_hlc: EQUALS")
                 if self.testing:
-                    self.debug_reprocessing_results[read_history_hlc] = {
+                    self.debug.reprocessing_results[read_history_hlc] = {
                         'reprocess_type': 'run',
                         'sent_to_network': True
                     }
@@ -788,7 +792,7 @@ class Node:
                     # Process the transaction
                     processing_results = self.main_processing_queue.process_tx(tx=tx)
                     self.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
-                    changed_keys_list = list(deepcopy(self.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
+                    changed_keys_list = list(deepcopy(self.state.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
                     self.store_solution_and_send_to_network(processing_results=processing_results)
                     continue
                 except Exception as err:
@@ -948,7 +952,7 @@ class Node:
                     })
 
                 if self.testing:
-                    self.debug_reprocessing_results[hlc_timestamp] = {
+                    self.debug.reprocessing_results[hlc_timestamp] = {
                         'reprocess_type': reprocess_type,
                         'sent_to_network': re_send_to_network
                     }
@@ -957,7 +961,7 @@ class Node:
                 self.log.error(err)
         else:
             if self.testing:
-                self.debug_reprocessing_results[hlc_timestamp] = {
+                self.debug.reprocessing_results[hlc_timestamp] = {
                     'reprocess_type': "no_match",
                     'sent_to_network': False
                 }

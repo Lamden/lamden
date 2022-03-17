@@ -5,7 +5,7 @@ from lamden.network import Network
 
 
 class BlockContender:
-    def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
+    def __init__(self, validation_queue, wallet, network: Network, debug=False, testing=False):
 
         self.q = []
         self.expected_subblocks = 1
@@ -15,7 +15,6 @@ class BlockContender:
 
         self.block_q = []
         self.validation_queue = validation_queue
-        self.get_block_by_hlc = get_block_by_hlc
 
         self.network = network
 
@@ -65,7 +64,7 @@ class BlockContender:
         '''
 
         if hlc_timestamp < self.validation_queue.last_hlc_in_consensus:
-            block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
+            block = self.validation_queue.state.blocks.get_block(v=hlc_timestamp)
             if block is not None:
                 return
 

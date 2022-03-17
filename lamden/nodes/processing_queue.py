@@ -8,14 +8,14 @@ from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary, tx_result_hash_from_tx_result_object
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
-from lamden import storage
+from lamden import storage, rewards
 from datetime import datetime
 from .filequeue import STORAGE_HOME
 
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
-                 get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
+                 get_last_processed_hlc, check_if_already_has_consensus,
                  get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
         self.state = state
@@ -39,7 +39,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.read_history = {}
         self.processing_results = {}
 
-        self.reward_manager = reward_manager
+        self.reward_manager = rewards.RewardManager()
 
         self.debug_writes_log = []
 
