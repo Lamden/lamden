@@ -10,6 +10,7 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
 from lamden import rewards
+from lamden import storage
 
 def generate_blocks(number_of_blocks):
     previous_hash = '0' * 64
@@ -88,24 +89,19 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:
-        driver = ContractDriver()
-        client = ContractingClient(driver=driver)
-        executor = Executor(driver=driver, metering=False)
 
+        state = storage.StateManager()
 
         main_processing_queue = TxProcessingQueue(
+            state=state,
             testing=True,
             debug=True,
-            driver=driver,
-            client=client,
             wallet=node_wallet or Wallet(),
             hlc_clock=HLC_Clock(),
             processing_delay=lambda: 0,
-            executor=executor,
             get_last_processed_hlc=lambda: "0",
             get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,
-            reward_manager=rewards,
             reprocess=lambda: True,
             check_if_already_has_consensus=lambda: False,
             pause_all_queues=lambda: True,

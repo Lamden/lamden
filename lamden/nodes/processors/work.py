@@ -4,6 +4,7 @@ from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.network import Network, Processor
 
+
 class WorkValidator(Processor):
     def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node, network: Network):
 

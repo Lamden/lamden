@@ -68,7 +68,7 @@ BLOCK_HASH_KEY = '_current_block_hash'
 BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
-LAST_PROCESSED_HLC = '__last_processed_hlc'
+LAST_PROCESSED_HLC = 'metadata.__last_processed_hlc'
 
 STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
@@ -105,20 +105,14 @@ class MetaDataDriver(FSDriver):
     def __init__(self, root=STORAGE_HOME.joinpath('metadata')):
         super().__init__(root)
 
-    def build_key(self, k):
-        return f'{MetaDataDriver.PREPEND}.{k}'
-
     def get_latest_block_hash(self):
-        k = self.build_key(BLOCK_HASH_KEY)
-        return self.get(k)
+        return self.get(BLOCK_HASH_KEY)
 
     def set_latest_block_hash(self, h):
-        k = self.build_key(BLOCK_HASH_KEY)
-        self.set(k, h)
+        self.set(BLOCK_HASH_KEY, h)
 
     def get_latest_block_height(self):
-        k = self.build_key(BLOCK_NUM_HEIGHT)
-        h = self.get(k)
+        h = self.get(BLOCK_NUM_HEIGHT)
         if h is None:
             return 0
 
@@ -128,16 +122,13 @@ class MetaDataDriver(FSDriver):
         return h
 
     def set_latest_block_height(self, h):
-        k = self.build_key(BLOCK_NUM_HEIGHT)
-        self.set(k, h)
+        self.set(BLOCK_NUM_HEIGHT, h)
 
     def get_last_processed_hlc(self):
-        k = self.build_key(LAST_PROCESSED_HLC)
-        self.get(k)
+        self.get(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}')
 
     def set_last_processed_hlc(self, h):
-        k = self.build_key(LAST_PROCESSED_HLC)
-        self.set(k, h)
+        self.set(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}', h)
 
 
 class BlockStorage:

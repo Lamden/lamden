@@ -5,6 +5,7 @@ from unittest import TestCase
 from lamden.storage import BlockStorage
 import json
 import copy
+from lamden.nodes.hlc import HLC_Clock
 
 
 class TestNonce(TestCase):
@@ -818,3 +819,22 @@ class TestStorage(TestCase):
 
     def test_get_block_v_none_returns_none(self):
         self.assertIsNone(self.db.get_block())
+
+
+class TestMetaDataDriver(TestCase):
+    def setUp(self):
+        self.metadata = storage.MetaDataDriver()
+
+    def tearDown(self):
+        self.metadata.flush()
+
+    def test_set_get_hlc_is_equal_to_python_objects(self):
+        clock = HLC_Clock()
+
+        time = clock.get_new_hlc_timestamp()
+
+        self.metadata.set_last_processed_hlc(time)
+
+        _time = self.metadata.get_last_processed_hlc()
+
+        self.assertEqual(time, _time)
