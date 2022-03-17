@@ -4,7 +4,7 @@ import time
 
 import lamden.sockets.router
 from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage, get_latest_block_height
+from lamden.storage import BlockStorage, get_latest_block_height, StateManager
 from lamden.nodes.filequeue import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
@@ -12,6 +12,7 @@ from contracting.db.driver import ContractDriver
 from contracting.db.encoder import decode
 import copy
 from lamden.logger.base import get_logger
+from lamden.network import Processor
 
 mn_logger = get_logger('Masternode')
 
@@ -19,10 +20,9 @@ BLOCK_SERVICE = 'service'
 WORK_SERVICE = 'work'
 
 
-class BlockService(lamden.sockets.router.Processor):
-    def __init__(self, blocks: BlockStorage=None, driver=ContractDriver()):
-        self.blocks = blocks
-        self.driver = driver
+class BlockService(Processor):
+    def __init__(self, state: StateManager):
+        self.state = state
 
     async def process_message(self, msg):
         response = None
@@ -31,7 +31,7 @@ class BlockService(lamden.sockets.router.Processor):
             if msg['name'] == base.GET_BLOCK:
                 response = self.get_block(msg)
             elif msg['name'] == base.GET_HEIGHT:
-                response = get_latest_block_height(self.driver)
+                response = get_latest_block_height(self.state.driver)
 
         return response
 
@@ -40,7 +40,7 @@ class BlockService(lamden.sockets.router.Processor):
         if not primatives.number_is_formatted(num):
             return None
 
-        block = self.blocks.get_block(num)
+        block = self.state.blocks.get_block(num)
 
         if block is None:
             return None

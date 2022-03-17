@@ -24,6 +24,7 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
 from lamden.nodes.events import Event, EventWriter
+from lamden.network import Processor
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -38,10 +39,9 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
-class NewBlock(lamden.sockets.router.Processor):
-    def __init__(self, driver: ContractDriver):
+class NewBlock(Processor):
+    def __init__(self):
         self.q = []
-        self.driver = driver
         self.log = get_logger('NBN')
 
     async def process_message(self, msg):
@@ -71,10 +71,8 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
+    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
+                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None, parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
                  socket_ports=None):
 
         self.consensus_percent = consensus_percent or 51
@@ -85,13 +83,12 @@ class Node:
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.tx_queue = tx_queue
 
-        self.driver = driver
-        self.nonces = nonces
+        self.state = storage.StateManager()
+
         self.event_writer = EventWriter()
 
         self.seed = seed
 
-        self.blocks = blocks
         self.current_block_height = 0
 
         self.log = get_logger('Base')
@@ -124,7 +121,7 @@ class Node:
         self.genesis_path = genesis_path
 
         self.client = ContractingClient(
-            driver=self.driver,
+            driver=self.state.driver,
             submission_filename=genesis_path + '/submission.s.py'
         )
 
@@ -147,10 +144,10 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.executor = Executor(driver=self.driver, metering=metering)
+        self.executor = Executor(driver=self.state.driver, metering=metering)
         self.reward_manager = reward_manager
 
-        self.new_block_processor = NewBlock(driver=self.driver)
+        self.new_block_processor = NewBlock(driver=self.state.driver)
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             testing=self.testing,

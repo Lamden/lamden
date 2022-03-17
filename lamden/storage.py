@@ -77,6 +77,42 @@ BLOCK_0 = {
 }
 
 
+class StateManager:
+    def __init__(self, metadata_root=STORAGE_HOME.joinpath('metadata'),
+                 block_root=STORAGE_HOME,
+                 nonce_collection=STORAGE_HOME.joinpath('nonces'),
+                 pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
+
+        self.metadata = MetaDataDriver(root=metadata_root)
+        self.blocks = BlockStorage(home=block_root)
+        self.nonces = NonceStorage(nonce_collection=nonce_collection, pending_collection=pending_collection)
+        self.driver = ContractDriver()
+
+
+class MetaDataDriver(FSDriver):
+    def __init__(self, root=STORAGE_HOME.joinpath('metadata')):
+        super().__init__(root)
+
+    def get_latest_block_hash(self):
+        return self.get(BLOCK_HASH_KEY)
+
+    def set_latest_block_hash(self, h):
+        self.set(BLOCK_HASH_KEY, h)
+
+    def get_latest_block_height(self):
+        h = self.get(BLOCK_NUM_HEIGHT)
+        if h is None:
+            return 0
+
+        if type(h) == ContractingDecimal:
+            h = int(h._d)
+
+        return h
+
+    def set_latest_block_height(self, h):
+        self.set(BLOCK_NUM_HEIGHT, h)
+
+
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
         if type(home) is str:
