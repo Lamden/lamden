@@ -28,6 +28,7 @@ GET_CONSTITUTION = "get_constitution"
 GET_ALL_PEERS = "get_all_peers"
 GET_NETWORK = 'get_node_list'
 
+
 class Processor:
     async def process_message(self, msg):
         raise NotImplementedError
@@ -40,12 +41,14 @@ class QueueProcessor(Processor):
     async def process_message(self, msg):
         self.q.append(msg)
 
+
 class NewPeerProcessor(Processor):
     def __init__(self, callback):
         self.new_peer_callback = callback
 
     async def process_message(self, msg):
         self.new_peer_callback(msg=msg)
+
 
 class Network:
     def __init__(self, wallet: Wallet, socket_base, driver: ContractDriver=ContractDriver(), socket_ports=None, testing=False, debug=False):
@@ -119,7 +122,7 @@ class Network:
 
     @property
     def vk(self):
-        return  self.wallet.verifying_key
+        return self.wallet.verifying_key
 
     async def start(self):
         self.running = True
@@ -141,12 +144,15 @@ class Network:
         self.running = False
         self.publisher.stop()
         self.router.stop()
+
         try:
             self.router.join()
         except RuntimeError:
             pass
+
         for peer in self.peers:
             self.peers[peer].stop()
+
         self.ctx.term()
 
     def disconnect_peer(self, key):

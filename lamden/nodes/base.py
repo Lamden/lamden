@@ -19,7 +19,7 @@ from lamden.logger.base import get_logger
 from lamden.network import Network
 from lamden.nodes import system_usage
 from lamden.nodes import processing_queue, validation_queue
-from lamden.nodes.processors import work, block_contender
+from lamden.nodes.processors import work, blockcontender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
@@ -195,7 +195,7 @@ class Node:
             network=self.network
         )
 
-        self.block_contender = block_contender.Block_Contender(
+        self.block_contender = blockcontender.BlockContender(
             testing=self.testing,
             debug=self.debug,
             validation_queue=self.validation_queue,

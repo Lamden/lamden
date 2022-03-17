@@ -1,6 +1,6 @@
 from unittest import TestCase
 from contracting.db.driver import ContractDriver
-from lamden.nodes.processors import block_contender
+from lamden.nodes.processors import blockcontender
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
 from lamden.network import Network
@@ -53,7 +53,7 @@ class TestProcessingQueue(TestCase):
 
         network.get_all_peers = self.get_all_peers
 
-        self.block_contender = block_contender.Block_Contender(
+        self.block_contender = blockcontender.BlockContender(
             testing=True,
             debug=True,
             validation_queue=self.validation_queue,

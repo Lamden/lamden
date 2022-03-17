@@ -3,7 +3,8 @@ from lamden.logger.base import get_logger
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.network import Network
 
-class Block_Contender():
+
+class BlockContender:
     def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
 
         self.q = []

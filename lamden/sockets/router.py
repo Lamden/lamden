@@ -1,17 +1,10 @@
-import os
-import pathlib
-
-import zmq
 import threading
 
-from lamden.crypto.wallet import Wallet
-from lamden.logger.base import get_logger
-from zmq import ZMQBaseError
-from zmq.auth import load_certificate
-from zmq.auth.thread import ThreadAuthenticator
+import zmq
 from lamden.crypto import wallet
 from lamden.crypto.z85 import z85_key
-from contracting.db.encode import encode, decode
+from lamden.logger.base import get_logger
+from zmq.auth.thread import ThreadAuthenticator
 
 
 class CredentialsProvider(object):
