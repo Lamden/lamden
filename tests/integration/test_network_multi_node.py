@@ -1,5 +1,5 @@
 from unittest import TestCase
-import lamden.new_network
+import lamden.network
 from tests.integration.mock.mocks_new import MOCK_FOUNDER_SK, MockNetwork
 
 
@@ -191,7 +191,7 @@ class TestMultiNode(TestCase):
         unauthorized_delegate = self.network2.delegates[0]
 
         masternode_1_id = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_network.z85_key(unauthorized_delegate.wallet.verifying_key)
+        unauthorized_delegate_key = lamden.network.z85_key(unauthorized_delegate.wallet.verifying_key)
         self.await_async_process(
             unauthorized_delegate.obj.network.connect,
             {
@@ -235,7 +235,7 @@ class TestMultiNode(TestCase):
         self.await_async_process(self.network.start_delegates)
 
         masternode_vk = masternode_1.wallet.verifying_key
-        unauthorized_delegate_key = lamden.new_network.z85_key(delegate.wallet.verifying_key)
+        unauthorized_delegate_key = lamden.network.z85_key(delegate.wallet.verifying_key)
 
         # Wait for the unauthorized_delegate_key to have a chance to connect
         self.async_sleep(2)

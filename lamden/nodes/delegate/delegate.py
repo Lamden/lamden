@@ -1,9 +1,9 @@
 import asyncio
 
-from lamden import router, network
+from lamden import router
 from lamden.logger.base import get_logger
 from lamden.nodes import base
-
+PEER_SERVICE = 'peers'
 
 class Delegate(base.Node):
     def __init__(self, *args, **kwargs):
@@ -38,7 +38,7 @@ class Delegate(base.Node):
 
         peers = await router.secure_request(
             msg={},
-            service=network.PEER_SERVICE,
+            service=PEER_SERVICE,
             cert_dir=self.socket_authenticator.cert_dir,
             wallet=self.wallet,
             ctx=self.ctx,

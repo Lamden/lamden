@@ -11,7 +11,6 @@
 from tests.integration.mock import mocks_new, create_directories
 from lamden.nodes.filequeue import FileQueue
 
-from lamden import router, storage, network, authentication
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import transaction
 from contracting.stdlib.bridge.decimal import ContractingDecimal

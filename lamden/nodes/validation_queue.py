@@ -10,7 +10,7 @@ from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
-from lamden.new_network import Network
+from lamden.network import Network
 
 class ValidationQueue(ProcessingQueue):
     def __init__(self, driver, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
