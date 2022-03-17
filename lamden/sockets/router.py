@@ -1,7 +1,15 @@
+import asyncio
+import os
+import pathlib
+
 import zmq
 import threading
 
+from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
+from lamden.nodes.filequeue import FileQueue, STORAGE_HOME
+from zmq import __init__, ZMQBaseError
+from zmq.auth import load_certificate
 from zmq.auth.thread import ThreadAuthenticator
 from lamden.crypto import wallet
 from lamden.crypto.z85 import z85_key
@@ -118,3 +126,105 @@ class Router(threading.Thread):
             self.log.info(f'[ROUTER] Stopping.')
             self.running = False
             self.socket.close()
+
+
+DEFAULT_DIR = pathlib.Path.home() / CERT_DIR
+
+
+async def secure_request(msg: dict, service: str, wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context,
+                         linger=500, timeout=1000, cert_dir=DEFAULT_DIR):
+    #if wallet.verifying_key == vk:
+    #    return
+
+    socket = ctx.socket(zmq.DEALER)
+    socket.setsockopt(zmq.LINGER, linger)
+    socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+
+    socket.curve_secretkey = wallet.curve_sk
+    socket.curve_publickey = wallet.curve_vk
+
+    filename = str(cert_dir / f'{vk}.key')
+    if not os.path.exists(filename):
+        return None
+
+    server_pub, _ = load_certificate(filename)
+
+    socket.curve_serverkey = server_pub
+
+    try:
+        socket.connect(ip)
+    except ZMQBaseError:
+        logger.debug(f'Could not connect to {ip}')
+        socket.close()
+        return None
+
+    message = build_message(service=service, message=msg)
+
+    payload = encode(message).encode()
+
+    await socket.send(payload)
+
+    event = await socket.poll(timeout=timeout, flags=zmq.POLLIN)
+    msg = None
+    if event:
+        #logger.debug(f'Message received on {ip}')
+        response = await socket.recv()
+
+        msg = decode(response)
+
+    socket.close()
+
+    return msg
+
+
+class MessageProcessor:
+    def __init__(self):
+        self.queues = {}
+        self.services = {}
+        self.is_running = False
+
+    def add_service(self, name: str, processor: Processor):
+        self.services[name] = processor
+        self.queues[name] = FileQueue(root=STORAGE_HOME.joinpath(name))
+
+    def check_inbox(self):
+        for k, v in self.queues.items():
+            try:
+                item = v.pop(0)
+                self.services[k].process_message(item)
+            except IndexError:
+                pass
+
+    async def loop(self):
+        self.is_running = True
+
+        while self.is_running:
+            self.check_inbox()
+            await asyncio.sleep(0)
+
+
+CERT_DIR = 'cilsocks'
+logger = get_logger('Router')
+OK = {
+    'response': 'ok'
+}
+
+
+def build_message(service, message):
+    return {
+        'service': service,
+        'msg': message
+    }
+
+
+class Processor:
+    async def process_message(self, msg):
+        raise NotImplementedError
+
+
+class QueueProcessor(Processor):
+    def __init__(self):
+        self.q = []
+
+    async def process_message(self, msg):
+        self.q.append(msg)

@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
 
+
 class Peer:
     def __init__(self, ip, ctx, server_key, vk, services, blacklist, wallet,
                  get_network_ip, connected_callback, logger=None, testing=False, debug=False):

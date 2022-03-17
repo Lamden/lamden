@@ -3,6 +3,8 @@ import gc
 import hashlib
 import json
 import time
+
+import lamden.sockets.router
 import uvloop
 
 from copy import deepcopy
@@ -10,7 +12,7 @@ from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
 from contracting.execution.executor import Executor
-from lamden import storage, router, rewards, upgrade, contracts
+from lamden import storage, rewards, upgrade, contracts
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
@@ -36,7 +38,7 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
-class NewBlock(router.Processor):
+class NewBlock(lamden.sockets.router.Processor):
     def __init__(self, driver: ContractDriver):
         self.q = []
         self.driver = driver

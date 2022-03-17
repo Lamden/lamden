@@ -1,6 +1,6 @@
+import lamden.sockets.router
 from contracting.db.encoder import encode
 from collections import defaultdict
-from lamden import router
 from lamden.crypto.canonical import merklize, block_from_subblocks
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
@@ -11,7 +11,7 @@ import hashlib
 
 log = get_logger('Contender')
 
-class SBCInbox(router.Processor):
+class SBCInbox(lamden.sockets.router.Processor):
     def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, peer_add_strike, wallet, debug=True):
         self.q = []
         self.expected_subblocks = 1
