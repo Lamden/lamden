@@ -8,27 +8,25 @@ from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary, tx_result_hash_from_tx_result_object
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
+from lamden import storage
 from datetime import datetime
 from .filequeue import STORAGE_HOME
 
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, stop_node,
+    def __init__(self, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
                  get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
                  get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
-
+        self.state = state
         self.log = get_logger('MAIN PROCESSING QUEUE')
 
         self.message_received_timestamps = {}
 
         self.processing_delay = processing_delay
 
-        self.client = client
         self.wallet = wallet
-        self.driver = driver
         self.hlc_clock = hlc_clock
-        self.executor = executor
         self.reprocess = reprocess
 
         self.get_last_processed_hlc = get_last_processed_hlc
@@ -193,7 +191,7 @@ class TxProcessingQueue(ProcessingQueue):
         # Get the environment
         environment = self.get_environment(tx=tx)
         transaction = tx['tx']
-        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        stamp_cost = self.state.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
         hlc_timestamp = tx['hlc_timestamp']
 
         # Execute the transaction
@@ -236,7 +234,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         try:
             # Execute transaction
-            return self.executor.execute(
+            return self.state.executor.execute(
                 sender=transaction['payload']['sender'],
                 contract_name=transaction['payload']['contract'],
                 function_name=transaction['payload']['function'],
@@ -304,7 +302,7 @@ class TxProcessingQueue(ProcessingQueue):
         if status_code == 0:
             writes = [{'key': k, 'value': v} for k, v in ouput_writes.items()]
         else:
-            sender_balance = self.executor.driver.get_var(
+            sender_balance = self.state.executor.driver.get_var(
                 contract='currency',
                 variable='balances',
                 arguments=[tx_sender],

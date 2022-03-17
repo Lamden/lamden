@@ -70,12 +70,10 @@ class TestProcessingQueue(TestCase):
         self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
-            driver=self.driver,
-            client=self.client,
+            state=storage.StateManager(),
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            executor=self.executor,
             stop_node=self.stop,
             reprocess=self.reprocess_called,
             reward_manager=self.reward_manager,

@@ -11,7 +11,6 @@ from copy import deepcopy
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
-from contracting.execution.executor import Executor
 from lamden import storage, rewards, upgrade, contracts
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
@@ -120,11 +119,6 @@ class Node:
 
         self.genesis_path = genesis_path
 
-        self.client = ContractingClient(
-            driver=self.state.driver,
-            submission_filename=genesis_path + '/submission.s.py'
-        )
-
         self.bootnodes = bootnodes
         self.constitution = constitution
         self.should_seed = should_seed
@@ -132,7 +126,7 @@ class Node:
         if self.should_seed:
             self.seed_genesis_contracts()
 
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
+        self.upgrade_manager = upgrade.UpgradeManager(state=self.state, wallet=self.wallet, node_type=node_type)
 
         self.network = Network(
             debug=self.debug,
@@ -144,20 +138,16 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.executor = Executor(driver=self.state.driver, metering=metering)
         self.reward_manager = reward_manager
 
-        self.new_block_processor = NewBlock(driver=self.state.driver)
+        self.new_block_processor = NewBlock()
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             testing=self.testing,
             debug=self.debug,
-            driver=self.driver,
-            client=self.client,
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            executor=self.executor,
             get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,

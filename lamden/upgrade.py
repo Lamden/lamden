@@ -1,8 +1,7 @@
 import subprocess
 
 from checksumdir import dirhash
-from contracting.client import ContractingClient
-
+from lamden import storage
 from lamden.logger.base import get_logger
 import lamden
 import contracting
@@ -22,9 +21,9 @@ def reload_module(module_name: str):
 
 
 class UpgradeManager:
-    def __init__(self, client: ContractingClient, wallet=None, node_type=None, constitution_filename=None, webserver_port=18080, testing=False):
-        self.client = client
-        self.enabled = None
+    def __init__(self, state: storage.StateManager, wallet=None, node_type=None, constitution_filename=None, webserver_port=18080, testing=False):
+        self.state = state
+        self.enabled = state
         self.log = get_logger('UPGRADE')
 
         self.node_type = node_type
@@ -32,7 +31,7 @@ class UpgradeManager:
         self.webserver_port = webserver_port
         self.wallet = wallet
 
-        self.get = partial(self.client.get_var, contract='upgrade', variable='upgrade_state')
+        self.get = partial(self.state.client.get_var, contract='upgrade', variable='upgrade_state')
 
         self.locked = self.get(arguments=['locked'])
         self.consensus = self.get(arguments=['consensus'])
@@ -61,7 +60,7 @@ class UpgradeManager:
     def version_check(self, constitution={}):
         self.refresh()
 
-        enabled = self.client.get_contract('upgrade') is not None
+        enabled = self.state.client.get_contract('upgrade') is not None
         if enabled:
             self.log.info(f'{self.votes}/{self.voters} nodes voted for the upgrade.')
 
@@ -124,8 +123,8 @@ class UpgradeManager:
     def reset_contract_variables(self):
         self.log.info('Upgrade process has concluded.')
 
-        self.client.raw_driver.driver.set('upgrade.upgrade_state:consensus', None)
-        self.client.raw_driver.driver.set('upgrade.upgrade_state:locked', False)
+        self.state.client.raw_driver.driver.set('upgrade.upgrade_state:consensus', None)
+        self.state.client.raw_driver.driver.set('upgrade.upgrade_state:locked', False)
 
         self.log.info('Reset upgrade contract variables.')
 

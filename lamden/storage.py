@@ -4,8 +4,10 @@ from lamden.logger.base import get_logger
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
 from contracting import config
-
+from contracting.client import ContractingClient
 from contracting.db.encoder import encode, decode, encode_kv
+from lamden import contracts
+from contracting.execution.executor import Executor
 
 import pathlib
 
@@ -81,12 +83,19 @@ class StateManager:
     def __init__(self, metadata_root=STORAGE_HOME.joinpath('metadata'),
                  block_root=STORAGE_HOME,
                  nonce_collection=STORAGE_HOME.joinpath('nonces'),
-                 pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
+                 pending_collection=STORAGE_HOME.joinpath('pending_nonces'),
+                 genesis_path=contracts.__path__[0],
+                 metering=False):
 
         self.metadata = MetaDataDriver(root=metadata_root)
         self.blocks = BlockStorage(home=block_root)
         self.nonces = NonceStorage(nonce_collection=nonce_collection, pending_collection=pending_collection)
         self.driver = ContractDriver()
+        self.client = ContractingClient(
+            driver=self.driver,
+            submission_filename=genesis_path + '/submission.s.py'
+        )
+        self.executor = Executor(driver=self.driver, metering=metering)
 
 
 class MetaDataDriver(FSDriver):
