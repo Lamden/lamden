@@ -155,12 +155,12 @@ class Node:
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
             pause_all_queues=self.pause_all_queues,
-            unpause_all_queues=self.unpause_all_queues
+            unpause_all_queues=self.unpause_all_queues,
+            state=self.state
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
             testing=self.testing,
-            driver=self.driver,
             debug=self.debug,
             consensus_percent=lambda: self.consensus_percent,
             get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
@@ -195,7 +195,7 @@ class Node:
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
         self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
-        self.network.add_action(GET_BLOCK, self.blocks.get_block)
+        self.network.add_action(GET_BLOCK, self.state.blocks.get_block)
         self.network.add_action(GET_CONSTITUTION, self.make_constitution)
 
 
@@ -229,7 +229,7 @@ class Node:
             await self.join_existing_network()
             await self.catchup()
 
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
         self.start_all_queues()
         asyncio.ensure_future(self.check_main_processing_queue())
@@ -384,7 +384,7 @@ class Node:
                         encoded_block = encode(new_block)
                         encoded_block = json.loads(encoded_block)
 
-                        self.blocks.store_block(block=encoded_block)
+                        self.state.blocks.store_block(block=encoded_block)
 
                         # Set the current block hash and height
                         self.update_block_db(block=encoded_block)
@@ -535,11 +535,11 @@ class Node:
 
     def soft_apply_current_state(self, hlc_timestamp):
         try:
-            self.driver.soft_apply(hcl=hlc_timestamp)
+            self.state.driver.soft_apply(hcl=hlc_timestamp)
         except Exception as err:
             print(err)
 
-        self.nonces.flush_pending()
+        self.state.nonces.flush_pending()
         gc.collect()
 
     def make_tx_message(self, tx):
@@ -563,12 +563,12 @@ class Node:
 
         # Commit the state changes and nonces to the database
 
-        storage.set_latest_block_hash(block['hash'], driver=self.driver)
-        storage.set_latest_block_height(block['number'], driver=self.driver)
+        storage.set_latest_block_hash(block['hash'], driver=self.state.driver)
+        storage.set_latest_block_height(block['number'], driver=self.state.driver)
 
         self.new_block_processor.clean(self.get_current_height())
 
-        self.driver.commit()
+        self.state.driver.commit()
 
     def get_state_changes_from_block(self, block):
         tx_result = block.get('processed')
@@ -585,10 +585,10 @@ class Node:
             if type(s['value']) is dict:
                 s['value'] = convert_dict(s['value'])
 
-            self.driver.set(s['key'], s['value'])
+            self.state.driver.set(s['key'], s['value'])
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-        self.driver.hard_apply(hlc=hlc_timestamp)
+        self.state.driver.hard_apply(hlc=hlc_timestamp)
 
     async def hard_apply_block(self, processing_results):
         '''
@@ -606,10 +606,10 @@ class Node:
 
         next_block_num = self.current_block_height + 1
 
-        prev_block = self.blocks.get_previous_block(v=self.current_block_height)
+        prev_block = self.state.blocks.get_previous_block(v=self.current_block_height)
 
         # Get any blocks that have been commited that are later than this hlc_timestamp
-        later_blocks = self.blocks.get_later_blocks(block_height=self.current_block_height, hlc_timestamp=hlc_timestamp)
+        later_blocks = self.state.blocks.get_later_blocks(block_height=self.current_block_height, hlc_timestamp=hlc_timestamp)
 
         # If there are later blocks then we need to process them
         if len(later_blocks) > 0:
@@ -623,7 +623,7 @@ class Node:
             # Get the block number of the block right after where we want to put this tx this will be the block number
             # for our new block
             next_block_num = later_blocks[0].get('number')
-            prev_block = self.blocks.get_previous_block(v=later_blocks[0].get('number') - 1)
+            prev_block = self.state.blocks.get_previous_block(v=later_blocks[0].get('number') - 1)
 
             new_block = block_from_tx_results(
                 processing_results=processing_results,
@@ -655,7 +655,7 @@ class Node:
             self.apply_state_changes_from_block(new_block)
 
             # Store the new block in the block db
-            self.blocks.store_block(new_block)
+            self.state.blocks.store_block(new_block)
 
             # Emit a block reorg event
 
@@ -684,7 +684,7 @@ class Node:
 
             # Re-save each block to the database
             for block in later_blocks:
-                self.blocks.store_block(block)
+                self.state.blocks.store_block(block)
 
                 # create a NEW_BLOCK_REORG_EVENT
                 encoded_block = encode(block)
@@ -716,8 +716,8 @@ class Node:
             consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
 
             # Hard apply this hlc_timestamps state changes
-            if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
-                self.driver.hard_apply(hlc_timestamp)
+            if hlc_timestamp in self.state.driver.pending_deltas and consensus_matches_me:
+                self.state.driver.hard_apply(hlc_timestamp)
             else:
                 self.apply_state_changes_from_block(new_block)
 
@@ -726,7 +726,7 @@ class Node:
             encoded_block = encode(new_block)
             encoded_block = json.loads(encoded_block)
 
-            self.blocks.store_block(encoded_block)
+            self.state.blocks.store_block(encoded_block)
 
             # Set the current block hash and height
             self.update_block_db(block=encoded_block)
@@ -783,7 +783,7 @@ class Node:
                     }
                 try:
                     # rollback to this point
-                    self.driver.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
+                    self.state.driver.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
 
                     # Process the transaction
                     processing_results = self.main_processing_queue.process_tx(tx=tx)
@@ -968,7 +968,7 @@ class Node:
                 })
 
             for pending_delta_key, pending_delta_value in pending_deltas.items():
-                self.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
+                self.state.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
@@ -977,11 +977,11 @@ class Node:
 
     # Put into 'super driver'
     def get_block_by_hlc(self, hlc_timestamp):
-        return self.blocks.get_block(v=hlc_timestamp)
+        return self.state.blocks.get_block(v=hlc_timestamp)
 
     # Put into 'super driver'
     def get_block_by_number(self, block_number):
-        return self.blocks.get_block(v=block_number)
+        return self.state.blocks.get_block(v=block_number)
 
     def make_constitution(self):
         return {
@@ -994,7 +994,7 @@ class Node:
         sync.setup_genesis_contracts(
             initial_masternodes=self.constitution['masternodes'],
             initial_delegates=self.constitution['delegates'],
-            client=self.client,
+            client=self.state.client,
             filename=self.genesis_path + '/genesis.json',
             root=self.genesis_path
         )
@@ -1018,26 +1018,26 @@ class Node:
 
     def update_cache_state(self, results):
         # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
         storage.update_state_with_transaction(
             tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
     # Put into 'super driver'
     def get_current_height(self):
-        return storage.get_latest_block_height(self.driver)
+        return storage.get_latest_block_height(self.state.driver)
 
     # Put into 'super driver'
     def get_current_hash(self):
-        return storage.get_latest_block_hash(self.driver)
+        return storage.get_latest_block_hash(self.state.driver)
 
     # Put into 'super driver'
     def get_latest_block(self):
         latest_block_num = self.get_current_height()
-        block = self.blocks.get_block(v=latest_block_num)
+        block = self.state.blocks.get_block(v=latest_block_num)
         return block
 
     def get_last_processed_hlc(self):

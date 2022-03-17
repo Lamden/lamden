@@ -33,7 +33,6 @@ class TestValidationQueue(TestCase):
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
-            driver=self.driver,
             wallet=self.wallet,
             consensus_percent=lambda: self.consensus_percent,
             hard_apply_block=self.hard_apply_block,

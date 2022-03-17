@@ -13,7 +13,7 @@ from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 from lamden.network import Network
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
+    def __init__(self, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
                  debug=False):
         super().__init__()
 
@@ -42,7 +42,6 @@ class ValidationQueue(ProcessingQueue):
             get_peers_for_consensus=self.network.get_peers_for_consensus
         )
 
-        self.driver = driver
         self.wallet = wallet
 
         # For debugging
