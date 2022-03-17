@@ -454,6 +454,7 @@ class Network:
     def peer_add_strike(self, key):
         self.peers[key].add_strike()
 
+# out
 
 class MessageProcessor:
     def __init__(self):

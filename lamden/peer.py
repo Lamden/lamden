@@ -216,6 +216,10 @@ class Peer:
 
     def send_request(self, msg, timeout=200, retries=3):
         result = self.dealer.send_msg_await(msg=msg, time_out=timeout, retries=retries)
+
+        # Send message
+        # Wait for file
+
         if (result.success):
             try:
                 msg_json = json.loads(result.response)

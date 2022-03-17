@@ -796,7 +796,7 @@ class Node:
                     }
                 try:
                     # rollback to this point
-                    self.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
+                    self.driver.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
 
                     # Process the transaction
                     processing_results = self.main_processing_queue.process_tx(tx=tx)
@@ -984,46 +984,6 @@ class Node:
                 self.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-
-    def rollback_drivers(self, hlc_timestamp):
-        # Roll back the current state to the point of the last block consensus
-        self.log.debug(f"Length of Pending Deltas BEFORE {len(self.driver.pending_deltas.keys())}")
-        self.log.debug(f"rollback to hlc_timestamp: {hlc_timestamp}")
-
-        if hlc_timestamp is None:
-            # Returns to disk state which should be whatever it was prior to any write sessions
-            self.driver.cache.clear()
-            self.driver.reads = set()
-            self.driver.pending_writes.clear()
-            self.driver.pending_deltas.clear()
-        else:
-            to_delete = []
-            for _hlc, _deltas in sorted(self.driver.pending_deltas.items())[::-1]:
-                # Clears the current reads/writes, and the reads/writes that get made when rolling back from the
-                # last HLC
-                self.driver.reads = set()
-                self.driver.pending_writes.clear()
-
-
-                if _hlc < hlc_timestamp:
-                    self.log.debug(f"{_hlc} is less than {hlc_timestamp}, breaking!")
-                    # if we are less than the HLC then top processing anymore, this is our rollback point
-                    break
-                else:
-                    # if we are still greater than or equal to then mark this as delete and rollback its changes
-                    to_delete.append(_hlc)
-                    # Run through all state changes, taking the second value, which is the post delta
-                    for key, delta in _deltas['writes'].items():
-                        # self.set(key, delta[0])
-                        self.driver.cache[key] = delta[0]
-
-            # Remove the deltas from the set
-            self.log.debug(to_delete)
-            [self.driver.pending_deltas.pop(key) for key in to_delete]
-
-        #self.driver.rollback(hlc=hlc_timestamp)
-
-        self.log.debug(f"Length of Pending Deltas AFTER {len(self.driver.pending_deltas.keys())}")
 
     def reset_last_hlc_processed(self):
         self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
