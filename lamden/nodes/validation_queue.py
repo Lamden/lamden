@@ -19,6 +19,8 @@ class ValidationQueue(ProcessingQueue):
 
         self.log = get_logger("VALIDATION QUEUE")
 
+        self.state = state
+
         # The main dict for storing results from other nodes
         self.validation_results = {}
 
@@ -126,7 +128,7 @@ class ValidationQueue(ProcessingQueue):
             next_hlc_timestamp = self[0]
 
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
-                block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
+                block = self.state.blocks.get_block(v=next_hlc_timestamp)
                 if block:
                     self.flush_hlc(next_hlc_timestamp)
                     await self.process_next()

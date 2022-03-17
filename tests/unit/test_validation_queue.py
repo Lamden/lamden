@@ -52,9 +52,6 @@ class TestValidationQueue(TestCase):
     def stop(self):
         self.running = False
 
-    def get_block_by_hlc(self, hlc_timestamp):
-        return None
-
     async def stop_all_queues(self):
         return
 

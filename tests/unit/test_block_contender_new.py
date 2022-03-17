@@ -5,6 +5,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
 from lamden.network import Network
 from copy import deepcopy
+from lamden import storage
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
@@ -15,6 +16,7 @@ class MockValidationQueue:
     def __init__(self):
         self.validation_results = {}
         self.last_hlc_in_consensus = '0'
+        self.state = storage.StateManager()
 
     def append(self, processing_results):
         hlc_timestamp = processing_results.get('hlc_timestamp')
@@ -57,7 +59,6 @@ class TestProcessingQueue(TestCase):
             testing=True,
             debug=True,
             validation_queue=self.validation_queue,
-            get_block_by_hlc=self.get_block_by_hlc,
             wallet=self.wallet,
             network=network
         )

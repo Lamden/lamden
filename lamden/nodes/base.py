@@ -976,13 +976,6 @@ class Node:
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
-    def reset_last_hlc_processed(self):
-        self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
-
-    # Put into 'super driver'
-    def get_block_by_hlc(self, hlc_timestamp):
-        return self.state.blocks.get_block(v=hlc_timestamp)
-
     # Put into 'super driver'
     def get_block_by_number(self, block_number):
         return self.state.blocks.get_block(v=block_number)

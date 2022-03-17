@@ -117,7 +117,7 @@ class TestMultiNode(TestCase):
             last_hlc = "0"
             for i in range(num_of_transactions_to_send):
                 i = i + 1
-                block = node.obj.get_block_by_number(block_number=i)
+                block = node.obj.state.blocks.get_block_by_number(v=i)
                 self.assertIsNotNone(block)
 
                 block_hlc_timestamp = block.get('hlc_timestamp')
