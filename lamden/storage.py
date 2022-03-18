@@ -106,7 +106,10 @@ class MetaDataDriver(FSDriver):
         super().__init__(root)
 
     def get_latest_block_hash(self):
-        return self.get(BLOCK_HASH_KEY)
+        latest_hash = self.get(BLOCK_HASH_KEY)
+        if latest_hash is None:
+            return '0' * 64
+        return latest_hash
 
     def set_latest_block_hash(self, h):
         self.set(BLOCK_HASH_KEY, h)
@@ -125,10 +128,10 @@ class MetaDataDriver(FSDriver):
         self.set(BLOCK_NUM_HEIGHT, h)
 
     def get_last_processed_hlc(self):
-        return self.get(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}')
+        return self.get(LAST_PROCESSED_HLC)
 
     def set_last_processed_hlc(self, h):
-        self.set(f'{MetaDataDriver.PREPEND}{config.INDEX_SEPARATOR}{LAST_PROCESSED_HLC}', h)
+        self.set(LAST_PROCESSED_HLC, h)
 
 
 class BlockStorage:

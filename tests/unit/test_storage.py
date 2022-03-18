@@ -838,3 +838,21 @@ class TestMetaDataDriver(TestCase):
         _time = self.metadata.get_last_processed_hlc()
 
         self.assertEqual(time, _time)
+
+    def test_get_latest_block_hash_0s_if_none(self):
+        h = self.metadata.get_latest_block_hash()
+        self.assertEqual(h, '0' * 64)
+
+    def test_get_latest_block_hash_correct_after_set(self):
+        self.metadata.set_latest_block_hash('a' * 64)
+        h = self.metadata.get_latest_block_hash()
+        self.assertEqual(h, 'a' * 64)
+
+    def test_get_latest_block_height_0_if_none(self):
+        h = self.metadata.get_latest_block_height()
+        self.assertEqual(h, 0)
+
+    def test_get_latest_block_height_correct_after_set(self):
+        self.metadata.set_latest_block_height(123)
+        h = self.metadata.get_latest_block_height()
+        self.assertEqual(h, 123)
