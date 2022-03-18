@@ -20,18 +20,15 @@ class TestClassWebserver(TestCase):
 
         self.ws = WebServer(
             wallet=self.w,
-            contracting_client=ContractingClient(),
-            blocks=self.blocks,
-            driver=n
         )
-        self.ws.client.flush()
-        self.ws.blocks.flush()
-        self.ws.driver.flush()
+        self.ws.state.client.flush()
+        self.ws.state.blocks.flush()
+        self.ws.state.driver.flush()
 
     def tearDown(self):
-        self.ws.client.flush()
-        self.ws.blocks.flush()
-        self.ws.driver.flush()
+        self.ws.state.client.flush()
+        self.ws.state.blocks.flush()
+        self.ws.state.driver.flush()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -329,14 +326,14 @@ def get():
         self.assertDictEqual(response.json, b2exp)
 
     def test_get_latest_block_num(self):
-        storage.set_latest_block_height(1234, self.ws.driver)
+        storage.set_latest_block_height(1234, self.ws.state.driver)
 
         _, response = self.ws.app.test_client.get('/latest_block_num')
         self.assertDictEqual(response.json, {'latest_block_number': 1234})
 
     def test_get_latest_block_hash(self):
         h = '0' * 64
-        storage.set_latest_block_hash(h, self.ws.driver)
+        storage.set_latest_block_hash(h, self.ws.state.driver)
 
         _, response = self.ws.app.test_client.get('/latest_block_hash')
 
@@ -375,7 +372,7 @@ def get():
             ]
         }
 
-        self.ws.blocks.store_block(block)
+        self.ws.state.blocks.store_block(block)
 
         _, response = self.ws.app.test_client.get('/blocks?num=1')
 
@@ -405,7 +402,7 @@ def get():
             ]
         }
 
-        self.ws.blocks.store_block(block)
+        self.ws.state.blocks.store_block(block)
 
         expected = {
             'hash': '1234',
@@ -455,14 +452,14 @@ def get():
 
         w = Wallet()
 
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[w.verifying_key],
             value=1_000_000
         )
 
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='stamp_cost',
             variable='S',
             arguments=['value'],
@@ -491,14 +488,14 @@ def get():
 
         w = Wallet()
 
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[w.verifying_key],
             value=1_000_000
         )
 
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='stamp_cost',
             variable='S',
             arguments=['value'],
@@ -567,7 +564,7 @@ def get():
             'foo': 'bar'
         }
 
-        self.ws.blocks.store_block(block)
+        self.ws.state.blocks.store_block(block)
 
         _, response = self.ws.app.test_client.get(f'/tx?hash=123456')
         self.assertDictEqual(response.json, expected)
@@ -602,14 +599,14 @@ def get():
         self.assertDictEqual(response.json, {'error': 'Transaction is not formatted properly.'})
 
     def test_get_constitution_returns_correct_state(self):
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='masternodes',
             variable='S',
             arguments=['members'],
             value=['1', '2', '3']
         )
 
-        self.ws.client.set_var(
+        self.ws.state.client.set_var(
             contract='delegates',
             variable='S',
             arguments=['members'],

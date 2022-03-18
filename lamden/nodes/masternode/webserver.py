@@ -54,8 +54,9 @@ class NonceEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
-                 blocks: storage.BlockStorage,
+    def __init__(self,
+                 wallet,
+                 state: storage.StateManager=storage.StateManager(),
                  queue=FileQueue(),
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
@@ -74,10 +75,7 @@ class WebServer:
         self.cors = None
 
         # Initialize the backend data interfaces
-        self.client = contracting_client
-        self.driver = driver
-        self.nonces = storage.NonceStorage()
-        self.blocks = blocks
+        self.state = state
 
         self.static_headers = {}
 
@@ -171,11 +169,11 @@ class WebServer:
         self.ws_clients.add(ws)
 
         try:
-            self.driver.clear_pending_state()
+            self.state.driver.clear_pending_state()
 
             # send the connecting socket the latest block
-            num = storage.get_latest_block_height(self.driver)
-            block = self.blocks.get_block(int(num))
+            num = self.state.metadata.get_latest_block_height()
+            block = self.state.blocks.get_block(int(num))
 
             log.info(block)
 
@@ -242,14 +240,14 @@ class WebServer:
             transaction.transaction_is_valid(
                 transaction=tx,
                 expected_processor=self.wallet.verifying_key,
-                client=self.client,
-                nonces=self.nonces
+                client=self.state.client,
+                nonces=self.state.nonces
             )
 
             nonce, pending_nonce = transaction.get_nonces(
                 sender=tx['payload']['sender'],
                 processor=tx['payload']['processor'],
-                driver=self.nonces
+                driver=self.state.nonces
             )
 
             pending_nonce = transaction.get_new_pending_nonce(
@@ -258,7 +256,7 @@ class WebServer:
                 pending_nonce=pending_nonce
             )
 
-            self.nonces.set_pending_nonce(
+            self.state.nonces.set_pending_nonce(
                 sender=tx['payload']['sender'],
                 processor=tx['payload']['processor'],
                 value=pending_nonce
@@ -292,7 +290,7 @@ class WebServer:
 
     # Get the Nonce of a VK
     async def get_nonce(self, request, vk):
-        latest_nonce = self.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
+        latest_nonce = self.state.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
 
         try:
             latest_nonce = int(latest_nonce)
@@ -307,16 +305,16 @@ class WebServer:
 
     # Get all Contracts in State (list of names)
     async def get_contracts(self, request):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        contracts = self.client.get_contracts()
+        contracts = self.state.client.get_contracts()
         return response.json({'contracts': contracts}, headers={'Access-Control-Allow-Origin': '*'})
 
     # Get the source code of a specific contract
     async def get_contract(self, request, contract):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        contract_code = self.client.raw_driver.get_contract(contract)
+        contract_code = self.state.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404,
@@ -325,9 +323,9 @@ class WebServer:
                              headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_methods(self, request, contract):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        contract_code = self.client.raw_driver.get_contract(contract)
+        contract_code = self.state.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404,
@@ -338,9 +336,9 @@ class WebServer:
         return response.json({'methods': funcs}, status=200, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_variables(self, request, contract):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        contract_code = self.client.raw_driver.get_contract(contract)
+        contract_code = self.state.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404,
@@ -351,9 +349,9 @@ class WebServer:
         return response.json(variables, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_variable(self, request, contract, variable):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        contract_code = self.client.raw_driver.get_contract(contract)
+        contract_code = self.state.client.raw_driver.get_contract(contract)
 
         if contract_code is None:
             return response.json({'error': '{} does not exist'.format(contract)}, status=404,
@@ -363,8 +361,8 @@ class WebServer:
         if key is not None:
             key = key.split(',')
 
-        k = self.client.raw_driver.make_key(contract=contract, variable=variable, args=key)
-        value = self.client.raw_driver.get(k)
+        k = self.state.client.raw_driver.make_key(contract=contract, variable=variable, args=key)
+        value = self.state.client.raw_driver.get(k)
 
         if value is None:
             return response.json({'value': None}, status=404, headers={'Access-Control-Allow-Origin': '*'})
@@ -391,23 +389,23 @@ class WebServer:
     #     return response.json({'values': values, 'next': values[-1]}, status=200)
 
     async def get_latest_block(self, request):
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
-        num = storage.get_latest_block_height(self.driver)
-        block = self.blocks.get_block(int(num))
+        num = self.state.metadata.get_latest_block_height()
+        block = self.state.blocks.get_block(int(num))
         return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
-        num = storage.get_latest_block_height(self.driver)
+        num = self.state.metadata.get_latest_block_height()
 
         return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_hash(self, request):
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
-        return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)},
+        return response.json({'latest_block_hash': self.state.metadata.get_latest_block_hash()},
                              headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_block(self, request):
@@ -415,9 +413,9 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = self.blocks.get_block(int(num))
+            block = self.state.blocks.get_block(int(num))
         elif _hash is not None:
-            block = self.blocks.get_block(_hash)
+            block = self.state.blocks.get_block(_hash)
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
@@ -434,7 +432,7 @@ class WebServer:
         if _hash is not None:
             try:
                 int(_hash, 16)
-                tx = self.blocks.get_tx(_hash)
+                tx = self.state.blocks.get_tx(_hash)
             except ValueError:
                 return response.json({'error': 'Malformed hash.'}, status=400,
                                      headers={'Access-Control-Allow-Origin': '*'})
@@ -449,15 +447,15 @@ class WebServer:
         return response.json(tx, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
-        self.client.raw_driver.clear_pending_state()
+        self.state.client.raw_driver.clear_pending_state()
 
-        masternodes = self.client.get_var(
+        masternodes = self.state.client.get_var(
             contract='masternodes',
             variable='S',
             arguments=['members']
         )
 
-        delegates = self.client.get_var(
+        delegates = self.state.client.get_var(
             contract='delegates',
             variable='S',
             arguments=['members']
@@ -494,9 +492,6 @@ if __name__ == '__main__':
     topics = ["new_block", "block_reorg"]
 
     webserver = WebServer(
-        contracting_client=ContractingClient(),
-        driver=storage.ContractDriver(),
-        blocks=storage.BlockStorage(),
         wallet=wallet,
         port=port,
         event_service_port=event_port,
