@@ -1013,23 +1013,13 @@ class Node:
 
         return True
 
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.state.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.state.driver,
-            nonces=self.state.nonces
-        )
-
     # Put into 'super driver'
     def get_current_height(self):
-        return storage.get_latest_block_height(self.state.driver)
+        return self.state.metadata.get_latest_block_height()
 
     # Put into 'super driver'
     def get_current_hash(self):
-        return storage.get_latest_block_hash(self.state.driver)
+        return self.state.metadata.get_latest_block_hash()
 
     # Put into 'super driver'
     def get_latest_block(self):

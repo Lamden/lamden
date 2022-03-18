@@ -1,3 +1,4 @@
+import lamden.utils.migrate_mongo
 from lamden import storage
 from contracting.db.driver import ContractDriver
 from unittest import TestCase
@@ -195,127 +196,128 @@ block = {
 
 class TestUpdatingState(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
-        self.nonces = storage.NonceStorage()
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
+        self.state = storage.StateManager()
+        self.state.nonces.flush()
+        self.state.driver.flush()
+        self.state.driver.clear_pending_state()
+        self.state.metadata.flush()
 
     def tearDown(self):
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
+        self.state.nonces.flush()
+        self.state.driver.flush()
+        self.state.driver.clear_pending_state()
+        self.state.metadata.flush()
 
     def test_state_updated_to_correct_values_in_tx(self):
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
         self.assertEqual(v1, 'there')
         self.assertEqual(v2, 'jeff')
 
     def test_nonces_set_to_tx_value(self):
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_latest_nonce(sender='abc', processor='def')
         self.assertEqual(n, 0)
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_latest_nonce(sender='abc', processor='def')
         self.assertEqual(n, 124)
 
     def test_nonces_deleted_after_all_updates(self):
-        self.nonces.set_pending_nonce(
+        self.state.nonces.set_pending_nonce(
             sender='abc',
             processor='def',
             value=122
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
 
         self.assertEqual(n, 122)
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
 
         self.assertEqual(n, None)
 
     def test_multiple_txs_deletes_multiple_nonces(self):
-        self.nonces.set_pending_nonce(
+        self.state.nonces.set_pending_nonce(
             sender='abc',
             processor='def',
             value=122
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
         self.assertEqual(n, 122)
 
-        self.nonces.set_pending_nonce(
+        self.state.nonces.set_pending_nonce(
             sender='xxx',
             processor='yyy',
             value=4
         )
 
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_pending_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, 4)
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
         storage.update_state_with_transaction(
             tx=tx_2,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
         storage.update_state_with_transaction(
             tx=tx_3,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
         self.assertEqual(n, None)
 
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_pending_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, None)
 
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_latest_nonce(sender='abc', processor='def')
         self.assertEqual(n, 125)
 
-        n = self.nonces.get_latest_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_latest_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, 43)
 
     def test_multiple_tx_state_updates_correctly(self):
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
-        v3 = self.driver.get('name2')
+        v3 = self.state.driver.get('name2')
 
-        v4 = self.driver.get('another')
-        v5 = self.driver.get('something')
+        v4 = self.state.driver.get('another')
+        v5 = self.state.driver.get('something')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
@@ -325,29 +327,29 @@ class TestUpdatingState(TestCase):
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
         storage.update_state_with_transaction(
             tx=tx_2,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
         storage.update_state_with_transaction(
             tx=tx_3,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
-        v3 = self.driver.get('name2')
+        v3 = self.state.driver.get('name2')
 
-        v4 = self.driver.get('another')
-        v5 = self.driver.get('something')
+        v4 = self.state.driver.get('another')
+        v5 = self.state.driver.get('something')
 
         self.assertEqual(v1, 'there2')
         self.assertEqual(v2, 'jeff')
@@ -356,69 +358,67 @@ class TestUpdatingState(TestCase):
         self.assertEqual(v5, 'else')
 
     def test_update_with_block_sets_hash_and_height(self):
-        _hash = storage.get_latest_block_hash(self.driver)
-        num = storage.get_latest_block_height(self.driver)
+        _hash = self.state.metadata.get_latest_block_hash()
+        num = self.state.metadata.get_latest_block_height()
 
         self.assertEqual(_hash, '0' * 64)
         self.assertEqual(num, 0)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
-            driver=self.driver,
-            nonces=self.nonces
+            state=self.state
         )
 
-        _hash = storage.get_latest_block_hash(self.driver)
-        num = storage.get_latest_block_height(self.driver)
+        _hash = self.state.metadata.get_latest_block_hash()
+        num = self.state.metadata.get_latest_block_height()
 
         self.assertEqual(_hash, 'f' * 64)
         self.assertEqual(num, 555)
 
     def test_update_with_block_sets_nonces_correctly(self):
-        self.nonces.set_pending_nonce(
+        self.state.nonces.set_pending_nonce(
             sender='abc',
             processor='def',
             value=122
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
         self.assertEqual(n, 122)
 
-        self.nonces.set_pending_nonce(
+        self.state.nonces.set_pending_nonce(
             sender='xxx',
             processor='yyy',
             value=4
         )
 
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_pending_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, 4)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
-            driver=self.driver,
-            nonces=self.nonces
+            state=self.state
         )
 
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_pending_nonce(sender='abc', processor='def')
         self.assertEqual(n, None)
 
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_pending_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, None)
 
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
+        n = self.state.nonces.get_latest_nonce(sender='abc', processor='def')
         self.assertEqual(n, 125)
 
-        n = self.nonces.get_latest_nonce(sender='xxx', processor='yyy')
+        n = self.state.nonces.get_latest_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, 43)
 
     def test_update_state_with_block_sets_state_correctly(self):
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
-        v3 = self.driver.get('name2')
+        v3 = self.state.driver.get('name2')
 
-        v4 = self.driver.get('another')
-        v5 = self.driver.get('something')
+        v4 = self.state.driver.get('another')
+        v5 = self.state.driver.get('something')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
@@ -426,26 +426,24 @@ class TestUpdatingState(TestCase):
         self.assertIsNone(v4)
         self.assertIsNone(v5)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
-            driver=self.driver,
-            nonces=self.nonces
+            state=self.state
         )
 
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
-        v3 = self.driver.get('name2')
+        v3 = self.state.driver.get('name2')
 
-        v4 = self.driver.get('another')
-        v5 = self.driver.get('something')
+        v4 = self.state.driver.get('another')
+        v5 = self.state.driver.get('something')
 
         self.assertEqual(v1, 'there2')
         self.assertEqual(v2, 'jeff')
         self.assertEqual(v3, 'jeff2')
         self.assertEqual(v4, 'value')
         self.assertEqual(v5, 'else')
-
 
 class TestStorage(TestCase):
     def setUp(self):

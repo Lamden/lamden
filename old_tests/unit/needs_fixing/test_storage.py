@@ -1,3 +1,4 @@
+import lamden.utils.migrate_mongo
 from lamden import storage
 from contracting.db.driver import ContractDriver
 from unittest import TestCase
@@ -104,15 +105,6 @@ class TestStorage(TestCase):
     def tearDown(self):
         self.driver.flush()
 
-    def test_get_latest_block_hash_0s_if_none(self):
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, '0' * 64)
-
-    def test_get_latest_block_hash_correct_after_set(self):
-        storage.set_latest_block_hash('a' * 64, self.driver)
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, 'a' * 64)
-
     def test_get_latest_block_height_0_if_none(self):
         h = storage.get_latest_block_height(self.driver)
         self.assertEqual(h, 0)
@@ -194,28 +186,27 @@ block = {
 
 class TestUpdatingState(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
-        self.nonces = storage.NonceStorage()
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
+        self.state = storage.StateManager()
+        self.state.nonces.flush()
+        self.state.driver.flush()
+        self.state.driver.clear_pending_state()
 
     def tearDown(self):
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
+        self.state.nonces.flush()
+        self.state.driver.flush()
+        self.state.driver.clear_pending_state()
 
     def test_state_updated_to_correct_values_in_tx(self):
-        v1 = self.driver.get('hello')
-        v2 = self.driver.get('name')
+        v1 = self.state.driver.get('hello')
+        v2 = self.state.driver.get('name')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
 
         storage.update_state_with_transaction(
             tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
+            driver=self.state.driver,
+            nonces=self.state.nonces
         )
 
         v1 = self.driver.get('hello')
@@ -361,7 +352,7 @@ class TestUpdatingState(TestCase):
         self.assertEqual(_hash, '0' * 64)
         self.assertEqual(num, 0)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
             driver=self.driver,
             nonces=self.nonces
@@ -392,7 +383,7 @@ class TestUpdatingState(TestCase):
         n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
         self.assertEqual(n, 4)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
             driver=self.driver,
             nonces=self.nonces
@@ -425,7 +416,7 @@ class TestUpdatingState(TestCase):
         self.assertIsNone(v4)
         self.assertIsNone(v5)
 
-        storage.update_state_with_block(
+        lamden.utils.migrate_mongo.update_state_with_block(
             block=block,
             driver=self.driver,
             nonces=self.nonces

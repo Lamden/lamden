@@ -4,7 +4,7 @@ import time
 
 import lamden.sockets.router
 from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage, get_latest_block_height, StateManager
+from lamden.storage import StateManager
 from lamden.nodes.filequeue import FileQueue
 from lamden.formatting import primatives
 from lamden.nodes import base
@@ -31,7 +31,7 @@ class BlockService(Processor):
             if msg['name'] == base.GET_BLOCK:
                 response = self.get_block(msg)
             elif msg['name'] == base.GET_HEIGHT:
-                response = get_latest_block_height(self.state.driver)
+                response = self.state.metadata.get_latest_block_height()
 
         return response
 
@@ -106,7 +106,7 @@ class Masternode(base.Node):
         asyncio.ensure_future(self.check_tx_queue())
 
         if self.should_seed:
-            members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
+            members = self.state.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
 
             self.log.info('\n------ MEMBERS ------')
             self.log.debug(members)
@@ -118,7 +118,7 @@ class Masternode(base.Node):
         # Start the block server so others can run catchup using our node as a seed.
         # Start the block contender service to participate in consensus
 
-        self.driver.clear_pending_state()
+        self.state.driver.clear_pending_state()
 
         self.log.info('Done starting...')
 
@@ -129,7 +129,7 @@ class Masternode(base.Node):
         # await self.intermediate_catchup()
         # await self.wait_for_block()
 
-        members = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
+        members = self.state.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)
 
         if len(members) > 1:
             while len(self.new_block_processor.q) <= 0:

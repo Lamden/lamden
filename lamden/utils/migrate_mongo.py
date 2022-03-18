@@ -1,3 +1,5 @@
+from lamden.storage import StateManager, update_state_with_transaction
+
 from . import legacy
 
 from lamden import storage, rewards
@@ -113,7 +115,7 @@ class MigrationNode:
         if self.should_process(block):
             self.log.info('Storing new block.')
             # Commit the state changes and nonces to the database
-            storage.update_state_with_block(
+            update_state_with_block(
                 block=block,
                 driver=self.driver,
                 nonces=self.nonces
@@ -144,3 +146,15 @@ class MigrationNode:
         self.driver.commit()
         self.driver.clear_pending_state()
         gc.collect()
+
+
+def update_state_with_block(block, state: StateManager, set_hash_and_height=True):
+    if block.get('subblocks') is not None:
+        for sb in block['subblocks']:
+            for tx in sb['transactions']:
+                update_state_with_transaction(tx, state.driver, state.nonces)
+
+    # Update our block hash and block num
+    if set_hash_and_height:
+        state.metadata.set_latest_block_height(block['number'])
+        state.metadata.set_latest_block_hash(block['hash'])

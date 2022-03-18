@@ -5,13 +5,11 @@ from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import FSDriver
 from contracting import config
 from contracting.client import ContractingClient
-from contracting.db.encoder import encode, decode, encode_kv
+from contracting.db.encoder import encode, decode
 from lamden import contracts
 from contracting.execution.executor import Executor
 
 import pathlib
-
-import json
 
 import os
 
@@ -78,25 +76,6 @@ BLOCK_0 = {
     'number': 0,
     'hash': '0' * 64
 }
-
-
-class StateManager:
-    def __init__(self, metadata_root=STORAGE_HOME.joinpath('metadata'),
-                 block_root=STORAGE_HOME,
-                 nonce_collection=STORAGE_HOME.joinpath('nonces'),
-                 pending_collection=STORAGE_HOME.joinpath('pending_nonces'),
-                 genesis_path=contracts.__path__[0],
-                 metering=False):
-
-        self.metadata = MetaDataDriver(root=metadata_root)
-        self.blocks = BlockStorage(home=block_root)
-        self.nonces = NonceStorage(nonce_collection=nonce_collection, pending_collection=pending_collection)
-        self.driver = ContractDriver()
-        self.client = ContractingClient(
-            driver=self.driver,
-            submission_filename=genesis_path + '/submission.s.py'
-        )
-        self.executor = Executor(driver=self.driver, metering=metering)
 
 
 class MetaDataDriver(FSDriver):
@@ -454,35 +433,45 @@ def set_latest_block_height(h, driver: ContractDriver):
     log.info(driver.pending_deltas)
     '''
 
+class StateManager:
+    def __init__(self, metadata_root=STORAGE_HOME.joinpath('metadata'),
+                 block_root=STORAGE_HOME,
+                 nonce_collection=STORAGE_HOME.joinpath('nonces'),
+                 pending_collection=STORAGE_HOME.joinpath('pending_nonces'),
+                 genesis_path=contracts.__path__[0],
+                 metering=False):
 
-def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
+        self.metadata = MetaDataDriver(root=metadata_root)
+        self.blocks = BlockStorage(home=block_root)
+        self.nonces = NonceStorage(nonce_collection=nonce_collection, pending_collection=pending_collection)
+        self.driver = ContractDriver()
+        self.client = ContractingClient(
+            driver=self.driver,
+            submission_filename=genesis_path + '/submission.s.py'
+        )
+        self.executor = Executor(driver=self.driver, metering=metering)
 
-    if tx['state'] is not None and len(tx['state']) > 0:
-        for delta in tx['state']:
-            driver.set(delta['key'], delta['value'])
-            # log.debug(f"{delta['key']} -> {delta['value']}")
+    def update_state_with_transaction(self, tx):
+        nonces_to_delete = []
 
-            nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
+        if tx['state'] is not None and len(tx['state']) > 0:
+            for delta in tx['state']:
+                self.driver.set(delta['key'], delta['value'])
+                # log.debug(f"{delta['key']} -> {delta['value']}")
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+                self.nonces.set_nonce(
+                    sender=tx['transaction']['payload']['sender'],
+                    processor=tx['transaction']['payload']['processor'],
+                    value=tx['transaction']['payload']['nonce'] + 1
+                )
 
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
+                nonces_to_delete.append(
+                    (tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
 
+        for n in nonces_to_delete:
+            self.nonces.set_pending_nonce(*n, value=None)
 
-def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
-    if block.get('subblocks') is not None:
-        for sb in block['subblocks']:
-            for tx in sb['transactions']:
-                update_state_with_transaction(tx, driver, nonces)
-
-    # Update our block hash and block num
-    if set_hash_and_height:
-        set_latest_block_hash(block['hash'], driver=driver)
-        set_latest_block_height(block['number'], driver=driver)
-
+    def update_cache_state(self, results):
+        # TODO This should be the actual cache write but it's HDD for now
+        self.driver.clear_pending_state()
+        self.update_state_with_transaction(tx=results['transactions'][0])

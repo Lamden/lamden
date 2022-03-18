@@ -44,13 +44,13 @@ def get_new_tx():
 
 class TestProcessingQueue(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
-        self.client = ContractingClient(
-            driver=self.driver
-        )
+        self.state = storage.StateManager()
+
+        self.driver = self.state.driver
+        self.client = self.state.client
         self.wallet = Wallet()
 
-        self.executor = Executor(driver=self.driver)
+        self.executor = self.state.executor
         self.reward_manager = rewards.RewardManager()
 
         self.hlc_clock = HLC_Clock()
@@ -66,8 +66,8 @@ class TestProcessingQueue(TestCase):
         self.reprocess_was_called = False
         self.catchup_was_called = False
 
-        self.current_height = lambda: storage.get_latest_block_height(self.driver)
-        self.current_hash = lambda: storage.get_latest_block_hash(self.driver)
+        self.current_height = lambda: self.state.metadata.get_latest_block_height()
+        self.current_hash = lambda: self.state.metadata.get_latest_block_hash()
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
             state=storage.StateManager(),
