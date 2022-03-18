@@ -154,7 +154,6 @@ class Node:
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
             reprocess=self.reprocess,

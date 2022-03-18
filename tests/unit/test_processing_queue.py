@@ -54,7 +54,7 @@ class TestProcessingQueue(TestCase):
         self.reward_manager = rewards.RewardManager()
 
         self.hlc_clock = HLC_Clock()
-        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.state.metadata.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
         self.last_hlc_in_consensus = '0'
 
         self.processing_delay_secs = {
@@ -76,7 +76,6 @@ class TestProcessingQueue(TestCase):
             processing_delay=lambda: self.processing_delay_secs,
             stop_node=self.stop,
             reprocess=self.reprocess_called,
-            get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus,
             pause_all_queues=self.pause_all_queues,
@@ -347,7 +346,7 @@ class TestProcessingQueue(TestCase):
         tx_info = self.make_tx_message(get_new_tx())
         tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
 
-        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.state.metadata.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.main_processing_queue.append(tx=tx_info)
 

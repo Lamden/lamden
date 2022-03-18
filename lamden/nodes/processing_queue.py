@@ -15,8 +15,8 @@ from .filequeue import STORAGE_HOME
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
-                 get_last_processed_hlc, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
+                 check_if_already_has_consensus, get_last_hlc_in_consensus,
+                 pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
         self.state = state
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -25,12 +25,12 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.processing_delay = processing_delay
 
+        self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
+
         self.wallet = wallet
         self.hlc_clock = hlc_clock
         self.reprocess = reprocess
 
-        self.get_last_processed_hlc = get_last_processed_hlc
-        self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
         self.pause_all_queues = pause_all_queues
         self.unpause_all_queues = unpause_all_queues
@@ -147,7 +147,7 @@ class TxProcessingQueue(ProcessingQueue):
                 }))
             '''
 
-            if self.currently_processing_hlc < self.get_last_processed_hlc():
+            if self.currently_processing_hlc < self.state.metadata.get_last_processed_hlc():
                 await self.node_rollback(tx=tx)
             else:
                 del self.message_received_timestamps[self.currently_processing_hlc]
