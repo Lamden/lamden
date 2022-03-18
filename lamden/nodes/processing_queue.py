@@ -15,7 +15,7 @@ from .filequeue import STORAGE_HOME
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
-                 check_if_already_has_consensus, get_last_hlc_in_consensus,
+                 check_if_already_has_consensus,
                  pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
         super().__init__()
         self.state = state
@@ -24,8 +24,6 @@ class TxProcessingQueue(ProcessingQueue):
         self.message_received_timestamps = {}
 
         self.processing_delay = processing_delay
-
-        self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
 
         self.wallet = wallet
         self.hlc_clock = hlc_clock
@@ -103,7 +101,7 @@ class TxProcessingQueue(ProcessingQueue):
         return False
 
     def hlc_earlier_than_consensus(self, hlc_timestamp):
-        return hlc_timestamp < self.get_last_hlc_in_consensus()
+        return hlc_timestamp < self.state.metadata.last_hlc_in_consensus
 
     async def process_next(self):
 
@@ -122,7 +120,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
-        if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
+        if self.currently_processing_hlc <= self.state.metadata.last_hlc_in_consensus:
             self.currently_processing_hlc = ""
             del self.message_received_timestamps[self.currently_processing_hlc]
             return
@@ -281,7 +279,7 @@ class TxProcessingQueue(ProcessingQueue):
         )
 
         if self.testing:
-            self.debug_writes_log.append({hlc_timestamp: [writes, self.get_last_hlc_in_consensus()]})
+            self.debug_writes_log.append({hlc_timestamp: [writes, self.state.metadata.last_hlc_in_consensus]})
 
         tx_output = {
             'hash': tx_hash,

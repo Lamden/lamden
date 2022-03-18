@@ -115,18 +115,27 @@ class MetaDataDriver(FSDriver):
 
     @property
     def last_processed_hlc(self):
-        return self.get_last_processed_hlc
+        return self.get_last_processed_hlc()
 
     @last_processed_hlc.setter
     def last_processed_hlc(self, value):
         self.set_last_processed_hlc(value)
 
+    ### LAST_HLC_IN_CONSENSUS
     def get_last_hlc_in_consensus(self):
         return self.get(LAST_HLC_IN_CONSENSUS)
 
     def set_last_hlc_in_consensus(self, h):
         self.set(LAST_HLC_IN_CONSENSUS, h)
 
+    @property
+    def last_hlc_in_consensus(self):
+        return self.get_last_hlc_in_consensus()
+
+    @last_hlc_in_consensus.setter
+    def last_hlc_in_consensus(self, value):
+        self.set_last_hlc_in_consensus(value)
+    ###
 
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):

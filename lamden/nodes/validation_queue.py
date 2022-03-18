@@ -25,7 +25,7 @@ class ValidationQueue(ProcessingQueue):
         self.validation_results = {}
 
         # Store confirmed solutions that I haven't got to yet
-        self.last_hlc_in_consensus = ""
+        self.state.metadata.last_hlc_in_consensus = ""
 
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
@@ -62,7 +62,7 @@ class ValidationQueue(ProcessingQueue):
         hlc_timestamp = processing_results.get('hlc_timestamp')
         self.append_history.append(hlc_timestamp)
 
-        if hlc_timestamp <= self.last_hlc_in_consensus:
+        if hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
             block = self.state.blocks.get_block(v=hlc_timestamp)
             if block:
                 return
@@ -127,7 +127,7 @@ class ValidationQueue(ProcessingQueue):
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
 
-            if next_hlc_timestamp <= self.last_hlc_in_consensus:
+            if next_hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
                 block = self.state.blocks.get_block(v=next_hlc_timestamp)
                 if block:
                     self.flush_hlc(next_hlc_timestamp)
@@ -336,7 +336,7 @@ class ValidationQueue(ProcessingQueue):
 
         # Hard apply these results on the driver
         try:
-            if hlc_timestamp <= self.last_hlc_in_consensus:
+            if hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
                 print("stop")
             await self.hard_apply_block(processing_results=processing_results)
         except Exception as err:
@@ -344,8 +344,8 @@ class ValidationQueue(ProcessingQueue):
             self.log.debug(err)
 
         # Set this as the last hlc that was in consensus
-        if hlc_timestamp > self.last_hlc_in_consensus:
-            self.last_hlc_in_consensus = hlc_timestamp
+        if hlc_timestamp > self.state.metadata.last_hlc_in_consensus:
+            self.state.metadata.last_hlc_in_consensus = hlc_timestamp
 
         # remove HLC from processing
         self.flush_hlc(hlc_timestamp=hlc_timestamp)

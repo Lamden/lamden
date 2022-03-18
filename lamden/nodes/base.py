@@ -154,7 +154,6 @@ class Node:
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
@@ -506,7 +505,7 @@ class Node:
                 if self.testing:
                     self.debug.processing_results.append(processing_results)
 
-                if hlc_timestamp <= self.get_last_hlc_in_consensus():
+                if hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
                     return
 
                 self.last_processed_hlc = hlc_timestamp
@@ -1030,7 +1029,7 @@ class Node:
         return self.last_processed_hlc
 
     def get_last_hlc_in_consensus(self):
-        return self.validation_queue.last_hlc_in_consensus
+        return self.state.metadata.last_hlc_in_consensus
 
     def is_next_block(self, previous_hash):
         self.log.debug({
