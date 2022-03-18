@@ -468,28 +468,11 @@ class Node:
             'sender': self.wallet.verifying_key
         }
 
-    async def check_tx_queue(self):
-        while self.running:
-            if len(self.tx_queue) > 0:
-                tx_from_file = self.tx_queue.pop(0)
-                # TODO sometimes the tx info taken off the filequeue is None, investigate
-                if tx_from_file is not None:
-                    tx_message = make_tx_message(self.hlc_clock, self.wallet, tx=tx_from_file)
-
-                    # send the tx to the rest of the network
-                    asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
-
-                    # add this tx the processing queue so we can process it
-                    self.main_processing_queue.append(tx=tx_message)
-
-            self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
-            await asyncio.sleep(0)
-
     async def check_main_processing_queue(self):
         while self.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
-                await self.process_main_queue()
+                await self.main_processing_queue.process_main_queue()
                 self.main_processing_queue.stop_processing()
 
             self.debug.loop_counter['main'] = self.debug.loop_counter['main'] + 1
@@ -505,30 +488,6 @@ class Node:
 
             self.debug.loop_counter['validation'] = self.debug.loop.counter['validation'] + 1
             await asyncio.sleep(0)
-
-    async def process_main_queue(self):
-        try:
-            processing_results = await self.main_processing_queue.process_next()
-
-            if processing_results:
-                hlc_timestamp = processing_results.get('hlc_timestamp')
-
-                if self.testing:
-                    self.debug.processing_results.append(processing_results)
-
-                if hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
-                    return
-
-                self.last_processed_hlc = hlc_timestamp
-
-                try:
-                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-                except Exception as err:
-                    print(err)
-
-                self.store_solution_and_send_to_network(processing_results=processing_results)
-        except Exception as err:
-            self.log.error(err)
 
     def store_solution_and_send_to_network(self, processing_results):
 

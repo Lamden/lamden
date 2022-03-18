@@ -103,7 +103,7 @@ class Masternode(base.Node):
 
         await super().start()
 
-        asyncio.ensure_future(self.check_tx_queue())
+        asyncio.ensure_future(self.main_processing_queue.check_tx_queue())
 
         if self.should_seed:
             members = self.state.driver.get_var(contract='masternodes', variable='S', arguments=['members'], mark=False)

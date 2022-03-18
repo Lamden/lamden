@@ -457,3 +457,36 @@ class TxProcessingQueue(ProcessingQueue):
             self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
             await asyncio.sleep(0)
 
+    def soft_apply_current_state(self, hlc_timestamp):
+        try:
+            self.state.driver.soft_apply(hcl=hlc_timestamp)
+        except Exception as err:
+            print(err)
+
+        self.state.nonces.flush_pending()
+        gc.collect()
+
+
+    async def process_main_queue(self):
+        try:
+            processing_results = await self.process_next()
+
+            if processing_results:
+                hlc_timestamp = processing_results.get('hlc_timestamp')
+
+                if self.testing:
+                    self.debug.processing_results.append(processing_results)
+
+                if hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
+                    return
+
+                self.state.metadata.last_processed_hlc = hlc_timestamp
+
+                try:
+                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+                except Exception as err:
+                    print(err)
+
+                self.store_solution_and_send_to_network(processing_results=processing_results)
+        except Exception as err:
+            self.log.error(err)
