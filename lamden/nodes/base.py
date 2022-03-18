@@ -1,27 +1,23 @@
 import asyncio
 import gc
-import hashlib
 import json
 import time
 
-import lamden.sockets.router
 import uvloop
 
 from copy import deepcopy
-from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
 from lamden import storage, rewards, upgrade, contracts
 from lamden.contracts import sync
-from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.network import Network
 from lamden.nodes import system_usage
 from lamden.nodes import processing_queue, validation_queue
+from lamden.nodes.processing_queue import make_tx_message
 from lamden.nodes.processors import work, blockcontender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
-from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object, tx_hash_from_tx
 from lamden.nodes.events import Event, EventWriter
 from lamden.network import Processor
 
@@ -149,6 +145,8 @@ class Node:
         self.new_block_processor = NewBlock()
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
+            network=self.network,
+            tx_queue=self.tx_queue,
             testing=self.testing,
             debug=self.debug,
             wallet=self.wallet,
@@ -457,13 +455,26 @@ class Node:
     def start_main_processing_queue(self):
         self.main_processing_queue.start()
 
+    def make_tx_message(self, tx):
+        hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+        tx_hash = tx_hash_from_tx(tx=tx)
+
+        signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')
+
+        return {
+            'tx': tx,
+            'hlc_timestamp': hlc_timestamp,
+            'signature': signature,
+            'sender': self.wallet.verifying_key
+        }
+
     async def check_tx_queue(self):
         while self.running:
             if len(self.tx_queue) > 0:
                 tx_from_file = self.tx_queue.pop(0)
                 # TODO sometimes the tx info taken off the filequeue is None, investigate
                 if tx_from_file is not None:
-                    tx_message = self.make_tx_message(tx=tx_from_file)
+                    tx_message = make_tx_message(self.hlc_clock, self.wallet, tx=tx_from_file)
 
                     # send the tx to the rest of the network
                     asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
@@ -543,19 +554,6 @@ class Node:
 
         self.state.nonces.flush_pending()
         gc.collect()
-
-    def make_tx_message(self, tx):
-        hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
-        tx_hash = tx_hash_from_tx(tx=tx)
-
-        signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')
-
-        return {
-            'tx': tx,
-            'hlc_timestamp': hlc_timestamp,
-            'signature': signature,
-            'sender': self.wallet.verifying_key
-        }
 
     def update_block_db(self, block):
         # if self.testing:

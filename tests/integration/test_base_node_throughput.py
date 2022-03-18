@@ -16,6 +16,8 @@ import pprint
 
 from unittest import TestCase
 
+from lamden.nodes.processing_queue import make_tx_message
+
 
 class TestNode(TestCase):
     def setUp(self):
@@ -135,7 +137,7 @@ class TestNode(TestCase):
                 nonce=1
             ))
 
-            tx_message = node.make_tx_message(tx)
+            tx_message = make_tx_message(node.hlc_clock, node.wallet, tx)
             self.await_async_process_work(node=node, msg=tx_message)
 
             self.tx_history[receiver_wallet.verifying_key] = {
@@ -159,7 +161,7 @@ class TestNode(TestCase):
                 nonce=1
             ))
 
-            tx_message = node.make_tx_message(tx)
+            tx_message = make_tx_message(node.hlc_clock, node.wallet, tx)
             self.await_async_process_work(node=node, msg=tx_message)
 
             if self.tx_accumulator.get(receiver_wallet.verifying_key, None) is None:

@@ -8,6 +8,7 @@ from contracting.db.driver import InMemDriver, ContractDriver
 import zmq.asyncio
 import asyncio
 
+from lamden.nodes.processing_queue import make_tx_message
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 from tests.integration.mock.create_directories import remove_fixture_directories
 
@@ -179,7 +180,7 @@ class TestNode(TestCase):
             'amount': tx_amount
         }
 
-        tx_message_1 = node.make_tx_message(tx=get_new_currency_tx(**tx_args))
+        tx_message_1 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(**tx_args))
 
         node.main_processing_queue.append(tx=tx_message_1)
 
@@ -202,21 +203,21 @@ class TestNode(TestCase):
 
         tx_amount = 200.1
         # Send from Stu to Jeff
-        tx_message_1 = node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
             to=self.jeff_wallet.verifying_key,
             wallet=self.stu_wallet,
             amount=tx_amount
         ))
 
         # Send from Jeff to Archer
-        tx_message_2 = node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.jeff_wallet,
             amount=tx_amount
         ))
 
         # Send from Archer to Oliver
-        tx_message_3 = node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_3 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
             to=self.oliver_wallet.verifying_key,
             wallet=self.archer_wallet,
             amount=tx_amount
@@ -261,7 +262,7 @@ class TestNode(TestCase):
         # Create three transactions
         tx_amount = 200.1
         # Send from Stu to Jeff
-        tx_message_1 = node_2.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
             to=self.jeff_wallet.verifying_key,
             wallet=self.stu_wallet,
             amount=tx_amount
@@ -269,7 +270,7 @@ class TestNode(TestCase):
         hlc_timestamp_1 = tx_message_1.get('hlc_timestamp')
 
         # Send from Jeff to Archer
-        tx_message_2 = node_2.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.jeff_wallet,
             amount=tx_amount
@@ -277,7 +278,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
 
         # Send from Archer to Oliver
-        tx_message_3 = node_2.make_tx_message(tx=get_new_currency_tx(
+        tx_message_3 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
             to=self.oliver_wallet.verifying_key,
             wallet=self.archer_wallet,
             amount=tx_amount

@@ -42,6 +42,10 @@ def get_new_tx():
         }
 
 
+class MockNetwork:
+    pass
+
+
 class TestProcessingQueue(TestCase):
     def setUp(self):
         self.state = storage.StateManager()
@@ -70,6 +74,7 @@ class TestProcessingQueue(TestCase):
         self.current_hash = lambda: self.state.metadata.get_latest_block_hash()
 
         self.main_processing_queue = processing_queue.TxProcessingQueue(
+            network=MockNetwork(),
             state=storage.StateManager(),
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,

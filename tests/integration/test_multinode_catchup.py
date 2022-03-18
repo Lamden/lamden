@@ -5,6 +5,7 @@
     After all node are in sync then the test are run to validate state etc.
 
 '''
+from lamden.nodes.processing_queue import make_tx_message
 from tests.integration.mock import mocks_new
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
@@ -149,7 +150,8 @@ class TestMultiNode(TestCase):
 
         # add this tx the processing queue so we can process it
         for i in range(10):
-            tx_message = self.n.masternodes[0].obj.make_tx_message(tx=get_new_currency_tx(**tx_args))
+            n1 = self.n.masternodes[0].obj
+            tx_message = make_tx_message(n1.hlc_clock, n1.wallet, tx=get_new_currency_tx(**tx_args))
             self.send_message_to_node(node=self.n.masternodes[0].obj, msg=tx_message)
 
         # await network processing

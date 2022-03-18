@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results
+from lamden.nodes.processing_queue import make_tx_message
 from tests.integration.mock.create_directories import remove_fixture_directories
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
@@ -257,7 +258,7 @@ class TestNode(TestCase):
         self.create_a_node()
         self.start_node()
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -282,7 +283,7 @@ class TestNode(TestCase):
         # stop the validation queue
         self.node.validation_queue.stop()
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -311,7 +312,7 @@ class TestNode(TestCase):
         self.node.main_processing_queue.stop()
         self.await_async_process(self.node.main_processing_queue.stopping)
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -335,7 +336,7 @@ class TestNode(TestCase):
         self.node.validation_queue.stop()
 
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -366,7 +367,7 @@ class TestNode(TestCase):
 
         self.start_node()
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -390,7 +391,7 @@ class TestNode(TestCase):
         self.create_a_node()
         self.node.consensus_percent = 0
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -418,7 +419,7 @@ class TestNode(TestCase):
 
         self.start_node()
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -470,7 +471,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 200.5
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -513,7 +514,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 100.5
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -543,7 +544,7 @@ class TestNode(TestCase):
         print("sending second transaction")
         # ___ SEND ANOTHER Transaction ___
         # create a transaction
-        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -590,7 +591,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 100.5
 
-        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -605,7 +606,7 @@ class TestNode(TestCase):
 
         # ___ SEND ANOTHER Transaction ___
         # create a transaction
-        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -672,7 +673,7 @@ class TestNode(TestCase):
         self.node.validation_queue.stop()
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -734,7 +735,7 @@ class TestNode(TestCase):
         tx_amount = 100.5
 
         # create processing results from another node. These will be added to create state from consensus.
-        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -742,7 +743,7 @@ class TestNode(TestCase):
         hlc_timestamp_1 = tx_message_1.get('hlc_timestamp')
         processing_results_1 = self.process_a_tx(node=node_peer, tx_message=tx_message_1)
 
-        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -750,7 +751,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
         processing_results_2 = self.process_a_tx(node=node_peer, tx_message=tx_message_2)
 
-        tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_3 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -803,7 +804,7 @@ class TestNode(TestCase):
         tx_amount = 100.5
 
         # create processing results from another node. These will be added to create state from consensus.
-        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_1.verifying_key,
             amount=tx_amount
@@ -813,7 +814,7 @@ class TestNode(TestCase):
         processing_results_1 = self.process_a_tx(node=node_peer, tx_message=tx_message_1)
         node_peer.main_processing_queue.append(tx=tx_message_1)
 
-        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_2.verifying_key,
             amount=tx_amount
@@ -821,7 +822,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
         processing_results_2 = self.process_a_tx(node=node_peer, tx_message=tx_message_2)
 
-        tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_3 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_2.verifying_key,
             amount=tx_amount
@@ -878,7 +879,7 @@ class TestNode(TestCase):
         self.assertIsNone(None, self.node.get_current_height())
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=Wallet().verifying_key,
             amount=100.5
@@ -899,7 +900,7 @@ class TestNode(TestCase):
         self.assertEqual(DEFAULT_HASH, self.node.get_current_hash())
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
+        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=Wallet().verifying_key,
             amount=100.5

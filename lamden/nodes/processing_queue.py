@@ -10,15 +10,41 @@ from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden import storage, rewards
 from datetime import datetime
+from lamden.nodes.filequeue import FileQueue
+from lamden.network import Network
 from .filequeue import STORAGE_HOME
+import asyncio
+
+WORK_SERVICE = 'work'
+
+
+class Debug:
+    def __init__(self):
+        self.stack = []
+        self.processed_hlcs = []
+        self.processing_results = []
+        self.reprocessing_results = {}
+        self.blocks_processed = []
+        self.timeline = []
+        self.sent_solutions = []
+        self.last_checked_main = time.time()
+        self.last_checked_val = time.time()
+        self.loop_counter = {
+            'main': 0,
+            'validation': 0,
+            'file_check': 0
+        }
 
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
-                 check_if_already_has_consensus,
-                 pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
+    def __init__(self, network, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
+                 check_if_already_has_consensus, pause_all_queues, unpause_all_queues, reprocess,
+                 testing=False, debug=False, tx_queue=FileQueue()):
         super().__init__()
+        self.tx_queue = tx_queue
+        self.debug = Debug()
         self.state = state
+        self.network = network
         self.log = get_logger('MAIN PROCESSING QUEUE')
 
         self.message_received_timestamps = {}
@@ -43,8 +69,6 @@ class TxProcessingQueue(ProcessingQueue):
 
         # self.last_time_processed = datetime.datetime.now()
 
-
-
         # TODO This is just for testing
         self.total_processed = 0
         self.testing = testing
@@ -52,6 +76,19 @@ class TxProcessingQueue(ProcessingQueue):
         self.detected_rollback = False
         self.append_history = []
         self.currently_processing_hlc = ""
+
+    def make_tx_message(self, tx):
+        hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+        tx_hash = tx_hash_from_tx(tx=tx)
+
+        signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')
+
+        return {
+            'tx': tx,
+            'hlc_timestamp': hlc_timestamp,
+            'signature': signature,
+            'sender': self.wallet.verifying_key
+        }
 
     def append(self, tx):
         hlc_timestamp = tx['hlc_timestamp']
@@ -402,3 +439,21 @@ class TxProcessingQueue(ProcessingQueue):
         except Exception as err:
             self.log.info('node_rollback ERROR')
             self.log.error(err)
+
+    async def check_tx_queue(self):
+        while self.running:
+            if len(self.tx_queue) > 0:
+                tx_from_file = self.tx_queue.pop(0)
+                # TODO sometimes the tx info taken off the filequeue is None, investigate
+                if tx_from_file is not None:
+                    tx_message = self.make_tx_message(tx=tx_from_file)
+
+                    # send the tx to the rest of the network
+                    asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
+
+                    # add this tx the processing queue so we can process it
+                    self.append(tx=tx_message)
+
+            self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
+            await asyncio.sleep(0)
+
