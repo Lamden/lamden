@@ -179,10 +179,10 @@ class Node:
         # how long to hold items in queue before processing
 
         self.work_validator = work.WorkValidator(
+            state=self.state,
             wallet=wallet,
             main_processing_queue=self.main_processing_queue,
             hlc_clock=self.hlc_clock,
-            get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop,
             network=self.network
         )
@@ -817,7 +817,7 @@ class Node:
 
     def reprocess_after_earlier_block(self, new_keys_list):
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
-        pending_delta_history = deepcopy(self.driver.pending_deltas)
+        pending_delta_history = deepcopy(self.state.driver.pending_deltas)
 
         self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
 
@@ -825,7 +825,7 @@ class Node:
         changed_keys_list = new_keys_list
 
         # Get and sort the list of HLCs so we can process it in order
-        pending_delta_items = list(self.driver.pending_deltas.keys())
+        pending_delta_items = list(self.state.driver.pending_deltas.keys())
         pending_delta_items.sort()
 
         # Check the read_history if all HLCs that were processed, in order of oldest to newest

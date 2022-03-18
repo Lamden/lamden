@@ -6,12 +6,13 @@ from lamden.network import Network, Processor
 
 
 class WorkValidator(Processor):
-    def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node, network: Network):
+    def __init__(self, state, hlc_clock, wallet, main_processing_queue, stop_node, network: Network):
 
         self.log = get_logger('Work Inbox')
 
+        self.state = state
+
         self.main_processing_queue = main_processing_queue
-        self.get_last_processed_hlc = get_last_processed_hlc
 
         self.network = network
 
@@ -85,7 +86,7 @@ class WorkValidator(Processor):
 
     def older_than_last_processed(self, msg):
         tx_age = self.hlc_clock.get_nanos(timestamp=msg['hlc_timestamp'])
-        last_hlc = self.get_last_processed_hlc()
+        last_hlc = self.state.metadata.get_last_processed_hlc()
         last_processed_age = self.hlc_clock.get_nanos(timestamp=last_hlc)
 
         if tx_age <= last_processed_age:

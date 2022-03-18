@@ -67,6 +67,7 @@ BLOCK_NUM_HEIGHT = '_current_block_height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 LAST_PROCESSED_HLC = '__last_processed_hlc'
+LAST_HLC_IN_CONSENSUS = '__last_hlc_in_consensus'
 
 STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
@@ -111,6 +112,20 @@ class MetaDataDriver(FSDriver):
 
     def set_last_processed_hlc(self, h):
         self.set(LAST_PROCESSED_HLC, h)
+
+    @property
+    def last_processed_hlc(self):
+        return self.get_last_processed_hlc
+
+    @last_processed_hlc.setter
+    def last_processed_hlc(self, value):
+        self.set_last_processed_hlc(value)
+
+    def get_last_hlc_in_consensus(self):
+        return self.get(LAST_HLC_IN_CONSENSUS)
+
+    def set_last_hlc_in_consensus(self, h):
+        self.set(LAST_HLC_IN_CONSENSUS, h)
 
 
 class BlockStorage:
