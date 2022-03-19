@@ -7,15 +7,17 @@ import json
 import multiprocessing
 
 from lamden.logger.base import get_logger
-from lamden.nodes.queue_base import ProcessingQueue
+from lamden.nodes.queue_base import ProcessingQueue, ProcessingFileQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 from lamden.network import Network
+from lamden.config import STORAGE_HOME
 
-class ValidationQueue(ProcessingQueue):
+
+class ValidationQueue(ProcessingFileQueue):
     def __init__(self, consensus_percent, state, network: Network, wallet, hard_apply_block, stop_node, testing=False,
-                 debug=False):
-        super().__init__()
+                 debug=False, root=STORAGE_HOME.joinpath('validation_queue')):
+        super().__init__(root=root)
 
         self.log = get_logger("VALIDATION QUEUE")
 

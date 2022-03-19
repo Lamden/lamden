@@ -4,9 +4,11 @@ import json
 import time
 
 import uvloop
-
+import lamden
 from copy import deepcopy
 from contracting.db.encoder import convert_dict, encode
+
+import lamden.config
 from lamden import storage, rewards, upgrade, contracts
 from lamden.contracts import sync
 from lamden.logger.base import get_logger
@@ -22,16 +24,16 @@ from lamden.network import Processor
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
-BLOCK_SERVICE = 'catchup'
-GET_LATEST_BLOCK = 'get_latest_block'
-GET_BLOCK = "get_block"
-GET_CONSTITUTION = "get_constitution"
-GET_ALL_PEERS = "get_all_peers"
-NEW_BLOCK_SERVICE = 'new_blocks'
-NEW_BLOCK_EVENT = 'new_block'
-NEW_BLOCK_REORG_EVENT = 'block_reorg'
-WORK_SERVICE = 'work'
-CONTENDER_SERVICE = 'contenders'
+# BLOCK_SERVICE = 'catchup'
+# GET_LATEST_BLOCK = 'get_latest_block'
+# GET_BLOCK = "get_block"
+# GET_CONSTITUTION = "get_constitution"
+# GET_ALL_PEERS = "get_all_peers"
+# NEW_BLOCK_SERVICE = 'new_blocks'
+# NEW_BLOCK_EVENT = 'new_block'
+# NEW_BLOCK_REORG_EVENT = 'block_reorg'
+# WORK_SERVICE = 'work'
+# CONTENDER_SERVICE = 'contenders'
 
 
 class NewBlock(Processor):
@@ -190,12 +192,12 @@ class Node:
             network=self.network
         )
 
-        self.network.add_service(WORK_SERVICE, self.work_validator)
-        self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+        self.network.add_service(lamden.config.WORK_SERVICE, self.work_validator)
+        self.network.add_service(lamden.config.CONTENDER_SERVICE, self.block_contender)
 
-        self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
-        self.network.add_action(GET_BLOCK, self.state.blocks.get_block)
-        self.network.add_action(GET_CONSTITUTION, self.make_constitution)
+        self.network.add_action(lamden.config.GET_LATEST_BLOCK, self.get_latest_block)
+        self.network.add_action(lamden.config.GET_BLOCK, self.state.blocks.get_block)
+        self.network.add_action(lamden.config.GET_CONSTITUTION, self.make_constitution)
 
 
         self.running = False
@@ -390,7 +392,7 @@ class Node:
 
                         # create New Block Event
                         self.event_writer.write_event(Event(
-                            topics=[NEW_BLOCK_EVENT],
+                            topics=[lamden.config.NEW_BLOCK_EVENT],
                             data=encoded_block
                         ))
                     else:
@@ -497,12 +499,13 @@ class Node:
             hlc_timestamp=processing_results['hlc_timestamp']
         )
 
+        # If validation queue is a file queue, then this can be abstracted out
         self.validation_queue.append(
             processing_results=processing_results
         )
 
     def send_solution_to_network(self, processing_results):
-        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
+        asyncio.ensure_future(self.network.publisher.publish(topic=lamden.config.CONTENDER_SERVICE, msg=processing_results))
 
     def soft_apply_current_state(self, hlc_timestamp):
         try:
@@ -622,7 +625,7 @@ class Node:
             encoded_block = json.loads(encoded_block)
 
             self.event_writer.write_event(Event(
-                topics=[NEW_BLOCK_REORG_EVENT],
+                topics=[lamden.config.NEW_BLOCK_REORG_EVENT],
                 data=encoded_block
             ))
 
@@ -649,7 +652,7 @@ class Node:
                 encoded_block = json.loads(encoded_block)
 
                 self.event_writer.write_event(Event(
-                    topics=[NEW_BLOCK_REORG_EVENT],
+                    topics=[lamden.config.NEW_BLOCK_REORG_EVENT],
                     data=encoded_block
                 ))
 
@@ -691,7 +694,7 @@ class Node:
 
             # create New Block Event
             self.event_writer.write_event(Event(
-                topics=[NEW_BLOCK_EVENT],
+                topics=[lamden.config.NEW_BLOCK_EVENT],
                 data=encoded_block
             ))
 

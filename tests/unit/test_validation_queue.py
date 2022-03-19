@@ -320,7 +320,7 @@ class TestValidationQueue(TestCase):
         self.process_next()
 
         self.assertFalse(self.hard_apply_block_called)
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+        self.assertEqual(self.validation_queue.state.metadata.last_hlc_in_consensus, "")
 
     def test_clear_my_solutions(self):
         self.validation_queue.validation_results = {

@@ -12,7 +12,7 @@ from lamden import storage, rewards
 from datetime import datetime
 from lamden.nodes.filequeue import FileQueue
 from lamden.network import Network
-from .filequeue import STORAGE_HOME
+from lamden.config import STORAGE_HOME
 import asyncio
 import gc
 
@@ -41,7 +41,7 @@ class Debug:
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, network, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
                  check_if_already_has_consensus, pause_all_queues, unpause_all_queues, reprocess,
-                 testing=False, debug=False, tx_queue=FileQueue()):
+                 testing=False, debug=False, tx_queue=FileQueue(), validation_queue=FileQueue()):
         super().__init__()
         self.tx_queue = tx_queue
         self.debug = Debug()

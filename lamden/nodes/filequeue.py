@@ -3,10 +3,9 @@ import uuid
 import shutil
 import os
 from contracting.db.encoder import decode
-import pathlib
-from lamden.logger.base import get_logger
 
-STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
+from lamden.config import STORAGE_HOME
+from lamden.logger.base import get_logger
 
 
 class FileQueue:

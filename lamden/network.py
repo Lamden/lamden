@@ -1,7 +1,8 @@
 import json
 import requests
 import zmq
-from lamden.nodes.filequeue import FileQueue, STORAGE_HOME
+from lamden.nodes.filequeue import FileQueue
+from lamden.config import STORAGE_HOME
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
