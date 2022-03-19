@@ -15,7 +15,6 @@ import json
 from pathlib import Path
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results
-from lamden.nodes.processing_queue import make_tx_message
 from tests.integration.mock.create_directories import remove_fixture_directories
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
@@ -30,9 +29,7 @@ class TestNode(TestCase):
     def setUp(self):
         self.num_of_nodes = 0
 
-        self.blocks = storage.BlockStorage()
-
-        self.driver = ContractDriver(driver=InMemDriver())
+        self.state = storage.StateManager()
 
         self.mn_wallet = Wallet()
         self.fixture_directories = ['txq']
@@ -46,12 +43,11 @@ class TestNode(TestCase):
         self.archer_wallet = Wallet()
 
         self.b = masternode.BlockService(
-            blocks=self.blocks,
-            driver=self.driver
+            state=self.state
         )
 
-        self.blocks.flush()
-        self.driver.flush()
+        self.state.blocks.flush()
+        self.state.driver.flush()
 
         self.node = None
         self.nodes = []
@@ -63,8 +59,8 @@ class TestNode(TestCase):
             if (node.running):
                 self.await_async_process(node.stop)
 
-        self.b.blocks.flush()
-        self.b.driver.flush()
+        self.b.state.blocks.flush()
+        self.b.state.driver.flush()
 
         remove_fixture_directories(
             root=self.file_queue_path,
@@ -90,7 +86,6 @@ class TestNode(TestCase):
                 socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
                 wallet=self.mn_wallet,
                 constitution=constitution,
-                driver=driver,
                 testing=True,
                 metering=False,
                 delay={
@@ -106,7 +101,6 @@ class TestNode(TestCase):
                 socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
                 wallet=self.mn_wallet,
                 constitution=constitution,
-                driver=driver,
                 testing=True,
                 metering=False,
                 delay={
@@ -122,21 +116,21 @@ class TestNode(TestCase):
             node.network.set_socket_port(service='webserver', port_num=18080 + node_num)
             node.network.set_socket_port(service='publisher', port_num=19080 + node_num)
 
-        node.client.set_var(
+        node.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[self.stu_wallet.verifying_key],
             value=1_000_000
         )
 
-        node.client.set_var(
+        node.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[self.stu_wallet.verifying_key],
             value=1_000_000
         )
 
-        node.driver.commit()
+        node.state.driver.commit()
 
         self.nodes.append(node)
 
@@ -283,7 +277,7 @@ class TestNode(TestCase):
         # stop the validation queue
         self.node.validation_queue.stop()
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -300,9 +294,9 @@ class TestNode(TestCase):
         self.assertEqual(0, len(self.node.main_processing_queue))
         print({
             'hlc_timestamp': hlc_timestamp,
-            'last_processed_hlc': self.node.last_processed_hlc
+            'last_processed_hlc': self.node.state.metadata.last_processed_hlc
         })
-        self.assertEqual(hlc_timestamp, self.node.last_processed_hlc)
+        self.assertEqual(hlc_timestamp, self.node.state.metadata.last_processed_hlc)
 
     def test_check_main_processing_queue_not_process_while_stopped(self):
         self.create_a_node()
@@ -312,7 +306,7 @@ class TestNode(TestCase):
         self.node.main_processing_queue.stop()
         self.await_async_process(self.node.main_processing_queue.stopping)
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -326,7 +320,7 @@ class TestNode(TestCase):
 
         # tx was not processed
         self.assertEqual(1, len(self.node.main_processing_queue))
-        self.assertNotEqual(hlc_timestamp, self.node.last_processed_hlc)
+        self.assertNotEqual(hlc_timestamp, self.node.state.metadata.last_processed_hlc)
 
     def test_check_main_processing_queue_skips_hcl_if_less_than_in_consensus(self):
         self.create_a_node()
@@ -336,7 +330,7 @@ class TestNode(TestCase):
         self.node.validation_queue.stop()
 
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -367,7 +361,7 @@ class TestNode(TestCase):
 
         self.start_node()
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -385,13 +379,13 @@ class TestNode(TestCase):
 
         # tx was processed
         self.assertEqual(0, len(self.node.validation_queue))
-        self.assertEqual(hlc_timestamp, self.node.validation_queue.last_hlc_in_consensus)
+        self.assertEqual(hlc_timestamp, self.node.state.metadata.last_hlc_in_consensus)
 
     def test_check_validation_queue_not_processed_when_stopped(self):
         self.create_a_node()
         self.node.consensus_percent = 0
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -409,7 +403,7 @@ class TestNode(TestCase):
 
         # tx was processed
         self.assertEqual(1, len(self.node.validation_queue))
-        self.assertNotEqual(hlc_timestamp, self.node.validation_queue.last_hlc_in_consensus)
+        self.assertNotEqual(hlc_timestamp, self.node.state.metadata.last_hlc_in_consensus)
 
     def test_increments_block_after_consensus(self):
         self.create_a_node()
@@ -879,9 +873,9 @@ class TestNode(TestCase):
         self.assertIsNone(None, self.node.get_current_height())
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
-            to=Wallet().verifying_key,
+            to=self.jeff_wallet.verifying_key,
             amount=100.5
         ))
         self.node.main_processing_queue.append(tx_message_1)
@@ -900,9 +894,9 @@ class TestNode(TestCase):
         self.assertEqual(DEFAULT_HASH, self.node.get_current_hash())
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
-            to=Wallet().verifying_key,
+            to=self.jeff_wallet.verifying_key,
             amount=100.5
         ))
         self.node.main_processing_queue.append(tx_message_1)

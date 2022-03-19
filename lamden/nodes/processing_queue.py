@@ -14,6 +14,8 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.network import Network
 from .filequeue import STORAGE_HOME
 import asyncio
+import gc
+
 
 WORK_SERVICE = 'work'
 
@@ -72,7 +74,7 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO This is just for testing
         self.total_processed = 0
         self.testing = testing
-        self.debug = debug
+        # self.debug = debug
         self.detected_rollback = False
         self.append_history = []
         self.currently_processing_hlc = ""
@@ -466,7 +468,6 @@ class TxProcessingQueue(ProcessingQueue):
         self.state.nonces.flush_pending()
         gc.collect()
 
-
     async def process_main_queue(self):
         try:
             processing_results = await self.process_next()
@@ -490,3 +491,13 @@ class TxProcessingQueue(ProcessingQueue):
                 self.store_solution_and_send_to_network(processing_results=processing_results)
         except Exception as err:
             self.log.error(err)
+
+    async def check_main_processing_queue(self):
+        while self.running:
+            if len(self) > 0 and self.active:
+                self.start_processing()
+                await self.process_main_queue()
+                self.stop_processing()
+
+            self.debug.loop_counter['main'] = self.debug.loop_counter['main'] + 1
+            await asyncio.sleep(0)

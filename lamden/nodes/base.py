@@ -13,7 +13,6 @@ from lamden.logger.base import get_logger
 from lamden.network import Network
 from lamden.nodes import system_usage
 from lamden.nodes import processing_queue, validation_queue
-from lamden.nodes.processing_queue import make_tx_message
 from lamden.nodes.processors import work, blockcontender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
@@ -86,7 +85,7 @@ class Debug:
 
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
+    def __init__(self, socket_base,  wallet, constitution: dict, state=storage.StateManager(), ctx=None, bootnodes={}, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], consensus_percent=None, parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
                  socket_ports=None):
 
@@ -98,7 +97,7 @@ class Node:
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.tx_queue = tx_queue
 
-        self.state = storage.StateManager()
+        self.state = state
         self.event_writer = EventWriter()
 
         self.seed = seed
@@ -115,7 +114,7 @@ class Node:
         self.socket_base = socket_base
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
-        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.state.metadata.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.system_monitor = system_usage.SystemUsage()
 
@@ -486,7 +485,7 @@ class Node:
                 await self.validation_queue.process_next()
                 self.validation_queue.stop_processing()
 
-            self.debug.loop_counter['validation'] = self.debug.loop.counter['validation'] + 1
+            self.debug.loop_counter['validation'] = self.debug.loop_counter['validation'] + 1
             await asyncio.sleep(0)
 
     def store_solution_and_send_to_network(self, processing_results):
@@ -970,11 +969,11 @@ class Node:
 
     # Put into 'super driver'
     def get_current_height(self):
-        return self.state.metadata.get_latest_block_height()
+        return self.state.get_latest_block_height()
 
     # Put into 'super driver'
     def get_current_hash(self):
-        return self.state.metadata.get_latest_block_hash()
+        return self.state.get_latest_block_hash()
 
     # Put into 'super driver'
     def get_latest_block(self):

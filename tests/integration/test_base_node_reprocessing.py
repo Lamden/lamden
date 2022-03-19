@@ -11,7 +11,6 @@ from contracting.stdlib.bridge.decimal import ContractingDecimal
 import zmq.asyncio
 import asyncio
 
-from lamden.nodes.processing_queue import make_tx_message
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
 from unittest import TestCase
@@ -23,9 +22,7 @@ class TestNode(TestCase):
 
         self.num_of_nodes = 0
 
-        self.blocks = storage.BlockStorage()
-
-        self.driver = ContractDriver(driver=InMemDriver())
+        self.state = storage.StateManager()
 
         self.stu_wallet = Wallet()
         self.jeff_wallet = Wallet()
@@ -33,12 +30,11 @@ class TestNode(TestCase):
         self.oliver_wallet = Wallet()
 
         self.b = masternode.BlockService(
-            blocks=self.blocks,
-            driver=self.driver
+            state=self.state
         )
 
-        self.blocks.flush()
-        self.driver.flush()
+        self.state.blocks.flush()
+        self.state.driver.flush()
 
         self.node = None
         self.nodes = []
@@ -51,12 +47,10 @@ class TestNode(TestCase):
                 self.stop_node(node=node)
 
         self.loop.close()
-        self.b.blocks.flush()
-        self.b.driver.flush()
+        self.b.state.blocks.flush()
+        self.b.state.driver.flush()
 
     def create_a_node(self, constitution=None, bootnodes = None, node_num=0):
-        driver = ContractDriver(driver=InMemDriver())
-
         dl_wallet = Wallet()
         mn_wallet = Wallet()
 
@@ -75,7 +69,6 @@ class TestNode(TestCase):
             wallet=mn_wallet,
             constitution=constitution,
             bootnodes=bootnodes,
-            driver=driver,
             testing=True,
             metering=False,
             delay={
@@ -88,14 +81,14 @@ class TestNode(TestCase):
         node.network.socket_ports['webserver'] = 18080 + node_num
         node.network.socket_ports['publisher'] = 19080 + node_num
 
-        node.client.set_var(
+        node.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[self.stu_wallet.verifying_key],
             value=1_000_000
         )
 
-        node.driver.commit()
+        node.state.driver.commit()
 
         self.num_of_nodes = self.num_of_nodes + 1
 
@@ -165,7 +158,7 @@ class TestNode(TestCase):
         processing_results = get_processing_results(node=node, tx_message=tx_message)
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
-        node.last_processed_hlc = hlc_timestamp
+        node.state.metadata.last_processed_hlc = hlc_timestamp
         node.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
         node.store_solution_and_send_to_network(processing_results=processing_results)
@@ -183,7 +176,7 @@ class TestNode(TestCase):
         # stop the validation queue
         self.node.validation_queue.pause()
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         tx_args = {
@@ -209,15 +202,15 @@ class TestNode(TestCase):
 
         self.async_sleep(0.1)
 
-        self.node.driver.hard_apply(hlc=hlc_timestamp_3)
+        self.node.state.driver.hard_apply(hlc=hlc_timestamp_3)
 
-        stu_balance_after = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_after = self.node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         stu_balance_delta = stu_balance_before - stu_balance_after
 
         self.assertEqual(str(tx_amount * 3), str(stu_balance_delta))
 
-        debug_reprocessing_results = self.node.debug_reprocessing_results
+        debug_reprocessing_results = self.node.debug.reprocessing_results
         self.assertEqual('has_both', debug_reprocessing_results[hlc_timestamp_2]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_2]['sent_to_network'])
         self.assertEqual('has_both', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
@@ -237,7 +230,7 @@ class TestNode(TestCase):
         self.node.validation_queue.last_hlc_in_consensus = "0"
         self.node.last_processed_hlc = "0"
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         # Send from Stu to Jeff
@@ -272,17 +265,17 @@ class TestNode(TestCase):
 
         self.async_sleep(0.1)
 
-        self.node.driver.hard_apply(hlc=hlc_timestamp_3)
+        self.node.state.driver.hard_apply(hlc=hlc_timestamp_3)
 
-        stu_balance_after = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
-        jeff_balance_after = self.node.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
-        archer_balance_after = self.node.driver.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
+        stu_balance_after = self.node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        jeff_balance_after = self.node.state.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
+        archer_balance_after = self.node.state.driver.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
 
         self.assertEqual(tx_amount, stu_balance_before - stu_balance_after)
         self.assertEqual(tx_amount, jeff_balance_after)
         self.assertEqual(0, archer_balance_after)
 
-        debug_reprocessing_results = self.node.debug_reprocessing_results
+        debug_reprocessing_results = self.node.debug.reprocessing_results
         self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_2]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_2]['sent_to_network'])
         self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
@@ -304,7 +297,7 @@ class TestNode(TestCase):
         self.node.validation_queue.last_hlc_in_consensus = "0"
         self.node.last_processed_hlc = "0"
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         # Send from Stu to Jeff
@@ -338,15 +331,15 @@ class TestNode(TestCase):
 
         self.async_sleep(0.2)
 
-        stu_balance_after = self.node.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
-        jeff_balance_after = self.node.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
-        archer_balance_after = self.node.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
+        stu_balance_after = self.node.state.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        jeff_balance_after = self.node.state.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
+        archer_balance_after = self.node.state.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
 
         self.assertEqual(str(tx_amount), str(stu_balance_before - stu_balance_after))
         self.assertEqual(str('0.0'), str(jeff_balance_after))
         self.assertEqual(str(tx_amount), str(archer_balance_after))
 
-        debug_reprocessing_results = self.node.debug_reprocessing_results
+        debug_reprocessing_results = self.node.debug.reprocessing_results
         self.assertEqual('no_writes', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_3]['sent_to_network'])
 
@@ -623,17 +616,17 @@ class TestNode(TestCase):
         # Hard apply these processing results to get some state on our tester node
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_2)
         # Validate state was applied
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
         self.assertEqual(str(tx_amount), str(recipient_2_balance))
 
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_3)
         # Validate state was applied
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
         self.assertEqual(str(tx_amount*2), str(recipient_2_balance))
 
         # Validate both blocks processed
         self.assertIsNotNone(2, self.node.get_current_height())
-        self.assertIsNotNone(hlc_timestamp_3, self.node.last_processed_hlc)
+        self.assertIsNotNone(hlc_timestamp_3, self.node.state.metadata.last_processed_hlc)
 
         # Process tx4 through the tester node so we get a result
         self.node.main_processing_queue.append(tx=tx_message_4)
@@ -651,9 +644,9 @@ class TestNode(TestCase):
         self.async_sleep(0.1)
 
         # Validate state balances are as expected after reprocessing
-        recipient_1_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_1.verifying_key}')
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
-        jeff_balance = self.node.driver.get(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
+        recipient_1_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_1.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        jeff_balance = self.node.state.driver.get(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
 
         self.assertEqual('0.0', str(recipient_1_balance))
         self.assertEqual(str(tx_amount * 2), str(recipient_2_balance))

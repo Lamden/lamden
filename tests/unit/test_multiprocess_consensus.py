@@ -25,6 +25,9 @@ class TestMultiProcessConsensus(TestCase):
         )
         print("\n")
 
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
 
     def tearDown(self):
         self.validation_results = {}

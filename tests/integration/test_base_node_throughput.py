@@ -57,17 +57,15 @@ class TestNode(TestCase):
             self.await_async_process(self.node.stop)
 
     def add_currency_balance_to_node(self, node, to, amount):
-        node.client.set_var(
+        node.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[to],
             value=amount
         )
-        node.driver.commit()
+        node.state.driver.commit()
 
     def create_a_node(self, constitution=None):
-        driver = ContractDriver(driver=InMemDriver())
-
         dl_wallet = Wallet()
         mn_wallet = Wallet()
 
@@ -79,8 +77,8 @@ class TestNode(TestCase):
         node = base.Node(
             socket_base=f'tcp://127.0.0.1:{self.num_of_nodes}',
             wallet=mn_wallet,
+            state=storage.StateManager(),
             constitution=constitution,
-            driver=driver,
             delay={
                 'base': 0,
                 'self': 0

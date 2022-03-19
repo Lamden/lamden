@@ -499,3 +499,22 @@ class StateManager:
         # TODO This should be the actual cache write but it's HDD for now
         self.driver.clear_pending_state()
         self.update_state_with_transaction(tx=results['transactions'][0])
+
+    def get_latest_block_hash(self):
+        latest_hash = self.driver.get(BLOCK_HASH_KEY)
+        if latest_hash is None:
+            return '0' * 64
+        return latest_hash
+
+    def set_latest_block_hash(self, h):
+        self.driver.set(BLOCK_HASH_KEY, h)
+
+    def get_latest_block_height(self):
+        h = self.driver.get(BLOCK_NUM_HEIGHT)
+        if h is None:
+            return 0
+
+        if type(h) == ContractingDecimal:
+            h = int(h._d)
+
+        return h

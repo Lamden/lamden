@@ -89,7 +89,6 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:
-
         state = storage.StateManager()
 
         main_processing_queue = TxProcessingQueue(
@@ -99,13 +98,12 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
             wallet=node_wallet or Wallet(),
             hlc_clock=HLC_Clock(),
             processing_delay=lambda: 0,
-            get_last_processed_hlc=lambda: "0",
-            get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,
             reprocess=lambda: True,
             check_if_already_has_consensus=lambda: False,
             pause_all_queues=lambda: True,
-            unpause_all_queues=lambda: True
+            unpause_all_queues=lambda: True,
+            network=None
         )
 
         processing_results = main_processing_queue.process_tx(tx=tx_message)
