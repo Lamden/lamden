@@ -24,7 +24,7 @@ class ValidationQueue(ProcessingFileQueue):
         self.state = state
 
         # The main dict for storing results from other nodes
-        self.validation_results = {}
+        self.validation_results = ValidationResults()
 
         # Store confirmed solutions that I haven't got to yet
         self.state.metadata.last_hlc_in_consensus = ""
@@ -77,18 +77,7 @@ class ValidationQueue(ProcessingFileQueue):
 
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
         # Store data about the tx so it can be processed for consensus later.
-        if hlc_timestamp not in self.validation_results:
-            self.validation_results[hlc_timestamp] = {}
-            self.validation_results[hlc_timestamp]['solutions'] = {}
-            self.validation_results[hlc_timestamp]['proofs'] = {}
-            self.validation_results[hlc_timestamp]['result_lookup'] = {}
-            self.validation_results[hlc_timestamp]['last_consensus_result'] = {}
-            self.validation_results[hlc_timestamp]['last_check_info'] = {
-                'ideal_consensus_possible': True,
-                'eager_consensus_possible': True,
-                'has_consensus': False,
-                'solution': None
-            }
+        self.validation_results.add(hlc_timestamp=hlc_timestamp)
 
         if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus'] is True:
             # TODO why are we getting solutions from a bock in consensus??  Would we ever?
@@ -115,7 +104,7 @@ class ValidationQueue(ProcessingFileQueue):
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
             self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
 
-            self.clean_results_lookup(hlc_timestamp=hlc_timestamp)
+            self.validation_results.clean_results_lookup(hlc_timestamp=hlc_timestamp)
 
         result_hash = processing_results["proof"].get('tx_result_hash')
 
@@ -132,10 +121,10 @@ class ValidationQueue(ProcessingFileQueue):
             if next_hlc_timestamp <= self.state.metadata.last_hlc_in_consensus:
                 block = self.state.blocks.get_block(v=next_hlc_timestamp)
                 if block:
-                    self.flush_hlc(next_hlc_timestamp)
+                    self.validation_results.flush_hlc(next_hlc_timestamp)
                     await self.process_next()
 
-            if self.hlc_has_consensus(next_hlc_timestamp):
+            if self.validation_results.hlc_has_consensus(next_hlc_timestamp):
                 await self.process(hlc_timestamp=next_hlc_timestamp)
 
     async def check_all(self):
@@ -146,7 +135,7 @@ class ValidationQueue(ProcessingFileQueue):
         self.checking = True
 
         try:
-            results_not_in_consensus = self.results_not_in_consensus
+            results_not_in_consensus = self.validation_results.results_not_in_consensus
             if len(results_not_in_consensus) == 0:
                 self.checking = False
                 return
@@ -157,7 +146,7 @@ class ValidationQueue(ProcessingFileQueue):
 
             for hlc_timestamp in all_consensus_results:
                 if all_consensus_results.get(hlc_timestamp, None) is not None:
-                    self.add_consensus_result(
+                    self.validation_results.add_consensus_result(
                         hlc_timestamp=hlc_timestamp,
                         consensus_result=all_consensus_results[hlc_timestamp]
                     )
@@ -174,9 +163,9 @@ class ValidationQueue(ProcessingFileQueue):
             self.log.debug({'hlc_timestamp': hlc_timestamp, 'consensus_result': consensus_result})
         '''
 
-        if self.hlc_has_consensus(hlc_timestamp):
+        if self.validation_results.hlc_has_consensus(hlc_timestamp):
             results = self.validation_results.get(hlc_timestamp)
-            consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
+            consensus_result = self.validation_results.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
 
             #if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
             if True:
@@ -208,62 +197,11 @@ class ValidationQueue(ProcessingFileQueue):
                 self.log.info("CHECKING FOR NEXT BLOCK")
                 self.check_for_next_block()
 
-    def add_consensus_result(self, hlc_timestamp, consensus_result):
-        # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
-        if consensus_result.get('ideal_consensus_possible', None) is None and consensus_result.get('eager_consensus_possible', None) is None:
-            return
-
-        self.validation_results[hlc_timestamp]['last_check_info'] = consensus_result
-
-    def awaiting_validation(self, hlc_timestamp):
-        return hlc_timestamp in self.validation_results
-
-    @property
-    def results_not_in_consensus(self):
-        results = {}
-        for hlc_timestamp in self.validation_results.keys():
-            if not self.hlc_has_consensus(hlc_timestamp=hlc_timestamp):
-                results[hlc_timestamp] = self.validation_results[hlc_timestamp]
-        return results
-
-    def check_num_of_solutions(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp)
-
-        if results is None:
-            return 0
-        return len(self.validation_results[hlc_timestamp]['solutions'])
-
-    def check_ideal_consensus_possible(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp)
-
-        if results is None: return False
-        last_check_info = results.get('last_check_info')
-        if last_check_info is None: return False
-        return last_check_info['ideal_consensus_possible']
-
-    def check_eager_consensus_possible(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp)
-
-        if results is None: return False
-        last_check_info = results.get('last_check_info')
-        if last_check_info is None: return False
-        return last_check_info['eager_consensus_possible']
-
-    def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
-        results = self.validation_results.get(hlc_timestamp)
-        if not results:
-            return None
-        return results['solutions'].get(node_vk)
-
-    def is_earliest_hlc(self, hlc_timestamp):
-        hlc_list = sorted(self.validation_results.keys())
-        return hlc_timestamp == hlc_list[0]
-
     def check_for_next_block(self):
         for hlc_timestamp in self.validation_results:
             if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus']:
                 # self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
-                if self.is_earliest_hlc(hlc_timestamp):
+                if self.validation_results.is_earliest_hlc(hlc_timestamp):
                     # self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
                     self.process(hlc_timestamp=hlc_timestamp)
                     return
@@ -278,37 +216,6 @@ class ValidationQueue(ProcessingFileQueue):
                 self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
             except KeyError:
                 pass
-
-    def get_last_consensus_result(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp, None)
-        if results is None:
-            return {}
-        return results.get('last_check_info', {})
-
-    def get_proofs_from_results(self, hlc_timestamp):
-        results = self.validation_results.get(hlc_timestamp)
-        last_consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
-        consensus_solution = last_consensus_result.get('solution')
-
-        if not last_consensus_result.get('has_consensus'):
-            return []
-
-        all_proofs = results.get('proofs')
-
-        proofs = []
-
-        for node_vk in all_proofs:
-            proof = all_proofs[node_vk]
-            if proof.get('tx_result_hash') == consensus_solution:
-                proofs.append(proof)
-
-        return proofs
-
-    def get_consensus_results(self, hlc_timestamp):
-        validation_result = self.validation_results.get(hlc_timestamp, {})
-        consensus_results = validation_result.get('last_check_info', {})
-        consensus_solution = consensus_results.get('solution', '')
-        return validation_result['result_lookup'].get(consensus_solution, {})
 
     def get_recreated_tx_message(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp)
@@ -334,7 +241,7 @@ class ValidationQueue(ProcessingFileQueue):
 
     async def commit_consensus_block(self, hlc_timestamp):
         # Get the tx results for this timestamp
-        processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
+        processing_results = self.validation_results.get_consensus_results(hlc_timestamp=hlc_timestamp)
 
         # Hard apply these results on the driver
         try:
@@ -350,62 +257,14 @@ class ValidationQueue(ProcessingFileQueue):
             self.state.metadata.last_hlc_in_consensus = hlc_timestamp
 
         # remove HLC from processing
-        self.flush_hlc(hlc_timestamp=hlc_timestamp)
+        self.validation_results.flush_hlc(hlc_timestamp=hlc_timestamp)
 
         # Remove any HLC results in validation results that might be earlier
         # TODO DO we want to do this?
         # self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
 
-    def flush_hlc(self, hlc_timestamp):
-        # Clear all block results from memory because this block has consensus
-        self.validation_results.pop(hlc_timestamp)
-
-        # Remove all instances of this HLC from the checking queue to prevent re-checking it
-        # self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
-
-    def hlc_has_consensus(self, hlc_timestamp):
-        validation_result = self.validation_results.get(hlc_timestamp)
-        if validation_result is None:
-            return False
-        return validation_result['last_check_info'].get('has_consensus')
-
-    def hlc_has_solutions(self, hlc_timestamp):
-        validation_result = self.validation_results.get(hlc_timestamp)
-        if validation_result is None:
-            return False
-        solutions = validation_result.get('solutions')
-        if solutions is None:
-            return False
-        return len(solutions) > 0
-
-    def count_solutions(self, hlc_timestamp):
-        validation_result = self.validation_results.get(hlc_timestamp)
-        if validation_result is None:
-            return 0
-        solutions = validation_result.get('solutions')
-        if solutions is None:
-            return 0
-        return len(solutions)
-
     def remove_all_hlcs_from_queue(self, hlc_timestamp):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
-
-    def prune_earlier_results(self, consensus_hlc_timestamp):
-        for hlc_timestamp in self.validation_results:
-            if hlc_timestamp < consensus_hlc_timestamp:
-                self.validation_results.pop(hlc_timestamp, None)
-
-    def clean_results_lookup(self, hlc_timestamp):
-        validation_results = self.validation_results.get(hlc_timestamp)
-        for solution in validation_results.get('result_lookup').keys():
-            exists = False
-            for node in validation_results['solutions'].keys():
-                if validation_results['solutions'][node] == solution:
-                    exists = True
-                    break
-            if not exists:
-                self.validation_results['result_lookup'].pop(solution)
-
 
     def get_key_list(self):
         return [key for key in self.validation_results.keys()]
@@ -423,3 +282,165 @@ class ValidationQueue(ProcessingFileQueue):
             return hlcs_to_process[index]
         except IndexError:
             return None
+
+
+class ConsensusInfo:
+    def __init__(self):
+        self.ideal_consensus_possible = True
+        self.eager_consensus_possible = True
+        self.has_consensus = False
+        self.solution = None
+
+
+class Result:
+    def __init__(self):
+        self.solutions = {}
+        self.proofs = {}
+        self.result_lookup = {}
+        self.last_consensus_result = {}
+        self.last_check_info = ConsensusInfo()
+
+
+class ValidationResults(dict):
+    def add_consensus_result(self, hlc_timestamp, consensus_result):
+        # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
+        if consensus_result.get('ideal_consensus_possible', None) is None and consensus_result.get('eager_consensus_possible', None) is None:
+            return
+
+        self[hlc_timestamp]['last_check_info'] = consensus_result
+
+    def awaiting_validation(self, hlc_timestamp):
+        return hlc_timestamp in self
+
+    @property
+    def results_not_in_consensus(self):
+        results = {}
+        for hlc_timestamp in self.keys():
+            if not self.hlc_has_consensus(hlc_timestamp=hlc_timestamp):
+                results[hlc_timestamp] = self[hlc_timestamp]
+        return results
+
+    def check_num_of_solutions(self, hlc_timestamp):
+        results = self.get(hlc_timestamp)
+
+        if results is None:
+            return 0
+        return len(self[hlc_timestamp]['solutions'])
+
+    def check_ideal_consensus_possible(self, hlc_timestamp):
+        results = self.get(hlc_timestamp)
+
+        if results is None: return False
+        last_check_info = results.get('last_check_info')
+        if last_check_info is None: return False
+        return last_check_info['ideal_consensus_possible']
+
+    def check_eager_consensus_possible(self, hlc_timestamp):
+        results = self.get(hlc_timestamp)
+
+        if results is None: return False
+        last_check_info = results.get('last_check_info')
+        if last_check_info is None: return False
+        return last_check_info['eager_consensus_possible']
+
+    def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
+        results = self.get(hlc_timestamp)
+        if not results:
+            return None
+        return results['solutions'].get(node_vk)
+
+    def is_earliest_hlc(self, hlc_timestamp):
+        hlc_list = sorted(self.keys())
+        return hlc_timestamp == hlc_list[0]
+
+    def get_last_consensus_result(self, hlc_timestamp):
+        results = self.get(hlc_timestamp, None)
+        if results is None:
+            return {}
+        return results.get('last_check_info', {})
+
+    def get_proofs_from_results(self, hlc_timestamp):
+        results = self.get(hlc_timestamp)
+        last_consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
+        consensus_solution = last_consensus_result.get('solution')
+
+        if not last_consensus_result.get('has_consensus'):
+            return []
+
+        all_proofs = results.get('proofs')
+
+        proofs = []
+
+        for node_vk in all_proofs:
+            proof = all_proofs[node_vk]
+            if proof.get('tx_result_hash') == consensus_solution:
+                proofs.append(proof)
+
+        return proofs
+
+    def get_consensus_results(self, hlc_timestamp):
+        validation_result = self.get(hlc_timestamp, {})
+        consensus_results = validation_result.get('last_check_info', {})
+        consensus_solution = consensus_results.get('solution', '')
+        return validation_result['result_lookup'].get(consensus_solution, {})
+
+    def flush_hlc(self, hlc_timestamp):
+        # Clear all block results from memory because this block has consensus
+        self.pop(hlc_timestamp)
+
+        # Remove all instances of this HLC from the checking queue to prevent re-checking it
+        # self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
+
+    def hlc_has_consensus(self, hlc_timestamp):
+        validation_result = self.get(hlc_timestamp)
+        if validation_result is None:
+            return False
+        return validation_result['last_check_info'].get('has_consensus')
+
+    def hlc_has_solutions(self, hlc_timestamp):
+        validation_result = self.get(hlc_timestamp)
+        if validation_result is None:
+            return False
+        solutions = validation_result.get('solutions')
+        if solutions is None:
+            return False
+        return len(solutions) > 0
+
+    def count_solutions(self, hlc_timestamp):
+        validation_result = self.get(hlc_timestamp)
+        if validation_result is None:
+            return 0
+        solutions = validation_result.get('solutions')
+        if solutions is None:
+            return 0
+        return len(solutions)
+
+    def prune_earlier_results(self, consensus_hlc_timestamp):
+        for hlc_timestamp in self:
+            if hlc_timestamp < consensus_hlc_timestamp:
+                self.pop(hlc_timestamp, None)
+
+    def clean_results_lookup(self, hlc_timestamp):
+        validation_results = self.get(hlc_timestamp)
+        for solution in validation_results.get('result_lookup').keys():
+            exists = False
+            for node in validation_results['solutions'].keys():
+                if validation_results['solutions'][node] == solution:
+                    exists = True
+                    break
+            if not exists:
+                self['result_lookup'].pop(solution)
+
+    def add(self, hlc_timestamp):
+        if hlc_timestamp not in self:
+            self[hlc_timestamp] = {}
+            self[hlc_timestamp]['solutions'] = {}
+            self[hlc_timestamp]['proofs'] = {}
+            self[hlc_timestamp]['result_lookup'] = {}
+            self[hlc_timestamp]['last_consensus_result'] = {}
+            self[hlc_timestamp]['last_check_info'] = {
+                'ideal_consensus_possible': True,
+                'eager_consensus_possible': True,
+                'has_consensus': False,
+                'solution': None
+            }

@@ -41,7 +41,7 @@ class Debug:
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, network, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
                  check_if_already_has_consensus, pause_all_queues, unpause_all_queues, reprocess,
-                 testing=False, debug=False, tx_queue=FileQueue(), validation_queue=FileQueue()):
+                 testing=False, debug=False, tx_queue=FileQueue(), validation_queue=FileQueue(root=STORAGE_HOME.joinpath('validation_queue'))):
         super().__init__()
         self.tx_queue = tx_queue
         self.debug = Debug()
@@ -78,6 +78,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.detected_rollback = False
         self.append_history = []
         self.currently_processing_hlc = ""
+
+        self.validation_queue = validation_queue
 
     def make_tx_message(self, tx):
         hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
@@ -501,3 +503,17 @@ class TxProcessingQueue(ProcessingQueue):
 
             self.debug.loop_counter['main'] = self.debug.loop_counter['main'] + 1
             await asyncio.sleep(0)
+
+    def store_solution_and_send_to_network(self, processing_results):
+
+        self.send_solution_to_network(processing_results=processing_results)
+
+        processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp']
+        )
+
+        # If validation queue is a file queue, then this can be abstracted out
+        self.validation_queue.append(
+            processing_results=processing_results
+        )

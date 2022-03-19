@@ -589,7 +589,7 @@ class Node:
             new_block = block_from_tx_results(
                 processing_results=processing_results,
                 block_num=next_block_num,
-                proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
+                proofs=self.validation_queue.validation_results.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
 
@@ -670,7 +670,7 @@ class Node:
             new_block = block_from_tx_results(
                 processing_results=processing_results,
                 block_num=next_block_num,
-                proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
+                proofs=self.validation_queue.validation_results.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
 
@@ -998,7 +998,7 @@ class Node:
         return previous_hash == self.get_consensus_hash()
 
     def check_if_already_has_consensus(self, hlc_timestamp):
-        return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
+        return self.validation_queue.validation_results.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
 
 
     '''

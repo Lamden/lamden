@@ -10,6 +10,42 @@ from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_mes
 import asyncio
 from lamden import storage
 
+# self[hlc_timestamp] = {}
+# self[hlc_timestamp]['solutions'] = {}
+# self[hlc_timestamp]['proofs'] = {}
+# self[hlc_timestamp]['result_lookup'] = {}
+# self[hlc_timestamp]['last_consensus_result'] = {}
+# self[hlc_timestamp]['last_check_info'] = {
+#     'ideal_consensus_possible': True,
+#     'eager_consensus_possible': True,
+#     'has_consensus': False,
+#     'solution': None
+# }
+
+
+class TestValidationRestults(TestCase):
+    def setUp(self):
+        self.v = validation_queue.ValidationResults()
+
+    def test_add_hlc_timestamp_adds_to_results(self):
+        default = {
+            'solutions': {},
+            'proofs': {},
+            'result_lookup': {},
+            'last_consensus_result': {},
+            'last_check_info': {
+                'ideal_consensus_possible': True,
+                'eager_consensus_possible': True,
+                'has_consensus': False,
+                'solution': None
+            }
+        }
+
+        self.v.add('test')
+
+        self.assertDictEqual(self.v['test'], default)
+
+
 class TestValidationQueue(TestCase):
     def setUp(self):
         self.wallet = Wallet()
@@ -159,7 +195,7 @@ class TestValidationQueue(TestCase):
         node_wallet = Wallet()
         processing_results = self.add_solution(node_wallet=node_wallet)
 
-        solution = self.validation_queue.get_result_hash_for_vk(
+        solution = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=processing_results['hlc_timestamp'],
             node_vk=node_wallet.verifying_key
         )
@@ -172,7 +208,7 @@ class TestValidationQueue(TestCase):
 
         self.hlc_clock.get_new_hlc_timestamp()
 
-        solution = self.validation_queue.get_result_hash_for_vk(
+        solution = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=self.hlc_clock.get_new_hlc_timestamp(),
             node_vk=node_wallet.verifying_key
         )
@@ -182,7 +218,7 @@ class TestValidationQueue(TestCase):
         node_wallet = Wallet()
         processing_results = self.add_solution(node_wallet=node_wallet)
 
-        solution = self.validation_queue.get_result_hash_for_vk(
+        solution = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=processing_results['hlc_timestamp'],
             node_vk=Wallet().verifying_key
         )
@@ -204,7 +240,7 @@ class TestValidationQueue(TestCase):
             processing_results=processing_results
         )
 
-        result_hash = self.validation_queue.get_result_hash_for_vk(
+        result_hash = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=hlc_timestamp,
             node_vk=node_wallet.verifying_key
         )
@@ -232,11 +268,11 @@ class TestValidationQueue(TestCase):
         self.validation_queue.append(processing_results=processing_results_1)
         self.validation_queue.append(processing_results=processing_results_2)
 
-        node_wallet_1_solution = self.validation_queue.get_result_hash_for_vk(
+        node_wallet_1_solution = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=hlc_timestamp,
             node_vk=node_wallet_1.verifying_key
         )
-        node_wallet_2_solution = self.validation_queue.get_result_hash_for_vk(
+        node_wallet_2_solution = self.validation_queue.validation_results.get_result_hash_for_vk(
             hlc_timestamp=hlc_timestamp,
             node_vk=node_wallet_2.verifying_key
         )
@@ -289,7 +325,7 @@ class TestValidationQueue(TestCase):
         hlc_timestamp = tx_message['hlc_timestamp']
         self.validation_queue.append(processing_results=processing_results)
 
-        self.assertTrue(self.validation_queue.awaiting_validation(hlc_timestamp=hlc_timestamp))
+        self.assertTrue(self.validation_queue.validation_results.awaiting_validation(hlc_timestamp=hlc_timestamp))
 
         self.assertIsNotNone(self.validation_queue.validation_results[hlc_timestamp]['solutions'][node_wallet.verifying_key])
 
@@ -306,7 +342,7 @@ class TestValidationQueue(TestCase):
 
         self.validation_queue.process(hlc_timestamp=hlc_timestamp)
 
-        consensus_result = self.validation_queue.get_consensus_results(
+        consensus_result = self.validation_queue.validation_results.get_consensus_results(
             hlc_timestamp=hlc_timestamp
         )
         self.assertIsNotNone(consensus_result)
@@ -390,6 +426,6 @@ class TestValidationQueue(TestCase):
             'solution': tx_result_hash
         }
 
-        proofs = self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp)
+        proofs = self.validation_queue.validation_results.get_proofs_from_results(hlc_timestamp=hlc_timestamp)
 
         self.assertEqual(2, len(proofs))
