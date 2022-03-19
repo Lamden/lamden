@@ -8,7 +8,6 @@ from contracting.db.driver import InMemDriver, ContractDriver
 import zmq.asyncio
 import asyncio
 
-from lamden.nodes.processing_queue import make_tx_message
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 from tests.integration.mock.create_directories import remove_fixture_directories
 
@@ -70,33 +69,34 @@ class TestNode(TestCase):
         bootnodes = {}
         bootnodes[mn_wallet.verifying_key] = f'tcp://127.0.0.1:{19000 + node_num}'
 
+        state = storage.StateManager(block_root=f'{self.block_storage_path}/{mn_wallet.verifying_key}')
+
         node = base.Node(
             socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
             ctx=self.ctx,
             wallet=mn_wallet,
             constitution=constitution,
-            driver=driver,
+            state=state,
             testing=True,
             metering=False,
             delay={
                 'base': 0,
                 'self': 0
             },
-            blocks=storage.BlockStorage(home=f'{self.block_storage_path}/{mn_wallet.verifying_key}')
         )
 
         node.network.socket_ports['router'] = 19000 + node_num
         node.network.socket_ports['webserver'] = 18080 + node_num
         node.network.socket_ports['publisher'] = 19080 + node_num
 
-        node.client.set_var(
+        node.state.client.set_var(
             contract='currency',
             variable='balances',
             arguments=[self.stu_wallet.verifying_key],
             value=1_000_000
         )
 
-        node.driver.commit()
+        node.state.driver.commit()
 
         self.num_of_nodes = self.num_of_nodes + 1
 
@@ -171,7 +171,7 @@ class TestNode(TestCase):
         node = self.create_a_node()
         self.start_node(node)
 
-        stu_balance_before = node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         tx_args = {
@@ -180,18 +180,18 @@ class TestNode(TestCase):
             'amount': tx_amount
         }
 
-        tx_message_1 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(**tx_args))
+        tx_message_1 = node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(**tx_args))
 
         node.main_processing_queue.append(tx=tx_message_1)
 
         self.async_sleep(0.1)
 
-        block = node.blocks.get_block(v=1)
+        block = node.state.blocks.get_block(v=1)
 
         self.assertIsNotNone(block)
 
-        self.assertEqual(tx_amount, node.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
-        self.assertEqual(stu_balance_before - tx_amount, node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
+        self.assertEqual(tx_amount, node.state.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
+        self.assertEqual(stu_balance_before - tx_amount, node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
         self.assertEqual(1, node.current_block_height)
 
     def test_hard_apply_block_multiple_concurrent(self):
@@ -199,25 +199,25 @@ class TestNode(TestCase):
         node = self.create_a_node()
         self.start_node(node)
 
-        stu_balance_before = node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         # Send from Stu to Jeff
-        tx_message_1 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = node.make_tx_message(tx=get_new_currency_tx(
             to=self.jeff_wallet.verifying_key,
             wallet=self.stu_wallet,
             amount=tx_amount
         ))
 
         # Send from Jeff to Archer
-        tx_message_2 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
+        tx_message_2 = node.make_tx_message(tx=get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.jeff_wallet,
             amount=tx_amount
         ))
 
         # Send from Archer to Oliver
-        tx_message_3 = make_tx_message(node.hlc_clock, node.wallet, tx=get_new_currency_tx(
+        tx_message_3 = node.make_tx_message(tx=get_new_currency_tx(
             to=self.oliver_wallet.verifying_key,
             wallet=self.archer_wallet,
             amount=tx_amount
@@ -229,14 +229,14 @@ class TestNode(TestCase):
 
         self.async_sleep(0.2)
 
-        self.assertIsNotNone(node.blocks.get_block(v=1))
-        self.assertIsNotNone(node.blocks.get_block(v=2))
-        self.assertIsNotNone(node.blocks.get_block(v=3))
+        self.assertIsNotNone(node.state.blocks.get_block(v=1))
+        self.assertIsNotNone(node.state.blocks.get_block(v=2))
+        self.assertIsNotNone(node.state.blocks.get_block(v=3))
 
-        self.assertEqual(stu_balance_before - tx_amount, node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
-        self.assertEqual(0, node.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
-        self.assertEqual(0, node.driver.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}'))
-        self.assertEqual(tx_amount, node.driver.driver.get(f'currency.balances:{self.oliver_wallet.verifying_key}'))
+        self.assertEqual(stu_balance_before - tx_amount, node.state.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
+        self.assertEqual(0, node.state.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
+        self.assertEqual(0, node.state.driver.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}'))
+        self.assertEqual(tx_amount, node.state.driver.driver.get(f'currency.balances:{self.oliver_wallet.verifying_key}'))
         self.assertEqual(3, node.current_block_height)
 
 
@@ -257,12 +257,12 @@ class TestNode(TestCase):
         node_2.validation_queue.get_peers_for_consensus = get_peers_for_consensus
         self.start_node(node_2)
 
-        stu_balance_before = node_2.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = node_2.state.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
 
         # Create three transactions
         tx_amount = 200.1
         # Send from Stu to Jeff
-        tx_message_1 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
+        tx_message_1 = node_2.make_tx_message(tx=get_new_currency_tx(
             to=self.jeff_wallet.verifying_key,
             wallet=self.stu_wallet,
             amount=tx_amount
@@ -270,7 +270,7 @@ class TestNode(TestCase):
         hlc_timestamp_1 = tx_message_1.get('hlc_timestamp')
 
         # Send from Jeff to Archer
-        tx_message_2 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
+        tx_message_2 = node_2.make_tx_message(tx=get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.jeff_wallet,
             amount=tx_amount
@@ -278,7 +278,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
 
         # Send from Archer to Oliver
-        tx_message_3 = make_tx_message(node_2.hlc_clock, node_2.wallet, tx=get_new_currency_tx(
+        tx_message_3 = node_2.make_tx_message(tx=get_new_currency_tx(
             to=self.oliver_wallet.verifying_key,
             wallet=self.archer_wallet,
             amount=tx_amount
@@ -306,8 +306,8 @@ class TestNode(TestCase):
         self.async_sleep(0.2)
 
         # Validate blocks are created
-        self.assertIsNotNone(node_1.blocks.get_block(v=1))
-        self.assertIsNotNone(node_1.blocks.get_block(v=2))
+        self.assertIsNotNone(node_1.state.blocks.get_block(v=1))
+        self.assertIsNotNone(node_1.state.blocks.get_block(v=2))
 
         # Add results from TX1
         self.add_solution(node=node_1, processing_results=processing_results_1)
@@ -316,15 +316,15 @@ class TestNode(TestCase):
         self.async_sleep(0.1)
 
         # Validate the blocks are in hlc_timestamps order
-        block_1 = node_1.blocks.get_block(v=1)
-        block_2 = node_1.blocks.get_block(v=2)
-        block_3 = node_1.blocks.get_block(v=3)
+        block_1 = node_1.state.blocks.get_block(v=1)
+        block_2 = node_1.state.blocks.get_block(v=2)
+        block_3 = node_1.state.blocks.get_block(v=3)
         self.assertEqual(hlc_timestamp_1, block_1.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_2, block_2.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_3, block_3.get('hlc_timestamp'))
 
-        self.assertEqual(stu_balance_before - tx_amount, node_1.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
-        self.assertEqual(0, node_1.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
-        self.assertEqual(0, node_1.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}'))
-        self.assertEqual(tx_amount, node_1.driver.get(f'currency.balances:{self.oliver_wallet.verifying_key}'))
+        self.assertEqual(stu_balance_before - tx_amount, node_1.state.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}'))
+        self.assertEqual(0, node_1.state.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}'))
+        self.assertEqual(0, node_1.state.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}'))
+        self.assertEqual(tx_amount, node_1.state.driver.get(f'currency.balances:{self.oliver_wallet.verifying_key}'))
         self.assertEqual(3, node_1.current_block_height)

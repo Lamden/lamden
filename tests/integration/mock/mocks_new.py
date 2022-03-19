@@ -105,22 +105,20 @@ class MockMaster(MockNode):
 
     async def start(self, should_seed=True):
         assert self.ready_to_start, 'Not ready to start!'
-
+        state = storage.StateManager(block_root=self.block_storage_path)
         self.obj = masternode.Masternode(
+            state=state,
             testing=True,
             ctx=self.ctx,
             socket_base=self.tcp,
             wallet=self.wallet,
             constitution=self.constitution,
             bootnodes=self.bootnodes,
-            driver=self.driver,
             tx_queue=self.tx_queue,
             webserver_port=self.webserver_port,
             genesis_path=self.genesis_path,
-            nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path),
             socket_ports=self.socket_ports,
             should_seed=should_seed
         )
@@ -142,20 +140,18 @@ class MockDelegate(MockNode):
 
     async def start(self, should_seed=True):
         assert self.ready_to_start, 'Not ready to start!'
-
+        state = storage.StateManager(block_root=self.block_storage_path)
         self.obj = delegate.Delegate(
+            state=state,
             testing=True,
             socket_base=self.tcp,
             ctx=self.ctx,
             wallet=self.wallet,
             constitution=self.constitution,
             bootnodes=self.bootnodes,
-            driver=self.driver,
             genesis_path=self.genesis_path,
-            nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path),
             socket_ports=self.socket_ports,
             should_seed=should_seed
         )
