@@ -23,12 +23,10 @@ from lamden import storage
 # }
 
 
-class TestValidationRestults(TestCase):
+class TestValidationResults(TestCase):
     def setUp(self):
         self.v = validation_queue.ValidationResults()
-
-    def test_add_hlc_timestamp_adds_to_results(self):
-        default = {
+        self.default = {
             'solutions': {},
             'proofs': {},
             'result_lookup': {},
@@ -41,9 +39,106 @@ class TestValidationRestults(TestCase):
             }
         }
 
+    def test_add_hlc_timestamp_adds_to_results(self):
         self.v.add('test')
 
-        self.assertDictEqual(self.v['test'], default)
+        self.assertDictEqual(self.v['test'], self.default)
+
+    def test_add_consensus_result_bad_dict_does_nothing(self):
+        self.v.add('test')
+
+        self.v.add_consensus_result('test', {'test': 123, 'bad': 456})
+
+        self.assertDictEqual(self.v['test']['last_check_info'], self.default['last_check_info'])
+
+    def test_add_consensus_valid_dict_updates(self):
+        self.v.add('test')
+
+        valid = {
+            'ideal_consensus_possible': 123,
+            'eager_consensus_possible': 456
+        }
+
+        self.v.add_consensus_result('test', valid)
+
+        self.assertDictEqual(self.v['test']['last_check_info'], valid)
+
+    def test_awaiting_validation_false_if_not_exist(self):
+        self.assertFalse(self.v.awaiting_validation('not_there'))
+
+    def test_awaiting_validation_true_if_exist(self):
+        self.v.add('not_there')
+        self.assertTrue(self.v.awaiting_validation('not_there'))
+
+    def test_results_not_in_consensus_returns_only_not_in_consensus(self):
+        self.v.add('test')
+        self.v['test']['last_check_info']['has_consensus'] = True
+
+        self.v.add('not')
+
+        r = self.v.results_not_in_consensus
+        self.assertDictEqual(r, {'not': self.v['not']})
+
+    def test_num_solutions_0_on_default(self):
+        self.assertEqual(self.v.check_num_of_solutions('test'), 0)
+
+    def test_num_solutions_count(self):
+        self.v.add('test')
+        self.v['test']['solutions']['example'] = 10
+
+        self.assertEqual(self.v.check_num_of_solutions('test'), 1)
+
+    def test_check_ideal_consensus_true(self):
+        self.v.add('test')
+
+        self.v['test']['last_check_info']['ideal_consensus_possible'] = True
+
+        self.assertTrue(self.v.check_ideal_consensus_possible('test'))
+
+    def test_check_ideal_consensus_key_error_false(self):
+        self.assertFalse(self.v.check_ideal_consensus_possible('test'))
+
+    def test_check_eager_consensus_true(self):
+        self.v.add('test')
+
+        self.v['test']['last_check_info']['eager_consensus_possible'] = True
+
+        self.assertTrue(self.v.check_eager_consensus_possible('test'))
+
+    def test_check_eager_consensus_key_error_false(self):
+        self.assertFalse(self.v.check_eager_consensus_possible('test'))
+
+    def test_get_result_hash_for_vk_none_on_default(self):
+        self.assertEqual(self.v.get_result_hash_for_vk('test', 'test'), None)
+
+    def test_get_result_hash_for_vk_returns_correctly(self):
+        self.v.add('test')
+        self.v['test']['solutions']['test2'] = 10
+
+        self.assertEqual(self.v.get_result_hash_for_vk('test', 'test2'), 10)
+
+    def test_is_earliest_hlc_false_on_default(self):
+        self.assertFalse(self.v.is_earliest_hlc('test'))
+
+    def test_is_earliest_hlc_true_if_only_one(self):
+        self.v.add('test')
+
+        self.assertTrue(self.v.is_earliest_hlc('test'))
+
+    def test_is_earliest_hlc_false_if_not(self):
+        self.v.add('test')
+        self.v.add('aest')
+
+        self.assertFalse(self.v.is_earliest_hlc('test'))
+
+    def test_get_last_consensus_result_empty_dict_if_none(self):
+        self.assertDictEqual(self.v.get_last_consensus_result('test'), {})
+
+    def test_get_last_consensus_result_check_info_if_not_none(self):
+        self.v.add('test')
+
+        self.assertDictEqual(self.v.get_last_consensus_result('test'), self.v['test']['last_check_info'])
+
 
 
 class TestValidationQueue(TestCase):

@@ -159,7 +159,7 @@ class TestNode(TestCase):
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
         node.state.metadata.last_processed_hlc = hlc_timestamp
-        node.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        node.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
         node.store_solution_and_send_to_network(processing_results=processing_results)
 

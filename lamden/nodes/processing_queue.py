@@ -12,7 +12,7 @@ from lamden import storage, rewards
 from datetime import datetime
 from lamden.nodes.filequeue import FileQueue
 from lamden.network import Network
-from lamden.config import STORAGE_HOME
+from lamden.config import STORAGE_HOME, CONTENDER_SERVICE
 import asyncio
 import gc
 
@@ -461,15 +461,6 @@ class TxProcessingQueue(ProcessingQueue):
             self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
             await asyncio.sleep(0)
 
-    def soft_apply_current_state(self, hlc_timestamp):
-        try:
-            self.state.driver.soft_apply(hcl=hlc_timestamp)
-        except Exception as err:
-            print(err)
-
-        self.state.nonces.flush_pending()
-        gc.collect()
-
     async def process_main_queue(self):
         try:
             processing_results = await self.process_next()
@@ -486,7 +477,7 @@ class TxProcessingQueue(ProcessingQueue):
                 self.state.metadata.last_processed_hlc = hlc_timestamp
 
                 try:
-                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+                    self.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
                 except Exception as err:
                     print(err)
 
@@ -506,7 +497,7 @@ class TxProcessingQueue(ProcessingQueue):
 
     def store_solution_and_send_to_network(self, processing_results):
 
-        self.send_solution_to_network(processing_results=processing_results)
+        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
 
         processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
             tx_result=processing_results['tx_result'],
@@ -514,6 +505,4 @@ class TxProcessingQueue(ProcessingQueue):
         )
 
         # If validation queue is a file queue, then this can be abstracted out
-        self.validation_queue.append(
-            processing_results=processing_results
-        )
+        self.validation_queue.append(processing_results)

@@ -8,7 +8,7 @@ from contracting.client import ContractingClient
 from contracting.db.encoder import encode, decode
 from lamden import contracts
 from contracting.execution.executor import Executor
-
+import gc
 import pathlib
 
 import os
@@ -518,3 +518,13 @@ class StateManager:
             h = int(h._d)
 
         return h
+
+    def soft_apply_current_state(self, hlc_timestamp):
+        try:
+            self.driver.soft_apply(hcl=hlc_timestamp)
+        except Exception as err:
+            print(err)
+
+        self.nonces.flush_pending()
+        gc.collect()
+

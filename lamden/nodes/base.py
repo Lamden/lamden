@@ -492,7 +492,7 @@ class Node:
 
     def store_solution_and_send_to_network(self, processing_results):
 
-        self.send_solution_to_network(processing_results=processing_results)
+        asyncio.ensure_future(self.network.publisher.publish(topic=lamden.config.CONTENDER_SERVICE, msg=processing_results))
 
         processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
             tx_result=processing_results['tx_result'],
@@ -503,18 +503,6 @@ class Node:
         self.validation_queue.append(
             processing_results=processing_results
         )
-
-    def send_solution_to_network(self, processing_results):
-        asyncio.ensure_future(self.network.publisher.publish(topic=lamden.config.CONTENDER_SERVICE, msg=processing_results))
-
-    def soft_apply_current_state(self, hlc_timestamp):
-        try:
-            self.state.driver.soft_apply(hcl=hlc_timestamp)
-        except Exception as err:
-            print(err)
-
-        self.state.nonces.flush_pending()
-        gc.collect()
 
     def update_block_db(self, block):
         # if self.testing:
@@ -548,7 +536,7 @@ class Node:
 
             self.state.driver.set(s['key'], s['value'])
 
-        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        self.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
         self.state.driver.hard_apply(hlc=hlc_timestamp)
 
     async def hard_apply_block(self, processing_results):
@@ -748,7 +736,7 @@ class Node:
 
                     # Process the transaction
                     processing_results = self.main_processing_queue.process_tx(tx=tx)
-                    self.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
+                    self.state.soft_apply_current_state(hlc_timestamp=new_tx_hlc_timestamp)
                     changed_keys_list = list(deepcopy(self.state.driver.pending_deltas[new_tx_hlc_timestamp].get('writes')))
                     self.store_solution_and_send_to_network(processing_results=processing_results)
                     continue
@@ -931,7 +919,7 @@ class Node:
             for pending_delta_key, pending_delta_value in pending_deltas.items():
                 self.state.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
 
-        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        self.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
     # Put into 'super driver'
     def get_block_by_number(self, block_number):

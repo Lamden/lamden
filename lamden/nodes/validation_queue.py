@@ -56,6 +56,13 @@ class ValidationQueue(ProcessingFileQueue):
 
         self.checking = False
 
+    async def loop(self):
+        while self.running:
+            if len(self.queue) > 0:
+                for q in self.queue:
+                    self.append(q)
+            await asyncio.sleep(0)
+
     def append(self, processing_results):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
         node_vk = processing_results["proof"].get('signer')
@@ -69,50 +76,16 @@ class ValidationQueue(ProcessingFileQueue):
             if block:
                 return
 
-        # TODO how late of an HLC timestamp are we going to accept?
-        '''
-        if hlc_timestamp < self.last_hlc_in_consensus:
-            return
-        '''
-
-        # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
-        # Store data about the tx so it can be processed for consensus later.
         self.validation_results.add(hlc_timestamp=hlc_timestamp)
 
         if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus'] is True:
-            # TODO why are we getting solutions from a bock in consensus??  Would we ever?
-            # Is just returning an okay move?
             return
 
-        '''
-        if self.debug:
-            self.log.debug(json.dumps({
-                'type': 'tx_lifecycle',
-                'file': 'validation_queue',
-                'event': 'got_solution',
-                'from': node_vk,
-                'solution': block_info['hash'],
-                'hlc_timestamp': hlc_timestamp,
-                'system_time': time.time()
-            }))
-        '''
-
         # check if this node already gave us information
-        if self.validation_results[hlc_timestamp]['solutions'].get(node_vk, None):
-            # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
-            # Set the possible consensus flags back to True
-            self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
-            self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
+        self.validation_results.update_for_node(hlc_timestamp, node_vk)
 
-            self.validation_results.clean_results_lookup(hlc_timestamp=hlc_timestamp)
-
-        result_hash = processing_results["proof"].get('tx_result_hash')
-
-        self.validation_results[hlc_timestamp]['solutions'][node_vk] = result_hash
-        self.validation_results[hlc_timestamp]['proofs'][node_vk] = processing_results["proof"]
-
-        if self.validation_results[hlc_timestamp]['result_lookup'].get(result_hash) is None:
-            self.validation_results[hlc_timestamp]['result_lookup'][result_hash] = processing_results
+        # Add solution
+        self.validation_results.add_solution(processing_results, hlc_timestamp, node_vk)
 
     async def process_next(self):
         if len(self.validation_results) > 0:
@@ -328,35 +301,39 @@ class ValidationResults(dict):
         return len(self[hlc_timestamp]['solutions'])
 
     def check_ideal_consensus_possible(self, hlc_timestamp):
-        results = self.get(hlc_timestamp)
-
-        if results is None: return False
-        last_check_info = results.get('last_check_info')
-        if last_check_info is None: return False
-        return last_check_info['ideal_consensus_possible']
+        try:
+            return self[hlc_timestamp]['last_check_info']['ideal_consensus_possible']
+        except KeyError:
+            return False
 
     def check_eager_consensus_possible(self, hlc_timestamp):
-        results = self.get(hlc_timestamp)
-
-        if results is None: return False
-        last_check_info = results.get('last_check_info')
-        if last_check_info is None: return False
-        return last_check_info['eager_consensus_possible']
+        try:
+            return self[hlc_timestamp]['last_check_info']['eager_consensus_possible']
+        except KeyError:
+            return False
 
     def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
         results = self.get(hlc_timestamp)
-        if not results:
+
+        if results is None:
             return None
+
         return results['solutions'].get(node_vk)
 
     def is_earliest_hlc(self, hlc_timestamp):
         hlc_list = sorted(self.keys())
+
+        if len(hlc_list) == 0:
+            return False
+
         return hlc_timestamp == hlc_list[0]
 
     def get_last_consensus_result(self, hlc_timestamp):
         results = self.get(hlc_timestamp, None)
+
         if results is None:
             return {}
+
         return results.get('last_check_info', {})
 
     def get_proofs_from_results(self, hlc_timestamp):
@@ -397,24 +374,6 @@ class ValidationResults(dict):
             return False
         return validation_result['last_check_info'].get('has_consensus')
 
-    def hlc_has_solutions(self, hlc_timestamp):
-        validation_result = self.get(hlc_timestamp)
-        if validation_result is None:
-            return False
-        solutions = validation_result.get('solutions')
-        if solutions is None:
-            return False
-        return len(solutions) > 0
-
-    def count_solutions(self, hlc_timestamp):
-        validation_result = self.get(hlc_timestamp)
-        if validation_result is None:
-            return 0
-        solutions = validation_result.get('solutions')
-        if solutions is None:
-            return 0
-        return len(solutions)
-
     def prune_earlier_results(self, consensus_hlc_timestamp):
         for hlc_timestamp in self:
             if hlc_timestamp < consensus_hlc_timestamp:
@@ -444,3 +403,20 @@ class ValidationResults(dict):
                 'has_consensus': False,
                 'solution': None
             }
+
+    def update_for_node(self, hlc_timestamp, node_vk):
+        if self[hlc_timestamp]['solutions'].get(node_vk, None):
+            # TODO this is a possible place to kick off re-checking consensus on Eager consensus blocks
+            # Set the possible consensus flags back to True
+            self[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
+            self[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
+
+            self.clean_results_lookup(hlc_timestamp=hlc_timestamp)
+
+    def add_solution(self, processing_results, hlc_timestamp, node_vk):
+        result_hash = processing_results["proof"].get('tx_result_hash')
+        self[hlc_timestamp]['solutions'][node_vk] = result_hash
+        self[hlc_timestamp]['proofs'][node_vk] = processing_results["proof"]
+
+        if self[hlc_timestamp]['result_lookup'].get(result_hash) is None:
+            self[hlc_timestamp]['result_lookup'][result_hash] = processing_results

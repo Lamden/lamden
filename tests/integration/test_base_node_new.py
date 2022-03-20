@@ -219,7 +219,7 @@ class TestNode(TestCase):
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
         node.last_processed_hlc = hlc_timestamp
-        node.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        node.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
         node.store_solution_and_send_to_network(processing_results=processing_results)
 
@@ -252,7 +252,7 @@ class TestNode(TestCase):
         self.create_a_node()
         self.start_node()
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -409,11 +409,11 @@ class TestNode(TestCase):
         self.create_a_node()
         self.node.consensus_percent = 0
 
-        print(f'Starting HLC: {self.node.last_processed_hlc}')
+        print(f'Starting HLC: {self.node.state.last_processed_hlc}')
 
         self.start_node()
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=self.jeff_wallet.verifying_key,
             amount=100.5
@@ -427,7 +427,7 @@ class TestNode(TestCase):
         self.async_sleep(0.01)
 
         # queue is empty because tx was processed
-        self.assertEqual(hlc_timestamp, self.node.last_processed_hlc)
+        self.assertEqual(hlc_timestamp, self.node.state.last_processed_hlc)
 
         # queue is empty because tx was processed
         self.assertEqual(0, len(self.node.validation_queue))
@@ -465,7 +465,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 200.5
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -483,10 +483,10 @@ class TestNode(TestCase):
         self.await_async_process(self.node.main_processing_queue.process_next)
 
         # Run the Soft Apply logic
-        self.node.soft_apply_current_state(hlc_timestamp)
+        self.node.state.soft_apply_current_state(hlc_timestamp)
 
         # Get the recipient balance from the driver
-        recipient_balance_after = self.node.executor.driver.get_var(
+        recipient_balance_after = self.node.state.executor.driver.get_var(
             contract='currency',
             variable='balances',
             arguments=[recipient_wallet.verifying_key],
@@ -508,7 +508,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 100.5
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -538,7 +538,7 @@ class TestNode(TestCase):
         print("sending second transaction")
         # ___ SEND ANOTHER Transaction ___
         # create a transaction
-        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -553,7 +553,7 @@ class TestNode(TestCase):
         self.assertEqual(0, len(self.node.main_processing_queue))
 
         # Get the recipient balance from the driver
-        recipient_balance_after = self.node.executor.driver.get_var(
+        recipient_balance_after = self.node.state.executor.driver.get_var(
             contract='currency',
             variable='balances',
             arguments=[recipient_wallet.verifying_key],
@@ -567,7 +567,7 @@ class TestNode(TestCase):
         self.assertEqual(2, self.node.get_current_height())
 
         # tx_message_2 is the last hlc processed and in consensus
-        self.assertEqual(hlc_timestamp_2, self.node.last_processed_hlc)
+        self.assertEqual(hlc_timestamp_2, self.node.state.last_processed_hlc)
         self.assertEqual(hlc_timestamp_2, self.node.validation_queue.last_hlc_in_consensus)
 
     def test_rollback_drivers(self):
@@ -585,7 +585,7 @@ class TestNode(TestCase):
         recipient_wallet = Wallet()
         tx_amount = 100.5
 
-        tx_message = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -600,7 +600,7 @@ class TestNode(TestCase):
 
         # ___ SEND ANOTHER Transaction ___
         # create a transaction
-        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -620,7 +620,7 @@ class TestNode(TestCase):
         self.assertEqual(0, len(self.node.main_processing_queue))
 
         # Get the recipient balance from the driver
-        recipient_balance_after = self.node.executor.driver.get_var(
+        recipient_balance_after = self.node.state.executor.driver.get_var(
             contract='currency',
             variable='balances',
             arguments=[recipient_wallet.verifying_key],
@@ -631,19 +631,19 @@ class TestNode(TestCase):
         # --- TESTS TO MAKE SURE THE SETUP BEFORE ROLLBACK IS LEGIT ---
         # The recipient's balance was updated
         self.assertEqual("201.0", recipient_balance_after)
-        self.assertEqual(hlc_timestamp_2, self.node.last_processed_hlc)
+        self.assertEqual(hlc_timestamp_2, self.node.state.last_processed_hlc)
         # ---
 
         # Initiate rollback to block 1 (hlc_timestamp_1) test state values
         # to prevent auto processing and allow us to test the state of them after the rollback
         self.node.main_processing_queue.stop()
 
-        self.node.rollback_drivers(hlc_timestamp=hlc_timestamp_2)
+        self.node.state.driver.rollback_drivers(hlc_timestamp=hlc_timestamp_2)
 
         # --- TEST STATE AFTER ROLLBACK DRIVERS ---
 
         # Get the recipient balance from the driver
-        recipient_balance_after_rollback = self.node.executor.driver.get_var(
+        recipient_balance_after_rollback = self.node.state.executor.driver.get_var(
             contract='currency',
             variable='balances',
             arguments=[recipient_wallet.verifying_key],
@@ -667,7 +667,7 @@ class TestNode(TestCase):
         self.node.validation_queue.stop()
 
         # create a transaction and send it to create a pending delta
-        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = self.nodes.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -680,7 +680,7 @@ class TestNode(TestCase):
         self.async_sleep(0.21)
 
         # Validate pending delta exits
-        self.assertIsNotNone(self.node.driver.pending_deltas.get(hlc_timestamp_1))
+        self.assertIsNotNone(self.node.state.driver.pending_deltas.get(hlc_timestamp_1))
 
         processing_results = self.get_processing_results(
             node=self.node,
@@ -692,10 +692,10 @@ class TestNode(TestCase):
         self.await_hard_apply_block(node=self.node, processing_results=processing_results)
 
         # Validate block height in cache
-        self.assertEqual(1, self.node.driver.get('_current_block_height'))
+        self.assertEqual(1, self.node.state.driver.get('_current_block_height'))
 
         # Validate pending delta was applied
-        self.assertIsNone(self.node.driver.pending_deltas.get(hlc_timestamp_1))
+        self.assertIsNone(self.node.state.driver.pending_deltas.get(hlc_timestamp_1))
 
         # Validate
         self.assertEqual(1, self.node.get_current_height())
@@ -729,7 +729,7 @@ class TestNode(TestCase):
         tx_amount = 100.5
 
         # create processing results from another node. These will be added to create state from consensus.
-        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -737,7 +737,7 @@ class TestNode(TestCase):
         hlc_timestamp_1 = tx_message_1.get('hlc_timestamp')
         processing_results_1 = self.process_a_tx(node=node_peer, tx_message=tx_message_1)
 
-        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -745,7 +745,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
         processing_results_2 = self.process_a_tx(node=node_peer, tx_message=tx_message_2)
 
-        tx_message_3 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet.verifying_key,
             amount=tx_amount
@@ -759,7 +759,7 @@ class TestNode(TestCase):
 
         # Validate both blocks processed
         self.assertIsNotNone(2, self.node.get_current_height())
-        self.assertIsNotNone(hlc_timestamp_3, self.node.last_processed_hlc)
+        self.assertIsNotNone(hlc_timestamp_3, self.node.state.last_processed_hlc)
 
         # Apply the earlier block to our tester node
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_1)
@@ -768,16 +768,16 @@ class TestNode(TestCase):
         # block height is now 3
         self.assertIsNotNone(3, self.node.get_current_height())
 
-        block_1 = self.node.blocks.get_block(v=1)
-        block_2 = self.node.blocks.get_block(v=2)
-        block_3 = self.node.blocks.get_block(v=3)
+        block_1 = self.node.state.blocks.get_block(v=1)
+        block_2 = self.node.state.blocks.get_block(v=2)
+        block_3 = self.node.state.blocks.get_block(v=3)
 
         self.assertEqual(hlc_timestamp_1, block_1.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_2, block_2.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_3, block_3.get('hlc_timestamp'))
 
         # Validate no state was overwritten
-        recipient_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet.verifying_key}')
+        recipient_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet.verifying_key}')
         self.assertEqual(str(tx_amount*3), str(recipient_balance))
 
         self.await_async_process(node_peer.stop)
@@ -798,7 +798,7 @@ class TestNode(TestCase):
         tx_amount = 100.5
 
         # create processing results from another node. These will be added to create state from consensus.
-        tx_message_1 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_1 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_1.verifying_key,
             amount=tx_amount
@@ -808,7 +808,7 @@ class TestNode(TestCase):
         processing_results_1 = self.process_a_tx(node=node_peer, tx_message=tx_message_1)
         node_peer.main_processing_queue.append(tx=tx_message_1)
 
-        tx_message_2 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_2 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_2.verifying_key,
             amount=tx_amount
@@ -816,7 +816,7 @@ class TestNode(TestCase):
         hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
         processing_results_2 = self.process_a_tx(node=node_peer, tx_message=tx_message_2)
 
-        tx_message_3 = make_tx_message(self.node.hlc_clock, self.node.wallet, tx=get_new_currency_tx(
+        tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(
             wallet=self.stu_wallet,
             to=recipient_wallet_2.verifying_key,
             amount=tx_amount
@@ -827,17 +827,17 @@ class TestNode(TestCase):
         # Hard apply these processing results to get some state on our tester node
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_2)
         # Validate state was applied
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
         self.assertEqual(str(tx_amount), str(recipient_2_balance))
 
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_3)
         # Validate state was applied
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
         self.assertEqual(str(tx_amount*2), str(recipient_2_balance))
 
         # Validate both blocks processed
         self.assertIsNotNone(2, self.node.get_current_height())
-        self.assertIsNotNone(hlc_timestamp_3, self.node.last_processed_hlc)
+        self.assertIsNotNone(hlc_timestamp_3, self.node.state.last_processed_hlc)
 
         # Apply the earlier block to our tester node
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_1)
@@ -846,20 +846,20 @@ class TestNode(TestCase):
         # block height is now 3
         self.assertIsNotNone(3, self.node.get_current_height())
 
-        block_1 = self.node.blocks.get_block(v=1)
-        block_2 = self.node.blocks.get_block(v=2)
-        block_3 = self.node.blocks.get_block(v=3)
+        block_1 = self.node.state.blocks.get_block(v=1)
+        block_2 = self.node.state.blocks.get_block(v=2)
+        block_3 = self.node.state.blocks.get_block(v=3)
 
         self.assertEqual(hlc_timestamp_1, block_1.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_2, block_2.get('hlc_timestamp'))
         self.assertEqual(hlc_timestamp_3, block_3.get('hlc_timestamp'))
 
         # Validate no state was overwritten
-        recipient_2_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
+        recipient_2_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_2.verifying_key}')
         self.assertEqual(str(tx_amount*2), str(recipient_2_balance))
 
         # Validate new state was created
-        recipient_1_balance = self.node.driver.get(key=f'currency.balances:{recipient_wallet_1.verifying_key}')
+        recipient_1_balance = self.node.state.driver.get(key=f'currency.balances:{recipient_wallet_1.verifying_key}')
         self.assertEqual(str(tx_amount), str(recipient_1_balance))
 
         self.await_async_process(node_peer.stop)
@@ -951,6 +951,6 @@ class TestNode(TestCase):
         for vk in self.node.network.peers:
             self.node.network.peers[vk].running = True
 
-        peers_for_consensus = self.node.get_peers_for_consensus()
+        peers_for_consensus = self.node.network.get_peers_for_consensus()
 
         self.assertEqual(1, len(peers_for_consensus))
