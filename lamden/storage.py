@@ -10,6 +10,7 @@ from lamden import contracts
 from contracting.execution.executor import Executor
 import gc
 import pathlib
+from contracting.db.encoder import convert_dict, encode
 
 import os
 
@@ -527,4 +528,20 @@ class StateManager:
 
         self.nonces.flush_pending()
         gc.collect()
+
+    def apply_state_changes_from_block(self, block):
+        state_changes = block['processed'].get('state', [])
+        hlc_timestamp = block['processed'].get('hlc_timestamp', None)
+
+        if hlc_timestamp is None:
+            hlc_timestamp = block.get('hlc_timestamp')
+
+        for s in state_changes:
+            if type(s['value']) is dict:
+                s['value'] = convert_dict(s['value'])
+
+            self.driver.set(s['key'], s['value'])
+
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+        self.driver.hard_apply(hlc=hlc_timestamp)
 

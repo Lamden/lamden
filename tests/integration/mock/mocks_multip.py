@@ -28,13 +28,13 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
         done = False
         while not done:
             await asyncio.sleep(sleep)
-            heights = [node.obj.get_current_height() for node in nodes]
-            results = [node.obj.get_current_height() == block_height for node in nodes]
+            heights = [node.obj.state.get_latest_block_height() for node in nodes]
+            results = [node.obj.state.get_latest_block_height() == block_height for node in nodes]
             done = all(results)
             if not done:
                 pass
             if timeout > 0 and time.time() - start > timeout:
-                print([node.obj.get_current_height() == block_height for node in nodes])
+                print([node.obj.state.get_latest_block_height() == block_height for node in nodes])
                 print({'heights':heights})
                 print(f"HIT TIMER and {done}")
                 done = True
@@ -116,11 +116,11 @@ def process_target(NodeClass, index, child_conn, wallet, bootnodes, constitution
                     child_conn.send(["get_block", block])
 
                 if action == "current_height":
-                    current_height = node.obj.get_current_height()
+                    current_height = node.obj.state.get_latest_block_height()
                     child_conn.send(["current_height", current_height])
 
                 if action == "get_last_processed_hlc":
-                    last_processed = node.obj.last_processed_hlc
+                    last_processed = node.obj.state.last_processed_hlc
                     child_conn.send(["get_last_processed_hlc", last_processed])
 
             await asyncio.sleep(0)

@@ -625,7 +625,7 @@ class TestNode(TestCase):
         self.assertEqual(str(tx_amount*2), str(recipient_2_balance))
 
         # Validate both blocks processed
-        self.assertIsNotNone(2, self.node.get_current_height())
+        self.assertIsNotNone(2, self.node.state.get_latest_block_height())
         self.assertIsNotNone(hlc_timestamp_3, self.node.state.metadata.last_processed_hlc)
 
         # Process tx4 through the tester node so we get a result

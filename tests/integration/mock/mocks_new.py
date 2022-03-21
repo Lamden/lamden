@@ -24,15 +24,15 @@ def await_all_nodes_done_processing(nodes, block_height, timeout, sleep=10):
         done = False
         while not done:
             await asyncio.sleep(sleep)
-            heights = [node.obj.get_current_height() for node in nodes]
-            results = [node.obj.get_current_height() == block_height for node in nodes]
+            heights = [node.obj.state.get_latest_block_height() for node in nodes]
+            results = [node.obj.state.get_latest_block_height() == block_height for node in nodes]
             done = all(results)
 
             if done and block_height == 25:
                 print('Done')
 
             if timeout > 0 and time.time() - start > timeout:
-                print([node.obj.get_current_height() == block_height for node in nodes])
+                print([node.obj.state.get_latest_block_height() == block_height for node in nodes])
                 print({'heights':heights})
                 print(f"HIT TIMER and {done}")
                 done = True

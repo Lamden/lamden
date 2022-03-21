@@ -115,7 +115,7 @@ class TestMultiNode(TestCase):
                 'hlc_timestamp': block.get('hlc_timestamp')
             }
 
-        self.assertEqual(self.n.masternodes[0].obj.get_current_height(), 5)
+        self.assertEqual(self.n.masternodes[0].obj.state.get_latest_block_height(), 5)
 
         # Run catchup on the delegate (should pull in all blocks from maternode)
         self.await_async_process(self.n.delegates[0].obj.catchup)
@@ -123,7 +123,7 @@ class TestMultiNode(TestCase):
         self.async_sleep(5)
 
         # Test the blockheight is correct
-        self.assertEqual(5, self.n.delegates[0].obj.get_current_height())
+        self.assertEqual(5, self.n.delegates[0].obj.state.get_latest_block_height())
 
         # Test the state changes were applied correctly
         state_value = self.n.delegates[0].obj.driver.get_var(
@@ -157,15 +157,15 @@ class TestMultiNode(TestCase):
         # await network processing
         self.async_sleep(2)
 
-        self.assertEqual(10, self.n.masternodes[0].obj.get_current_height())
-        self.assertEqual(10, self.n.delegates[0].obj.get_current_height())
+        self.assertEqual(10, self.n.masternodes[0].obj.state.get_latest_block_height())
+        self.assertEqual(10, self.n.delegates[0].obj.state.get_latest_block_height())
 
         # join a new node
         self.await_join_new_node(type_of_node='masternode')
 
         # wait for catchup
         self.async_sleep(5)
-        self.assertEqual(10, self.n.masternodes[1].obj.get_current_height())
+        self.assertEqual(10, self.n.masternodes[1].obj.state.get_latest_block_height())
 
         # Check that all node are connected to each other
         for node in self.n.nodes:

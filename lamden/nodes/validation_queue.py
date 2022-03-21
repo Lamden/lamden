@@ -56,12 +56,12 @@ class ValidationQueue(ProcessingFileQueue):
 
         self.checking = False
 
-    async def loop(self):
+    async def loop(self, wait=0):
         while self.running:
             if len(self.queue) > 0:
                 for q in self.queue:
                     self.append(q)
-            await asyncio.sleep(0)
+            await asyncio.sleep(wait)
 
     def append(self, processing_results):
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')

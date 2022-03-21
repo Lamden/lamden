@@ -127,7 +127,7 @@ class TestMultiNode(TestCase):
         node_process.last_processed_hlc = None
 
         # Get the nodes current HLC
-        node_current_hlc = self.await_async_process(node_process.get_last_processed_hlc)[0]
+        node_current_hlc = self.await_async_process(node_process.state.metadata.get_last_processed_hlc)[0]
 
         # Send a TX to the Node
         self.network.send_currency_transaction(node_process=node_process)

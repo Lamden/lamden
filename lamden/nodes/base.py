@@ -337,7 +337,7 @@ class Node:
         self.log.info('Running catchup.')
 
         # Get the Node's current height
-        current = self.get_current_height()
+        current = self.state.get_current_height()
 
         catchup_peer = None
 
@@ -365,7 +365,7 @@ class Node:
         await self.run_catchup(peer=catchup_peer)
 
     async def run_catchup(self, peer):
-        current = self.get_current_height()
+        current = self.state.get_current_height()
 
         while current < peer.latest_block:
             next_block_num = current + 1
@@ -515,13 +515,9 @@ class Node:
         storage.set_latest_block_hash(block['hash'], driver=self.state.driver)
         storage.set_latest_block_height(block['number'], driver=self.state.driver)
 
-        self.new_block_processor.clean(self.get_current_height())
+        self.new_block_processor.clean(self.state.get_current_height())
 
         self.state.driver.commit()
-
-    def get_state_changes_from_block(self, block):
-        tx_result = block.get('processed')
-        return tx_result.get('state')
 
     def apply_state_changes_from_block(self, block):
         state_changes = block['processed'].get('state', [])
@@ -621,7 +617,7 @@ class Node:
             # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
             # had the correct value for.
             for block in later_blocks:
-                block_state_changes = self.get_state_changes_from_block(block=block)
+                block_state_changes = block.get('processed').get('state')
 
                 for state_change in block_state_changes:
                     state_key = state_change.get('key')
@@ -814,7 +810,7 @@ class Node:
 
                 # Check if the previous run had any pending deltas
                 pending_deltas_writes = prev_pending_deltas.get('writes', {})
-                pending_writes = self.driver.pending_writes
+                pending_writes = self.state.driver.pending_writes
 
                 # FOR TESTING
                 reprocess_type = ""
@@ -921,10 +917,6 @@ class Node:
 
         self.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
-    # Put into 'super driver'
-    def get_block_by_number(self, block_number):
-        return self.state.blocks.get_block(v=block_number)
-
     def make_constitution(self):
         return {
             'masternodes': self.network.get_masternode_peers(),
@@ -942,12 +934,6 @@ class Node:
         )
 
     def should_process(self, block):
-        try:
-            pass
-            # self.log.info(f'Processing block #{block.get("number")}')
-        except:
-            self.log.error('Malformed block :(')
-            return False
         # Test if block failed immediately
         if block == {'response': 'ok'}:
             return False
@@ -959,24 +945,10 @@ class Node:
         return True
 
     # Put into 'super driver'
-    def get_current_height(self):
-        return self.state.get_latest_block_height()
-
-    # Put into 'super driver'
-    def get_current_hash(self):
-        return self.state.get_latest_block_hash()
-
-    # Put into 'super driver'
     def get_latest_block(self):
-        latest_block_num = self.get_current_height()
+        latest_block_num = self.state.get_latest_block_height()
         block = self.state.blocks.get_block(v=latest_block_num)
         return block
-
-    def get_last_processed_hlc(self):
-        return self.last_processed_hlc
-
-    def get_last_hlc_in_consensus(self):
-        return self.state.metadata.last_hlc_in_consensus
 
     def is_next_block(self, previous_hash):
         self.log.debug({

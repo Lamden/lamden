@@ -433,7 +433,7 @@ class TestNode(TestCase):
         self.assertEqual(0, len(self.node.validation_queue))
 
         # Both the queue and the node report the block height is now one, as per the driver
-        self.assertEqual(1, self.node.get_current_height())
+        self.assertEqual(1, self.node.state.get_latest_block_height())
 
     def test_update_block_db(self):
         self.create_a_node()
@@ -448,10 +448,10 @@ class TestNode(TestCase):
         self.node.update_block_db(block_info)
 
         # Both the queue and the node report the block height is now one, as per the driver
-        self.assertEqual(block_info.get('number'), self.node.get_current_height())
+        self.assertEqual(block_info.get('number'), self.node.state.get_latest_block_height())
 
         # Both the queue and the node report the block height is now one, as per the driver
-        self.assertEqual(block_info.get('hash'), self.node.get_current_hash())
+        self.assertEqual(block_info.get('hash'), self.node.state.get_latest_block_hash())
 
     def test_soft_apply_current_state(self):
         self.create_a_node()
@@ -532,7 +532,7 @@ class TestNode(TestCase):
         # The recipient's balance was updated
         self.assertEqual("100.5", recipient_balance_after)
         # The block was incremented
-        self.assertEqual(1, self.node.get_current_height())
+        self.assertEqual(1, self.node.state.get_latest_block_height())
         self.assertEqual(0, len(self.node.main_processing_queue))
 
         print("sending second transaction")
@@ -564,7 +564,7 @@ class TestNode(TestCase):
         # The recipient's balance was updated
         self.assertEqual("201.0", recipient_balance_after)
         # The block was incremented
-        self.assertEqual(2, self.node.get_current_height())
+        self.assertEqual(2, self.node.state.get_latest_block_height())
 
         # tx_message_2 is the last hlc processed and in consensus
         self.assertEqual(hlc_timestamp_2, self.node.state.last_processed_hlc)
@@ -698,7 +698,7 @@ class TestNode(TestCase):
         self.assertIsNone(self.node.state.driver.pending_deltas.get(hlc_timestamp_1))
 
         # Validate
-        self.assertEqual(1, self.node.get_current_height())
+        self.assertEqual(1, self.node.state.get_latest_block_height())
 
     def test_hard_apply_earlier_block__all_keys_overwritten(self):
         # Test hard applying blocks that come in from consensus earlier than blocks we already have
@@ -758,7 +758,7 @@ class TestNode(TestCase):
         self.await_hard_apply_block(node=self.node, processing_results=processing_results_3)
 
         # Validate both blocks processed
-        self.assertIsNotNone(2, self.node.get_current_height())
+        self.assertIsNotNone(2, self.node.state.get_latest_block_height())
         self.assertIsNotNone(hlc_timestamp_3, self.node.state.last_processed_hlc)
 
         # Apply the earlier block to our tester node
@@ -766,7 +766,7 @@ class TestNode(TestCase):
 
         # Validate the block was processed
         # block height is now 3
-        self.assertIsNotNone(3, self.node.get_current_height())
+        self.assertIsNotNone(3, self.node.state.get_latest_block_height())
 
         block_1 = self.node.state.blocks.get_block(v=1)
         block_2 = self.node.state.blocks.get_block(v=2)
@@ -836,7 +836,7 @@ class TestNode(TestCase):
         self.assertEqual(str(tx_amount*2), str(recipient_2_balance))
 
         # Validate both blocks processed
-        self.assertIsNotNone(2, self.node.get_current_height())
+        self.assertIsNotNone(2, self.node.state.get_latest_block_height())
         self.assertIsNotNone(hlc_timestamp_3, self.node.state.last_processed_hlc)
 
         # Apply the earlier block to our tester node
@@ -844,7 +844,7 @@ class TestNode(TestCase):
 
         # Validate the block was processed
         # block height is now 3
-        self.assertIsNotNone(3, self.node.get_current_height())
+        self.assertIsNotNone(3, self.node.state.get_latest_block_height())
 
         block_1 = self.node.state.blocks.get_block(v=1)
         block_2 = self.node.state.blocks.get_block(v=2)
@@ -870,7 +870,7 @@ class TestNode(TestCase):
         self.start_node()
 
         # Height is None
-        self.assertIsNone(None, self.node.get_current_height())
+        self.assertIsNone(None, self.node.state.get_latest_block_height())
 
         # create a transaction and send it to create a pending delta
         tx_message_1 = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
@@ -883,7 +883,7 @@ class TestNode(TestCase):
         self.async_sleep(0.21)
 
         # Validate
-        self.assertEqual(1, self.node.get_current_height())
+        self.assertEqual(1, self.node.state.get_latest_block_height())
 
     def test_get_current_hash(self):
         # Create a node and start it
@@ -891,7 +891,7 @@ class TestNode(TestCase):
         self.start_node()
 
         # Hash Is None
-        self.assertEqual(DEFAULT_HASH, self.node.get_current_hash())
+        self.assertEqual(DEFAULT_HASH, self.node.state.get_latest_block_hash())
 
         # create a transaction and send it to create a pending delta
         tx_message_1 = self.node.main_processing_queue.make_tx_message(tx=get_new_currency_tx(
@@ -904,7 +904,7 @@ class TestNode(TestCase):
         self.async_sleep(0.21)
 
         # Validate
-        self.assertNotEqual(DEFAULT_HASH, self.node.get_current_hash())
+        self.assertNotEqual(DEFAULT_HASH, self.node.state.get_latest_block_hash())
 
     def test_processes_transactions_from_files(self):
         # Create a node and start it
@@ -931,7 +931,7 @@ class TestNode(TestCase):
         self.async_sleep(0.3)
 
         # Validate
-        self.assertEqual(1, self.node.get_current_height())
+        self.assertEqual(1, self.node.state.get_latest_block_height())
 
     def test_get_peers_for_consensus(self):
         d_wallet = Wallet()

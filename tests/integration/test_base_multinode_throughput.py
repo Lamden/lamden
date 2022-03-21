@@ -197,10 +197,10 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in self.n.all_nodes()]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
     def test_network_one_receiver__throughput_test__founder_to_one_wallet_multiple_times(self):
@@ -255,15 +255,15 @@ class TestMultiNode(TestCase):
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
             print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
-            print(f'block height: {node.obj.get_current_hash()} hash: {node.obj.get_current_hash()}')
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            print(f'block height: {node.obj.state.get_latest_block_hash()} hash: {node.obj.state.get_latest_block_hash()}')
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in self.n.all_nodes()]
         for block_hash in all_hashes:
             print(block_hash)
         for node in self.n.all_nodes():
-            print(node.obj.get_current_height())
+            print(node.obj.state.get_latest_block_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
 
@@ -352,15 +352,15 @@ class TestMultiNode(TestCase):
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
             print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
-            print(f'block height: {node.obj.get_current_height()} hash: {node.obj.get_current_hash()}')
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            print(f'block height: {node.obj.state.get_latest_block_height()} hash: {node.obj.state.get_latest_block_hash()}')
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_height() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_height() for node in self.n.all_nodes()]
         for block_hash in all_hashes:
             print(block_hash)
         for node in self.n.all_nodes():
-            print(node.obj.get_current_height())
+            print(node.obj.state.get_latest_block_height())
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
     def test_network_mixed_receivers__throughput_test__low_nodes_low_txcount(self):

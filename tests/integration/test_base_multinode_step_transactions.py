@@ -67,14 +67,14 @@ class TestMultiNode(TestCase):
         node.tx_queue.append(tx)
 
     def validate_block_height_in_all_nodes(self, nodes, valid_height):
-        all_heights = [node.obj.get_current_height() for node in nodes]
+        all_heights = [node.obj.state.get_latest_block_height() for node in nodes]
         print({'valid_height': valid_height})
         print({'all_heights': all_heights})
         print(all([valid_height == height for height in all_heights]))
         self.assertTrue(all([valid_height == height for height in all_heights]))
 
     def validate_block_hash_in_all_nodes(self, nodes):
-        all_hashes = [node.obj.get_current_hash() for node in nodes]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in nodes]
         print({'all_hashes': all_hashes})
         print(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
         self.assertTrue(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
@@ -161,10 +161,10 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
     def test_network_mixed_tx__step_by_step__validate_node_state_inbetween(self):
@@ -234,10 +234,10 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
     def test_network_mixed_tx_set_group_step_by_step__validate_node_state_inbetween(self):
@@ -316,8 +316,8 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+            self.assertTrue(amount_of_transactions == node.obj.state.get_latest_block_height())
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.obj.state.get_latest_block_hash() for node in self.n.all_nodes()]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
