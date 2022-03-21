@@ -59,14 +59,14 @@ class ProcessingQueue:
 
 
 class ProcessingFileQueue:
-    def __init__(self, root, sort_key, write_bytes=True):
+    def __init__(self, root, sort_key=os.path.getmtime, write_bytes=True, reverse=False):
         self.running = False
         self.paused = False
         self.currently_processing = False
 
         self.q = []
 
-        self.queue = FileQueue(root=root, sort_key=sort_key, write_bytes=write_bytes)
+        self.queue = FileQueue(root=root, sort_key=sort_key, write_bytes=write_bytes, reverse=reverse)
 
     def __len__(self):
         return len(self.queue)
