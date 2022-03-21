@@ -181,16 +181,18 @@ class TestProcessingQueue(TestCase):
 
     def test_process_next(self):
         # load a bunch of transactions into the queue
+        txs = [self.make_tx_message(get_new_tx()) for i in range(10)]
+        first_tx = txs[0]
+
+        random.shuffle(txs)
+
         for i in range(10):
-            self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+            tx = txs[i]
+            self.main_processing_queue.append(tx=tx)
             self.assertEqual(len(self.main_processing_queue), i+1)
 
-            # if this is the first transaction get the HLC for it for comparison later
-            if i == 0:
-                first_tx = self.main_processing_queue.queue[0]
-
         # Shuffle the processing queue so the hlcs are out of order
-        random.shuffle(self.main_processing_queue.queue)
+
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -236,7 +238,6 @@ class TestProcessingQueue(TestCase):
 
         self.main_processing_queue.check_if_already_has_consensus = mock_check_if_already_has_consensus
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
-
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
         # Await the queue stopping and then mark the queue as not processing after X seconds

@@ -1,4 +1,4 @@
-from lamden.storage import StateManager, update_state_with_transaction
+from lamden.storage import StateManager
 
 from . import legacy
 
@@ -9,6 +9,8 @@ import lamden
 import json
 from contracting.client import ContractingClient
 import gc
+from contracting.stdlib.bridge.decimal import ContractingDecimal
+
 from lamden.logger.base import get_logger
 import decimal
 
@@ -148,13 +150,77 @@ class MigrationNode:
         gc.collect()
 
 
-def update_state_with_block(block, state: StateManager, set_hash_and_height=True):
+def update_state_with_transaction(tx, driver, nonces):
+    nonces_to_delete = []
+
+    if tx['state'] is not None and len(tx['state']) > 0:
+        for delta in tx['state']:
+            driver.set(delta['key'], delta['value'])
+            # log.debug(f"{delta['key']} -> {delta['value']}")
+
+            nonces.set_nonce(
+                sender=tx['transaction']['payload']['sender'],
+                processor=tx['transaction']['payload']['processor'],
+                value=tx['transaction']['payload']['nonce'] + 1
+            )
+
+            nonces_to_delete.append(
+                (tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+
+    for n in nonces_to_delete:
+        nonces.set_pending_nonce(*n, value=None)
+
+BLOCK_HASH_KEY = '_current_block_hash'
+BLOCK_NUM_HEIGHT = '_current_block_height'
+NONCE_KEY = '__n'
+PENDING_NONCE_KEY = '__pn'
+LAST_PROCESSED_HLC = '__last_processed_hlc'
+LAST_HLC_IN_CONSENSUS = '__last_hlc_in_consensus'
+
+def get_latest_block_hash(driver: ContractDriver):
+    latest_hash = driver.get(BLOCK_HASH_KEY)
+    if latest_hash is None:
+        return '0' * 64
+    return latest_hash
+
+
+def set_latest_block_hash(h, driver: ContractDriver):
+    driver.set(BLOCK_HASH_KEY, h)
+
+
+def get_latest_block_height(driver: ContractDriver):
+    h = driver.get(BLOCK_NUM_HEIGHT)
+    if h is None:
+        return 0
+
+    if type(h) == ContractingDecimal:
+        h = int(h._d)
+
+    return h
+
+
+def set_latest_block_height(h, driver: ContractDriver):
+    #log.info(f'set_latest_block_height {h}')
+    driver.set(BLOCK_NUM_HEIGHT, h)
+    '''
+    log.info('Driver')
+    log.info(driver.driver)
+    log.info('Cache')
+    log.info(driver.cache)
+    log.info('Writes')
+    log.info(driver.pending_writes)
+    log.info('Deltas')
+    log.info(driver.pending_deltas)
+    '''
+
+
+def update_state_with_block(block, driver, nonces, set_hash_and_height=True):
     if block.get('subblocks') is not None:
         for sb in block['subblocks']:
             for tx in sb['transactions']:
-                update_state_with_transaction(tx, state.driver, state.nonces)
+                update_state_with_transaction(tx, driver, nonces)
 
     # Update our block hash and block num
     if set_hash_and_height:
-        state.metadata.set_latest_block_height(block['number'])
-        state.metadata.set_latest_block_hash(block['hash'])
+        set_latest_block_height(block['number'], driver)
+        set_latest_block_hash(block['hash'], driver)

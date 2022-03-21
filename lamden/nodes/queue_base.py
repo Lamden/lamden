@@ -1,6 +1,6 @@
 import asyncio
 from lamden.nodes.filequeue import FileQueue
-
+import os
 class ProcessingQueue:
     def __init__(self):
         self.running = False
@@ -59,12 +59,14 @@ class ProcessingQueue:
 
 
 class ProcessingFileQueue:
-    def __init__(self, root):
+    def __init__(self, root, sort_key, write_bytes=True):
         self.running = False
         self.paused = False
         self.currently_processing = False
 
-        self.queue = FileQueue(root=root)
+        self.q = []
+
+        self.queue = FileQueue(root=root, sort_key=sort_key, write_bytes=write_bytes)
 
     def __len__(self):
         return len(self.queue)
@@ -108,8 +110,8 @@ class ProcessingFileQueue:
     def flush(self):
         self.queue.flush()
 
-    def append(self, item):
-        self.queue.append(item)
+    def append(self, item, name=None):
+        self.queue.append(item, name=name)
 
     async def process_next(self):
         raise NotImplementedError

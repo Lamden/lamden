@@ -11,19 +11,26 @@ from lamden.logger.base import get_logger
 class FileQueue:
     EXTENSION = '.tx'
 
-    def __init__(self, root=STORAGE_HOME.joinpath('txq'), write_bytes=True):
+    def __init__(self, root=STORAGE_HOME.joinpath('txq'), sort_key=os.path.getmtime, write_bytes=True, reverse=False):
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.log = get_logger("FILE QUEUE")
         self.file_mode = 'wb' if write_bytes else 'w'
+        self.sort_key = sort_key
+        self.reverse = reverse
 
-    def append(self, tx):
-        name = str(uuid.uuid4()) + self.EXTENSION
+    def append(self, tx, name=None):
+        if name is None:
+            name = str(uuid.uuid4()) + self.EXTENSION
         with open(self.root.joinpath(name), self.file_mode) as f:
             f.write(tx)
 
     def pop(self, idx):
-        items = sorted(self.root.iterdir(), key=os.path.getmtime)
+        items = sorted(self.root.iterdir(), key=self.sort_key)
+
+        if self.reverse:
+            items = items[::-1]
+
         item = items.pop(idx)
 
         with open(item) as f:
@@ -34,7 +41,10 @@ class FileQueue:
         return i
 
     def flush(self):
-        shutil.rmtree(self.root)
+        try:
+            shutil.rmtree(self.root)
+        except FileNotFoundError:
+            pass
 
     def refresh(self):
         self.flush()
@@ -48,7 +58,7 @@ class FileQueue:
             return 0
 
     def __getitem__(self, key):
-        items = sorted(self.root.iterdir(), key=os.path.getmtime)
+        items = sorted(self.root.iterdir(), key=self.sort_key)
         item = items[key]
 
         with open(item) as f:

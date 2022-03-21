@@ -7,7 +7,7 @@ from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
 from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary, tx_result_hash_from_tx_result_object
 from lamden.logger.base import get_logger
-from lamden.nodes.queue_base import ProcessingQueue
+from lamden.nodes.queue_base import ProcessingQueue, ProcessingFileQueue
 from lamden import storage, rewards
 from datetime import datetime
 from lamden.nodes.filequeue import FileQueue
@@ -15,7 +15,7 @@ from lamden.network import Network
 from lamden.config import STORAGE_HOME, CONTENDER_SERVICE
 import asyncio
 import gc
-
+import os
 
 WORK_SERVICE = 'work'
 
@@ -38,11 +38,12 @@ class Debug:
         }
 
 
-class TxProcessingQueue(ProcessingQueue):
+class TxProcessingQueue(ProcessingFileQueue):
     def __init__(self, network, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
                  check_if_already_has_consensus, pause_all_queues, unpause_all_queues, reprocess,
+                 root=STORAGE_HOME.joinpath('processing_queue'), sort_key=os.path.abspath,
                  testing=False, debug=False, tx_queue=FileQueue(), validation_queue=FileQueue(root=STORAGE_HOME.joinpath('validation_queue'))):
-        super().__init__()
+        super().__init__(root=root, sort_key=sort_key, write_bytes=False)
         self.tx_queue = tx_queue
         self.debug = Debug()
         self.state = state
@@ -69,6 +70,8 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.debug_writes_log = []
 
+        self.q = []
+
         # self.last_time_processed = datetime.datetime.now()
 
         # TODO This is just for testing
@@ -94,7 +97,7 @@ class TxProcessingQueue(ProcessingQueue):
             'sender': self.wallet.verifying_key
         }
 
-    def append(self, tx):
+    def append(self, tx, name=None):
         hlc_timestamp = tx['hlc_timestamp']
 
         if self.testing:
@@ -111,7 +114,7 @@ class TxProcessingQueue(ProcessingQueue):
                 tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
                 self.append_history.append(tx)
 
-            super().append(tx)
+            super().append(encode(tx), name=tx['hlc_timestamp'])
 
         if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
             '''
@@ -145,14 +148,13 @@ class TxProcessingQueue(ProcessingQueue):
         return hlc_timestamp < self.state.metadata.last_hlc_in_consensus
 
     async def process_next(self):
-
         # self.last_time_processed = datetime.datetime.now()
 
         # return if the queue is empty
         if len(self.queue) == 0:
             return
 
-        self.sort_queue()
+        # self.sort_queue()
 
         # Pop it out of the main processing queue
         tx = self.queue.pop(0)
@@ -213,7 +215,7 @@ class TxProcessingQueue(ProcessingQueue):
                 return processing_results
         else:
             # else, put it back in queue
-            self.queue.append(tx)
+            self.queue.append(encode(tx), name=tx['hlc_timestamp'])
             return None
 
     def hold_time(self, tx):
@@ -456,7 +458,7 @@ class TxProcessingQueue(ProcessingQueue):
                     asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
 
                     # add this tx the processing queue so we can process it
-                    self.append(tx=tx_message)
+                    self.append(tx=tx_message, name=tx_message['hlc_timestamp'])
 
             self.debug.loop_counter['file_check'] = self.debug.loop_counter['file_check'] + 1
             await asyncio.sleep(0)

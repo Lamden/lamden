@@ -1,3 +1,9 @@
+class ValidationResultsReader:
+    pass
+
+class ValidationResultsWriter:
+    pass
+
 class ValidationResults(dict):
     def add_consensus_result(self, hlc_timestamp, consensus_result):
         # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
