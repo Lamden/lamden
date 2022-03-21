@@ -379,7 +379,7 @@ class Node:
                 if new_block:
                     if new_block.get('number') == next_block_num:
                         # Apply state to DB
-                        self.apply_state_changes_from_block(block=new_block)
+                        self.state.apply_state_changes_from_block(block=new_block)
 
                         # Store the block in the block db
                         encoded_block = encode(new_block)
@@ -453,9 +453,6 @@ class Node:
             self.main_processing_queue.currently_processing = False
         await self.main_processing_queue.stopping()
 
-    def start_main_processing_queue(self):
-        self.main_processing_queue.start()
-
     def make_tx_message(self, tx):
         hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
         tx_hash = tx_hash_from_tx(tx=tx)
@@ -512,28 +509,12 @@ class Node:
 
         # Commit the state changes and nonces to the database
 
-        storage.set_latest_block_hash(block['hash'], driver=self.state.driver)
-        storage.set_latest_block_height(block['number'], driver=self.state.driver)
+        self.state.set_latest_block_hash(block['hash'])
+        self.state.set_latest_block_height(block['number'])
 
-        self.new_block_processor.clean(self.state.get_current_height())
+        self.new_block_processor.clean(self.state.get_latest_block_height())
 
         self.state.driver.commit()
-
-    def apply_state_changes_from_block(self, block):
-        state_changes = block['processed'].get('state', [])
-        hlc_timestamp = block['processed'].get('hlc_timestamp', None)
-
-        if hlc_timestamp is None:
-            hlc_timestamp = block.get('hlc_timestamp')
-
-        for s in state_changes:
-            if type(s['value']) is dict:
-                s['value'] = convert_dict(s['value'])
-
-            self.state.driver.set(s['key'], s['value'])
-
-        self.state.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-        self.state.driver.hard_apply(hlc=hlc_timestamp)
 
     async def hard_apply_block(self, processing_results):
         '''
@@ -597,7 +578,7 @@ class Node:
                 new_block_writes.append(state_change.get('key'))
 
             # Apply the state changes from the block to the db
-            self.apply_state_changes_from_block(new_block)
+            self.state.apply_state_changes_from_block(new_block)
 
             # Store the new block in the block db
             self.state.blocks.store_block(new_block)
@@ -625,7 +606,7 @@ class Node:
                         new_block_writes.remove(state_key)
 
                 # Apply the state changes for this block to the db
-                self.apply_state_changes_from_block(block)
+                self.state.apply_state_changes_from_block(block)
 
             # Re-save each block to the database
             for block in later_blocks:
@@ -648,7 +629,7 @@ class Node:
             if len(new_block_writes) > 0:
                 self.reprocess_after_earlier_block(new_keys_list=new_block_writes)
 
-            self.start_main_processing_queue()
+            self.main_processing_queue.start()
 
         else:
             new_block = block_from_tx_results(
@@ -658,13 +639,16 @@ class Node:
                 prev_block_hash=prev_block.get('hash')
             )
 
-            consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
+            consensus_matches_me = self.validation_queue.validation_results.consensus_matches_vk(
+                hlc_timestamp=hlc_timestamp,
+                verifying_key=self.wallet.verifying_key
+            )
 
             # Hard apply this hlc_timestamps state changes
             if hlc_timestamp in self.state.driver.pending_deltas and consensus_matches_me:
                 self.state.driver.hard_apply(hlc_timestamp)
             else:
-                self.apply_state_changes_from_block(new_block)
+                self.state.apply_state_changes_from_block(new_block)
 
 
             # Store the block in the block db

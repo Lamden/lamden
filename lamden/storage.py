@@ -138,6 +138,8 @@ class MetaDataDriver(FSDriver):
         self.set_last_hlc_in_consensus(value)
     ###
 
+
+### Stateless
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
         if type(home) is str:
@@ -368,6 +370,7 @@ class BlockStorage:
         return blocks
 
 
+# Stateless, can be accessed alone
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
@@ -519,6 +522,10 @@ class StateManager:
             h = int(h._d)
 
         return h
+
+    def set_latest_block_height(self, h):
+        # log.info(f'set_latest_block_height {h}')
+        self.driver.set(BLOCK_NUM_HEIGHT, h)
 
     def soft_apply_current_state(self, hlc_timestamp):
         try:
