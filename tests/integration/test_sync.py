@@ -7,6 +7,8 @@ from contracting.client import ContractingClient
 import glob
 import json
 
+from lamden.storage import StateManager
+
 MOCK_ROOT = os.path.dirname(os.path.abspath(mock.__file__))
 MOCK_GENESIS = MOCK_ROOT + '/genesis.json'
 MOCK_SUBMISSION = MOCK_ROOT + '/submission.s.py'
@@ -15,10 +17,13 @@ MOCK_SUBMISSION = MOCK_ROOT + '/submission.s.py'
 class TestSync(TestCase):
     def setUp(self):
         self.client = ContractingClient()
+        self.state = StateManager()
+        self.state.flush()
         self.client.flush()
 
     def tearDown(self):
         self.client.flush()
+        self.state.flush()
 
     def test_delete(self):
         sync.submit_from_genesis_json_file(
@@ -29,8 +34,8 @@ class TestSync(TestCase):
 
         sync.flush_sys_contracts(client=self.client, filename=MOCK_GENESIS, submission_path=MOCK_SUBMISSION)
 
-        sync.submit_from_genesis_json_file(
-            client=self.client,
+        sync.submit_from_genesis_json_file_2(
+            state=self.state,
             filename=MOCK_GENESIS,
             root=MOCK_ROOT
         )
@@ -48,8 +53,8 @@ class TestSync(TestCase):
         for name in names:
             self.assertIsNone(self.client.raw_driver.get(f'{name}.__code__'))
 
-        sync.submit_from_genesis_json_file(
-            client=self.client,
+        sync.submit_from_genesis_json_file_2(
+            state=self.state,
             filename=MOCK_GENESIS,
             root=MOCK_ROOT
         )

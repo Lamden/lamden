@@ -479,6 +479,13 @@ class StateManager:
         )
         self.executor = Executor(driver=self.driver, metering=metering)
 
+    def flush(self):
+        self.metadata.flush()
+        self.blocks.flush()
+        self.nonces.flush()
+        self.driver.flush()
+        self.client.flush()
+
     def update_state_with_transaction(self, tx):
         nonces_to_delete = []
 

@@ -2,10 +2,48 @@ import os
 import json
 
 from contracting.client import ContractingClient
+from lamden.storage import StateManager
+
 
 DEFAULT_PATH = os.path.dirname(__file__)
 DEFAULT_GENESIS_PATH = os.path.dirname(__file__) + '/genesis.json'
 DEFAULT_SUBMISSION_PATH = os.path.dirname(__file__) + '/submission.s.py'
+
+
+def submit_from_genesis_json_file_2(state: StateManager, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH):
+    with open(filename) as f:
+        genesis = json.load(f)
+
+    for contract in genesis['contracts']:
+        c_filepath = root + '/genesis/' + contract['name'] + '.s.py'
+
+        with open(c_filepath) as f:
+            code = f.read()
+
+        contract_name = contract['name']
+        if contract.get('submit_as') is not None:
+            contract_name = contract['submit_as']
+
+        if state.driver.get_contract(contract_name) is None:
+            _metering = state.executor.metering
+
+            state.executor.metering = False
+
+            kwargs = {
+                'code': code,
+                'name': contract_name,
+                'owner': contract['owner'],
+                'constructor_args': contract['constructor_args']
+            }
+
+            state.executor.execute(
+                sender='sys',
+                contract_name='submission',
+                function_name='submit_contract',
+                kwargs=kwargs,
+                auto_commit=True)
+
+            state.executor.metering = _metering
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
