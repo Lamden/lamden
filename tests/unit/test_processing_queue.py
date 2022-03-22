@@ -181,6 +181,7 @@ class TestProcessingQueue(TestCase):
 
     def test_process_next(self):
         # load a bunch of transactions into the queue
+        self.main_processing_queue.queue.refresh()
         txs = [self.make_tx_message(get_new_tx()) for i in range(10)]
         first_tx = txs[0]
 
@@ -191,8 +192,9 @@ class TestProcessingQueue(TestCase):
             self.main_processing_queue.append(tx=tx)
             self.assertEqual(len(self.main_processing_queue), i+1)
 
-        # Shuffle the processing queue so the hlcs are out of order
+        self.main_processing_queue.filter()
 
+        # Shuffle the processing queue so the hlcs are out of order
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -215,6 +217,7 @@ class TestProcessingQueue(TestCase):
 
     def test_process_next_return_value(self):
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+        self.main_processing_queue.filter()
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -238,6 +241,7 @@ class TestProcessingQueue(TestCase):
 
         self.main_processing_queue.check_if_already_has_consensus = mock_check_if_already_has_consensus
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+        self.main_processing_queue.filter()
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
         # Await the queue stopping and then mark the queue as not processing after X seconds
@@ -271,6 +275,7 @@ class TestProcessingQueue(TestCase):
         tx['hlc_timestamp'] = '1'
 
         self.main_processing_queue.append(tx=tx)
+        self.main_processing_queue.filter()
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -286,6 +291,7 @@ class TestProcessingQueue(TestCase):
     def test_process_next_returns_none_if_less_than_delay(self):
         # load a transactions into the queue
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+        self.main_processing_queue.filter()
 
         # Await the queue stopping and then mark the queue as not processing without waiting a delay
         tasks = asyncio.gather(
@@ -311,7 +317,7 @@ class TestProcessingQueue(TestCase):
 
         result = self.main_processing_queue.execute_tx(
             transaction=tx['tx'],
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
+            stamp_cost=self.driver.get_var(contract='stamp_cost', variable='S', arguments=['value']),
             environment=environment
         )
 
@@ -348,6 +354,7 @@ class TestProcessingQueue(TestCase):
         self.state.metadata.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.main_processing_queue.append(tx=tx_info)
+        self.main_processing_queue.filter()
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -365,6 +372,7 @@ class TestProcessingQueue(TestCase):
         tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
 
         self.main_processing_queue.append(tx=tx_info)
+        self.main_processing_queue.filter()
 
         self.assertTrue(self.main_processing_queue.hlc_already_in_queue(tx_info['hlc_timestamp']))
         self.assertFalse(self.main_processing_queue.hlc_already_in_queue(self.hlc_clock.get_new_hlc_timestamp()))

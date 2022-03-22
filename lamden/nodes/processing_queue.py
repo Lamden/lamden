@@ -58,7 +58,7 @@ class TxProcessingQueue(ProcessingFileQueue):
         self.hlc_clock = hlc_clock
         self.reprocess = reprocess
 
-        self.check_if_already_has_consensus = check_if_already_has_consensus
+        #self.check_if_already_has_consensus = check_if_already_has_consensus
         self.pause_all_queues = pause_all_queues
         self.unpause_all_queues = unpause_all_queues
 
@@ -97,38 +97,50 @@ class TxProcessingQueue(ProcessingFileQueue):
             'sender': self.wallet.verifying_key
         }
 
-    def append(self, tx, name=None):
-        hlc_timestamp = tx['hlc_timestamp']
+    def filter(self):
+        filtered = []
+        for tx in self.queue:
+            hlc_timestamp = tx['hlc_timestamp']
 
-        if self.testing:
-            self.append_history.append({
-                'hlc_timestamp': hlc_timestamp,
-                'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
-            })
-
-        if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
-            return
-
-        if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
             if self.testing:
-                tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
-                self.append_history.append(tx)
-
-            super().append(encode(tx), name=tx['hlc_timestamp'])
-
-        if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
-            '''
-            if self.debug:
-                self.log.debug(json.dumps({
-                    'type': 'tx_lifecycle',
-                    'file': 'processing_queue',
-                    'event': 'append_new',
+                self.append_history.append({
                     'hlc_timestamp': hlc_timestamp,
-                    'system_time': time.time()
-                }))
-            '''
-            self.message_received_timestamps[hlc_timestamp] = time.time()
-            # self.log.debug(f"ADDING {hlc_timestamp} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[hlc_timestamp]}")
+                    'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
+                })
+
+            if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
+                return
+
+            if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
+                if self.testing:
+                    tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
+                    self.append_history.append(tx)
+
+                filtered.append(tx)
+
+            if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
+                '''
+                if self.debug:
+                    self.log.debug(json.dumps({
+                        'type': 'tx_lifecycle',
+                        'file': 'processing_queue',
+                        'event': 'append_new',
+                        'hlc_timestamp': hlc_timestamp,
+                        'system_time': time.time()
+                    }))
+                '''
+                self.message_received_timestamps[hlc_timestamp] = time.time()
+                # self.log.debug(f"ADDING {hlc_timestamp} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[hlc_timestamp]}")
+
+        self.q.extend(filtered)
+
+    async def loop(self):
+        while self.running:
+            if len(self.queue) > 0:
+                self.filter()
+
+    def append(self, tx, name=None):
+        super().append(encode(tx), name=tx['hlc_timestamp'])
 
     def flush(self):
         super().flush()
@@ -136,10 +148,10 @@ class TxProcessingQueue(ProcessingFileQueue):
 
     def sort_queue(self):
         # sort the main processing queue by hlc_timestamp
-        self.queue.sort(key=lambda x: x['hlc_timestamp'])
+        self.q.sort(key=lambda x: x['hlc_timestamp'])
 
     def hlc_already_in_queue(self, hlc_timestamp):
-        for tx in self.queue:
+        for tx in self.q:
             if tx['hlc_timestamp'] == hlc_timestamp:
                 return True
         return False
@@ -148,16 +160,15 @@ class TxProcessingQueue(ProcessingFileQueue):
         return hlc_timestamp < self.state.metadata.last_hlc_in_consensus
 
     async def process_next(self):
-        # self.last_time_processed = datetime.datetime.now()
-
         # return if the queue is empty
-        if len(self.queue) == 0:
+        if len(self.q) == 0:
+            print('woo')
             return
 
-        # self.sort_queue()
+        self.sort_queue()
 
         # Pop it out of the main processing queue
-        tx = self.queue.pop(0)
+        tx = self.q.pop(0)
 
         self.currently_processing_hlc = tx['hlc_timestamp']
 
@@ -177,6 +188,7 @@ class TxProcessingQueue(ProcessingFileQueue):
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
+            print('cool')
             '''
             if self.debug:
                 self.log.debug(json.dumps({
@@ -215,7 +227,7 @@ class TxProcessingQueue(ProcessingFileQueue):
                 return processing_results
         else:
             # else, put it back in queue
-            self.queue.append(encode(tx), name=tx['hlc_timestamp'])
+            self.q.append(tx)
             return None
 
     def hold_time(self, tx):
@@ -232,7 +244,7 @@ class TxProcessingQueue(ProcessingFileQueue):
         # Get the environment
         environment = self.get_environment(tx=tx)
         transaction = tx['tx']
-        stamp_cost = self.state.client.get_var(contract='stamp_cost', variable='S', arguments=['value']) or 1
+        stamp_cost = self.state.driver.get_var(contract='stamp_cost', variable='S', arguments=['value']) or 1
         hlc_timestamp = tx['hlc_timestamp']
 
         # Execute the transaction

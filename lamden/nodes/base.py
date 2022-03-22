@@ -470,6 +470,11 @@ class Node:
         while self.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
+
+                ## TODO: Adjust the 'hold' mechanism in the processing queue. This is inefficient. Once we completely
+                ## abstract this out, we can manage it all inside of the processing queue class
+                self.main_processing_queue.filter()
+
                 await self.main_processing_queue.process_main_queue()
                 self.main_processing_queue.stop_processing()
 

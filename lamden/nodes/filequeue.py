@@ -25,7 +25,7 @@ class FileQueue:
         with open(self.root.joinpath(name), self.file_mode) as f:
             f.write(tx)
 
-    def pop(self, idx):
+    def pop(self, idx, return_time=False):
         items = sorted(self.root.iterdir(), key=self.sort_key)
 
         if self.reverse:
@@ -36,8 +36,12 @@ class FileQueue:
         with open(item) as f:
             i = decode(f.read())
 
-        os.remove(item)
+        if return_time:
+            time = os.path.getmtime(item)
+            os.remove(item)
+            return i, time
 
+        os.remove(item)
         return i
 
     def flush(self):

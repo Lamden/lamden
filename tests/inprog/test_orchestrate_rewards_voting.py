@@ -397,14 +397,14 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
-        self.assertListEqual(o.masternodes[0].client.get_var(
+        self.assertListEqual(o.masternodes[0].driver.get_var(
             contract='masternodes', variable='S', arguments=['members']), [
             o.masternodes[0].wallet.verifying_key,
             o.masternodes[1].wallet.verifying_key,
             candidate.verifying_key
         ])
 
-        self.assertListEqual(o.masternodes[1].client.get_var(
+        self.assertListEqual(o.masternodes[1].driver.get_var(
             contract='masternodes', variable='S', arguments=['members']), [
             o.masternodes[0].wallet.verifying_key,
             o.masternodes[1].wallet.verifying_key,
@@ -630,7 +630,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(test())
 
-        self.assertListEqual(o.masternodes[0].client.get_var(
+        self.assertListEqual(o.masternodes[0].driver.get_var(
             contract='delegates', variable='S', arguments=['members']), [
             o.delegates[0].wallet.verifying_key,
             o.delegates[1].wallet.verifying_key,
@@ -639,7 +639,7 @@ class TestGovernanceOrchestration(unittest.TestCase):
             candidate.verifying_key
         ])
 
-        self.assertListEqual(o.masternodes[0].client.get_var(
+        self.assertListEqual(o.masternodes[0].driver.get_var(
             contract='delegates', variable='S', arguments=['members']), [
             o.delegates[0].wallet.verifying_key,
             o.delegates[1].wallet.verifying_key,

@@ -31,7 +31,7 @@ class UpgradeManager:
         self.webserver_port = webserver_port
         self.wallet = wallet
 
-        self.get = partial(self.state.client.get_var, contract='upgrade', variable='upgrade_state')
+        self.get = partial(self.state.driver.get_var, contract='upgrade', variable='upgrade_state')
 
         self.locked = self.get(arguments=['locked'])
         self.consensus = self.get(arguments=['consensus'])

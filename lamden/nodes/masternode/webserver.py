@@ -449,13 +449,13 @@ class WebServer:
     async def get_constitution(self, request):
         self.state.client.raw_driver.clear_pending_state()
 
-        masternodes = self.state.client.get_var(
+        masternodes = self.state.driver.get_var(
             contract='masternodes',
             variable='S',
             arguments=['members']
         )
 
-        delegates = self.state.client.get_var(
+        delegates = self.state.driver.get_var(
             contract='delegates',
             variable='S',
             arguments=['members']

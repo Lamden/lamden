@@ -4,7 +4,8 @@ import os
 from lamden.contracts import sync
 from contracting.db.driver import ContractDriver, Driver
 from contracting.client import ContractingClient
-
+import glob
+import json
 
 MOCK_ROOT = os.path.dirname(os.path.abspath(mock.__file__))
 MOCK_GENESIS = MOCK_ROOT + '/genesis.json'
@@ -37,3 +38,21 @@ class TestSync(TestCase):
         submission_code_2 = self.client.raw_driver.get('submission.__code__')
 
         self.assertNotEqual(submission_code_1, submission_code_2)
+
+    def test_all_code_is_there(self):
+        with open(MOCK_GENESIS) as f:
+            genesis = json.load(f)
+
+        names = [g['name'] for g in genesis['contracts']]
+
+        for name in names:
+            self.assertIsNone(self.client.raw_driver.get(f'{name}.__code__'))
+
+        sync.submit_from_genesis_json_file(
+            client=self.client,
+            filename=MOCK_GENESIS,
+            root=MOCK_ROOT
+        )
+
+        for name in names:
+            self.assertIsNotNone(self.client.raw_driver.get(f'{name}.__code__'))
