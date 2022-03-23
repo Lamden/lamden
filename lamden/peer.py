@@ -61,6 +61,12 @@ class Peer:
             'hlc_timestamp': "0"
         }
 
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
     @property
     def ip(self):
         if not self.url:
@@ -96,6 +102,10 @@ class Peer:
         print('[{}][PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('router')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
+    @property
+    def is_running(self):
+        return self.dealer.is_connected and self.subscriber.is_running
+
     def is_available(self):
         pong = self.ping()
         return pong
@@ -112,22 +122,34 @@ class Peer:
         self.socket_ports['webserver'] = 18080 + (self.socket_ports['router'] - 19000)
 
     def start(self):
+        if self.running:
+            self.log.error(f'[PEER] Already running.')
+            print(f'[{self.log.name}][PEER] Already running.')
+            return
+
         # print('Received msg from %s : %s' % (self.router_address, msg))
         if not self.dealer:
-            self.dealer = Request(_id=self.wallet.verifying_key, _address=self.dealer_address, server_vk=self.server_key,
-                                  wallet=self.wallet, ctx=self.ctx, logger=self.log)
+            self.dealer = Request(
+                _id=self.wallet.verifying_key,
+                _address=self.dealer_address,
+                server_vk=self.server_key,
+                peer_disconnected_callback=self.reconnect,
+                wallet=self.wallet,
+                ctx=self.ctx,
+                logger=self.log
+            )
 
         response = self.hello()
 
         if not response:
+            self.reconnect()
             return
 
         if not response.get('success'):
             self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
             print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
 
-            if self.running:
-                self.stop()
+            self.reconnect()
             return
 
         response_type = response.get('response')
@@ -149,7 +171,7 @@ class Peer:
 
     def stop(self):
         self.running = False
-        if self.dealer.running:
+        if self.dealer.connected:
             self.dealer.stop()
         if self.subscriber.running:
             self.subscriber.stop()
@@ -161,7 +183,15 @@ class Peer:
         return self.in_consensus and self.running and not self.errored
 
     async def process_subscription(self, data):
-        topic, msg = data
+        try:
+            topic, msg = data
+        except ValueError as err:
+            print(data)
+            self.log.info(data)
+            print(f'[{self.log.name}][PEER] ERROR in message: {err}')
+            self.log.error(f'[PEER] ERROR in message: {err}')
+            return
+
         services = self.services()
         processor = services.get(topic.decode("utf-8"))
         message = json.loads(msg)
@@ -173,21 +203,28 @@ class Peer:
         if processor is not None and message is not None:
             await processor.process_message(message)
 
+    def reconnect(self):
+        asyncio.ensure_future(self.reconnect_loop())
+
     async def reconnect_loop(self):
         self.reconnecting = True
-        while self.reconnecting and not self.running:
-            self.stop()
-            self.start()
-            await asyncio.sleep(1)
+
+        while not self.is_running:
+            res = self.ping()
+
+            if res is None:
+                self.log.info(f'[PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
+                print(f'[{self.log.name}][PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
+                await asyncio.sleep(1)
+
+        self.log.info(f'[PEER] Reconnected to {self.dealer_address}!')
+        print(f'[{self.log.name}][PEER] Reconnected to {self.dealer_address}!')
+
         self.reconnecting = False
 
     def ping(self):
         msg = json.dumps({'action': 'ping'})
         msg_json = self.send_request(msg, timeout=500, retries=5)
-        if msg_json is None and not self.reconnecting:
-            asyncio.ensure_future(self.reconnect_loop())
-            self.log.info(f'[PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
-            print(f'[{self.log.name}][PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
         return msg_json
 
     def hello(self):

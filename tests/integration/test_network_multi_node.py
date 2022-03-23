@@ -78,6 +78,11 @@ class TestMultiNode(TestCase):
 
         self.await_async_process(self.network.start)
 
+        #await network to connect
+        self.async_sleep(5)
+
+        print("DONE WAITING")
+
         # get a masternode
         masternode_1 = self.network.masternodes[0]
 
@@ -98,15 +103,16 @@ class TestMultiNode(TestCase):
             nonce=1
         )
         # Give the masternode the transaction
-        masternode_1.tx_queue.append(tx.encode())
+        self.network.masternodes[0].tx_queue.append(tx.encode())
 
         # Wait for propagation around network
         self.async_sleep(1)
 
+        last_processed_hlc = self.network.masternodes[0].obj.last_processed_hlc
+
         # Check that each node ran the transaction
-        all_nodes = self.network.all_nodes()
-        for node in all_nodes:
-            self.assertEqual(masternode_1.obj.last_processed_hlc, node.obj.last_processed_hlc)
+        for node in self.network.nodes:
+            self.assertEqual(last_processed_hlc, node.obj.last_processed_hlc)
 
     def test_network_can_propagate_results(self):
         # Test that the network can receive a transaction and send it around to all the other nodes

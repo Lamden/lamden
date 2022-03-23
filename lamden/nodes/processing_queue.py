@@ -327,7 +327,7 @@ class TxProcessingQueue(ProcessingQueue):
         return writes
 
     def distribute_rewards(self, total_stamps_to_split, contract_name):
-        return
+
         master_reward, delegate_reward, foundation_reward, developer_mapping = \
             self.reward_manager.calculate_tx_output_rewards(
                 total_stamps_to_split=total_stamps_to_split,

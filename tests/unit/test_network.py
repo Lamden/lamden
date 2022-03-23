@@ -7,6 +7,23 @@ import asyncio
 GET_ALL_PEERS = "get_all_peers"
 GET_LATEST_BLOCK = 'get_latest_block'
 
+class Mock_SocketService():
+    def __init__(self, running):
+        self.running = running
+
+    @property
+    def is_running(self):
+        return self.running
+
+class Peer():
+    def __init__(self, subscriber_running=True, dealer_running=True):
+        self.subscriber = Mock_SocketService(running=subscriber_running)
+        self.dealer = Mock_SocketService(running=dealer_running)
+
+    @property
+    def is_running(self):
+        return self.subscriber.is_running and self.dealer.is_running
+
 class TestMultiNode(TestCase):
     def setUp(self):
         self.networks = []
@@ -50,6 +67,11 @@ class TestMultiNode(TestCase):
         for network in self.networks:
             self.start_network(network=network)
 
+    def ensure_async_process(self, process):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop=loop)
+        asyncio.ensure_future(process())
+
     def await_async_process(self, process):
         tasks = asyncio.gather(
             process()
@@ -57,6 +79,13 @@ class TestMultiNode(TestCase):
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(tasks)
         return res
+
+    def async_sleep(self, delay):
+        tasks = asyncio.gather(
+            asyncio.sleep(delay)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
 
     def create_socket_ports(self, index=0):
         return {
@@ -70,14 +99,14 @@ class TestMultiNode(TestCase):
 
         self.assertIsNotNone(network_1)
 
-    def test_starts(self):
+    def test_network_starts(self):
         network_1 = self.create_network()
 
         self.start_network(network=network_1)
 
         self.assertTrue(network_1.running)
 
-    def test_stops(self):
+    def test_network_stops(self):
         network_1 = self.create_network()
 
         self.start_network(network=network_1)
@@ -91,6 +120,7 @@ class TestMultiNode(TestCase):
         self.assertFalse(network_1.publisher.running)
 
     def test_connects_to_peer_network(self):
+        # Create two network instances
         network_1 = self.create_network()
         self.start_network(network=network_1)
         self.assertTrue(network_1.running)
@@ -99,9 +129,11 @@ class TestMultiNode(TestCase):
         self.start_network(network=network_2)
         self.assertTrue(network_2.running)
 
-        # add peers to each network
+        # connect networks to each other
         network_1.connect(ip=network_2.external_address, vk=network_2.vk)
-        network_2.connect(ip=network_1.external_address, vk=network_1.vk)
+
+        # await connections
+        self.async_sleep(delay=1)
 
         # verify connections
         peer_1 = network_1.get_peer(network_2.vk)
@@ -111,6 +143,7 @@ class TestMultiNode(TestCase):
         self.assertTrue(peer_2.running)
 
     def test_network_propagates_joined_peers(self):
+        # Create two network instances
         network_1 = self.create_network()
         self.start_network(network=network_1)
         self.assertTrue(network_1.running)
@@ -119,9 +152,11 @@ class TestMultiNode(TestCase):
         self.start_network(network=network_2)
         self.assertTrue(network_2.running)
 
-        # add peers to each network
+        # connect networks to each other
         network_1.connect(ip=network_2.external_address, vk=network_2.vk)
-        network_2.connect(ip=network_1.external_address, vk=network_1.vk)
+
+        # await connections
+        self.async_sleep(delay=1)
 
         # verify connections
         peer_1 = network_1.get_peer(network_2.vk)
@@ -136,16 +171,99 @@ class TestMultiNode(TestCase):
 
         # Join to one peer on the network
         network_3.connect(ip=network_1.external_address, vk=network_1.vk)
+
+        # await connect
+        self.async_sleep(1)
+
         peer_3 = network_3.get_peer(vk=network_1.vk)
         self.assertTrue(peer_3.running)
+
+        # await connect
+        self.async_sleep(1)
 
         # All networks joined new peer
         for network in self.networks:
             self.assertEqual(2, len(network.peers))
-            for peer in network.peers:
+            for peer in network.peers.values():
                 self.assertTrue(peer.running)
 
+    def test_num_of_peers_zero(self):
+        network_1 = self.create_network()
 
+        self.assertEqual(0, network_1.num_of_peers())
+
+    def test_num_of_peers(self):
+        network_1 = self.create_network()
+
+        network_1.peers['node_2'] = {}
+        network_1.peers['node_3'] = {}
+
+        self.assertEqual(2, network_1.num_of_peers())
+
+    def test_num_of_peers_connected_zero(self):
+        network_1 = self.create_network()
+
+        self.assertEqual(0, network_1.num_of_peers_connected())
+
+    def test_num_of_peers_connected(self):
+        network_1 = self.create_network()
+        network_1.peers['node_2'] = Peer()
+        network_1.peers['node_3'] = Peer(dealer_running=False)
+
+        self.assertEqual(1, network_1.num_of_peers_connected())
+
+    def test_all_peers_connected_True(self):
+        network_1 = self.create_network()
+        network_1.peers['node_2'] = Peer()
+        network_1.peers['node_3'] = Peer()
+
+        self.assertTrue(network_1.all_peers_connected())
+
+    def test_all_peers_connected_False(self):
+        network_1 = self.create_network()
+        network_1.peers['node_2'] = Peer()
+        network_1.peers['node_3'] = Peer(subscriber_running=False)
+
+        self.assertFalse(network_1.all_peers_connected())
+
+    def test_reconnect_peer(self):
+        # Create two network instances
+        network_1 = self.create_network()
+        self.start_network(network=network_1)
+        self.assertTrue(network_1.running)
+
+        network_2 = self.create_network(index=1)
+        self.start_network(network=network_2)
+        self.assertTrue(network_2.running)
+
+        # connect networks to each other
+        network_1.connect(ip=network_2.external_address, vk=network_2.vk)
+
+        # await connections
+        self.async_sleep(delay=1)
+
+        # Disable Network 2
+        network_2.router.pause()
+
+        # Call reconnect loop on other network
+        peer = network_1.get_peer(vk=network_2.vk)
+        peer.dealer.check_connection()
+        self.async_sleep(delay=1)
+
+        self.assertFalse(peer.is_running)
+        self.assertTrue(peer.reconnecting)
+
+        # Enable Network 2
+        network_2.router.unpause()
+
+        # await Network 1 reconnects to network 2
+        self.async_sleep(delay=2.5)
+
+        net_1_all_connected = network_1.all_peers_connected()
+        net_2_all_connected = network_2.all_peers_connected()
+
+        self.assertTrue(net_1_all_connected)
+        self.assertTrue(net_2_all_connected)
 
 
 

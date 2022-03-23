@@ -91,6 +91,7 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
         driver = ContractDriver()
         client = ContractingClient(driver=driver)
         executor = Executor(driver=driver, metering=False)
+        reward_manger = rewards.RewardManager()
 
 
         main_processing_queue = TxProcessingQueue(
@@ -105,7 +106,7 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
             get_last_processed_hlc=lambda: "0",
             get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,
-            reward_manager=rewards,
+            reward_manager=reward_manger,
             reprocess=lambda: True,
             check_if_already_has_consensus=lambda: False,
             pause_all_queues=lambda: True,

@@ -23,12 +23,18 @@ class Publisher():
 
         self.debug_published = []
 
-    def setup_socket(self): 
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
+    def setup_socket(self):
         if self.running:
             self.log.warning(f'[PUBLISHER] Already running.')
             print(f'[{self.log.name}][PUBLISHER] Already running.')
-
             return
+
         self.socket = self.ctx.socket(zmq.PUB)
 
         self.log.info(f'[PUBLISHER] Starting on {self.address}')
@@ -37,13 +43,15 @@ class Publisher():
         self.running = True
         self.socket.bind(self.address)
     
-    async def publish(self, topic, msg):
+    def publish(self, topic, msg):
         if not self.running:
             self.log.error(f'[PUBLISHER] Publisher is not running.')
             print(f'[{self.log.name}][PUBLISHER] Publisher is not running.')
 
             return
 
+        self.log.error(f'[PUBLISHER] Publishing: {msg}')
+        print(f'[{self.log.name}][PUBLISHER] Publishing: {msg}')
         self.debug_published.append(msg)
 
         m = encode(msg).encode()        
@@ -57,10 +65,10 @@ class Publisher():
             'ip': ip
         }
 
-        asyncio.ensure_future(self.publish(
+        self.publish(
             topic=topic,
             msg=msg
-        ))
+        )
     
     def stop(self):
         if self.running:
@@ -69,6 +77,10 @@ class Publisher():
             self.log.info('[PUBLISHER] Stopping.')
             print(f'[{self.log.name}][PUBLISHER] Stopping.')
 
-            self.socket.close()
+            try:
+                self.socket.close()
+            except zmq.ZMQError:
+                pass
+
 
         

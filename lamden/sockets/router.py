@@ -1,3 +1,4 @@
+from time import sleep
 import zmq
 import threading
 
@@ -17,6 +18,7 @@ class CredentialsProvider(object):
 
     @property
     def approved_nodes(self):
+        peers = self.get_all_peers()
         return [z85_key(vk) for vk in self.get_all_peers()]
 
     def add_key(self, new_key):
@@ -53,12 +55,17 @@ class Router(threading.Thread):
         self.address = None
         self.wallet = router_wallet
         self.running = False
+        self.paused = False # For testing
         self.cred_provider = CredentialsProvider(get_all_peers=get_all_peers, logger=self.log)
         self.callback = callback
 
     def __del__(self):
         print(f'[{self.log.name}][ROUTER] Destroyed')
         self.log.info(f'[ROUTER] Destroyed')
+
+    @property
+    def is_paused(self):
+        return self.paused
 
     def run(self):
         print(f'[{self.log.name}][ROUTER] Starting on: ' + self.address)
@@ -84,33 +91,42 @@ class Router(threading.Thread):
         self.running = True
 
         while self.running:
-            try:
-                sockets = dict(poll.poll(self.poll_time))
-                # print(sockets[self.socket])
-                if self.socket in sockets:
-                    ident, empty, msg = self.socket.recv_multipart()
+            if self.is_paused:
+                sleep(0.5)
+            else:
+                try:
+                    sockets = dict(poll.poll(self.poll_time))
+                    # print(sockets[self.socket])
+                    if self.socket in sockets:
+                        ident, empty, msg = self.socket.recv_multipart()
 
-                    print(f'[{self.log.name}][ROUTER] received: {ident}] {msg}')
-                    self.log.info(f'[ROUTER] {ident} {msg}')
+                        print(f'[{self.log.name}][ROUTER] received: {ident}] {msg}')
+                        self.log.info(f'[ROUTER] {ident} {msg}')
 
-                    # print('Router received %s from %s' % (msg, ident))
-                    if self.callback is not None:
-                        self.callback(self, ident, msg)
+                        # print('Router received %s from %s' % (msg, ident))
+                        if self.callback is not None:
+                            self.callback(self, ident, msg)
 
-            except zmq.ZMQError as e:
-                if e.errno == zmq.ETERM: # Interrupted
-                    break
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.ETERM: # Interrupted
+                        break
 
-                if e.errno == 38: # "Socket operation on non-socket"
-                    print (e.errno)
-                    self.stop()
-                    return
-                raise
+                    if e.errno == 38: # "Socket operation on non-socket"
+                        print (e.errno)
+                        self.stop()
+                        return
+                    raise
 
         self.socket.close()
 
     def send_msg(self, ident: str, msg):
         self.socket.send_multipart([ident, b'', msg])
+
+    def pause(self):
+        self.paused = True
+
+    def unpause(self):
+        self.paused = False
 
     def stop(self):
         if self.running:

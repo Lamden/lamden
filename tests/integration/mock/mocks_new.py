@@ -63,14 +63,17 @@ class MockNode:
 
         self.current_path = Path.cwd()
 
-        self.block_storage_path = Path(f'{self.current_path}/fixtures/block_storage/{self.wallet.verifying_key}')
+        self.node_dir = Path(f'{self.current_path}/fixtures/nodes/{self.wallet.verifying_key}')
+        self.node_dir.mkdir(parents=True, exist_ok=True)
 
-        self.driver = ContractDriver(driver=InMemDriver())
+        self.block_storage_path = self.node_dir
+
+        self.driver = ContractDriver(driver=FSDriver(root=self.node_dir))
         self.driver.flush()
 
         self.nonces = storage.NonceStorage(
-            nonce_collection=f'{self.current_path}/fixtures/nonces/{self.wallet.verifying_key}',
-            pending_collection=f'{self.current_path}/fixtures/pending-nonces/{self.wallet.verifying_key}'
+            nonce_collection=f'{self.node_dir}/nonces',
+            pending_collection=f'{self.node_dir}/pending-nonces'
         )
         self.nonces.flush()
 
@@ -125,6 +128,8 @@ class MockMaster(MockNode):
             should_seed=should_seed
         )
 
+        self.obj.network.driver = self.driver
+
         self.obj.network.ip = '127.0.0.1'
         await self.obj.start()
 
@@ -161,6 +166,7 @@ class MockDelegate(MockNode):
         )
 
         self.obj.network.ip = '127.0.0.1'
+        self.obj.network.driver = self.driver
 
         await self.obj.start()
         self.started = True
@@ -195,11 +201,14 @@ class MockNetwork:
         self.constitution = None
         self.bootnodes = None
 
-
         self.prepare_nodes_to_start()
 
     def clean_fixtures_dir(self):
-        shutil.rmtree(self.fixtures_dir)
+        try:
+            shutil.rmtree(self.fixtures_dir)
+            self.fixtures_dir.mkdir(parents=True, exist_ok=True)
+        except FileNotFoundError:
+            pass
 
     def all_nodes(self):
         return self.masternodes + self.delegates

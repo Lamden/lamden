@@ -14,11 +14,10 @@ class Result:
         self.success = success
         self.response = response
 
-
 class Request(threading.Thread):
     con_failed = 'con_failed'
 
-    def __init__(self, _id, _address, server_vk, wallet: wallet, ctx=None, logger=None):
+    def __init__(self, _id, _address, server_vk, peer_disconnected_callback, wallet: wallet, ctx=None, logger=None):
 
         self.log = logger or get_logger('REQUEST')
 
@@ -36,12 +35,16 @@ class Request(threading.Thread):
         self.wallet = wallet
         self.threadLock = threading.Lock()
         self.connection_attempts = 0
-        self.running = False
         self.socket = None
         self.max_attempts = 5
         self.poll_time = 250
         self.response = ''
         self.result = False
+        self.peer_disconnected_callback = peer_disconnected_callback
+
+    @property
+    def is_connected(self):
+        return self.connected
 
     def create_socket(self):
         self.socket = self.ctx.socket(zmq.REQ)
@@ -51,80 +54,7 @@ class Request(threading.Thread):
         self.socket.identity = encode(self.id).encode()
         self.socket.setsockopt(zmq.LINGER, 100)
 
-    async def run(self):
-        self.running = True
-        self.log.info("[REQUEST] STARTING FOR PEER: " + self.address)
-
-        while self.running:
-            # print("request: I'm Running")
-            if(self.state == 0):
-                sleep(0.1)
-            elif(self.state == 1):
-                while self.connection_attempts < self.max_attempts and self.running:
-                    self.log.info(f'[REQUEST] attempting to send msg: ' + self.msg)
-                    print(f'[{self.log.name}][REQUEST] attempting to send msg: ' + self.msg)
-                    self.create_socket()
-                    try:
-                        poll = zmq.Poller()
-                        poll.register(self.socket, zmq.POLLIN)
-                        self.socket.connect(self.address)
-                        self.socket.send_string(self.msg)
-                        sockets = dict(poll.poll(self.poll_time))
-                        # self.log.info(sockets)
-                        if self.socket in sockets:
-                            msg = self.socket.recv()
-                            self.log.info(' %s received: %s' % (self.id, msg))
-                            print(f'[{self.log.name}] %s received: %s' % (self.id, msg))
-                            self.response = msg
-                            self.result = True
-                            # if self.callback:
-                            #     self.callback(True, msg)
-                            self.state = 0
-                            self.socket.close()
-                            return
-                        else:
-                            print('no response in poll time')
-                            self.connection_attempts += 1
-                            self.socket.close()
-                            sleep(0.5)
-                    except zmq.ZMQError as e:
-                        if e.errno == zmq.ETERM:
-                            self.log.info('[REQUEST] Interrupted')
-                            print(f'[{self.log.name}][REQUEST] Interrupted')
-                            break           # Interrupted
-                        else:
-                            self.log.info('[DEALER] error: ' + e.strerror)
-                            print(f'[{self.log.name}][REQUEST] error: ' + e.strerror)
-                            sleep(1)
-                            self.connection_attempts += 1
-                            self.socket.close()
-                            sleep(0.5)
-                    except Exception as err:
-                        self.log.error(f'[REQUEST] {err}')
-                        print(f'[{self.log.name}][REQUEST] {err}')
-                        self.connection_attempts += 1
-                        self.socket.close()
-                        sleep(0.5)
-                self.response = f'Request Socket Error: Failed to receive response after {self.max_attempts} attempts each waiting {self.poll_time}'
-                print(self.response)
-                self.state = 0
-                self.result = False
-                # print("dealer finished")
-                return
-
-    def send_msg(self, msg, callback):
-        # self.socket.send_string(msg)
-        if(self.state is 0):
-            self.msg = msg
-            self.callback = callback
-            self.connection_attempts = 0
-            self.state = 1
-            return True
-        else:
-            print('error already sending a message')
-            return False
-
-    def send_msg_await(self, msg, time_out: int, retries: int):
+    def send_msg_await(self, msg, time_out: int = 500, retries: int = 3):
         self.result = False
         self.response = ''
         self.max_attempts = retries
@@ -133,63 +63,78 @@ class Request(threading.Thread):
         self.connection_attempts = 0
         self.state = 1
         return self.send()
-        # print(f'request {result}, {response}')
-        # return {result, response}
 
     def send(self):
-        self.running = True
         self.log.info("[REQUEST] STARTING FOR PEER: " + self.address)
-        while self.connection_attempts < self.max_attempts and self.running:
+
+        while self.connection_attempts < self.max_attempts:
             print('[REQUEST] attempting to send msg: ' + self.msg)
             self.create_socket()
+
             try:
                 poll = zmq.Poller()
                 poll.register(self.socket, zmq.POLLIN)
+
                 self.socket.connect(self.address)
                 self.socket.send_string(self.msg)
+
                 sockets = dict(poll.poll(self.poll_time))
                 # self.log.info(sockets)
                 if self.socket in sockets:
                     msg = self.socket.recv()
+
                     self.log.info(' %s received: %s' % (self.id, msg))
                     print(f'[{self.log.name}] %s received: %s' % (self.id, msg))
-                    # return {'successful': True, 'response': msg}
+
+                    self.connected = True
+
                     return Result(True, msg)
-                    # self.response = msg
-                    # self.result = True
-                    self.state = 0
-                    self.socket.close()
-                    return
                 else:
                     print('no response in poll time')
                     self.connection_attempts += 1
-                    self.socket.close()
                     sleep(0.5)
             except zmq.ZMQError as e:
                 if e.errno == zmq.ETERM:
                     self.log.info('[REQUEST] Interrupted')
                     print(f'[{self.log.name}][REQUEST] Interrupted')
+                    self.check_connection()
                     break  # Interrupted
                 else:
                     self.log.info('[REQUEST] error: ' + e.strerror)
                     print(f'[{self.log.name}][REQUEST] error: ' + e.strerror)
                     sleep(1)
                     self.connection_attempts += 1
-                    self.socket.close()
+                    self.check_connection()
                     sleep(0.5)
             except Exception as err:
                 self.log.error(f'[REQUEST] {err}')
                 print(f'[{self.log.name}][REQUEST] {err}')
                 self.connection_attempts += 1
-                self.socket.close()
+                self.check_connection()
                 sleep(0.5)
         response = f'Request Socket Error: Failed to receive response after {self.max_attempts} attempts each waiting {self.poll_time}'
         print(response)
         self.state = 0
         return Result(False, response)
 
+    def check_connection(self):
+        self.connected = False
+        self.peer_disconnected_callback()
+
     def stop(self):
-        if self.running:
+        if self.connected:
+            self.connected = False
             self.log.info('[REQUEST] Stopping.')
             print(f'[{self.log.name}][REQUEST] Stopping.')
-            self.running = False
+            try:
+                self.socket.close()
+                self.join()
+            except zmq.ZMQError as err:
+                self.log.error(f'[REQUEST] Error Stopping: {err}')
+                print(f'[{self.log.name}][REQUEST] Error Stopping: {err}')
+                pass
+            except RuntimeError as err:
+                self.log.error(f'[REQUEST] Error Stopping: {err}')
+                print(f'[{self.log.name}][REQUEST] Error Stopping: {err}')
+                pass
+

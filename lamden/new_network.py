@@ -64,7 +64,7 @@ class Network:
                 'webserver': 18080
             }
 
-        self.ctx = zmq.asyncio.Context()
+        self.ctx = zmq.Context()
 
         self.publisher = Publisher(
             testing=self.testing,
@@ -120,6 +120,10 @@ class Network:
     def vk(self):
         return  self.wallet.verifying_key
 
+    @property
+    def peer_list(self):
+        return self.peers.values()
+
     async def start(self):
         self.running = True
 
@@ -165,6 +169,15 @@ class Network:
 
     def get_actions(self):
         return self.actions
+
+    def num_of_peers(self):
+        return len(self.peer_list)
+
+    def num_of_peers_connected(self):
+        return len(list(filter(lambda x: x is True, [peer.is_running for peer in self.peer_list])))
+
+    def all_peers_connected(self):
+        return self.num_of_peers() == self.num_of_peers_connected()
 
     def get_all_peers(self):
         return self.actions[GET_ALL_PEERS]()
@@ -226,15 +239,11 @@ class Network:
         try:
             peer = self.get_peer(vk=vk)
             if peer:
-                if peer.running:
+                if peer.is_running:
                     # If we are already connected to this peer then do nothing
                     print(f'[{self.external_address}][NETWORK] Already connected to "{vk}" at {ip}')
                     return
-                else:
-                    print(f'[{self.external_address}][NETWORK] Attempting to reconnect to "{vk}" at {ip}')
-                    # if we are not connected then update the ip and try to connect
-                    peer.set_ip(address=ip)
-                    peer.start()
+
             else:
                 print(f'[{self.external_address}][NETWORK] Adding Peer "{vk}" at {ip}')
                 self.add_peer(ip=ip, vk=vk)
@@ -261,17 +270,13 @@ class Network:
             self.router.send_msg(ident, self.hello_response)
 
             # print('Router sending pub_info response to %s' % ident)
-            peer = self.get_peer(ident)
             vk = json.loads(ident)
             ip = msg.get('ip')
 
-            '''
+            peer = self.get_peer(vk=vk)
+
             if not peer:
                 self.connect(vk=vk, ip=ip)
-            else:
-                if not peer.running:
-                    self.connect(vk=vk, ip=ip)
-            '''
 
         if action == LATEST_BLOCK_INFO:
             latest_block_info = self.get_latest_block_info()
@@ -344,11 +349,12 @@ class Network:
         self.publisher.announce_new_peer_connection(vk=vk, ip=peer.dealer_address)
 
     def process_new_peer_connection(self, msg):
-        print(f'[{self.external_address}][NEW PEER CONNECTED] {msg}')
         vk = msg.get('vk')
-        ip = msg.get('ip')
 
-        self.connect(ip=ip, vk=vk)
+        if vk != self.vk:
+            print(f'[{self.external_address}][NEW PEER CONNECTED] {msg}')
+            ip = msg.get('ip')
+            self.connect(ip=ip, vk=vk)
 
     def blacklist_peer(self, key):
         self.disconnect_peer(key)

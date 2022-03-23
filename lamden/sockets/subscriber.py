@@ -27,6 +27,10 @@ class Subscriber():
 
         self.debug_events = []
 
+    @property
+    def is_running(self):
+        return self.running
+
     def start(self, loop):
         try:
             self.socket.connect(self.address)

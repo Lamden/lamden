@@ -258,7 +258,7 @@ class Node:
                     vk=vk
                 )
 
-        await self.network.connected_to_all_peers()
+        # await self.network.connected_to_all_peers()
 
     async def join_existing_network(self):
         bootnode = None

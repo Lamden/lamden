@@ -64,11 +64,15 @@ class TestNewNetwork(unittest.TestCase):
         msg = b'success'
         router.send_msg(identity, msg)
 
+    def reconnect(self):
+        pass
+
     def test_request_to_router(self):
         request_wallet = Wallet()
         router_wallet = Wallet()
 
         request = Request(_id=request_wallet.verifying_key, _address='tcp://127.0.0.1:19000',
+                          peer_disconnected_callback=self.reconnect,
                           server_vk=router_wallet.curve_vk, wallet=request_wallet)
 
         router = Router(router_wallet=router_wallet, get_all_peers=lambda: [request_wallet.verifying_key],
@@ -95,6 +99,7 @@ class TestNewNetwork(unittest.TestCase):
         router_wallet = Wallet()
 
         request = Request(_id=dealer_wallet.verifying_key, _address='tcp://127.0.0.1:19000',
+                          peer_disconnected_callback=self.reconnect,
                           server_vk=router_wallet.curve_vk, wallet=dealer_wallet)
 
         self.async_sleep(0.5)
