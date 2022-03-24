@@ -207,11 +207,16 @@ class TestRequestSocket(unittest.TestCase):
     def test_can_create_instance_REQUEST(self):
         self.create_request()
         self.assertIsInstance(obj=self.request, cls=Request)
+        self.assertFalse(self.request.secure_socket)
+
+        self.request.send(to_address=self.peer_address, msg=self.ping_msg)
 
     def test_can_create_instance_secure_REQUEST(self):
         self.create_secure_request()
         self.assertIsInstance(obj=self.request, cls=Request)
         self.assertTrue(self.request.secure_socket)
+
+        self.request.send(to_address=self.peer_address, msg=self.ping_msg)
 
     def test_send_msg_get_successful_response(self):
         self.start_peer()

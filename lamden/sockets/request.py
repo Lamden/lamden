@@ -1,12 +1,8 @@
-import time
-from time import sleep
 import zmq
-import threading
 from lamden.logger.base import get_logger
-
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
-import threading
+
 
 class Result:
     def __init__(self, success, response=None, error=None):
@@ -14,16 +10,13 @@ class Result:
         self.response = response
         self.error = error
 
-class Request(threading.Thread):
+class Request():
     con_failed = 'con_failed'
 
     def __init__(self, server_vk=None, wallet=None, ctx=None, logger=None):
         self.log = logger or get_logger('REQUEST')
 
         self.ctx = zmq.Context()
-
-        threading.Thread.__init__ (self)
-        # self.threadLock = threading.Lock()
 
         self.msg = ''
 
@@ -48,6 +41,7 @@ class Request(threading.Thread):
 
     def create_socket(self):
         self.socket = self.ctx.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.LINGER, 100)
 
     def setup_secure_socket(self):
         if not self.secure_socket:
@@ -57,7 +51,6 @@ class Request(threading.Thread):
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_serverkey = self.server_vk
         self.socket.identity = encode(self.id).encode()
-        self.socket.setsockopt(zmq.LINGER, 100)
 
     def setup_polling(self):
         self.poll = zmq.Poller()
@@ -66,7 +59,8 @@ class Request(threading.Thread):
     def connect_socket(self, address):
         self.socket.connect(address)
 
-    def send_sting(self, str_msg):
+
+    def send_string(self, str_msg):
         self.socket.send_string(str_msg)
 
     def should_poll(self, poll_time):
@@ -91,7 +85,7 @@ class Request(threading.Thread):
 
                 self.setup_polling()
                 self.connect_socket(address=to_address)
-                self.send_sting(str_msg=msg)
+                self.send_string(str_msg=msg)
 
                 if self.should_poll(poll_time=timeout):
                     response = self.socket.recv()
@@ -102,8 +96,8 @@ class Request(threading.Thread):
                     return Result(success=True, response=response)
 
                 else:
-                    print(f'no response in poll time {time.time()}')
-                    connection_attempts += 1
+                    self.log.info(f'[REQUEST] No response from {to_address} in poll time.')
+                    print(f'[{self.log.name}] No response from {to_address} in poll time.')
 
             except zmq.ZMQError as err:
                 if err.errno == zmq.ETERM:
@@ -116,13 +110,13 @@ class Request(threading.Thread):
                     self.log.info('[REQUEST] error: ' + err.strerror)
                     print(f'[{self.log.name}] error: ' + err.strerror)
                     error = err.strerror
-                    connection_attempts += 1
 
             except Exception as err:
                 self.log.error(f'[REQUEST] {err}')
                 print(f'[{self.log.name}] {err}')
-                connection_attempts += 1
                 error = str(err)
+
+            connection_attempts += 1
 
         if not error:
             error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
@@ -133,7 +127,7 @@ class Request(threading.Thread):
     def stop(self):
         self.running = False
         self.log.info('[REQUEST] Stopping.')
-        print(f'[{self.log.name}] Stopping. {time.time()}')
+        print(f'[{self.log.name}] Stopping.')
         if self.socket:
             try:
                 self.socket.close()
