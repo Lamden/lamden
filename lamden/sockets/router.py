@@ -133,4 +133,3 @@ class Router(threading.Thread):
             print(f'[{self.log.name}][ROUTER] Stopping.')
             self.log.info(f'[ROUTER] Stopping.')
             self.running = False
-            self.socket.close()

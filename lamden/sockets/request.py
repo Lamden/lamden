@@ -1,140 +1,145 @@
-import json
+import time
 from time import sleep
 import zmq
 import threading
 from lamden.logger.base import get_logger
 
-from lamden.crypto import wallet
+from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
 import threading
-import asyncio
 
 class Result:
-    def __init__(self, success, response):
+    def __init__(self, success, response=None, error=None):
         self.success = success
         self.response = response
+        self.error = error
 
 class Request(threading.Thread):
     con_failed = 'con_failed'
 
-    def __init__(self, _id, _address, server_vk, peer_disconnected_callback, wallet: wallet, ctx=None, logger=None):
-
+    def __init__(self, server_vk=None, wallet=None, ctx=None, logger=None):
         self.log = logger or get_logger('REQUEST')
 
         self.ctx = zmq.Context()
 
-        self.id = _id
-        self.address = _address
-
         threading.Thread.__init__ (self)
-        self.state = 0
+        # self.threadLock = threading.Lock()
+
         self.msg = ''
 
-        self.connected = False
+        self.running = True
+
+        self.wallet = wallet or Wallet()
         self.server_vk = server_vk
-        self.wallet = wallet
-        self.threadLock = threading.Lock()
-        self.connection_attempts = 0
+
         self.socket = None
-        self.max_attempts = 5
-        self.poll_time = 250
+        self.poll = None
+
         self.response = ''
         self.result = False
-        self.peer_disconnected_callback = peer_disconnected_callback
 
     @property
-    def is_connected(self):
-        return self.connected
+    def secure_socket(self):
+        return self.server_vk is not None
+
+    @property
+    def id(self):
+        return self.wallet.verifying_key
 
     def create_socket(self):
         self.socket = self.ctx.socket(zmq.REQ)
+
+    def setup_secure_socket(self):
+        if not self.secure_socket:
+            raise AttributeError("Provided server_vk for a secure socket connection.")
+
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_serverkey = self.server_vk
         self.socket.identity = encode(self.id).encode()
         self.socket.setsockopt(zmq.LINGER, 100)
 
-    def send_msg_await(self, msg, time_out: int = 500, retries: int = 3):
-        self.result = False
-        self.response = ''
-        self.max_attempts = retries
-        self.poll_time = time_out
-        self.msg = msg
-        self.connection_attempts = 0
-        self.state = 1
-        return self.send()
+    def setup_polling(self):
+        self.poll = zmq.Poller()
+        self.poll.register(self.socket, zmq.POLLIN)
 
-    def send(self):
-        self.log.info("[REQUEST] STARTING FOR PEER: " + self.address)
+    def connect_socket(self, address):
+        self.socket.connect(address)
 
-        while self.connection_attempts < self.max_attempts:
-            print('[REQUEST] attempting to send msg: ' + self.msg)
-            self.create_socket()
+    def send_sting(self, str_msg):
+        self.socket.send_string(str_msg)
+
+    def should_poll(self, poll_time):
+        return self.socket in dict(self.poll.poll(poll_time))
+
+    def send(self, to_address, msg, timeout: int = 500, retries: int = 3) -> Result:
+        self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
+        error = None
+        connection_attempts = 0
+
+        while connection_attempts < retries:
+            print(f'[REQUEST] Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {msg}')
+            self.log.info(f'[REQUEST] Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {msg}')
+
+            if not self.running:
+                break
 
             try:
-                poll = zmq.Poller()
-                poll.register(self.socket, zmq.POLLIN)
+                self.create_socket()
+                if self.secure_socket:
+                    self.setup_secure_socket()
 
-                self.socket.connect(self.address)
-                self.socket.send_string(self.msg)
+                self.setup_polling()
+                self.connect_socket(address=to_address)
+                self.send_sting(str_msg=msg)
 
-                sockets = dict(poll.poll(self.poll_time))
-                # self.log.info(sockets)
-                if self.socket in sockets:
-                    msg = self.socket.recv()
+                if self.should_poll(poll_time=timeout):
+                    response = self.socket.recv()
 
-                    self.log.info(' %s received: %s' % (self.id, msg))
-                    print(f'[{self.log.name}] %s received: %s' % (self.id, msg))
+                    self.log.info(' %s received: %s' % (self.id, response))
+                    print(f'[{self.log.name}] %s received: %s' % (self.id, response))
 
-                    self.connected = True
+                    return Result(success=True, response=response)
 
-                    return Result(True, msg)
                 else:
-                    print('no response in poll time')
-                    self.connection_attempts += 1
-                    sleep(0.5)
-            except zmq.ZMQError as e:
-                if e.errno == zmq.ETERM:
+                    print(f'no response in poll time {time.time()}')
+                    connection_attempts += 1
+
+            except zmq.ZMQError as err:
+                if err.errno == zmq.ETERM:
                     self.log.info('[REQUEST] Interrupted')
-                    print(f'[{self.log.name}][REQUEST] Interrupted')
-                    self.check_connection()
+                    print(f'[{self.log.name}] Interrupted')
+                    error = err.strerror
                     break  # Interrupted
+
                 else:
-                    self.log.info('[REQUEST] error: ' + e.strerror)
-                    print(f'[{self.log.name}][REQUEST] error: ' + e.strerror)
-                    sleep(1)
-                    self.connection_attempts += 1
-                    self.check_connection()
-                    sleep(0.5)
+                    self.log.info('[REQUEST] error: ' + err.strerror)
+                    print(f'[{self.log.name}] error: ' + err.strerror)
+                    error = err.strerror
+                    connection_attempts += 1
+
             except Exception as err:
                 self.log.error(f'[REQUEST] {err}')
-                print(f'[{self.log.name}][REQUEST] {err}')
-                self.connection_attempts += 1
-                self.check_connection()
-                sleep(0.5)
-        response = f'Request Socket Error: Failed to receive response after {self.max_attempts} attempts each waiting {self.poll_time}'
-        print(response)
-        self.state = 0
-        return Result(False, response)
+                print(f'[{self.log.name}] {err}')
+                connection_attempts += 1
+                error = str(err)
 
-    def check_connection(self):
-        self.connected = False
-        self.peer_disconnected_callback()
+        if not error:
+            error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
+
+        return Result(success=False, error=error)
+
 
     def stop(self):
-        if self.connected:
-            self.connected = False
-            self.log.info('[REQUEST] Stopping.')
-            print(f'[{self.log.name}][REQUEST] Stopping.')
+        self.running = False
+        self.log.info('[REQUEST] Stopping.')
+        print(f'[{self.log.name}] Stopping. {time.time()}')
+        if self.socket:
             try:
                 self.socket.close()
-                self.join()
             except zmq.ZMQError as err:
                 self.log.error(f'[REQUEST] Error Stopping: {err}')
-                print(f'[{self.log.name}][REQUEST] Error Stopping: {err}')
+                print(f'[{self.log.name}] Error Stopping: {err}')
                 pass
-            except RuntimeError as err:
-                self.log.error(f'[REQUEST] Error Stopping: {err}')
-                print(f'[{self.log.name}][REQUEST] Error Stopping: {err}')
-                pass
+
 
