@@ -26,7 +26,7 @@ class Request():
         self.server_vk = server_vk
 
         self.socket = None
-        self.poll = None
+        self.pollin = None
 
         self.response = ''
         self.result = False
@@ -38,6 +38,13 @@ class Request():
     @property
     def id(self):
         return self.wallet.verifying_key
+
+    @property
+    def socket_is_bound(self):
+        try:
+            return len(self.socket.LAST_ENDPOINT) > 0
+        except AttributeError:
+            return False
 
     def create_socket(self):
         self.socket = self.ctx.socket(zmq.REQ)
@@ -53,18 +60,23 @@ class Request():
         self.socket.identity = encode(self.id).encode()
 
     def setup_polling(self):
-        self.poll = zmq.Poller()
-        self.poll.register(self.socket, zmq.POLLIN)
+        self.pollin = zmq.Poller()
+        self.pollin.register(self.socket, zmq.POLLIN)
 
     def connect_socket(self, address):
         self.socket.connect(address)
 
-
     def send_string(self, str_msg):
+        if not self.socket:
+            raise AttributeError("Socket has not been created.")
+
+        if not self.socket_is_bound:
+            raise AttributeError("Socket is not bound to an address.")
+
         self.socket.send_string(str_msg)
 
-    def should_poll(self, poll_time):
-        return self.socket in dict(self.poll.poll(poll_time))
+    def message_waiting(self, poll_time):
+        return self.socket in dict(self.pollin.poll(poll_time))
 
     def send(self, to_address, msg, timeout: int = 500, retries: int = 3) -> Result:
         self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
@@ -80,14 +92,16 @@ class Request():
 
             try:
                 self.create_socket()
+
                 if self.secure_socket:
                     self.setup_secure_socket()
 
                 self.setup_polling()
                 self.connect_socket(address=to_address)
+
                 self.send_string(str_msg=msg)
 
-                if self.should_poll(poll_time=timeout):
+                if self.message_waiting(poll_time=timeout):
                     response = self.socket.recv()
 
                     self.log.info(' %s received: %s' % (self.id, response))
