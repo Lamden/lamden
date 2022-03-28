@@ -66,9 +66,6 @@ class TestRequestSocket(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    def reconnect(self):
-        self.reconnect_called = True
-
     def test_can_create_instance_MOCKROUTER(self):
         self.start_secure_peer()
         self.assertIsInstance(obj=self.peer, cls=MockRouter)

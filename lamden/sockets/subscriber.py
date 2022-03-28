@@ -4,102 +4,106 @@ import zmq
 import zmq.auth
 from lamden.logger.base import get_logger
 
-class Subscriber():
-    def __init__(
-        self,
-        _address: str,  # example: "tcp://localhost:6000"
-        _topics = [''],
-        _callback = None,
-        _ctx = zmq.Context.instance(),
-        logger=None
-    ):
+class Subscriber(threading.Thread):
+    def __init__(self, address: str, topics = [''], callback = None, ctx = zmq.Context(), logger=None):
+        threading.Thread.__init__(self)
+        self.Lock = threading.Lock()
+
         self.log = logger or get_logger("SUBSCRIBER")
         # Configure the listening socket
+
         self.running = False
-        self.address = _address
-        self.ctx = _ctx
+        self.checking = False
 
-        self.socket = self.ctx.socket(zmq.SUB)
+        self.address = address
+        self.callback = callback
 
-        self.topics = _topics
-        self.callback = _callback
-        self.sub_task = None
+        self.ctx = ctx
+        self.loop = None
 
-        self.debug_events = []
+        self.socket = None
+
+        self.topics = topics
+
 
     @property
     def is_running(self):
         return self.running
 
-    def start(self, loop):
+    @property
+    def socket_is_bound(self):
         try:
-            self.socket.connect(self.address)
-        except zmq.error.Again as error:
-            self.log.error(error)
-            # socket.close()
+            return len(self.socket.LAST_ENDPOINT) > 0
+        except AttributeError:
             return False
-        # asyncio.create_task(self.subscriber_thread())
-        # self.sub_task = loop.run_until_complete(self.subscriber_thread())
-        print('subscriber start')
-        self.sub_task = threading.Thread(target=self.start2, args=[loop])
-        self.sub_task.start()
-        return True
 
-    def start2(self, loop):
-        print('subscriber start2')
-        loop.run_until_complete(self.subscriber_thread())
-        
-    def add_topic(self, topic):
-        self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
+    @property
+    def socket_is_closed(self):
+        try:
+            return self.socket.closed
+        except AttributeError:
+            return True
 
-    async def subscriber_thread(self):      
-        # print("starting subscriber_thread")
+    def setup_event_loop(self):
+        try:
+            self.loop = asyncio.get_event_loop()
+        except Exception:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
+    def create_socket(self):
+        self.socket = self.ctx.socket(zmq.SUB)
+
+    def connect_socket(self):
+        self.socket.connect(self.address)
+
+    def subscribe_to_topics(self):
         for topic in self.topics:
             self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
-            self.log.info(f'[SUBSCRIBER] Subscribed to topic "{topic}" on {self.address}')
-            print(f'[{self.log.name}][SUBSCRIBER] Subscribed to topic "{topic}" on {self.address}')
 
-        self.running = True    
+    def add_topic(self, topic: str):
+        if not isinstance(topic, str):
+            raise TypeError("Topic must be string.")
+
+        self.topics.append(topic)
+        self.socket.setsockopt(zmq.SUBSCRIBE, (topic.encode('utf8')))
+
+    def run(self):
+        self.create_socket()
+        self.connect_socket()
+
+        self.subscriber_thread()
+
+        self.log.info(f'[SUBSCRIBER] Running..')
+        print(f'[{self.log.name}][SUBSCRIBER] Running..')
+
+    def subscriber_thread(self):
+        self.running = True
+
         while self.running:
-            try:
-                event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
-            except zmq.error.ZMQError:
-                self.socket.close()
-                self.running = False
-                return
+            event = self.socket.poll(timeout=50, flags=zmq.POLLIN)
 
-            if(event):
-                try:
-                    data = self.socket.recv_multipart()
-                    self.debug_events.append(data)
+            if event:
+                data = self.socket.recv_multipart()
 
-                    self.log.info(f'[SUBSCRIBER] Got event from {self.address}')
-                    print(f'[{self.log.name}][SUBSCRIBER] Got event from {self.address}')
+                self.log.info(f'[SUBSCRIBER] Got event from {self.address}')
+                print(f'[{self.log.name}][SUBSCRIBER] Got event from {self.address}')
 
-                    if(self.callback):
-                        await self.callback(data)
-                except zmq.ZMQError as e:
-                    if e.errno == zmq.ETERM:
-                        break           # Interrupted
-                    else:
-                        raise
-
-            await asyncio.sleep(0)
+                if self.callback:
+                    self.callback(data)
 
         self.socket.close()
-        # print("subscriber finished")
 
+    async def stopping(self):
+        while not self.socket_is_closed:
+            await asyncio.sleep(0)
 
     def stop(self):
         if self.running:
+            self.running = False
+
+            self.setup_event_loop()
+            self.loop.run_until_complete(self.stopping())
+
             self.log.info('[SUBSCRIBER] Stopping.')
             print(f'[{self.log.name}][SUBSCRIBER] Stopping.')
-
-            self.socket.close()
-            if self.sub_task:
-                try:
-                    self.sub_task.join()
-                except RuntimeError:
-                    pass
-                self.sub_task = None
-            self.running = False
