@@ -4,29 +4,29 @@ import asyncio
 
 from lamden.sockets.request import Request
 from lamden.sockets.subscriber import Subscriber
-from lamden.sockets.dealer import Dealer
-from urllib.parse import urlparse
 
+from urllib.parse import urlparse
 
 LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
 
 class Peer:
-    def __init__(self, ip, ctx, server_key, vk, services, blacklist, wallet,
-                 get_network_ip, connected_callback, logger=None, testing=False, debug=False):
-        self.ctx = ctx
+    def __init__(self, ip, server_key, services, wallet,
+                 get_network_ip, connected_callback, logger=None, driver=None, storage=None):
+
+        self.driver = driver
+        self.storage = storage
 
         self.server_key = server_key
-        self.vk = vk
 
         self.get_network_ip = get_network_ip
 
         self.protocol = 'tcp://'
-        self.socket_ports = {
+        self.socket_ports = dict({
             'router': 19000,
             'publisher': 19080,
             'webserver': 18080
-        }
+        })
 
         self.url = None
         self.set_ip(ip)
@@ -36,30 +36,20 @@ class Peer:
         self.errored = False
         self.wallet = wallet
 
-        self.blacklist = blacklist
-
         self.running = False
         self.sub_running = False
         self.reconnecting = False
         self.connected_callback = connected_callback
 
-        self.testing = testing
-        self.debug = debug
-        self.debug_messages = []
         self.log = logger or get_logger("PEER")
 
-        self.dealer = None
+        self.request = None
+        self.subscriber = None
 
-        self.subscriber = Subscriber(
-            _address=self.subscriber_address,
-            _callback=self.process_subscription,
-            logger=self.log
-        )
-
-        self.latest_block_info = {
+        self.latest_block_info = dict({
             'number': 0,
             'hlc_timestamp': "0"
-        }
+        })
 
         try:
             self.loop = asyncio.get_event_loop()
@@ -68,27 +58,22 @@ class Peer:
             asyncio.set_event_loop(self.loop)
 
     @property
+    def vk(self):
+        return self.wallet.verifying_key
+
+    @property
     def ip(self):
         if not self.url:
             return None
-
         return self.url.hostname
 
     @property
-    def latest_block(self):
-        try:
-            block_num = self.latest_block_info.get('number')
-        except Exception:
-            pass
-        return block_num
+    def latest_block_number(self):
+        return self.latest_block_info.get('number')
 
     @property
-    def latest_hlc_timestamp(self):
-        try:
-            hlc_timestamp = self.latest_block_info.get('hlc_timestamp')
-        except Exception:
-            pass
-        return hlc_timestamp
+    def latest_block_hlc_timestamp(self):
+        return self.latest_block_info.get('hlc_timestamp')
 
     @property
     def subscriber_address(self):
@@ -97,14 +82,17 @@ class Peer:
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher'))
 
     @property
-    def dealer_address(self):
+    def request_address(self):
         self.log.info('[PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
         print('[{}][PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('router')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
     @property
     def is_running(self):
-        return self.dealer.is_connected and self.subscriber.is_running
+        if not self.subscriber or not self.request:
+            return False
+
+        return self.request.is_running and self.subscriber.is_running
 
     def is_available(self):
         pong = self.ping()
@@ -113,13 +101,29 @@ class Peer:
     def set_ip(self, address):
         self.url = urlparse(address)
 
-        if self.url.port:
-            self.socket_ports['router'] = self.url.port
-            self.calc_ports()
+        if not self.url.hostname:
+            self.set_ip(address=f'{self.protocol}{address}')
+        else:
+            if self.url.port:
+                self.socket_ports['router'] = self.url.port
+                self.calc_ports()
+
+    def set_driver(self, driver):
+        self.driver = driver
+
+    def set_storage(self, storage):
+        self.storage = storage
+
+    def set_latest_block_number(self, number):
+        self.latest_block_info['number'] = number
+
+    def set_latest_block_hlc_timestamp(self, hlc_timestamp):
+        self.latest_block_info['hlc_timestamp'] = hlc_timestamp
 
     def calc_ports(self):
         self.socket_ports['publisher'] = 19080 + (self.socket_ports['router'] - 19000)
         self.socket_ports['webserver'] = 18080 + (self.socket_ports['router'] - 19000)
+
 
     def start(self):
         if self.running:
@@ -127,17 +131,8 @@ class Peer:
             print(f'[{self.log.name}][PEER] Already running.')
             return
 
-        # print('Received msg from %s : %s' % (self.router_address, msg))
-        if not self.dealer:
-            self.dealer = Request(
-                _id=self.wallet.verifying_key,
-                _address=self.dealer_address,
-                server_vk=self.server_key,
-                peer_disconnected_callback=self.reconnect,
-                wallet=self.wallet,
-                ctx=self.ctx,
-                logger=self.log
-            )
+        if not self.request:
+            self.setup_request()
 
         response = self.hello()
 
@@ -146,8 +141,8 @@ class Peer:
             return
 
         if not response.get('success'):
-            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
-            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.dealer_address})')
+            self.log.error(f'[DEALER] Peer connection failed to {self.server_key}, ({self.request_address})')
+            print(f'[{self.log.name}][DEALER] Peer connection failed to {self.server_key}, ({self.request_address})')
 
             self.reconnect()
             return
@@ -166,13 +161,26 @@ class Peer:
                 self.sub_running = True
                 self.reconnecting = False
                 self.connected_callback(vk=self.vk)
-                self.loop = asyncio.new_event_loop()
-                self.subscriber.start(self.loop)
+                self.setup_subscriber()
+
+    def setup_subscriber(self):
+        self.subscriber = Subscriber(
+            address=self.subscriber_address,
+            callback=self.process_subscription,
+            logger=self.log
+        )
+
+    def setup_request(self):
+        self.request = Request(
+            server_vk=self.server_key,
+            wallet=self.wallet,
+            logger=self.log
+        )
 
     def stop(self):
         self.running = False
-        if self.dealer.connected:
-            self.dealer.stop()
+        if self.request.connected:
+            self.request.stop()
         if self.subscriber.running:
             self.subscriber.stop()
 
@@ -195,11 +203,11 @@ class Peer:
         services = self.services()
         processor = services.get(topic.decode("utf-8"))
         message = json.loads(msg)
-        self.debug_messages.append(message)
-        # print('process_subscription: {}'.format(message))
+
         if not message:
             self.log.error(msg)
             self.log.error(message)
+
         if processor is not None and message is not None:
             await processor.process_message(message)
 
@@ -213,12 +221,12 @@ class Peer:
             res = self.ping()
 
             if res is None:
-                self.log.info(f'[PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
-                print(f'[{self.log.name}][PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
+                self.log.info(f'[PEER] Could not ping {self.request_address}. Attempting to reconnect...')
+                print(f'[{self.log.name}][PEER] Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
 
-        self.log.info(f'[PEER] Reconnected to {self.dealer_address}!')
-        print(f'[{self.log.name}][PEER] Reconnected to {self.dealer_address}!')
+        self.log.info(f'[PEER] Reconnected to {self.request_address}!')
+        print(f'[{self.log.name}][PEER] Reconnected to {self.request_address}!')
 
         self.reconnecting = False
 
@@ -250,13 +258,13 @@ class Peer:
         return msg_json
 
     def send_request(self, msg, timeout=200, retries=3):
-        result = self.dealer.send_msg_await(msg=msg, time_out=timeout, retries=retries)
+        result = self.request.send_msg_await(msg=msg, time_out=timeout, retries=retries)
         if (result.success):
             try:
                 msg_json = json.loads(result.response)
                 msg_json['success'] = result.success
                 return msg_json
             except:
-                self.log.info(f'[PEER] failed to decode json from {self.dealer_address}: {msg_json}')
-                print(f'[{self.log.name}][PEER] failed to decode json from {self.dealer_address}: {msg_json}')
+                self.log.info(f'[PEER] failed to decode json from {self.request_address}: {msg_json}')
+                print(f'[{self.log.name}][PEER] failed to decode json from {self.request_address}: {msg_json}')
                 return None

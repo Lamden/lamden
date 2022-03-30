@@ -11,23 +11,18 @@ class MockCredentialsProvider(object):
         return key in self.valid_peers
 
 class MockRouter(threading.Thread):
-    def __init__(self, ctx, wallet, valid_peers=[], port=19000):
+    def __init__(self, wallet, valid_peers=[], port=19000):
         threading.Thread.__init__(self)
         self.daemon = True
 
         self.wallet = wallet
         self.port = port
 
-        self.context = ctx
-        self.socket = self.context.socket(zmq.ROUTER)
+        self.ctx = None
+        self.socket = None
         self.cred_provider = MockCredentialsProvider(valid_peers=valid_peers)
 
-        auth = ThreadAuthenticator(self.context)
-        auth.start()
-        auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
-
         self.poller = zmq.Poller()
-        self.poller.register(self.socket, zmq.POLLIN)
         self.poll_time = 0.01
 
         self.running = False
@@ -35,7 +30,18 @@ class MockRouter(threading.Thread):
 
         self.start()
 
+    def setup_socket(self):
+        self.ctx = zmq.Context()
+        self.socket = self.ctx.socket(zmq.ROUTER)
+
+        auth = ThreadAuthenticator(self.ctx)
+        auth.start()
+        auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
+
+        self.poller.register(self.socket, zmq.POLLIN)
+
     def run(self):
+        self.setup_socket()
 
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
@@ -60,7 +66,9 @@ class MockRouter(threading.Thread):
             await asyncio.sleep(0)
 
         try:
+            self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
+            self.ctx.term()
         except zmq.ZMQError as err:
             self.log.error(f'[ROUTER] Error Stopping Socket: {err}')
             print(f'[{self.log.name}][ROUTER] Error Stopping Socket: {err}')

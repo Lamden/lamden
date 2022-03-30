@@ -4,14 +4,12 @@ from lamden.crypto.wallet import Wallet
 from tests.unit.helpers.mock_router import MockRouter
 from tests.unit.helpers.mock_reply import MockReply
 import unittest
-import zmq
 
 from lamden.sockets.request import Request
 
 
 class TestRequestSocket(unittest.TestCase):
     def setUp(self):
-        self.ctx = zmq.Context()
         self.request_wallet = Wallet()
         self.peer_wallet = Wallet()
 
@@ -31,22 +29,20 @@ class TestRequestSocket(unittest.TestCase):
     def start_secure_peer(self):
         self.peer = MockRouter(
             valid_peers=[self.request_wallet.curve_vk],
-            wallet=self.peer_wallet,
-            ctx=self.ctx,
+            wallet=self.peer_wallet
         )
 
     def start_peer(self):
-        self.peer = MockReply(ctx=self.ctx)
+        self.peer = MockReply()
 
     def create_secure_request(self):
         self.request = Request(
             server_vk=self.peer_wallet.curve_vk,
-            wallet=self.request_wallet,
-            ctx=self.ctx
+            wallet=self.request_wallet
         )
 
     def create_request(self):
-        self.request = Request(ctx=self.ctx)
+        self.request = Request()
 
     async def wrap_process_in_async(self, process, args={}):
         process(**args)
@@ -92,8 +88,12 @@ class TestRequestSocket(unittest.TestCase):
         self.start_peer()
         self.create_request()
 
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg)
-        asyncio.sleep(50)
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg
+        })
+
+        res = res[0]
 
         self.assertTrue(res.success)
         self.assertIsNone(res.error)
@@ -105,7 +105,12 @@ class TestRequestSocket(unittest.TestCase):
         self.start_secure_peer()
         self.create_secure_request()
 
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg)
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg
+        })
+
+        res = res[0]
 
         self.assertTrue(res.success)
         self.assertIsNone(res.error)
@@ -120,7 +125,15 @@ class TestRequestSocket(unittest.TestCase):
 
         retries = 3
         timeout = 500
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg, retries=retries, timeout=timeout)
+
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg,
+            'retries': retries,
+            'timeout': timeout
+        })
+
+        res = res[0]
 
         self.assertFalse(res.success)
         error = f"Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms"
@@ -137,7 +150,15 @@ class TestRequestSocket(unittest.TestCase):
 
         retries = 3
         timeout = 500
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg, retries=retries, timeout=timeout)
+
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg,
+            'retries': retries,
+            'timeout': timeout
+        })
+
+        res = res[0]
 
         self.assertFalse(res.success)
         error = f"Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms"
@@ -150,7 +171,15 @@ class TestRequestSocket(unittest.TestCase):
 
         retries = 3
         timeout = 500
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg, retries=retries, timeout=timeout)
+
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg,
+            'retries': retries,
+            'timeout': timeout
+        })
+
+        res = res[0]
 
         self.assertFalse(res.success)
         error = f"Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms"
@@ -168,7 +197,15 @@ class TestRequestSocket(unittest.TestCase):
 
         retries = 3
         timeout = 500
-        res = self.request.send(to_address=self.peer_address, msg=self.ping_msg, retries=retries, timeout=timeout)
+
+        res = self.await_async_process(process=self.request.send, args={
+            'to_address': self.peer_address,
+            'msg': self.ping_msg,
+            'retries': retries,
+            'timeout': timeout
+        })
+
+        res = res[0]
 
         self.assertFalse(res.success)
         error = f"Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms"
@@ -391,3 +428,13 @@ class TestRequestSocket(unittest.TestCase):
         self.request.create_socket()
 
         self.assertFalse(self.request.socket_is_bound)
+
+    def test_PROPERTY_is_running__return_TRUE(self):
+        self.create_request()
+        self.request.running = True
+        self.assertTrue(self.request.is_running)
+
+    def test_PROPERTY_is_running__return_False(self):
+        self.create_request()
+        self.request.running = False
+        self.assertFalse(self.request.is_running)

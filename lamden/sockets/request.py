@@ -1,4 +1,5 @@
 import zmq
+import zmq.asyncio
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
@@ -13,10 +14,10 @@ class Result:
 class Request():
     con_failed = 'con_failed'
 
-    def __init__(self, server_vk=None, wallet=None, ctx=None, logger=None):
+    def __init__(self, server_vk=None, wallet=None, logger=None):
         self.log = logger or get_logger('REQUEST')
 
-        self.ctx = zmq.Context()
+        self.ctx = zmq.asyncio.Context().instance()
 
         self.msg = ''
 
@@ -30,6 +31,10 @@ class Request():
 
         self.response = ''
         self.result = False
+
+    @property
+    def is_running(self):
+        return self.running
 
     @property
     def secure_socket(self):
@@ -78,7 +83,7 @@ class Request():
     def message_waiting(self, poll_time):
         return self.socket in dict(self.pollin.poll(poll_time))
 
-    def send(self, to_address, msg, timeout: int = 500, retries: int = 3) -> Result:
+    async def send(self, to_address, msg, timeout: int = 500, retries: int = 3) -> Result:
         self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
         error = None
         connection_attempts = 0
@@ -102,7 +107,7 @@ class Request():
                 self.send_string(str_msg=msg)
 
                 if self.message_waiting(poll_time=timeout):
-                    response = self.socket.recv()
+                    response = await self.socket.recv()
 
                     self.log.info(' %s received: %s' % (self.id, response))
                     print(f'[{self.log.name}] %s received: %s' % (self.id, response))

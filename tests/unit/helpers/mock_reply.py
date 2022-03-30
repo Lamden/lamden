@@ -4,18 +4,17 @@ from lamden.crypto.wallet import Wallet
 import zmq
 
 class MockReply(threading.Thread):
-    def __init__(self, ctx, port=19000):
+    def __init__(self, port=19000):
         threading.Thread.__init__(self)
         self.daemon = True
 
         self.wallet = Wallet()
         self.port = port
 
-        self.context = ctx
-        self.socket = self.context.socket(zmq.REP)
+        self.ctx = None
+        self.socket = None
 
         self.poller = zmq.Poller()
-        self.poller.register(self.socket, zmq.POLLIN)
         self.poll_time = 0.01
 
         self.running = False
@@ -23,7 +22,14 @@ class MockReply(threading.Thread):
 
         self.start()
 
+    def setup_socket(self):
+        self.ctx = zmq.Context()
+
+        self.socket = self.ctx.socket(zmq.REP)
+        self.poller.register(self.socket, zmq.POLLIN)
+
     def run(self):
+        self.setup_socket()
         self.socket.bind(f"tcp://*:{self.port}")
         self.running = True
 
@@ -43,7 +49,9 @@ class MockReply(threading.Thread):
             await asyncio.sleep(0)
 
         try:
+            self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
+            self.ctx.term()
         except zmq.ZMQError as err:
             self.log.error(f'[ROUTER] Error Stopping Socket: {err}')
             print(f'[{self.log.name}][ROUTER] Error Stopping Socket: {err}')
