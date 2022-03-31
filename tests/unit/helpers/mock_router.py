@@ -23,7 +23,7 @@ class MockRouter(threading.Thread):
         self.cred_provider = MockCredentialsProvider(valid_peers=valid_peers)
 
         self.poller = zmq.Poller()
-        self.poll_time = 0.01
+        self.poll_time = 0.001
 
         self.running = False
         self.loop = None
@@ -60,7 +60,7 @@ class MockRouter(threading.Thread):
             # print(sockets[self.socket])
             if self.socket in sockets:
                 ident, empty, msg = self.socket.recv_multipart()
-                print("Received request: ", msg)
+                print("[ROUTER] Received request: ", msg)
                 self.send_msg(ident=ident, msg=msg)
 
             await asyncio.sleep(0)

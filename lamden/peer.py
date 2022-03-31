@@ -1,7 +1,7 @@
 import json
 from lamden.logger.base import get_logger
 import asyncio
-
+from lamden.crypto.wallet import Wallet
 from lamden.sockets.request import Request
 from lamden.sockets.subscriber import Subscriber
 
@@ -11,7 +11,7 @@ LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
 
 class Peer:
-    def __init__(self, ip, server_key, services, wallet,
+    def __init__(self, ip, server_key: str, services: dict, local_wallet: Wallet,
                  get_network_ip, connected_callback, logger=None, driver=None, storage=None):
 
         self.driver = driver
@@ -34,9 +34,11 @@ class Peer:
         self.services = services
         self.in_consensus = True
         self.errored = False
-        self.wallet = wallet
+        self.local_wallet = local_wallet
 
         self.running = False
+        self.connected = False
+
         self.sub_running = False
         self.reconnecting = False
         self.connected_callback = connected_callback
@@ -58,8 +60,8 @@ class Peer:
             asyncio.set_event_loop(self.loop)
 
     @property
-    def vk(self):
-        return self.wallet.verifying_key
+    def local_vk(self):
+        return self.local_wallet.verifying_key
 
     @property
     def ip(self):
@@ -94,9 +96,26 @@ class Peer:
 
         return self.request.is_running and self.subscriber.is_running
 
+    @property
+    def is_connected(self):
+        return self.connected
+
+    @property
+    def is_sending(self):
+        return self.sending
+
     def is_available(self):
-        pong = self.ping()
-        return pong
+        tasks = asyncio.gather(
+            self.ping()
+        )
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(tasks)
+
+        try:
+            pong = res[0]
+            return pong is not None
+        except IndexError:
+            return False
 
     def set_ip(self, address):
         self.url = urlparse(address)
@@ -160,7 +179,7 @@ class Peer:
             if not self.sub_running:
                 self.sub_running = True
                 self.reconnecting = False
-                self.connected_callback(vk=self.vk)
+                self.connected_callback(vk=self.local_vk)
                 self.setup_subscriber()
 
     def setup_subscriber(self):
@@ -173,15 +192,15 @@ class Peer:
     def setup_request(self):
         self.request = Request(
             server_vk=self.server_key,
-            wallet=self.wallet,
+            local_wallet=self.local_wallet,
             logger=self.log
         )
 
     def stop(self):
         self.running = False
-        if self.request.connected:
+        if self.request:
             self.request.stop()
-        if self.subscriber.running:
+        if self.subscriber:
             self.subscriber.stop()
 
     def not_in_consensus(self):
@@ -215,10 +234,16 @@ class Peer:
         asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self):
+        if self.reconnecting:
+            return
+
         self.reconnecting = True
 
-        while not self.is_running:
-            res = self.ping()
+        while not self.connected:
+            if not self.running:
+                break
+
+            res = await self.ping()
 
             if res is None:
                 self.log.info(f'[PEER] Could not ping {self.request_address}. Attempting to reconnect...')
@@ -230,41 +255,69 @@ class Peer:
 
         self.reconnecting = False
 
-    def ping(self):
-        msg = json.dumps({'action': 'ping'})
-        msg_json = self.send_request(msg, timeout=500, retries=5)
+    async def ping(self):
+        msg_obj = {'action': 'ping'}
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
         return msg_json
 
-    def hello(self):
-        msg = json.dumps({'action': 'hello', 'ip': self.get_network_ip()})
-        msg_json = self.send_request(msg, timeout=500, retries=5)
+    async def hello(self):
+        msg_obj = {'action': 'hello', 'ip': self.get_network_ip()}
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
         return msg_json
 
-    def get_latest_block(self):
-        msg = json.dumps({'action': 'latest_block_info'})
-        msg_json = self.send_request(msg)
+    async def get_latest_block_info(self):
+        msg_obj = {'action': 'latest_block_info'}
+        msg_json = await self.send_request(msg_obj=msg_obj)
         if (msg_json):
             if msg_json.get('response') == LATEST_BLOCK_NUM:
                 self.latest_block = msg_json.get(LATEST_BLOCK_NUM)
-
-    def get_block(self, block_num):
-        msg = json.dumps({'action': 'get_block', 'block_num': block_num})
-        msg_json = self.send_request(msg)
         return msg_json
 
-    def get_node_list(self):
-        msg = json.dumps({'action': 'get_node_list'})
-        msg_json = self.send_request(msg)
+    async def get_block(self, block_num):
+        msg_obj = {'action': 'get_block', 'block_num': block_num}
+        msg_json = await self.send_request(msg_obj=msg_obj)
         return msg_json
 
-    def send_request(self, msg, timeout=200, retries=3):
-        result = self.request.send_msg_await(msg=msg, time_out=timeout, retries=retries)
-        if (result.success):
+    async def get_node_list(self):
+        msg_obj = {'action': 'get_node_list'}
+        msg_json = await self.send_request(msg_obj=msg_obj)
+        return msg_json
+
+    async def send_request(self, msg_obj, timeout=200, retries=3):
+        if not self.request:
+            raise AttributeError("Request socket not setup.")
+        try:
+            str_msg = json.dumps(msg_obj)
+        except Exception as err:
+            self.log.error(f'[PEER] {err}')
+            print(f'[{self.log.name}][PEER] Error: {err}')
+            self.log.info(f'[PEER] Failed to encode message {msg_obj} to bytes.')
+            print(f'[{self.log.name}][PEER] Failed to encode message {msg_obj} to bytes.')
+
+        result = await self.request.send(to_address=self.request_address, str_msg=str_msg, timeout=timeout, retries=retries)
+
+        return self.handle_result(result=result)
+
+    def handle_result(self, result):
+        if result.success:
+            self.connected = True
             try:
                 msg_json = json.loads(result.response)
                 msg_json['success'] = result.success
                 return msg_json
-            except:
+
+            except Exception as err:
+                self.log.error(f'[PEER] {err}')
+                print(f'[{self.log.name}][PEER] Error: {err}')
                 self.log.info(f'[PEER] failed to decode json from {self.request_address}: {msg_json}')
                 print(f'[{self.log.name}][PEER] failed to decode json from {self.request_address}: {msg_json}')
-                return None
+        else:
+            if result.error:
+                self.log.error(f'[PEER] Result Error: {result.error}')
+                print(f'[{self.log.name}][PEER] Result Error: {result.error}')
+
+            self.connected = False
+            if not self.reconnecting:
+                self.reconnect()
+
+        return None
