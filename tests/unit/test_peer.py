@@ -1,7 +1,8 @@
 import json
 
 from lamden.peer import Peer
-from lamden.sockets.request import Result
+from lamden.sockets.request import Request, Result
+from lamden.sockets.subscriber import Subscriber
 from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, InMemDriver
 
@@ -46,6 +47,7 @@ class TestSubscriberSocket(unittest.TestCase):
         )
 
         self.connected_callback_called = False
+        self.reconnect_called = False
 
     def tearDown(self) -> None:
         if self.peer.running:
@@ -61,6 +63,9 @@ class TestSubscriberSocket(unittest.TestCase):
 
     def connected_callback(self):
         self.connected_callback_called = True
+
+    def reconnect(self):
+        self.reconnect_called = True
 
     def get_network_ip(self):
         return 'tcp://127.0.0.1:19000'
@@ -347,6 +352,23 @@ class TestSubscriberSocket(unittest.TestCase):
         for i in range(2):
             self.assertDictEqual(expected_result, messages[i])
 
+    def test_METHOD_send_request__returns_None_if_msg_no_json_serializable(self):
+        self.peer.setup_request()
+
+        msg = self.await_sending_request(process=self.peer.send_request, args={
+            'msg_obj': None
+        })
+
+        self.assertIsNone(msg)
+
+    def test_METHOD_send_request__raises_error_if_request_not_initialized(self):
+        msg = None
+        with self.assertRaises(AttributeError) as error:
+            msg = self.await_sending_request(process=self.peer.send_request, args={'msg_obj': {}})
+
+        self.assertIsNone(msg)
+        self.assertEqual("Request socket not setup.", str(error.exception))
+
     def test_METHOD_handle_result__adds_success_TRUE_attribute_to_msg(self):
         result = Result(success=True, response=json.dumps({}).encode('UTF-8'))
         msg = self.peer.handle_result(result=result)
@@ -364,3 +386,111 @@ class TestSubscriberSocket(unittest.TestCase):
         msg = self.peer.handle_result(result=result)
 
         self.assertIsNone(msg)
+
+    def test_METHOD_handle_result__sets_connected_to_TRUE_if_successful_request(self):
+        self.peer.setup_request()
+        self.peer.connected = False
+        result = Result(success=True, response=json.dumps({}).encode('UTF-8'))
+        self.peer.handle_result(result=result)
+
+        self.assertTrue(self.peer.is_connected)
+
+    def test_METHOD_handle_result__sets_connected_to_FALSE_if_unsuccessful_request(self):
+        self.peer.setup_request()
+        self.peer.connected = True
+        result = Result(success=False, response=json.dumps({}).encode('UTF-8'))
+        self.peer.handle_result(result=result)
+
+        self.assertFalse(self.peer.is_connected)
+
+    def test_METHOD_handle_result__calls_reconnect_on_self_if_unsuccessful_request(self):
+        self.peer.setup_request()
+        self.peer.reconnect = self.reconnect
+        result = Result(success=False, response=json.dumps({}).encode('UTF-8'))
+        self.peer.handle_result(result=result)
+
+        self.assertTrue(self.reconnect_called)
+
+    def test_METHOD_handle_result__does_not_call_reconnect_on_self_if_successful_request(self):
+        self.peer.setup_request()
+        self.peer.reconnect = self.reconnect
+        result = Result(success=True, response=json.dumps({}).encode('UTF-8'))
+        self.peer.handle_result(result=result)
+
+        self.assertFalse(self.reconnect_called)
+
+    def test_METHOD_reconnect_loop__loops_until_peer_is_available(self):
+        self.peer.setup_request()
+        self.peer.running = True
+        self.peer.socket_ports['router'] = 1000
+
+        asyncio.ensure_future(self.peer.reconnect_loop())
+
+        self.async_sleep(2)
+        self.assertTrue(self.peer.reconnecting)
+        self.assertFalse(self.peer.connected)
+
+        self.peer.socket_ports['router'] = 19000
+
+        self.async_sleep(2)
+
+        self.assertTrue(self.peer.connected)
+        self.assertFalse(self.peer.reconnecting)
+
+
+    def test_METHOD_reconnect_loop__sets_peer_as_connected_once_successful(self):
+        self.peer.setup_request()
+        self.peer.connected = False
+        self.peer.reconnecting = False
+        self.peer.running = True
+
+        tasks = asyncio.gather(
+            self.peer.reconnect_loop()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertTrue(self.peer.connected)
+        self.assertFalse(self.peer.reconnecting)
+
+    def test_METHOD_reconnect_loop__loop_exits_if_peer_set_to_running_FALSE(self):
+        self.peer.setup_request()
+        self.peer.running = True
+        self.peer.socket_ports['router'] = 1000
+
+        asyncio.ensure_future(self.peer.reconnect_loop())
+
+        self.async_sleep(1)
+        self.peer.running = False
+        self.async_sleep(1)
+
+        self.assertFalse(self.peer.reconnecting)
+        self.assertFalse(self.peer.connected)
+
+    def test_METHOD_setup_subscriber(self):
+        self.peer.setup_subscriber()
+        self.assertIsInstance(self.peer.subscriber, Subscriber)
+
+    def test_METHOD_setup_request(self):
+        self.peer.setup_request()
+        self.assertIsInstance(self.peer.request, Request)
+
+    def test_METHOD_stop__stops_subscriber(self):
+        self.peer.setup_subscriber()
+        self.async_sleep(2)
+        self.assertTrue(self.peer.subscriber.is_running)
+        self.peer.stop()
+        self.assertFalse(self.peer.subscriber.is_running)
+
+    def test_METHOD_stop__stops_request(self):
+        self.peer.setup_request()
+        self.assertTrue(self.peer.request.is_running)
+        self.peer.stop()
+        self.assertFalse(self.peer.request.is_running)
+
+    def test_METHOD_stop__stops_itself(self):
+        self.peer.setup_request()
+        self.peer.running = True
+
+        self.peer.stop()
+        self.assertFalse(self.peer.running)

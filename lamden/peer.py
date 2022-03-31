@@ -188,6 +188,7 @@ class Peer:
             callback=self.process_subscription,
             logger=self.log
         )
+        self.subscriber.start()
 
     def setup_request(self):
         self.request = Request(
@@ -241,7 +242,8 @@ class Peer:
 
         while not self.connected:
             if not self.running:
-                break
+                self.reconnecting = False
+                return
 
             res = await self.ping()
 
@@ -253,6 +255,7 @@ class Peer:
         self.log.info(f'[PEER] Reconnected to {self.request_address}!')
         print(f'[{self.log.name}][PEER] Reconnected to {self.request_address}!')
 
+        self.connected = True
         self.reconnecting = False
 
     async def ping(self):
@@ -286,6 +289,7 @@ class Peer:
     async def send_request(self, msg_obj, timeout=200, retries=3):
         if not self.request:
             raise AttributeError("Request socket not setup.")
+
         try:
             str_msg = json.dumps(msg_obj)
         except Exception as err:
@@ -293,6 +297,8 @@ class Peer:
             print(f'[{self.log.name}][PEER] Error: {err}')
             self.log.info(f'[PEER] Failed to encode message {msg_obj} to bytes.')
             print(f'[{self.log.name}][PEER] Failed to encode message {msg_obj} to bytes.')
+
+            return None
 
         result = await self.request.send(to_address=self.request_address, str_msg=str_msg, timeout=timeout, retries=retries)
 
@@ -317,6 +323,7 @@ class Peer:
                 print(f'[{self.log.name}][PEER] Result Error: {result.error}')
 
             self.connected = False
+
             if not self.reconnecting:
                 self.reconnect()
 

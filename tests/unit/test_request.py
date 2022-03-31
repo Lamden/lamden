@@ -285,7 +285,6 @@ class TestRequestSocket(unittest.TestCase):
         with self.assertRaises(AttributeError):
             self.request.message_waiting(poll_time=100)
 
-
     def test_METHOD_message_waiting__messages_waiting_FALSE(self):
         self.create_request()
         socket = self.request.create_socket()
@@ -333,14 +332,17 @@ class TestRequestSocket(unittest.TestCase):
 
         with self.assertRaises(AttributeError) as err:
             self.request.send_string(str_msg=self.ping_msg, socket=None)
-            self.assertEqual("Socket has not been created.", str(err))
+
+
+        self.assertEqual("Socket has not been created.", str(err.exception))
 
     def test_METHOD_send_string__no_secure_socket_setup_raises_AttributeError(self):
         self.create_secure_request()
 
         with self.assertRaises(AttributeError) as err:
             self.request.send_string(str_msg=self.ping_msg, socket=None)
-            self.assertEqual("Socket has not been created.", str(err))
+
+        self.assertEqual("Socket has not been created.", str(err.exception))
 
     def test_METHOD_send_string__socket_setup_not_bound_raises_AttributeError(self):
         self.create_request()
@@ -348,7 +350,8 @@ class TestRequestSocket(unittest.TestCase):
 
         with self.assertRaises(AttributeError) as err:
             self.request.send_string(str_msg=self.ping_msg, socket=socket)
-            self.assertEqual("Socket is not bound to an address.", str(err))
+
+        self.assertEqual("Socket is not bound to an address.", str(err.exception))
 
     def test_METHOD_send_string__secure_socket_setup_not_bound_raises_AttributeError(self):
         self.create_secure_request()
@@ -357,7 +360,8 @@ class TestRequestSocket(unittest.TestCase):
 
         with self.assertRaises(AttributeError) as err:
             self.request.send_string(str_msg=self.ping_msg, socket=socket)
-            self.assertEqual("Socket is not bound to an address.", str(err))
+
+        self.assertEqual("Socket is not bound to an address.", str(err.exception))
 
     def test_METHOD_send_string__peer_does_not_exists_no_erorrs(self):
         self.create_request()
