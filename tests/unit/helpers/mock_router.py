@@ -1,3 +1,5 @@
+import json
+
 from zmq.auth.thread import ThreadAuthenticator
 import threading
 import zmq
@@ -61,7 +63,29 @@ class MockRouter(threading.Thread):
             if self.socket in sockets:
                 ident, empty, msg = self.socket.recv_multipart()
                 print("[ROUTER] Received request: ", msg)
-                self.send_msg(ident=ident, msg=msg)
+
+                try:
+                    msg_string = json.loads(msg)
+                except Exception as err:
+                    print(err)
+
+                if isinstance(msg_string, dict):
+                    if msg_string.get('action') == 'hello':
+                        resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')
+                        self.send_msg(ident=ident, msg=resp_msg)
+
+                    if msg_string.get('action') == 'latest_block_info':
+                        resp_msg = json.dumps({
+                            'response': 'latest_block_info',
+                            'latest_block_number': 100,
+                            'latest_hlc_timestamp': "1234"
+                        }).encode('UTF-8')
+                        self.send_msg(ident=ident, msg=resp_msg)
+
+                    else:
+                        self.send_msg(ident=ident, msg=msg)
+                else:
+                    self.send_msg(ident=ident, msg=msg)
 
             await asyncio.sleep(0)
 

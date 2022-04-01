@@ -14,7 +14,7 @@ class Result:
 class Request():
     con_failed = 'con_failed'
 
-    def __init__(self, server_vk=None, local_wallet=None, logger=None):
+    def __init__(self, server_vk: int = None, local_wallet: Wallet = None, logger=None):
         self.log = logger or get_logger('REQUEST')
 
         self.ctx = zmq.asyncio.Context().instance()
@@ -33,30 +33,30 @@ class Request():
         self.result = False
 
     @property
-    def is_running(self):
+    def is_running(self) -> bool:
         return self.running
 
     @property
-    def secure_socket(self):
+    def secure_socket(self) -> bool:
         return self.server_vk is not None
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self.local_wallet.verifying_key
 
-    def socket_is_bound(self, socket):
+    def socket_is_bound(self, socket) -> bool:
         try:
             return len(socket.LAST_ENDPOINT) > 0
         except AttributeError:
             return False
 
-    def create_socket(self):
+    def create_socket(self) -> zmq.Socket:
         socket = self.ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 100)
 
         return socket
 
-    def setup_secure_socket(self, socket):
+    def setup_secure_socket(self, socket: zmq.Socket) -> None:
         if not self.secure_socket:
             raise AttributeError("Provided server_vk for a secure socket connection.")
 
@@ -65,15 +65,15 @@ class Request():
         socket.curve_serverkey = self.server_vk
         socket.identity = encode(self.id).encode()
 
-    def setup_polling(self, socket=None):
+    def setup_polling(self, socket: zmq.Socket = None) -> zmq.Poller:
         pollin = zmq.Poller()
         pollin.register(socket, zmq.POLLIN)
         return pollin
 
-    def connect_socket(self, address, socket):
+    def connect_socket(self, address: str, socket: zmq.Socket = None) -> None:
         socket.connect(address)
 
-    def send_string(self, str_msg, socket):
+    def send_string(self, str_msg: str, socket: zmq.Socket) -> None:
         if not socket:
             raise AttributeError("Socket has not been created.")
 
@@ -85,10 +85,10 @@ class Request():
 
         socket.send_string(str_msg)
 
-    def message_waiting(self, poll_time, socket=None, pollin=None):
+    def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.Poller=None) -> bool:
         return socket in dict(pollin.poll(poll_time))
 
-    async def send(self, to_address, str_msg, timeout: int = 500, retries: int = 3) -> Result:
+    async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
         self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
         error = None
         connection_attempts = 0
@@ -157,14 +157,14 @@ class Request():
         self.close_socket(socket=socket)
         return Result(success=False, error=error)
 
-    def close_socket(self, socket):
+    def close_socket(self, socket: zmq.Socket) -> None:
         if socket:
             try:
                 socket.close()
             except:
                 pass
 
-    def stop(self):
+    def stop(self) -> None:
         self.running = False
         self.log.info('[REQUEST] Stopping.')
         print(f'[{self.log.name}] Stopping.')

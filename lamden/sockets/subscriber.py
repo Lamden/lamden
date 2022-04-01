@@ -1,12 +1,13 @@
 import asyncio
-import threading
 import zmq
 import zmq.asyncio
 
 from lamden.logger.base import get_logger
 
+from typing import Callable
+
 class Subscriber():
-    def __init__(self, address: str, callback = None, logger=None, topics=['']):
+    def __init__(self, address: str, callback: Callable = None, logger=None, topics: list=['']):
         self.log = logger or get_logger("SUBSCRIBER")
 
         self.running = False
@@ -21,50 +22,50 @@ class Subscriber():
         self.socket = None
 
     @property
-    def is_running(self):
+    def is_running(self) -> bool:
         return self.running
 
     @property
-    def socket_is_bound(self):
+    def socket_is_bound(self) -> bool:
         try:
             return len(self.socket.LAST_ENDPOINT) > 0
         except AttributeError:
             return False
 
     @property
-    def socket_is_closed(self):
+    def socket_is_closed(self) -> bool:
         try:
             return self.socket.closed
         except AttributeError:
             return True
 
-    def setup_event_loop(self):
+    def setup_event_loop(self) -> None:
         try:
             self.loop = asyncio.get_event_loop()
         except Exception:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-    def create_socket(self):
+    def create_socket(self) -> None:
         self.socket = self.ctx.socket(zmq.SUB)
 
-    def connect_socket(self):
+    def connect_socket(self) -> None:
         if not self.socket:
             self.create_socket()
         self.socket.connect(self.address)
 
-    def subscribe_to_topics(self):
+    def subscribe_to_topics(self) -> None:
         for topic in self.topics:
             self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode('utf8'))
 
-    def add_topic(self, topic: str):
+    def add_topic(self, topic: str) -> None:
         if not isinstance(topic, str):
             raise TypeError("Topic must be string.")
 
         self.topics.append(topic)
         self.socket.setsockopt(zmq.SUBSCRIBE, topic.encode('utf8'))
 
-    def start(self):
+    def start(self) -> None:
         self.create_socket()
         self.connect_socket()
         self.setup_event_loop()
@@ -74,7 +75,7 @@ class Subscriber():
         self.log.info('[SUBSCRIBER] Running...')
         print(f'[{self.log.name}][SUBSCRIBER] Running...')
 
-    async def check_for_messages(self):
+    async def check_for_messages(self) -> None:
         self.running = True
 
         while self.running:
@@ -92,11 +93,11 @@ class Subscriber():
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
 
-    async def stopping(self):
+    async def stopping(self) -> None:
         while not self.socket_is_closed:
             await asyncio.sleep(0)
 
-    def stop(self):
+    def stop(self) -> None:
         if self.running:
             self.running = False
 

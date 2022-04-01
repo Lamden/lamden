@@ -110,7 +110,7 @@ class Network:
         latest_block_info = self.get_latest_block_info()
         block_num = latest_block_info.get('number')
         hlc_timestamp = latest_block_info.get("hlc_timestamp")
-        return ('{"response":"pub_info", "topics": [""], "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (block_num, hlc_timestamp)).encode()
+        return ('{"response":"hello", "topics": [""], "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (block_num, hlc_timestamp)).encode()
 
     @property
     def log(self):
@@ -269,7 +269,7 @@ class Network:
         if action == 'hello':
             self.router.send_msg(ident, self.hello_response)
 
-            # print('Router sending pub_info response to %s' % ident)
+            # print('Router sending hello response to %s' % ident)
             vk = json.loads(ident)
             ip = msg.get('ip')
 

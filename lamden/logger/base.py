@@ -140,6 +140,7 @@ class LoggerWriter:
         self.level = level
     def write(self, message):
         if message != '\n':
+            print(message)
             self.level(message)
     def flush(self):
         return
