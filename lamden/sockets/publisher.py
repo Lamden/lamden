@@ -1,27 +1,22 @@
 import zmq
-from string import ascii_uppercase as uppercase
 import zmq.asyncio
 import asyncio
 from lamden.logger.base import get_logger
 from contracting.db.encoder import encode
 
+EXCEPTION_NO_ADDRESS_INFO = "Publisher has no address information."
+
 class Publisher():
-    def __init__(
-        self,
-        ctx: zmq.Context,
-        logger=None,
-        testing=False,
-        debug=False      
-    ):        
+    def __init__(self, logger=None):
         # Configure the listening socket
         self.log = logger or get_logger("PUBLISHER")
-        self.address = None
-        
-        self.socket = None
-        self.ctx = ctx
-        self.running = False
 
-        self.debug_published = []
+        self.address = None
+        self.socket = None
+
+        self.ctx = self.ctx = zmq.asyncio.Context().instance()
+
+        self.running = False
 
         try:
             self.loop = asyncio.get_event_loop()
@@ -29,25 +24,56 @@ class Publisher():
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
-    def setup_socket(self):
+    @property
+    def is_running(self) -> bool:
+        return self.running
+
+    @property
+    def has_address(self) -> bool:
+        return self.address is not None
+
+    @property
+    def socket_is_bound(self) -> bool:
+        try:
+            return len(self.socket.LAST_ENDPOINT) > 0
+        except AttributeError:
+            return False
+
+    def start(self) -> None:
         if self.running:
             self.log.warning(f'[PUBLISHER] Already running.')
             print(f'[{self.log.name}][PUBLISHER] Already running.')
             return
 
-        self.socket = self.ctx.socket(zmq.PUB)
+        self.create_socket()
+        self.connect_socket()
 
         self.log.info(f'[PUBLISHER] Starting on {self.address}')
         print(f'[{self.log.name}][PUBLISHER] Starting on {self.address}')
 
         self.running = True
+
+    def create_socket(self) -> None:
+        if self.socket_is_bound:
+            return
+        self.socket = self.ctx.socket(zmq.PUB)
+
+    def connect_socket(self) -> None:
+        if not self.has_address:
+            raise AttributeError(EXCEPTION_NO_ADDRESS_INFO)
+
+        if self.socket_is_bound:
+            return
+
         self.socket.bind(self.address)
+
+    def set_address(self, ip: str = '*', port: int = 19080) -> None:
+        self.address = f'tcp://{ip}:{port}'
     
-    def publish(self, topic, msg):
+    def publish(self, topic, msg) -> None:
         if not self.running:
             self.log.error(f'[PUBLISHER] Publisher is not running.')
             print(f'[{self.log.name}][PUBLISHER] Publisher is not running.')
-
             return
 
         self.log.error(f'[PUBLISHER] Publishing: {msg}')
@@ -58,7 +84,7 @@ class Publisher():
         self.socket.send_string(topic, flags=zmq.SNDMORE)
         self.socket.send(m)
 
-    def announce_new_peer_connection(self, vk, ip):
+    def announce_new_peer_connection(self, vk: str, ip: str):
         topic = "new_peer_connection"
         msg = {
             'vk': vk,
@@ -77,10 +103,9 @@ class Publisher():
             self.log.info('[PUBLISHER] Stopping.')
             print(f'[{self.log.name}][PUBLISHER] Stopping.')
 
-            try:
+            if self.socket:
                 self.socket.close()
-            except zmq.ZMQError:
-                pass
+
 
 
         
