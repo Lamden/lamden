@@ -125,8 +125,8 @@ class TxProcessingQueue(ProcessingQueue):
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
         if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
-            self.currently_processing_hlc = ""
             del self.message_received_timestamps[self.currently_processing_hlc]
+            self.currently_processing_hlc = ""
             return
 
         # get the amount of time the transaction has been in the queue
@@ -186,7 +186,6 @@ class TxProcessingQueue(ProcessingQueue):
             return processing_delay['base'] + processing_delay['self']
         else:
             return processing_delay['base']
-
 
     def process_tx(self, tx):
         # TODO better error handling of anything in here
