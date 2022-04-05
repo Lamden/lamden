@@ -56,10 +56,12 @@ class TestSubscriberSocket(unittest.TestCase):
     def start_publisher(self):
         self.publisher = MockPublisher()
         self.await_async_process(self.wait_for_publisher_started)
+        self.async_sleep(1)
 
     def start_subscriber(self):
         self.subscriber.start()
         self.await_async_process(self.wait_for_subscriber_started)
+        self.async_sleep(1)
 
     def get_message(self, data):
         self.data = data
@@ -97,12 +99,12 @@ class TestSubscriberSocket(unittest.TestCase):
             await asyncio.sleep(0.1)
 
     async def wait_for_data(self):
-        time_out = 1
+        time_out = 5
         start = time.time()
         while not self.data:
             if time.time() - start > time_out:
                 self.fail('Timed out waiting for data from subscriber.')
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
 
     def test_can_create_instance__SUBSCRIBER(self):
         self.assertIsInstance(self.subscriber, Subscriber)

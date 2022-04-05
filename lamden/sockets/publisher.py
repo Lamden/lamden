@@ -3,8 +3,14 @@ import zmq.asyncio
 import asyncio
 from lamden.logger.base import get_logger
 from contracting.db.encoder import encode
+import json
 
 EXCEPTION_NO_ADDRESS_INFO = "Publisher has no address information."
+
+EXCEPTION_TOPIC_STR_NOT_STRING = "argument 'topic_str' should be type string."
+EXCEPTION_MSG_NOT_DICT = "argument 'msg_dict' should be type dict."
+EXCEPTION_TOPIC_BYTES_NOT_BYTES = "argument 'topic_bytes' should be type bytes."
+EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
 class Publisher():
     def __init__(self, logger=None):
@@ -14,7 +20,7 @@ class Publisher():
         self.address = None
         self.socket = None
 
-        self.ctx = self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = zmq.asyncio.Context().instance()
 
         self.running = False
 
@@ -38,6 +44,13 @@ class Publisher():
             return len(self.socket.LAST_ENDPOINT) > 0
         except AttributeError:
             return False
+
+    @property
+    def socket_is_closed(self) -> bool:
+        try:
+            return self.socket.closed
+        except AttributeError:
+            return True
 
     def start(self) -> None:
         if self.running:
@@ -64,39 +77,58 @@ class Publisher():
 
         if self.socket_is_bound:
             return
+        if "*" in self.address:
+            self.socket.bind(self.address)
+        else:
+            self.socket.connect(self.address)
 
-        self.socket.bind(self.address)
+    def set_address(self, ip: str = "*", port: int = 19080) -> None:
+        if not isinstance(ip, str):
+            raise TypeError("Ip must be type string.")
 
-    def set_address(self, ip: str = '*', port: int = 19080) -> None:
+        if not isinstance(port, int):
+            raise TypeError("Port must be type integer.")
+
         self.address = f'tcp://{ip}:{port}'
     
-    def publish(self, topic, msg) -> None:
+    def publish(self, topic_str: str, msg_dict: dict) -> None:
         if not self.running:
             self.log.error(f'[PUBLISHER] Publisher is not running.')
             print(f'[{self.log.name}][PUBLISHER] Publisher is not running.')
             return
 
-        self.log.error(f'[PUBLISHER] Publishing: {msg}')
-        print(f'[{self.log.name}][PUBLISHER] Publishing: {msg}')
-        self.debug_published.append(msg)
+        if not isinstance(topic_str, str):
+            raise TypeError(EXCEPTION_TOPIC_STR_NOT_STRING)
 
-        m = encode(msg).encode()        
-        self.socket.send_string(topic, flags=zmq.SNDMORE)
-        self.socket.send(m)
+        if not isinstance(msg_dict, dict):
+            raise TypeError(EXCEPTION_MSG_NOT_DICT)
 
-    def announce_new_peer_connection(self, vk: str, ip: str):
-        topic = "new_peer_connection"
-        msg = {
-            'vk': vk,
-            'ip': ip
-        }
+        self.log.error(f'[PUBLISHER] Publishing ({topic_str}): {msg_dict}')
+        print(f'[{self.log.name}][PUBLISHER] Publishing ({topic_str}): {msg_dict}')
 
+        msg_bytes = encode(msg_dict).encode()
+
+        self.send_multipart_message(topic_bytes=topic_str.encode('UTF-8'), msg_bytes=msg_bytes)
+
+    def send_multipart_message(self, topic_bytes: bytes, msg_bytes: bytes) -> None:
+        if not isinstance(topic_bytes, bytes):
+            raise TypeError(EXCEPTION_TOPIC_BYTES_NOT_BYTES)
+
+        if not isinstance(msg_bytes, bytes):
+            raise TypeError(EXCEPTION_MSG_BYTES_NOT_BYTES)
+
+        self.socket.send_multipart([topic_bytes, msg_bytes])
+
+    def announce_new_peer_connection(self, vk: str, ip: str) -> None:
         self.publish(
-            topic=topic,
-            msg=msg
+            topic_str="new_peer_connection",
+            msg_dict={
+                'vk': vk,
+                'ip': ip
+            }
         )
     
-    def stop(self):
+    def stop(self) -> None:
         if self.running:
             self.running = False
 
@@ -105,7 +137,3 @@ class Publisher():
 
             if self.socket:
                 self.socket.close()
-
-
-
-        
