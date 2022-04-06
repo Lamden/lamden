@@ -11,6 +11,8 @@ from urllib.parse import urlparse
 LATEST_BLOCK_INFO = 'latest_block_info'
 GET_BLOCK = 'get_block'
 
+SUBSCRIPTIONS = ["work", "new_peer_connection", "contenders"]
+
 class Peer:
     def __init__(self, ip, server_vk: str, local_wallet: Wallet,
                  get_network_ip, services: dict=None, connected_callback=None, logger=None, driver=None, storage=None):
@@ -182,7 +184,6 @@ class Peer:
 
                 if not self.subscriber:
                     self.setup_subscriber()
-                    self.subscriber.start()
 
                     if self.connected_callback is not None:
                         self.connected_callback(vk=self.local_vk)
@@ -204,6 +205,7 @@ class Peer:
     def setup_subscriber(self) -> None:
         self.subscriber = Subscriber(
             address=self.subscriber_address,
+            topics=SUBSCRIPTIONS,
             callback=self.process_subscription,
             logger=self.log
         )
@@ -215,13 +217,6 @@ class Peer:
             local_wallet=self.local_wallet,
             logger=self.log
         )
-
-    def stop(self) -> None:
-        self.running = False
-        if self.request:
-            self.request.stop()
-        if self.subscriber:
-            self.subscriber.stop()
 
     async def process_subscription(self, data: list) -> None:
         if self.services is None:
@@ -353,3 +348,10 @@ class Peer:
                 self.reconnect()
 
         return None
+
+    def stop(self) -> None:
+        self.running = False
+        if self.request:
+            self.request.stop()
+        if self.subscriber:
+            self.subscriber.stop()

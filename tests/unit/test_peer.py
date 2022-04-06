@@ -60,11 +60,8 @@ class TestSubscriberSocket(unittest.TestCase):
         self.service_callback_data = None
 
     def tearDown(self) -> None:
-        if self.peer.running:
-            self.peer.stop()
-            del self.peer
-
-            self.async_sleep(2)
+        self.peer.stop()
+        del self.peer
 
     @classmethod
     def tearDownClass(cls) -> None:

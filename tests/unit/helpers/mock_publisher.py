@@ -1,9 +1,11 @@
 import zmq
+import zmq.asyncio
+import asyncio
 import unittest
 import json
 
 class MockPublisher():
-    def __init__(self, port=19000):
+    def __init__(self, port=19080):
         self.running = False
 
         self.ctx = None
@@ -12,21 +14,29 @@ class MockPublisher():
 
         self.start()
 
+
     def start(self):
-        self.ctx = zmq.Context()
+        self.ctx = zmq.asyncio.Context().instance()
 
         self.socket = self.ctx.socket(zmq.PUB)
-        self.socket.bind(f'tcp://*:{self.port}')
+        self.socket.connect(f'tcp://127.0.0.1:{self.port}')
 
         print(f'[PUBLISHER] Started...')
         self.running = True
 
 
-    def publish(self, topic, msg):
-        print(f'[PUBLISHER] Publishing: {topic}')
+    def publish_message_multipart(self, topic_str: str, msg_dict: dict) -> None:
+        try:
+            msg_bytes = json.dumps(msg_dict).encode('UTF-8')
+            self.socket.send_multipart([topic_str.encode('UTF-8'), msg_bytes])
+        except Exception as err:
+            print(err)
 
-        self.socket.send_string(topic, flags=zmq.SNDMORE)
-        self.socket.send(json.dumps(msg).encode('utf-8'))
+    def publish_message_bytes(self, msg_bytes: bytes) -> None:
+        self.socket.send(msg_bytes)
+
+    def publish_message_str(self, msg_str: str) -> None:
+        self.socket.send_string(msg_str)
 
     def stop(self):
         if self.running:
@@ -34,7 +44,6 @@ class MockPublisher():
             if self.socket:
                 self.socket.setsockopt(zmq.LINGER, 0)
                 self.socket.close()
-                self.ctx.term()
 
             print(f'[PUBLISHER] Stopped...')
 
@@ -48,6 +57,13 @@ class TestMockPublisher(unittest.TestCase):
         if self.publisher:
             self.publisher.stop()
             del self.publisher
+
+    def async_sleep(self, delay):
+        tasks = asyncio.gather(
+            asyncio.sleep(delay)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
 
     def start_publisher(self):
         self.publisher = MockPublisher()
@@ -69,6 +85,99 @@ class TestMockPublisher(unittest.TestCase):
 
         self.assertFalse(self.publisher.running)
 
-    def test_can_publish(self):
+    def test_can_publish_string(self):
+        ctx = zmq.asyncio.Context().instance()
+        loop = asyncio.get_event_loop()
+
         self.start_publisher()
-        self.publisher.publish(topic="TESTING", msg="TESTING")
+        self.async_sleep(1)
+
+        sub = ctx.socket(zmq.SUB)
+        sub.setsockopt(zmq.SUBSCRIBE, b'')
+
+        sub.bind('tcp://127.0.0.1:19080')
+        asyncio.ensure_future(sub.poll(timeout=1))
+
+        self.async_sleep(1)
+
+        message_str = 'testing'
+        self.publisher.publish_message_str(message_str)
+        self.async_sleep(1)
+
+        event = 0
+        while not event:
+            event = loop.run_until_complete(sub.poll(timeout=50))
+            self.async_sleep(1)
+
+        res = loop.run_until_complete(sub.recv_multipart())
+        sub.close(linger=10)
+
+        message_received = res[0].decode('UTF-8')
+        self.assertEqual(message_str, message_received)
+
+    def test_can_publish_bytes(self):
+        ctx = zmq.asyncio.Context().instance()
+        loop = asyncio.get_event_loop()
+
+        self.start_publisher()
+        self.async_sleep(1)
+
+        sub = ctx.socket(zmq.SUB)
+        sub.setsockopt(zmq.SUBSCRIBE, b'')
+
+        sub.bind('tcp://127.0.0.1:19080')
+        asyncio.ensure_future(sub.poll(timeout=1))
+
+        self.async_sleep(1)
+
+        msg_bytes = 'testing'.encode('UTF-8')
+        self.publisher.publish_message_bytes(msg_bytes=msg_bytes)
+        self.async_sleep(1)
+
+        event = 0
+        while not event:
+            event = loop.run_until_complete(sub.poll(timeout=50))
+            self.async_sleep(1)
+
+        res = loop.run_until_complete(sub.recv_multipart())
+        sub.close(linger=10)
+
+        message_received = res[0]
+        self.assertEqual(msg_bytes, message_received)
+
+    def test_can_publish_multipart(self):
+        ctx = zmq.asyncio.Context().instance()
+        loop = asyncio.get_event_loop()
+
+        self.start_publisher()
+        self.async_sleep(1)
+
+        sub = ctx.socket(zmq.SUB)
+        sub.setsockopt(zmq.SUBSCRIBE, b'')
+        sub.setsockopt(zmq.SUBSCRIBE, b'testing')
+
+        sub.bind('tcp://127.0.0.1:19080')
+        asyncio.ensure_future(sub.poll(timeout=1))
+
+        self.async_sleep(1)
+
+        topic = 'testing'
+        msg_dict = {'testing': True}
+
+        self.publisher.publish_message_multipart(topic_str=topic, msg_dict=msg_dict)
+        self.async_sleep(1)
+
+        event = 0
+        while not event:
+            event = loop.run_until_complete(sub.poll(timeout=50))
+            self.async_sleep(1)
+
+        message_received = loop.run_until_complete(sub.recv_multipart())
+        sub.close(linger=10)
+
+        message_received
+
+        self.assertEqual(topic, message_received[0].decode('UTF-8'))
+        self.assertEqual(msg_dict, json.loads(message_received[1]))
+
+
