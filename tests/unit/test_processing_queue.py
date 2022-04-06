@@ -4,6 +4,7 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.time import Datetime
+from contracting.db.encoder import safe_repr
 
 from lamden import storage
 from lamden import rewards
@@ -11,6 +12,7 @@ from lamden.nodes import processing_queue
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
 from lamden.contracts import sync
+from lamden.crypto.canonical import tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object
 
 import time
 import math
@@ -19,7 +21,6 @@ import random
 import asyncio
 from datetime import datetime
 from operator import itemgetter
-
 
 def get_new_tx():
     return {
@@ -101,7 +102,7 @@ class TestProcessingQueue(TestCase):
 
     async def reprocess_called(self, tx):
         print("ROLLBACK CALLED")
-        self.reprocess_was_called = tx['hlc_timestamp']
+        self.reprocess_was_called = True
 
     def catchup_called(self):
         print("CATCHUP CALLED")
@@ -156,6 +157,17 @@ class TestProcessingQueue(TestCase):
         # Assert all the transactions are in the queue
         self.assertEqual(len(self.main_processing_queue), 10)
 
+        # Assert message received timestamps are set
+        for tx in self.main_processing_queue.queue:
+            self.assertIsNotNone(tx['hlc_timestamp'])
+
+    def test_append_tx_with_stamp_earlier_than_last_in_consensus(self):
+        tx = self.make_tx_message(get_new_tx())
+        self.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
+        self.main_processing_queue.append(tx)
+
+        self.assertEqual(len(self.main_processing_queue), 0)
+
     def test_flush(self):
         # Add a bunch of transactions to the queue
         for i in range(10):
@@ -171,19 +183,18 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(len(self.main_processing_queue), 0)
         self.assertEqual(len(self.main_processing_queue.message_received_timestamps), 0)
 
-    def test_hold_1_time_self(self):
-        hold_time = self.main_processing_queue.hold_time(tx=self.make_tx_message(get_new_tx()))
-        print({'hold_time': hold_time})
-        self.assertEqual(self.processing_delay_secs['self'] + self.processing_delay_secs['base'], hold_time)
+    def test_sort_queue(self):
+        for i in range(10):
+            self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
+        sorted_q = self.main_processing_queue.queue.copy()
+        random.shuffle(self.main_processing_queue.queue)
+        self.main_processing_queue.sort_queue()
+        self.assertListEqual(sorted_q, self.main_processing_queue.queue)
 
-    def test_hold_2_time_base(self):
-        new_tx_message = self.make_tx_message(get_new_tx())
-        new_wallet = Wallet()
-        new_tx_message['sender'] = new_wallet.verifying_key
-
-        hold_time = self.main_processing_queue.hold_time(tx=new_tx_message)
-        print({'hold_time': hold_time})
-        self.assertEqual(self.processing_delay_secs['base'], hold_time)
+    def test_hlc_earlier_than_consensus(self):
+        hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
+        self.assertTrue(self.main_processing_queue.hlc_earlier_than_consensus(hlc))
 
     def test_process_next(self):
         # load a bunch of transactions into the queue
@@ -216,6 +227,17 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(hlc_timestamp, first_tx.get('hlc_timestamp'))
         self.assertIsNotNone(processing_results.get('proof'))
         self.assertIsNotNone(processing_results.get('tx_result'))
+        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get(first_tx['hlc_timestamp']))
+        self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
+
+    def test_hlc_already_in_queue(self):
+        tx_info = self.make_tx_message(get_new_tx())
+        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
+
+        self.main_processing_queue.append(tx=tx_info)
+
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(tx_info['hlc_timestamp']))
+        self.assertFalse(self.main_processing_queue.hlc_already_in_queue(self.hlc_clock.get_new_hlc_timestamp()))
 
     def test_process_next_return_value(self):
         self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
@@ -269,13 +291,11 @@ class TestProcessingQueue(TestCase):
         # assert the first HLC entered was the one that was processed
         self.assertIsNone(res[0])
 
-    def test_process_next_returns_none_hlc_already_in_consensus(self):
-        self.last_hlc_in_consensus = '2'
-
-        tx= self.make_tx_message(get_new_tx())
+    def test_process_next_tx_with_hlc_less_than_last_in_consensus(self):
+        tx = self.make_tx_message(get_new_tx())
         tx['hlc_timestamp'] = '1'
-
         self.main_processing_queue.append(tx=tx)
+        self.last_hlc_in_consensus = '2'
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -287,6 +307,8 @@ class TestProcessingQueue(TestCase):
         processing_results = loop.run_until_complete(tasks)[0]
 
         self.assertIsNone(processing_results)
+        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get(tx['hlc_timestamp']))
+        self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
 
     def test_process_next_returns_none_if_less_than_delay(self):
         # load a transactions into the queue
@@ -305,22 +327,44 @@ class TestProcessingQueue(TestCase):
         # Tx is still in queue to be processed
         self.assertEqual(len(self.main_processing_queue), 1)
 
+    def test_process_next_rollback_on_earlier_hlc(self):
+        tx_info = self.make_tx_message(get_new_tx())
+        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
+
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        self.main_processing_queue.append(tx=tx_info)
+
+        hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
+
+        # Await the queue stopping and then mark the queue as not processing after X seconds
+        tasks = asyncio.gather(
+            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertTrue(self.reprocess_was_called)
+        self.assertFalse(self.main_processing_queue.currently_processing)
+
+    def test_hold_1_time_self(self):
+        hold_time = self.main_processing_queue.hold_time(tx=self.make_tx_message(get_new_tx()))
+        print({'hold_time': hold_time})
+        self.assertEqual(self.processing_delay_secs['self'] + self.processing_delay_secs['base'], hold_time)
+
+    def test_hold_2_time_base(self):
+        new_tx_message = self.make_tx_message(get_new_tx())
+        new_wallet = Wallet()
+        new_tx_message['sender'] = new_wallet.verifying_key
+
+        hold_time = self.main_processing_queue.hold_time(tx=new_tx_message)
+        print({'hold_time': hold_time})
+        self.assertEqual(self.processing_delay_secs['base'], hold_time)
+
     def test_process_tx(self):
         sbc = self.main_processing_queue.process_tx(tx=self.make_tx_message(get_new_tx()))
 
         self.assertIsNotNone(sbc)
-
-    def test_execute_tx(self):
-        tx = self.make_tx_message(get_new_tx())
-        environment = self.main_processing_queue.get_environment(tx=tx)
-
-        result = self.main_processing_queue.execute_tx(
-            transaction=tx['tx'],
-            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
-            environment=environment
-        )
-
-        self.assertIsNotNone(result)
 
     def test_get_environment(self):
         tx = self.make_tx_message(get_new_tx())
@@ -346,30 +390,103 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(environment['now'], now)
         self.assertEqual(environment['AUXILIARY_SALT'], tx['signature'])
 
-    def test_rollback_on_process_earlier_hlc(self):
-        tx_info = self.make_tx_message(get_new_tx())
-        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
+    def test_execute_tx(self):
+        tx = self.make_tx_message(get_new_tx())
+        environment = self.main_processing_queue.get_environment(tx=tx)
 
-        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
-
-        self.main_processing_queue.append(tx=tx_info)
-
-        hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
-
-        # Await the queue stopping and then mark the queue as not processing after X seconds
-        tasks = asyncio.gather(
-            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
+        result = self.main_processing_queue.execute_tx(
+            transaction=tx['tx'],
+            stamp_cost=self.client.get_var(contract='stamp_cost', variable='S', arguments=['value']),
+            environment=environment
         )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
 
-        self.assertTrue(self.reprocess_was_called)
+        self.assertIsNotNone(result)
 
-    def test_hlc_already_in_queue(self):
-        tx_info = self.make_tx_message(get_new_tx())
-        tx_info['hlc_timestamp'] = self.hlc_clock.get_new_hlc_timestamp()
+    def test_process_tx_output(self):
+        tx = self.make_tx_message(get_new_tx())
+        environment = self.main_processing_queue.get_environment(tx=tx)
+        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        output = self.main_processing_queue.execute_tx(
+            transaction=tx['tx'],
+            stamp_cost=stamp_cost,
+            environment=environment
+        )
 
-        self.main_processing_queue.append(tx=tx_info)
+        tx_result = self.main_processing_queue.process_tx_output(
+            output=output,
+            hlc_timestamp=tx['hlc_timestamp'],
+            transaction=tx['tx'],
+            stamp_cost=stamp_cost
+        )
 
-        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(tx_info['hlc_timestamp']))
-        self.assertFalse(self.main_processing_queue.hlc_already_in_queue(self.hlc_clock.get_new_hlc_timestamp()))
+        self.assertIsNotNone(tx_result)
+
+    def test_determine_writes_from_output(self):
+        tx = self.make_tx_message(get_new_tx())
+        environment = self.main_processing_queue.get_environment(tx=tx)
+        stamp_cost = self.client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+        transaction = tx['tx']
+        output = self.main_processing_queue.execute_tx(
+            transaction=transaction,
+            stamp_cost=stamp_cost,
+            environment=environment
+        )
+
+        for code in [0, 1]:
+            writes = self.main_processing_queue.determine_writes_from_output(
+                status_code=code,
+                ouput_writes=output['writes'],
+                stamps_used=output['stamps_used'],
+                stamp_cost=stamp_cost,
+                tx_sender=transaction['payload']['sender']
+            )
+            if code == 0:
+                self.assertListEqual(writes, [{'key': k, 'value': v} for k, v in output['writes'].items()])
+            else:
+                sender_balance = self.executor.driver.get_var(
+                    contract='currency',
+                    variable='balances',
+                    arguments=[transaction['payload']['sender']],
+                    mark=False
+                )
+                # Calculate only stamp deductions
+                to_deduct = output['stamps_used'] / stamp_cost
+                new_bal = sender_balance - to_deduct
+                self.assertListEqual(writes, [{'key': 'currency.balances:{}'.format(transaction['payload']['sender']),'value': new_bal}])
+
+    def test_sign_tx_results(self):
+        timestamp = self.hlc_clock.get_new_hlc_timestamp()
+        result = 'sample result'
+
+        self.assertDictEqual(
+            self.main_processing_queue.sign_tx_results(result, timestamp),
+            {'signature': self.main_processing_queue.wallet.sign(tx_result_hash_from_tx_result_object(tx_result=result, hlc_timestamp=timestamp)), 'signer': self.main_processing_queue.wallet.verifying_key}
+        )
+
+    def test_get_hlc_hash_from_tx(self):
+        tx = self.make_tx_message(get_new_tx())
+        h = hashlib.sha3_256()
+        h.update('{}'.format(tx['hlc_timestamp']).encode())
+
+        self.assertEqual(self.main_processing_queue.get_hlc_hash_from_tx(tx), h.hexdigest())
+
+    def test_get_nanos_from_tx(self):
+        tx = self.make_tx_message(get_new_tx())
+
+        self.assertEqual(self.main_processing_queue.hlc_clock.get_nanos(timestamp=tx['hlc_timestamp']), self.main_processing_queue.get_nanos_from_tx(tx))
+
+    def test_get_now_from_nanos(self):
+        tx = self.make_tx_message(get_new_tx())
+        nanos = self.main_processing_queue.get_nanos_from_tx(tx)
+
+        self.assertEqual(self.main_processing_queue.get_now_from_nanos(nanos), Datetime._from_datetime(datetime.utcfromtimestamp(math.ceil(nanos / 1e9))))
+
+    def test_prune_history(self):
+        raise NotImplementedError
+
+    def test_prune_processing_results(self):
+        raise NotImplementedError
+
+    def test_prune_read_history(self):
+        raise NotImplementedError
+
