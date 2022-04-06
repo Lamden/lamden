@@ -9,37 +9,29 @@ from lamden.crypto.z85 import z85_key
 
 
 class CredentialsProvider(object):
+    def __init__(self):
+        self.log = get_logger("CREDENTIALS PROVIDER")
+        self.approved_keys = {}
 
-    def __init__(self, get_all_peers, logger=None):
-        # print('init CredentialsProvider')
-        self.log = logger or get_logger("ROUTER")
-        self.get_all_peers = get_all_peers
-        self.denied = []
+    def add_key(self, vk: str) -> None:
+        self.approved_keys[vk] = z85_key(vk)
 
-    @property
-    def approved_nodes(self):
-        peers = self.get_all_peers()
-        return [z85_key(vk) for vk in self.get_all_peers()]
+    def remove_key(self, vk: str) -> None:
+        try:
+            self.approved_keys.pop(vk)
+        except KeyError:
+            pass
 
-    def add_key(self, new_key):
-        # print(f'adding key {new_key}')
-        if new_key not in self.public_keys:
-            self.public_keys.append(new_key)
+    def key_is_approved(self, curve_vk: bytes) -> bool:
+        return curve_vk in self.approved_keys.values()
 
-    def remove_key(self, key_to_remove):
-        if key_to_remove in self.public_keys:
-            self.public_keys.remove(key_to_remove)
-
-    def callback(self, domain, key):
-        valid = key in self.approved_nodes
-        if valid:
+    def callback(self, domain: str, key: bytes) -> bool:
+        if self.key_is_approved(curve_vk=key):
             print(f'[{self.log.name}][ROUTER] Authorizing: {domain}, {key}')
             self.log.info(f'[ROUTER] Authorizing: {domain}, {key}')
 
             return True
         else:
-            if key not in self.denied:
-                self.denied.append(key)
             print(f'[{self.log.name}][ROUTER] NOT Authorizing: {domain}, {key}')
             self.log.warning(f'[ROUTER] NOT Authorizing: {domain}, {key}')
 
@@ -77,6 +69,7 @@ class Router(threading.Thread):
         auth = ThreadAuthenticator(self.ctx)
         auth.start()
         auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
+
         self.socket.curve_secretkey = self.wallet.curve_sk
         self.socket.curve_publickey = self.wallet.curve_vk
         self.socket.curve_server = True  # must come before bind
