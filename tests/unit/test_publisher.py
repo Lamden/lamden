@@ -1,12 +1,11 @@
 import json
 import unittest
-import zmq
 import asyncio
-import uvloop
 
 from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING
 from tests.unit.helpers.mock_subscriber import MockSubscriber
 
+import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestPublisherSocket(unittest.TestCase):

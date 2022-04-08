@@ -1,22 +1,21 @@
-import asyncio
 import json
-from time import sleep
+from zmq.auth.asyncio import AsyncioAuthenticator
 import zmq
 import zmq.asyncio
-import threading
-
-from typing import Callable
+import asyncio
 
 from lamden.logger.base import get_logger
-from zmq.auth.asyncio import AsyncioAuthenticator
-from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
+from typing import Callable
+from lamden.crypto.wallet import Wallet
+
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 EXCEPTION_NO_ADDRESS_SET = "Router address not set."
 EXCEPTION_NO_SOCKET = "No socket created."
 EXCEPTION_IP_NOT_TYPE_STR = "ip must be type string."
 EXCEPTION_PORT_NOT_TYPE_INT = "port must be type int"
-
 
 class CredentialsProvider(object):
     def __init__(self):
@@ -47,43 +46,59 @@ class CredentialsProvider(object):
 
             return False
 
-
-class Router:
-    def __init__(self, router_wallet: Wallet = None, callback: Callable = None, logger=None):
+class Router():
+    def __init__(self, wallet: Wallet = Wallet(), callback: Callable = None, logger = None):
         self.log = logger or get_logger('ROUTER')
+
+        self.wallet = wallet
+        self.callback = callback
+
         self.ctx = None
         self.socket = None
-        self.address = None
-        self.wallet = router_wallet or Wallet()
-        self.running = False
-        self.paused = False # For testing
-        self.credentials_provider = CredentialsProvider()
         self.auth = None
-        self.callback = callback
+        self.cred_provider = CredentialsProvider()
+
+        self.poller = zmq.asyncio.Poller()
+        self.poll_time = 0.001
+
+        self.running = False
+        self.checking = False
         self.loop = None
 
-        self.poller = None
-        self.poll_time = 500
+        self.task_check_for_messages = None
 
-    def __del__(self):
-        print(f'[{self.log.name}][ROUTER] Destroyed')
-        self.log.info(f'[ROUTER] Destroyed')
+        self.address = None
+        self.set_address()
 
     @property
-    def is_paused(self):
-        return self.paused
+    def is_running(self) -> bool:
+        return self.running
+
+    @property
+    def is_checking(self) -> bool:
+        try:
+            return not self.task_check_for_messages.done()
+        except Exception:
+            return False
 
     @property
     def socket_is_bound(self) -> bool:
         try:
             return len(self.socket.LAST_ENDPOINT) > 0
-        except Exception as err:
+        except Exception:
             return False
 
     @property
     def socket_is_closed(self) -> bool:
         try:
             return self.socket.closed
+        except Exception:
+            return True
+
+    @property
+    def auth_is_stopped(self) -> bool:
+        try:
+            return self.auth._AsyncioAuthenticator__task.done()
         except AttributeError:
             return True
 
@@ -94,24 +109,7 @@ class Router:
         except AttributeError:
             return False
 
-    def setup_event_loop(self) -> None:
-        try:
-            self.loop = asyncio.get_event_loop()
-            if self.loop._closed:
-                raise AttributeError
-        except Exception:
-            self.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
-
-    def create_context(self) -> None:
-        self.ctx = zmq.asyncio.Context().instance()
-
-    def create_socket(self) -> None:
-        if not self.ctx:
-            self.create_context()
-        self.socket = self.ctx.socket(zmq.ROUTER)
-
-    def set_address(self, ip: str = "*", port: int = 19080) -> None:
+    def set_address(self, ip: str = "*", port: int = 19000) -> None:
         if not isinstance(ip, str):
             raise TypeError(EXCEPTION_IP_NOT_TYPE_STR)
 
@@ -120,7 +118,28 @@ class Router:
 
         self.address = f'tcp://{ip}:{port}'
 
-    def connect_socket(self) -> None:
+    def setup_socket(self):
+        self.ctx = zmq.asyncio.Context().instance()
+        self.socket = self.ctx.socket(zmq.ROUTER)
+
+    def setup_auth(self):
+        #self.auth = ThreadAuthenticator(self.ctx)
+        self.auth = AsyncioAuthenticator(self.ctx)
+        self.auth.start()
+        self.auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
+
+    def register_poller(self):
+        if not self.socket:
+            raise AttributeError(EXCEPTION_NO_SOCKET)
+
+        self.poller.register(self.socket, zmq.POLLIN)
+
+    def setup_auth_keys(self):
+        self.socket.curve_secretkey = self.wallet.curve_sk
+        self.socket.curve_publickey = self.wallet.curve_vk
+        self.socket.curve_server = True  # must come before bind
+
+    def connect_socket(self):
         if not self.address:
             raise AttributeError(EXCEPTION_NO_ADDRESS_SET)
 
@@ -129,97 +148,82 @@ class Router:
 
         self.socket.bind(self.address)
 
-    def setup_authentication_keys(self) -> None:
-        if not self.socket:
-            raise AttributeError(EXCEPTION_NO_SOCKET)
-
-        self.socket.curve_secretkey = self.wallet.curve_sk
-        self.socket.curve_publickey = self.wallet.curve_vk
-        self.socket.curve_server = True  # must come before bind
-
-    def setup_authentication(self) -> None:
-        if not self.ctx:
-            self.create_context()
-
-        self.auth = AsyncioAuthenticator(self.ctx)
-        self.auth.start()
-        self.auth.configure_curve_callback(domain="*", credentials_provider=self.credentials_provider)
-
-    def create_poller(self) -> None:
-        if not self.socket:
-            raise AttributeError(EXCEPTION_NO_SOCKET)
-
-        self.poller = zmq.Poller()
-        self.poller.register(self.socket, zmq.POLLIN)
-
-    def start(self) -> None:
-        print(f'[{self.log.name}][ROUTER] Starting on: ' + self.address)
-        self.log.info('[ROUTER] Starting on: ' + self.address)
-
-        # Start an authenticator for this context.
-        self.create_context()
-        self.setup_event_loop()
-        self.create_socket()
-        self.setup_authentication_keys()
-        self.setup_authentication()
+    def run_open_server(self):
+        self.setup_socket()
+        self.register_poller()
         self.connect_socket()
 
-        asyncio.ensure_future(self.check_for_messages())
+        self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
 
-        # Create a poller to monitor if there is any
+    def run_curve_server(self):
+        self.setup_socket()
+        self.setup_auth()
+        self.register_poller()
+        self.setup_auth_keys()
 
-    async def has_message(self, timeout: int = 10) -> bool:
-        return await self.socket.poll(timeout=timeout, flags=zmq.POLLIN) > 0
+        self.connect_socket()
 
-    async def check_for_messages(self) -> None:
+        self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
+
+    async def has_message(self, timeout_ms: int = 10) -> bool:
+        try:
+            sockets = await self.poller.poll(timeout=timeout_ms)
+            return self.socket in dict(sockets)
+        except Exception:
+            return False
+
+    async def check_for_messages(self):
         self.running = True
 
-        while self.running:
-            if self.is_paused:
-                await asyncio.sleep(1)
-            else:
-                if await self.has_message(timeout=50):
-                    peer_ident_curve_vk, empty, msg = await self.socket.recv_multipart()
+        while self.is_running:
+            if await self.has_message(timeout_ms=50):
+                ident, empty, msg = await self.socket.recv_multipart()
 
-                    print(f'[{self.log.name}][ROUTER] received: {peer_ident_curve_vk}] {msg}')
-                    self.log.info(f'[ROUTER] {peer_ident_curve_vk} {msg}')
+                self.log.info(f"[ROUTER] Received request from {ident}: ", msg)
 
-                    # print('Router received %s from %s' % (msg, ident))
-                    if self.callback is not None:
-                        self.callback(self, peer_ident_curve_vk=peer_ident_curve_vk, msg_obj=json.loads(msg))
+                try:
+                    ident_vk_string = json.loads(ident.decode('UTF-8'))
+                except Exception:
+                    ident_vk_string = None
 
-    def send_msg(self, peer_ident_curve_vk: str, msg_bytes: bytes) -> None:
-        self.socket.send_multipart([peer_ident_curve_vk, b'', msg_bytes])
+                if self.callback:
+                    self.callback(ident_vk_string, msg)
 
-    def pause(self) -> None:
-        self.paused = True
+    def send_msg(self, ident: str, msg):
+        self.socket.send_multipart([ident, b'', msg])
 
-    def unpause(self) -> None:
-        self.paused = False
-
-    def close_socket(self) -> None:
-        if not self.socket:
-            return
-        self.socket.close()
-
-    async def stopping(self) -> None:
-        while not self.socket_is_closed:
-            await asyncio.sleep(0)
-
-    def stop(self) -> None:
-        self.running = False
-        self.unpause()
-
-        if not self.socket:
-            return
-
-        if self.auth:
-            self.auth.stop()
-
+    def close_socket(self):
         if not self.socket_is_closed:
-            self.close_socket()
-            self.setup_event_loop()
-            self.loop.run_until_complete(self.stopping())
+            self.socket.setsockopt(zmq.LINGER, 0)
+            self.socket.close()
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.wait_for_socket_to_close())
 
-        self.log.info('[ROUTER] Stopped.')
-        print(f'[{self.log.name}][ROUTER] Stopped.')
+    async def stop_checking_for_messages(self):
+        self.running = False
+        while self.is_checking:
+            await asyncio.sleep(self.poll_time / 1000)
+
+    async def wait_for_socket_to_close(self):
+        while not self.socket_is_closed:
+            await asyncio.sleep(0.01)
+
+    async def stop_auth(self):
+        if self.auth_is_stopped:
+            return
+
+        self.auth.stop()
+
+        while not self.auth_is_stopped:
+            await asyncio.sleep(0.01)
+
+    def stop(self):
+        loop = asyncio.get_event_loop()
+
+        loop.run_until_complete(self.stop_checking_for_messages())
+        loop.run_until_complete(self.stop_auth())
+        self.close_socket()
+
+        self.log.info("[ROUTER] Stopped.")
+
+

@@ -1,27 +1,30 @@
-import json
-
 from zmq.auth.thread import ThreadAuthenticator
+import json
 import threading
 import zmq
 import asyncio
 
 class MockCredentialsProvider(object):
     def __init__(self, valid_peers=[]):
-        self.valid_peers = valid_peers
+        self.valid_peers = list(valid_peers)
 
     def callback(self, domain, key):
+        print(domain)
+        print(key)
         return key in self.valid_peers
 
 class MockRouter(threading.Thread):
-    def __init__(self, wallet, valid_peers=[], port=19000):
+    def __init__(self, wallet, valid_peers=[], port=19000, callback=None):
         threading.Thread.__init__(self)
         self.daemon = True
 
         self.wallet = wallet
         self.port = port
+        self.callback = callback
 
         self.ctx = None
         self.socket = None
+        self.auth = None
         self.cred_provider = MockCredentialsProvider(valid_peers=valid_peers)
 
         self.poller = zmq.Poller()
@@ -36,9 +39,9 @@ class MockRouter(threading.Thread):
         self.ctx = zmq.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
 
-        auth = ThreadAuthenticator(self.ctx)
-        auth.start()
-        auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
+        self.auth = ThreadAuthenticator(self.ctx)
+        self.auth.start()
+        self.auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
 
         self.poller.register(self.socket, zmq.POLLIN)
 
@@ -64,9 +67,13 @@ class MockRouter(threading.Thread):
                 ident, empty, msg = self.socket.recv_multipart()
                 print("[ROUTER] Received request: ", msg)
 
+                if self.callback:
+                    self.callback(ident, msg)
+
                 try:
                     msg_string = json.loads(msg)
                 except Exception as err:
+                    msg_string = None
                     print(err)
 
                 if isinstance(msg_string, dict):
