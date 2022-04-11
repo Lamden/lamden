@@ -1,11 +1,13 @@
 import unittest
 import asyncio
 import time
+import json
 
-from lamden.sockets.router import Router, EXCEPTION_PORT_NOT_TYPE_INT, EXCEPTION_IP_NOT_TYPE_STR, EXCEPTION_NO_SOCKET, EXCEPTION_NO_ADDRESS_SET
+from lamden.sockets.router import Router, EXCEPTION_PORT_NOT_TYPE_INT, EXCEPTION_IP_NOT_TYPE_STR, EXCEPTION_NO_SOCKET, EXCEPTION_NO_ADDRESS_SET, EXCEPTION_MSG_NOT_STRING, EXCEPTION_TO_VK_NOT_STRING
 from lamden.crypto.wallet import Wallet
 
 from tests.unit.helpers.mock_request import MockRequest
+from tests.unit.helpers.mock_reply import MockReply
 
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -305,6 +307,7 @@ class TestRouter(unittest.TestCase):
         self.assertFalse(self.router.is_checking)
         self.assertFalse(self.router.is_running)
 
+
     def test_METHOD_check_for_messages__secure_server_can_decode_ident_and_pass_to_callback(self):
         self.create_secure_request()
         self.start_secure_router()
@@ -550,10 +553,49 @@ class TestRouter(unittest.TestCase):
         self.assertTrue(event == 0)
 
     def test_METHOD_send_string(self):
+        self.start_secure_router()
+        self.create_secure_request()
+        self.async_sleep(1)
 
-        raise NotImplementedError
+        loop = asyncio.get_event_loop()
 
+        to_address = 'tcp://127.0.0.1:19000'
+        task = asyncio.ensure_future(self.request.send(to_address=to_address, msg_str="Testing", timeout_ms=1000))
 
+        while self.callback_data is None:
+            loop.run_until_complete(asyncio.sleep(0.1))
 
+        msg_str = "Test_Test"
+        self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
 
+        while not task.done():
+            self.async_sleep(0.1)
 
+        result = loop.run_until_complete(task)
+
+        self.assertTrue(result.success)
+        self.assertEqual(msg_str.encode('UTF-8'), result.response)
+
+    def test_METHOD_send_string__raise_AttributeError_if_to_vk_not_type_str(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(to_vk=self.request_wallet.curve_vk, msg_str="Test_Test")
+
+        self.assertEqual(EXCEPTION_TO_VK_NOT_STRING, str(error.exception))
+
+    def test_METHOD_send_string__raise_AttributeError_if_msg_str_not_type_string(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str={"test": True})
+
+        self.assertEqual(EXCEPTION_MSG_NOT_STRING, str(error.exception))
+
+    def test_METHOD_send_string__raise_AttributeError_if_socket_is_None(self):
+        self.create_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str="Test Test")
+
+        self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))

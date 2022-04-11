@@ -15,7 +15,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 EXCEPTION_NO_ADDRESS_SET = "Router address not set."
 EXCEPTION_NO_SOCKET = "No socket created."
 EXCEPTION_IP_NOT_TYPE_STR = "ip must be type string."
-EXCEPTION_PORT_NOT_TYPE_INT = "port must be type int"
+EXCEPTION_PORT_NOT_TYPE_INT = "port must be type int."
+EXCEPTION_TO_VK_NOT_STRING = "to_vk is not type str."
+EXCEPTION_MSG_NOT_STRING = "msg_str is not type str."
 
 class CredentialsProvider(object):
     def __init__(self):
@@ -166,31 +168,39 @@ class Router():
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
-        try:
-            sockets = await self.poller.poll(timeout=timeout_ms)
-            return self.socket in dict(sockets)
-        except Exception:
-            return False
+        sockets = await self.poller.poll(timeout=timeout_ms)
+        return self.socket in dict(sockets)
 
     async def check_for_messages(self):
         self.running = True
 
         while self.is_running:
             if await self.has_message(timeout_ms=50):
-                ident, empty, msg = await self.socket.recv_multipart()
+                ident_vk_bytes, empty, msg = await self.socket.recv_multipart()
 
-                self.log.info(f"[ROUTER] Received request from {ident}: ", msg)
+                self.log.info(f"[ROUTER] Received request from {ident_vk_bytes}: ", msg)
 
                 try:
-                    ident_vk_string = json.loads(ident.decode('UTF-8'))
+                    ident_vk_string = json.loads(ident_vk_bytes.decode('UTF-8'))
                 except Exception:
                     ident_vk_string = None
 
                 if self.callback:
                     self.callback(ident_vk_string, msg)
 
-    def send_msg(self, ident: str, msg):
-        self.socket.send_multipart([ident, b'', msg])
+    def send_msg(self, to_vk: str, msg_str: str):
+        if not self.socket:
+            raise AttributeError(EXCEPTION_NO_SOCKET)
+
+        if not isinstance(to_vk, str):
+            raise AttributeError(EXCEPTION_TO_VK_NOT_STRING)
+
+        if not isinstance(msg_str, str):
+            raise AttributeError(EXCEPTION_MSG_NOT_STRING)
+
+        ident_vk_bytes = json.dumps(to_vk).encode('UTF-8')
+
+        self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
 
     def close_socket(self):
         if not self.socket_is_closed:

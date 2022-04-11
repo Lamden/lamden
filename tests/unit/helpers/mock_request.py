@@ -74,7 +74,7 @@ class MockRequest():
         socket.identity = encode(self.id).encode()
 
     def setup_polling(self, socket: zmq.Socket = None) -> zmq.Poller:
-        pollin = zmq.Poller()
+        pollin = zmq.asyncio.Poller()
         pollin.register(socket, zmq.POLLIN)
         return pollin
 
@@ -93,8 +93,9 @@ class MockRequest():
 
         socket.send_string(msg_str)
 
-    def message_waiting(self, poll_time: int, socket: zmq.Socket = None, pollin: zmq.Poller = None) -> bool:
-        return socket in dict(pollin.poll(poll_time))
+    async def message_waiting(self, poll_time: int, socket: zmq.Socket = None, pollin: zmq.Poller = None) -> bool:
+        sockets = await pollin.poll(poll_time)
+        return socket in dict(sockets)
 
     async def send(self, to_address: str, msg_str: str, timeout_ms: int = 500, retries: int = 1) -> Result:
         self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
@@ -119,7 +120,7 @@ class MockRequest():
 
                 self.send_string(msg_str=msg_str, socket=socket)
 
-                if self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout_ms):
+                if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout_ms):
                     response = await socket.recv()
 
                     self.log.info(' %s received: %s' % (self.id, response))
