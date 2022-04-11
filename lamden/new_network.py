@@ -1,17 +1,16 @@
 import json
 import requests
+
 import zmq
+import zmq.asyncio
+import asyncio
+import uvloop
+
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
-from urllib.parse import urlparse
 
 from lamden.logger.base import get_logger
-
-from zmq.utils import z85
-import zmq.asyncio
-import asyncio
-from nacl.bindings import crypto_sign_ed25519_pk_to_curve25519
 
 from contracting.db.encoder import encode, decode
 from contracting.db.driver import ContractDriver
@@ -26,6 +25,8 @@ GET_BLOCK = "get_block"
 GET_CONSTITUTION = "get_constitution"
 GET_ALL_PEERS = "get_all_peers"
 GET_NETWORK = 'get_node_list'
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class Processor:
     async def process_message(self, msg):
@@ -47,51 +48,42 @@ class NewPeerProcessor(Processor):
         self.new_peer_callback(msg=msg)
 
 class Network:
-    def __init__(self, wallet: Wallet, socket_base, driver: ContractDriver=ContractDriver(), socket_ports=None, testing=False, debug=False):
-        self.testing = testing
-        self.debug = debug
+    def __init__(self, wallet: Wallet = Wallet(), driver: ContractDriver = ContractDriver(), socket_ports: dict = None):
         self.wallet = wallet
-
         self.driver = driver
 
-        self.socket_base = socket_base
-        if socket_ports:
-            self.socket_ports = socket_ports
-        else:
-            self.socket_ports = {
-                'router': 19000,
-                'publisher': 19080,
-                'webserver': 18080
-            }
-
-        self.ctx = zmq.Context()
-
-        self.publisher = Publisher(
-            testing=self.testing,
-            debug=self.debug,
-            ctx=self.ctx,
-            logger=self.log
-        )
-
-        self.router = Router(
-            get_all_peers=self.get_peer_list,
-            router_wallet=self.wallet,
-            callback=self.router_callback,
-            logger=self.log
-        )
+        self.socket_ports = dict(socket_ports) or dict({
+            'router': 19000,
+            'publisher': 19080,
+            'webserver': 18080
+        })
 
         self.peers = {}
-        self.peer_blacklist = []
         self.subscriptions = []
         self.services = {}
         self.actions = {}
 
-        self.ip = requests.get('http://api.ipify.org').text
+        self.external_ip = requests.get('http://api.ipify.org').text
 
         self.running = False
 
         new_peer_processor = NewPeerProcessor(callback=self.process_new_peer_connection)
         self.add_service("new_peer_connection", new_peer_processor)
+
+        self.ctx = zmq.asyncio.Context().instance()
+
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
+        self.setup_publisher()
+        self.setup_router()
+
+    @property
+    def is_running(self):
+        return self.running
 
     @property
     def publisher_address(self):
@@ -103,7 +95,7 @@ class Network:
 
     @property
     def external_address(self):
-        return '{}{}:{}'.format('tcp://', self.ip, self.socket_ports.get('router'))
+        return '{}{}:{}'.format('tcp://', self.external_ip, self.socket_ports.get('router'))
 
     @property
     def hello_response(self):
@@ -113,50 +105,59 @@ class Network:
         return ('{"response":"hello", "topics": [""], "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (block_num, hlc_timestamp)).encode()
 
     @property
-    def log(self):
-        return get_logger(self.router_address)
-
-    @property
     def vk(self):
-        return  self.wallet.verifying_key
+        return self.wallet.verifying_key
 
     @property
     def peer_list(self):
         return self.peers.values()
 
-    async def start(self):
+    def log(self, log_type: str, message: str) -> None:
+        named_message = f'[NETWORK]{message}'
+
+        logger = get_logger(f'{self.router_address}')
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
+        print(f'[{self.router_address}]{named_message}')
+
+    def setup_publisher(self):
+        self.publisher = Publisher()
+        self.publisher.set_address(port=self.socket_ports.get('publisher'))
+
+    def setup_router(self):
+        self.router = Router(
+            wallet=self.wallet,
+            message_callback=self.router_callback
+        )
+        self.router.set_address(port=self.socket_ports.get('router'))
+
+    def start(self) -> None:
+        self.log('info', f'Publisher Address {self.publisher_address}')
+        self.log('info', f'Router Address {self.router_address}')
+
+        self.publisher.start()
+        self.router.run_curve_server()
+
+        self.loop.run_until_complete(self.starting())
+
         self.running = True
 
-        self.log.info(self.publisher_address)
-        self.log.info(self.router_address)
+        self.log('info', 'Started.')
 
-        self.publisher.log = self.log
-        self.router.log = self.log
+    async def starting(self):
+        while not self.publisher.is_running or not self.router.is_running:
+            await asyncio.sleep(0.1)
 
-        self.publisher.address = self.publisher_address
-        self.router.address = self.router_address
+    def disconnect_peer(self, peer_vk):
+        self.peers[peer_vk].stop()
 
-        self.publisher.setup_socket()
-        self.router.start()
-
-    def stop(self):
-        # print('network.stop()')
-        self.running = False
-        self.publisher.stop()
-        self.router.stop()
-        try:
-            self.router.join()
-        except RuntimeError:
-            pass
-        for peer in self.peers:
-            self.peers[peer].stop()
-        self.ctx.term()
-
-    def disconnect_peer(self, key):
-        self.peers[key].stop()
-
-    def remove_peer(self, key):
-        self.peers[key].pop()
+    def remove_peer(self, peer_vk):
+        self.peers[peer_vk].pop()
 
     def add_service(self, name: str, processor: Processor):
         self.services[name] = processor
@@ -211,49 +212,31 @@ class Network:
         asyncio.ensure_future(self.process_subscription((encoded_topic, encoded_msg)))
         # self.subscriptions.append((encoded_topic, encoded_msg))
 
-    async def update_peers(self):
-        while self.running:
-            while len(self.provider.joined) > 0:
-                socket, domain, vk = self.provider.joined.pop(0)
-
-                if self.peers.get(vk) is None:
-                    self.add_peer(socket=socket, domain=domain, vk=vk)
-                    await self.publisher.publish(topic=b'join', msg={'domain': domain, 'key': vk})
-
-    def connect(self, ip, vk):
+    def connect_peer(self, ip: str, vk: str) -> bool:
         if vk == self.vk:
-            print(f'[{self.external_address}][NETWORK] Attempted connection to self "{vk}"')
-            self.log.warning(f'[NETWORK] Attempted connection to self "{vk}"')
+            self.log('warning', f'Attempted connection to self "{vk}"')
             return
 
-        if vk in self.peer_blacklist:
-            # TODO how does a blacklisted peer get back in good standing?
-            self.log.error(f'Attempted connection from blacklisted peer {vk[:8]}!!')
-            return False
-
-        # Add the node to authorized list of the router in case it was not part of the boot nodes
-        # self.router.cred_provider.add_key(z85_key(key))
-
-        self.log.debug(f"Connecting to {vk} {ip}")
+        self.log('info', f"Connecting to {vk} {ip}")
 
         try:
             peer = self.get_peer(vk=vk)
             if peer:
                 if peer.is_running:
                     # If we are already connected to this peer then do nothing
-                    print(f'[{self.external_address}][NETWORK] Already connected to "{vk}" at {ip}')
+                    self.log('info', f'Already connected to "{vk}" at {ip}')
                     return
 
             else:
-                print(f'[{self.external_address}][NETWORK] Adding Peer "{vk}" at {ip}')
+                self.log('info', f'Adding Peer "{vk}" at {ip}')
                 self.add_peer(ip=ip, vk=vk)
+                self.start_peer(vk=vk)
             return True
         except zmq.error.Again as error:
-            self.log.error(error)
-            # socket.close()
+            self.log('error', error)
             return False
 
-    def router_callback(self, router: Router, ident: str, msg: str):
+    def router_callback(self, ident: str, msg: str) -> None:
         try:
             # msg = str(msg, 'utf-8')
             msg = json.loads(msg)
@@ -304,7 +287,7 @@ class Network:
                 peer = self.peers.get(vk, None)
                 if not peer:
                     if vk == self.wallet.verifying_key:
-                        ip = f'tcp://{self.ip}:{self.socket_ports.get("router")}'
+                        ip = f'tcp://{self.external_ip}:{self.socket_ports.get("router")}'
                     else:
                         continue
                 else:
@@ -315,7 +298,7 @@ class Network:
                 peer = self.peers.get(vk, None)
                 if not peer:
                     if vk == self.wallet.verifying_key:
-                        ip = f'tcp://{self.ip}:{self.socket_ports.get("router")}'
+                        ip = f'tcp://{self.external_ip}:{self.socket_ports.get("router")}'
                     else:
                         continue
                 else:
@@ -329,19 +312,14 @@ class Network:
 
     def add_peer(self, ip, vk):
         self.peers[vk] = Peer(
-            testing=self.testing,
-            debug=self.debug,
-            ctx=self.ctx,
             get_network_ip=lambda: self.external_address,
             ip=ip,
-            server_key=z85_key(vk),
-            vk=vk,
-            blacklist=lambda x: self.blacklist_peer(key=x),
+            server_vk=vk,
             services=self.get_services,
-            wallet=self.wallet,
-            logger=self.log,
-            connected_callback=self.peer_connected
+            local_wallet=self.wallet
         )
+
+    def start_peer(self, vk: str) -> None:
         self.peers[vk].start()
 
     def peer_connected(self, vk):
@@ -412,7 +390,7 @@ class Network:
 
         for vk in members:
             if vk == self.wallet.verifying_key:
-                member_peers[vk] = self.ip
+                member_peers[vk] = self.external_ip
             else:
                 peer = self.peers.get(vk, None)
                 if peer is not None:
@@ -452,3 +430,14 @@ class Network:
 
     def peer_add_strike(self, key):
         self.peers[key].add_strike()
+
+    def stop(self):
+        self.running = False
+
+        for peer in self.peers:
+            peer.stop()
+
+        self.publisher.stop()
+        self.router.stop()
+
+        self.log('info', 'Stopped.')

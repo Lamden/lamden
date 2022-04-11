@@ -1,31 +1,23 @@
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
 from lamden.new_network import Network
+from lamden.peer import Peer
+from lamden.sockets.publisher import Publisher
+from lamden.sockets.router import Router
 
 import asyncio
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 GET_ALL_PEERS = "get_all_peers"
 GET_LATEST_BLOCK = 'get_latest_block'
 
-class Mock_SocketService():
-    def __init__(self, running):
-        self.running = running
 
-    @property
-    def is_running(self):
-        return self.running
-
-class Peer():
-    def __init__(self, subscriber_running=True, dealer_running=True):
-        self.subscriber = Mock_SocketService(running=subscriber_running)
-        self.dealer = Mock_SocketService(running=dealer_running)
-
-    @property
-    def is_running(self):
-        return self.subscriber.is_running and self.dealer.is_running
-
-class TestMultiNode(TestCase):
+class TestNetwork(TestCase):
     def setUp(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         self.networks = []
 
     def tearDown(self):
@@ -33,13 +25,16 @@ class TestMultiNode(TestCase):
             if network.running:
                 network.stop()
 
+        del self.networks
+
+        loop = asyncio.get_event_loop()
+        loop.stop()
+        loop.close()
+
     def create_network(self, index=0):
         network = Network(
             wallet=Wallet(),
-            socket_base='tcp://127.0.0.1',
             socket_ports=self.create_socket_ports(index),
-            testing=True,
-            debug=True
         )
         network.ip = '127.0.0.1'
         network.add_action(GET_ALL_PEERS, self.get_peer_list)
@@ -47,7 +42,7 @@ class TestMultiNode(TestCase):
         self.networks.append(network)
         network.get_all_peers = self.get_peer_list
         network.router.cred_provider.get_all_peers = self.get_peer_list
-        return  network
+        return network
 
     def get_peer_list(self):
         return [network.wallet.verifying_key for network in self.networks]
@@ -94,177 +89,111 @@ class TestMultiNode(TestCase):
             'webserver': 18080 + index
         }
 
-    def test_create_instance(self):
+    def test_init__creates_network_instance(self):
+        network_1 = self.create_network()
+        self.assertIsInstance(network_1, Network)
+
+    def test_init__creates_publisher_and_router_instances(self):
         network_1 = self.create_network()
 
-        self.assertIsNotNone(network_1)
+        self.assertIsInstance(network_1.publisher, Publisher)
+        self.assertIsInstance(network_1.router, Router)
 
-    def test_network_starts(self):
+    def test_PROPERTY_is_running__return_TRUE_if_running_is_TRUE(self):
+        network_1 = self.create_network()
+        network_1.running = True
+
+        self.assertTrue(network_1.is_running)
+
+    def test_PROPERTY_is_running__returns_FALSE_if_running_is_FALSE(self):
+        network_1 = self.create_network()
+        network_1.running = False
+
+        self.assertFalse(network_1.is_running)
+
+    def test_PROPERTY_publisher_address__returns_concatenated_protocol_ip_and_port(self):
         network_1 = self.create_network()
 
-        self.start_network(network=network_1)
+        port = 8000
+        network_1.socket_ports['publisher'] = 8000
 
+        self.assertEqual(f'tcp://*:{port}', network_1.publisher_address)
+
+    def test_PROPERTY_router_address__returns_concatenated_protocol_ip_and_port(self):
+        network_1 = self.create_network()
+
+        port = 8000
+        network_1.socket_ports['router'] = 8000
+
+        self.assertEqual(f'tcp://*:{port}', network_1.router_address)
+
+    def test_PROPERTY_external_address__returns_concatenated_protocol_ip_and_port(self):
+        network_1 = self.create_network()
+
+        port = 8000
+        external_ip = '123.456.789.1'
+        network_1.socket_ports['router'] = 8000
+        network_1.external_ip = external_ip
+
+        self.assertEqual(f'tcp://{external_ip}:{port}', network_1.external_address)
+
+    def test_PROPERTY_vk__returns_wallet_verifying_key(self):
+        network_1 = self.create_network()
+
+        self.assertEqual(network_1.wallet.verifying_key, network_1.vk)
+
+    def test_PROPERTY_peer_list__returns_a_list_of_peer_vks(self):
+        network_1 = self.create_network()
+
+        for i in range(3):
+            wallet = Wallet()
+            peer = Peer(
+                local_wallet=network_1.wallet,
+                server_vk=wallet.verifying_key,
+                ip='1.1.1.1',
+                get_network_ip=lambda: network_1.external_address
+            )
+            network_1.peers[peer.server_vk] = peer
+
+
+        self.assertEqual(3, len(network_1.peer_list))
+
+        for vk in network_1.peers:
+            self.assertIsInstance(vk, str)
+
+    def test_METHOD_start(self):
+        network_1 = self.create_network()
+        network_1.start()
         self.assertTrue(network_1.running)
 
-    def test_network_stops(self):
+    def test_METHOD_starting(self):
         network_1 = self.create_network()
 
-        self.start_network(network=network_1)
+        task = asyncio.ensure_future(network_1.starting())
 
-        self.assertTrue(network_1.running)
+        network_1.publisher.running = True
+        network_1.router.running = True
 
-        network_1.stop()
+        self.async_sleep(0.2)
+
+        self.assertTrue(task.done())
+
+    def test_MATHOD_stop__does_not_raise_exception(self):
+        network_1 = self.create_network()
+        network_1.start()
+
+        try:
+            network_1.stop()
+        except:
+            self.fail("Calling stop should not throw exception.")
 
         self.assertFalse(network_1.running)
-        self.assertFalse(network_1.router.running)
-        self.assertFalse(network_1.publisher.running)
 
-    def test_connects_to_peer_network(self):
-        # Create two network instances
+    def test_METHOD_add_peer__adds_peer_to_peer_dict(self):
         network_1 = self.create_network()
-        self.start_network(network=network_1)
-        self.assertTrue(network_1.running)
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+        network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
 
-        network_2 = self.create_network(index=1)
-        self.start_network(network=network_2)
-        self.assertTrue(network_2.running)
-
-        # connect networks to each other
-        network_1.connect(ip=network_2.external_address, vk=network_2.vk)
-
-        # await connections
-        self.async_sleep(delay=1)
-
-        # verify connections
-        peer_1 = network_1.get_peer(network_2.vk)
-        self.assertTrue(peer_1.running)
-
-        peer_2 = network_2.get_peer(network_1.vk)
-        self.assertTrue(peer_2.running)
-
-    def test_network_propagates_joined_peers(self):
-        # Create two network instances
-        network_1 = self.create_network()
-        self.start_network(network=network_1)
-        self.assertTrue(network_1.running)
-
-        network_2 = self.create_network(index=1)
-        self.start_network(network=network_2)
-        self.assertTrue(network_2.running)
-
-        # connect networks to each other
-        network_1.connect(ip=network_2.external_address, vk=network_2.vk)
-
-        # await connections
-        self.async_sleep(delay=1)
-
-        # verify connections
-        peer_1 = network_1.get_peer(network_2.vk)
-        self.assertTrue(peer_1.running)
-
-        peer_2 = network_2.get_peer(network_1.vk)
-        self.assertTrue(peer_2.running)
-
-        # Create new network
-        network_3 = self.create_network(index=2)
-        self.start_network(network=network_3)
-
-        # Join to one peer on the network
-        network_3.connect(ip=network_1.external_address, vk=network_1.vk)
-
-        # await connect
-        self.async_sleep(1)
-
-        peer_3 = network_3.get_peer(vk=network_1.vk)
-        self.assertTrue(peer_3.running)
-
-        # await connect
-        self.async_sleep(1)
-
-        # All networks joined new peer
-        for network in self.networks:
-            self.assertEqual(2, len(network.peers))
-            for peer in network.peers.values():
-                self.assertTrue(peer.running)
-
-    def test_num_of_peers_zero(self):
-        network_1 = self.create_network()
-
-        self.assertEqual(0, network_1.num_of_peers())
-
-    def test_num_of_peers(self):
-        network_1 = self.create_network()
-
-        network_1.peers['node_2'] = {}
-        network_1.peers['node_3'] = {}
-
-        self.assertEqual(2, network_1.num_of_peers())
-
-    def test_num_of_peers_connected_zero(self):
-        network_1 = self.create_network()
-
-        self.assertEqual(0, network_1.num_of_peers_connected())
-
-    def test_num_of_peers_connected(self):
-        network_1 = self.create_network()
-        network_1.peers['node_2'] = Peer()
-        network_1.peers['node_3'] = Peer(dealer_running=False)
-
-        self.assertEqual(1, network_1.num_of_peers_connected())
-
-    def test_all_peers_connected_True(self):
-        network_1 = self.create_network()
-        network_1.peers['node_2'] = Peer()
-        network_1.peers['node_3'] = Peer()
-
-        self.assertTrue(network_1.all_peers_connected())
-
-    def test_all_peers_connected_False(self):
-        network_1 = self.create_network()
-        network_1.peers['node_2'] = Peer()
-        network_1.peers['node_3'] = Peer(subscriber_running=False)
-
-        self.assertFalse(network_1.all_peers_connected())
-
-    def test_reconnect_peer(self):
-        # Create two network instances
-        network_1 = self.create_network()
-        self.start_network(network=network_1)
-        self.assertTrue(network_1.running)
-
-        network_2 = self.create_network(index=1)
-        self.start_network(network=network_2)
-        self.assertTrue(network_2.running)
-
-        # connect networks to each other
-        network_1.connect(ip=network_2.external_address, vk=network_2.vk)
-
-        # await connections
-        self.async_sleep(delay=1)
-
-        # Disable Network 2
-        network_2.router.pause()
-
-        # Call reconnect loop on other network
-        peer = network_1.get_peer(vk=network_2.vk)
-        peer.dealer.check_connection()
-        self.async_sleep(delay=1)
-
-        self.assertFalse(peer.is_running)
-        self.assertTrue(peer.reconnecting)
-
-        # Enable Network 2
-        network_2.router.unpause()
-
-        # await Network 1 reconnects to network 2
-        self.async_sleep(delay=2.5)
-
-        net_1_all_connected = network_1.all_peers_connected()
-        net_2_all_connected = network_2.all_peers_connected()
-
-        self.assertTrue(net_1_all_connected)
-        self.assertTrue(net_2_all_connected)
-
-
-
-
+        self.assertEqual(1, len(network_1.peer_list))
+        self.assertIsInstance(network_1.peers[peer_vk], Peer)

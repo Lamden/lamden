@@ -13,10 +13,8 @@ EXCEPTION_TOPIC_BYTES_NOT_BYTES = "argument 'topic_bytes' should be type bytes."
 EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
 class Publisher():
-    def __init__(self, logger=None):
+    def __init__(self):
         # Configure the listening socket
-        self.log = logger or get_logger("PUBLISHER")
-
         self.address = None
         self.socket = None
 
@@ -52,17 +50,28 @@ class Publisher():
         except AttributeError:
             return True
 
+    def log(self, log_type: str, message: str) -> None:
+        named_message = f'[PUBLISHER]{message}'
+
+        logger = get_logger(f'{self.address}')
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
+        print(f'[{self.address}]{named_message}')
+
     def start(self) -> None:
         if self.running:
-            self.log.warning(f'[PUBLISHER] Already running.')
-            print(f'[{self.log.name}][PUBLISHER] Already running.')
+            self.log('warning', 'Already running.')
             return
 
         self.create_socket()
         self.connect_socket()
 
-        self.log.info(f'[PUBLISHER] Starting on {self.address}')
-        print(f'[{self.log.name}][PUBLISHER] Starting on {self.address}')
+        self.log('info', f'Starting on {self.address}')
 
         self.running = True
 
@@ -93,8 +102,7 @@ class Publisher():
     
     def publish(self, topic_str: str, msg_dict: dict) -> None:
         if not self.running:
-            self.log.error(f'[PUBLISHER] Publisher is not running.')
-            print(f'[{self.log.name}][PUBLISHER] Publisher is not running.')
+            self.log('error', 'Publisher is not running.')
             return
 
         if not isinstance(topic_str, str):
@@ -103,8 +111,7 @@ class Publisher():
         if not isinstance(msg_dict, dict):
             raise TypeError(EXCEPTION_MSG_NOT_DICT)
 
-        self.log.error(f'[PUBLISHER] Publishing ({topic_str}): {msg_dict}')
-        print(f'[{self.log.name}][PUBLISHER] Publishing ({topic_str}): {msg_dict}')
+        self.log('info', f'Publishing ({topic_str}): {msg_dict}')
 
         msg_bytes = encode(msg_dict).encode()
 
@@ -132,8 +139,7 @@ class Publisher():
         if self.running:
             self.running = False
 
-            self.log.info('[PUBLISHER] Stopping.')
-            print(f'[{self.log.name}][PUBLISHER] Stopping.')
+            self.log('info', 'Stopping.')
 
             if self.socket:
                 self.socket.close()

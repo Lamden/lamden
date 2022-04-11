@@ -6,6 +6,7 @@ from lamden.crypto.z85 import z85_key
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
 
+from typing import Callable
 from urllib.parse import urlparse
 
 LATEST_BLOCK_INFO = 'latest_block_info'
@@ -14,8 +15,8 @@ GET_BLOCK = 'get_block'
 SUBSCRIPTIONS = ["work", "new_peer_connection", "contenders"]
 
 class Peer:
-    def __init__(self, ip, server_vk: str, local_wallet: Wallet,
-                 get_network_ip, services: dict=None, connected_callback=None, logger=None, driver=None, storage=None):
+    def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
+                  services: dict = None, connected_callback: Callable = None):
 
         self.server_vk = server_vk
         self.server_z85_key = z85_key(server_vk)
@@ -44,8 +45,6 @@ class Peer:
         self.sub_running = False
         self.reconnecting = False
         self.connected_callback = connected_callback
-
-        self.log = logger or get_logger("PEER")
 
         self.request = None
         self.subscriber = None
@@ -81,14 +80,12 @@ class Peer:
 
     @property
     def subscriber_address(self) -> str:
-        self.log.info('[PEER] PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
-        print('[{}][PEER] PUBLISHER ADDRESS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('publisher')))
+        self.log('info', 'PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher'))
 
     @property
     def request_address(self) -> str:
-        self.log.info('[PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
-        print('[{}][PEER] ROUTER ADDRESSS: {}{}:{}'.format(self.log.name, self.protocol, self.ip, self.socket_ports.get('router')))
+        self.log('info', 'ROUTER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
     @property
@@ -105,6 +102,19 @@ class Peer:
     @property
     def is_verified(self) -> bool:
         return self.verified
+
+    def log(self, log_type: str, message: str) -> None:
+        named_message = f'[ROUTER]{message}'
+
+        logger = get_logger(f'{self.address}')
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
+        print(f'[{self.address}]{named_message}')
 
     def is_available(self) -> bool:
         tasks = asyncio.gather(
@@ -145,8 +155,7 @@ class Peer:
 
     def start(self) -> None:
         if self.running:
-            self.log.error(f'[PEER] Already running.')
-            print(f'[{self.log.name}][PEER] Already running.')
+            self.log('warning', 'Already running.')
             return
 
         if not self.request:
@@ -179,8 +188,7 @@ class Peer:
                     latest_hlc_timestamp=res.get('latest_hlc_timestamp')
                 )
 
-                self.log.info(f'[DEALER] Received response from authorized node with pub info')
-                print(f'[{self.log.name}][DEALER] Received response from authorized node with pub info')
+                self.log('info', 'Received response from authorized node with pub info.')
 
                 if not self.subscriber:
                     self.setup_subscriber()
@@ -190,11 +198,11 @@ class Peer:
 
                 self.verified = True
         else:
-            self.log.error(f'[PEER] Failed to validate {self.server_vk} at ({self.request_address})')
+            self.log('error', f'Failed to validate {self.server_vk} at ({self.request_address})')
 
     def store_latest_block_info(self, latest_block_num: int, latest_hlc_timestamp: str) -> None:
         if not isinstance(latest_block_num, int) or not isinstance(latest_hlc_timestamp, str):
-            self.log.info(f'[PEER] Unable to set latest block info with number {latest_block_num} and {latest_hlc_timestamp}')
+            self.log('info', f'Unable to set latest block info with number {latest_block_num} and {latest_hlc_timestamp}')
             return
 
         self.latest_block_info = dict({
@@ -226,16 +234,14 @@ class Peer:
             topic, msg = data
         except ValueError as err:
             print(data)
-            self.log.info(data)
-            print(f'[{self.log.name}][PEER] ERROR in message: {err}')
-            self.log.error(f'[PEER] ERROR in message: {err}')
+            self.log('error', f'ERROR in message: {err}')
             return
 
         try:
             msg_str = json.loads(msg)
             topic_str = topic.decode("utf-8")
         except Exception as err:
-            self.log.error(f'[PEER] ERROR decoding message parts: {err}')
+            self.log('error', f'ERROR decoding message parts: {err}')
             return
 
         services = self.services()
@@ -262,12 +268,10 @@ class Peer:
             res = await self.ping()
 
             if res is None:
-                self.log.info(f'[PEER] Could not ping {self.request_address}. Attempting to reconnect...')
-                print(f'[{self.log.name}][PEER] Could not ping {self.request_address}. Attempting to reconnect...')
+                self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
 
-        self.log.info(f'[PEER] Reconnected to {self.request_address}!')
-        print(f'[{self.log.name}][PEER] Reconnected to {self.request_address}!')
+        self.log('info', f'Reconnected to {self.request_address}!')
 
         self.connected = True
         self.reconnecting = False
@@ -313,10 +317,8 @@ class Peer:
         try:
             str_msg = json.dumps(msg_obj)
         except Exception as err:
-            self.log.error(f'[PEER] {err}')
-            print(f'[{self.log.name}][PEER] Error: {err}')
-            self.log.info(f'[PEER] Failed to encode message {msg_obj} to bytes.')
-            print(f'[{self.log.name}][PEER] Failed to encode message {msg_obj} to bytes.')
+            self.log('error', f'{err}')
+            self.log('info', f'Failed to encode message {msg_obj} to bytes.')
 
             return None
 
@@ -333,14 +335,11 @@ class Peer:
                 return msg_json
 
             except Exception as err:
-                self.log.error(f'[PEER] {err}')
-                print(f'[{self.log.name}][PEER] Error: {err}')
-                self.log.info(f'[PEER] failed to decode json from {self.request_address}: {result.__dict__}')
-                print(f'[{self.log.name}][PEER] failed to decode json from {self.request_address}: {result.__dict__}')
+                self.log('error', f'{err}')
+                self.log('info', f'Failed to decode json from {self.request_address}: {result.__dict__}')
         else:
             if result.error:
-                self.log.error(f'[PEER] Result Error: {result.error}')
-                print(f'[{self.log.name}][PEER] Result Error: {result.error}')
+                self.log('error', f'Result Error: {result.error}')
 
             self.connected = False
 

@@ -52,13 +52,13 @@ class TestRouter(unittest.TestCase):
     def create_router(self):
         self.router = Router(
             wallet=self.router_wallet,
-            callback=self.get_data
+            message_callback=self.get_data
         )
 
     def create_secure_router(self):
         self.router = Router(
             wallet=self.router_wallet,
-            callback=self.get_data
+            message_callback=self.get_data
         )
         self.router.setup_socket()
         self.router.setup_auth()
@@ -381,7 +381,6 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsInstance(msg, bytes)
         self.assertEqual(msg_str, msg.decode('UTF-8'))
-
 
     def test_METHOD_check_for_messages__secure_server_ignores_unsecure_requests(self):
         self.create_request()

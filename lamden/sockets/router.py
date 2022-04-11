@@ -21,39 +21,45 @@ EXCEPTION_MSG_NOT_STRING = "msg_str is not type str."
 
 class CredentialsProvider(object):
     def __init__(self):
-        self.log = get_logger("CREDENTIALS PROVIDER")
         self.approved_keys = {}
 
     def add_key(self, vk: str) -> None:
         self.approved_keys[vk] = z85_key(vk)
+        self.log('info', f'Added {vk} to approved_keys.')
 
     def remove_key(self, vk: str) -> None:
         try:
             self.approved_keys.pop(vk)
+            self.log('info', f'Removed {vk} from approved_keys.')
         except KeyError:
             pass
+
+    def log(self, log_type: str, message: str) -> None:
+        logger = get_logger('CREDENTIALS PROVIDER')
+        if log_type == 'info':
+            logger.info(message)
+        if log_type == 'error':
+            logger.error(message)
+        if log_type == 'warning':
+            logger.warning(message)
+
+        print(f'[CREDENTIALS PROVIDER]{message}')
 
     def key_is_approved(self, curve_vk: bytes) -> bool:
         return curve_vk in self.approved_keys.values()
 
     def callback(self, domain: str, key: bytes) -> bool:
         if self.key_is_approved(curve_vk=key):
-            print(f'[{self.log.name}][ROUTER] Authorizing: {domain}, {key}')
-            self.log.info(f'[ROUTER] Authorizing: {domain}, {key}')
-
+            self.log('info', f'Authorizing: {domain}, {key}')
             return True
         else:
-            print(f'[{self.log.name}][ROUTER] NOT Authorizing: {domain}, {key}')
-            self.log.warning(f'[ROUTER] NOT Authorizing: {domain}, {key}')
-
+            self.log('warning' f'NOT Authorizing: {domain}, {key}')
             return False
 
 class Router():
-    def __init__(self, wallet: Wallet = Wallet(), callback: Callable = None, logger = None):
-        self.log = logger or get_logger('ROUTER')
-
+    def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None):
         self.wallet = wallet
-        self.callback = callback
+        self.message_callback = message_callback
 
         self.ctx = None
         self.socket = None
@@ -100,7 +106,7 @@ class Router():
     @property
     def auth_is_stopped(self) -> bool:
         try:
-            return self.auth._AsyncioAuthenticator__task.done()
+            return self.auth._AsyncioAuthenticator__task.done() and self.auth.zap_socket.closed
         except AttributeError:
             return True
 
@@ -110,6 +116,20 @@ class Router():
             return self.socket.CURVE_SERVER == 1
         except AttributeError:
             return False
+
+    def log(self, log_type: str, message: str) -> None:
+        named_message = f'[ROUTER]{message}'
+
+        logger = get_logger(f'{self.address}')
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
+        print(f'[{self.address}]{named_message}')
+
 
     def set_address(self, ip: str = "*", port: int = 19000) -> None:
         if not isinstance(ip, str):
@@ -157,6 +177,8 @@ class Router():
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
 
+        self.log('info', f'Started. on {self.address}')
+
     def run_curve_server(self):
         self.setup_socket()
         self.setup_auth()
@@ -166,6 +188,8 @@ class Router():
         self.connect_socket()
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
+
+        self.log('info', f'Started. on {self.address}')
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
         sockets = await self.poller.poll(timeout=timeout_ms)
@@ -178,15 +202,15 @@ class Router():
             if await self.has_message(timeout_ms=50):
                 ident_vk_bytes, empty, msg = await self.socket.recv_multipart()
 
-                self.log.info(f"[ROUTER] Received request from {ident_vk_bytes}: ", msg)
+                self.log('info', f'Received request from {ident_vk_bytes}: {msg}')
 
                 try:
                     ident_vk_string = json.loads(ident_vk_bytes.decode('UTF-8'))
                 except Exception:
                     ident_vk_string = None
 
-                if self.callback:
-                    self.callback(ident_vk_string, msg)
+                if self.message_callback:
+                    self.message_callback(ident_vk_string, msg)
 
     def send_msg(self, to_vk: str, msg_str: str):
         if not self.socket:
@@ -224,6 +248,9 @@ class Router():
 
         self.auth.stop()
 
+        if self.auth.zap_socket:
+            self.auth.zap_socket.close()
+
         while not self.auth_is_stopped:
             await asyncio.sleep(0.01)
 
@@ -234,6 +261,6 @@ class Router():
         loop.run_until_complete(self.stop_auth())
         self.close_socket()
 
-        self.log.info("[ROUTER] Stopped.")
+        self.log('info', 'Stopped.')
 
 
