@@ -10,9 +10,7 @@ EXCEPTION_TOPIC_NOT_STRING = "Topic must be string."
 EXCEPTION_NO_SOCKET = "No socket created."
 
 class Subscriber():
-    def __init__(self, address: str, callback: Callable = None, logger=None, topics: list=[]):
-        self.log = logger or get_logger("SUBSCRIBER")
-
+    def __init__(self, address: str, callback: Callable = None, topics: list=[]):
         self.running = False
 
         self.address = address
@@ -20,6 +18,7 @@ class Subscriber():
         self.topics = list(topics)
 
         self.ctx = zmq.asyncio.Context().instance()
+        self.check_for_messages_task = None
 
         self.loop = None
         self.socket = None
@@ -27,6 +26,12 @@ class Subscriber():
     @property
     def is_running(self) -> bool:
         return self.running
+
+    @property
+    def is_checking_for_messages(self) -> bool:
+        if not self.check_for_messages_task:
+            return False
+        return not self.check_for_messages_task.done()
 
     @property
     def socket_is_bound(self) -> bool:
@@ -42,6 +47,23 @@ class Subscriber():
         except AttributeError:
             return True
 
+    def log(self, log_type: str, message: str) -> None:
+        if self.address:
+            named_message = f'[SUBSCRIBER] {message}'
+            logger = get_logger(f'{self.address}')
+            print(named_message)
+        else:
+            named_message = message
+            logger = get_logger(f'SUBSCRIBER')
+            print(f'[SUBSCRIBER] ß{named_message}')
+
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
     def setup_event_loop(self) -> None:
         try:
             self.loop = asyncio.get_event_loop()
@@ -54,10 +76,16 @@ class Subscriber():
     def create_socket(self) -> None:
         self.socket = self.ctx.socket(zmq.SUB)
 
-    def connect_socket(self) -> None:
+    def connect_socket(self):
         if not self.socket:
             self.create_socket()
-        self.socket.bind(self.address)
+
+        try:
+            self.socket.bind(self.address)
+        except zmq.error.ZMQError as err:
+            self.log('error', err)
+            pass
+
 
     def subscribe_to_topics(self) -> None:
         if not self.socket:
@@ -88,12 +116,12 @@ class Subscriber():
         self.create_socket()
         self.subscribe_to_topics()
         self.connect_socket()
-        self.setup_event_loop()
 
-        asyncio.ensure_future(self.check_for_messages())
+        if self.socket_is_bound:
+            self.setup_event_loop()
+            self.check_for_messages_task = asyncio.ensure_future(self.check_for_messages())
 
-        self.log.info('[SUBSCRIBER] Running...')
-        print(f'[{self.log.name}][SUBSCRIBER] Running...')
+            self.log('info', 'Started.')
 
     async def messages_waiting(self, timeout: int = 1) -> bool:
         return await self.socket.poll(timeout=timeout) > 0
@@ -108,11 +136,16 @@ class Subscriber():
             if await self.messages_waiting(timeout=50):
                 data = await self.socket.recv_multipart()
 
-                self.log.info(f'[SUBSCRIBER] Got event from {self.address}')
-                print(f'[{self.log.name}][SUBSCRIBER] Got event from {self.address}')
+                self.log('info', f'Got event from {self.address}')
 
                 if self.callback:
                     self.callback(data)
+
+    async def stop_checking_for_messages(self):
+        self.running = False
+
+        while self.is_checking_for_messages:
+            await asyncio.sleep(0)
 
     def close_socket(self) -> None:
         if self.socket_is_closed:
@@ -128,13 +161,12 @@ class Subscriber():
     def stop(self) -> None:
         self.running = False
 
-        if not self.socket:
-            return
+        if self.loop:
+            self.loop.run_until_complete(self.stop_checking_for_messages())
 
         if not self.socket_is_closed:
             self.close_socket()
             self.setup_event_loop()
             self.loop.run_until_complete(self.stopping())
 
-        self.log.info('[SUBSCRIBER] Stopped.')
-        print(f'[{self.log.name}][SUBSCRIBER] Stopped.')
+        self.log('info', 'Stopped.')

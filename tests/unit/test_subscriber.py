@@ -1,6 +1,7 @@
 import json
 import asyncio
 import uvloop
+import zmq
 
 from lamden.crypto.wallet import Wallet
 from tests.unit.helpers.mock_publisher import MockPublisher
@@ -14,8 +15,6 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestSubscriberSocket(unittest.TestCase):
     def setUp(self):
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -52,9 +51,10 @@ class TestSubscriberSocket(unittest.TestCase):
         self.async_sleep(1)
 
     def start_subscriber(self):
+        #self.start_publisher()
         self.subscriber.start()
         #self.await_async_process(self.wait_for_subscriber_started)
-        self.async_sleep(5)
+        self.async_sleep(1)
 
     def get_message(self, data):
         self.data = data
@@ -134,6 +134,18 @@ class TestSubscriberSocket(unittest.TestCase):
         self.subscriber.connect_socket()
         self.assertFalse(self.subscriber.socket_is_closed)
 
+    def test_PROPERTY_socket_is_closed__return_True(self):
+        self.start_subscriber()
+        self.assertTrue(self.subscriber.is_checking_for_messages)
+
+    def test_PROPERTY_socket_is_closed__return_False_if_check_for_messages_task_is_None(self):
+        self.assertFalse(self.subscriber.is_checking_for_messages)
+
+    def test_PROPERTY_socket_is_closed__return_False_if_check_for_messages_task_is_Done(self):
+        self.start_subscriber()
+        self.subscriber.stop()
+        self.assertFalse(self.subscriber.is_checking_for_messages)
+
     def test_METHOD_stop__raises_no_errors(self):
         self.start_subscriber()
         self.async_sleep(0.1)
@@ -186,6 +198,15 @@ class TestSubscriberSocket(unittest.TestCase):
         self.subscriber.connect_socket()
 
         self.assertIsNotNone(self.subscriber.socket)
+
+    def test_METHOD_connect_socket__does_not_start_if_address_is_unbindable(self):
+        self.subscriber.create_socket()
+        self.subscriber.address = 'tcp://1.1.1.1:19000'
+
+        self.subscriber.connect_socket()
+
+        self.assertIsNone(self.subscriber.check_for_messages_task)
+        self.assertFalse(self.subscriber.socket_is_bound)
 
     def test_METHOD_setup_event_loop__creates_loop_if_none_exist(self):
         loop = asyncio.get_event_loop()
@@ -359,3 +380,26 @@ class TestSubscriberSocket(unittest.TestCase):
         self.subscriber.close_socket()
         self.async_sleep(1)
         self.assertTrue(self.subscriber.socket_is_closed)
+
+    def test_METHOD_start__creates_check_for_messages_task(self):
+        self.subscriber.start()
+
+        self.async_sleep(0.5)
+
+        self.assertFalse(self.subscriber.check_for_messages_task.done())
+
+    def test_METHOD_start__does_not_create_check_for_messages_task_if_socket_did_not_bind(self):
+        self.subscriber.address ="tcp://1.1.1.1:19000"
+        self.subscriber.start()
+
+        self.async_sleep(0.5)
+
+        self.assertIsNone(self.subscriber.check_for_messages_task)
+
+    def test_METHOD_stop_checking_for_messages__waits_for_task_to_end(self):
+        self.start_subscriber()
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.subscriber.stop_checking_for_messages())
+
+        self.assertTrue(self.subscriber.check_for_messages_task.done())

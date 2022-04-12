@@ -12,7 +12,7 @@ import hashlib
 log = get_logger('Contender')
 
 class SBCInbox(router.Processor):
-    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, peer_add_strike, wallet, debug=True):
+    def __init__(self, validation_queue, get_all_peers, check_peer_in_consensus, wallet, debug=True):
         self.q = []
         self.expected_subblocks = 1
         self.log = get_logger('Subblock Gatherer')
@@ -23,7 +23,6 @@ class SBCInbox(router.Processor):
         self.validation_queue = validation_queue
         self.get_all_peers = get_all_peers
         self.check_peer_in_consensus = check_peer_in_consensus
-        self.peer_add_strike = peer_add_strike
 
     async def process_message(self, msg):
         # self.log.debug(msg)

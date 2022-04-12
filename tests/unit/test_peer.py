@@ -10,11 +10,6 @@ import unittest
 import zmq
 import zmq.asyncio
 
-from lamden import storage
-from pathlib import Path
-
-from tests.unit.helpers.mock_publisher import MockPublisher
-from tests.unit.helpers.mock_reply import MockReply
 from tests.unit.helpers.mock_router import MockRouter
 
 import asyncio
@@ -29,7 +24,7 @@ class MockService():
         self.callback(msg)
 
 
-class TestSubscriberSocket(unittest.TestCase):
+class TestPeer(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.ip = '127.0.0.1'
@@ -114,40 +109,13 @@ class TestSubscriberSocket(unittest.TestCase):
         self.peer.url = None
         self.assertIsNone(self.peer.ip)
 
-    def test_PROPERTY_is_running__return_FALSE_if_no_sockets_setup(self):
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_FALSE_if_no_subscriber_socket(self):
-        self.peer.setup_request()
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_FALSE_if_no_request_socket(self):
-        self.peer.setup_subscriber()
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_FALSE_if_sockets_exists_neither_running(self):
-        self.peer.setup_subscriber()
-        self.peer.setup_request()
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_FALSE_if_sockets_exists_subscriber_isnt_running(self):
-        self.peer.setup_subscriber()
-        self.peer.setup_request()
-        self.peer.subscriber.running = False
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_FALSE_if_sockets_exists_request_isnt_running(self):
-        self.peer.setup_subscriber()
-        self.peer.setup_request()
-        self.peer.request.running = False
-        self.assertFalse(self.peer.is_running)
-
-    def test_PROPERTY_is_running__return_TRUE_if_sockets_exists_and_all_running(self):
-        self.peer.setup_subscriber()
-        self.peer.setup_request()
-        self.peer.request.running = True
-        self.peer.subscriber.running = True
+    def test_PROPERTY_is_running__return_True_if_running_is_True(self):
+        self.peer.running = True
         self.assertTrue(self.peer.is_running)
+
+    def test_PROPERTY_is_running__return_False_if_running_is_False(self):
+        self.peer.running = False
+        self.assertFalse(self.peer.is_running)
 
     def test_PROPERTY_is_connected__return_FALSE(self):
         self.assertFalse(self.peer.is_connected)

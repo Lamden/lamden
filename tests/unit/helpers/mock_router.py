@@ -3,6 +3,9 @@ import json
 import threading
 import zmq
 import asyncio
+import unittest
+
+from lamden.crypto.wallet import Wallet
 
 class MockCredentialsProvider(object):
     def __init__(self, valid_peers=[]):
@@ -98,8 +101,10 @@ class MockRouter(threading.Thread):
 
         try:
             self.socket.setsockopt(zmq.LINGER, 0)
+            self.auth.stop()
             self.socket.close()
             self.ctx.term()
+
         except zmq.ZMQError as err:
             self.log.error(f'[ROUTER] Error Stopping Socket: {err}')
             print(f'[{self.log.name}][ROUTER] Error Stopping Socket: {err}')
@@ -108,6 +113,58 @@ class MockRouter(threading.Thread):
     def send_msg(self, ident: str, msg):
         self.socket.send_multipart([ident, b'', msg])
 
+    async def stopping(self):
+        self.running = False
+
+        while not self.socket.closed:
+            await asyncio.sleep(0.1)
+
     def stop(self):
         if self.running:
             self.running = False
+
+        if self.socket:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.stopping())
+
+        self.join()
+
+class TestMockRouter(unittest.TestCase):
+    def setUp(self) -> None:
+        self.router = None
+
+    def tearDown(self) -> None:
+        del self.router
+
+    def async_sleep(self, delay):
+        tasks = asyncio.gather(
+            asyncio.sleep(delay)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+    def test_can_create_instance(self):
+        self.router = MockRouter(
+            wallet=Wallet(),
+            valid_peers=[]
+        )
+
+        self.async_sleep(2)
+
+        self.assertTrue(self.router.running)
+        self.assertIsInstance(self.router, MockRouter)
+
+        self.router.stop()
+        self.async_sleep(1)
+
+    def test_can_stop_instance(self):
+        self.router = MockRouter(
+            wallet=Wallet(),
+            valid_peers=[]
+        )
+        self.async_sleep(2)
+        self.router.stop()
+        self.async_sleep(2)
+
+        self.assertFalse(self.router.running)
+        self.assertTrue(self.router.socket.closed)

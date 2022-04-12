@@ -20,11 +20,17 @@ from lamden.sockets.router import Router
 
 WORK_SERVICE = 'work'
 LATEST_BLOCK_INFO = 'latest_block_info'
-GET_LATEST_BLOCK = 'get_latest_block'
-GET_BLOCK = "get_block"
+
+ACTION_PING = "ping"
+ACTION_HELLO = "helo"
+ACTION_GET_LATEST_BLOCK = 'get_latest_block'
+ACTION_GET_BLOCK = "get_block"
+ACTION_GET_NETWORK = "get_node_list"
+
 GET_CONSTITUTION = "get_constitution"
 GET_ALL_PEERS = "get_all_peers"
-GET_NETWORK = 'get_node_list'
+
+EXCEPTION_PORT_NUM_NOT_INT = "port_num must be type int."
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -52,11 +58,14 @@ class Network:
         self.wallet = wallet
         self.driver = driver
 
-        self.socket_ports = dict(socket_ports) or dict({
-            'router': 19000,
-            'publisher': 19080,
-            'webserver': 18080
-        })
+        try:
+            self.socket_ports = dict(socket_ports)
+        except TypeError:
+            self.socket_ports =  dict({
+                'router': 19000,
+                'publisher': 19080,
+                'webserver': 18080
+            })
 
         self.peers = {}
         self.subscriptions = []
@@ -102,7 +111,7 @@ class Network:
         latest_block_info = self.get_latest_block_info()
         block_num = latest_block_info.get('number')
         hlc_timestamp = latest_block_info.get("hlc_timestamp")
-        return ('{"response":"hello", "topics": [""], "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (block_num, hlc_timestamp)).encode()
+        return ('{"response":"%s", "latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, block_num, hlc_timestamp)).encode()
 
     @property
     def vk(self):
@@ -171,11 +180,11 @@ class Network:
     def get_actions(self):
         return self.actions
 
-    def num_of_peers(self):
+    def num_of_peers(self) -> int:
         return len(self.peer_list)
 
     def num_of_peers_connected(self):
-        return len(list(filter(lambda x: x is True, [peer.is_running for peer in self.peer_list])))
+        return len(list(filter(lambda x: x is True, [peer.is_connected for peer in self.peer_list])))
 
     def all_peers_connected(self):
         return self.num_of_peers() == self.num_of_peers_connected()
@@ -183,19 +192,17 @@ class Network:
     def get_all_peers(self):
         return self.actions[GET_ALL_PEERS]()
 
-    def get_peer(self, vk):
+    def get_peer(self, vk: str) -> Peer:
         return self.peers.get(vk, None)
 
-    def get_peer_by_ip(self, ip):
-        for vk, peer in self.peers.items():
-            ip = peer.get('ip')
-            if ip == peer.get('ip'):
+    def get_peer_by_ip(self, ip: str) -> Peer:
+        for peer in self.peers.values():
+            if ip == peer.ip:
                 return peer
-
         return None
 
     def get_latest_block_info(self):
-        latest_block = self.actions[GET_LATEST_BLOCK]()
+        latest_block = self.actions[ACTION_GET_LATEST_BLOCK]()
         if not latest_block:
             latest_block = {}
         return {
@@ -203,14 +210,11 @@ class Network:
                 'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
             }
 
-    def set_socket_port(self, service, port_num):
-        self.socket_ports[service] = port_num
+    def set_socket_port(self, service: str, port_num: int) -> None:
+        if not isinstance(port_num, int):
+            raise AttributeError(EXCEPTION_PORT_NUM_NOT_INT)
 
-    def add_message_to_subscriptions_queue(self, topic, msg):
-        encoded_msg = encode(msg).encode()
-        encoded_topic = bytes(topic, 'utf-8')
-        asyncio.ensure_future(self.process_subscription((encoded_topic, encoded_msg)))
-        # self.subscriptions.append((encoded_topic, encoded_msg))
+        self.socket_ports[service] = port_num
 
     def connect_peer(self, ip: str, vk: str) -> bool:
         if vk == self.vk:
@@ -236,52 +240,59 @@ class Network:
             self.log('error', error)
             return False
 
-    def router_callback(self, ident: str, msg: str) -> None:
+    def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
-            # msg = str(msg, 'utf-8')
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
-            print(err)
-            self.log.error(err)
+            self.log('error', err)
             return
 
-        if action == 'ping':
-            self.router.send_msg(ident, '{"response": "ping"}'.encode())
+        if action == ACTION_PING:
+            self.router.send_msg(
+                to_vk=ident_vk_string,
+                msg='{"response": "ping"}'.encode()
+            )
 
-        if action == 'hello':
-            self.router.send_msg(ident, self.hello_response)
+        if action == ACTION_HELLO:
+            self.router.send_msg(
+                to_vk=ident_vk_string,
+                msg=self.hello_response
+            )
 
-            # print('Router sending hello response to %s' % ident)
-            vk = json.loads(ident)
             ip = msg.get('ip')
 
-            peer = self.get_peer(vk=vk)
+            peer = self.get_peer(vk=ident_vk_string)
 
             if not peer:
-                self.connect(vk=vk, ip=ip)
+                self.connect_peer(vk=ident_vk_string, ip=ip)
 
-        if action == LATEST_BLOCK_INFO:
+        if action == ACTION_GET_LATEST_BLOCK:
             latest_block_info = self.get_latest_block_info()
             block_num = latest_block_info.get('number')
             hlc_timestamp = latest_block_info.get("hlc_timestamp")
-            msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (LATEST_BLOCK_INFO, block_num, hlc_timestamp)).encode()
-            self.router.send_msg(ident, msg)
 
-        if action == GET_BLOCK:
+            resp_msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp)).encode()
+            self.router.send_msg(
+                to_vk=ident_vk_string,
+                msg=resp_msg
+            )
+
+        if action == ACTION_GET_BLOCK:
             block_num = msg.get('block_num', None)
             hlc_timestamp = msg.get('hlc_timestamp', None)
             if block_num or hlc_timestamp:
-                block_info = self.actions[GET_BLOCK](v=block_num or hlc_timestamp)
+                block_info = self.actions[ACTION_GET_BLOCK](v=block_num or hlc_timestamp)
                 block_info = encode(block_info)
+
                 self.router.send_msg(
-                    ident,
-                    ('{"response": "%s", "block_info": %s}' % (GET_BLOCK, block_info)).encode()
+                    to_vk=ident_vk_string,
+                    msg=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info)).encode()
                 )
 
-        if action == GET_NETWORK:
+        if action == ACTION_GET_NETWORK:
             node_list = []
-            constitution = self.actions[GET_CONSTITUTION]()
+            constitution = self.actions[ACTION_GET_NETWORK]()
 
             for vk in constitution.get('masternodes'):
                 peer = self.peers.get(vk, None)
@@ -291,7 +302,7 @@ class Network:
                     else:
                         continue
                 else:
-                    ip = peer.dealer_address
+                    ip = peer.request_address
                 node_list.append({'vk': vk, 'ip': ip, 'node_type': 'masternode'})
 
             for vk in constitution.get('delegates'):
@@ -302,21 +313,25 @@ class Network:
                     else:
                         continue
                 else:
-                    ip = peer.dealer_address
+                    ip = peer.request_address
 
                 node_list.append({'vk': vk, 'ip': ip, 'node_type': 'delegate'})
 
             node_list = json.dumps(node_list)
-            msg = ('{"response": "%s", "node_list": %s}' % (GET_NETWORK, node_list)).encode()
-            self.router.send_msg(ident, msg)
+            resp_msg = ('{"response": "%s", "node_list": %s}' % (ACTION_GET_NETWORK, node_list)).encode()
+            self.router.send_msg(
+                to_vk=ident_vk_string,
+                msg=resp_msg
+            )
 
-    def add_peer(self, ip, vk):
+    def add_peer(self, ip: str, vk: str) -> None:
         self.peers[vk] = Peer(
             get_network_ip=lambda: self.external_address,
             ip=ip,
             server_vk=vk,
             services=self.get_services,
-            local_wallet=self.wallet
+            local_wallet=self.wallet,
+            socket_ports=self.socket_ports
         )
 
     def start_peer(self, vk: str) -> None:
@@ -359,11 +374,8 @@ class Network:
     def get_peers_for_consensus(self):
         allPeers = {}
         peers_from_blockchain = self.get_all_peers(not_me=True)
-        # print({'peers_from_blockchain': peers_from_blockchain})
 
         for key in peers_from_blockchain:
-            # print(key)
-            # print({'network_peers': self.network.peers})
             if self.peers[key].currently_participating():
                 allPeers[key] = peers_from_blockchain[key]
 
@@ -401,14 +413,14 @@ class Network:
 
     def get_delegate_peers(self, not_me=False):
         peers = self._get_member_peers('delegates')
-        # print({'delegate': peers})
+
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
         return peers
 
     def get_masternode_peers(self, not_me=False):
         peers = self._get_member_peers('masternodes')
-        # print({'masternode': peers})
+
         if not_me and self.wallet.verifying_key in peers:
             del peers[self.wallet.verifying_key]
 
@@ -419,17 +431,6 @@ class Network:
         masternodes = self.driver.driver.get(f'masternodes.S:members') or []
         all_nodes = masternodes + delegates
         return all_nodes
-
-    def set_peers_not_in_consensus(self, keys):
-        for key in keys:
-            try:
-                self.peers[key].not_in_consensus()
-                self.log.info(f'DROPPED {key[:8]} FROM CONSENSUS!')
-            except KeyError:
-                self.log.error(f'Cannot drop {key[:8]} from consensus because they are not a peer!')
-
-    def peer_add_strike(self, key):
-        self.peers[key].add_strike()
 
     def stop(self):
         self.running = False

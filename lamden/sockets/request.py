@@ -14,9 +14,7 @@ class Result:
 class Request():
     con_failed = 'con_failed'
 
-    def __init__(self, server_vk: int = None, local_wallet: Wallet = None, logger=None):
-        self.log = logger or get_logger('REQUEST')
-
+    def __init__(self, server_vk: int = None, local_wallet: Wallet = None):
         self.ctx = zmq.asyncio.Context().instance()
 
         self.msg = ''
@@ -43,6 +41,19 @@ class Request():
     @property
     def id(self) -> str:
         return self.local_wallet.verifying_key
+
+    def log(self, log_type: str, message: str) -> None:
+        named_message = message
+        logger = get_logger(f'REQUEST')
+
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
+
+        print(f'[REQUEST]{named_message}')
 
     def socket_is_bound(self, socket) -> bool:
         try:
@@ -89,13 +100,12 @@ class Request():
         return socket in dict(pollin.poll(poll_time))
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
-        self.log.info("[REQUEST] STARTING FOR PEER: " + to_address)
+        self.log('info', f'STARTING FOR PEER {to_address}')
         error = None
         connection_attempts = 0
 
         while connection_attempts < retries:
-            print(f'[REQUEST] Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
-            self.log.info(f'[REQUEST] Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
+            self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
 
             if not self.running:
                 break
@@ -114,39 +124,32 @@ class Request():
                 if self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
                     response = await socket.recv()
 
-                    self.log.info(' %s received: %s' % (self.id, response))
-                    print(f'[{self.log.name}] %s received: %s' % (self.id, response))
+                    self.log('info', '%s received: %s' % (self.id, response))
 
                     self.close_socket(socket=socket)
                     return Result(success=True, response=response)
 
                 else:
-                    self.log.info(f'[REQUEST] No response from {to_address} in poll time.')
-                    print(f'[{self.log.name}] No response from {to_address} in poll time.')
+                    self.log('info', f'No response from {to_address} in poll time.')
 
                 self.close_socket(socket=socket)
 
             except zmq.ZMQError as err:
                 if err.errno == zmq.ETERM:
-                    self.log.info('[REQUEST] Interrupted')
-                    print(f'[{self.log.name}] Interrupted')
-                    error = err.strerror
+                    self.log('info', f'Interrupted: {err.strerror}')
                     break  # Interrupted
 
                 else:
-                    self.log.info('[REQUEST] error: ' + err.strerror)
-                    print(f'[{self.log.name}] error: ' + err.strerror)
+                    self.log('error', err.strerror)
                     error = err.strerror
 
             except TypeError as err:
-                self.log.error(f'[REQUEST] {err}')
-                print(f'[{self.log.name}] {err}')
+                self.log('error', err)
                 error = str(err)
                 break
 
             except Exception as err:
-                self.log.error(f'[REQUEST] {err}')
-                print(f'[{self.log.name}] {err}')
+                self.log('error', err)
                 error = str(err)
 
             connection_attempts += 1
@@ -166,14 +169,12 @@ class Request():
 
     def stop(self) -> None:
         self.running = False
-        self.log.info('[REQUEST] Stopping.')
-        print(f'[{self.log.name}] Stopping.')
+        self.log('info', 'Stopping.')
         if self.socket:
             try:
                 self.socket.close()
             except zmq.ZMQError as err:
-                self.log.error(f'[REQUEST] Error Stopping: {err}')
-                print(f'[{self.log.name}] Error Stopping: {err}')
+                self.log('error', f'Error Stopping: {err}')
                 pass
 
 

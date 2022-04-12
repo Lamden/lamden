@@ -15,8 +15,8 @@ GET_BLOCK = 'get_block'
 SUBSCRIPTIONS = ["work", "new_peer_connection", "contenders"]
 
 class Peer:
-    def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
-                  services: dict = None, connected_callback: Callable = None):
+    def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable, services: dict = None,
+                connected_callback: Callable = None, socket_ports: dict = None):
 
         self.server_vk = server_vk
         self.server_z85_key = z85_key(server_vk)
@@ -24,11 +24,15 @@ class Peer:
         self.get_network_ip = get_network_ip
 
         self.protocol = 'tcp://'
-        self.socket_ports = dict({
-            'router': 19000,
-            'publisher': 19080,
-            'webserver': 18080
-        })
+
+        try:
+            self.socket_ports = dict(socket_ports)
+        except TypeError:
+            self.socket_ports =  dict({
+                'router': 19000,
+                'publisher': 19080,
+                'webserver': 18080
+            })
 
         self.url = None
         self.set_ip(ip)
@@ -42,7 +46,6 @@ class Peer:
         self.connected = False
         self.verified = False
 
-        self.sub_running = False
         self.reconnecting = False
         self.connected_callback = connected_callback
 
@@ -80,20 +83,17 @@ class Peer:
 
     @property
     def subscriber_address(self) -> str:
-        self.log('info', 'PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
+        # self.log('info', 'PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher'))
 
     @property
     def request_address(self) -> str:
-        self.log('info', 'ROUTER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
+        # self.log('info', 'ROUTER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
     @property
     def is_running(self) -> bool:
-        if not self.subscriber or not self.request:
-            return False
-
-        return self.request.is_running and self.subscriber.is_running
+        return self.running
 
     @property
     def is_connected(self) -> bool:
@@ -104,9 +104,9 @@ class Peer:
         return self.verified
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = f'[ROUTER]{message}'
+        named_message = f'[PEER]{message}'
 
-        logger = get_logger(f'{self.address}')
+        logger = get_logger(f'{self.request_address}')
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
@@ -114,7 +114,7 @@ class Peer:
         if log_type == 'warning':
             logger.warning(named_message)
 
-        print(f'[{self.address}]{named_message}')
+        print(f'[{self.request_address}]{named_message}')
 
     def is_available(self) -> bool:
         tasks = asyncio.gather(
@@ -214,16 +214,14 @@ class Peer:
         self.subscriber = Subscriber(
             address=self.subscriber_address,
             topics=SUBSCRIPTIONS,
-            callback=self.process_subscription,
-            logger=self.log
+            callback=self.process_subscription
         )
         self.subscriber.start()
 
     def setup_request(self) -> None:
         self.request = Request(
             server_vk=self.server_z85_key,
-            local_wallet=self.local_wallet,
-            logger=self.log
+            local_wallet=self.local_wallet
         )
 
     async def process_subscription(self, data: list) -> None:
