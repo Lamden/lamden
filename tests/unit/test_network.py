@@ -35,7 +35,7 @@ class MockConstitution:
     def add_node(self, vk: str, ip: str, type: str):
         self.constitution[type][vk] = ip
 
-    def get_constitution(self):
+    def make_constitution(self):
         constitution = dict({
             'masternodes': [vk for vk in self.constitution['masternodes'].keys()],
             'delegates': [vk for vk in self.constitution['delegates'].keys()]
@@ -512,7 +512,7 @@ class TestNetwork(TestCase):
         constitution.add_node(vk=network_1.vk, ip=network_1.external_address, type="masternodes")
 
         network_1.router.send_msg = self.mock_send_msg
-        network_1.actions[ACTION_GET_NETWORK] = constitution.get_constitution
+        network_1.make_constitution = constitution.make_constitution
 
         latest_block_info_msg = json.dumps({'action': ACTION_GET_NETWORK})
         wallet = Wallet()
@@ -539,7 +539,45 @@ class TestNetwork(TestCase):
 
             self.assertTrue(found)
 
+    def test_METHOD_remove_peer(self):
+        network_1 = self.create_network()
+        peer_vk = Wallet().verifying_key
+        network_1.add_peer(vk=peer_vk, ip='tcp://127.0.0.1:19001')
 
+        self.assertEqual(1, network_1.num_of_peers())
+        network_1.remove_peer(peer_vk=peer_vk)
+        self.assertEqual(0, network_1.num_of_peers())
+
+    def test_METHOD_remove_peer(self):
+        network_1 = self.create_network()
+        peer_vk = Wallet().verifying_key
+
+        self.assertEqual(0, network_1.num_of_peers())
+        try:
+            network_1.remove_peer(peer_vk=peer_vk)
+        except:
+            self.fail("Calling remove_peer when peer doesn't exists should cause no exceptions.")
+
+    def test_METHOD_connected_to_all_peers__task_completes_when_all_peers_are_connected(self):
+        network_1 = self.create_network()
+
+        peer_vk_1 = Wallet().verifying_key
+        peer_vk_2 = Wallet().verifying_key
+
+        network_1.add_peer(vk=peer_vk_1, ip='tcp://127.0.0.1:19001')
+        network_1.add_peer(vk=peer_vk_2, ip='tcp://127.0.0.1:19002')
+
+        task = asyncio.ensure_future(network_1.connected_to_all_peers())
+
+        self.async_sleep(2)
+        self.assertFalse(task.done())
+
+        for peer in network_1.peers.values():
+            peer.connected = True
+
+        self.async_sleep(2)
+
+        self.assertTrue(task.done())
 
 
 

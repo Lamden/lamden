@@ -1,6 +1,6 @@
 import json
 import requests
-
+from typing import Callable
 import zmq
 import zmq.asyncio
 import asyncio
@@ -8,7 +8,6 @@ import uvloop
 
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
-from lamden.crypto.z85 import z85_key
 
 from lamden.logger.base import get_logger
 
@@ -162,19 +161,20 @@ class Network:
         while not self.publisher.is_running or not self.router.is_running:
             await asyncio.sleep(0.1)
 
-    def disconnect_peer(self, peer_vk):
-        self.peers[peer_vk].stop()
+    def remove_peer(self, peer_vk: str) -> None:
+        peer = self.get_peer(vk=peer_vk)
+        if not peer:
+            return
+        peer.stop()
+        self.peers.pop(peer_vk)
 
-    def remove_peer(self, peer_vk):
-        self.peers[peer_vk].pop()
-
-    def add_service(self, name: str, processor: Processor):
+    def add_service(self, name: str, processor: Processor) -> None:
         self.services[name] = processor
 
     def get_services(self):
         return self.services
 
-    def add_action(self, name: str, processor: Processor):
+    def add_action(self, name: str, processor: Processor) -> None:
         self.actions[name] = processor
 
     def get_actions(self):
@@ -292,7 +292,7 @@ class Network:
 
         if action == ACTION_GET_NETWORK:
             node_list = []
-            constitution = self.actions[ACTION_GET_NETWORK]()
+            constitution = self.make_constitution()
 
             for vk in constitution.get('masternodes'):
                 peer = self.peers.get(vk, None)
@@ -349,27 +349,19 @@ class Network:
             ip = msg.get('ip')
             self.connect(ip=ip, vk=vk)
 
-    def blacklist_peer(self, key):
-        self.disconnect_peer(key)
-        self.peer_blacklist.append(key)
-
     async def connected_to_all_peers(self):
-        num_of_peers = len(self.peers)
-        num_of_peers_connected = 0
-        self.log.info(f'Establishing connection with {num_of_peers} peers...')
+        self.log('info', f'Establishing connection with {self.num_of_peers} peers...')
 
-        while num_of_peers_connected < num_of_peers:
-            await asyncio.sleep(5)
-            num_of_peers_connected = 0
+        while self.num_of_peers_connected() < self.num_of_peers():
+            await asyncio.sleep(1)
 
-            for vk in self.peers:
-                peer = self.peers[vk]
-                if peer.sub_running:
-                    num_of_peers_connected += 1
-                else:
-                    self.log.info(f'Waiting to connect to {peer.dealer_address}...')
+        self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
-            self.log.info(f'Connected to {num_of_peers_connected}/{num_of_peers} peers.')
+    def make_constitution(self):
+        return {
+            'masternodes': self.get_masternode_peers(),
+            'delegates': self.get_delegate_peers()
+        }
 
     def get_peers_for_consensus(self):
         allPeers = {}
@@ -380,6 +372,7 @@ class Network:
                 allPeers[key] = peers_from_blockchain[key]
 
         return allPeers
+
 
     def get_all_peers(self, not_me=False):
         return {
