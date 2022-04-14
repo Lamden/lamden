@@ -6,7 +6,7 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.new_network import Network
 from copy import deepcopy
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
-from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
+from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results, get_new_processing_result
 import asyncio
 
 class TestValidationQueue(TestCase):
@@ -21,15 +21,14 @@ class TestValidationQueue(TestCase):
         self.num_of_peers = 0
 
         self.hard_apply_block_called = False
+        self.num_times_hard_apply_block_called = 0
         self.set_peers_not_in_consensus_called = False
 
         self.current_block = 64 * f'0'
 
         network = Network(
             wallet=Wallet(),
-            socket_base='tcp://127.0.0.1',
-            testing=True,
-            debug=True
+            driver=self.driver
         )
 
         self.validation_queue = validation_queue.ValidationQueue(
@@ -43,6 +42,9 @@ class TestValidationQueue(TestCase):
             get_block_by_hlc=self.get_block_by_hlc
         )
 
+        self.block = None
+        self.get_block_by_hlc_called = False
+
         print("\n")
 
     def tearDown(self):
@@ -53,7 +55,8 @@ class TestValidationQueue(TestCase):
         self.running = False
 
     def get_block_by_hlc(self, hlc_timestamp):
-        return None
+        self.get_block_by_hlc_called = True
+        return self.block
 
     async def stop_all_queues(self):
         return
@@ -72,6 +75,7 @@ class TestValidationQueue(TestCase):
 
     async def hard_apply_block(self, processing_results):
         self.hard_apply_block_called = True
+        self.num_times_hard_apply_block_called += 1
 
     def is_next_block(self, previous_block):
         return previous_block == self.current_block
@@ -154,6 +158,20 @@ class TestValidationQueue(TestCase):
         # Run process next, no consensus should be met as ideal is still possible
         tasks = asyncio.gather(
             self.validation_queue.process_next()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+    def check_all(self):
+        tasks = asyncio.gather(
+            self.validation_queue.check_all()
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+    def check_for_next_block(self):
+        tasks = asyncio.gather(
+            self.validation_queue.check_for_next_block()
         )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
@@ -259,6 +277,72 @@ class TestValidationQueue(TestCase):
         self.assertEqual(len(self.validation_queue), 1)
         self.assertEqual(self.validation_queue[0], hlc_timestamp)
 
+    def test_append_hlc_timestamp_older_than_consensus_block_not_exist(self):
+        receiver_wallet = Wallet()
+        node_wallet = Wallet()
+
+        transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
+        tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+
+        hlc_timestamp = tx_message['hlc_timestamp']
+
+        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
+        self.validation_queue.append(processing_results=processing_results)
+        result_hash = self.validation_queue.get_result_hash_for_vk(
+            hlc_timestamp=hlc_timestamp,
+            node_vk=node_wallet.verifying_key
+        )
+
+        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=processing_results['tx_result'],
+                                                              hlc_timestamp=hlc_timestamp)
+
+        self.assertEqual(result_hash, tx_result_hash)
+
+        self.assertEqual(len(self.validation_queue), 1)
+        self.assertEqual(self.validation_queue[0], hlc_timestamp)
+
+    def test_append_hlc_timestamp_older_than_consensus_block_exist(self):
+        receiver_wallet = Wallet()
+        node_wallet = Wallet()
+
+        transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
+        tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+
+        hlc_timestamp = tx_message['hlc_timestamp']
+
+        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
+        self.block = 'not none'
+
+        self.validation_queue.append(processing_results=processing_results)
+        result_hash = self.validation_queue.get_result_hash_for_vk(
+            hlc_timestamp=hlc_timestamp,
+            node_vk=node_wallet.verifying_key
+        )
+
+        self.assertIsNone(result_hash)
+        self.assertEqual(len(self.validation_queue), 0)
+
+    def test_append_validation_results_has_consensus(self):
+        receiver_wallet = Wallet()
+        node_wallet = Wallet()
+
+        transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
+        tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+
+        hlc_timestamp = tx_message['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc_timestamp] = {}
+        self.validation_queue.validation_results[hlc_timestamp]['last_check_info'] = {}
+        self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['has_consensus'] = True
+
+        # TODO better assertion for this flow
+        self.assertEqual(len(self.validation_queue), 1)
+        self.validation_queue.append(processing_results=processing_results)
+        self.assertEqual(len(self.validation_queue), 1)
+
     # Disabled test case for now because we might now accept earlier HLCs
     '''
     def test_append_ignore_older_than_consensus(self):
@@ -325,6 +409,162 @@ class TestValidationQueue(TestCase):
         self.assertFalse(self.hard_apply_block_called)
         self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
 
+    def test_process_next_earlier_than_last_hlc_in_consensus_block_doesnt_exist(self):
+        self.add_solution()
+        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
+
+        self.process_next()
+
+        self.assertTrue(self.get_block_by_hlc_called)
+        self.assertEqual(len(self.validation_queue), 1)
+
+    def test_process_next_earlier_than_last_hlc_in_consensus_block_exists(self):
+        self.add_solution()
+        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
+        self.block = 'not none'
+
+        self.process_next()
+
+        self.assertTrue(self.get_block_by_hlc_called)
+        self.assertEqual(len(self.validation_queue), 0)
+
+    def test_process_next_hlc_has_consensus(self):
+        pr = self.add_solution()
+        self.validation_queue.validation_results[pr['hlc_timestamp']]['last_check_info']['has_consensus'] = True
+
+        self.process_next()
+
+        self.assertTrue(self.hard_apply_block_called)
+        self.assertEqual(len(self.validation_queue), 0)
+
+    def test_check_all_returns_if_already_checking(self):
+        self.validation_queue.checking = True
+        self.check_all()
+        self.assertTrue(self.validation_queue.checking)
+
+    def test_check_all_returns_if_no_results_not_in_consensus(self):
+        self.check_all()
+        self.assertFalse(self.validation_queue.checking)
+
+    def test_check_all_reaches_consensus(self):
+        pr = self.add_solution()
+
+        self.assertFalse(self.validation_queue.validation_results[pr['hlc_timestamp']]['last_check_info']['has_consensus'])
+
+        self.check_all()
+
+        self.assertTrue(self.validation_queue.validation_results[pr['hlc_timestamp']]['last_check_info']['has_consensus'])
+
+    def test_check_all_terminates_gracefully_on_empty_validation_results(self):
+        pr = self.add_solution()
+
+        self.validation_queue.validation_results[pr['hlc_timestamp']] = {}
+
+        self.check_all()
+
+        self.assertFalse(self.validation_queue.checking)
+
+    def test_add_consensus_result_returns_if_ideal_consensus_and_eager_consensus_not_possible(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+        initial_check_info = self.validation_queue.validation_results[hlc]['last_check_info']
+
+        self.validation_queue.add_consensus_result(hlc, {})
+
+        self.assertDictEqual(initial_check_info, self.validation_queue.validation_results[hlc]['last_check_info'])
+
+    def test_add_consensus_adds_consensus_result(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+        consensus_result = {
+            'ideal_consensus_possible': True,
+            'eager_consensus_possible': True,
+            'sample_key': 'sample_value'
+        }
+
+        self.validation_queue.add_consensus_result(hlc, consensus_result)
+
+        self.assertDictEqual(consensus_result, self.validation_queue.validation_results[hlc]['last_check_info'])
+
+    def test_check_num_of_solutions_no_validation_results(self):
+        self.assertEqual(0, self.validation_queue.check_num_of_solutions('sample_stamp'))
+
+    def test_check_num_of_solutions_returns_correct_num_of_solutions(self):
+        pr = self.add_solution()
+
+        self.assertEqual(1, self.validation_queue.check_num_of_solutions(pr['hlc_timestamp']))
+
+    def test_ideal_consensus_possible_returns_false_when_no_validation_results(self):
+        self.assertFalse(self.validation_queue.check_ideal_consensus_possible('sample_stamp'))
+
+    def test_ideal_consensus_possible_returns_true_when_indeed_possible(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertTrue(self.validation_queue.check_ideal_consensus_possible(hlc))
+
+    def test_ideal_consensus_possible_returns_false_not_valid_last_check_info(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = None
+
+        self.assertFalse(self.validation_queue.check_ideal_consensus_possible(hlc))
+
+    def test_eager_consensus_possible_returns_false_when_no_validation_results(self):
+        self.assertFalse(self.validation_queue.check_eager_consensus_possible('sample_stamp'))
+
+    def test_eager_consensus_possible_returns_true_when_indeed_possible(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertTrue(self.validation_queue.check_eager_consensus_possible(hlc))
+
+    def test_eager_consensus_possible_returns_false_not_valid_last_check_info(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = None
+
+        self.assertFalse(self.validation_queue.check_eager_consensus_possible(hlc))
+
+    def test_is_earliest_hlc_returns_false_no_validation_results(self):
+        self.assertFalse(self.validation_queue.is_earliest_hlc('sample_stamp'))
+
+    def test_is_earliest_hlc_returns_true_if_earliest(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertTrue(self.validation_queue.is_earliest_hlc(hlc))
+
+    def test_is_earliest_hlc_returns_false_if_not_earliest(self):
+        self.add_solution()['hlc_timestamp']
+        hlc = self.add_solution()
+
+        self.assertFalse(self.validation_queue.is_earliest_hlc(hlc))
+
+    def test_check_for_next_block_applies_block(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        self.check_all()
+
+        self.check_for_next_block()
+
+        self.assertTrue(self.hard_apply_block_called)
+
+    def test_check_for_next_block_handles_invalid_validation_result_entry_without_error(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {}
+        self.check_all()
+
+        self.check_for_next_block()
+
+        self.assertFalse(self.hard_apply_block_called)
+
+    def test_check_for_next_block_applies_only_latest_hlc(self):
+        for i in range(2):
+            self.add_solution()
+        self.check_all()
+
+        self.check_for_next_block()
+
+        self.assertTrue(self.hard_apply_block_called)
+        self.assertEqual(self.num_times_hard_apply_block_called, 1)
+
     def test_clear_my_solutions(self):
         self.validation_queue.validation_results = {
             'hlc_1': {
@@ -357,6 +597,17 @@ class TestValidationQueue(TestCase):
 
         self.assertIsNone(self.validation_queue.validation_results['hlc_3']['solutions'].get(self.validation_queue.wallet.verifying_key))
         self.assertIsNotNone(self.validation_queue.validation_results['hlc_3']['solutions'].get('2'))
+
+    def test_get_last_consensus_result_returns_empty_invalid_stamp(self):
+        self.assertDictEqual({}, self.validation_queue.get_last_consensus_result('sample_stamp'))
+
+    def test_get_last_consensus_result_returns_correct_results(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertDictEqual(
+            self.validation_queue.validation_results.get(hlc)['last_check_info'],
+            self.validation_queue.get_last_consensus_result(hlc)
+        )
 
     def test_get_get_processed_transaction(self):
         node_wallet_1 = Wallet()
@@ -396,3 +647,32 @@ class TestValidationQueue(TestCase):
         proofs = self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp)
 
         self.assertEqual(2, len(proofs))
+
+    def test_get_proofs_from_results_returns_empty_list_if_no_consensus(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertListEqual([], self.validation_queue.get_proofs_from_results(hlc))
+
+    def test_get_recreated_tx_message_invalid_stamp_returns_none(self):
+        self.assertIsNone(self.validation_queue.get_recreated_tx_message('sample_stamp'))
+
+    def test_get_recreated_tx_message(self):
+        pr = get_new_processing_result('result_hash', 'tx_results', self.wallet, 'sample_stamp')
+        self.validation_queue.append(pr)
+        
+        self.assertDictEqual(
+            {
+                'tx': pr['tx_result'].get('transaction'),
+                'hlc_timestamp': pr['hlc_timestamp'],
+                'signature': pr['tx_message'].get('signature'),
+                'sender': pr['tx_message'].get('signer')
+            },
+            self.validation_queue.get_recreated_tx_message(pr['hlc_timestamp'])
+        )
+
+    def test_consensus_matches_me_invalid_stamp(self):
+        self.assertFalse(self.validation_queue.consensus_matches_me('sample_stamp'))
+
+import unittest
+if __name__ == '__main__':
+    unittest.main()
