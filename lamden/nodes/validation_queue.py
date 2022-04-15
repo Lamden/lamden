@@ -399,20 +399,20 @@ class ValidationQueue(ProcessingQueue):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
     def prune_earlier_results(self, consensus_hlc_timestamp):
-        for hlc_timestamp in self.validation_results:
+        for hlc_timestamp in list(self.validation_results):
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
 
     def clean_results_lookup(self, hlc_timestamp):
         validation_results = self.validation_results.get(hlc_timestamp)
-        for solution in validation_results.get('result_lookup').keys():
+        for solution in list(validation_results.get('result_lookup').keys()):
             exists = False
             for node in validation_results['solutions'].keys():
                 if validation_results['solutions'][node] == solution:
                     exists = True
                     break
             if not exists:
-                self.validation_results['result_lookup'].pop(solution)
+                self.validation_results[hlc_timestamp]['result_lookup'].pop(solution)
 
 
     def get_key_list(self):

@@ -677,8 +677,17 @@ class TestValidationQueue(TestCase):
             self.validation_queue.get_recreated_tx_message(pr['hlc_timestamp'])
         )
 
-    def test_consensus_matches_me(self):
-        raise NotImplementedError
+    def test_consensus_matches_me_returns_true_if_matches(self):
+        hlc = self.add_solution(node_wallet=self.wallet)['hlc_timestamp']
+        self.check_all()
+
+        self.assertTrue(self.validation_queue.consensus_matches_me(hlc))
+
+    def test_consensus_matches_me_returns_false_if_doesnt_match(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        self.check_all()
+
+        self.assertFalse(self.validation_queue.consensus_matches_me(hlc))
 
     def test_commit_consensus_block(self):
         hlc = self.add_solution()['hlc_timestamp']
@@ -752,8 +761,20 @@ class TestValidationQueue(TestCase):
 
         self.assertEqual(1, len(self.validation_queue.validation_results))
 
-    def test_clean_results_lookup(self):
-        raise NotImplementedError
+    def test_clean_results_lookup_doesnt_clean_if_exists(self):
+        hlc = self.add_solution(node_wallet=self.wallet)['hlc_timestamp']
+        
+        self.validation_queue.clean_results_lookup(hlc)
+
+        self.assertEqual(1, len(self.validation_queue.validation_results[hlc]['result_lookup']))
+
+    def test_clean_results_lookup_cleans_if_not_exists(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        self.validation_queue.validation_results[hlc]['result_lookup']['sample_solution'] = 'sample_result'
+        
+        self.validation_queue.clean_results_lookup(hlc)
+
+        self.assertIsNone(self.validation_queue.validation_results[hlc]['result_lookup'].get('sample_solution'))
 
     def test_get_key_list(self):
         expected = []
