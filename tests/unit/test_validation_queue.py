@@ -807,7 +807,3 @@ class TestValidationQueue(TestCase):
         
         self.assertEqual(self.validation_queue[0], first)
         self.assertEqual(self.validation_queue[1], second)
-
-import unittest
-if __name__ == '__main__':
-    unittest.main()
