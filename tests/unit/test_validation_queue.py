@@ -176,6 +176,13 @@ class TestValidationQueue(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
+    def commit_consensus_block(self, hlc):
+        tasks = asyncio.gather(
+            self.validation_queue.commit_consensus_block(hlc)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
     def test_get_solution_exists(self):
         node_wallet = Wallet()
         processing_results = self.add_solution(node_wallet=node_wallet)
@@ -670,8 +677,115 @@ class TestValidationQueue(TestCase):
             self.validation_queue.get_recreated_tx_message(pr['hlc_timestamp'])
         )
 
-    def test_consensus_matches_me_invalid_stamp(self):
-        self.assertFalse(self.validation_queue.consensus_matches_me('sample_stamp'))
+    def test_consensus_matches_me(self):
+        raise NotImplementedError
+
+    def test_commit_consensus_block(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.commit_consensus_block(hlc)
+
+        self.assertTrue(self.hard_apply_block_called)
+        self.assertEqual(self.validation_queue.last_hlc_in_consensus, hlc)
+        self.assertEqual(len(self.validation_queue.validation_results), 0)
+
+    def test_commit_consensus_block_doesnt_update_last_hlc_in_consensus(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
+
+        self.commit_consensus_block(hlc)
+
+        self.assertTrue(self.hard_apply_block_called)
+        self.assertNotEqual(self.validation_queue.last_hlc_in_consensus, hlc)
+        self.assertEqual(len(self.validation_queue.validation_results), 0)
+
+    def test_hlc_has_solutions_returns_false_if_results_not_found_by_stamp(self):
+        self.assertFalse(self.validation_queue.hlc_has_solutions('sample_stamp'))
+
+    def test_hlc_has_solutions_returns_false_if_no_solutions(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        del self.validation_queue.validation_results[hlc]['solutions']
+
+        self.assertFalse(self.validation_queue.hlc_has_solutions(hlc))
+
+    def test_hlc_has_solutions_returns_true_if_exist(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertTrue(self.validation_queue.hlc_has_solutions(hlc))
+
+    def test_count_solutions_returns_0_if_results_not_found_by_stamp(self):
+        self.assertEqual(0, self.validation_queue.count_solutions('sample_stamp'))
+
+    def test_count_solutions_returns_0_if_no_solutions(self):
+        hlc = self.add_solution()['hlc_timestamp']
+        del self.validation_queue.validation_results[hlc]['solutions']
+
+        self.assertEqual(0, self.validation_queue.count_solutions(hlc))
+
+    def test_count_solutions_returns_number_of_solutions(self):
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertEqual(1, self.validation_queue.count_solutions(hlc))
+
+    def test_remove_all_hlcs_from_queue(self):
+        hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.validation_queue.queue.append(hlc)
+
+        self.validation_queue.remove_all_hlcs_from_queue(hlc)
+
+        self.assertTrue(hlc not in self.validation_queue.queue)
+
+    def test_prune_earlier_results_all_results_are_earlier(self):
+        for i in range(2):
+            self.add_solution()
+
+        self.validation_queue.prune_earlier_results(HLC_Clock().get_new_hlc_timestamp())
+
+        self.assertEqual(0, len(self.validation_queue.validation_results))
+
+    def test_prune_earlier_results_not_all_results_are_earlier(self):
+        self.add_solution()
+        earlier_than = HLC_Clock().get_new_hlc_timestamp()
+        self.add_solution()
+
+        self.validation_queue.prune_earlier_results(earlier_than)
+
+        self.assertEqual(1, len(self.validation_queue.validation_results))
+
+    def test_clean_results_lookup(self):
+        raise NotImplementedError
+
+    def test_get_key_list(self):
+        expected = []
+        for i in range(2):
+            expected.append(self.add_solution()['hlc_timestamp'])
+
+        self.assertListEqual(expected, self.validation_queue.get_key_list())
+
+    def test_set_item(self):
+        with self.assertRaises(ReferenceError) as cm:
+            self.validation_queue['key'] = 'value'
+
+    def test_len(self):
+        self.assertEqual(0, len(self.validation_queue))
+
+        hlc = self.add_solution()['hlc_timestamp']
+
+        self.assertEqual(1, len(self.validation_queue))
+
+        self.validation_queue.flush_hlc(hlc)
+
+        self.assertEqual(0, len(self.validation_queue))
+
+    def test_get_item_returns_none_on_invalid_index(self):
+        self.assertIsNone(self.validation_queue[0])
+
+    def test_get_item(self):
+        first = self.add_solution()['hlc_timestamp']
+        second = self.add_solution()['hlc_timestamp']
+        
+        self.assertEqual(self.validation_queue[0], first)
+        self.assertEqual(self.validation_queue[1], second)
 
 import unittest
 if __name__ == '__main__':
