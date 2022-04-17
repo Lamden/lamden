@@ -37,6 +37,8 @@ class Debug:
             'file_check': 0
         }
 
+class TxProcessingQueueController:
+    pass
 
 class TxProcessingQueue(ProcessingFileQueue):
     def __init__(self, network, state: storage.StateManager, wallet, hlc_clock, processing_delay, stop_node,
@@ -107,9 +109,6 @@ class TxProcessingQueue(ProcessingFileQueue):
                     'hlc_timestamp': hlc_timestamp,
                     'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
                 })
-
-            if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
-                return
 
             if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
                 if self.testing:

@@ -192,7 +192,10 @@ class Node:
             network=self.network
         )
 
-        self.network.add_service(lamden.config.WORK_SERVICE, self.work_validator)
+        ### SERVICES PUT INTO THE NETWORK
+
+        self.network.add_service(lamden.config.WORK_SERVICE, self.work_validator) # MESSAGES FROM OTHER NODES ABOUT NEW TXS
+
         self.network.add_service(lamden.config.CONTENDER_SERVICE, self.block_contender)
 
         self.network.add_action(lamden.config.GET_LATEST_BLOCK, self.get_latest_block)

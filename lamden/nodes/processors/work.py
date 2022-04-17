@@ -25,6 +25,9 @@ class WorkValidator(Processor):
         # self.log.debug(msg)
         # self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
+        if self.hlc_earlier_than_consensus(hlc_timestamp=msg['hlc_timestamp']):
+            return
+
         if not self.known_masternode(msg=msg):
             print("Not Known Master")
             # TODO Probably should never happen as this filtering should probably be handled at the router level
@@ -55,6 +58,9 @@ class WorkValidator(Processor):
         self.main_processing_queue.append(tx=msg)
 
         # print(f'Received new work from {msg["sender"][:8]} to my queue.')
+
+    def hlc_earlier_than_consensus(self, hlc_timestamp):
+        return hlc_timestamp < self.state.metadata.last_hlc_in_consensus
 
     def valid_message_payload(self, msg):
         if msg.get("tx", None) is None:

@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 LATEST_BLOCK_NUM = 'latest_block_num'
 GET_BLOCK = 'get_block'
-
+import web3
 
 class Peer:
     def __init__(self, ip, ctx, server_key, vk, services, blacklist, wallet,
@@ -186,10 +186,12 @@ class Peer:
     def ping(self):
         msg = json.dumps({'action': 'ping'})
         msg_json = self.send_request(msg, timeout=500, retries=5)
+
         if msg_json is None and not self.reconnecting:
             asyncio.ensure_future(self.reconnect_loop())
             self.log.info(f'[PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
             print(f'[{self.log.name}][PEER] Could not ping {self.dealer_address}. Attempting to reconnect...')
+
         return msg_json
 
     def hello(self):
