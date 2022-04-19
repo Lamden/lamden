@@ -10,6 +10,57 @@ from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_mes
 
 import asyncio
 
+SAMPLE_MESSAGES = [
+    {
+        'valid': False
+    },
+    {
+        'tx_result': {},
+        'valid': False
+    },
+    {
+        'tx_result': {
+            'transaction': 'value'
+         },
+        'valid': False
+    },
+    {
+        'tx_result': {
+            'transaction': 'value'
+         },
+        'hlc_timestamp': 'value',
+        'valid': False
+    },
+    {
+        'tx_result': {
+            'transaction': 'value'
+         },
+        'hlc_timestamp': 'value',
+        'proof': {},
+        'valid': False
+    },
+    {
+        'tx_result': {
+            'transaction': 'value'
+         },
+        'hlc_timestamp': 'value',
+        'proof': {
+            'signature': 'value'
+         },
+        'valid': False
+    },
+    {
+        'tx_result': {
+            'transaction': 'value'
+         },
+        'hlc_timestamp': 'value',
+        'proof': {
+            'signature': 'value',
+            'signer': 'value'
+         },
+        'valid': True
+    }
+]
 
 class MockValidationQueue:
     def __init__(self):
@@ -44,12 +95,7 @@ class TestProcessingQueue(TestCase):
 
         self.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
 
-        network = Network(
-            wallet=Wallet(),
-            socket_base='tcp://127.0.0.1',
-            testing=True,
-            debug=True
-        )
+        network = Network()
 
         network.get_all_peers = self.get_all_peers
 
@@ -116,10 +162,12 @@ class TestProcessingQueue(TestCase):
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
         self.remove_from_peer_group(vk=self.stu_wallet.verifying_key)
 
-        self.await_process_message(msg=processing_results)
+        with self.assertLogs(level='ERROR') as log:
+            self.await_process_message(msg=processing_results)
+            self.assertIn('Contender sender is not a valid peer!', log.output[0])
 
-        # Validate test case results
-        self.assertEqual(0, len(self.validation_queue))
+            # Validate test case results
+            self.assertEqual(0, len(self.validation_queue))
 
     def test_does_not_append_invalid_payload(self):
         self.peers.append(self.stu_wallet.verifying_key)
@@ -129,10 +177,13 @@ class TestProcessingQueue(TestCase):
 
         processing_results.pop('proof')
 
-        self.await_process_message(msg=processing_results)
+        with self.assertLogs(level='ERROR') as log:
+            self.await_process_message(msg=processing_results)
+            self.assertIn('Received Invalid Processing Results from No Proof provided', log.output[0])
+            self.assertIn(f'{processing_results}', log.output[1])
 
-        # Validate test case results
-        self.assertEqual(0, len(self.validation_queue))
+            # Validate test case results
+            self.assertEqual(0, len(self.validation_queue))
 
     def test_does_not_append_invalid_signature(self):
         self.peers.append(self.stu_wallet.verifying_key)
@@ -142,10 +193,12 @@ class TestProcessingQueue(TestCase):
 
         processing_results['proof']['signature'] = 'bad_sig'
 
-        self.await_process_message(msg=processing_results)
+        with self.assertLogs(level='DEBUG') as log:
+            self.await_process_message(msg=processing_results)
+            self.assertIn(f"Could not verify message signature {processing_results['proof']}", log.output[0])
 
-        # Validate test case results
-        self.assertEqual(0, len(self.validation_queue))
+            # Validate test case results
+            self.assertEqual(0, len(self.validation_queue))
 
     def test_does_not_append_message_hlc_already_has_consensus(self):
         # This logic isn't implemented from the node yet but the logic is in the block contender
@@ -177,3 +230,10 @@ class TestProcessingQueue(TestCase):
 
         # Validate test case results
         self.assertEqual(1, len(self.validation_queue))
+
+    def test_valid_message_payload(self):
+        for msg in SAMPLE_MESSAGES:
+            if msg['valid']:
+                self.assertTrue(self.block_contender.valid_message_payload(msg))
+            else:
+                self.assertFalse(self.block_contender.valid_message_payload(msg))
