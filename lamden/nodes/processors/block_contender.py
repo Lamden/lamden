@@ -78,8 +78,6 @@ class Block_Contender():
             return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
         except Exception:
             return False
-        return False
-
 
     def valid_message_payload(self, msg):
         if msg.get("tx_result", None) is None:
