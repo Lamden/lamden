@@ -204,7 +204,7 @@ class ValidationQueue(ProcessingQueue):
                     self.log.debug(err)
             else:
                 self.log.info("CHECKING FOR NEXT BLOCK")
-                self.check_for_next_block()
+                await self.check_for_next_block()
 
     def add_consensus_result(self, hlc_timestamp, consensus_result):
         # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
@@ -255,16 +255,22 @@ class ValidationQueue(ProcessingQueue):
 
     def is_earliest_hlc(self, hlc_timestamp):
         hlc_list = sorted(self.validation_results.keys())
-        return hlc_timestamp == hlc_list[0]
+        try:
+            return hlc_timestamp == hlc_list[0]
+        except:
+            return False
 
-    def check_for_next_block(self):
+    async def check_for_next_block(self):
         for hlc_timestamp in self.validation_results:
-            if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus']:
-                # self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
-                if self.is_earliest_hlc(hlc_timestamp):
-                    # self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
-                    self.process(hlc_timestamp=hlc_timestamp)
-                    return
+            try:
+                if self.validation_results[hlc_timestamp]['last_check_info']['has_consensus']:
+                    # self.log.debug(f"is {self.validation_results[hlc_timestamp]['last_check_info'].get('solution')} the next block? {self.is_next_block(self.validation_results[hlc_timestamp]['last_check_info'].get('solution'))}")
+                    if self.is_earliest_hlc(hlc_timestamp):
+                        # self.log.info(f"FOUND NEXT BLOCK, PROCESSING - {hlc_timestamp}")
+                        await self.process(hlc_timestamp=hlc_timestamp)
+                        return
+            except:
+                pass
 
     def clear_my_solutions(self):
         for hlc_timestamp in self.validation_results:
@@ -310,15 +316,19 @@ class ValidationQueue(ProcessingQueue):
 
     def get_recreated_tx_message(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp)
-        my_solution = results['solutions'].get(self.wallet.verifying_key)
-        processing_results = results['result_lookup'].get(my_solution)
+        # TODO should we handle these exceptions here or throw them to caller?
+        try:
+            my_solution = results['solutions'].get(self.wallet.verifying_key)
+            processing_results = results['result_lookup'].get(my_solution)
 
-        return {
-            'tx': processing_results['tx_result'].get('transaction'),
-            'hlc_timestamp': hlc_timestamp,
-            'signature': processing_results['tx_message'].get('signature'),
-            'sender': processing_results['tx_message'].get('signer')
-        }
+            return {
+                'tx': processing_results['tx_result'].get('transaction'),
+                'hlc_timestamp': hlc_timestamp,
+                'signature': processing_results['tx_message'].get('signature'),
+                'sender': processing_results['tx_message'].get('signer')
+            }
+        except:
+            return None
 
     def consensus_matches_me(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp, {})
@@ -389,20 +399,20 @@ class ValidationQueue(ProcessingQueue):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
     def prune_earlier_results(self, consensus_hlc_timestamp):
-        for hlc_timestamp in self.validation_results:
+        for hlc_timestamp in list(self.validation_results):
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
 
     def clean_results_lookup(self, hlc_timestamp):
         validation_results = self.validation_results.get(hlc_timestamp)
-        for solution in validation_results.get('result_lookup').keys():
+        for solution in list(validation_results.get('result_lookup').keys()):
             exists = False
             for node in validation_results['solutions'].keys():
                 if validation_results['solutions'][node] == solution:
                     exists = True
                     break
             if not exists:
-                self.validation_results['result_lookup'].pop(solution)
+                self.validation_results[hlc_timestamp]['result_lookup'].pop(solution)
 
 
     def get_key_list(self):

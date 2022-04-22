@@ -174,7 +174,6 @@ def get_new_block(
     return blockinfo
 
 def get_new_processing_result(result_hash, tx_results, wallet, hlc_timestamp):
-
     return {
         'result_hash': result_hash,
         'hlc_timestamp': hlc_timestamp,
@@ -192,6 +191,17 @@ def get_new_processing_result(result_hash, tx_results, wallet, hlc_timestamp):
             ],
             'subblock': 0,
             'transactions': [tx_results]
+        },
+        'proof': {
+            'node_vk': wallet.verifying_key,
+            'signer': wallet.verifying_key,
+            'tx_result_hash': result_hash
+        },
+        'tx_result': {
+            'transaction': 'sample_transaction'
+        },
+        'tx_message': {
+            'signature': 'sample_signature'
         }
     }
 
@@ -217,5 +227,6 @@ def get_tx_results(hlc_timestamp, state, kwargs, sender):
               'sender': sender,
               'stamps_supplied': 100
             }
+
         }
     }
