@@ -23,11 +23,7 @@ class WorkValidator(router.Processor):
         # self.log.debug(msg)
         # self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
-        if not self.known_masternode(msg=msg):
-            print("Not Known Master")
-            # TODO Probably should never happen as this filtering should probably be handled at the router level
-            return
-
+        # NOTE(nikita) make sure message payload is valid BEFORE doing other checks
         if not self.valid_message_payload(msg=msg):
             # TODO I assume just stopping here is good. But what to do from a node audit perspective if nodes are
             # sending bad messages??
@@ -38,6 +34,12 @@ class WorkValidator(router.Processor):
             # not sure why this would be but it's a check anyway
             return
 
+        if not self.known_masternode(msg=msg):
+            self.log.error('Not Known Master')
+            print("Not Known Master")
+            # TODO Probably should never happen as this filtering should probably be handled at the router level
+            return
+        
         if not self.valid_signature(message=msg):
             self.log.error(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
             print(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
@@ -50,7 +52,7 @@ class WorkValidator(router.Processor):
             pass
 
         self.hlc_clock.merge_hlc_timestamp(event_timestamp=msg['hlc_timestamp'])
-        self.main_processing_queue.append(tx=msg)
+        self.main_processing_queue.append(msg)
 
         # print(f'Received new work from {msg["sender"][:8]} to my queue.')
 
@@ -89,5 +91,5 @@ class WorkValidator(router.Processor):
 
         if tx_age <= last_processed_age:
             return True
-            self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
+        self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
         return False
