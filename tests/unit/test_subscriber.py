@@ -38,7 +38,9 @@ class TestSubscriberSocket(unittest.TestCase):
             self.publisher.stop()
             del self.publisher
         if self.subscriber:
-            self.subscriber.stop()
+            task = asyncio.ensure_future(self.subscriber.stop())
+            while not task.done():
+                self.async_sleep(0.1)
             del self.subscriber
 
         loop = asyncio.get_event_loop()
@@ -143,7 +145,11 @@ class TestSubscriberSocket(unittest.TestCase):
 
     def test_PROPERTY_socket_is_closed__return_False_if_check_for_messages_task_is_Done(self):
         self.start_subscriber()
-        self.subscriber.stop()
+
+        task = asyncio.ensure_future(self.subscriber.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.assertFalse(self.subscriber.is_checking_for_messages)
 
     def test_METHOD_stop__raises_no_errors(self):
@@ -152,7 +158,9 @@ class TestSubscriberSocket(unittest.TestCase):
         self.assertTrue(self.subscriber.is_running)
 
         try:
-            self.subscriber.stop()
+            task = asyncio.ensure_future(self.subscriber.stop())
+            while not task.done():
+                self.async_sleep(0.1)
         except Exception:
             self.fail("Stop should not throw exception")
 
@@ -162,7 +170,9 @@ class TestSubscriberSocket(unittest.TestCase):
 
     def test_METHOD_stop__returns_if_no_socket(self):
         try:
-            self.subscriber.stop()
+            task = asyncio.ensure_future(self.subscriber.stop())
+            while not task.done():
+                self.async_sleep(0.1)
         except Exception:
             self.fail("Stop should not throw exception")
 
@@ -286,7 +296,10 @@ class TestSubscriberSocket(unittest.TestCase):
         self.publisher.publish_message_multipart(topic_str=topic_str, msg_dict=msg_dict)
         self.async_sleep(1)
 
-        self.subscriber.stop()
+        task = asyncio.ensure_future(self.subscriber.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.publisher.stop()
         self.async_sleep(1)
 
@@ -313,7 +326,10 @@ class TestSubscriberSocket(unittest.TestCase):
         self.publisher.publish_message_multipart(topic_str=topic_str, msg_dict=msg_dict)
         self.async_sleep(1)
 
-        self.subscriber.stop()
+        task = asyncio.ensure_future(self.subscriber.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.publisher.stop()
         self.async_sleep(1)
 
@@ -340,7 +356,10 @@ class TestSubscriberSocket(unittest.TestCase):
         self.publisher.publish_message_multipart(topic_str=topic_str, msg_dict=msg_dict)
         self.async_sleep(1)
 
-        self.subscriber.stop()
+        task = asyncio.ensure_future(self.subscriber.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.publisher.stop()
         self.async_sleep(1)
 

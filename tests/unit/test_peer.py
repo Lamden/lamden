@@ -55,7 +55,10 @@ class TestPeer(unittest.TestCase):
         self.service_callback_data = None
 
     def tearDown(self) -> None:
-        self.peer.stop()
+        task = asyncio.ensure_future(self.peer.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         del self.peer
 
     @classmethod
@@ -63,8 +66,8 @@ class TestPeer(unittest.TestCase):
         cls.remote_peer.stop()
         cls.remote_peer.join()
 
-    def connected_callback(self, vk):
-        self.connected_callback_called = vk
+    def connected_callback(self, peer_vk):
+        self.connected_callback_called = peer_vk
 
     def reconnect(self):
         self.reconnect_called = True
@@ -130,6 +133,34 @@ class TestPeer(unittest.TestCase):
     def test_PROPERTY_is_verified__return_TRUE(self):
         self.peer.verified = True
         self.assertTrue(self.peer.is_verified)
+
+    def test_PROPERTY_is_verifying__returns_FALSE_if_None(self):
+        self.assertIsNone(self.peer.verify_task)
+        self.assertFalse(self.peer.is_verifying)
+
+    def test_PROPERTY_is_verifying__returns_FALSE_if_verifying_task_is_Done(self):
+        async def simple_task():
+            self.async_sleep(0.01)
+
+        self.peer.verify_task = asyncio.ensure_future(simple_task())
+
+        while not self.peer.verify_task.done():
+            self.async_sleep(0.015)
+
+        self.assertTrue(self.peer.verify_task.done())
+        self.assertFalse(self.peer.is_verifying)
+
+    def test_PROPERTY_is_verifying__returns_True_if_verifying_task_is_NOT_Done(self):
+        async def simple_task():
+            self.async_sleep(0.1)
+
+        self.peer.verify_task = asyncio.ensure_future(simple_task())
+
+        self.assertFalse(self.peer.verify_task.done())
+        self.assertTrue(self.peer.is_verifying)
+
+        while not self.peer.verify_task.done():
+            self.async_sleep(0)
 
     def test_PROPERTY_subscriber_address_returns_propertly_formatted_string(self):
         self.assertEqual('127.0.0.1', self.peer.ip)
@@ -232,7 +263,9 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_hello__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
         msg = self.await_sending_request(self.peer.hello)
-        expected_result = {'response': 'hello', 'success': True}
+
+        self.assertIsInstance(msg.get('challenge'), str)
+        expected_result = {'response': 'hello', 'success': True, 'challenge': msg.get('challenge')}
 
         self.assertDictEqual(expected_result, msg)
 
@@ -516,20 +549,31 @@ class TestPeer(unittest.TestCase):
         self.peer.setup_subscriber()
         self.async_sleep(2)
         self.assertTrue(self.peer.subscriber.is_running)
-        self.peer.stop()
+
+        task = asyncio.ensure_future(self.peer.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.assertFalse(self.peer.subscriber.is_running)
 
     def test_METHOD_stop__stops_request(self):
         self.peer.setup_request()
         self.assertTrue(self.peer.request.is_running)
-        self.peer.stop()
+
+        task = asyncio.ensure_future(self.peer.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.assertFalse(self.peer.request.is_running)
 
     def test_METHOD_stop__stops_itself(self):
         self.peer.setup_request()
         self.peer.running = True
 
-        self.peer.stop()
+        task = asyncio.ensure_future(self.peer.stop())
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.assertFalse(self.peer.running)
 
 
@@ -568,7 +612,7 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_start__creates_request_socket(self):
         self.peer.start()
-
+        self.async_sleep(0.1)
         self.assertIsNotNone(self.peer.request)
 
     def test_METHOD_start__creates_subscriber_socket(self):
@@ -579,6 +623,7 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_start__sets_running_to_TRUE(self):
         self.peer.start()
+        self.async_sleep(0.1)
         self.assertTrue(self.peer.running)
 
     def test_METHOD_start__sets_peer_is_running_to_TRUE(self):
@@ -593,74 +638,87 @@ class TestPeer(unittest.TestCase):
         self.async_sleep(2)
         self.assertFalse(self.peer.is_verified)
 
-    def test_METHOD_validate_peer__sets_verified_when_peer_exists(self):
+    def test_METHOD_verify_peer__sets_verified_when_peer_exists(self):
         self.peer.setup_request()
-        tasks = asyncio.gather(
-            self.peer.verify_peer()
-        )
+
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.verify_peer())
 
         self.assertTrue(self.peer.is_verified)
 
-    def test_METHOD_validate_peer__calls_connected_callback_if_exists_and_passes_vk(self):
+    def test_METHOD_verify_peer__calls_connected_callback_if_exists_and_passes_vk(self):
         self.peer.setup_request()
         self.peer.connected_callback = self.connected_callback
-        tasks = asyncio.gather(
-            self.peer.verify_peer()
-        )
+
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.verify_peer())
 
         self.assertEqual(self.peer.local_vk, self.connected_callback_called)
 
-    def test_METHOD_validate_peer__starts_subscriber(self):
+    def test_METHOD_verify_peer__starts_subscriber(self):
         self.peer.setup_request()
 
-        tasks = asyncio.gather(
-            self.peer.verify_peer()
-        )
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.verify_peer())
 
         self.async_sleep(2)
         self.assertIsNotNone(self.peer.subscriber)
         self.assertTrue(self.peer.subscriber.is_running)
 
-    def test_METHOD_validate_peer__bubbles_AttributeError_if_socket_not_setup(self):
+    def test_METHOD_verify_peer__bubbles_AttributeError_if_socket_not_setup(self):
         with self.assertRaises(AttributeError) as error:
-            tasks = asyncio.gather(
-                self.peer.verify_peer()
-            )
             loop = asyncio.get_event_loop()
-            loop.run_until_complete(tasks)
+            loop.run_until_complete(self.peer.verify_peer())
 
         self.assertEqual("Request socket not setup.", str(error.exception))
         self.assertFalse(self.peer.is_verified)
 
-    def test_METHOD_validate_peer__verified_remains_FALSE_if_peer_unresponsive(self):
+    def test_METHOD_verify_peer__verified_remains_FALSE_if_peer_unresponsive(self):
         self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
 
-        tasks = asyncio.gather(
-            self.peer.verify_peer()
-        )
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.verify_peer_loop())
 
         self.assertFalse(self.peer.is_verified)
 
-    def test_METHOD_validate_peer_loop__sets_peer_is_verified(self):
+    def test_METHOD_start_verify_peer_loop__creates_verified_peer_task(self):
         self.peer.setup_request()
         self.peer.running = True
 
-        tasks = asyncio.gather(
-            self.peer.verify_peer_loop()
-        )
+        self.peer.start_verify_peer_loop()
+
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.verify_peer_loop())
+
+        self.assertIsNotNone(self.peer.verify_task)
+        self.assertTrue(self.peer.is_verifying)
+
+    def test_METHOD_start_verify_peer_loop__returns_if_is_verifying_is_True(self):
+        async def mock_verify_task():
+            self.async_sleep(0)
+
+        self.peer.setup_request()
+        self.peer.running = True
+
+        task = asyncio.ensure_future(mock_verify_task())
+
+        self.peer.verify_task = task
+
+        self.peer.start_verify_peer_loop()
+
+        self.assertEqual(task, self.peer.verify_task)
+
+
+    def test_METHOD_verify_peer_loop__sets_peer_is_verified(self):
+        self.peer.setup_request()
+        self.peer.running = True
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.peer.verify_peer_loop())
 
         self.assertTrue(self.peer.is_verified)
+
 
     def test_METHOD_set_latest_block_number__sets_int(self):
         self.peer.set_latest_block_number(number=100)
@@ -756,5 +814,15 @@ class TestPeer(unittest.TestCase):
         expected_error = "Cannot process subscription messages, services not setup."
         self.assertEqual(expected_error, str(error.exception))
 
+    def test_METHOD_restart(self):
+        self.peer.start()
+        self.async_sleep(4)
 
+        self.assertIsNotNone(self.peer.subscriber)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.peer.restart())
+
+        self.async_sleep(4)
+        self.assertIsNotNone(self.peer.subscriber)
 

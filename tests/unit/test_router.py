@@ -33,7 +33,9 @@ class TestRouter(unittest.TestCase):
 
     def tearDown(self) -> None:
         if self.router:
-            self.router.stop()
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
             del self.router
         if self.request:
             self.request.stop()
@@ -271,7 +273,9 @@ class TestRouter(unittest.TestCase):
         self.create_router()
 
         try:
-            self.router.stop()
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
         except:
             self.fail("Calling stop method should not raise errors.")
 
@@ -285,7 +289,9 @@ class TestRouter(unittest.TestCase):
         self.start_secure_router()
 
         try:
-            self.router.stop()
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
         except:
             self.fail("Calling stop method should not raise errors.")
 
@@ -298,7 +304,9 @@ class TestRouter(unittest.TestCase):
         self.start_router()
 
         try:
-            self.router.stop()
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
         except:
             self.fail("Calling stop method should not raise errors.")
 

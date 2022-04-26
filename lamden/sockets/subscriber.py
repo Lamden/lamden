@@ -158,15 +158,15 @@ class Subscriber():
         while not self.socket_is_closed:
             await asyncio.sleep(0)
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         self.running = False
 
         if self.loop:
-            self.loop.run_until_complete(self.stop_checking_for_messages())
+            await self.stop_checking_for_messages()
 
         if not self.socket_is_closed:
             self.close_socket()
-            self.setup_event_loop()
-            self.loop.run_until_complete(self.stopping())
+
+            await self.stopping()
 
         self.log('info', 'Stopped.')

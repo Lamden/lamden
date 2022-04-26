@@ -254,11 +254,9 @@ class Router():
         while not self.auth_is_stopped:
             await asyncio.sleep(0.01)
 
-    def stop(self):
-        loop = asyncio.get_event_loop()
-
-        loop.run_until_complete(self.stop_checking_for_messages())
-        loop.run_until_complete(self.stop_auth())
+    async def stop(self):
+        await self.stop_checking_for_messages()
+        await self.stop_auth()
         self.close_socket()
 
         self.log('info', 'Stopped.')

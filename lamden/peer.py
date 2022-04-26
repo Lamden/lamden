@@ -3,6 +3,7 @@ from lamden.logger.base import get_logger
 import asyncio
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
+from lamden.crypto.challenges import create_challenge, verify_challenge
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
 
@@ -57,6 +58,8 @@ class Peer:
             'hlc_timestamp': "0"
         })
 
+        self.verify_task = None
+
         try:
             self.loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -102,6 +105,12 @@ class Peer:
     @property
     def is_verified(self) -> bool:
         return self.verified
+
+    @property
+    def is_verifying(self) -> bool:
+        if self.verify_task is None:
+            return False
+        return not self.verify_task.done()
 
     def log(self, log_type: str, message: str) -> None:
         named_message = f'[PEER]{message}'
@@ -163,17 +172,28 @@ class Peer:
 
         self.running = True
 
-        asyncio.ensure_future(self.verify_peer_loop())
+        self.start_verify_peer_loop()
+
+        print('ok')
+
+    def start_verify_peer_loop(self) -> None:
+        if self.is_verifying:
+            return
+
+        self.verify_task = asyncio.ensure_future(self.verify_peer_loop())
 
     async def verify_peer_loop(self) -> None:
-        while not self.verified:
+        self.verified = False
+
+        while not self.verified and self.running:
             # wait till peer is available
             await self.reconnect_loop()
 
-            # Validate peer is correct
-            await self.verify_peer()
+            if self.running:
+                # Validate peer is correct
+                await self.verify_peer()
 
-            await asyncio.sleep(1)
+                await asyncio.sleep(1)
 
     async def verify_peer(self):
         self.verified = False
@@ -194,7 +214,7 @@ class Peer:
                     self.setup_subscriber()
 
                     if self.connected_callback is not None:
-                        self.connected_callback(vk=self.local_vk)
+                        self.connected_callback(peer_vk=self.local_vk)
 
                 self.verified = True
         else:
@@ -249,6 +269,11 @@ class Peer:
         if processor is not None and msg_str is not None:
             await processor.process_message(msg_str)
 
+    async def test_connection(self):
+        connected = await self.ping()
+        if not connected:
+            self.reconnect()
+
     def reconnect(self) -> None:
         asyncio.ensure_future(self.reconnect_loop())
 
@@ -274,14 +299,52 @@ class Peer:
         self.connected = True
         self.reconnecting = False
 
+    async def update_ip(self, new_ip):
+        verify_res = await self.verify_new_ip(new_ip=new_ip)
+        challenge = verify_res.get('challenge')
+        challenge_response = verify_res.get('challenge_response')
+
+        if verify_challenge(peer_vk=self.local_vk, challenge=challenge, challenge_response=challenge_response):
+            self.set_ip(address=new_ip)
+            self.restart()
+
+    async def restart(self):
+        await self.stop()
+
+        self.running = False
+        self.connected = False
+        self.verified = False
+        self.reconnecting = False
+        self.request = None
+        self.subscriber = None
+
+        self.latest_block_info = dict({
+            'number': 0,
+            'hlc_timestamp': "0"
+        })
+
+        self.verify_task = None
+
+        self.start()
+
+
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
         return msg_json
 
     async def hello(self) -> (dict, None):
-        msg_obj = {'action': 'hello', 'ip': self.get_network_ip()}
+        challenge = create_challenge()
+        msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
+        if msg_json:
+            msg_json['challenge'] = challenge
+        return msg_json
+
+    async def verify_new_ip(self, new_ip) -> (dict, None):
+        challenge = create_challenge()
+        msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
+        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=500, retries=5)
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
@@ -305,7 +368,7 @@ class Peer:
         msg_json = await self.send_request(msg_obj=msg_obj)
         return msg_json
 
-    async def send_request(self, msg_obj: dict, timeout: int=200, retries: int=3) -> (dict, None):
+    async def send_request(self, msg_obj: dict, to_address: str=None, timeout: int=200, retries: int=3) -> (dict, None):
         if not self.request:
             raise AttributeError("Request socket not setup.")
 
@@ -320,7 +383,9 @@ class Peer:
 
             return None
 
-        result = await self.request.send(to_address=self.request_address, str_msg=str_msg, timeout=timeout, retries=retries)
+        to_address = to_address or self.request_address
+
+        result = await self.request.send(to_address=to_address, str_msg=str_msg, timeout=timeout, retries=retries)
 
         return self.handle_result(result=result)
 
@@ -346,9 +411,21 @@ class Peer:
 
         return None
 
-    def stop(self) -> None:
+    async def stopping(self):
+        if not self.reconnecting or not self.is_verifying:
+            return
+
+        while self.reconnecting or self.is_verifying:
+            await asyncio.sleep(0.01)
+
+    async def stop(self) -> None:
         self.running = False
+
         if self.request:
             self.request.stop()
         if self.subscriber:
-            self.subscriber.stop()
+            await self.subscriber.stop()
+
+        await self.stopping()
+
+        self.log('info', 'Stopped.')
