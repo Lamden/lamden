@@ -606,3 +606,41 @@ class TestRouter(unittest.TestCase):
             self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str="Test Test")
 
         self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))
+
+    def test_METHOD__refresh_cred_provider_vks__adds_missing_vks(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        new_vk = Wallet().verifying_key
+        self.router.refresh_cred_provider_vks(vk_list=[new_vk, existing_vk])
+
+        self.assertIsNotNone(self.router.cred_provider.approved_keys.get(new_vk))
+        self.assertIsNotNone(self.router.cred_provider.approved_keys.get(existing_vk))
+
+        self.assertEqual(2, len(self.router.cred_provider.approved_keys.keys()))
+
+    def test_METHOD__refresh_cred_provider_vks__removes_exiting_vks_not_in_list(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        new_vk = Wallet().verifying_key
+        self.router.refresh_cred_provider_vks(vk_list=[new_vk])
+
+        self.assertIsNone(self.router.cred_provider.approved_keys.get(existing_vk))
+        self.assertEqual(1, len(self.router.cred_provider.approved_keys.keys()))
+
+    def test_METHOD__refresh_cred_provider_vks__blank_list_removes_all_keys(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        self.router.refresh_cred_provider_vks(vk_list=[])
+
+        self.assertIsNone(self.router.cred_provider.approved_keys.get(existing_vk))
+        self.assertEqual(0, len(self.router.cred_provider.approved_keys.keys()))

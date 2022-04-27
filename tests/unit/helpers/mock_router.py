@@ -74,17 +74,26 @@ class MockRouter(threading.Thread):
                     self.callback(ident, msg)
 
                 try:
-                    msg_string = json.loads(msg)
+                    msg_obj = json.loads(msg)
                 except Exception as err:
-                    msg_string = None
+                    msg_obj = None
                     print(err)
 
-                if isinstance(msg_string, dict):
-                    if msg_string.get('action') == 'hello':
-                        resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')
+                if isinstance(msg_obj, dict):
+                    if msg_obj.get('action') == 'hello':
+                        challenge = msg_obj.get('challenge')
+                        if challenge:
+                            challenge_response = self.wallet.sign(challenge)
+                            resp_msg = json.dumps(
+                                {
+                                    'response': 'hello',
+                                    'challenge_response': challenge_response
+                                }).encode('UTF-8')
+                        else:
+                            resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')
                         self.send_msg(ident=ident, msg=resp_msg)
 
-                    if msg_string.get('action') == 'latest_block_info':
+                    if msg_obj.get('action') == 'latest_block_info':
                         resp_msg = json.dumps({
                             'response': 'latest_block_info',
                             'latest_block_number': 100,
@@ -126,8 +135,6 @@ class MockRouter(threading.Thread):
         if self.socket:
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.stopping())
-
-        self.join()
 
 class TestMockRouter(unittest.TestCase):
     def setUp(self) -> None:

@@ -1,6 +1,5 @@
 import json
 import requests
-from typing import Callable
 import zmq
 import zmq.asyncio
 import asyncio
@@ -11,7 +10,7 @@ from lamden.crypto.wallet import Wallet
 
 from lamden.logger.base import get_logger
 
-from contracting.db.encoder import encode, decode
+from contracting.db.encoder import encode
 from contracting.db.driver import ContractDriver
 
 from lamden.sockets.publisher import Publisher
@@ -77,7 +76,7 @@ class Network:
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
 
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = zmq.asyncio.Context()
 
         self.loop = None
         self.setup_event_loop()
@@ -100,6 +99,10 @@ class Network:
     @property
     def external_address(self):
         return '{}{}:{}'.format('tcp://', self.external_ip, self.socket_ports.get('router'))
+
+    @property
+    def local_address(self):
+        return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('router'))
 
     @property
     def vk(self):
@@ -137,13 +140,14 @@ class Network:
             asyncio.set_event_loop(self.loop)
 
     def setup_publisher(self):
-        self.publisher = Publisher()
+        self.publisher = Publisher(ctx=self.ctx)
         self.publisher.set_address(port=self.socket_ports.get('publisher'))
 
     def setup_router(self):
         self.router = Router(
             wallet=self.wallet,
-            message_callback=self.router_callback
+            message_callback=self.router_callback,
+            ctx=self.ctx
         )
         self.router.set_address(port=self.socket_ports.get('router'))
 
@@ -160,7 +164,7 @@ class Network:
 
         self.log('info', 'Started.')
 
-    async def starting(self):
+    async def starting(self) -> None:
         while not self.publisher.is_running or not self.router.is_running:
             await asyncio.sleep(0.1)
 
@@ -174,13 +178,13 @@ class Network:
     def add_service(self, name: str, processor: Processor) -> None:
         self.services[name] = processor
 
-    def get_services(self):
+    def get_services(self) -> dict:
         return self.services
 
     def add_action(self, name: str, processor: Processor) -> None:
         self.actions[name] = processor
 
-    def get_actions(self):
+    def get_actions(self) -> dict:
         return self.actions
 
     def num_of_peers(self) -> int:
@@ -192,7 +196,7 @@ class Network:
     def all_peers_connected(self):
         return self.num_of_peers() == self.num_of_peers_connected()
 
-    def get_all_peers(self):
+    def get_all_peers(self) -> list:
         return self.actions[GET_ALL_PEERS]()
 
     def get_peer(self, vk: str) -> Peer:
@@ -227,27 +231,33 @@ class Network:
             services=self.get_services,
             local_wallet=self.wallet,
             socket_ports=self.socket_ports,
-            connected_callback=self.connected_to_peer_callback
+            connected_callback=self.connected_to_peer_callback,
+            ctx=self.ctx
         )
 
     def start_peer(self, vk: str) -> None:
         self.peers[vk].start()
 
     def connect_peer(self, ip: str, vk: str) -> bool:
-
         if vk == self.vk:
             self.log('warning', f'Attempted connection to self "{vk}".')
             return
 
-        if vk not in self.get_masternode_and_delegate_vk_list():
+        # Get list of approved nodes from state
+        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
+
+        if vk not in node_vk_list_from_smartcontracts:
             self.log('warning', f'Attempted to add a node not in the smart contract. "{vk}"')
             return
+
+        # Refesch credentials provider with approved nodes from state
+        self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
 
         # Get a reference to this peer
         peer = self.get_peer(vk=vk)
 
         if peer:
-            if peer.ip is not ip:
+            if peer.request_address != ip:
                 # if the ip is different from the one we have then switch to it
                 peer.update_ip(new_ip=ip)
             else:
@@ -300,6 +310,18 @@ class Network:
             'masternodes': self.map_vk_to_ip(self.get_masternode_vk_list()),
             'delegates': self.map_vk_to_ip(self.get_delegate_vk_list())
         }
+
+    def make_node_list(self) -> list:
+        constitution = self.make_constitution()
+        node_list = []
+
+        for vk, ip in constitution.get('masternodes').items():
+            node_list.append({'vk': vk, 'ip': ip, 'node_type': 'masternode'})
+
+        for vk, ip in constitution.get('delegates').items():
+            node_list.append({'vk': vk, 'ip': ip, 'node_type': 'delegate'})
+        print (node_list)
+        return node_list
 
     def get_peers_for_consensus(self):
         all_peers = self.get_masternode_and_delegate_vk_list()
@@ -392,34 +414,10 @@ class Network:
                 )
 
         if action == ACTION_GET_NETWORK:
-            node_list = []
-            constitution = self.make_constitution()
+            node_list = json.dumps(self.make_node_list())
 
-            for vk in constitution.get('masternodes'):
-                peer = self.peers.get(vk, None)
-                if not peer:
-                    if vk == self.wallet.verifying_key:
-                        ip = f'tcp://{self.external_ip}:{self.socket_ports.get("router")}'
-                    else:
-                        continue
-                else:
-                    ip = peer.request_address
-                node_list.append({'vk': vk, 'ip': ip, 'node_type': 'masternode'})
-
-            for vk in constitution.get('delegates'):
-                peer = self.peers.get(vk, None)
-                if not peer:
-                    if vk == self.wallet.verifying_key:
-                        ip = f'tcp://{self.external_ip}:{self.socket_ports.get("router")}'
-                    else:
-                        continue
-                else:
-                    ip = peer.request_address
-
-                node_list.append({'vk': vk, 'ip': ip, 'node_type': 'delegate'})
-
-            node_list = json.dumps(node_list)
             resp_msg = ('{"response": "%s", "node_list": %s}' % (ACTION_GET_NETWORK, node_list)).encode()
+
             self.router.send_msg(
                 to_vk=ident_vk_string,
                 msg=resp_msg

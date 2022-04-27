@@ -23,6 +23,7 @@ class TestRequestSocket(unittest.TestCase):
     def tearDown(self):
         if self.peer:
             self.peer.stop()
+            self.peer.join()
         if self.request:
             self.request.stop()
 
@@ -65,10 +66,14 @@ class TestRequestSocket(unittest.TestCase):
     def test_can_create_instance_MOCKROUTER(self):
         self.start_secure_peer()
         self.assertIsInstance(obj=self.peer, cls=MockRouter)
+        self.peer.stop()
+        self.peer.join()
 
     def test_can_create_instance_MOCKREPLY(self):
         self.start_peer()
         self.assertIsInstance(obj=self.peer, cls=MockReply)
+        self.peer.stop()
+        self.peer.join()
 
     def test_can_create_instance_REQUEST(self):
         self.create_request()

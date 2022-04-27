@@ -13,12 +13,12 @@ EXCEPTION_TOPIC_BYTES_NOT_BYTES = "argument 'topic_bytes' should be type bytes."
 EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
 class Publisher():
-    def __init__(self):
+    def __init__(self, ctx: zmq.Context = None):
         # Configure the listening socket
         self.address = None
         self.socket = None
 
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.running = False
 

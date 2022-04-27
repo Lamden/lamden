@@ -1,6 +1,7 @@
 import json
 from lamden.logger.base import get_logger
 import asyncio
+import zmq
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.z85 import z85_key
 from lamden.crypto.challenges import create_challenge, verify_challenge
@@ -17,8 +18,8 @@ SUBSCRIPTIONS = ["work", "new_peer_connection", "contenders"]
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable, services: dict = None,
-                connected_callback: Callable = None, socket_ports: dict = None):
-
+                connected_callback: Callable = None, socket_ports: dict = None, ctx: zmq.Context = None):
+        self.ctx = ctx
         self.server_vk = server_vk
         self.server_z85_key = z85_key(server_vk)
 
@@ -59,6 +60,8 @@ class Peer:
         })
 
         self.verify_task = None
+
+        self.setup_event_loop()
 
         try:
             self.loop = asyncio.get_event_loop()
@@ -124,6 +127,20 @@ class Peer:
             logger.warning(named_message)
 
         print(f'[{self.request_address}]{named_message}')
+
+    def setup_event_loop(self):
+        try:
+            self.loop = asyncio.get_event_loop()
+
+            if self.loop.is_closed():
+                self.loop = None
+
+        except RuntimeError:
+            pass
+
+        if not self.loop:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
     def is_available(self) -> bool:
         tasks = asyncio.gather(
@@ -269,10 +286,15 @@ class Peer:
         if processor is not None and msg_str is not None:
             await processor.process_message(msg_str)
 
-    async def test_connection(self):
+    async def test_connection(self) -> bool:
         connected = await self.ping()
-        if not connected:
-            self.reconnect()
+        if connected:
+            return True
+
+        self.connected = False
+        self.reconnect()
+        return False
+
 
     def reconnect(self) -> None:
         asyncio.ensure_future(self.reconnect_loop())
@@ -304,9 +326,10 @@ class Peer:
         challenge = verify_res.get('challenge')
         challenge_response = verify_res.get('challenge_response')
 
-        if verify_challenge(peer_vk=self.local_vk, challenge=challenge, challenge_response=challenge_response):
+        if verify_challenge(peer_vk=self.server_vk, challenge=challenge, challenge_response=challenge_response):
+            self.log('info', f"Updating peer {self.server_vk}'s IP from {self.request_address} to {new_ip}.")
             self.set_ip(address=new_ip)
-            self.restart()
+            asyncio.ensure_future(self.restart())
 
     async def restart(self):
         await self.stop()
@@ -345,6 +368,8 @@ class Peer:
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
         msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=500, retries=5)
+        if msg_json:
+            msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):

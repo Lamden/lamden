@@ -14,8 +14,8 @@ class Result:
 class Request():
     con_failed = 'con_failed'
 
-    def __init__(self, server_vk: int = None, local_wallet: Wallet = None):
-        self.ctx = zmq.asyncio.Context().instance()
+    def __init__(self, server_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None):
+        self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.msg = ''
 

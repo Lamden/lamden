@@ -57,11 +57,11 @@ class CredentialsProvider(object):
             return False
 
 class Router():
-    def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None):
+    def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None):
         self.wallet = wallet
         self.message_callback = message_callback
 
-        self.ctx = None
+        self.ctx = ctx
         self.socket = None
         self.auth = None
         self.cred_provider = CredentialsProvider()
@@ -141,7 +141,8 @@ class Router():
         self.address = f'tcp://{ip}:{port}'
 
     def setup_socket(self):
-        self.ctx = zmq.asyncio.Context().instance()
+        if not self.ctx:
+            self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
 
     def setup_auth(self):
@@ -225,6 +226,15 @@ class Router():
         ident_vk_bytes = json.dumps(to_vk).encode('UTF-8')
 
         self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
+
+    def refresh_cred_provider_vks(self, vk_list: list = []) -> None:
+        for vk in vk_list:
+            self.cred_provider.add_key(vk=vk)
+
+        current_vks = list(self.cred_provider.approved_keys.keys())
+        for vk in current_vks:
+            if vk not in vk_list:
+                self.cred_provider.remove_key(vk=vk)
 
     def close_socket(self):
         if not self.socket_is_closed:

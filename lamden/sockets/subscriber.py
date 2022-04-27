@@ -10,14 +10,14 @@ EXCEPTION_TOPIC_NOT_STRING = "Topic must be string."
 EXCEPTION_NO_SOCKET = "No socket created."
 
 class Subscriber():
-    def __init__(self, address: str, callback: Callable = None, topics: list=[]):
+    def __init__(self, address: str, callback: Callable = None, topics: list=[], ctx: zmq.Context = None):
         self.running = False
 
         self.address = address
         self.callback = callback
         self.topics = list(topics)
 
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = ctx or zmq.asyncio.Context().instance()
         self.check_for_messages_task = None
 
         self.loop = None

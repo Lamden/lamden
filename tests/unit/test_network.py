@@ -13,8 +13,6 @@ import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 GET_ALL_PEERS = "get_all_peers"
-GET_LATEST_BLOCK = 'get_latest_block'
-
 
 class MockConstitution:
     def __init__(self):
@@ -55,6 +53,9 @@ class TestNetwork(TestCase):
         self.publish_info = None
         self.connect_info = None
 
+        self.called_ip_update = False
+        self.called_test_connection = False
+
         self.driver = ContractDriver(driver=InMemDriver())
 
     def tearDown(self):
@@ -78,12 +79,14 @@ class TestNetwork(TestCase):
             socket_ports=self.create_socket_ports(index),
             driver=self.driver
         )
+
         network.ip = '127.0.0.1'
+
         network.add_action(GET_ALL_PEERS, self.get_peer_list)
-        network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
+        network.add_action(ACTION_GET_LATEST_BLOCK, self.get_latest_block)
+
         self.networks.append(network)
-        network.get_all_peers = self.get_peer_list
-        network.router.cred_provider.get_all_peers = self.get_peer_list
+
         return network
 
     def get_peer_list(self):
@@ -93,16 +96,26 @@ class TestNetwork(TestCase):
         return {}
 
     def add_vk_to_smartcontract(self, node_type, network, vk):
-        masternode_vks = network.get_masternode_vk_list()
-        masternode_vks.append(vk)
+        if node_type == 'masternode':
+            current_vks = network.get_masternode_vk_list()
+        else:
+            current_vks = network.get_delegate_vk_list()
+
+        current_vks.append(vk)
 
         network.driver.driver.set(
             key=f"{node_type}s.S:members",
-            value=masternode_vks
+            value=current_vks
         )
 
     def mock_send_msg(self, to_vk, msg):
         self.router_msg = (to_vk, msg)
+
+    def mock_peer_update_ip(self, new_ip):
+        self.called_ip_update = new_ip
+
+    async def mock_peer_test_connection(self):
+        self.called_test_connection = True
 
     def mock_announce_new_peer_connection(self, ip, vk):
         self.publish_info = (ip, vk)
@@ -285,13 +298,13 @@ class TestNetwork(TestCase):
         peer = network_1.get_peer(vk=peer_vk)
 
         peer.start()
-        # wait for peer to start
-        self.async_sleep(1)
+        while not peer.is_connected:
+            self.async_sleep(0.1)
 
         task = asyncio.ensure_future(network_1.stop())
 
         while not task.done():
-            self.async_sleep(1)
+            self.async_sleep(0.1)
 
         peer = network_1.get_peer(vk=peer_vk)
         self.assertFalse(peer.is_running)
@@ -591,13 +604,12 @@ class TestNetwork(TestCase):
         network_1 = self.create_network()
 
         constitution = MockConstitution()
+
         for vk, ip in constitution.all_nodes.items():
+            self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=vk)
             network_1.add_peer(vk=vk, ip=ip)
 
-        constitution.add_node(vk=network_1.vk, ip=network_1.external_address, type="masternodes")
-
         network_1.router.send_msg = self.mock_send_msg
-        network_1.make_constitution = constitution.make_constitution
 
         latest_block_info_msg = json.dumps({'action': ACTION_GET_NETWORK})
         wallet = Wallet()
@@ -623,6 +635,48 @@ class TestNetwork(TestCase):
                     break
 
             self.assertTrue(found)
+
+    def test_METHOD_make_node_list(self):
+        network_1 = self.create_network()
+
+        node_list = [
+            {
+                'vk': network_1.vk,
+                'ip': network_1.external_address,
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19001',
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19002',
+                'node_type': 'delegate'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19003',
+                'node_type': 'delegate'
+            },
+        ]
+
+        for node in node_list:
+            vk = node.get('vk')
+
+            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+
+            if vk is not network_1.vk:
+                network_1.add_peer(vk=vk, ip=node.get('ip'))
+
+        node_list_response = network_1.make_node_list()
+
+        self.assertEqual(4, len(node_list_response))
+
+        for node in node_list:
+            self.assertTrue(node in node_list_response)
+
 
     def test_METHOD_remove_peer(self):
         network_1 = self.create_network()
@@ -807,7 +861,7 @@ class TestNetwork(TestCase):
 
         self.assertEqual(0, network_1.num_of_peers())
 
-    def test_METHOD_connect_peer__returns_if_peer_exists_and_is_already_connected(self):
+    def test_METHOD_connect_peer__calls_test_connection_if_peer_exists_with_same_ip(self):
         network_1 = self.create_network()
 
         peer_ip = 'tcp://127.0.0.1:19001'
@@ -816,6 +870,8 @@ class TestNetwork(TestCase):
         network_1.add_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer(vk=peer_vk)
+        peer.update_ip = self.mock_peer_update_ip
+        peer.test_connection = self.mock_peer_test_connection
         peer.running = True
 
         self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
@@ -824,6 +880,39 @@ class TestNetwork(TestCase):
             network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
         except:
             self.fail("Calling connect_peer with existing peer vk causes no errors.")
+
+        self.async_sleep(0.1)
+
+        self.assertFalse(self.called_ip_update)
+        self.assertTrue(self.called_test_connection)
+
+        self.assertEqual(1, network_1.num_of_peers())
+
+    def test_METHOD_connect_peer__calls_update_ip_if_peer_exists_with_different_ip(self):
+        network_1 = self.create_network()
+
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_new_ip = 'tcp://127.0.0.1:19002'
+        peer_vk = Wallet().verifying_key
+
+        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+
+        peer = network_1.get_peer(vk=peer_vk)
+        peer.update_ip = self.mock_peer_update_ip
+        peer.test_connection = self.mock_peer_test_connection
+        peer.running = True
+
+        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+
+        try:
+            network_1.connect_peer(ip='tcp://127.0.0.1:19002', vk=peer_vk)
+        except:
+            self.fail("Calling connect_peer with existing peer vk causes no errors.")
+
+        self.async_sleep(0.1)
+
+        self.assertEqual(peer_new_ip, self.called_ip_update)
+        self.assertFalse(self.called_test_connection)
 
         self.assertEqual(1, network_1.num_of_peers())
 

@@ -30,22 +30,29 @@ class TestPeer(unittest.TestCase):
         cls.ip = '127.0.0.1'
 
         cls.remote_peer_wallet = Wallet()
-        cls.my_wallet = Wallet()
+        cls.local_wallet = Wallet()
 
         cls.remote_peer = MockRouter(
-            valid_peers=[cls.my_wallet.curve_vk],
+            valid_peers=[cls.local_wallet.curve_vk],
             wallet=cls.remote_peer_wallet
         )
+
 
     def setUp(self):
         self.ctx = zmq.asyncio.Context()
 
+        self.remote_peer = self.__class__.remote_peer
+        self.remote_peer_wallet = self.__class__.remote_peer_wallet
+        self.local_wallet = self.__class__.local_wallet
+
+        self.peer_vk = self.remote_peer_wallet.verifying_key
+
         self.peer = Peer(
             ip=self.__class__.ip,
             get_network_ip=self.get_network_ip,
-            server_vk=self.__class__.remote_peer_wallet.verifying_key,
+            server_vk=self.peer_vk,
             services=self.get_services,
-            local_wallet=self.__class__.my_wallet
+            local_wallet=self.local_wallet
         )
 
         self.services = {}
@@ -63,8 +70,9 @@ class TestPeer(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.remote_peer.stop()
-        cls.remote_peer.join()
+        if  cls.remote_peer:
+            cls.remote_peer.stop()
+            cls.remote_peer.join()
 
     def connected_callback(self, peer_vk):
         self.connected_callback_called = peer_vk
@@ -102,8 +110,52 @@ class TestPeer(unittest.TestCase):
     def test_can_create_instance__PEER(self):
         self.assertIsInstance(self.peer, Peer)
 
+    def test_METHOD_setup_event_loop__uses_existing_running_loop(self):
+        peer = Peer(
+            ip=self.__class__.ip,
+            get_network_ip=self.get_network_ip,
+            server_vk=self.peer_vk,
+            services=self.get_services,
+            local_wallet=self.local_wallet
+        )
+
+        peer.loop = None
+
+        peer.setup_event_loop()
+
+        loop = asyncio.get_event_loop()
+        loop.close()
+
+        loop_closed = peer.loop.is_closed()
+        self.assertTrue(loop_closed)
+
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+    def test_METHOD_setup_event_loop__creates_new_loop_if_current_closed(self):
+        peer = Peer(
+            ip=self.__class__.ip,
+            get_network_ip=self.get_network_ip,
+            server_vk=self.peer_vk,
+            services=self.get_services,
+            local_wallet=self.local_wallet
+        )
+
+        peer.loop = None
+
+        loop = asyncio.get_event_loop()
+        loop.close()
+
+        peer.setup_event_loop()
+
+        self.async_sleep(0.1)
+        self.assertFalse(peer.loop.is_closed())
+
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
     def test_PROPERTY_local_vk(self):
-        self.assertEqual(self.my_wallet.verifying_key, self.peer.local_vk)
+        self.assertEqual(self.local_wallet.verifying_key, self.peer.local_vk)
 
     def test_PROPERTY_ip(self):
         self.assertEqual(self.ip, self.peer.ip)
@@ -263,9 +315,15 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_hello__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
         msg = self.await_sending_request(self.peer.hello)
+        challenge = msg.get('challenge')
 
         self.assertIsInstance(msg.get('challenge'), str)
-        expected_result = {'response': 'hello', 'success': True, 'challenge': msg.get('challenge')}
+        expected_result = {
+            'response': 'hello',
+            'success': True,
+            'challenge': msg.get('challenge'),
+            'challenge_response': self.remote_peer.wallet.sign(challenge)
+        }
 
         self.assertDictEqual(expected_result, msg)
 
@@ -641,25 +699,38 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_verify_peer__sets_verified_when_peer_exists(self):
         self.peer.setup_request()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.verify_peer())
+        task = asyncio.ensure_future(self.peer.verify_peer())
+        while not task.done():
+            self.async_sleep(0.1)
 
         self.assertTrue(self.peer.is_verified)
+
+    def test_METHOD_verify_peer__returns_when_peer_doesnt_exist(self):
+        self.peer.set_ip(address='tcp://127.0.0.1:19001')
+        self.peer.setup_request()
+
+        task = asyncio.ensure_future(self.peer.verify_peer())
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.assertFalse(self.peer.is_verified)
 
     def test_METHOD_verify_peer__calls_connected_callback_if_exists_and_passes_vk(self):
         self.peer.setup_request()
         self.peer.connected_callback = self.connected_callback
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.verify_peer())
+        task = asyncio.ensure_future(self.peer.verify_peer())
+        while not task.done():
+            self.async_sleep(0.1)
 
         self.assertEqual(self.peer.local_vk, self.connected_callback_called)
 
     def test_METHOD_verify_peer__starts_subscriber(self):
         self.peer.setup_request()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.verify_peer())
+        task = asyncio.ensure_future(self.peer.verify_peer())
+        while not task.done():
+            self.async_sleep(0.1)
 
         self.async_sleep(2)
         self.assertIsNotNone(self.peer.subscriber)
@@ -673,12 +744,13 @@ class TestPeer(unittest.TestCase):
         self.assertEqual("Request socket not setup.", str(error.exception))
         self.assertFalse(self.peer.is_verified)
 
-    def test_METHOD_verify_peer__verified_remains_FALSE_if_peer_unresponsive(self):
+    def test_METHOD_verify_peer_loop__verified_remains_FALSE_if_peer_unresponsive(self):
         self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.verify_peer_loop())
+        task = asyncio.ensure_future(self.peer.verify_peer_loop())
+        while not task.done():
+            self.async_sleep(0.1)
 
         self.assertFalse(self.peer.is_verified)
 
@@ -688,11 +760,12 @@ class TestPeer(unittest.TestCase):
 
         self.peer.start_verify_peer_loop()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.verify_peer_loop())
+        task = asyncio.ensure_future(self.peer.verify_peer_loop())
+
+        while not task.done():
+            self.async_sleep(0.1)
 
         self.assertIsNotNone(self.peer.verify_task)
-        self.assertTrue(self.peer.is_verifying)
 
     def test_METHOD_start_verify_peer_loop__returns_if_is_verifying_is_True(self):
         async def mock_verify_task():
@@ -816,13 +889,87 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_restart(self):
         self.peer.start()
-        self.async_sleep(4)
+
+        while not self.peer.is_connected:
+            self.async_sleep(0.1)
 
         self.assertIsNotNone(self.peer.subscriber)
+
+        task = asyncio.ensure_future(self.peer.restart())
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.async_sleep(1)
+        self.assertIsNotNone(self.peer.subscriber)
+
+    def test_METHOD_update_ip(self):
+        remote_peer = MockRouter(
+            valid_peers=[self.local_wallet.curve_vk],
+            wallet=self.remote_peer_wallet,
+            port=19001
+        )
+        while not remote_peer.running:
+            self.async_sleep(0.1)
+
+        self.peer.start()
+
+        while not self.peer.is_connected:
+            self.async_sleep(0.1)
+
+        new_ip = 'tcp://127.0.0.1:19001'
+
+        self.assertIsNotNone(self.peer.subscriber)
+
+        task = asyncio.ensure_future(self.peer.update_ip(new_ip=new_ip))
+
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.async_sleep(1)
+
+        while not self.peer.is_connected:
+            self.async_sleep(0.1)
+
+        self.assertIsNotNone(self.peer.subscriber)
+        self.assertEqual(new_ip, self.peer.request_address)
+        self.assertTrue(self.peer.is_connected)
+
+        remote_peer.stop()
+        remote_peer.join()
+
+    def test_METHOD_test_connection__returns_True_if_peer_available(self):
+        self.peer.start()
+
+        while not self.peer.is_connected:
+            self.async_sleep(0.1)
+
+        task = asyncio.ensure_future(self.peer.test_connection())
+        while not task.done():
+            self.async_sleep(0.1)
 
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.restart())
 
-        self.async_sleep(4)
-        self.assertIsNotNone(self.peer.subscriber)
+        res = loop.run_until_complete(asyncio.gather(task))
 
+        self.assertTrue(res[0])
+        self.assertTrue(self.peer.connected)
+
+    def test_METHOD_test_connection__returns_False_if_peer_unavailable(self):
+        self.peer.start()
+
+
+        while not self.peer.is_connected:
+            self.async_sleep(0.1)
+
+        self.peer.set_ip(address='tcp://127.0.0.1:19001')
+
+        task = asyncio.ensure_future(self.peer.test_connection())
+        while not task.done():
+            self.async_sleep(0.1)
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(asyncio.gather(task))
+
+        self.assertFalse(res[0])
+        self.assertFalse(self.peer.connected)
+        self.assertTrue(self.peer.reconnecting)
