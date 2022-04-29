@@ -20,7 +20,7 @@ WORK_SERVICE = 'work'
 LATEST_BLOCK_INFO = 'latest_block_info'
 
 ACTION_PING = "ping"
-ACTION_HELLO = "helo"
+ACTION_HELLO = "hello"
 ACTION_GET_LATEST_BLOCK = 'get_latest_block'
 ACTION_GET_BLOCK = "get_block"
 ACTION_GET_NETWORK = "get_node_list"
@@ -52,7 +52,9 @@ class NewPeerProcessor(Processor):
         self.new_peer_callback(msg=msg)
 
 class Network:
-    def __init__(self, wallet: Wallet = Wallet(), driver: ContractDriver = ContractDriver(), socket_ports: dict = None):
+    def __init__(self, wallet: Wallet = Wallet(), driver: ContractDriver = ContractDriver(), socket_ports: dict = None,
+                 local: bool = False):
+
         self.wallet = wallet
         self.driver = driver
 
@@ -70,8 +72,11 @@ class Network:
         self.services = {}
         self.actions = {}
 
-        self.external_ip = requests.get('http://api.ipify.org').text
-
+        self.local = local
+        if self.local:
+            self.external_ip = '127.0.0.1'
+        else:
+            self.external_ip = requests.get('http://api.ipify.org').text
         self.running = False
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
@@ -87,10 +92,23 @@ class Network:
     @property
     def is_running(self):
         return self.running
+    @property
+    def all_sockets_stopped(self):
+        try:
+            self_not_running = not self.is_running
+            router_not_running = not self.router.is_running
+            publisher_not_running = not self.publisher.is_running
+            all_stopped = self_not_running and router_not_running and publisher_not_running
+            return all_stopped
+        except:
+            return False
 
     @property
     def publisher_address(self):
-        return '{}:{}'.format('tcp://*', self.socket_ports.get('publisher'))
+        if self.local:
+            return '{}:{}'.format('tcp://127.0.0.1', self.socket_ports.get('publisher'))
+        else:
+            return '{}:{}'.format('tcp://*', self.socket_ports.get('publisher'))
 
     @property
     def router_address(self):
@@ -113,9 +131,9 @@ class Network:
         return self.peers.values()
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = f'[NETWORK]{message}'
+        named_message = f'[NETWORK] {message}'
 
-        logger = get_logger(f'{self.router_address}')
+        logger = get_logger(f'{self.external_address}')
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
@@ -123,7 +141,7 @@ class Network:
         if log_type == 'warning':
             logger.warning(named_message)
 
-        print(f'[{self.router_address}]{named_message}')
+        print(f'[{self.external_address}]{named_message}\n')
 
     def setup_event_loop(self):
         try:
@@ -140,14 +158,18 @@ class Network:
             asyncio.set_event_loop(self.loop)
 
     def setup_publisher(self):
-        self.publisher = Publisher(ctx=self.ctx)
+        self.publisher = Publisher(
+            ctx=self.ctx,
+            network_ip=self.external_address
+        )
         self.publisher.set_address(port=self.socket_ports.get('publisher'))
 
     def setup_router(self):
         self.router = Router(
             wallet=self.wallet,
             message_callback=self.router_callback,
-            ctx=self.ctx
+            ctx=self.ctx,
+            network_ip=self.external_address
         )
         self.router.set_address(port=self.socket_ports.get('router'))
 
@@ -190,7 +212,7 @@ class Network:
     def num_of_peers(self) -> int:
         return len(self.peer_list)
 
-    def num_of_peers_connected(self):
+    def num_of_peers_connected(self) -> int:
         return len(list(filter(lambda x: x is True, [peer.is_connected for peer in self.peer_list])))
 
     def all_peers_connected(self):
@@ -232,7 +254,8 @@ class Network:
             local_wallet=self.wallet,
             socket_ports=self.socket_ports,
             connected_callback=self.connected_to_peer_callback,
-            ctx=self.ctx
+            ctx=self.ctx,
+            local=self.local
         )
 
     def start_peer(self, vk: str) -> None:
@@ -278,7 +301,10 @@ class Network:
 
         print(f'[{self.external_address}][NEW PEER CONNECTED] "{peer.local_vk}" at {peer.request_address}')
 
-        self.publisher.announce_new_peer_connection(ip=peer.request_address, vk=peer_vk)
+        ip = peer.request_address
+
+        self.publisher.announce_new_peer_connection(ip=ip, vk=peer_vk)
+
 
     def new_peer_connection_service(self, msg: dict) -> None:
         if not msg:
@@ -351,7 +377,7 @@ class Network:
     def get_masternode_and_delegate_vk_list(self) -> list:
         return self.get_masternode_vk_list() + self.get_delegate_vk_list()
 
-    def hello_response(self, challenge: str = None) -> bytes:
+    def hello_response(self, challenge: str = None) -> str:
         latest_block_info = self.get_latest_block_info()
         block_num = latest_block_info.get('number')
         hlc_timestamp = latest_block_info.get("hlc_timestamp")
@@ -361,7 +387,7 @@ class Network:
         except:
             challenge_response = ""
 
-        return ('{"response":"%s", "challenge_response": "%s","latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, hlc_timestamp)).encode()
+        return '{"response":"%s", "challenge_response": "%s","latest_block_num": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, hlc_timestamp)
 
     def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
@@ -374,7 +400,7 @@ class Network:
         if action == ACTION_PING:
             self.router.send_msg(
                 to_vk=ident_vk_string,
-                msg='{"response": "ping"}'.encode()
+                msg_str=json.dumps({"response": "ping"})
             )
 
         if action == ACTION_HELLO:
@@ -385,7 +411,7 @@ class Network:
 
             self.router.send_msg(
                 to_vk=ident_vk_string,
-                msg=self.hello_response(challenge=challenge)
+                msg_str=self.hello_response(challenge=challenge)
             )
 
             self.connect_peer(vk=ident_vk_string, ip=ip)
@@ -395,10 +421,10 @@ class Network:
             block_num = latest_block_info.get('number')
             hlc_timestamp = latest_block_info.get("hlc_timestamp")
 
-            resp_msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp)).encode()
+            resp_msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp))
             self.router.send_msg(
                 to_vk=ident_vk_string,
-                msg=resp_msg
+                msg_str=resp_msg
             )
 
         if action == ACTION_GET_BLOCK:
@@ -410,17 +436,17 @@ class Network:
 
                 self.router.send_msg(
                     to_vk=ident_vk_string,
-                    msg=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info)).encode()
+                    msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info))
                 )
 
         if action == ACTION_GET_NETWORK:
             node_list = json.dumps(self.make_node_list())
 
-            resp_msg = ('{"response": "%s", "node_list": %s}' % (ACTION_GET_NETWORK, node_list)).encode()
+            resp_msg = ('{"response": "%s", "node_list": %s}' % (ACTION_GET_NETWORK, node_list))
 
             self.router.send_msg(
                 to_vk=ident_vk_string,
-                msg=resp_msg
+                msg_str=resp_msg
             )
 
     async def stop(self):

@@ -7,6 +7,7 @@ from lamden.crypto.z85 import z85_key
 from lamden.crypto.challenges import create_challenge, verify_challenge
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
+from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION
 
 from typing import Callable
 from urllib.parse import urlparse
@@ -14,16 +15,18 @@ from urllib.parse import urlparse
 LATEST_BLOCK_INFO = 'latest_block_info'
 GET_BLOCK = 'get_block'
 
-SUBSCRIPTIONS = ["work", "new_peer_connection", "contenders"]
+SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders"]
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable, services: dict = None,
-                connected_callback: Callable = None, socket_ports: dict = None, ctx: zmq.Context = None):
+                connected_callback: Callable = None, socket_ports: dict = None, ctx: zmq.Context = None,
+                 local: bool = False):
         self.ctx = ctx
         self.server_vk = server_vk
-        self.server_z85_key = z85_key(server_vk)
+        self.server_curve_vk = z85_key(server_vk)
 
         self.get_network_ip = get_network_ip
+        self.local = local
 
         self.protocol = 'tcp://'
 
@@ -116,9 +119,9 @@ class Peer:
         return not self.verify_task.done()
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = f'[PEER]{message}'
+        named_message = f'[PEER] {message}'
 
-        logger = get_logger(f'{self.request_address}')
+        logger = get_logger(f'{self.get_network_ip()}')
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
@@ -126,7 +129,7 @@ class Peer:
         if log_type == 'warning':
             logger.warning(named_message)
 
-        print(f'[{self.request_address}]{named_message}')
+        print(f'[{self.get_network_ip()}]{named_message}\n')
 
     def setup_event_loop(self):
         try:
@@ -141,6 +144,23 @@ class Peer:
         if not self.loop:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
+
+    def setup_subscriber(self) -> None:
+        self.subscriber = Subscriber(
+            address=self.subscriber_address,
+            topics=SUBSCRIPTIONS,
+            callback=self.process_subscription,
+            local_ip=self.get_network_ip(),
+            local=self.local
+        )
+        self.subscriber.start()
+
+    def setup_request(self) -> None:
+        self.request = Request(
+            server_curve_vk=self.server_curve_vk,
+            local_wallet=self.local_wallet,
+            local_ip=self.get_network_ip()
+        )
 
     def is_available(self) -> bool:
         tasks = asyncio.gather(
@@ -228,10 +248,11 @@ class Peer:
                 self.log('info', 'Received response from authorized node with pub info.')
 
                 if not self.subscriber:
+                    self.log('info', f'Setting up Subscriber to {self.subscriber_address}')
                     self.setup_subscriber()
 
                     if self.connected_callback is not None:
-                        self.connected_callback(peer_vk=self.local_vk)
+                        self.connected_callback(peer_vk=self.server_vk)
 
                 self.verified = True
         else:
@@ -246,20 +267,6 @@ class Peer:
             'number': latest_block_num,
             'hlc_timestamp': latest_hlc_timestamp
         })
-
-    def setup_subscriber(self) -> None:
-        self.subscriber = Subscriber(
-            address=self.subscriber_address,
-            topics=SUBSCRIPTIONS,
-            callback=self.process_subscription
-        )
-        self.subscriber.start()
-
-    def setup_request(self) -> None:
-        self.request = Request(
-            server_vk=self.server_z85_key,
-            local_wallet=self.local_wallet
-        )
 
     async def process_subscription(self, data: list) -> None:
         if self.services is None:
@@ -284,7 +291,7 @@ class Peer:
         processor = services.get(topic_str)
 
         if processor is not None and msg_str is not None:
-            await processor.process_message(msg_str)
+            asyncio.ensure_future(processor.process_message(msg_str))
 
     async def test_connection(self) -> bool:
         connected = await self.ping()
@@ -312,13 +319,13 @@ class Peer:
 
             res = await self.ping()
 
-            if res is None:
+            if res:
+                self.connected = True
+            else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
 
         self.log('info', f'Reconnected to {self.request_address}!')
-
-        self.connected = True
         self.reconnecting = False
 
     async def update_ip(self, new_ip):
@@ -359,7 +366,7 @@ class Peer:
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json

@@ -18,10 +18,10 @@ class Result:
 class MockRequest():
     con_failed = 'con_failed'
 
-    def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, logger=None):
+    def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, logger=None, ctx: zmq.Context = None):
         self.log = logger or get_logger('REQUEST')
 
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.msg = ''
 

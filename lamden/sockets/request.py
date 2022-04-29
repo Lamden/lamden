@@ -14,17 +14,18 @@ class Result:
 class Request():
     con_failed = 'con_failed'
 
-    def __init__(self, server_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None):
+    def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
+                 local_ip: str = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.msg = ''
 
         self.running = True
 
+        self.local_ip = local_ip
         self.local_wallet = local_wallet or Wallet()
-        self.server_vk = server_vk
+        self.server_curve_vk = server_curve_vk
 
-        self.socket = None
         self.pollin = None
 
         self.response = ''
@@ -36,15 +37,21 @@ class Request():
 
     @property
     def secure_socket(self) -> bool:
-        return self.server_vk is not None
+        return self.server_curve_vk is not None
 
     @property
     def id(self) -> str:
         return self.local_wallet.verifying_key
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = message
-        logger = get_logger(f'REQUEST')
+        if self.local_ip:
+            named_message = f'[REQUEST] {message}'
+            logger = get_logger(self.local_ip)
+            print(f'[{self.local_ip}]{named_message}\n')
+        else:
+            named_message = message
+            logger = get_logger(f'REQUEST')
+            print(f'[REQUEST] {named_message}\n')
 
         if log_type == 'info':
             logger.info(named_message)
@@ -53,7 +60,7 @@ class Request():
         if log_type == 'warning':
             logger.warning(named_message)
 
-        print(f'[REQUEST]{named_message}')
+
 
     def socket_is_bound(self, socket) -> bool:
         try:
@@ -69,11 +76,11 @@ class Request():
 
     def setup_secure_socket(self, socket: zmq.Socket) -> None:
         if not self.secure_socket:
-            raise AttributeError("Provided server_vk for a secure socket connection.")
+            raise AttributeError("Provided server_curve_vk for a secure socket connection.")
 
         socket.curve_secretkey = self.local_wallet.curve_sk
         socket.curve_publickey = self.local_wallet.curve_vk
-        socket.curve_serverkey = self.server_vk
+        socket.curve_serverkey = self.server_curve_vk
         socket.identity = encode(self.id).encode()
 
     def setup_polling(self, socket: zmq.Socket = None) -> zmq.Poller:
@@ -170,11 +177,5 @@ class Request():
     def stop(self) -> None:
         self.running = False
         self.log('info', 'Stopping.')
-        if self.socket:
-            try:
-                self.socket.close()
-            except zmq.ZMQError as err:
-                self.log('error', f'Error Stopping: {err}')
-                pass
 
 

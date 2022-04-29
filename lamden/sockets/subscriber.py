@@ -10,8 +10,13 @@ EXCEPTION_TOPIC_NOT_STRING = "Topic must be string."
 EXCEPTION_NO_SOCKET = "No socket created."
 
 class Subscriber():
-    def __init__(self, address: str, callback: Callable = None, topics: list=[], ctx: zmq.Context = None):
+    def __init__(self, address: str, callback: Callable = None, topics: list=[], ctx: zmq.Context = None,
+                local_ip: str = None, local: bool = False):
+
         self.running = False
+
+        self.local_ip = local_ip
+        self.local = local
 
         self.address = address
         self.callback = callback
@@ -48,14 +53,14 @@ class Subscriber():
             return True
 
     def log(self, log_type: str, message: str) -> None:
-        if self.address:
+        if self.local_ip:
             named_message = f'[SUBSCRIBER] {message}'
-            logger = get_logger(f'{self.address}')
-            print(named_message)
+            logger = get_logger(f'{self.local_ip}')
+            print(f'[{self.local_ip}]{named_message}\n')
         else:
             named_message = message
             logger = get_logger(f'SUBSCRIBER')
-            print(f'[SUBSCRIBER] ß{named_message}')
+            print(f'[SUBSCRIBER] {named_message}\n')
 
         if log_type == 'info':
             logger.info(named_message)
@@ -79,11 +84,19 @@ class Subscriber():
     def connect_socket(self):
         if not self.socket:
             self.create_socket()
+        self.log('info', f'Connecting to {self.address}')
 
         try:
-            self.socket.bind(self.address)
+            if self.local:
+                self.socket.connect(self.address)
+            else:
+                self.socket.bind(self.address)
+            self.log('info', f'Connected to {self.address}')
         except zmq.error.ZMQError as err:
-            self.log('error', err)
+            if (str(err) == 'Address already in use'):
+                self.log('error', f'Address {self.address} already in use.')
+            else:
+                self.log('error', err)
             pass
 
 
@@ -139,7 +152,7 @@ class Subscriber():
                 self.log('info', f'Got event from {self.address}')
 
                 if self.callback:
-                    self.callback(data)
+                    asyncio.ensure_future(self.callback(data))
 
     async def stop_checking_for_messages(self):
         self.running = False

@@ -12,9 +12,12 @@ EXCEPTION_MSG_NOT_DICT = "argument 'msg_dict' should be type dict."
 EXCEPTION_TOPIC_BYTES_NOT_BYTES = "argument 'topic_bytes' should be type bytes."
 EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
+TOPIC_NEW_PEER_CONNECTION = "new_peer_connection"
+
 class Publisher():
-    def __init__(self, ctx: zmq.Context = None):
+    def __init__(self, ctx: zmq.Context = None, network_ip: str = None):
         # Configure the listening socket
+        self.network_ip = network_ip
         self.address = None
         self.socket = None
 
@@ -51,17 +54,21 @@ class Publisher():
             return True
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = f'[PUBLISHER]{message}'
+        if self.network_ip:
+            named_message = f'[PUBLISHER] {message}'
+            print(f'[{self.network_ip}]{named_message}\n')
+        else:
+            named_message = message
+            print(f'[PUBLISHER] {named_message}\n')
 
-        logger = get_logger(f'{self.address}')
+        logger_name = self.network_ip or 'PUBLISHER'
+        logger = get_logger(logger_name)
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
             logger.error(named_message)
         if log_type == 'warning':
             logger.warning(named_message)
-
-        print(f'[{self.address}]{named_message}')
 
     def start(self) -> None:
         if self.running:
@@ -128,7 +135,7 @@ class Publisher():
 
     def announce_new_peer_connection(self, vk: str, ip: str) -> None:
         self.publish(
-            topic_str="new_peer_connection",
+            topic_str=TOPIC_NEW_PEER_CONNECTION,
             msg_dict={
                 'vk': vk,
                 'ip': ip

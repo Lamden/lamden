@@ -38,7 +38,7 @@ class TestRequestSocket(unittest.TestCase):
 
     def create_secure_request(self):
         self.request = Request(
-            server_vk=self.peer_wallet.curve_vk,
+            server_curve_vk=self.peer_wallet.curve_vk,
             local_wallet=self.local_wallet
         )
 
@@ -441,7 +441,7 @@ class TestRequestSocket(unittest.TestCase):
         self.assertFalse(self.request.secure_socket)
 
         wallet = Wallet()
-        self.request.server_vk = wallet.verifying_key
+        self.request.server_curve_vk = wallet.curve_vk
         self.assertTrue(self.request.secure_socket)
 
     def test_PROPERTY_is_running__return_TRUE(self):

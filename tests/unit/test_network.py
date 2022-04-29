@@ -108,8 +108,8 @@ class TestNetwork(TestCase):
             value=current_vks
         )
 
-    def mock_send_msg(self, to_vk, msg):
-        self.router_msg = (to_vk, msg)
+    def mock_send_msg(self, to_vk, msg_str):
+        self.router_msg = (to_vk, msg_str)
 
     def mock_peer_update_ip(self, new_ip):
         self.called_ip_update = new_ip
@@ -269,7 +269,7 @@ class TestNetwork(TestCase):
 
         self.assertTrue(task.done())
 
-    def test_MATHOD_stop__does_not_raise_exception(self):
+    def test_METHOD_stop__does_not_raise_exception(self):
         network_1 = self.create_network()
         network_1.start()
 
@@ -283,7 +283,7 @@ class TestNetwork(TestCase):
 
         self.assertFalse(network_1.running)
 
-    def test_MATHOD_stop__stops_all_peers(self):
+    def test_METHOD_stop__stops_all_peers(self):
         network_1 = self.create_network()
         network_1.start()
 
@@ -298,7 +298,7 @@ class TestNetwork(TestCase):
         peer = network_1.get_peer(vk=peer_vk)
 
         peer.start()
-        while not peer.is_connected:
+        while not peer.is_verifying:
             self.async_sleep(0.1)
 
         task = asyncio.ensure_future(network_1.stop())
@@ -464,12 +464,12 @@ class TestNetwork(TestCase):
         network_1.router_callback(ident_vk_string="testing_vk", msg=ping_msg)
 
         self.assertIsNotNone(self.router_msg)
-        to_vk, msg = self.router_msg
+        to_vk, msg_str = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg_str, str)
 
-        msg_obj = json.loads(msg)
+        msg_obj = json.loads(msg_str)
         self.assertEqual(ACTION_PING, msg_obj.get('response'))
 
 
@@ -485,12 +485,12 @@ class TestNetwork(TestCase):
         network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg)
 
         self.assertIsNotNone(self.router_msg)
-        to_vk, msg = self.router_msg
+        to_vk, msg_str = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg_str, str)
 
-        msg_obj = json.loads(msg)
+        msg_obj = json.loads(msg_str)
         self.assertEqual(ACTION_HELLO, msg_obj.get("response"))
         self.assertEqual(0, msg_obj.get("latest_block_num"))
         self.assertEqual("0", msg_obj.get("latest_hlc_timestamp"))
@@ -539,7 +539,7 @@ class TestNetwork(TestCase):
         to_vk, msg = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_LATEST_BLOCK, msg_obj.get("response"))
@@ -566,7 +566,7 @@ class TestNetwork(TestCase):
         to_vk, msg = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_BLOCK, msg_obj.get("response"))
@@ -592,7 +592,7 @@ class TestNetwork(TestCase):
         to_vk, msg = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_BLOCK, msg_obj.get("response"))
@@ -621,7 +621,7 @@ class TestNetwork(TestCase):
         to_vk, msg = self.router_msg
 
         self.assertIsInstance(to_vk, str)
-        self.assertIsInstance(msg, bytes)
+        self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_NETWORK, msg_obj.get("response"))
@@ -940,7 +940,7 @@ class TestNetwork(TestCase):
 
         hello_response = network_1.hello_response(challenge=challenge)
 
-        self.assertIsInstance(hello_response, bytes)
+        self.assertIsInstance(hello_response, str)
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))
@@ -953,7 +953,7 @@ class TestNetwork(TestCase):
 
         hello_response = network_1.hello_response()
 
-        self.assertIsInstance(hello_response, bytes)
+        self.assertIsInstance(hello_response, str)
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))

@@ -20,8 +20,9 @@ EXCEPTION_TO_VK_NOT_STRING = "to_vk is not type str."
 EXCEPTION_MSG_NOT_STRING = "msg_str is not type str."
 
 class CredentialsProvider(object):
-    def __init__(self):
+    def __init__(self, network_ip: str = None):
         self.approved_keys = {}
+        self.network_ip = network_ip
 
     def add_key(self, vk: str) -> None:
         self.approved_keys[vk] = z85_key(vk)
@@ -35,15 +36,21 @@ class CredentialsProvider(object):
             pass
 
     def log(self, log_type: str, message: str) -> None:
-        logger = get_logger('CREDENTIALS PROVIDER')
-        if log_type == 'info':
-            logger.info(message)
-        if log_type == 'error':
-            logger.error(message)
-        if log_type == 'warning':
-            logger.warning(message)
+        if self.network_ip:
+            named_message = f'[CREDENTIALS PROVIDER] {message}'
+            print(f'[{self.network_ip}]{named_message}\n')
+        else:
+            named_message = message
+            print(f'[CREDENTIALS PROVIDER] {named_message}\n')
 
-        print(f'[CREDENTIALS PROVIDER]{message}')
+        logger_name = self.network_ip or 'CREDENTIALS PROVIDER'
+        logger = get_logger(logger_name)
+        if log_type == 'info':
+            logger.info(named_message)
+        if log_type == 'error':
+            logger.error(named_message)
+        if log_type == 'warning':
+            logger.warning(named_message)
 
     def key_is_approved(self, curve_vk: bytes) -> bool:
         return curve_vk in self.approved_keys.values()
@@ -57,22 +64,24 @@ class CredentialsProvider(object):
             return False
 
 class Router():
-    def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None):
+    def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,
+                 network_ip: str = None):
         self.wallet = wallet
         self.message_callback = message_callback
 
+        self.network_ip = network_ip
         self.ctx = ctx
         self.socket = None
         self.auth = None
-        self.cred_provider = CredentialsProvider()
+        self.cred_provider = CredentialsProvider(network_ip=network_ip)
 
         self.poller = zmq.asyncio.Poller()
-        self.poll_time = 0.001
+        self.poll_time_ms = 10
 
         self.running = False
-        self.checking = False
-        self.loop = None
+        self.should_check = False
 
+        self.checking = False
         self.task_check_for_messages = None
 
         self.address = None
@@ -85,7 +94,8 @@ class Router():
     @property
     def is_checking(self) -> bool:
         try:
-            return not self.task_check_for_messages.done()
+            done = self.task_check_for_messages.done()
+            return not done
         except Exception:
             return False
 
@@ -118,18 +128,22 @@ class Router():
             return False
 
     def log(self, log_type: str, message: str) -> None:
-        named_message = f'[ROUTER]{message}'
+        if self.network_ip:
+            named_message = f'[ROUTER] {message}'
+            print(f'[{self.network_ip}]{named_message}\n')
+        else:
+            named_message = message
+            print(f'[ROUTER] {named_message}\n')
 
-        logger = get_logger(f'{self.address}')
+        logger_name = self.network_ip or 'ROUTER'
+
+        logger = get_logger(logger_name)
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
             logger.error(named_message)
         if log_type == 'warning':
             logger.warning(named_message)
-
-        print(f'[{self.address}]{named_message}')
-
 
     def set_address(self, ip: str = "*", port: int = 19000) -> None:
         if not isinstance(ip, str):
@@ -178,7 +192,10 @@ class Router():
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
 
+        self.running = True
+
         self.log('info', f'Started. on {self.address}')
+
 
     def run_curve_server(self):
         self.setup_socket()
@@ -190,6 +207,8 @@ class Router():
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
 
+        self.running = True
+
         self.log('info', f'Started. on {self.address}')
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
@@ -197,10 +216,10 @@ class Router():
         return self.socket in dict(sockets)
 
     async def check_for_messages(self):
-        self.running = True
+        self.should_check = True
 
-        while self.is_running:
-            if await self.has_message(timeout_ms=50):
+        while self.should_check:
+            if await self.has_message(timeout_ms=self.poll_time_ms):
                 ident_vk_bytes, empty, msg = await self.socket.recv_multipart()
 
                 self.log('info', f'Received request from {ident_vk_bytes}: {msg}')
@@ -212,6 +231,8 @@ class Router():
 
                 if self.message_callback:
                     self.message_callback(ident_vk_string, msg)
+
+        print('Done Checking for Messages')
 
     def send_msg(self, to_vk: str, msg_str: str):
         if not self.socket:
@@ -236,17 +257,20 @@ class Router():
             if vk not in vk_list:
                 self.cred_provider.remove_key(vk=vk)
 
-    def close_socket(self):
+    async def close_socket(self):
         if not self.socket_is_closed:
             self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self.wait_for_socket_to_close())
+            await self.wait_for_socket_to_close()
 
     async def stop_checking_for_messages(self):
-        self.running = False
-        while self.is_checking:
-            await asyncio.sleep(self.poll_time / 1000)
+        try:
+            self.should_check = False
+            while self.is_checking:
+                await asyncio.sleep(self.poll_time_ms / 1000)
+        except Exception as err:
+            print(err)
+
 
     async def wait_for_socket_to_close(self):
         while not self.socket_is_closed:
@@ -256,19 +280,24 @@ class Router():
         if self.auth_is_stopped:
             return
 
-        self.auth.stop()
-
-        if self.auth.zap_socket:
-            self.auth.zap_socket.close()
-
         while not self.auth_is_stopped:
+            try:
+                self.auth.stop()
+                if self.auth.zap_socket:
+                    self.auth.zap_socket.close()
+            except:
+                pass
             await asyncio.sleep(0.01)
 
     async def stop(self):
-        await self.stop_checking_for_messages()
-        await self.stop_auth()
-        self.close_socket()
+        try:
+            await self.stop_checking_for_messages()
+            await self.stop_auth()
+            await self.close_socket()
+        except Exception as err:
+            print(err)
 
+        self.running = False
         self.log('info', 'Stopped.')
 
 

@@ -108,6 +108,9 @@ class TestPeer(unittest.TestCase):
         self.assertIsInstance(obj=self.__class__.remote_peer, cls=MockRouter)
 
     def test_can_create_instance__PEER(self):
+        self.assertEqual(self.remote_peer_wallet.curve_vk, self.peer.server_curve_vk)
+
+    def test_can_create_instance__creates_server_curve_vk_from_verifying_key(self):
         self.assertIsInstance(self.peer, Peer)
 
     def test_METHOD_setup_event_loop__uses_existing_running_loop(self):
@@ -723,7 +726,7 @@ class TestPeer(unittest.TestCase):
         while not task.done():
             self.async_sleep(0.1)
 
-        self.assertEqual(self.peer.local_vk, self.connected_callback_called)
+        self.assertEqual(self.peer.server_vk, self.connected_callback_called)
 
     def test_METHOD_verify_peer__starts_subscriber(self):
         self.peer.setup_request()
