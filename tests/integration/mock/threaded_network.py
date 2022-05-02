@@ -34,6 +34,7 @@ class ThreadedNetwork(threading.Thread):
     def run(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+
         self.n = Network(
             wallet=self.wallet,
             socket_ports=self.socket_ports,

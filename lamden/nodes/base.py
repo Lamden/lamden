@@ -69,7 +69,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, ctx=None, bootnodes={}, blocks=storage.BlockStorage(),
+    def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
                  nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
