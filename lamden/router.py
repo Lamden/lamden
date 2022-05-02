@@ -277,3 +277,32 @@ async def secure_multicast(msg: dict, service, wallet: Wallet, peer_map: dict, c
         )
 
     await asyncio.gather(*coroutines)
+
+
+def build_secure_socket(wallet: Wallet, vk: str, ip: str, ctx: zmq.asyncio.Context, linger=500, cert_dir=DEFAULT_DIR):
+    socket = ctx.socket(zmq.DEALER)
+    socket.setsockopt(zmq.LINGER, linger)
+    socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+
+    socket.curve_secretkey = wallet.curve_sk
+    socket.curve_publickey = wallet.curve_vk
+
+    filename = str(cert_dir / f'{vk}.key')
+    if not os.path.exists(filename):
+        return None
+
+    server_pub, _ = load_certificate(filename)
+
+    socket.curve_serverkey = server_pub
+
+    try:
+        socket.connect(ip)
+    except ZMQBaseError:
+        socket.close()
+        return None
+
+    return socket
+
+
+def discover_peer():
+    pass

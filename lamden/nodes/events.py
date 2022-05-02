@@ -20,6 +20,7 @@ import socketio
 from sanic import Sanic
 import json
 import argparse
+from contracting.db.encoder import encode, decode
 
 EVENTS_HOME = pathlib.Path().home().joinpath('.lamden').joinpath('events')
 EXTENSION = '.e'
@@ -51,8 +52,7 @@ class EventListener:
             with open(file, 'r') as f:
                 try:
                     e = json.load(f)
-                    event = Event(e['topics'], e['data'])
-                    events.append(event)
+                    events.append(Event(e['topics'], e['data']))
                 except:
                     # TODO(nikita): proper handling
                     print('failed to load event')

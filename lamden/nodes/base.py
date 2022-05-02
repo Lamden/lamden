@@ -245,7 +245,8 @@ class Node:
                     wallet=self.wallet,
                     ctx=self.ctx
                 )
-            self.process_new_block(block)
+            if not block.get('error'):
+                self.process_new_block(block)
 
         # Process any blocks that were made while we were catching up
         while len(self.new_block_processor.q) > 0:
@@ -318,8 +319,6 @@ class Node:
                 client=self.client
             )
 
-        #self.nonces.flush_pending()
-
         self.log.info('Updating metadata.')
         self.current_height = storage.get_latest_block_height(self.driver)
         self.current_hash = storage.get_latest_block_hash(self.driver)
@@ -335,14 +334,13 @@ class Node:
         if self.store:
             encoded_block = encode(block)
             encoded_block = json.loads(encoded_block)
-
-            self.blocks.store_block(encoded_block)
-
             # create Event File
             self.event_writer.write_event(Event(
                 topics=[NEW_BLOCK_EVENT],
                 data=encoded_block
             ))
+
+            self.blocks.store_block(block)
 
         # Prepare for the next block by flushing out driver and notification state
         # self.new_block_processor.clean()
