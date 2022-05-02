@@ -1,5 +1,5 @@
 from unittest import TestCase
-import lamden.new_network
+import lamden.network
 from tests.integration.mock.mocks_new import MOCK_FOUNDER_SK, MockNetwork
 
 

@@ -3,7 +3,7 @@ from contracting.db.driver import ContractDriver
 from lamden.nodes.processors import block_contender
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
-from lamden.new_network import Network
+from lamden.network import Network
 from copy import deepcopy
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results

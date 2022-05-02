@@ -1,7 +1,7 @@
 import asyncio
 import threading
 
-from lamden.new_network import Network, ACTION_GET_LATEST_BLOCK
+from lamden.network import Network, ACTION_GET_LATEST_BLOCK
 from lamden.crypto.wallet import Wallet
 
 class ThreadedNetwork(threading.Thread):

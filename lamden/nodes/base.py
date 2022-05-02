@@ -14,7 +14,7 @@ from lamden import storage, router, rewards, upgrade, contracts
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.new_network import Network
+from lamden.network import Network
 from lamden.nodes import system_usage
 from lamden.nodes import processing_queue, validation_queue
 from lamden.nodes.processors import work, block_contender

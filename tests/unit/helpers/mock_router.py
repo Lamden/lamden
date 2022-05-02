@@ -87,7 +87,9 @@ class MockRouter(threading.Thread):
                             resp_msg = json.dumps(
                                 {
                                     'response': 'hello',
-                                    'challenge_response': challenge_response
+                                    'challenge_response': challenge_response,
+                                    'latest_block_number': 1,
+                                    'latest_hlc_timestamp': "1"
                                 }).encode('UTF-8')
                         else:
                             resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')

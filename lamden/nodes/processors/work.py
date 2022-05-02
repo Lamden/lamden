@@ -2,7 +2,7 @@ from lamden.logger.base import get_logger
 from lamden import router, storage
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx
-from lamden.new_network import Network
+from lamden.network import Network
 
 class WorkValidator(router.Processor):
     def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node, network: Network):

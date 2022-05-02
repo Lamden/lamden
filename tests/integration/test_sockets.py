@@ -4,7 +4,7 @@ import traceback
 from time import sleep
 import asyncio
 
-from lamden.new_network import Network
+from lamden.network import Network
 from lamden.crypto.wallet import Wallet
 import unittest
 import sys

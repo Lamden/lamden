@@ -1,6 +1,6 @@
 import zmq.asyncio
 
-from lamden.new_network import Network, ACTION_GET_LATEST_BLOCK
+from lamden.network import Network, ACTION_GET_LATEST_BLOCK
 from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, FSDriver
 from tests.unit.helpers.mock_request import MockRequest
@@ -114,6 +114,9 @@ class TestNetwork(TestCase):
         loop.run_until_complete(tasks)
 
     def test_can_start_one_threaded_network(self):
+        '''
+            One Threaded Netowrk can start up, no errors.
+        '''
         network_1 = self.create_threaded_network(index=0)
         network_1.start()
 
@@ -121,7 +124,10 @@ class TestNetwork(TestCase):
 
         self.assertTrue(network_1.is_running)
 
-    def test_threaded_networks_can_add_each_other_as_peers(self):
+    def test_two_threaded_networks_can_add_each_other_as_peers(self):
+        '''
+            Start up two networks, connet #1 to #2 and see that #2 adds in the process #1.
+        '''
         num_of_networks = 2
 
         for i in range(num_of_networks):
@@ -318,6 +324,3 @@ class TestNetwork(TestCase):
         for network in self.networks:
             num_of_peers_connected = network.n.num_of_peers_connected()
             self.assertEqual(3, num_of_peers_connected)
-
-
-

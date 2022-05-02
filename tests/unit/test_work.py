@@ -2,7 +2,7 @@ from contracting.db.encoder import decode
 from lamden.crypto import transaction
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.wallet import Wallet
-from lamden.new_network import Network
+from lamden.network import Network
 from lamden.nodes.hlc import HLC_Clock
 from lamden.nodes.processors.work import WorkValidator
 from unittest import TestCase

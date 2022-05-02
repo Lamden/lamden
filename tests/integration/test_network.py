@@ -1,6 +1,6 @@
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
-from lamden.new_network import Network
+from lamden.network import Network
 from lamden.peer import Peer
 
 import asyncio

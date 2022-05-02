@@ -1,15 +1,19 @@
 import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
-from lamden.new_network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK
+from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK
 from lamden.peer import Peer
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
+from lamden.storage import BlockStorage
 
 from contracting.db.driver import ContractDriver, InMemDriver
 
 import asyncio
 import uvloop
+from pathlib import Path
+import shutil
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 GET_ALL_PEERS = "get_all_peers"
@@ -58,6 +62,16 @@ class TestNetwork(TestCase):
 
         self.driver = ContractDriver(driver=InMemDriver())
 
+        current_path = Path.cwd()
+        lamden_storage_directory = f'{current_path}/.lamden'
+
+        try:
+            shutil.rmtree(lamden_storage_directory)
+        except:
+            pass
+
+        self.storage = BlockStorage(home=Path(lamden_storage_directory))
+
     def tearDown(self):
         for network in self.networks:
             task = asyncio.ensure_future(network.stop())
@@ -77,13 +91,10 @@ class TestNetwork(TestCase):
         network = Network(
             wallet=Wallet(),
             socket_ports=self.create_socket_ports(index),
-            driver=self.driver
+            local=True,
+            driver=self.driver,
+            block_storage=self.storage
         )
-
-        network.ip = '127.0.0.1'
-
-        network.add_action(GET_ALL_PEERS, self.get_peer_list)
-        network.add_action(ACTION_GET_LATEST_BLOCK, self.get_latest_block)
 
         self.networks.append(network)
 
@@ -91,9 +102,6 @@ class TestNetwork(TestCase):
 
     def get_peer_list(self):
         return [network.wallet.verifying_key for network in self.networks]
-
-    def get_latest_block(self):
-        return {}
 
     def add_vk_to_smartcontract(self, node_type, network, vk):
         if node_type == 'masternode':
@@ -203,8 +211,17 @@ class TestNetwork(TestCase):
 
         self.assertFalse(network_1.is_running)
 
-    def test_PROPERTY_publisher_address__returns_concatenated_protocol_ip_and_port(self):
+    def test_PROPERTY_publisher_address__returns_concatenated_protocol_ip_and_port_local_if_local_True(self):
         network_1 = self.create_network()
+
+        port = 8000
+        network_1.socket_ports['publisher'] = 8000
+
+        self.assertEqual(f'tcp://127.0.0.1:{port}', network_1.publisher_address)
+
+    def test_PROPERTY_publisher_address__returns_concatenated_protocol_ip_and_port_wildcard_if_local_False(self):
+        network_1 = self.create_network()
+        network_1.local = False
 
         port = 8000
         network_1.socket_ports['publisher'] = 8000
@@ -547,40 +564,46 @@ class TestNetwork(TestCase):
         self.assertEqual("0", msg_obj.get("hlc_timestamp"))
 
     def test_METHOD_router_callback__get_block_action_creates_proper_response_if_block_exists(self):
-        def return_block(v):
-            return {
-                'number': 1,
-                'hlc_timestamp': '1'
-            }
         network_1 = self.create_network()
         network_1.router.send_msg = self.mock_send_msg
-        network_1.actions[ACTION_GET_BLOCK] = return_block
 
         latest_block_info_msg = json.dumps({'action': ACTION_GET_BLOCK, 'block_num': 1})
         wallet = Wallet()
         peer_vk = wallet.verifying_key
+
+        network_1.block_storage.store_block(block={
+            'number': 1,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '1',
+            'processed': {
+                'hash': 'testing'
+            }
+        })
 
         network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg)
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg = self.router_msg
 
+
         self.assertIsInstance(to_vk, str)
         self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
+
+
         self.assertEqual(ACTION_GET_BLOCK, msg_obj.get("response"))
         block_info = msg_obj.get("block_info")
+
+        self.assertIsNotNone(msg_obj)
         self.assertEqual(1, block_info.get("number"))
+        self.assertEqual("1a2b3c", block_info.get("hash"))
         self.assertEqual("1", block_info.get("hlc_timestamp"))
 
 
     def test_METHOD_router_callback__get_block_action_creates_proper_response_if_block_does_not_exist(self):
-        def return_block(v):
-            return None
         network_1 = self.create_network()
         network_1.router.send_msg = self.mock_send_msg
-        network_1.actions[ACTION_GET_BLOCK] = return_block
 
         latest_block_info_msg = json.dumps({'action': ACTION_GET_BLOCK, 'block_num': 1})
         wallet = Wallet()
@@ -600,7 +623,6 @@ class TestNetwork(TestCase):
         self.assertEqual(None, block_info)
 
     def test_METHOD_router_callback__get_network_action_creates_proper_response(self):
-
         network_1 = self.create_network()
 
         constitution = MockConstitution()

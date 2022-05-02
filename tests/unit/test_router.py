@@ -167,7 +167,8 @@ class TestRouter(unittest.TestCase):
 
     def test_PROPERTY_is_checking__return_FALSE_if_task_is_done(self):
         self.start_router()
-        self.router.running = False
+        self.async_sleep(1)
+        self.router.should_check = False
         self.async_sleep(1)
 
         self.assertTrue(self.router.task_check_for_messages.done())
@@ -492,7 +493,11 @@ class TestRouter(unittest.TestCase):
 
         self.assertFalse(self.router.socket_is_closed)
         self.assertTrue(self.router.socket_is_bound)
-        self.router.close_socket()
+        task = asyncio.ensure_future(self.router.close_socket())
+
+        while not task.done():
+            self.async_sleep(0.1)
+
         self.assertTrue(self.router.socket_is_closed)
         self.assertFalse(self.router.socket_is_bound)
 

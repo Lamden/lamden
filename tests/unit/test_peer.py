@@ -317,12 +317,15 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_hello__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
+
         msg = self.await_sending_request(self.peer.hello)
         challenge = msg.get('challenge')
 
         self.assertIsInstance(msg.get('challenge'), str)
         expected_result = {
             'response': 'hello',
+            'latest_block_number': 1,
+            'latest_hlc_timestamp': '1',
             'success': True,
             'challenge': msg.get('challenge'),
             'challenge_response': self.remote_peer.wallet.sign(challenge)
@@ -352,6 +355,7 @@ class TestPeer(unittest.TestCase):
         }
 
         self.assertDictEqual(expected_result, msg)
+
         self.assertEqual(block_num, self.peer.latest_block_number)
         self.assertEqual(hlc_timestamp, self.peer.latest_block_hlc_timestamp)
 
