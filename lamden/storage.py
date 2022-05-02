@@ -1,106 +1,167 @@
 from contracting.db.driver import ContractDriver
-from pymongo import MongoClient, DESCENDING
-
-from bson.decimal128 import Decimal128
-from bson.codec_options import TypeCodec, TypeEncoder, TypeDecoder
-from bson.codec_options import TypeRegistry
-from bson.codec_options import CodecOptions
-
-from decimal import Decimal
-
-import lamden
-from lamden.logger.base import get_logger
+from contracting.db.driver import FSDriver
+from contracting.db.encoder import encode, decode, encode_kv
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden.logger.base import get_logger
+import json
+import os
+import pathlib
+import shutil
 
-BLOCK_HASH_KEY = '_current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height'
+BLOCK_HASH_KEY = '__latest_block.hash'
+BLOCK_NUM_HEIGHT = '__latest_block.height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
+STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
+
 log = get_logger('STATE')
 
+# TODO(nikita): merge BlockStorage related changes from rsync-poc branch
+class BlockStorage:
+    def __init__(self, home=STORAGE_HOME):
+        self.home = home
 
-class DecimalEncoder(TypeEncoder):
-    python_type = Decimal  # the Python type acted upon by this type codec
+        self.blocks_dir = self.home.joinpath('blocks')
+        self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
+        self.txs_dir = self.home.joinpath('txs')
 
-    def transform_python(self, value):
-        d = Decimal(str(value))
-        return Decimal128(d)
+        self.build_directories()
 
+    def build_directories(self):
+        self.home.mkdir(exist_ok=True, parents=True)
+        self.blocks_dir.mkdir(exist_ok=True, parents=True)
+        self.blocks_alias_dir.mkdir(exist_ok=True, parents=True)
+        self.txs_dir.mkdir(exist_ok=True, parents=True)
 
-class ContractingDecimalEncoder(TypeEncoder):
-    python_type = ContractingDecimal  # the Python type acted upon by this type codec
+    def flush(self):
+        try:
+            shutil.rmtree(self.home)
+            self.build_directories()
+        except FileNotFoundError:
+            pass
 
-    def transform_python(self, value):
-        d = Decimal(str(value._d))
-        return Decimal128(d)
+    def store_block(self, block):
+        if block.get('subblocks') is None:
+            return
 
-
-class DecimalDecoder(TypeDecoder):
-    bson_type = Decimal128
-
-    def transform_bson(self, value):
-        return value.to_decimal()
-
-# class ContractingDecimalCodec(TypeCodec):
-#     python_type = ContractingDecimal  # the Python type acted upon by this type codec
-#     bson_type = Decimal128  # the BSON type acted upon by this type codec
-#
-#     def transform_python(self, value):
-#         return Decimal128(value._d)
-#
-#     def transform_bson(self, value):
-#         return value.to_decimal()
-
-
-type_registry = TypeRegistry([DecimalDecoder(), DecimalEncoder(), ContractingDecimalEncoder()])
-codec_options = CodecOptions(type_registry=type_registry)
-
-
-class NonceStorage:
-    def __init__(self, port=27027, db_name='lamden', nonce_collection='nonces', pending_collection='pending_nonces', config_path=lamden.__path__[0]):
-        self.config_path = config_path
-
-        self.port = port
-
-        self.client = MongoClient()
-        self.db = self.client.get_database(db_name)
-
-        self.nonces = self.db.get_collection(nonce_collection, codec_options=codec_options)
-        self.pending_nonces = self.db.get_collection(pending_collection, codec_options=codec_options)
+        txs, hashes = self.cull_txs(block)
+        self.write_block(block)
+        self.write_txs(txs, hashes)
 
     @staticmethod
-    def get_one(sender, processor, db):
-        v = db.find_one(
-            {
-                'sender': sender,
-                'processor': processor
-            }
-        )
+    def cull_txs(block):
+        # Pops all transactions from the block and replaces them with the hash only for storage space
+        # Returns the data and hashes for storage in a different folder. Block is modified in place
+        txs = []
+        hashes = []
+        for subblock in block['subblocks']:
+            subblock_txs = []
+            subblock_hashes = []
 
+            for i in range(len(subblock['transactions'])):
+                tx = subblock['transactions'].pop(0)
+
+                subblock_txs.append(tx)
+                subblock_hashes.append(tx['hash'])
+
+            subblock['transactions'] = subblock_hashes
+            try:
+                subblock['subblock'] = int(subblock['subblock'])
+            except:
+                pass
+
+            txs.extend(subblock_txs)
+            hashes.extend(subblock_hashes)
+
+        return txs, hashes
+
+    def write_block(self, block):
+        num = block.get('number')
+
+        if type(num) == dict:
+            num = num.get('__fixed__')
+            block['number'] = num
+
+        name = str(num).zfill(64)
+
+        symlink_name = block.get('hash')
+
+        encoded_block = encode(block)
+        with open(self.blocks_dir.joinpath(name), 'w') as f:
+            f.write(encoded_block)
+
+        try:
+            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(symlink_name))
+        except FileExistsError:
+            pass
+
+    def write_txs(self, txs, hashes):
+        for file, data in zip(hashes, txs):
+            with open(self.txs_dir.joinpath(file), 'w') as f:
+                encoded_tx = encode(data)
+                f.write(encoded_tx)
+
+    def get_block(self, v=None, no_id=True):
         if v is None:
             return None
 
-        return v['value']
+        try:
+            if isinstance(v, int):
+                f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
+            else:
+                f = open(self.blocks_alias_dir.joinpath(v))
+        except FileNotFoundError:
+            return None
+
+        encoded_block = f.read()
+        block = decode(encoded_block)
+        f.close()
+        self.fill_block(block)
+
+        return block
+
+    def fill_block(self, block):
+        for subblock in block['subblocks']:
+            txs = []
+            for i in range(len(subblock['transactions'])):
+                tx = self.get_tx(subblock['transactions'][i])
+                txs.append(tx)
+
+            subblock['transactions'] = txs
+
+    def get_tx(self, h):
+        try:
+            f = open(self.txs_dir.joinpath(h))
+            encoded_tx = f.read()
+
+            tx = decode(encoded_tx)
+
+            f.close()
+        except FileNotFoundError:
+            tx = None
+
+        return tx
+
+class NonceStorage:
+    def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
+                 pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
+        self.nonces = FSDriver(root=nonce_collection)
+        self.pending_nonces = FSDriver(root=pending_collection)
 
     @staticmethod
-    def set_one(sender, processor, value, db):
-        db.update_one(
-            {
-                'sender': sender,
-                'processor': processor
-            },
-            {
-                '$set':
-                    {
-                        'value': value
-                    }
-            }, upsert=True
-        )
+    def get_one(sender, processor, db: FSDriver):
+        return db.get(f'__nonces.{processor}/{sender}')
 
+    @staticmethod
+    def set_one(sender, processor, value, db: FSDriver):
+        return db.set(f'__nonces.{processor}/{sender}', value)
+
+    # Move this to transaction.py
     def get_nonce(self, sender, processor):
         return self.get_one(sender, processor, self.nonces)
 
+    # Move this to transaction.py
     def get_pending_nonce(self, sender, processor):
         return self.get_one(sender, processor, self.pending_nonces)
 
@@ -110,6 +171,7 @@ class NonceStorage:
     def set_pending_nonce(self, sender, processor, value):
         self.set_one(sender, processor, value, self.pending_nonces)
 
+    # Move this to webserver.py
     def get_latest_nonce(self, sender, processor):
         latest_nonce = self.get_pending_nonce(sender=sender, processor=processor)
 
@@ -122,12 +184,11 @@ class NonceStorage:
         return latest_nonce
 
     def flush(self):
-        self.nonces.drop()
-        self.pending_nonces.drop()
+        self.nonces.flush()
+        self.pending_nonces.flush()
 
     def flush_pending(self):
-        self.pending_nonces.drop()
-
+        self.pending_nonces.flush()
 
 def get_latest_block_hash(driver: ContractDriver):
     latest_hash = driver.get(BLOCK_HASH_KEY, mark=False)
@@ -135,10 +196,8 @@ def get_latest_block_hash(driver: ContractDriver):
         return '0' * 64
     return latest_hash
 
-
 def set_latest_block_hash(h, driver: ContractDriver):
     driver.driver.set(BLOCK_HASH_KEY, h)
-
 
 def get_latest_block_height(driver: ContractDriver):
     h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
@@ -150,14 +209,10 @@ def get_latest_block_height(driver: ContractDriver):
 
     return h
 
-
 def set_latest_block_height(h, driver: ContractDriver):
     driver.driver.set(BLOCK_NUM_HEIGHT, h)
 
-
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
-
     if tx['state'] is not None and len(tx['state']) > 0:
         for delta in tx['state']:
             driver.driver.set(delta['key'], delta['value'])
@@ -169,11 +224,7 @@ def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStora
                 value=tx['transaction']['payload']['nonce'] + 1
             )
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
-
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
-
+    nonces.flush_pending()
 
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
     if block.get('subblocks') is not None:
@@ -186,114 +237,3 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
         set_latest_block_hash(block['hash'], driver=driver)
         set_latest_block_height(block['number'], driver=driver)
 
-
-class BlockStorage:
-    BLOCK = 0
-    TX = 1
-
-    def __init__(self, port=27027, config_path=lamden.__path__[0], db='lamden', blocks_collection='blocks', tx_collection='tx'):
-        # Setup configuration file to read constants
-        self.config_path = config_path
-
-        self.port = port
-
-        self.client = MongoClient()
-        self.db = self.client.get_database(db)
-
-        self.blocks = self.db.get_collection(blocks_collection, codec_options=codec_options)
-        self.txs = self.db.get_collection(tx_collection, codec_options=codec_options)
-
-    def q(self, v):
-        if isinstance(v, int):
-            return {'number': v}
-        return {'hash': v}
-
-    def get_block(self, v=None, no_id=True):
-        if v is None:
-            return None
-
-        q = self.q(v)
-        block = self.blocks.find_one(q)
-
-        if block is not None and no_id:
-            block.pop('_id')
-
-        return block
-
-    def put(self, data, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
-            _id = self.blocks.insert_one(data)
-            log.debug(data)
-            del data['_id']
-        elif collection == BlockStorage.TX:
-            _id = self.txs.insert_one(data)
-            del data['_id']
-        else:
-            return False
-
-        return _id is not None
-
-    def get_last_n(self, n, collection=BLOCK):
-        if collection == BlockStorage.BLOCK:
-            c = self.blocks
-        else:
-            return None
-
-        block_query = c.find({}, {'_id': False}).sort(
-            'number', DESCENDING
-        ).limit(n)
-
-        blocks = [block for block in block_query]
-
-        if len(blocks) > 1:
-            first_block_num = blocks[0].get('number')
-            last_block_num = blocks[-1].get('number')
-
-            assert first_block_num > last_block_num, "Blocks are not descending."
-
-        return blocks
-
-    def get_tx(self, h, no_id=True):
-        tx = self.txs.find_one({'hash': h})
-
-        if tx is not None and no_id:
-            tx.pop('_id')
-
-        return tx
-
-    def drop_collections(self):
-        self.blocks.drop()
-        self.txs.drop()
-
-    def flush(self):
-        self.drop_collections()
-
-    def store_block(self, block):
-        if block.get('number') is not None:
-            block['number'] = int(block['number'])
-
-        self.put(block, BlockStorage.BLOCK)
-        self.store_txs(block)
-
-    def store_txs(self, block):
-        if block.get('subblocks') is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.put(tx, BlockStorage.TX)
-
-    def delete_tx(self, h):
-        self.txs.delete_one({'hash': h})
-
-    def delete_block(self, v):
-        block = self.get_block(v, no_id=False)
-
-        if block is None:
-            return
-
-        for subblock in block['subblocks']:
-            for tx in subblock['transactions']:
-                self.delete_tx(tx['hash'])
-
-        self.blocks.delete_one({'_id': block['_id']})

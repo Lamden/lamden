@@ -3,13 +3,12 @@ from unittest import TestCase
 # from lamden.webserver.webserver import WebServer
 from lamden.nodes.masternode.webserver import WebServer
 # from lamden.webserver.readers import AsyncBlockReader
-from lamden.storage import BlockStorage
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
-from lamden.storage import BlockStorage
+from lamden.utils.legacy import BlockStorage
 from lamden.crypto.transaction import build_transaction
-from lamden import storage
+from lamden.utils import legacy as storage
 from sanic import Sanic
 import asyncio
 from lamden.nodes.events import EventWriter, Event, EventService
@@ -40,13 +39,12 @@ class TestClassWebserver(TestCase):
         )
 
         self.ws.client.flush()
-        self.blocks.flush()
+        self.ws.blocks.flush()
         self.ws.driver.flush()
-        self.loop = asyncio.get_event_loop()
 
     def tearDown(self):
         self.ws.client.flush()
-        self.blocks.flush()
+        self.ws.blocks.flush()
         self.ws.driver.flush()
 
     def test_ping(self):
@@ -290,21 +288,59 @@ def get():
         block = {
             'hash': 'a',
             'number': 1,
-            'data': 'woop'
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
         }
 
-        self.blocks.put(block)
+        self.ws.blocks.store_block(block)
 
         block2 = {
             'hash': 'abb',
             'number': 1000,
-            'data': 'woop2'
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
         }
 
-        self.blocks.put(block2)
+        b2exp = {
+            'hash': 'abb',
+            'number': 1000,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
+        }
+
+        storage.set_latest_block_height(1000, driver=self.ws.driver)
+        self.ws.blocks.store_block(block2)
 
         _, response = self.ws.app.test_client.get('/latest_block')
-        self.assertDictEqual(response.json, {'hash': 'abb', 'number': 1000, 'data': 'woop2'})
+        print(response.json)
+        self.assertDictEqual(response.json, b2exp)
 
     def test_get_latest_block_num(self):
         storage.set_latest_block_height(1234, self.ws.driver)
@@ -322,16 +358,42 @@ def get():
 
     def test_get_block_by_num_that_exists(self):
         block = {
-            'hash': '1234',
+            'hash': 'a',
             'number': 1,
-            'data': 'woop'
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
         }
 
-        self.blocks.put(block)
+        exp = {
+            'hash': 'a',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
+        }
+
+        self.ws.blocks.store_block(block)
 
         _, response = self.ws.app.test_client.get('/blocks?num=1')
 
-        self.assertDictEqual(response.json, block)
+        self.assertDictEqual(response.json, exp)
 
     def test_get_block_by_num_that_doesnt_exist_returns_error(self):
         _, response = self.ws.app.test_client.get('/blocks?num=1000')
@@ -342,17 +404,37 @@ def get():
         h = '1234'
 
         block = {
-            'hash': h,
-            'blockNum': 1,
-            'data': 'woop'
+            'hash': '1234',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
         }
 
-        self.blocks.put(block)
+        self.ws.blocks.store_block(block)
 
         expected = {
-            'hash': h,
-            'blockNum': 1,
-            'data': 'woop'
+            'hash': '1234',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': 'XXX',
+                            'foo': 'bar'
+                        },
+
+                    ]
+                },
+            ]
         }
 
         _, response = self.ws.app.test_client.get(f'/blocks?hash={h}')
@@ -455,7 +537,8 @@ def get():
         self.assertEqual(len(self.ws.queue), 1)
 
     def test_submit_transaction_error_if_queue_full(self):
-        self.ws.queue.extend(range(10_000))
+        for i in range(10_000):
+            self.ws.queue.append(bytes(i))
 
         tx = build_transaction(
             wallet=Wallet(),
@@ -474,24 +557,33 @@ def get():
 
         self.assertDictEqual(response.json, {'error': 'Queue full. Resubmit shortly.'})
 
-        self.ws.queue.clear()
+        self.ws.queue.flush()
 
     def test_get_tx_by_hash_if_it_exists(self):
-        b = '0' * 64
+        block = {
+            'hash': '1234',
+            'number': 1,
+            'subblocks': [
+                {
+                    'transactions': [
+                        {
+                            'hash': '123456',
+                            'foo': 'bar'
+                        },
 
-        tx = {
-            'hash': b,
-            'some': 'data'
+                    ]
+                },
+            ]
         }
 
         expected = {
-            'hash': b,
-            'some': 'data'
+            'hash': '123456',
+            'foo': 'bar'
         }
 
-        self.blocks.put(tx, collection=self.ws.blocks.TX)
+        self.ws.blocks.store_block(block)
 
-        _, response = self.ws.app.test_client.get(f'/tx?hash={b}')
+        _, response = self.ws.app.test_client.get(f'/tx?hash=123456')
         self.assertDictEqual(response.json, expected)
 
     def test_malformed_tx_returns_error(self):

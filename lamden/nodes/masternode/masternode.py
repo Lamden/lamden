@@ -3,7 +3,7 @@ import hashlib
 import time
 from lamden import router
 from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage, get_latest_block_height
+from lamden.utils.legacy import BlockStorage, get_latest_block_height
 from lamden.nodes.masternode import contender, webserver
 from lamden.nodes.base import FileQueue
 from lamden.formatting import primatives
@@ -43,7 +43,7 @@ class BlockService(router.Processor):
         block = self.blocks.get_block(num)
 
         if block is None:
-            return None
+            return {"error": "block does not exist"}
 
         return block
 
