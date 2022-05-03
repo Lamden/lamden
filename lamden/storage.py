@@ -17,14 +17,13 @@ STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
 
 log = get_logger('STATE')
 
-# TODO(nikita): merge BlockStorage related changes from rsync-poc branch
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
         self.home = home
 
         self.blocks_dir = self.home.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.txs_dir = self.home.joinpath('txs')
+        self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.build_directories()
 
