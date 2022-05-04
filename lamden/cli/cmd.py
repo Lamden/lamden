@@ -1,7 +1,7 @@
 import argparse
 from lamden.cli.start import start_node, join_network
 # from lamden.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
-from lamden.utils.legacy import BlockStorage
+from lamden.storage import BlockStorage
 from contracting.client import ContractDriver, ContractingClient
 from lamden.contracts import sync
 

@@ -7,7 +7,7 @@ from contracting.client import ContractingClient
 from contracting.db.encoder import encode, decode
 from contracting.db.driver import ContractDriver
 from contracting.compilation import parser
-from lamden.utils import legacy as storage
+from lamden import storage
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet

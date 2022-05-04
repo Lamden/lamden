@@ -1,5 +1,5 @@
 from lamden import network, router, authentication, rewards, upgrade
-from lamden.utils import legacy as storage
+from lamden import storage
 from lamden.crypto import canonical
 from lamden.crypto.wallet import Wallet
 from lamden.contracts import sync

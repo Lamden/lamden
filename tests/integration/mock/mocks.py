@@ -1,7 +1,7 @@
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import transaction
 from contracting.db.driver import ContractDriver, Driver
-from lamden.utils import legacy as storage
+from lamden import storage
 from lamden.nodes import masternode, delegate
 import asyncio
 import random

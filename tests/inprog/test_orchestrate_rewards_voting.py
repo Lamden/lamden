@@ -4,7 +4,7 @@ from lamden.crypto.wallet import Wallet
 import zmq.asyncio
 from contracting.client import ContractingClient
 from decimal import Decimal
-from lamden.utils.legacy import BlockStorage
+from lamden.storage import BlockStorage
 
 
 class TestGovernanceOrchestration(unittest.TestCase):
