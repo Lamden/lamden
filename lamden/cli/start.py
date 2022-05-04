@@ -132,6 +132,7 @@ def start_node(args):
     if args.node_type == 'masternode':
         # Start mongo
         start_mongo()
+        cfg_and_start_rsync_daemon()
 
         n = Masternode(
             wallet=wallet,
