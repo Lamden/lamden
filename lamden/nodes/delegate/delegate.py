@@ -12,6 +12,9 @@ class Delegate(base.Node):
         self.upgrade_manager.node_type = 'delegate'
         self.log = get_logger(f'Delegate {self.wallet.vk_pretty[4:12]}')
 
+    def start_node(self):
+        asyncio.ensure_future(self.start())
+
     async def start(self):
         self.log.debug('Starting')
         await super().start()

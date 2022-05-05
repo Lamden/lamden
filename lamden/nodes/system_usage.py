@@ -12,16 +12,29 @@ class SystemUsage:
 
         self.last_print = datetime.now()
         self.print_delay = 0
+        self.print_task = None
 
     async def start(self, delay_sec):
         self.running = True
         self.print_delay = delay_sec
+
+        self.print_task = asyncio.ensure_future(self.print_loop())
+
+
+    async def print_loop(self):
         while self.running:
             self.print_usage()
-            await asyncio.sleep(0)
+            await asyncio.sleep(self.print_delay)
 
     def stop(self):
         self.running = False
+
+    async def stopping(self):
+        if not self.print_task:
+            return
+        self.print_task.cancel()
+        while not self.print_task.done():
+            await asyncio.sleep(0.1)
 
     def print_usage(self):
         now = datetime.now()

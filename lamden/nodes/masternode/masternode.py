@@ -97,6 +97,9 @@ class Masternode(base.Node):
         # Network upgrade flag
         self.active_upgrade = False
 
+    def start_node(self):
+        asyncio.ensure_future(self.start())
+
     async def start(self):
         # self.router.add_service(base.BLOCK_SERVICE, BlockService(self.blocks, self.driver))
 

@@ -1,11 +1,13 @@
 import asyncio
 import threading
+import time
 
 from lamden.nodes.delegate import Delegate
 from lamden.nodes.masternode import Masternode
 
 from lamden.storage import BlockStorage
 from contracting.db.driver import ContractDriver, FSDriver
+from lamden.network import Network
 
 from lamden.crypto.wallet import Wallet
 
@@ -18,7 +20,7 @@ node_class_map = {
     'delegate': Delegate
 }
 
-class ThreadedNode(threading.Thread, Masternode):
+class ThreadedNode(threading.Thread):
     def __init__(self,
                  node_type,
                  constitution: dict,
@@ -51,20 +53,29 @@ class ThreadedNode(threading.Thread, Masternode):
 
         self.wallet = wallet or Wallet()
 
+        self.running = False
         self.loop = None
         self.node = None
 
+        self.err = None
+
     @property
-    def is_running(self) -> bool:
+    def node_started(self) -> bool:
         if not self.node:
             return False
-        return self.node.running
+        return self.node.started
 
     @property
     def vk(self) -> str:
         if not self.node:
             return None
         return self.node.wallet.verifying_key
+
+    @property
+    def network(self) -> Network:
+        if not self.node:
+            return None
+        return self.node.network
 
     def create_socket_ports(self, index=0):
         return {
@@ -73,28 +84,52 @@ class ThreadedNode(threading.Thread, Masternode):
             'webserver': 18080 + index
         }
 
+    def start_node(self):
+        asyncio.ensure_future(self.node.start())
+
     def run(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        try:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
-        self.node = node_class_map[self.node_type](
-            wallet=self.wallet,
-            socket_ports=self.create_socket_ports(index=self.index),
-            driver=self.driver,
-            blocks=self.block_storage,
-            testing=True
-        )
+            self.node = node_class_map[self.node_type](
+                constitution=self.constitution,
+                bootnodes=self.bootnodes,
+                socket_base="",
+                wallet=self.wallet,
+                socket_ports=self.create_socket_ports(index=self.index),
+                driver=self.driver,
+                blocks=self.block_storage,
+                should_seed=self.should_seed,
+                genesis_path=str(Path.cwd())
+            )
 
-        self.node.network.local = True
+            self.node.network.set_to_local()
+            self.node.start_node()
 
-        self.node.start()
+            self.running = True
 
-        print('done')
+            print(f'Started Threaded Node {self.index}')
+
+            # Keep Thread alive
+            while self.running:
+                self.sleep()
+
+        except Exception as err:
+            self.err = err
+
+    def sleep(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.sleep(0))
 
     async def stop(self):
-        if self.node.running:
-            await self.node.stop()
-            print('Threaded Network Stopped.')
+        if not self.node:
+            return
+
+        await self.node.stop()
+
+        self.running = False
+        print(f'Threaded Node ({self.node_type}) {self.index} Stopped.')
 
 class TestThreadedNode(unittest.TestCase):
     def setUp(self):
@@ -102,6 +137,12 @@ class TestThreadedNode(unittest.TestCase):
 
         self.current_path = Path.cwd()
         self.test_fixture_dir = f'{self.current_path}/fixtures'
+
+        try:
+            shutil.rmtree(self.test_fixture_dir)
+        except:
+            pass
+
         self.node_dir = f'{self.test_fixture_dir}/nodes'
         self.node_state_dir = Path(f'{self.node_dir}/{self.node_wallet.verifying_key}/state')
         self.node_block_dir = Path(f'{self.node_dir}/{self.node_wallet.verifying_key}/blocks')
@@ -111,35 +152,59 @@ class TestThreadedNode(unittest.TestCase):
         self.driver = ContractDriver(driver=FSDriver(root=Path(self.node_state_dir)))
         self.block_storage = BlockStorage(home=Path(self.node_block_dir))
 
-        try:
-            self.loop = asyncio.get_event_loop()
-        except:
-            self.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
 
-        self.node = None
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        self.tn = None
+
+        self.nodes = []
+
 
     def tearDown(self):
-        try:
-            shutil.rmtree(self.test_fixture_dir)
-        except:
-            pass
+        if self.tn:
+            self.nodes.append(self.tn)
 
-        if self.node:
-            self.stop_threaded_node()
+        for tn in self.nodes:
+            self.stop_threaded_node(tn=tn)
 
         if not self.loop.is_closed():
             self.loop.stop()
             self.loop.close()
 
-    def stop_threaded_node(self):
-            self.loop.run_until_complete(self.node.stop())
+        self.tn = None
+
+    def stop_threaded_node(self, tn):
+            task = asyncio.ensure_future(tn.stop())
+            while not task.done():
+                self.async_sleep(0.1)
+
+    def create_constitution(self, node_type: str) -> dict:
+        if node_type == 'masternode':
+            return {
+                'masternodes': [self.node_wallet.verifying_key],
+                'delegates': []
+            }
+        else:
+            return {
+                'masternodes': [],
+                'delegates': [self.node_wallet.verifying_key]
+            }
+
+    def async_sleep(self, delay):
+        tasks = asyncio.gather(
+            asyncio.sleep(delay)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
 
     def test_can_create_threaded_node_instance__raises_no_errors(self):
+        node_type = 'masternode'
+
         try:
-            self.node = ThreadedNode(
-                node_type='masternode',
-                constitution={},
+            self.tn = ThreadedNode(
+                node_type=node_type,
+                constitution=self.create_constitution(node_type=node_type),
                 driver=self.driver,
                 block_storage=self.block_storage,
                 wallet=self.node_wallet
@@ -148,4 +213,206 @@ class TestThreadedNode(unittest.TestCase):
             print(err)
             self.fail("Threaded Node should run and raise no exceptions.")
 
-        self.assertIsInstance(self.node, ThreadedNode)
+        self.assertIsInstance(self.tn, ThreadedNode)
+
+    def test_start__creates_started_masternode_instance_raises_no_errors(self):
+        node_type = 'masternode'
+
+        self.tn = ThreadedNode(
+            node_type=node_type,
+            constitution=self.create_constitution(node_type=node_type),
+            driver=self.driver,
+            block_storage=self.block_storage,
+            wallet=self.node_wallet
+        )
+
+        self.tn.start()
+        self.async_sleep(2)
+
+        self.assertIsNone(self.tn.err)
+        self.assertIsInstance(self.tn.node, Masternode)
+
+        while not self.tn.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(self.tn.node.started)
+
+    def test_start__creates_started_delegate_instance_raises_no_errors(self):
+        node_type = 'delegate'
+
+        self.tn = ThreadedNode(
+            node_type=node_type,
+            constitution=self.create_constitution(node_type=node_type),
+            driver=self.driver,
+            block_storage=self.block_storage,
+            wallet=self.node_wallet
+        )
+
+        self.tn.start()
+        self.async_sleep(2)
+
+        self.assertIsNone(self.tn.err)
+        self.assertIsInstance(self.tn.node, Delegate)
+
+        while not self.tn.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(self.tn.node.started)
+
+    '''
+    def test_start_node__starts_a_masternode_in_thread(self):
+        node_type = 'masternode'
+
+        self.tn = ThreadedNode(
+            node_type=node_type,
+            constitution=self.create_constitution(node_type=node_type),
+            driver=self.driver,
+            block_storage=self.block_storage,
+            wallet=self.node_wallet
+        )
+
+        self.tn.start()
+        self.async_sleep(2)
+        self.assertIsNone(self.tn.err)
+
+        self.tn.start_node()
+        while not self.tn.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(self.tn.node.started)
+
+    def test_start_node__starts_a_delegate_in_thread(self):
+        node_type = 'delegate'
+
+        self.tn = ThreadedNode(
+            node_type=node_type,
+            constitution=self.create_constitution(node_type=node_type),
+            driver=self.driver,
+            block_storage=self.block_storage,
+            wallet=self.node_wallet
+        )
+
+        self.tn.start()
+        self.async_sleep(2)
+        self.assertIsNone(self.tn.err)
+
+        self.tn.start_node()
+        while not self.tn.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(self.tn.node.started)
+    '''
+
+    def test_can_start_multiple_threaded_node_instances(self):
+        wallet_mn = Wallet()
+        mn_dir = Path(f'{self.node_dir}/{wallet_mn.verifying_key}')
+        mn_state_dir = Path(f'{mn_dir}/state')
+        mn_state_dir.mkdir(parents=True, exist_ok=True)
+
+        wallet_del = Wallet()
+        del_dir = Path(f'{self.node_dir}/{wallet_del.verifying_key}')
+        del_state_dir = Path(f'{del_dir}/state')
+        del_state_dir.mkdir(parents=True, exist_ok=True)
+
+        constitution = {
+            'masternodes': [wallet_mn.verifying_key],
+            'delegates': [wallet_del.verifying_key]
+        }
+
+        masternode = ThreadedNode(
+            node_type="masternode",
+            constitution=constitution,
+            driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
+            block_storage=BlockStorage(home=Path(mn_dir)),
+            wallet=wallet_mn
+        )
+        masternode.start()
+
+        while not masternode.running:
+            self.async_sleep(0.1)
+
+        delegate = ThreadedNode(
+            node_type="delegate",
+            constitution=constitution,
+            driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
+            block_storage=BlockStorage(home=Path(del_dir)),
+            wallet=wallet_del,
+            index=1
+        )
+        delegate.start()
+
+        while not delegate.running:
+            self.async_sleep(0.1)
+
+        self.nodes.append(masternode)
+        self.nodes.append(delegate)
+
+        while not masternode.node_started or not delegate.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(masternode.node_started)
+        self.assertTrue(delegate.node_started)
+
+    def test_threaded_nodes_can_connect_as_peers(self):
+        wallet_mn = Wallet()
+        mn_dir = Path(f'{self.node_dir}/{wallet_mn.verifying_key}')
+        mn_state_dir = Path(f'{mn_dir}/state')
+        mn_state_dir.mkdir(parents=True, exist_ok=True)
+
+        wallet_del = Wallet()
+        del_dir = Path(f'{self.node_dir}/{wallet_del.verifying_key}')
+        del_state_dir = Path(f'{del_dir}/state')
+        del_state_dir.mkdir(parents=True, exist_ok=True)
+
+        constitution = {
+            'masternodes': [wallet_mn.verifying_key],
+            'delegates': [wallet_del.verifying_key]
+        }
+
+        bootnodes = {
+            wallet_mn.verifying_key: 'tcp://127.0.0.1:19000',
+            wallet_del.verifying_key: 'tcp://127.0.0.1:19001'
+        }
+
+        masternode = ThreadedNode(
+            node_type="masternode",
+            constitution=constitution,
+            bootnodes=bootnodes,
+            driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
+            block_storage=BlockStorage(home=Path(mn_dir)),
+            wallet=wallet_mn
+        )
+        masternode.start()
+
+        while not masternode.running:
+            self.async_sleep(0.1)
+
+        delegate = ThreadedNode(
+            node_type="delegate",
+            constitution=constitution,
+            bootnodes=bootnodes,
+            driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
+            block_storage=BlockStorage(home=Path(del_dir)),
+            wallet=wallet_del,
+            index=1
+        )
+        delegate.start()
+
+        while not delegate.running:
+            self.async_sleep(0.1)
+
+        self.nodes.append(masternode)
+        self.nodes.append(delegate)
+
+        while not masternode.node_started or not delegate.node_started:
+            self.async_sleep(1)
+
+        self.assertTrue(masternode.node_started)
+        self.assertTrue(delegate.node_started)
+
+        self.async_sleep(10)
+
+        for node in self.nodes:
+            for peer in node.network.peer_list:
+                connected = peer.is_connected
+                self.assertTrue(peer.is_connected)

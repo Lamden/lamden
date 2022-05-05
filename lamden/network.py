@@ -4,6 +4,7 @@ import zmq
 import zmq.asyncio
 import asyncio
 import uvloop
+from typing import List
 
 from lamden.peer import Peer
 from lamden.crypto.wallet import Wallet
@@ -60,6 +61,8 @@ class Network:
         self.driver = driver
         self.block_storage = block_storage or BlockStorage()
 
+        self.local = local
+
         try:
             self.socket_ports = dict(socket_ports)
         except TypeError:
@@ -72,14 +75,11 @@ class Network:
         self.peers = {}
         self.subscriptions = []
         self.services = {}
-        self.actions = {}
 
-        self.local = local
         if self.local:
             self.external_ip = '127.0.0.1'
         else:
             self.external_ip = requests.get('http://api.ipify.org').text
-        self.running = False
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
 
@@ -91,9 +91,12 @@ class Network:
         self.setup_publisher()
         self.setup_router()
 
+        self.running = False
+
     @property
     def is_running(self):
         return self.running
+
     @property
     def all_sockets_stopped(self):
         try:
@@ -129,8 +132,8 @@ class Network:
         return self.wallet.verifying_key
 
     @property
-    def peer_list(self):
-        return self.peers.values()
+    def peer_list(self) -> List[Peer]:
+        return list(self.peers.values())
 
     def log(self, log_type: str, message: str) -> None:
         named_message = f'[NETWORK] {message}'
@@ -159,6 +162,12 @@ class Network:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
 
+    def set_to_local(self) -> None:
+        self.local = True
+        self.external_ip = '127.0.0.1'
+        self.router.network_ip = self.external_address
+        self.router.cred_provider.network_ip = self.external_address
+
     def setup_publisher(self):
         self.publisher = Publisher(
             ctx=self.ctx,
@@ -176,21 +185,57 @@ class Network:
         self.router.set_address(port=self.socket_ports.get('router'))
 
     def start(self) -> None:
-        self.log('info', f'Publisher Address {self.publisher_address}')
-        self.log('info', f'Router Address {self.router_address}')
+        try:
+            self.log('info', f'Publisher Address {self.publisher_address}')
+            self.log('info', f'Router Address {self.router_address}')
 
-        self.publisher.start()
-        self.router.run_curve_server()
+            self.publisher.start()
+            self.router.run_curve_server()
 
-        self.loop.run_until_complete(self.starting())
+            asyncio.ensure_future(self.starting())
+
+        except Exception as err:
+            print (err)
+
+    async def starting(self) -> None:
+        while not self.publisher.is_running or not self.router.is_running:
+            await asyncio.sleep(0.1)
 
         self.running = True
 
         self.log('info', 'Started.')
 
-    async def starting(self) -> None:
-        while not self.publisher.is_running or not self.router.is_running:
-            await asyncio.sleep(0.1)
+    def connect_peer(self, ip: str, vk: str) -> [bool, None]:
+        if vk == self.vk:
+            self.log('warning', f'Attempted connection to self "{vk}".')
+            return
+
+        # Get list of approved nodes from state
+        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
+
+        if vk not in node_vk_list_from_smartcontracts:
+            self.log('warning', f'Attempted to add a node not in the smart contract. "{vk}"')
+            return
+
+        # Refresh credentials provider with approved nodes from state
+        self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
+
+        # Get a reference to this peer
+        peer = self.get_peer(vk=vk)
+
+        if peer:
+            if peer.request_address != ip:
+                # if the ip is different from the one we have then switch to it
+                peer.update_ip(new_ip=ip)
+            else:
+                # check that our connection to this node is okay
+                asyncio.ensure_future(peer.test_connection())
+
+        else:
+            # Add this peer to our peer group
+            self.log('info', f'Adding New Peer "{vk}" at {ip}')
+            self.add_peer(ip=ip, vk=vk)
+            self.start_peer(vk=vk)
 
     def remove_peer(self, peer_vk: str) -> None:
         peer = self.get_peer(vk=peer_vk)
@@ -205,12 +250,6 @@ class Network:
     def get_services(self) -> dict:
         return self.services
 
-    def add_action(self, name: str, processor: Processor) -> None:
-        self.actions[name] = processor
-
-    def get_actions(self) -> dict:
-        return self.actions
-
     def num_of_peers(self) -> int:
         return len(self.peer_list)
 
@@ -223,7 +262,7 @@ class Network:
     def get_peer(self, vk: str) -> Peer:
         return self.peers.get(vk, None)
 
-    def get_peer_by_ip(self, ip: str) -> Peer:
+    def get_peer_by_ip(self, ip: str) -> [Peer, None]:
         for peer in self.peers.values():
             if ip == peer.ip:
                 return peer
@@ -268,39 +307,7 @@ class Network:
     def start_peer(self, vk: str) -> None:
         self.peers[vk].start()
 
-    def connect_peer(self, ip: str, vk: str) -> bool:
-        if vk == self.vk:
-            self.log('warning', f'Attempted connection to self "{vk}".')
-            return
-
-        # Get list of approved nodes from state
-        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
-
-        if vk not in node_vk_list_from_smartcontracts:
-            self.log('warning', f'Attempted to add a node not in the smart contract. "{vk}"')
-            return
-
-        # Refesch credentials provider with approved nodes from state
-        self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
-
-        # Get a reference to this peer
-        peer = self.get_peer(vk=vk)
-
-        if peer:
-            if peer.request_address != ip:
-                # if the ip is different from the one we have then switch to it
-                peer.update_ip(new_ip=ip)
-            else:
-                # check that our connection to this node is okay
-                asyncio.ensure_future(peer.test_connection())
-
-        else:
-            # Add this peer to our peer group
-            self.log('info', f'Adding New Peer "{vk}" at {ip}')
-            self.add_peer(ip=ip, vk=vk)
-            self.start_peer(vk=vk)
-
-    def connected_to_peer_callback(self, peer_vk: str) -> bool:
+    def connected_to_peer_callback(self, peer_vk: str) -> [bool, None]:
         peer = self.get_peer(vk=peer_vk)
 
         if not peer:
@@ -402,7 +409,7 @@ class Network:
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
-            self.log('error', err)
+            self.log('error', str(err))
             return
 
         if action == ACTION_PING:

@@ -17,10 +17,12 @@ GET_BLOCK = 'get_block'
 
 SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders"]
 
+
 class Peer:
-    def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable, services: dict = None,
-                connected_callback: Callable = None, socket_ports: dict = None, ctx: zmq.Context = None,
-                 local: bool = False):
+    def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
+                 services: Callable = None, connected_callback: Callable = None, socket_ports: dict = None,
+                 ctx: zmq.Context = None, local: bool = False):
+
         self.ctx = ctx
         self.server_vk = server_vk
         self.server_curve_vk = z85_key(server_vk)
@@ -33,7 +35,7 @@ class Peer:
         try:
             self.socket_ports = dict(socket_ports)
         except TypeError:
-            self.socket_ports =  dict({
+            self.socket_ports = dict({
                 'router': 19000,
                 'publisher': 19080,
                 'webserver': 18080
@@ -77,7 +79,7 @@ class Peer:
         return self.local_wallet.verifying_key
 
     @property
-    def ip(self) -> str:
+    def ip(self) -> [str, None]:
         if not self.url:
             return None
         return self.url.hostname
@@ -92,12 +94,10 @@ class Peer:
 
     @property
     def subscriber_address(self) -> str:
-        # self.log('info', 'PUBLISHER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('publisher'))
 
     @property
     def request_address(self) -> str:
-        # self.log('info', 'ROUTER ADDRESS: {}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router')))
         return '{}{}:{}'.format(self.protocol, self.ip, self.socket_ports.get('router'))
 
     @property
@@ -260,7 +260,8 @@ class Peer:
 
     def store_latest_block_info(self, latest_block_num: int, latest_hlc_timestamp: str) -> None:
         if not isinstance(latest_block_num, int) or not isinstance(latest_hlc_timestamp, str):
-            self.log('info', f'Unable to set latest block info with number {latest_block_num} and {latest_hlc_timestamp}')
+            self.log('info', f'Unable to set latest block info with number {latest_block_num} and \
+             {latest_hlc_timestamp}')
             return
 
         self.latest_block_info = dict({
@@ -301,7 +302,6 @@ class Peer:
         self.connected = False
         self.reconnect()
         return False
-
 
     def reconnect(self) -> None:
         asyncio.ensure_future(self.reconnect_loop())
@@ -357,7 +357,6 @@ class Peer:
 
         self.start()
 
-
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=500, retries=5)
@@ -400,7 +399,9 @@ class Peer:
         msg_json = await self.send_request(msg_obj=msg_obj)
         return msg_json
 
-    async def send_request(self, msg_obj: dict, to_address: str=None, timeout: int=200, retries: int=3) -> (dict, None):
+    async def send_request(self, msg_obj: dict, to_address: str = None, timeout: int = 200,
+                           retries: int = 3) -> (dict, None):
+
         if not self.request:
             raise AttributeError("Request socket not setup.")
 
@@ -452,6 +453,8 @@ class Peer:
 
     async def stop(self) -> None:
         self.running = False
+        if self.verify_task:
+            self.verify_task.cancel()
 
         if self.request:
             self.request.stop()

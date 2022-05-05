@@ -116,6 +116,8 @@ class Router():
     @property
     def auth_is_stopped(self) -> bool:
         try:
+            if self.auth._AsyncioAuthenticator__task is None:
+                return self.auth.zap_socket.closed
             return self.auth._AsyncioAuthenticator__task.done() and self.auth.zap_socket.closed
         except AttributeError:
             return True
@@ -212,6 +214,7 @@ class Router():
         self.log('info', f'Started. on {self.address}')
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
+        self.log('info', 'Checking for messages!')
         sockets = await self.poller.poll(timeout=timeout_ms)
         return self.socket in dict(sockets)
 
@@ -231,6 +234,8 @@ class Router():
 
                 if self.message_callback:
                     self.message_callback(ident_vk_string, msg)
+            else:
+                self.log('info', 'No Messages Found!')
 
         print('Done Checking for Messages')
 

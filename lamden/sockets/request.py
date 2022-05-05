@@ -1,3 +1,5 @@
+import asyncio
+
 import zmq
 import zmq.asyncio
 from lamden.logger.base import get_logger
@@ -60,8 +62,6 @@ class Request():
         if log_type == 'warning':
             logger.warning(named_message)
 
-
-
     def socket_is_bound(self, socket) -> bool:
         try:
             return len(socket.LAST_ENDPOINT) > 0
@@ -107,7 +107,6 @@ class Request():
         return socket in dict(pollin.poll(poll_time))
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
-        self.log('info', f'STARTING FOR PEER {to_address}')
         error = None
         connection_attempts = 0
 
@@ -160,6 +159,7 @@ class Request():
                 error = str(err)
 
             connection_attempts += 1
+            await asyncio.sleep(0)
 
         if not error:
             error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'

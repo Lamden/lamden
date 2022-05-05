@@ -1,7 +1,7 @@
 import asyncio
 import threading
 
-from lamden.network import Network, ACTION_GET_LATEST_BLOCK
+from lamden.network import Network
 from lamden.crypto.wallet import Wallet
 
 class ThreadedNetwork(threading.Thread):
@@ -41,8 +41,6 @@ class ThreadedNetwork(threading.Thread):
             driver=self.driver,
             local=True
         )
-
-        self.n.add_action(ACTION_GET_LATEST_BLOCK, self.get_latest_block)
 
         self.n.start()
 

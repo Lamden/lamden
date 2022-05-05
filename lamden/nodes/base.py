@@ -136,11 +136,10 @@ class Node:
         self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
         self.network = Network(
-            debug=self.debug,
-            testing=self.testing,
             wallet=wallet,
-            socket_base=socket_base,
-            socket_ports=socket_ports
+            socket_ports=socket_ports,
+            driver=self.driver,
+            block_storage=self.blocks
         )
 
         # Number of core / processes we push to
@@ -205,60 +204,68 @@ class Node:
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
-        self.network.add_action(GET_LATEST_BLOCK, self.get_latest_block)
-        self.network.add_action(GET_BLOCK, self.blocks.get_block)
-        self.network.add_action(GET_CONSTITUTION, self.make_constitution)
-
-
         self.running = False
+        self.started = False
         self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
 
+    ''' NAH
     def __del__(self):
         self.network.stop()
         self.system_monitor.stop()
+    '''
 
     @property
-    def node_type(self):
+    def node_type(self) -> str:
         return self.upgrade_manager.node_type
 
     async def start(self):
-        # Start running
-        self.running = True
+        try:
+            # Start running
+            self.running = True
 
-        if self.debug:
-            asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
+            if self.debug:
+                asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
-        await self.network.start()
+            self.network.start()
+            await self.network.starting()
 
-        await asyncio.sleep(2)
+            if self.should_seed:
+                await self.start_new_network()
+            else:
+                await self.join_existing_network()
+                await self.catchup()
 
-        if self.should_seed:
-            await self.start_new_network()
-        else:
-            await self.join_existing_network()
-            await self.catchup()
+            self.driver.clear_pending_state()
 
-        self.driver.clear_pending_state()
+            self.start_all_queues()
+            asyncio.ensure_future(self.check_main_processing_queue())
+            asyncio.ensure_future(self.check_validation_queue())
 
-        self.start_all_queues()
-        asyncio.ensure_future(self.check_main_processing_queue())
-        asyncio.ensure_future(self.check_validation_queue())
+            self.started = True
+        except Exception as err:
+            self.running = False
+            self.log.error(err)
+            print(err)
 
     async def start_new_network(self):
-        for vk, ip in self.bootnodes.items():
-            print({"vk": vk, "ip": ip})
-            self.log.info({"vk": vk, "ip": ip})
+            '''
+                self.bootnodes is a {vk:ip} dict
+            '''
 
-            if vk != self.wallet.verifying_key:
-                # Use it to boot up the network
-                self.network.connect(
-                    ip=ip,
-                    vk=vk
-                )
+            for vk, ip in self.bootnodes.items():
+                print({"vk": vk, "ip": ip})
+                self.log.info({"vk": vk, "ip": ip})
 
-        # await self.network.connected_to_all_peers()
+                if vk != self.wallet.verifying_key:
+                    # Use it to boot up the network
+                    self.network.connect_peer(
+                        ip=ip,
+                        vk=vk
+                    )
+
+            # await self.network.connected_to_all_peers()
 
     async def join_existing_network(self):
         bootnode = None
@@ -330,15 +337,17 @@ class Node:
 
         return True
 
-
     async def stop(self):
-        # Kill the router and throw the running flag to stop the loop
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
-        self.network.stop()
-        self.system_monitor.stop()
-        self.running = False
 
+        self.running = False
         await self.stop_all_queues()
+
+        await self.network.stop()
+        self.system_monitor.stop()
+        await self.system_monitor.stopping()
+
+        self.started = False
 
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
@@ -1049,6 +1058,11 @@ class Node:
             filename=self.genesis_path + '/genesis.json',
             root=self.genesis_path
         )
+
+        masternodes = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'])
+        delegates = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+
+        print('done')
 
     def should_process(self, block):
         try:

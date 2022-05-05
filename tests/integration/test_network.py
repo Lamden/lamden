@@ -233,6 +233,14 @@ class TestMultiNode(TestCase):
         self.assertTrue(net_1_all_connected)
         self.assertTrue(net_2_all_connected)
 
+    def test_METHOD_set_to_local__ip_is_set_to_local(self):
+        network = Network(
+            wallet=Wallet(),
+            socket_ports=self.create_socket_ports(index=0),
+        )
 
+        network.set_to_local()
 
+        self.assertTrue(network.local)
+        self.assertEqual('127.0.0.1', network.external_ip)
 
