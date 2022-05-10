@@ -241,7 +241,7 @@ class Peer:
             response_type = res.get('response')
             if response_type == 'hello':
                 self.store_latest_block_info(
-                    latest_block_num=res.get('latest_block_num'),
+                    latest_block_num=res.get('latest_block_number'),
                     latest_hlc_timestamp=res.get('latest_hlc_timestamp')
                 )
 
@@ -394,8 +394,8 @@ class Peer:
         msg_json = await self.send_request(msg_obj=msg_obj)
         return msg_json
 
-    async def get_node_list(self) -> (dict, None):
-        msg_obj = {'action': 'get_node_list'}
+    async def get_network_map(self) -> (dict, None):
+        msg_obj = {'action': 'get_network_map'}
         msg_json = await self.send_request(msg_obj=msg_obj)
         return msg_json
 
@@ -453,8 +453,10 @@ class Peer:
 
     async def stop(self) -> None:
         self.running = False
-        if self.verify_task:
+
+        if self.is_verifying:
             self.verify_task.cancel()
+            self.verify_task = None
 
         if self.request:
             self.request.stop()

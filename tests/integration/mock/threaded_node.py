@@ -4,6 +4,7 @@ import time
 
 from lamden.nodes.delegate import Delegate
 from lamden.nodes.masternode import Masternode
+from lamden.nodes.base import Node
 
 from lamden.storage import BlockStorage
 from contracting.db.driver import ContractDriver, FSDriver
@@ -25,13 +26,14 @@ class ThreadedNode(threading.Thread):
                  node_type,
                  constitution: dict,
                  block_storage: BlockStorage,
-                 driver: ContractDriver,
+                 raw_driver,
                  index=0,
                  bootnodes={},
                  bypass_catchup=False,
                  should_seed=True,
                  metering=False,
-                 wallet: Wallet = None
+                 wallet: Wallet = None,
+                 genesis_path: str = str(Path.cwd())
                  ):
 
         threading.Thread.__init__(self)
@@ -43,8 +45,10 @@ class ThreadedNode(threading.Thread):
         self.constitution = constitution
         self.bootnodes = bootnodes
 
-        self.driver = driver
+        self.raw_driver = raw_driver
+        self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
+        self.genesis_path = genesis_path
 
         self.bypass_catchup = bypass_catchup
 
@@ -55,7 +59,7 @@ class ThreadedNode(threading.Thread):
 
         self.running = False
         self.loop = None
-        self.node = None
+        self.node: Node = None
 
         self.err = None
 
@@ -72,10 +76,26 @@ class ThreadedNode(threading.Thread):
         return self.node.wallet.verifying_key
 
     @property
+    def ip(self) -> str:
+        if not self.node:
+            return None
+        return self.node.network.external_address
+
+    @property
     def network(self) -> Network:
         if not self.node:
             return None
         return self.node.network
+
+    @property
+    def latest_block_height(self) -> int:
+        block_info = self.node.network.get_latest_block_info()
+        return block_info.get("number")
+
+    @property
+    def latest_hlc_timestamp(self) -> str:
+        block_info = self.node.network.get_latest_block_info()
+        return block_info.get("hlc_timestamp")
 
     def create_socket_ports(self, index=0):
         return {
@@ -98,10 +118,10 @@ class ThreadedNode(threading.Thread):
                 socket_base="",
                 wallet=self.wallet,
                 socket_ports=self.create_socket_ports(index=self.index),
-                driver=self.driver,
+                driver=self.contract_driver,
                 blocks=self.block_storage,
                 should_seed=self.should_seed,
-                genesis_path=str(Path.cwd())
+                genesis_path=str(self.genesis_path)
             )
 
             self.node.network.set_to_local()
@@ -117,6 +137,15 @@ class ThreadedNode(threading.Thread):
 
         except Exception as err:
             self.err = err
+
+    def set_smart_contract_value(self, key: str, value: str):
+        self.raw_driver.set(key=key, value=value)
+
+    def get_smart_contract_value(self, key: str) -> any:
+        return self.raw_driver.get(key=key)
+
+    def get_latest_block(self) -> dict:
+        return self.network.get_latest_block()
 
     def sleep(self):
         loop = asyncio.get_event_loop()
@@ -159,7 +188,6 @@ class TestThreadedNode(unittest.TestCase):
         self.tn = None
 
         self.nodes = []
-
 
     def tearDown(self):
         if self.tn:
@@ -205,7 +233,7 @@ class TestThreadedNode(unittest.TestCase):
             self.tn = ThreadedNode(
                 node_type=node_type,
                 constitution=self.create_constitution(node_type=node_type),
-                driver=self.driver,
+                raw_driver=self.driver,
                 block_storage=self.block_storage,
                 wallet=self.node_wallet
             )
@@ -221,7 +249,7 @@ class TestThreadedNode(unittest.TestCase):
         self.tn = ThreadedNode(
             node_type=node_type,
             constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
+            raw_driver=self.driver,
             block_storage=self.block_storage,
             wallet=self.node_wallet
         )
@@ -243,7 +271,7 @@ class TestThreadedNode(unittest.TestCase):
         self.tn = ThreadedNode(
             node_type=node_type,
             constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
+            raw_driver=self.driver,
             block_storage=self.block_storage,
             wallet=self.node_wallet
         )
@@ -322,7 +350,7 @@ class TestThreadedNode(unittest.TestCase):
         masternode = ThreadedNode(
             node_type="masternode",
             constitution=constitution,
-            driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
+            raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
             block_storage=BlockStorage(home=Path(mn_dir)),
             wallet=wallet_mn
         )
@@ -334,7 +362,7 @@ class TestThreadedNode(unittest.TestCase):
         delegate = ThreadedNode(
             node_type="delegate",
             constitution=constitution,
-            driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
+            raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
             block_storage=BlockStorage(home=Path(del_dir)),
             wallet=wallet_del,
             index=1
@@ -378,7 +406,7 @@ class TestThreadedNode(unittest.TestCase):
             node_type="masternode",
             constitution=constitution,
             bootnodes=bootnodes,
-            driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
+            raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
             block_storage=BlockStorage(home=Path(mn_dir)),
             wallet=wallet_mn
         )
@@ -391,7 +419,7 @@ class TestThreadedNode(unittest.TestCase):
             node_type="delegate",
             constitution=constitution,
             bootnodes=bootnodes,
-            driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
+            raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
             block_storage=BlockStorage(home=Path(del_dir)),
             wallet=wallet_del,
             index=1

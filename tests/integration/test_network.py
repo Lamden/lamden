@@ -243,4 +243,3 @@ class TestMultiNode(TestCase):
 
         self.assertTrue(network.local)
         self.assertEqual('127.0.0.1', network.external_ip)
-

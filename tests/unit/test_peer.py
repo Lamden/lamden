@@ -390,14 +390,14 @@ class TestPeer(unittest.TestCase):
 
         self.assertIsNone(msg)
 
-    def test_METHOD_get_node_list__returns_successful_msg_if_peer_available(self):
+    def test_METHOD_get_network_map__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
         msg = self.await_sending_request(process=self.peer.get_node_list)
-        expected_result = {'action': 'get_node_list', 'success': True}
+        expected_result = {'action': 'get_network_map', 'success': True}
 
         self.assertDictEqual(expected_result, msg)
 
-    def test_METHOD_get_node_list__returns_NONE_if_peer_unavailable(self):
+    def test_METHOD_get_network_map__returns_NONE_if_peer_unavailable(self):
         self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
         msg = self.await_sending_request(self.peer.get_node_list)

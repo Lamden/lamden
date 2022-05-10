@@ -25,7 +25,7 @@ ACTION_PING = "ping"
 ACTION_HELLO = "hello"
 ACTION_GET_LATEST_BLOCK = 'get_latest_block'
 ACTION_GET_BLOCK = "get_block"
-ACTION_GET_NETWORK = "get_node_list"
+ACTION_GET_NETWORK_MAP = "get_network_map"
 
 GET_CONSTITUTION = "get_constitution"
 GET_ALL_PEERS = "get_all_peers"
@@ -167,6 +167,7 @@ class Network:
         self.external_ip = '127.0.0.1'
         self.router.network_ip = self.external_address
         self.router.cred_provider.network_ip = self.external_address
+        self.publisher.network_ip = self.external_address
 
     def setup_publisher(self):
         self.publisher = Publisher(
@@ -205,23 +206,42 @@ class Network:
 
         self.log('info', 'Started.')
 
+    def connect_to_bootnode(self, ip: str, vk: str) -> [bool, None]:
+        if vk == self.vk:
+            self.log('warning', f'Attempted connection to self "{vk}".')
+            return
+
+        self.add_peer(ip=ip, peer_vk=vk)
+
     def connect_peer(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
             self.log('warning', f'Attempted connection to self "{vk}".')
             return
 
+        if self.peer_is_voted_in(peer_vk=vk):
+            self.refresh_approved_peers_in_cred_provider()
+            self.add_peer(ip=ip, peer_vk=vk)
+        else:
+            self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
+
+    def peer_is_voted_in(self, peer_vk: str) -> bool:
         # Get list of approved nodes from state
         node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
 
-        if vk not in node_vk_list_from_smartcontracts:
-            self.log('warning', f'Attempted to add a node not in the smart contract. "{vk}"')
-            return
+        if peer_vk not in node_vk_list_from_smartcontracts:
+            return False
 
+        return True
+
+    def refresh_approved_peers_in_cred_provider(self):
+        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
+        print({'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
 
+    def add_peer(self, ip: str, peer_vk: str):
         # Get a reference to this peer
-        peer = self.get_peer(vk=vk)
+        peer = self.get_peer(vk=peer_vk)
 
         if peer:
             if peer.request_address != ip:
@@ -233,16 +253,22 @@ class Network:
 
         else:
             # Add this peer to our peer group
-            self.log('info', f'Adding New Peer "{vk}" at {ip}')
-            self.add_peer(ip=ip, vk=vk)
-            self.start_peer(vk=vk)
+            self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
+            self.create_peer(ip=ip, vk=peer_vk)
+            self.start_peer(vk=peer_vk)
 
-    def remove_peer(self, peer_vk: str) -> None:
-        peer = self.get_peer(vk=peer_vk)
-        if not peer:
-            return
-        peer.stop()
-        self.peers.pop(peer_vk)
+    def create_peer(self, ip: str, vk: str) -> None:
+        self.peers[vk] = Peer(
+            get_network_ip=lambda: self.external_address,
+            ip=ip,
+            server_vk=vk,
+            services=self.get_services,
+            local_wallet=self.wallet,
+            socket_ports=self.socket_ports,
+            connected_callback=self.connected_to_peer_callback,
+            ctx=self.ctx,
+            local=self.local
+        )
 
     def add_service(self, name: str, processor: Processor) -> None:
         self.services[name] = processor
@@ -261,6 +287,9 @@ class Network:
 
     def get_peer(self, vk: str) -> Peer:
         return self.peers.get(vk, None)
+
+    def delete_peer(self, peer_vk: str) -> None:
+        self.peers.pop(peer_vk)
 
     def get_peer_by_ip(self, ip: str) -> [Peer, None]:
         for peer in self.peers.values():
@@ -291,18 +320,27 @@ class Network:
 
         self.socket_ports[service] = port_num
 
-    def add_peer(self, ip: str, vk: str) -> None:
-        self.peers[vk] = Peer(
-            get_network_ip=lambda: self.external_address,
-            ip=ip,
-            server_vk=vk,
-            services=self.get_services,
-            local_wallet=self.wallet,
-            socket_ports=self.socket_ports,
-            connected_callback=self.connected_to_peer_callback,
-            ctx=self.ctx,
-            local=self.local
-        )
+    def authorize_peer(self, peer_vk: str) -> None:
+        self.router.cred_provider.add_key(vk=peer_vk)
+
+    def revoke_peer_access(self, peer_vk: str) -> None:
+        self.router.cred_provider.remove_key(vk=peer_vk)
+
+    def remove_peer(self, peer_vk: str) -> None:
+        if not self.get_peer(vk=peer_vk):
+            return
+
+        asyncio.ensure_future(self.stop_and_delete_peer(peer_vk=peer_vk))
+
+    async def stop_and_delete_peer(self, peer_vk):
+        peer = self.get_peer(vk=peer_vk)
+
+        if not peer:
+            return
+
+        await peer.stop()
+
+        self.delete_peer(peer_vk=peer_vk)
 
     def start_peer(self, vk: str) -> None:
         self.peers[vk].start()
@@ -337,7 +375,7 @@ class Network:
 
             self.connect_peer(ip=peer_ip, vk=peer_vk)
 
-    async def connected_to_all_peers(self):
+    async def connected_to_all_peers(self) -> bool:
         self.log('info', f'Establishing connection with {self.num_of_peers} peers...')
 
         while self.num_of_peers_connected() < self.num_of_peers():
@@ -345,25 +383,47 @@ class Network:
 
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
-    def make_constitution(self):
+    def make_network_map(self) -> dict:
         return {
             'masternodes': self.map_vk_to_ip(self.get_masternode_vk_list()),
             'delegates': self.map_vk_to_ip(self.get_delegate_vk_list())
         }
 
-    def make_node_list(self) -> list:
-        constitution = self.make_constitution()
+    def make_constitution(self) -> dict:
+        return {
+            'masternodes': self.get_masternode_vk_list(),
+            'delegates': self.get_delegate_vk_list()
+        }
+
+    def network_map_to_node_list(self, network_map: dict = dict({})) -> list:
         node_list = []
 
-        for vk, ip in constitution.get('masternodes').items():
+        for vk, ip in network_map.get('masternodes').items():
             node_list.append({'vk': vk, 'ip': ip, 'node_type': 'masternode'})
 
-        for vk, ip in constitution.get('delegates').items():
+        for vk, ip in network_map.get('delegates').items():
             node_list.append({'vk': vk, 'ip': ip, 'node_type': 'delegate'})
-        print (node_list)
+
         return node_list
 
-    def get_peers_for_consensus(self):
+    def network_map_to_constitution(self, network_map: dict = dict({})) -> dict:
+        constitution = dict({})
+        masternodes = network_map.get('masternodes')
+
+        if masternodes is not None:
+            constitution['masternodes'] = [vk for vk in masternodes.keys()]
+        else:
+            constitution['masternodes'] = {}
+
+        delegates = network_map.get('delegates')
+        if delegates is not None:
+            constitution['delegates'] = [vk for vk in delegates.keys()]
+        else:
+            constitution['delegates'] = {}
+
+        return constitution
+
+    def get_peers_for_consensus(self) -> list:
         all_peers = self.get_masternode_and_delegate_vk_list()
         all_peers.remove(self.vk)
         return all_peers
@@ -456,10 +516,10 @@ class Network:
                     msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info))
                 )
 
-        if action == ACTION_GET_NETWORK:
-            node_list = json.dumps(self.make_node_list())
+        if action == ACTION_GET_NETWORK_MAP:
+            node_list = json.dumps(self.make_network_map())
 
-            resp_msg = ('{"response": "%s", "node_list": %s}' % (ACTION_GET_NETWORK, node_list))
+            resp_msg = ('{"response": "%s", "network_map": %s}' % (ACTION_GET_NETWORK_MAP, node_list))
 
             self.router.send_msg(
                 to_vk=ident_vk_string,

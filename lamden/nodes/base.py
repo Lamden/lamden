@@ -234,8 +234,12 @@ class Node:
             if self.should_seed:
                 await self.start_new_network()
             else:
-                await self.join_existing_network()
-                await self.catchup()
+                joined = await self.join_existing_network()
+                if joined:
+                    await self.catchup()
+                else:
+                    self.running = False
+                    return
 
             self.driver.clear_pending_state()
 
@@ -255,7 +259,8 @@ class Node:
             '''
 
             for vk, ip in self.bootnodes.items():
-                print({"vk": vk, "ip": ip})
+                print(f'Attempting to connect to peer "{vk}" @ {ip}')
+                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
                 self.log.info({"vk": vk, "ip": ip})
 
                 if vk != self.wallet.verifying_key:
@@ -270,23 +275,44 @@ class Node:
     async def join_existing_network(self):
         bootnode = None
 
-        # Connect to a node on the network
+        # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
-            print({"vk": vk, "ip": ip})
-            self.log.info({"vk": vk, "ip": ip})
+            print(f'Attempting to connect to bootnode "{vk}" @ {ip}')
+            self.log.info(f'Attempting to connect to bootnode "{vk}" @ {ip}')
 
             if vk != self.wallet.verifying_key:
-                # Use it to boot up the network
-                self.network.connect(
-                    ip=ip,
-                    vk=vk
-                )
-                await asyncio.sleep(5)
+                self.network.authorize_peer(peer_vk=vk)
+                try:
+                    # Use it to boot up the network
+                    self.network.connect_to_bootnode(
+                        ip=ip,
+                        vk=vk
+                    )
+                except Exception as err:
+                    print(f'Exception raised while attempting connection to "{vk}" @ {ip}')
+                    print(err)
+                    self.log.error(f'Exception raised while attempting connection to "{vk}" @ {ip}')
+                    self.log.error(err)
 
-                # We only need one bootnode, so if we connected then we're good
-                if self.network.peers[vk].running:
-                    bootnode = self.network.peers[vk]
-                    break
+
+                bootnode = self.network.get_peer(vk=vk)
+
+                connection_attempts = 0
+                attempts = 60
+                sleep_for = 5
+
+                while not bootnode.is_connected:
+                    connection_attempts += 1
+
+                    if connection_attempts > attempts:
+                        bootnode = None
+                        self.network.revoke_peer_access(peer_vk=vk)
+                        self.network.remove_peer(peer_vk=vk)
+
+                        break
+
+                    self.log.info(f'Attempt {connection_attempts}/attempts failed to connect. Trying again in {sleep_for} seconds.')
+                    await asyncio.sleep(sleep_for)
 
         if bootnode is None:
             print("Could not connect to any bootnodes!")
@@ -297,43 +323,44 @@ class Node:
             return False
 
         # Get the rest of the nodes from our bootnode
-        response = bootnode.get_node_list()
-        node_list = response.get('node_list')
+        response = await bootnode.get_network_map()
+
+        try:
+            network_map = response.get('network_map')
+            if not network_map:
+                raise AttributeError()
+        except:
+            print(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
+            print(response)
+            self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
+            self.log.error(response)
+
+            return False
 
         # Create a constitution file
-        self.constitution = {
-            'masternodes': [],
-            'delegates':  []
-        }
-
-        # Populate constitution with node info
-        for node_info in node_list:
-            node_type = node_info.get('node_type')
-            vk = node_info.get('vk')
-            if node_type and vk:
-                self.constitution[f'{node_type}s'].append(vk)
-
-        self.constitution[f'{self.node_type}s'].append(self.wallet.verifying_key)
+        self.constitution = self.network.network_map_to_constitution(network_map=network_map)
 
         # Create genesis contracts
         self.seed_genesis_contracts()
 
         # Connect to all nodes in the network
-        for node_info in node_list:
+        for node_info in self.network.network_map_to_node_list(network_map=network_map):
             vk = node_info.get('vk')
             ip = node_info.get('ip')
 
             print({"vk": vk, "ip": ip})
             self.log.info({"vk": vk, "ip": ip})
 
+            self.network.refresh_approved_peers_in_cred_provider()
+
             if vk != self.wallet.verifying_key:
                 # connect to peer
-                self.network.connect(
+                self.network.connect_peer(
                     ip=ip,
                     vk=vk
                 )
 
-        # await self.network.connected_to_all_peers()
+        await self.network.connected_to_all_peers()
 
         return True
 
@@ -364,14 +391,14 @@ class Node:
             catchup_peer = self.network.peers[peer_vk]
         else:
             # get the peer at the highest block height
-            for _, peer in self.network.peers.items():
-                if not peer.running:
+            for peer in self.network.peer_list:
+                if not peer.connected:
                     continue
 
                 if not catchup_peer:
                     catchup_peer = peer
 
-                if peer.latest_block > catchup_peer.latest_block:
+                if peer.latest_block_number > catchup_peer.latest_block_number:
                     catchup_peer = peer
 
         if not catchup_peer:
@@ -386,9 +413,9 @@ class Node:
     async def run_catchup(self, peer):
         current = self.get_current_height()
 
-        while current < peer.latest_block:
+        while current < peer.latest_block_number:
             next_block_num = current + 1
-            response = peer.get_block(block_num=next_block_num)
+            response = await peer.get_block(block_num=next_block_num)
             self.log.info(response)
 
             if type(response) is dict:

@@ -1,7 +1,7 @@
 import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
-from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK
+from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK_MAP
 from lamden.peer import Peer
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
@@ -18,33 +18,36 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 GET_ALL_PEERS = "get_all_peers"
 
-class MockConstitution:
-    def __init__(self):
-        self.constitution = dict({
+class MockNetworkMap:
+    def __init__(self, network_map: dict = None):
+        self.network_map = dict({
             'masternodes': {},
             'delegates': {}
         })
 
-        self.constitution['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19001"
-        self.constitution['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19002"
-        self.constitution['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19003"
-        self.constitution['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19004"
+        if network_map is None:
+            self.network_map['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19001"
+            self.network_map['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19002"
+            self.network_map['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19003"
+            self.network_map['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19004"
+        else:
+            self.network_map = network_map
 
     @property
     def all_nodes(self):
-        all_nodes = self.constitution.get('masternodes').copy()
-        all_nodes.update(self.constitution.get('delegates'))
+        all_nodes = self.network_map.get('masternodes').copy()
+        all_nodes.update(self.network_map.get('delegates'))
         return all_nodes
 
     def add_node(self, vk: str, ip: str, type: str):
-        self.constitution[type][vk] = ip
+        self.network_map[type][vk] = ip
 
     def make_constitution(self):
-        constitution = dict({
-            'masternodes': [vk for vk in self.constitution['masternodes'].keys()],
-            'delegates': [vk for vk in self.constitution['delegates'].keys()]
+        network_map = dict({
+            'masternodes': [vk for vk in self.network_map['masternodes'].keys()],
+            'delegates': [vk for vk in self.network_map['delegates'].keys()]
         })
-        return constitution
+        return network_map
 
 
 class TestNetwork(TestCase):
@@ -272,6 +275,9 @@ class TestNetwork(TestCase):
     def test_METHOD_start(self):
         network_1 = self.create_network()
         network_1.start()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.starting())
+
         self.assertTrue(network_1.running)
 
     def test_METHOD_starting(self):
@@ -307,7 +313,7 @@ class TestNetwork(TestCase):
         peer_wallet = Wallet()
         peer_vk = peer_wallet.verifying_key
 
-        network_1.add_peer(
+        network_1.create_peer(
             ip='tcp://127.0.0.1:19001',
             vk=peer_vk
         )
@@ -326,12 +332,12 @@ class TestNetwork(TestCase):
         peer = network_1.get_peer(vk=peer_vk)
         self.assertFalse(peer.is_running)
 
-    def test_METHOD_add_peer__adds_peer_to_peer_dict(self):
+    def test_METHOD_create_peer__adds_peer_to_peer_dict(self):
         network_1 = self.create_network()
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
+        network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
 
         self.assertEqual(1, len(network_1.peer_list))
         self.assertIsInstance(network_1.peers[peer_vk], Peer)
@@ -341,7 +347,7 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
+        network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
 
         network_1.start_peer(vk=peer_vk)
 
@@ -354,7 +360,7 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
+        network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
 
         peer = network_1.get_peer(vk=peer_vk)
 
@@ -366,7 +372,7 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
+        network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
 
         peer = network_1.get_peer(vk='testing')
 
@@ -378,7 +384,7 @@ class TestNetwork(TestCase):
         peer_vk = wallet.verifying_key
         peer_ip = '1.1.1.1'
 
-        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer_by_ip(ip=peer_ip)
 
@@ -391,7 +397,7 @@ class TestNetwork(TestCase):
         peer_vk = wallet.verifying_key
         peer_ip = '1.1.1.1'
 
-        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer_by_ip(ip='2.2.2.2')
 
@@ -417,7 +423,7 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
         peer_ip = '1.1.1.1'
-        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         num_of_peers = network_1.num_of_peers()
 
@@ -430,13 +436,13 @@ class TestNetwork(TestCase):
         peer_vk_1 = wallet_1.verifying_key
         peer_ip_1 = '1.1.1.1'
 
-        network_1.add_peer(ip=peer_ip_1, vk=peer_vk_1)
+        network_1.create_peer(ip=peer_ip_1, vk=peer_vk_1)
 
         wallet_2 = Wallet()
         peer_vk_2 = wallet_2.verifying_key
         peer_ip_2 = '2.2.2.2'
 
-        network_1.add_peer(ip=peer_ip_2, vk=peer_vk_2)
+        network_1.create_peer(ip=peer_ip_2, vk=peer_vk_2)
 
         # Set peer_vk_1 as connected
         peer_1 = network_1.get_peer(vk=peer_vk_1)
@@ -493,6 +499,7 @@ class TestNetwork(TestCase):
     def test_METHOD_router_callback__hello_action_creates_proper_response(self):
         network_1 = self.create_network()
         network_1.router.send_msg = self.mock_send_msg
+        network_1.connect_peer = self.mock_connect_peer
 
         challenge = 'testing'
         hello_msg = json.dumps({'action': ACTION_HELLO, 'ip': 'tcp://127.0.0.1:19000', 'challenge': challenge})
@@ -509,9 +516,12 @@ class TestNetwork(TestCase):
 
         msg_obj = json.loads(msg_str)
         self.assertEqual(ACTION_HELLO, msg_obj.get("response"))
-        self.assertEqual(0, msg_obj.get("latest_block_num"))
+        self.assertEqual(0, msg_obj.get("latest_block_number"))
         self.assertEqual("0", msg_obj.get("latest_hlc_timestamp"))
         self.assertEqual(network_1.wallet.sign(challenge), msg_obj.get("challenge_response"))
+
+        # Tried to add peer
+        self.assertIsNotNone(self.connect_info)
 
     def test_METHOD_router_callback__hello_action_adds_peer_if_one_does_not_exist(self):
         network_1 = self.create_network()
@@ -532,7 +542,7 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.add_peer(vk=peer_vk, ip='tcp://127.0.0.1:19000')
+        network_1.create_peer(vk=peer_vk, ip='tcp://127.0.0.1:19000')
         self.assertEqual(1, network_1.num_of_peers())
 
         network_1.router.send_msg = self.mock_send_msg
@@ -600,7 +610,6 @@ class TestNetwork(TestCase):
         self.assertEqual("1a2b3c", block_info.get("hash"))
         self.assertEqual("1", block_info.get("hlc_timestamp"))
 
-
     def test_METHOD_router_callback__get_block_action_creates_proper_response_if_block_does_not_exist(self):
         network_1 = self.create_network()
         network_1.router.send_msg = self.mock_send_msg
@@ -625,15 +634,15 @@ class TestNetwork(TestCase):
     def test_METHOD_router_callback__get_network_action_creates_proper_response(self):
         network_1 = self.create_network()
 
-        constitution = MockConstitution()
+        mock_network_map = MockNetworkMap()
 
-        for vk, ip in constitution.all_nodes.items():
+        for vk, ip in mock_network_map.all_nodes.items():
             self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=vk)
-            network_1.add_peer(vk=vk, ip=ip)
+            network_1.create_peer(vk=vk, ip=ip)
 
         network_1.router.send_msg = self.mock_send_msg
 
-        latest_block_info_msg = json.dumps({'action': ACTION_GET_NETWORK})
+        latest_block_info_msg = json.dumps({'action': ACTION_GET_NETWORK_MAP})
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
@@ -646,19 +655,17 @@ class TestNetwork(TestCase):
         self.assertIsInstance(msg, str)
 
         msg_obj = json.loads(msg)
-        self.assertEqual(ACTION_GET_NETWORK, msg_obj.get("response"))
-        node_list = msg_obj.get("node_list")
+        self.assertEqual(ACTION_GET_NETWORK_MAP, msg_obj.get("response"))
+        network_map = msg_obj.get("network_map")
 
-        for vk, ip in constitution.all_nodes.items():
-            found = False
-            for node in node_list:
-                if node.get('vk') == vk and node.get('ip') == ip:
-                    found = True
-                    break
+        return_network_map = MockNetworkMap(network_map=network_map)
 
-            self.assertTrue(found)
+        self.assertTrue(len(mock_network_map.all_nodes), len(return_network_map.all_nodes))
 
-    def test_METHOD_make_node_list(self):
+        for vk, ip in mock_network_map.all_nodes.items():
+            self.assertEqual(ip, mock_network_map.all_nodes[vk])
+
+    def test_METHOD_make_network_map(self):
         network_1 = self.create_network()
 
         node_list = [
@@ -688,37 +695,101 @@ class TestNetwork(TestCase):
             vk = node.get('vk')
 
             self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            network_1.create_peer(vk=vk, ip=node.get('ip'))
 
-            if vk is not network_1.vk:
-                network_1.add_peer(vk=vk, ip=node.get('ip'))
+        network_map = network_1.make_network_map()
 
-        node_list_response = network_1.make_node_list()
-
-        self.assertEqual(4, len(node_list_response))
+        self.assertEqual(2, len(network_map.get('masternodes')))
+        self.assertEqual(2, len(network_map.get('delegates')))
 
         for node in node_list:
-            self.assertTrue(node in node_list_response)
+            node_type = node.get('node_type')
+            vk = node.get('vk')
+            ip = node.get('ip')
+            self.assertEqual(ip, network_map[f'{node_type}s'][vk])
 
-
-    def test_METHOD_remove_peer(self):
+    def test_METHOD_network_map_to_node_list(self):
         network_1 = self.create_network()
-        peer_vk = Wallet().verifying_key
 
-        network_1.add_peer(vk=peer_vk, ip='tcp://127.0.0.1:19001')
+        node_list = [
+            {
+                'vk': network_1.vk,
+                'ip': network_1.external_address,
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19001',
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19002',
+                'node_type': 'delegate'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19003',
+                'node_type': 'delegate'
+            },
+        ]
 
-        self.assertEqual(1, network_1.num_of_peers())
-        network_1.remove_peer(peer_vk=peer_vk)
-        self.assertEqual(0, network_1.num_of_peers())
+        for node in node_list:
+            vk = node.get('vk')
 
-    def test_METHOD_remove_peer(self):
+            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            network_1.create_peer(vk=vk, ip=node.get('ip'))
+
+        network_map = network_1.make_network_map()
+
+        node_list_from_netwrok_map = network_1.network_map_to_node_list(network_map=network_map)
+
+        for node in node_list_from_netwrok_map:
+            self.assertTrue(node in node_list)
+
+    def test_METHOD_network_map_to_constitution(self):
         network_1 = self.create_network()
-        peer_vk = Wallet().verifying_key
 
-        self.assertEqual(0, network_1.num_of_peers())
-        try:
-            network_1.remove_peer(peer_vk=peer_vk)
-        except:
-            self.fail("Calling remove_peer when peer doesn't exists should cause no exceptions.")
+        node_list = [
+            {
+                'vk': network_1.vk,
+                'ip': network_1.external_address,
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19001',
+                'node_type': 'masternode'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19002',
+                'node_type': 'delegate'
+            },
+            {
+                'vk': Wallet().verifying_key,
+                'ip': 'tcp://127.0.0.1:19003',
+                'node_type': 'delegate'
+            },
+        ]
+
+        for node in node_list:
+            vk = node.get('vk')
+
+            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            network_1.create_peer(vk=vk, ip=node.get('ip'))
+
+        network_map = network_1.make_network_map()
+
+        constitution_from_network_map = network_1.network_map_to_constitution(network_map=network_map)
+
+        for node in node_list:
+            node_type = node.get('node_type')
+            vk = node.get('vk')
+            self.assertTrue( vk in constitution_from_network_map[f'{node_type}s'])
+
+        self.assertEqual(2, len(constitution_from_network_map['masternodes']))
+        self.assertEqual(2, len(constitution_from_network_map['delegates']))
 
     def test_METHOD_connected_to_all_peers__task_completes_when_all_peers_are_connected(self):
         network_1 = self.create_network()
@@ -726,8 +797,8 @@ class TestNetwork(TestCase):
         peer_vk_1 = Wallet().verifying_key
         peer_vk_2 = Wallet().verifying_key
 
-        network_1.add_peer(vk=peer_vk_1, ip='tcp://127.0.0.1:19001')
-        network_1.add_peer(vk=peer_vk_2, ip='tcp://127.0.0.1:19002')
+        network_1.create_peer(vk=peer_vk_1, ip='tcp://127.0.0.1:19001')
+        network_1.create_peer(vk=peer_vk_2, ip='tcp://127.0.0.1:19002')
 
         task = asyncio.ensure_future(network_1.connected_to_all_peers())
 
@@ -760,7 +831,7 @@ class TestNetwork(TestCase):
         peer_vk = Wallet().verifying_key
         peer_ip = 'tcp://127.0.0.1:19001'
 
-        network_1.add_peer(vk=peer_vk, ip=peer_ip)
+        network_1.create_peer(vk=peer_vk, ip=peer_ip)
 
         network_1.connected_to_peer_callback(peer_vk=peer_vk)
 
@@ -889,7 +960,7 @@ class TestNetwork(TestCase):
         peer_ip = 'tcp://127.0.0.1:19001'
         peer_vk = Wallet().verifying_key
 
-        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer(vk=peer_vk)
         peer.update_ip = self.mock_peer_update_ip
@@ -917,7 +988,7 @@ class TestNetwork(TestCase):
         peer_new_ip = 'tcp://127.0.0.1:19002'
         peer_vk = Wallet().verifying_key
 
-        network_1.add_peer(ip=peer_ip, vk=peer_vk)
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer(vk=peer_vk)
         peer.update_ip = self.mock_peer_update_ip
@@ -955,6 +1026,22 @@ class TestNetwork(TestCase):
         peer = network_1.get_peer(vk=peer_vk)
         self.assertIsNotNone(peer.verify_task)
 
+    def test_METHOD_connect_bootnode__adds_peer_even_if_not_isnt_voted_in(self):
+        network_1 = self.create_network()
+
+        peer_vk = Wallet().verifying_key
+
+        try:
+            network_1.connect_to_bootnode(ip='tcp://127.0.0.1:19001', vk=peer_vk)
+            self.async_sleep(0.1)
+        except:
+            self.fail("Calling connect_peer with existing peer vk causes no errors.")
+
+        self.assertEqual(1, network_1.num_of_peers())
+
+        peer = network_1.get_peer(vk=peer_vk)
+        self.assertIsNotNone(peer.verify_task)
+
     def test_METHOD_hello_response_creates_properly_formatted_response(self):
         network_1 = self.create_network()
 
@@ -966,7 +1053,7 @@ class TestNetwork(TestCase):
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))
-        self.assertEqual(0, hello_obj.get("latest_block_num"))
+        self.assertEqual(0, hello_obj.get("latest_block_number"))
         self.assertEqual("0", hello_obj.get("latest_hlc_timestamp"))
         self.assertEqual(network_1.wallet.sign(challenge), hello_obj.get("challenge_response"))
 
@@ -979,7 +1066,7 @@ class TestNetwork(TestCase):
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))
-        self.assertEqual(0, hello_obj.get("latest_block_num"))
+        self.assertEqual(0, hello_obj.get("latest_block_number"))
         self.assertEqual("0", hello_obj.get("latest_hlc_timestamp"))
         self.assertEqual("", hello_obj.get("challenge_response"))
 
@@ -1037,8 +1124,8 @@ class TestNetwork(TestCase):
         peer_1 = ('tcp://127.0.0.1:19001', Wallet().verifying_key)
         peer_2 = ('tcp://127.0.0.1:19002', Wallet().verifying_key)
 
-        network_1.add_peer(ip=peer_1[0], vk=peer_1[1])
-        network_1.add_peer(ip=peer_2[0], vk=peer_2[1])
+        network_1.create_peer(ip=peer_1[0], vk=peer_1[1])
+        network_1.create_peer(ip=peer_2[0], vk=peer_2[1])
 
         vk_list = [peer_1[1], peer_2[1]]
 
@@ -1069,17 +1156,16 @@ class TestNetwork(TestCase):
             value=delegate_vks
         )
 
-        network_1.add_peer(ip=masternode_1[0], vk=masternode_1[1])
-        network_1.add_peer(ip=masternode_2[0], vk=masternode_2[1])
-        network_1.add_peer(ip=masternode_3[0], vk=masternode_3[1])
-        network_1.add_peer(ip=delegate_1[0], vk=delegate_1[1])
-        network_1.add_peer(ip=delegate_2[0], vk=delegate_2[1])
+        network_1.create_peer(ip=masternode_1[0], vk=masternode_1[1])
+        network_1.create_peer(ip=masternode_2[0], vk=masternode_2[1])
+        network_1.create_peer(ip=masternode_3[0], vk=masternode_3[1])
+        network_1.create_peer(ip=delegate_1[0], vk=delegate_1[1])
+        network_1.create_peer(ip=delegate_2[0], vk=delegate_2[1])
 
         constitution = network_1.make_constitution()
 
         self.assertEqual(3, len(constitution.get('masternodes')))
         self.assertEqual(2, len(constitution.get('delegates')))
-        self.assertEqual(network_1.external_address, constitution['masternodes'][network_1.vk])
 
     def test_METHOD_get_peers_for_consensus(self):
         network_1 = self.create_network()
@@ -1106,3 +1192,129 @@ class TestNetwork(TestCase):
         consensus_peers = network_1.get_peers_for_consensus()
 
         self.assertEqual(4, len(consensus_peers))
+
+    def test_METHOD_authorize_peer__can_add_peer_vk_to_cred_provider(self):
+        network_1 = self.create_network()
+
+        peer_wallet = Wallet()
+        peer_vk = peer_wallet.verifying_key
+
+        network_1.authorize_peer(peer_vk=peer_vk)
+
+        self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=peer_wallet.curve_vk))
+
+    def test_METHOD_revoke_peer_access__can_remove_a_peer_vk_from_cred_provider(self):
+        network_1 = self.create_network()
+
+        peer_wallet = Wallet()
+        peer_vk = peer_wallet.verifying_key
+
+        network_1.router.cred_provider.add_key(vk=peer_vk)
+        self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=peer_wallet.curve_vk))
+
+        network_1.revoke_peer_access(peer_vk=peer_vk)
+        self.assertFalse(network_1.router.cred_provider.key_is_approved(curve_vk=peer_wallet.curve_vk))
+
+    def test_METHOD_remove_peer__stops_and_deletes_peer_from_peers_dict(self):
+        network_1 = self.create_network()
+
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_vk = Wallet().verifying_key
+
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
+
+        peer = network_1.get_peer(vk=peer_vk)
+        peer.connected = True
+        peer.verified = True
+        peer.running = True
+
+        network_1.remove_peer(peer_vk=peer_vk)
+
+        while network_1.get_peer(vk=peer_vk) is not None:
+            self.async_sleep(0.1)
+
+        self.assertIsNone(network_1.get_peer(vk=peer_vk))
+
+    def test_METHOD_remove_peer__raises_no_exceptions_if_peer_does_not_exist(self):
+        network_1 = self.create_network()
+
+        peer_vk = Wallet().verifying_key
+
+        try:
+            network_1.remove_peer(peer_vk=peer_vk)
+        except:
+            self.fail('Calling remove_peer when peer does not exist should raise NO exceptions.')
+
+        self.assertIsNone(network_1.get_peer(vk=peer_vk))
+
+    def test_METHOD_stop_and_delete_peer__stops_and_deletes_peer_from_peers_dict(self):
+        network_1 = self.create_network()
+
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_vk = Wallet().verifying_key
+
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
+
+        peer = network_1.get_peer(vk=peer_vk)
+        peer.connected = True
+        peer.verified = True
+        peer.running = True
+
+        task = asyncio.ensure_future(network_1.stop_and_delete_peer(peer_vk=peer_vk))
+
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.assertIsNone(network_1.get_peer(vk=peer_vk))
+
+    def test_METHOD_stop_and_delete_peer__raises_no_exceptions_if_peer_does_not_exist(self):
+        network_1 = self.create_network()
+
+        peer_vk = Wallet().verifying_key
+
+        try:
+            task = asyncio.ensure_future(network_1.stop_and_delete_peer(peer_vk=peer_vk))
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(task)
+
+        except:
+            self.fail('Calling remove_peer when peer does not exist should raise NO exceptions.')
+
+        self.assertIsNone(network_1.get_peer(vk=peer_vk))
+
+    def test_METHOD_peer_is_voted_in__returns_TRUE_if_peer_is_in_smart_contract(self):
+        network_1 = self.create_network()
+
+        peer_vk = Wallet().verifying_key
+        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+
+        self.assertTrue(network_1.peer_is_voted_in(peer_vk))
+
+    def test_METHOD_peer_is_voted_in__returns_FALSE_if_peer_is_not_in_smart_contract(self):
+        network_1 = self.create_network()
+
+        peer_vk = Wallet().verifying_key
+
+        self.assertFalse(network_1.peer_is_voted_in(peer_vk))
+
+    def test_METHOD_refresh_approved_peers_in_cred_provider__sets_cred_provicer_keys_to_what_is_in_smartcontracts(self):
+        network_1 = self.create_network()
+
+        # Add a key to the cred provider
+        old_peer_wallet = Wallet()
+        network_1.router.cred_provider.add_key(vk=old_peer_wallet.verifying_key)
+        self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=old_peer_wallet.curve_vk))
+
+        # Creates some new nodes that were voted in
+        new_mn_wallet = Wallet()
+        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=new_mn_wallet.verifying_key)
+
+        new_del_wallet = Wallet()
+        self.add_vk_to_smartcontract(node_type='delegate', network=network_1, vk=new_del_wallet.verifying_key)
+
+        # Refresh the cred provider
+        network_1.refresh_approved_peers_in_cred_provider()
+
+        self.assertFalse(network_1.router.cred_provider.key_is_approved(curve_vk=old_peer_wallet.curve_vk))
+        self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_mn_wallet.curve_vk))
+        self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_del_wallet.curve_vk))

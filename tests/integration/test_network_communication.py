@@ -115,7 +115,7 @@ class TestNetwork(TestCase):
 
     def test_can_start_one_threaded_network(self):
         '''
-            One Threaded Network can start up, no errors.
+            One Threaded Netowrk can start up, no errors.
         '''
         network_1 = self.create_threaded_network(index=0)
         network_1.start()
