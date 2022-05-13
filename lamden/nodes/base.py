@@ -87,6 +87,7 @@ class Node:
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.tx_queue = tx_queue
+        self.pause_tx_queue_checking = False
 
         self.driver = driver
         self.nonces = nonces
@@ -194,7 +195,7 @@ class Node:
             hlc_clock=self.hlc_clock,
             get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop,
-            network=self.network
+            driver=self.driver
         )
 
         self.block_contender = block_contender.Block_Contender(
@@ -377,21 +378,23 @@ class Node:
 
         await self.network.connected_to_all_peers()
 
-        # Run an initial catchup to get as many blocks as we can
-        await self.catchup()
+        needs_catchup = self.network.get_highest_peer_block() > 0
+        if needs_catchup:
+            # Run an initial catchup to get as many blocks as we can
+            await self.catchup()
 
-        # Run a continuous catchup to get any blocks that have been minted during the initial catchup.
-        await self.catchup_continuous(block_threshold=50)
+            # Run a continuous catchup to get any blocks that have been minted during the initial catchup.
+            await self.catchup_continuous(block_threshold=10)
 
-        # Start the validation queue so we start accepting block results
-        print('STARTING VALIDATION QUEUE')
-        self.log.info('STARTING VALIDATION QUEUE')
+            # Start the validation queue so we start accepting block results
+            self.start_validation_queue_and_check()
 
-        self.validation_queue.start()
-        asyncio.ensure_future(self.check_validation_queue())
+            # Now start catching up to minting of blocks from validation queue
+            await self.catchup_to_validation_queue(catchup_starting_height=self.get_current_height())
+        else:
+            # Start the validation queue so we start accepting block results
+            self.start_validation_queue_and_check()
 
-        # Now start catching up to minting of blocks from validation queue
-        await self.catchup_to_validation_queue(catchup_starting_height=self.get_current_height())
 
         self.driver.clear_pending_state()
 
@@ -538,6 +541,13 @@ class Node:
         self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
         self.log.info(f"validation_queue running: {self.validation_queue.running}")
 
+    def start_validation_queue_and_check(self):
+        print('STARTING VALIDATION QUEUE')
+        self.log.info('STARTING VALIDATION QUEUE')
+
+        self.validation_queue.start()
+        asyncio.ensure_future(self.check_validation_queue())
+
     async def stop_all_queues(self):
         self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
         self.main_processing_queue.stop()
@@ -580,8 +590,14 @@ class Node:
     def start_main_processing_queue(self):
         self.main_processing_queue.start()
 
+    def pause_tx_queue(self):
+        self.pause_tx_queue_checking = True
+
+    def unpause_tx_queue(self):
+        self.pause_tx_queue_checking = False
+
     async def check_tx_queue(self):
-        while self.running:
+        while self.running and not self.pause_tx_queue_checking:
             if len(self.tx_queue) > 0:
                 tx_from_file = self.tx_queue.pop(0)
                 # TODO sometimes the tx info taken off the filequeue is None, investigate
@@ -589,7 +605,7 @@ class Node:
                     tx_message = self.make_tx_message(tx=tx_from_file)
 
                     # send the tx to the rest of the network
-                    asyncio.ensure_future(self.network.publisher.publish(topic=WORK_SERVICE, msg=tx_message))
+                    asyncio.ensure_future(self.network.publisher.async_publish(topic_str=WORK_SERVICE, msg_dict=tx_message))
 
                     # add this tx the processing queue so we can process it
                     self.main_processing_queue.append(tx=tx_message)
@@ -656,7 +672,7 @@ class Node:
         )
 
     def send_solution_to_network(self, processing_results):
-        asyncio.ensure_future(self.network.publisher.publish(topic=CONTENDER_SERVICE, msg=processing_results))
+        asyncio.ensure_future(self.network.publisher.async_publish(topic_str=CONTENDER_SERVICE, msg_dict=processing_results))
 
     def soft_apply_current_state(self, hlc_timestamp):
         try:

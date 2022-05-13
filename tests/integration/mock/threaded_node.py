@@ -11,6 +11,7 @@ from contracting.db.driver import ContractDriver, FSDriver
 from lamden.network import Network
 
 from lamden.crypto.wallet import Wallet
+from lamden.nodes.filequeue import FileQueue
 
 import unittest
 from pathlib import Path
@@ -27,6 +28,7 @@ class ThreadedNode(threading.Thread):
                  constitution: dict,
                  block_storage: BlockStorage,
                  raw_driver,
+                 tx_queue: FileQueue = FileQueue(),
                  index=0,
                  bootnodes={},
                  bypass_catchup=False,
@@ -49,6 +51,7 @@ class ThreadedNode(threading.Thread):
         self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
         self.genesis_path = genesis_path
+        self.tx_queue = tx_queue
 
         self.bypass_catchup = bypass_catchup
 
@@ -121,7 +124,8 @@ class ThreadedNode(threading.Thread):
                 driver=self.contract_driver,
                 blocks=self.block_storage,
                 should_seed=self.should_seed,
-                genesis_path=str(self.genesis_path)
+                genesis_path=str(self.genesis_path),
+                tx_queue=self.tx_queue
             )
 
             self.node.network.set_to_local()
@@ -146,6 +150,9 @@ class ThreadedNode(threading.Thread):
 
     def get_latest_block(self) -> dict:
         return self.network.get_latest_block()
+
+    def send_tx(self, encoded_tx: bytes):
+        self.node.tx_queue.append(encoded_tx)
 
     def sleep(self):
         loop = asyncio.get_event_loop()

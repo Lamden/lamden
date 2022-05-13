@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import time
-from lamden import router
+from lamden.nodes.processors.processor import Processor
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
 from lamden.nodes.filequeue import FileQueue
@@ -18,7 +18,7 @@ BLOCK_SERVICE = 'service'
 WORK_SERVICE = 'work'
 
 
-class BlockService(router.Processor):
+class BlockService(Processor):
     def __init__(self, blocks: BlockStorage=None, driver=ContractDriver()):
         self.blocks = blocks
         self.driver = driver

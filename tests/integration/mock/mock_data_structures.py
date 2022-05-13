@@ -50,6 +50,9 @@ class MockTransaction:
 
         self.metadata = dict({'signature': signature})
 
+    def get_processor(self):
+        return self.payload.get('processor')
+
     def as_dict(self):
         return dict(self.__dict__)
 
@@ -262,6 +265,9 @@ class MockBlocks:
     def get_block(self, num: int):
         return self.blocks.get(num)
 
+    def get_latest_block(self):
+        return self.get_block(num=self.current_block_height)
+
 class TestMockBlock(TestCase):
     def setUp(self):
         pass
@@ -274,7 +280,6 @@ class TestMockBlock(TestCase):
         blocks.add_block()
 
         self.assertEqual(1, blocks.current_block_height)
-
 
     def test_get_block(self):
         blocks = MockBlocks()

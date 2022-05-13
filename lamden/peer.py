@@ -65,6 +65,7 @@ class Peer:
         })
 
         self.verify_task = None
+        self.reconnect_task = None
 
         self.setup_event_loop()
 
@@ -283,6 +284,7 @@ class Peer:
         try:
             msg_str = json.loads(msg)
             topic_str = topic.decode("utf-8")
+
         except Exception as err:
             self.log('error', f'ERROR decoding message parts: {err}')
             return
@@ -304,7 +306,10 @@ class Peer:
         return False
 
     def reconnect(self) -> None:
-        asyncio.ensure_future(self.reconnect_loop())
+        if self.reconnecting:
+            return
+
+        self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
         if self.reconnecting:
@@ -420,10 +425,9 @@ class Peer:
 
         try:
             result = await self.request.send(to_address=to_address, str_msg=str_msg, timeout=timeout, retries=retries)
+            return self.handle_result(result=result)
         except Exception as error:
             print(error)
-
-        return self.handle_result(result=result)
 
     def handle_result(self, result: Result) -> (dict, None):
         if result.success:
@@ -447,7 +451,17 @@ class Peer:
 
         return None
 
+    async def cancel_reconnect_task(self):
+        if self.reconnect_task:
+            if not self.reconnect_task.done():
+                self.reconnect_task.cancel()
+                while not self.reconnect_task.done():
+                    await asyncio.sleep(0.1)
+                self.reconnecting = False
+
     async def stopping(self):
+        await self.cancel_reconnect_task()
+
         if not self.reconnecting or not self.is_verifying:
             return
 

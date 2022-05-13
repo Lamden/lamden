@@ -149,7 +149,7 @@ class Subscriber():
             if await self.messages_waiting(timeout=50):
                 data = await self.socket.recv_multipart()
 
-                self.log('info', f'Got event from {self.address}')
+                self.log('info', f'Got event from {self.address}. {data}')
 
                 if self.callback:
                     asyncio.ensure_future(self.callback(data))

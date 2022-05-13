@@ -56,32 +56,6 @@ class TestNewNodeCatchup(TestCase):
                 tn.node.apply_state_changes_from_block(block=new_block)
         return new_blocks
 
-    def test_testcase_can_preload_blocks(self):
-        self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
-        )
-
-        self.add_blocks_to_network(num_of_blocks=5)
-        self.assertEqual(5, self.network.masternodes[0].node.get_current_height())
-
-    def test_testcase_preloading_can_add_state(self):
-        self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
-        )
-
-        mock_blocks = self.add_blocks_to_network(num_of_blocks=1)
-        self.assertEqual(1, self.network.masternodes[0].node.get_current_height())
-
-        node = self.network.all_nodes[0]
-
-        for vk, amount in mock_blocks.internal_state.items():
-            print(f'node vk: {node.vk}')
-            print(vk, str(amount))
-            state_amount = node.get_smart_contract_value(key=f'currency.balances:{vk}')
-            self.assertEqual(amount, state_amount)
-
     def test_new_peer_can_catchup_blocks_to_block_height_of_highest_node_block_height(self):
         self.network.create_new_network(
             num_of_masternodes=1,

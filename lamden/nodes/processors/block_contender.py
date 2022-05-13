@@ -2,8 +2,9 @@ from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.network import Network
+from lamden.nodes.processors.processor import Processor
 
-class Block_Contender():
+class Block_Contender(Processor):
     def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
 
         self.q = []

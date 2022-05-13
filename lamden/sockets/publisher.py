@@ -106,6 +106,9 @@ class Publisher():
             raise TypeError("Port must be type integer.")
 
         self.address = f'tcp://{ip}:{port}'
+
+    async def async_publish(self, **kwargs):
+        self.publish(**kwargs)
     
     def publish(self, topic_str: str, msg_dict: dict) -> None:
         if not self.running:
