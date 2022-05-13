@@ -288,6 +288,9 @@ class Network:
     def get_peer(self, vk: str) -> Peer:
         return self.peers.get(vk, None)
 
+    def get_all_connected_peers(self) -> List[Peer]:
+        return list(filter(lambda peer: peer.connected, self.peer_list))
+
     def delete_peer(self, peer_vk: str) -> None:
         self.peers.pop(peer_vk)
 
@@ -313,6 +316,20 @@ class Network:
                 'number': latest_block.get('number', 0),
                 'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
             }
+    def get_highest_peer_block(self) -> int:
+        highest_peer_block = 0
+        for peer in self.get_all_connected_peers():
+            if peer.latest_block_number > highest_peer_block:
+                highest_peer_block = peer.latest_block_number
+
+        return highest_peer_block
+
+    async def refresh_peer_block_info(self) -> None:
+        tasks = []
+        for peer in self.peer_list:
+            tasks.append(asyncio.ensure_future(peer.get_latest_block_info()))
+
+        await asyncio.gather(*tasks)
 
     def set_socket_port(self, service: str, port_num: int) -> None:
         if not isinstance(port_num, int):

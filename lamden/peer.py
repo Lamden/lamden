@@ -391,7 +391,7 @@ class Peer:
 
     async def get_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': 'get_block', 'block_num': block_num}
-        msg_json = await self.send_request(msg_obj=msg_obj)
+        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=500)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
@@ -418,7 +418,10 @@ class Peer:
 
         to_address = to_address or self.request_address
 
-        result = await self.request.send(to_address=to_address, str_msg=str_msg, timeout=timeout, retries=retries)
+        try:
+            result = await self.request.send(to_address=to_address, str_msg=str_msg, timeout=timeout, retries=retries)
+        except Exception as error:
+            print(error)
 
         return self.handle_result(result=result)
 
