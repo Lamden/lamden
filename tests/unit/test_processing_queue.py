@@ -438,7 +438,7 @@ class TestProcessingQueue(TestCase):
             if code == 0:
                 self.assertListEqual(writes, [{'key': k, 'value': v} for k, v in output['writes'].items()])
             else:
-                sender_balance = self.driver.driver.get(
+                sender_balance = self.driver.get_var(
                     contract='currency',
                     variable='balances',
                     arguments=[transaction['payload']['sender']],
@@ -447,7 +447,11 @@ class TestProcessingQueue(TestCase):
                 # Calculate only stamp deductions
                 stamps_used = output.get('stamps_used')
                 to_deduct = stamps_used / stamp_cost
-                new_bal = sender_balance - to_deduct
+                new_bal = 0
+                try:
+                    new_bal = sender_balance - to_deduct
+                except TypeError:
+                    pass
                 self.assertListEqual(writes, [{'key': 'currency.balances:{}'.format(transaction['payload']['sender']),'value': new_bal}])
 
     def test_sign_tx_results(self):
