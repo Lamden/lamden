@@ -159,6 +159,7 @@ class Node:
             driver=self.driver,
             client=self.client,
             wallet=self.wallet,
+            metering=metering,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
             get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
