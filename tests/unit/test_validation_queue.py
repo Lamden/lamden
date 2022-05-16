@@ -1,10 +1,9 @@
 from unittest import TestCase
-from contracting.db.driver import ContractDriver
+from contracting.db.driver import ContractDriver, InMemDriver
 from lamden.nodes import validation_queue
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
-from lamden.network import Network
-from copy import deepcopy
+
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results, get_new_processing_result
 import asyncio
@@ -12,7 +11,15 @@ import asyncio
 class TestValidationQueue(TestCase):
     def setUp(self):
         self.wallet = Wallet()
-        self.driver = ContractDriver()
+
+        self.driver = ContractDriver(driver=InMemDriver())
+        self.driver.set(
+            key='rewards.S:value',
+            value=(0.44, 0.44, 0.01, 0.01, 0.01)
+        )
+
+        print(self.driver.get(key='rewards.S:value'))
+
         self.hlc_clock = HLC_Clock()
 
         self.running = True
@@ -26,11 +33,6 @@ class TestValidationQueue(TestCase):
 
         self.current_block = 64 * f'0'
 
-        network = Network(
-            wallet=Wallet(),
-            driver=self.driver
-        )
-
         self.validation_queue = validation_queue.ValidationQueue(
             driver=self.driver,
             wallet=self.wallet,
@@ -38,9 +40,10 @@ class TestValidationQueue(TestCase):
             hard_apply_block=self.hard_apply_block,
             stop_node=self.stop,
             testing=True,
-            network=network,
             get_block_by_hlc=self.get_block_by_hlc
         )
+
+        self.validation_queue.get_peers_for_consensus = self.get_peers_for_consensus
 
         self.block = None
         self.get_block_by_hlc_called = False
@@ -103,7 +106,7 @@ class TestValidationQueue(TestCase):
 
         tx_message = tx_message or get_tx_message(tx=transaction, node_wallet=masternode)
 
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         self.validation_queue.append(processing_results=processing_results)
 
@@ -224,7 +227,7 @@ class TestValidationQueue(TestCase):
 
         transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
         tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         hlc_timestamp = tx_message['hlc_timestamp']
 
@@ -290,7 +293,7 @@ class TestValidationQueue(TestCase):
 
         transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
         tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         hlc_timestamp = tx_message['hlc_timestamp']
 
@@ -315,7 +318,7 @@ class TestValidationQueue(TestCase):
 
         transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
         tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         hlc_timestamp = tx_message['hlc_timestamp']
 
@@ -337,7 +340,7 @@ class TestValidationQueue(TestCase):
 
         transaction = get_new_currency_tx(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
         tx_message = get_tx_message(tx=transaction, node_wallet=node_wallet)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         hlc_timestamp = tx_message['hlc_timestamp']
 
@@ -378,7 +381,7 @@ class TestValidationQueue(TestCase):
         receiver_wallet = Wallet()
         node_wallet = Wallet()
         tx_message = get_tx_message(wallet=self.wallet, amount="10.5", to=receiver_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=node_wallet)
+        processing_results = get_processing_results(driver=self.driver, tx_message=tx_message, node_wallet=node_wallet)
 
         hlc_timestamp = tx_message['hlc_timestamp']
         self.validation_queue.append(processing_results=processing_results)
@@ -386,6 +389,22 @@ class TestValidationQueue(TestCase):
         self.assertTrue(self.validation_queue.awaiting_validation(hlc_timestamp=hlc_timestamp))
 
         self.assertIsNotNone(self.validation_queue.validation_results[hlc_timestamp]['solutions'][node_wallet.verifying_key])
+
+
+    def test_get_results(self):
+        node_wallet_1 = Wallet()
+        node_wallet_2 = Wallet()
+
+        processing_results_1, processing_results_2 = self.add_solutions(
+            amount_of_solutions=2,
+            node_wallets=[node_wallet_1, node_wallet_2]
+        )
+
+        hlc_timestamp = processing_results_1['hlc_timestamp']
+
+        results = self.validation_queue.get_validation_result(hlc_timestamp=hlc_timestamp)
+
+        self.assertIsNotNone(results)
 
     def test_get_consensus_results(self):
         node_wallet_1 = Wallet()

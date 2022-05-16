@@ -2,8 +2,9 @@ from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.network import Network
+from lamden.nodes.processors.processor import Processor
 
-class Block_Contender():
+class Block_Contender(Processor):
     def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
 
         self.q = []
@@ -47,7 +48,7 @@ class Block_Contender():
         # tack on the tx_result_hash to the proof for this node
         msg['proof']['tx_result_hash'] = tx_result_hash
 
-        peers = self.network.get_all_peers()
+        peers = self.network.get_masternode_and_delegate_vk_list()
         # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
 
         if proof['signer'] not in peers and proof['signer'] != self.wallet.verifying_key:

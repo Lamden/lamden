@@ -67,12 +67,14 @@ class TestRequestSocket(unittest.TestCase):
         self.start_secure_peer()
         self.assertIsInstance(obj=self.peer, cls=MockRouter)
         self.peer.stop()
+        self.async_sleep(1)
         self.peer.join()
 
     def test_can_create_instance_MOCKREPLY(self):
         self.start_peer()
         self.assertIsInstance(obj=self.peer, cls=MockReply)
         self.peer.stop()
+        self.async_sleep(1)
         self.peer.join()
 
     def test_can_create_instance_REQUEST(self):

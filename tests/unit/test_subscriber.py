@@ -375,9 +375,16 @@ class TestSubscriberSocket(unittest.TestCase):
 
         loop = asyncio.get_event_loop()
         has_message = False
+
+        start = time.time()
+        timeout = 10
+
         while not has_message:
             self.publisher.publish_message_multipart(topic_str=topic_str, msg_dict=msg_dict)
             has_message = loop.run_until_complete(self.subscriber.messages_waiting(timeout=100))
+
+            if time.time() - start > timeout:
+                self.fail("Test Case timed out waiting subscriber to get messages.")
 
         self.assertTrue(has_message)
 

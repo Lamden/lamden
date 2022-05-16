@@ -2,7 +2,7 @@ import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK_MAP
-from lamden.peer import Peer
+from lamden.peer import Peer, LATEST_BLOCK_INFO
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 from lamden.storage import BlockStorage
@@ -1318,3 +1318,33 @@ class TestNetwork(TestCase):
         self.assertFalse(network_1.router.cred_provider.key_is_approved(curve_vk=old_peer_wallet.curve_vk))
         self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_mn_wallet.curve_vk))
         self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_del_wallet.curve_vk))
+
+    def test_METHOD_refresh_peer_block_info(self):
+        async def mock_send_request(msg_obj):
+            return {
+                'response': LATEST_BLOCK_INFO,
+                'latest_block_number': 10,
+                'latest_hlc_timestamp': '10'
+            }
+
+        network_1 = self.create_network()
+
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_vk = Wallet().verifying_key
+
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
+
+        peer = network_1.get_peer(vk=peer_vk)
+        peer.connected = True
+        peer.verified = True
+        peer.running = True
+
+        peer.send_request = mock_send_request
+
+        task = asyncio.ensure_future(network_1.refresh_peer_block_info())
+
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.assertEqual(10, peer.latest_block_number)
+        self.assertEqual('10', peer.latest_block_hlc_timestamp)

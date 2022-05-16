@@ -5,6 +5,9 @@ import math
 
 from contracting.stdlib.bridge.time import Datetime
 from contracting.db.encoder import encode, safe_repr, convert_dict
+from contracting.execution.executor import Executor
+
+from lamden.rewards import RewardManager
 from lamden.crypto.canonical import tx_hash_from_tx, hash_from_results, format_dictionary, tx_result_hash_from_tx_result_object
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
@@ -13,9 +16,9 @@ from .filequeue import STORAGE_HOME
 
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, executor, stop_node,
-                 get_last_processed_hlc,  reward_manager, check_if_already_has_consensus,
-                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, testing=False, debug=False):
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, stop_node,
+                 get_last_processed_hlc, check_if_already_has_consensus,
+                 get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, metering=False, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
@@ -28,7 +31,6 @@ class TxProcessingQueue(ProcessingQueue):
         self.wallet = wallet
         self.driver = driver
         self.hlc_clock = hlc_clock
-        self.executor = executor
         self.reprocess = reprocess
 
         self.get_last_processed_hlc = get_last_processed_hlc
@@ -41,13 +43,12 @@ class TxProcessingQueue(ProcessingQueue):
         self.read_history = {}
         self.processing_results = {}
 
-        self.reward_manager = reward_manager
+        self.reward_manager = RewardManager()
+        self.executor = Executor(driver=self.driver, metering=metering)
 
         self.debug_writes_log = []
 
         # self.last_time_processed = datetime.datetime.now()
-
-
 
         # TODO This is just for testing
         self.total_processed = 0

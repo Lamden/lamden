@@ -1,6 +1,5 @@
 import asyncio
 
-from lamden import router, network
 from lamden.logger.base import get_logger
 from lamden.nodes import base
 
@@ -33,7 +32,7 @@ class Delegate(base.Node):
 
         self.log.info('Done starting...')
 
-
+    '''
     async def update_sockets(self):
         mns = self.get_masternode_peers()
         iterator = iter(mns.items())
@@ -51,6 +50,7 @@ class Delegate(base.Node):
 
         if peers is not None:
             self.network.update_peers(peers=peers)
+    '''
 
     async def wait_for_new_block_confirmation(self):
         self.log.info('Waiting for block confirmation...')

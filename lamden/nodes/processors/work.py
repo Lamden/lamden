@@ -1,18 +1,19 @@
 from lamden.logger.base import get_logger
-from lamden import router, storage
+from lamden.nodes.processors.processor import Processor
 from lamden.crypto.wallet import verify
 from lamden.crypto.canonical import tx_hash_from_tx
-from lamden.network import Network
+from contracting.db.driver import ContractDriver
 
-class WorkValidator(router.Processor):
-    def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node, network: Network):
+class WorkValidator(Processor):
+    def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node,
+                 driver: ContractDriver):
 
         self.log = get_logger('Work Inbox')
 
         self.main_processing_queue = main_processing_queue
         self.get_last_processed_hlc = get_last_processed_hlc
 
-        self.network = network
+        self.driver = driver
 
         self.wallet = wallet
         self.hlc_clock = hlc_clock
@@ -68,7 +69,9 @@ class WorkValidator(router.Processor):
         return True
 
     def known_masternode(self, msg):
-        if msg['sender'] not in self.network.get_masternode_peers() and msg['sender'] != self.wallet.verifying_key:
+        masternodes_from_smartcontract = self.driver.driver.get(f'masternodes.S:members') or []
+
+        if msg['sender'] not in masternodes_from_smartcontract and msg['sender'] != self.wallet.verifying_key:
             self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
             return False
         else:

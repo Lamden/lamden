@@ -204,7 +204,7 @@ class TestNetwork(TestCase):
         )
 
         # Wait for network discovery to happen
-        self.async_sleep(5)
+        self.async_sleep(1)
 
         # All networks end up with 2 peers due to discovery
         for network in self.networks:

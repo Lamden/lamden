@@ -104,7 +104,10 @@ class Request():
         socket.send_string(str_msg)
 
     def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.Poller=None) -> bool:
-        return socket in dict(pollin.poll(poll_time))
+        try:
+            return socket in dict(pollin.poll(poll_time))
+        except:
+            return False
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
         error = None

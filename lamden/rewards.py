@@ -107,8 +107,11 @@ class RewardManager:
     @staticmethod
     def calculate_tx_output_rewards(total_stamps_to_split, contract, client: ContractingClient):
 
-        master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
-            client.get_var(contract='rewards', variable='S', arguments=['value'])
+        try:
+            master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
+                client.get_var(contract='rewards', variable='S', arguments=['value'])
+        except TypeError:
+            raise NotImplementedError("Driver could not get value for key rewards.S:value. Try setting up rewards.")
 
         master_reward = RewardManager.calculate_participant_reward(
             participant_ratio=master_ratio,

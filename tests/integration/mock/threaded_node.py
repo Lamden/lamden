@@ -11,6 +11,7 @@ from contracting.db.driver import ContractDriver, FSDriver
 from lamden.network import Network
 
 from lamden.crypto.wallet import Wallet
+from lamden.nodes.filequeue import FileQueue
 
 import unittest
 from pathlib import Path
@@ -27,6 +28,7 @@ class ThreadedNode(threading.Thread):
                  constitution: dict,
                  block_storage: BlockStorage,
                  raw_driver,
+                 tx_queue: FileQueue = FileQueue(),
                  index=0,
                  bootnodes={},
                  bypass_catchup=False,
@@ -49,6 +51,7 @@ class ThreadedNode(threading.Thread):
         self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
         self.genesis_path = genesis_path
+        self.tx_queue = tx_queue
 
         self.bypass_catchup = bypass_catchup
 
@@ -121,6 +124,10 @@ class ThreadedNode(threading.Thread):
         block_info = self.node.network.get_latest_block_info()
         return block_info.get("hlc_timestamp")
 
+    @property
+    def last_processed_hlc(self) -> str:
+        return self.node.last_processed_hlc
+
     def create_socket_ports(self, index=0):
         return {
             'router': 19000 + index,
@@ -145,7 +152,8 @@ class ThreadedNode(threading.Thread):
                 driver=self.contract_driver,
                 blocks=self.block_storage,
                 should_seed=self.should_seed,
-                genesis_path=str(self.genesis_path)
+                genesis_path=str(self.genesis_path),
+                tx_queue=self.tx_queue
             )
 
             self.node.network.set_to_local()
@@ -170,6 +178,9 @@ class ThreadedNode(threading.Thread):
 
     def get_latest_block(self) -> dict:
         return self.network.get_latest_block()
+
+    def send_tx(self, encoded_tx: bytes):
+        self.node.tx_queue.append(encoded_tx)
 
     def sleep(self):
         loop = asyncio.get_event_loop()
@@ -310,50 +321,6 @@ class TestThreadedNode(unittest.TestCase):
             self.async_sleep(1)
 
         self.assertTrue(self.tn.node.started)
-
-    '''
-    def test_start_node__starts_a_masternode_in_thread(self):
-        node_type = 'masternode'
-
-        self.tn = ThreadedNode(
-            node_type=node_type,
-            constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
-            block_storage=self.block_storage,
-            wallet=self.node_wallet
-        )
-
-        self.tn.start()
-        self.async_sleep(2)
-        self.assertIsNone(self.tn.err)
-
-        self.tn.start_node()
-        while not self.tn.node_started:
-            self.async_sleep(1)
-
-        self.assertTrue(self.tn.node.started)
-
-    def test_start_node__starts_a_delegate_in_thread(self):
-        node_type = 'delegate'
-
-        self.tn = ThreadedNode(
-            node_type=node_type,
-            constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
-            block_storage=self.block_storage,
-            wallet=self.node_wallet
-        )
-
-        self.tn.start()
-        self.async_sleep(2)
-        self.assertIsNone(self.tn.err)
-
-        self.tn.start_node()
-        while not self.tn.node_started:
-            self.async_sleep(1)
-
-        self.assertTrue(self.tn.node.started)
-    '''
 
     def test_can_start_multiple_threaded_node_instances(self):
         wallet_mn = Wallet()

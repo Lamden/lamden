@@ -248,8 +248,10 @@ class Network:
                 # if the ip is different from the one we have then switch to it
                 peer.update_ip(new_ip=ip)
             else:
+                # TODO This might be causing a feedback loop.  Remove for now.
                 # check that our connection to this node is okay
-                asyncio.ensure_future(peer.test_connection())
+                #asyncio.ensure_future(peer.test_connection())
+                pass
 
         else:
             # Add this peer to our peer group
@@ -288,6 +290,9 @@ class Network:
     def get_peer(self, vk: str) -> Peer:
         return self.peers.get(vk, None)
 
+    def get_all_connected_peers(self) -> List[Peer]:
+        return list(filter(lambda peer: peer.connected, self.peer_list))
+
     def delete_peer(self, peer_vk: str) -> None:
         self.peers.pop(peer_vk)
 
@@ -313,6 +318,20 @@ class Network:
                 'number': latest_block.get('number', 0),
                 'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
             }
+    def get_highest_peer_block(self) -> int:
+        highest_peer_block = 0
+        for peer in self.get_all_connected_peers():
+            if peer.latest_block_number > highest_peer_block:
+                highest_peer_block = peer.latest_block_number
+
+        return highest_peer_block
+
+    async def refresh_peer_block_info(self) -> None:
+        tasks = []
+        for peer in self.peer_list:
+            tasks.append(asyncio.ensure_future(peer.get_latest_block_info()))
+
+        await asyncio.gather(*tasks)
 
     def set_socket_port(self, service: str, port_num: int) -> None:
         if not isinstance(port_num, int):
@@ -425,7 +444,8 @@ class Network:
 
     def get_peers_for_consensus(self) -> list:
         all_peers = self.get_masternode_and_delegate_vk_list()
-        all_peers.remove(self.vk)
+        if self.vk in all_peers:
+            all_peers.remove(self.vk)
         return all_peers
 
     def map_vk_to_ip(self, vk_list: list) -> dict:
