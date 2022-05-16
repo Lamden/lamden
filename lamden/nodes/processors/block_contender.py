@@ -48,7 +48,7 @@ class Block_Contender(Processor):
         # tack on the tx_result_hash to the proof for this node
         msg['proof']['tx_result_hash'] = tx_result_hash
 
-        peers = self.network.get_all_peers()
+        peers = self.network.get_masternode_and_delegate_vk_list()
         # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
 
         if proof['signer'] not in peers and proof['signer'] != self.wallet.verifying_key:

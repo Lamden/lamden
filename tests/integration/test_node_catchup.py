@@ -75,7 +75,7 @@ class TestNewNodeCatchup(TestCase):
         new_block = blocks.get_block(num=6)
         new_node.node.last_minted_block = new_block
 
-        self.async_sleep(30)
+        self.async_sleep(10)
 
         self.assertEqual(existing_node.latest_block_height, new_node.latest_block_height)
 

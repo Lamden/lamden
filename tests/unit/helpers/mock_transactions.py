@@ -1,6 +1,6 @@
 DEFAULT_BLOCK = '0000000000000000000000000000000000000000000000000000000000000000'
 from lamden.crypto.transaction import build_transaction
-from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, tx_hash_from_tx
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, tx_hash_from_tx, block_from_subblocks
 from lamden.crypto.wallet import Wallet
 import json
 import zmq.asyncio
@@ -17,7 +17,7 @@ def generate_blocks(number_of_blocks):
 
     blocks = []
     for i in range(number_of_blocks):
-        new_block = canonical.block_from_subblocks(
+        new_block = block_from_subblocks(
             subblocks=[],
             previous_hash=previous_hash,
             block_num=previous_number + 1
@@ -84,15 +84,12 @@ def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None)
         'sender': wallet.verifying_key
     }
 
-def get_processing_results(tx_message, node_wallet=None, node=None):
+def get_processing_results(tx_message, driver=None, node_wallet=None, node=None):
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:
-        driver = ContractDriver()
+        driver = driver or ContractDriver()
         client = ContractingClient(driver=driver)
-        executor = Executor(driver=driver, metering=False)
-        reward_manger = rewards.RewardManager()
-
 
         main_processing_queue = TxProcessingQueue(
             testing=True,
@@ -102,16 +99,15 @@ def get_processing_results(tx_message, node_wallet=None, node=None):
             wallet=node_wallet or Wallet(),
             hlc_clock=HLC_Clock(),
             processing_delay=lambda: 0,
-            executor=executor,
             get_last_processed_hlc=lambda: "0",
             get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,
-            reward_manager=reward_manger,
             reprocess=lambda: True,
             check_if_already_has_consensus=lambda: False,
             pause_all_queues=lambda: True,
             unpause_all_queues=lambda: True
         )
+        main_processing_queue.distribute_rewards = lambda total_stamps_to_split, contract_name: True
 
         processing_results = main_processing_queue.process_tx(tx=tx_message)
         hlc_timestamp = processing_results.get('hlc_timestamp')

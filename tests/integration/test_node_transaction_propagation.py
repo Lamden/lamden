@@ -1,3 +1,4 @@
+import time
 from unittest import TestCase
 from pathlib import Path
 
@@ -48,7 +49,9 @@ class TestNewNodeCatchup(TestCase):
         )
 
         self.network.pause_all_queues()
-        self.async_sleep(60)
+
+        # wait for all publishers to register subscribers
+        self.async_sleep(50)
 
         self.network.send_tx_to_random_masternode()
 
@@ -56,6 +59,61 @@ class TestNewNodeCatchup(TestCase):
 
         for tn in self.network.all_nodes:
             self.assertEqual(1, len(tn.node.main_processing_queue))
+
+    def test_node_network_can_propagate_transaction_results(self):
+        self.network.create_new_network(
+            num_of_masternodes=2,
+            num_of_delegates=1
+        )
+
+        # wait for all publishers to register subscribers
+        self.async_sleep(60)
+
+        self.network.pause_all_validation_queues()
+
+        self.network.send_tx_to_random_masternode()
+
+        self.async_sleep(60)
+
+        hlc_timestamp = self.network.masternodes[0].last_processed_hlc
+        for tn in self.network.all_nodes:
+            results = tn.node.validation_queue.get_validation_result(hlc_timestamp=hlc_timestamp)
+            self.assertIsNotNone(results)
+            solutions = results.get('solutions')
+            print(solutions)
+            self.assertEqual(3, len(list(solutions)))
+
+    def test_node_network_can_mint_blocks(self):
+        self.network.create_new_network(
+            num_of_masternodes=2,
+            num_of_delegates=1
+        )
+
+        # wait for all publishers to register subscribers
+        self.async_sleep(60)
+
+        self.network.send_tx_to_random_masternode()
+
+        start_time = time.time()
+        timeout = 120
+
+        all_nodes_have_block = False
+        while not all_nodes_have_block:
+            all_nodes_have_block = True
+
+            for tn in self.network.all_nodes:
+                latest_block = tn.node.get_current_height()
+                if latest_block < 1:
+                    all_nodes_have_block = False
+
+            if time.time() - start_time > timeout:
+                #self.fail("Timed out waiting for all noes in network to mint blocks.")
+                break
+
+        for tn in self.network.all_nodes:
+            latest_block = tn.node.get_current_height()
+            self.assertEqual(1, latest_block)
+
 
 
 

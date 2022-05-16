@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from contracting.db.driver import ContractDriver
+from contracting.db.driver import ContractDriver, InMemDriver
 from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
 from contracting.stdlib.bridge.time import Datetime
@@ -45,14 +45,11 @@ def get_new_tx():
 
 class TestProcessingQueue(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
+        self.driver = ContractDriver(driver=InMemDriver())
         self.client = ContractingClient(
             driver=self.driver
         )
         self.wallet = Wallet()
-
-        self.executor = Executor(driver=self.driver)
-        self.reward_manager = rewards.RewardManager()
 
         self.hlc_clock = HLC_Clock()
         self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
@@ -76,10 +73,8 @@ class TestProcessingQueue(TestCase):
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            executor=self.executor,
             stop_node=self.stop,
             reprocess=self.reprocess_called,
-            reward_manager=self.reward_manager,
             get_last_processed_hlc=self.get_last_processed_hlc,
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,
             check_if_already_has_consensus=self.check_if_already_has_consensus,
@@ -443,14 +438,15 @@ class TestProcessingQueue(TestCase):
             if code == 0:
                 self.assertListEqual(writes, [{'key': k, 'value': v} for k, v in output['writes'].items()])
             else:
-                sender_balance = self.executor.driver.get_var(
+                sender_balance = self.driver.driver.get(
                     contract='currency',
                     variable='balances',
                     arguments=[transaction['payload']['sender']],
                     mark=False
                 )
                 # Calculate only stamp deductions
-                to_deduct = output['stamps_used'] / stamp_cost
+                stamps_used = output.get('stamps_used')
+                to_deduct = stamps_used / stamp_cost
                 new_bal = sender_balance - to_deduct
                 self.assertListEqual(writes, [{'key': 'currency.balances:{}'.format(transaction['payload']['sender']),'value': new_bal}])
 

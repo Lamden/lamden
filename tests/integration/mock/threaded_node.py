@@ -100,6 +100,10 @@ class ThreadedNode(threading.Thread):
         block_info = self.node.network.get_latest_block_info()
         return block_info.get("hlc_timestamp")
 
+    @property
+    def last_processed_hlc(self) -> str:
+        return self.node.last_processed_hlc
+
     def create_socket_ports(self, index=0):
         return {
             'router': 19000 + index,

@@ -11,8 +11,8 @@ from copy import deepcopy
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
-from contracting.execution.executor import Executor
-from lamden import storage, router, rewards, upgrade, contracts
+
+from lamden import storage, router, upgrade, contracts
 from lamden.peer import Peer
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
@@ -76,7 +76,7 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 class Node:
     def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], reward_manager=rewards.RewardManager(), consensus_percent=None,
+                 genesis_path=contracts.__path__[0], consensus_percent=None,
                  nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
                  socket_ports=None):
 
@@ -150,8 +150,6 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-        self.executor = Executor(driver=self.driver, metering=metering)
-        self.reward_manager = reward_manager
 
         self.new_block_processor = NewBlock(driver=self.driver)
 
@@ -163,11 +161,9 @@ class Node:
             wallet=self.wallet,
             hlc_clock=self.hlc_clock,
             processing_delay=lambda: self.processing_delay_secs,
-            executor=self.executor,
             get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
-            reward_manager=self.reward_manager,
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
             pause_all_queues=self.pause_all_queues,

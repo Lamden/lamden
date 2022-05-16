@@ -248,8 +248,10 @@ class Network:
                 # if the ip is different from the one we have then switch to it
                 peer.update_ip(new_ip=ip)
             else:
+                # TODO This might be causing a feedback loop.  Remove for now.
                 # check that our connection to this node is okay
-                asyncio.ensure_future(peer.test_connection())
+                #asyncio.ensure_future(peer.test_connection())
+                pass
 
         else:
             # Add this peer to our peer group
@@ -442,7 +444,8 @@ class Network:
 
     def get_peers_for_consensus(self) -> list:
         all_peers = self.get_masternode_and_delegate_vk_list()
-        all_peers.remove(self.vk)
+        if self.vk in all_peers:
+            all_peers.remove(self.vk)
         return all_peers
 
     def map_vk_to_ip(self, vk_list: list) -> dict:

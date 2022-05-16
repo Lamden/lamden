@@ -1,26 +1,18 @@
-import asyncio
-import math
-import time
-import datetime
-import json
-
-import multiprocessing
 
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
-from lamden.network import Network
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, network: Network, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
+    def __init__(self, driver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
                  debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
 
         # The main dict for storing results from other nodes
-        self.validation_results = {}
+        self.validation_results = dict()
 
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
@@ -28,8 +20,6 @@ class ValidationQueue(ProcessingQueue):
         self.get_block_by_hlc = get_block_by_hlc
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
-
-        self.network = network
 
         self.determine_consensus = DetermineConsensus(
             consensus_percent=consensus_percent,
@@ -39,7 +29,7 @@ class ValidationQueue(ProcessingQueue):
         self.multiprocess_consensus = MultiProcessConsensus(
             consensus_percent=consensus_percent,
             my_wallet=wallet,
-            get_peers_for_consensus=self.network.get_peers_for_consensus
+            get_peers_for_consensus=self.get_peers_for_consensus
         )
 
         self.driver = driver
@@ -308,8 +298,13 @@ class ValidationQueue(ProcessingQueue):
 
         return proofs
 
+    def get_validation_result(self, hlc_timestamp):
+        return self.validation_results.get(hlc_timestamp)
+
     def get_consensus_results(self, hlc_timestamp):
-        validation_result = self.validation_results.get(hlc_timestamp, {})
+        validation_result = self.get_validation_result(hlc_timestamp=hlc_timestamp)
+        if validation_result is None:
+            return
         consensus_results = validation_result.get('last_check_info', {})
         consensus_solution = consensus_results.get('solution', '')
         return validation_result['result_lookup'].get(consensus_solution, {})
@@ -414,6 +409,20 @@ class ValidationQueue(ProcessingQueue):
             if not exists:
                 self.validation_results[hlc_timestamp]['result_lookup'].pop(solution)
 
+    def get_delegate_vk_list(self) -> list:
+        return self.driver.driver.get(f'delegates.S:members') or []
+
+    def get_masternode_vk_list(self) -> list:
+        return self.driver.driver.get(f'masternodes.S:members') or []
+
+    def get_masternode_and_delegate_vk_list(self) -> list:
+        return self.get_masternode_vk_list() + self.get_delegate_vk_list()
+
+    def get_peers_for_consensus(self):
+        all_peers = self.get_masternode_and_delegate_vk_list()
+        if self.wallet.verifying_key in all_peers:
+            all_peers.remove(self.wallet.verifying_key)
+        return all_peers
 
     def get_key_list(self):
         return [key for key in self.validation_results.keys()]
