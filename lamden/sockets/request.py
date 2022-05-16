@@ -110,6 +110,7 @@ class Request():
         error = None
         connection_attempts = 0
 
+        socket = None
         while connection_attempts < retries:
             self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
 

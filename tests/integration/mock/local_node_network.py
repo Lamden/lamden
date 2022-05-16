@@ -19,7 +19,7 @@ from typing import List
 
 class LocalNodeNetwork:
     def __init__(self, constitution: dict={}, bootnodes: list = [], num_of_masternodes: int = 0,
-                 num_of_delegates: int = 0, genesis_path: Path = Path.cwd()):
+                 num_of_delegates: int = 0, genesis_path: Path = Path.cwd(), should_seed=True):
         self.masternodes: List[Node] = []
         self.delegates: List[Node] = []
 
@@ -51,7 +51,8 @@ class LocalNodeNetwork:
 
         self.create_new_network(
             num_of_delegates=num_of_delegates,
-            num_of_masternodes=num_of_masternodes
+            num_of_masternodes=num_of_masternodes,
+            should_seed=should_seed
         )
 
     @property
@@ -72,7 +73,7 @@ class LocalNodeNetwork:
             if tn.vk == vk:
                 return tn
 
-    def create_new_network(self, num_of_masternodes: int = 0, num_of_delegates: int = 0):
+    def create_new_network(self, num_of_masternodes: int = 0, num_of_delegates: int = 0, should_seed=True):
         if num_of_masternodes + num_of_delegates == 0:
             return
 
@@ -91,7 +92,8 @@ class LocalNodeNetwork:
             tn = self.create_node(
                 node_type=node_info[0],
                 node_wallet=node_info[1],
-                index=node_info[2]
+                index=node_info[2],
+                should_seed=should_seed
             )
             tn.start()
             while not tn.node_started:
@@ -144,29 +146,32 @@ class LocalNodeNetwork:
 
         return node
 
-    def add_new_node_to_network(self, node_type: str, bootnodes: ThreadedNode = None):
+    def add_new_node_to_network(self, node_type: str, bootnodes = None, should_seed=False):
         new_node_wallet = Wallet()
         new_node_vk = new_node_wallet.verifying_key
+        index = self.num_of_nodes
 
         self.add_new_node_vk_to_network(node_type=node_type, vk=new_node_vk)
 
         node = self.create_node(
             node_type=node_type,
             node_wallet=new_node_wallet,
-            should_seed=False
+            should_seed=should_seed
         )
 
         if bootnodes:
             node.bootnodes = bootnodes
         else:
             node.bootnodes = self.make_bootnode(self.masternodes[0])
+            if should_seed:
+                self.constitution[f'{node_type}s'].append(new_node_vk)
 
         self.run_threaded_node(node)
 
         return node
 
-    def add_masternode(self):
-        return self.add_new_node_to_network(node_type="masternode")
+    def add_masternode(self, should_seed=False):
+        return self.add_new_node_to_network(node_type="masternode", should_seed=should_seed)
 
     def add_delegate(self):
         return self.add_new_node_to_network(node_type="delegate")

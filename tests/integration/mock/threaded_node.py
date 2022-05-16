@@ -88,6 +88,30 @@ class ThreadedNode(threading.Thread):
         return self.node.network
 
     @property
+    def main_processing_queue(self):
+        if not self.node:
+            return None
+        return self.node.main_processing_queue
+
+    @property
+    def validation_queue(self):
+        if not self.node:
+            return None
+        return self.node.validation_queue
+
+    @property
+    def system_monitor(self):
+        if not self.node:
+            return None
+        return self.node.system_monitor
+
+    @property
+    def node_is_running(self):
+        if not self.node:
+            return False
+        return self.node.running
+
+    @property
     def latest_block_height(self) -> int:
         block_info = self.node.network.get_latest_block_info()
         return block_info.get("number")
