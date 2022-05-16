@@ -50,8 +50,6 @@ class TxProcessingQueue(ProcessingQueue):
 
         # self.last_time_processed = datetime.datetime.now()
 
-
-
         # TODO This is just for testing
         self.total_processed = 0
         self.testing = testing

@@ -298,50 +298,6 @@ class TestThreadedNode(unittest.TestCase):
 
         self.assertTrue(self.tn.node.started)
 
-    '''
-    def test_start_node__starts_a_masternode_in_thread(self):
-        node_type = 'masternode'
-
-        self.tn = ThreadedNode(
-            node_type=node_type,
-            constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
-            block_storage=self.block_storage,
-            wallet=self.node_wallet
-        )
-
-        self.tn.start()
-        self.async_sleep(2)
-        self.assertIsNone(self.tn.err)
-
-        self.tn.start_node()
-        while not self.tn.node_started:
-            self.async_sleep(1)
-
-        self.assertTrue(self.tn.node.started)
-
-    def test_start_node__starts_a_delegate_in_thread(self):
-        node_type = 'delegate'
-
-        self.tn = ThreadedNode(
-            node_type=node_type,
-            constitution=self.create_constitution(node_type=node_type),
-            driver=self.driver,
-            block_storage=self.block_storage,
-            wallet=self.node_wallet
-        )
-
-        self.tn.start()
-        self.async_sleep(2)
-        self.assertIsNone(self.tn.err)
-
-        self.tn.start_node()
-        while not self.tn.node_started:
-            self.async_sleep(1)
-
-        self.assertTrue(self.tn.node.started)
-    '''
-
     def test_can_start_multiple_threaded_node_instances(self):
         wallet_mn = Wallet()
         mn_dir = Path(f'{self.node_dir}/{wallet_mn.verifying_key}')

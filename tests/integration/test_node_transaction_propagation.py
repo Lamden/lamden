@@ -107,7 +107,7 @@ class TestNewNodeCatchup(TestCase):
                     all_nodes_have_block = False
 
             if time.time() - start_time > timeout:
-                #self.fail("Timed out waiting for all noes in network to mint blocks.")
+                print("!!!! Timed out waiting for all nodes in network to mint blocks !!!!")
                 break
 
         for tn in self.network.all_nodes:

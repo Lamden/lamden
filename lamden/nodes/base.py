@@ -179,8 +179,7 @@ class Node:
             get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
             hard_apply_block=self.hard_apply_block,                                     # Abstract
             wallet=self.wallet,
-            stop_node=self.stop,
-            network=self.network
+            stop_node=self.stop
         )
 
         self.total_processed = 0
