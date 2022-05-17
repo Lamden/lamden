@@ -81,11 +81,15 @@ class TestNode(TestCase):
         while new_node.node_is_running:
             self.await_async_process(asyncio.sleep, 0.1)
 
+        # NOTE: wait for node to stop
+        self.await_async_process(asyncio.sleep, 0.5)
+
         self.assertFalse(new_node.node_is_running)
-        self.assertTrue(new_node.network.running)
+        self.assertFalse(new_node.node_started)
+        self.assertFalse(new_node.network.running)
         self.assertFalse(new_node.main_processing_queue.running)
         self.assertFalse(new_node.validation_queue.running)
-        self.assertTrue(new_node.system_monitor.running)
+        self.assertFalse(new_node.system_monitor.running)
 
         # TODO: assert revoked peer access; assert peer removed
 
