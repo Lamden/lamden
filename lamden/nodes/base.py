@@ -277,6 +277,8 @@ class Node:
                         vk=vk
                     )
 
+            await self.network.connected_to_all_peers()
+
             self.driver.clear_pending_state()
 
             self.start_all_queues()
