@@ -14,6 +14,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.masternode.masternode import Masternode
 from lamden.nodes.delegate.delegate import Delegate
+from lamden.logger.base import get_logger
 
 import time
 
@@ -104,6 +105,9 @@ def resolve_raw_constitution(text):
 
 
 def start_node(args):
+    logger = get_logger('STARTUP')
+    logger.info({'node_type': args.node_type})
+
     assert args.node_type == 'masternode' or args.node_type == 'delegate', \
         'Provide node type as "masternode" or "delegate"'
 
@@ -111,12 +115,20 @@ def start_node(args):
 
     wallet = Wallet(seed=sk)
 
+    logger.info({'node vk': wallet.verifying_key})
+
     const, bootnodes = resolve_constitution(args.constitution)
+
+
+    logger.info({'constitution': const})
+    logger.info({'bootnodes': bootnodes})
 
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}:19000'
+
+    logger.info(f'socket_base: {socket_base}')
 
     # Setup Environment
     CURR_DIR = pathlib.Path(os.getcwd())

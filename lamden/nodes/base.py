@@ -265,11 +265,12 @@ class Node:
             '''
 
             for vk, ip in self.bootnodes.items():
-                print(f'Attempting to connect to peer "{vk}" @ {ip}')
-                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
                 self.log.info({"vk": vk, "ip": ip})
 
                 if vk != self.wallet.verifying_key:
+                    print(f'Attempting to connect to peer "{vk}" @ {ip}')
+                    self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
+                    
                     # Use it to boot up the network
                     self.network.connect_peer(
                         ip=ip,
