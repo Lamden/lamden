@@ -188,7 +188,6 @@ def join_network(args):
 
         n = Masternode(
             wallet=wallet,
-            ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
             constitution={},
             webserver_port=args.webserver_port,
@@ -201,7 +200,6 @@ def join_network(args):
         start_mongo()
         n = Delegate(
             wallet=wallet,
-            ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
             constitution={},
             bootnodes=bootnodes,
