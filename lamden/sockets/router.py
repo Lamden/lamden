@@ -214,7 +214,7 @@ class Router():
         self.log('info', f'Started. on {self.address}')
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
-        # self.log('info', 'Checking for messages!')
+        self.log('info', 'Checking for messages!')
         sockets = await self.poller.poll(timeout=timeout_ms)
         return self.socket in dict(sockets)
 
