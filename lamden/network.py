@@ -486,6 +486,7 @@ class Network:
 
     def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
+            print({'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
