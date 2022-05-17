@@ -395,7 +395,7 @@ class Network:
             self.connect_peer(ip=peer_ip, vk=peer_vk)
 
     async def connected_to_all_peers(self) -> bool:
-        self.log('info', f'Establishing connection with {self.num_of_peers} peers...')
+        self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
 
         while self.num_of_peers_connected() < self.num_of_peers():
             await asyncio.sleep(1)
@@ -486,6 +486,7 @@ class Network:
 
     def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
+            print({'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:

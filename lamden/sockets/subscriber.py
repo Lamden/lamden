@@ -87,10 +87,7 @@ class Subscriber():
         self.log('info', f'Connecting to {self.address}')
 
         try:
-            if self.local:
-                self.socket.connect(self.address)
-            else:
-                self.socket.bind(self.address)
+            self.socket.connect(self.address)
             self.log('info', f'Connected to {self.address}')
         except zmq.error.ZMQError as err:
             if (str(err) == 'Address already in use'):

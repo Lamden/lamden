@@ -76,6 +76,8 @@ build
 dist
 ops
 /tests/integration/fixtures/block_storage/*
+/tests/integration/mock/temp_network
+/tests/integration/temp_network
 /tests/integration/fixtures/file_queue/*
 /tests/unit/.lamden/
 .vscode/settings.json

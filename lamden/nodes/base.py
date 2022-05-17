@@ -265,16 +265,19 @@ class Node:
             '''
 
             for vk, ip in self.bootnodes.items():
-                print(f'Attempting to connect to peer "{vk}" @ {ip}')
-                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
                 self.log.info({"vk": vk, "ip": ip})
 
                 if vk != self.wallet.verifying_key:
+                    print(f'Attempting to connect to peer "{vk}" @ {ip}')
+                    self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
+
                     # Use it to boot up the network
                     self.network.connect_peer(
                         ip=ip,
                         vk=vk
                     )
+
+            await self.network.connected_to_all_peers()
 
             self.driver.clear_pending_state()
 
@@ -1179,6 +1182,10 @@ class Node:
 
     def seed_genesis_contracts(self):
         self.log.info('Setting up genesis contracts.')
+
+        self.log.info(f'Initial Masternodes: {self.constitution["masternodes"]}')
+        self.log.info(f'Initial Delegates: {self.constitution["delegates"]}')
+
         sync.setup_genesis_contracts(
             initial_masternodes=self.constitution['masternodes'],
             initial_delegates=self.constitution['delegates'],
@@ -1187,8 +1194,13 @@ class Node:
             root=self.genesis_path
         )
 
+        self.driver.commit()
+
         masternodes = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'])
         delegates = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+
+        self.log.info(f'Masternode Members: {masternodes}')
+        self.log.info(f'Delegate Members: {delegates}')
 
         print('done')
 
