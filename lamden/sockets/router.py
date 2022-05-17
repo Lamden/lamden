@@ -238,6 +238,8 @@ class Router():
                 pass
                 # self.log('info', 'No Messages Found!')
 
+            await asyncio.sleep(0)
+
         self.log('info', 'Stopped Checking for messages.')
 
     def send_msg(self, to_vk: str, msg_str: str):
