@@ -84,7 +84,7 @@ class Request():
         socket.identity = encode(self.id).encode()
 
     def setup_polling(self, socket: zmq.Socket = None) -> zmq.Poller:
-        pollin = zmq.Poller()
+        pollin = zmq.asyncio.Poller()
         pollin.register(socket, zmq.POLLIN)
         return pollin
 
@@ -103,9 +103,10 @@ class Request():
 
         socket.send_string(str_msg)
 
-    def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.Poller=None) -> bool:
+    async def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.asyncio.Poller=None) -> bool:
         try:
-            return socket in dict(pollin.poll(poll_time))
+            sockets = await pollin.poll(timeout=poll_time)
+            return socket in dict(sockets)
         except:
             return False
 
@@ -130,7 +131,7 @@ class Request():
 
                 self.send_string(str_msg=str_msg, socket=socket)
 
-                if self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
+                if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
                     response = await socket.recv()
 
                     self.log('info', '%s received: %s' % (self.id, response))
