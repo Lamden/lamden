@@ -270,7 +270,7 @@ class Node:
                 if vk != self.wallet.verifying_key:
                     print(f'Attempting to connect to peer "{vk}" @ {ip}')
                     self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
-                    
+
                     # Use it to boot up the network
                     self.network.connect_peer(
                         ip=ip,
@@ -1190,6 +1190,9 @@ class Node:
 
         masternodes = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'])
         delegates = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
+
+        self.log.info(f'Masternode members: {masternodes}')
+        self.log.info(f'Deledage members: {delegates}')
 
         print('done')
 
