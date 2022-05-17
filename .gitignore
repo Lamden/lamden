@@ -81,3 +81,4 @@ ops
 /tests/integration/fixtures/file_queue/*
 /tests/unit/.lamden/
 .vscode/settings.json
+temp_network
