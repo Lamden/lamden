@@ -134,7 +134,6 @@ def start_node(args):
         n = Masternode(
             debug=args.debug,
             wallet=wallet,
-            ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
             bootnodes=bootnodes,
             constitution=const,
@@ -146,7 +145,6 @@ def start_node(args):
         n = Delegate(
             debug=args.debug,
             wallet=wallet,
-            ctx=zmq.asyncio.Context(),
             socket_base=socket_base,
             bootnodes=bootnodes,
             constitution=const,
