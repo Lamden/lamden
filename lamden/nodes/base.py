@@ -260,32 +260,32 @@ class Node:
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
     async def start_new_network(self):
-            '''
-                self.bootnodes is a {vk:ip} dict
-            '''
+        '''
+            self.bootnodes is a {vk:ip} dict
+        '''
 
-            for vk, ip in self.bootnodes.items():
-                self.log.info({"vk": vk, "ip": ip})
+        for vk, ip in self.bootnodes.items():
+            self.log.info({"vk": vk, "ip": ip})
 
-                if vk != self.wallet.verifying_key:
-                    print(f'Attempting to connect to peer "{vk}" @ {ip}')
-                    self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
+            if vk != self.wallet.verifying_key:
+                print(f'Attempting to connect to peer "{vk}" @ {ip}')
+                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
 
-                    # Use it to boot up the network
-                    self.network.connect_peer(
-                        ip=ip,
-                        vk=vk
-                    )
+                # Use it to boot up the network
+                self.network.connect_peer(
+                    ip=ip,
+                    vk=vk
+                )
 
-            await self.network.connected_to_all_peers()
+        await self.network.connected_to_all_peers()
 
-            self.driver.clear_pending_state()
+        self.driver.clear_pending_state()
 
-            self.start_all_queues()
-            asyncio.ensure_future(self.check_main_processing_queue())
-            asyncio.ensure_future(self.check_validation_queue())
+        self.start_all_queues()
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
 
-            self.started = True
+        self.started = True
 
     async def join_existing_network(self):
         bootnode = None
