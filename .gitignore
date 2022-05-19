@@ -82,3 +82,4 @@ ops
 /tests/unit/.lamden/
 .vscode/settings.json
 temp_network
+.coverage

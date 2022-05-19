@@ -2,8 +2,10 @@ from lamden import contracts
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node
 from tests.integration.mock.local_node_network import LocalNodeNetwork
+from tests.unit.helpers.mock_transactions import get_new_currency_tx
 from unittest import TestCase
 import asyncio
+import json
 
 class TestNode(TestCase):
     def setUp(self):
@@ -13,9 +15,9 @@ class TestNode(TestCase):
     def tearDown(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-    def await_async_process(self, process, *args):
+    def await_async_process(self, process, *args, **kwargs):
         task = asyncio.gather(
-            process(*args)
+            process(*args, **kwargs)
         )
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(task)
@@ -62,11 +64,14 @@ class TestNode(TestCase):
         self.node = Node(socket_base='', wallet=wallet, constitution={}, should_seed=False)
         self.await_async_process(self.node.start)
 
+        # NOTE: wait for node to stop
+        self.await_async_process(asyncio.sleep, 0.5)
+
         self.assertFalse(self.node.running)
-        self.assertTrue(self.node.network.running)
+        self.assertFalse(self.node.network.running)
         self.assertFalse(self.node.main_processing_queue.running)
         self.assertFalse(self.node.validation_queue.running)
-        self.assertTrue(self.node.system_monitor.running)
+        self.assertFalse(self.node.system_monitor.running)
 
         self.await_async_process(self.node.stop)
 
@@ -118,7 +123,35 @@ class TestNode(TestCase):
         self.await_async_process(self.node.node.stop_main_processing_queue)
 
         self.assertFalse(self.node.main_processing_queue.running)
-        
+
+    def test_force_stop_main_processing_queue(self):
+        self.await_async_process(self.node.node.stop_main_processing_queue, force=True)
+
+        self.assertFalse(self.node.main_processing_queue.currently_processing)
+
+    def test_start_main_processing_queue(self):
+        self.node.node.start_main_processing_queue()
+
+        self.assertTrue(self.node.main_processing_queue.running)
+
+    def test_pause_tx_queue(self):
+        self.node.node.pause_tx_queue()
+
+        self.assertTrue(self.node.node.pause_tx_queue_checking)
+    
+    def test_unpause_tx_queue(self):
+        self.node.node.unpause_tx_queue()
+
+        self.assertFalse(self.node.node.pause_tx_queue_checking)
+
+    def test_check_tx_queue(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+
+        tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet))
+        self.node.send_tx(tx.encode())
+
+        self.await_async_process(asyncio.sleep, 5)
+
 import unittest
 if __name__ == '__main__':
     unittest.main()

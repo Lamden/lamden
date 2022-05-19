@@ -337,6 +337,8 @@ class Node:
 
             await self.stop()
 
+            return
+
         # Get the rest of the nodes from our bootnode
         response = await bootnode.get_network_map()
 
@@ -351,6 +353,8 @@ class Node:
             self.log.error(response)
 
             await self.stop()
+
+            return
 
         # Create a constitution file
         self.constitution = self.network.network_map_to_constitution(network_map=network_map)

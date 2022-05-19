@@ -69,6 +69,7 @@ class RewardManager:
 
     @staticmethod
     def calculate_participant_reward(participant_ratio, number_of_participants, total_stamps_to_split):
+        number_of_participants = number_of_participants if number_of_participants != 0 else 1
         reward = (decimal.Decimal(str(participant_ratio)) / number_of_participants) * decimal.Decimal(str(total_stamps_to_split))
         rounded_reward = round(reward, DUST_EXPONENT)
         return rounded_reward
