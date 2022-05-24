@@ -502,7 +502,7 @@ class Network:
 
         while True:
             await asyncio.sleep(60)
-            self.publisher.publish('health', 'ping')
+            self.publisher.publish_heart_beat()
 
     def hello_response(self, challenge: str = None) -> str:
         latest_block_info = self.get_latest_block_info()

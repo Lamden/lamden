@@ -144,6 +144,12 @@ class Publisher():
                 'ip': ip
             }
         )
+
+    def publish_heart_beat(self) -> None:
+        self.publish(
+            topic_str='health',
+            msg_dict={'ping': True}
+        )
     
     def stop(self) -> None:
         if self.running:
