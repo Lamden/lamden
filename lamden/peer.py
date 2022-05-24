@@ -256,7 +256,6 @@ class Peer:
                     if self.connected_callback is not None:
                         self.connected_callback(peer_vk=self.server_vk)
 
-                self.start_health_check()
                 self.verified = True
         else:
             self.log('error', f'Failed to validate {self.server_vk} at ({self.request_address})')
@@ -311,6 +310,7 @@ class Peer:
         if self.reconnecting:
             return
 
+        self.stop_heath_check()
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
@@ -328,6 +328,7 @@ class Peer:
 
             if res:
                 self.connected = True
+                self.start_health_check()
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
@@ -336,10 +337,12 @@ class Peer:
         self.reconnecting = False
 
     def start_health_check(self):
+        self.stop_heath_check()
+        self.heath_check_task = asyncio.ensure_future(self.heath_check())
+
+    def stop_heath_check(self):
         if self.heath_check_task is not None:
             self.heath_check_task.cancel()
-
-        self.heath_check_task = asyncio.ensure_future(self.heath_check())
 
     async def heath_check(self):
         while self.running:
