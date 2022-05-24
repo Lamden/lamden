@@ -349,11 +349,11 @@ class Peer:
             await asyncio.sleep(60)
             res = await self.ping()
             if not res:
-                self.log('info', f'Health Check: Cannot ping peer, reconnecting...')
+                self.log('info', f'Health Check: Cannot ping Ping {self.local_vk}, reconnecting...')
                 self.reconnect()
                 break
             else:
-                self.log('info', f'Health Check: Peer Okay.')
+                self.log('info', f'Health Check: Peer {self.local_vk} Okay.')
 
     async def update_ip(self, new_ip):
         verify_res = await self.verify_new_ip(new_ip=new_ip)

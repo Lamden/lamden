@@ -497,7 +497,10 @@ class Network:
             self.heath_check_task.cancel()
 
     async def heath_check(self):
-        while self.running:
+        while not self.publisher or not self.publisher.is_running:
+            await asyncio.sleep(60)
+
+        while True:
             await asyncio.sleep(60)
             self.publisher.publish('health', 'ping')
 
@@ -579,6 +582,8 @@ class Network:
 
     async def stop(self):
         self.running = False
+        self.stop_health_check()
+
         tasks = []
         for peer in self.peers.values():
             task = asyncio.ensure_future(peer.stop())
