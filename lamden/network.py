@@ -91,6 +91,8 @@ class Network:
         self.setup_publisher()
         self.setup_router()
 
+        self.heath_check_task = None
+
         self.running = False
 
     @property
@@ -192,6 +194,8 @@ class Network:
 
             self.publisher.start()
             self.router.run_curve_server()
+
+            self.start_health_check()
 
             asyncio.ensure_future(self.starting())
 
@@ -482,6 +486,20 @@ class Network:
 
     def get_masternode_and_delegate_vk_list(self) -> list:
         return self.get_masternode_vk_list() + self.get_delegate_vk_list()
+
+    def start_health_check(self):
+        self.stop_health_check()
+
+        asyncio.ensure_future(self.heath_check())
+
+    def stop_health_check(self):
+        if self.heath_check_task is not None:
+            self.heath_check_task.cancel()
+
+    async def heath_check(self):
+        while self.running:
+            await asyncio.sleep(60)
+            self.publisher.publish('health', 'ping')
 
     def hello_response(self, challenge: str = None) -> str:
         latest_block_info = self.get_latest_block_info()

@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 LATEST_BLOCK_INFO = 'latest_block_info'
 GET_BLOCK = 'get_block'
 
-SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders"]
+SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
 
 
 class Peer:
