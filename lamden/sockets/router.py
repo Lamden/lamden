@@ -160,6 +160,9 @@ class Router():
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        self.socket.setsockopt(zmq.RCVTIMEO, 10000)
+        self.socket.setsockopt(zmq.SNDTIMEO, 10000)
 
     def setup_auth(self):
         #self.auth = ThreadAuthenticator(self.ctx)
@@ -261,7 +264,13 @@ class Router():
 
         ident_vk_bytes = json.dumps(to_vk).encode('UTF-8')
 
-        self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
+        asyncio.ensure_future(self.send_multipart(ident_vk_bytes=ident_vk_bytes, msg_str=msg_str))
+
+    async def send_multipart(self, ident_vk_bytes: bytes, msg_str: str):
+        try:
+            await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")], track=True)
+        except Exception as err:
+            self.log('error', err)
 
     def refresh_cred_provider_vks(self, vk_list: list = []) -> None:
         for vk in vk_list:
