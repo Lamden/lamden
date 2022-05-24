@@ -63,7 +63,6 @@ class NewBlock(router.Processor):
     def clean(self, height):
         self.q = [nbn for nbn in self.q if nbn['number'] > height]
 
-
 def ensure_in_constitution(verifying_key: str, constitution: dict):
     masternodes = constitution['masternodes']
     delegates = constitution['delegates']

@@ -208,6 +208,7 @@ class Router():
         self.connect_socket()
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
+        asyncio.ensure_future(self.report_is_checking())
 
         self.running = True
 
@@ -241,6 +242,10 @@ class Router():
             await asyncio.sleep(0)
 
         self.log('info', 'Stopped Checking for messages.')
+
+    async def report_is_checking(self):
+        await asyncio.sleep(30)
+        self.log('info', f'should check {self.should_check}, task_check_for_messages.done(): {self.task_check_for_messages.done()}')
 
     def send_msg(self, to_vk: str, msg_str: str):
         if not self.socket:
@@ -278,7 +283,6 @@ class Router():
                 await asyncio.sleep(self.poll_time_ms / 1000)
         except Exception as err:
             print(err)
-
 
     async def wait_for_socket_to_close(self):
         while not self.socket_is_closed:
