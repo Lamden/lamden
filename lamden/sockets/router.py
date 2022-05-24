@@ -246,6 +246,7 @@ class Router():
     async def report_is_checking(self):
         await asyncio.sleep(30)
         self.log('info', f'should check {self.should_check}, task_check_for_messages.done(): {self.task_check_for_messages.done()}')
+        self.log('info', f'currently approved in cred manager: {self.cred_provider.approved_keys}')
 
     def send_msg(self, to_vk: str, msg_str: str):
         if not self.socket:
