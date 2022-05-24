@@ -364,13 +364,13 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=10000, retries=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
@@ -378,14 +378,14 @@ class Peer:
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=500, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=2500, retries=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
         msg_obj = {'action': 'latest_block_info'}
-        msg_json = await self.send_request(msg_obj=msg_obj)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
         if isinstance(msg_json, dict):
             if msg_json.get('response') == LATEST_BLOCK_INFO:
                 self.set_latest_block_info(
@@ -396,12 +396,12 @@ class Peer:
 
     async def get_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': 'get_block', 'block_num': block_num}
-        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=500)
+        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=2500)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': 'get_network_map'}
-        msg_json = await self.send_request(msg_obj=msg_obj)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=5)
         return msg_json
 
     async def send_request(self, msg_obj: dict, to_address: str = None, timeout: int = 200,

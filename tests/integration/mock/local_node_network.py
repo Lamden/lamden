@@ -405,12 +405,15 @@ class TestLocalNodeNetwork(unittest.TestCase):
     def test_create_new_network__all_node_connect(self):
         self.network = LocalNodeNetwork()
 
+        num_of_masternodes = 4
+        num_of_delegates = 4
+
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=1
+            num_of_masternodes=num_of_masternodes,
+            num_of_delegates=num_of_delegates
         )
 
-        self.assertEqual(2, self.network.num_of_nodes)
+        self.assertEqual(num_of_masternodes + num_of_delegates, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
         # Threaded Nodes add all peers

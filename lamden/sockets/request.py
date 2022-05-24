@@ -70,7 +70,7 @@ class Request():
 
     def create_socket(self) -> zmq.Socket:
         socket = self.ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, 100)
+        socket.setsockopt(zmq.LINGER, 1000)
 
         return socket
 
@@ -103,14 +103,14 @@ class Request():
 
         socket.send_string(str_msg)
 
-    async def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.asyncio.Poller=None) -> bool:
+    async def message_waiting(self, poll_time: int,  pollin: zmq.asyncio.Poller, socket: zmq.Socket,) -> bool:
         try:
             sockets = await pollin.poll(timeout=poll_time)
             return socket in dict(sockets)
         except:
             return False
 
-    async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
+    async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:
         error = None
         connection_attempts = 0
 

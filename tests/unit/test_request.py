@@ -286,18 +286,15 @@ class TestRequestSocket(unittest.TestCase):
 
         self.assertIsNotNone(pollin)
 
-    def test_METHOD_message_waiting__polling_not_setup_raises_AttributeError(self):
-        self.create_request()
-
-        with self.assertRaises(AttributeError):
-            self.request.message_waiting(poll_time=100)
-
     def test_METHOD_message_waiting__messages_waiting_FALSE(self):
         self.create_request()
         socket = self.request.create_socket()
         pollin = self.request.setup_polling(socket=socket)
 
-        self.assertFalse(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+
+        self.assertFalse(res)
 
     def test_METHOD_message_waiting__secure_socket_messages_waiting_FALSE(self):
         self.create_secure_request()
@@ -305,7 +302,10 @@ class TestRequestSocket(unittest.TestCase):
         self.request.setup_secure_socket(socket=socket)
         pollin = self.request.setup_polling(socket=socket)
 
-        self.assertFalse(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+
+        self.assertFalse(res)
 
     def test_METHOD_message_waiting__messages_waiting_TRUE(self):
         self.start_peer()

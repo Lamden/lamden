@@ -981,6 +981,7 @@ class TestNetwork(TestCase):
 
         self.assertEqual(1, network_1.num_of_peers())
 
+
     def test_METHOD_connect_peer__calls_update_ip_if_peer_exists_with_different_ip(self):
         network_1 = self.create_network()
 
@@ -1320,7 +1321,7 @@ class TestNetwork(TestCase):
         self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_del_wallet.curve_vk))
 
     def test_METHOD_refresh_peer_block_info(self):
-        async def mock_send_request(msg_obj):
+        async def mock_send_request(msg_obj, timeout=1, retries=1):
             return {
                 'response': LATEST_BLOCK_INFO,
                 'latest_block_number': 10,
@@ -1344,7 +1345,7 @@ class TestNetwork(TestCase):
         task = asyncio.ensure_future(network_1.refresh_peer_block_info())
 
         while not task.done():
-            self.async_sleep(0.1)
+            self.async_sleep(1)
 
         self.assertEqual(10, peer.latest_block_number)
         self.assertEqual('10', peer.latest_block_hlc_timestamp)

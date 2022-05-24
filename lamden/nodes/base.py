@@ -277,7 +277,7 @@ class Node:
                         vk=vk
                     )
 
-            await self.network.connected_to_all_peers()
+            #await self.network.connected_to_all_peers()
 
             self.driver.clear_pending_state()
 
