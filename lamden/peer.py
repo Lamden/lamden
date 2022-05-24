@@ -348,6 +348,7 @@ class Peer:
             if not res:
                 self.log('info', f'Health Check: Cannot ping peer, reconnecting...')
                 self.reconnect()
+                break
             else:
                 self.log('info', f'Health Check: Peer Okay.')
 
