@@ -415,7 +415,6 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.assertEqual(4, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
-
     def test_create_new_network__all_node_connect(self):
         self.network = LocalNodeNetwork()
 
@@ -449,8 +448,8 @@ class TestLocalNodeNetwork(unittest.TestCase):
     def test_add_new_node_to_network__new_node_connects_and_all_existing_connect_back_to_it(self):
         self.network = LocalNodeNetwork()
 
-        num_of_masternodes = 4
-        num_of_delegates = 4
+        num_of_masternodes = 1
+        num_of_delegates = 1
         total_num_of_nodes = num_of_masternodes + num_of_delegates
 
         self.network.create_new_network(
