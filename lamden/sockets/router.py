@@ -264,13 +264,7 @@ class Router():
 
         ident_vk_bytes = json.dumps(to_vk).encode('UTF-8')
 
-        asyncio.ensure_future(self.send_multipart(ident_vk_bytes=ident_vk_bytes, msg_str=msg_str))
-
-    async def send_multipart(self, ident_vk_bytes: bytes, msg_str: str):
-        try:
-            await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")], track=True)
-        except Exception as err:
-            self.log('error', err)
+        self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
 
     def refresh_cred_provider_vks(self, vk_list: list = []) -> None:
         for vk in vk_list:

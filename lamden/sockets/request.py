@@ -129,13 +129,8 @@ class Request():
                 pollin = self.setup_polling(socket=socket)
                 self.connect_socket(socket=socket, address=to_address)
 
-                tracker = await self.send_string(str_msg=str_msg, socket=socket)
-
-                if tracker is None:
-                    self.log('info', 'Message sent!')
-                else:
-                    self.log('info', 'Message was NOT SENT!')
-                    return
+                await self.send_string(str_msg=str_msg, socket=socket)
+                self.log('info', 'Message sent!')
 
                 if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
                     response = await socket.recv()
