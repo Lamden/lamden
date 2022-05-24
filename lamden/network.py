@@ -398,7 +398,19 @@ class Network:
         self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
 
         while self.num_of_peers_connected() < self.num_of_peers():
-            await asyncio.sleep(1)
+            await asyncio.sleep(10)
+
+            peers_connected = list()
+            peers_not_connected = list()
+
+            for peer in self.peer_list:
+                if peer.connected:
+                    peers_connected.append(peer.request_address)
+                else:
+                    peers_not_connected.append(peer.request_address)
+
+            self.log('info', f'Connected to: {peers_connected}')
+            self.log('warning', f'Awaiting connection to: {peers_not_connected}')
 
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 

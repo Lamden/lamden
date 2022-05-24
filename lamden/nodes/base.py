@@ -277,7 +277,8 @@ class Node:
                         vk=vk
                     )
 
-            #await self.network.connected_to_all_peers()
+            self.log.info("Attempting to connect to all peers in constitution...")
+            await self.network.connected_to_all_peers()
 
             self.driver.clear_pending_state()
 

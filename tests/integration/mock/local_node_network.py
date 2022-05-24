@@ -85,7 +85,12 @@ class LocalNodeNetwork:
 
         @property
         def all_nodes_started(self) -> bool:
-            nodes_started = [tn.node.started for tn in self.all_nodes]
+            nodes_started = list()
+            for tn in self.all_nodes:
+                if tn.node is None:
+                    nodes_started.append(False)
+                else:
+                    nodes_started.append(tn.node.started)
             return all(n == True for n in nodes_started)
 
         def get_node(self, vk: str) -> ThreadedNode:
@@ -120,12 +125,21 @@ class LocalNodeNetwork:
                     index=node_info[2]
                 )
                 tn.start()
-                while not tn.node_started:
+                while tn.node is None:
                     self.loop.run_until_complete(asyncio.sleep(0.1))
 
+            timeout = 20
+            start_time = time.time()
+
+            print("NETWORK ASYNC SLEEPING TO WAIT FOR ALL NODES TO START")
             while not self.all_nodes_started:
-                print("NETWORK ASYNC SLEEPING TO WAIT")
-                self.loop.run_until_complete(asyncio.sleep(1))
+                curr_time = time.time()
+                elapsed = curr_time - start_time
+                if elapsed > timeout:
+                    print (f"Hit {timeout} second timeout waiting for all nodes to connect!")
+                    break
+                else:
+                    time.sleep(1)
 
             print('done')
 
@@ -416,6 +430,9 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.assertEqual(num_of_masternodes + num_of_delegates, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
+        timeout = 60
+        start_time = time.time()
+
         # Threaded Nodes add all peers
         for tn in self.network.all_nodes:
             connected = False
@@ -423,24 +440,31 @@ class TestLocalNodeNetwork(unittest.TestCase):
                 num_of_peers_connected = tn.network.num_of_peers_connected()
                 num_of_peers = self.network.num_of_nodes - 1
                 connected = num_of_peers_connected == num_of_peers
-                self.async_sleep(0.1)
+
+                if time.time() - start_time > timeout:
+                    self.fail(f"Hit {timeout} second timeout waiting for all nodes to add peers!")
+                else:
+                    self.async_sleep(0.1)
 
     def test_add_new_node_to_network__new_node_connects_and_all_existing_connect_back_to_it(self):
         self.network = LocalNodeNetwork()
 
+        num_of_masternodes = 4
+        num_of_delegates = 4
+        total_num_of_nodes = num_of_masternodes + num_of_delegates
+
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=1
+            num_of_masternodes=num_of_masternodes,
+            num_of_delegates=num_of_delegates
         )
 
-        self.assertEqual(2, self.network.num_of_nodes)
+        self.assertEqual(total_num_of_nodes, self.network.num_of_nodes)
         self.async_sleep(2)
         self.assertTrue(self.network.all_nodes_started)
 
-
         new_node = self.network.add_new_node_to_network(node_type='masternode')
 
-        self.assertEqual(3, self.network.num_of_nodes)
+        self.assertEqual(total_num_of_nodes + 1, self.network.num_of_nodes)
 
         while not self.network.all_nodes_started:
             self.async_sleep(1)
