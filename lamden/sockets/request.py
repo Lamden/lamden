@@ -3,6 +3,21 @@ import zmq.asyncio
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
+import asyncio
+
+
+class Lock:
+    def __init__(self):
+        self.lock = False
+
+    async def __aenter__(self):
+        while self.lock:
+            await asyncio.sleep(0)
+
+        self.lock = True
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.lock = False
 
 
 class Result:
@@ -29,6 +44,8 @@ class Request():
 
         self.response = ''
         self.result = False
+
+        self.lock = Lock()
 
     @property
     def is_running(self) -> bool:
@@ -99,65 +116,68 @@ class Request():
     def message_waiting(self, poll_time: int, socket: zmq.Socket=None, pollin: zmq.Poller=None) -> bool:
         return socket in dict(pollin.poll(poll_time))
 
+
     async def send(self, to_address: str, str_msg: str, timeout: int = 500, retries: int = 3) -> Result:
-        self.log('info', f'STARTING FOR PEER {to_address}')
-        error = None
-        connection_attempts = 0
+        async with self.lock:
+            self.log('info', f'STARTING FOR PEER {to_address}')
+            error = None
+            connection_attempts = 0
 
-        while connection_attempts < retries:
-            self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
+            while connection_attempts < retries:
+                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
 
-            if not self.running:
-                break
+                if not self.running:
+                    break
 
-            try:
-                socket = self.create_socket()
+                try:
+                    socket = self.create_socket()
 
-                if self.secure_socket:
-                    self.setup_secure_socket(socket=socket)
+                    if self.secure_socket:
+                        self.setup_secure_socket(socket=socket)
 
-                pollin = self.setup_polling(socket=socket)
-                self.connect_socket(socket=socket, address=to_address)
+                    pollin = self.setup_polling(socket=socket)
+                    self.connect_socket(socket=socket, address=to_address)
 
-                self.send_string(str_msg=str_msg, socket=socket)
+                    self.send_string(str_msg=str_msg, socket=socket)
 
-                if self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
-                    response = await socket.recv()
+                    if self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
+                        response = await socket.recv()
 
-                    self.log('info', '%s received: %s' % (self.id, response))
+                        self.log('info', '%s received: %s' % (self.id, response))
+
+                        self.close_socket(socket=socket)
+                        return Result(success=True, response=response)
+
+                    else:
+                        self.log('info', f'No response from {to_address} in poll time.')
 
                     self.close_socket(socket=socket)
-                    return Result(success=True, response=response)
 
-                else:
-                    self.log('info', f'No response from {to_address} in poll time.')
+                except zmq.ZMQError as err:
+                    if err.errno == zmq.ETERM:
+                        self.log('info', f'Interrupted: {err.strerror}')
+                        break  # Interrupted
 
-                self.close_socket(socket=socket)
+                    else:
+                        self.log('error', err.strerror)
+                        error = err.strerror
 
-            except zmq.ZMQError as err:
-                if err.errno == zmq.ETERM:
-                    self.log('info', f'Interrupted: {err.strerror}')
-                    break  # Interrupted
+                except TypeError as err:
+                    self.log('error', err)
+                    error = str(err)
+                    break
 
-                else:
-                    self.log('error', err.strerror)
-                    error = err.strerror
+                except Exception as err:
+                    self.log('error', err)
+                    error = str(err)
 
-            except TypeError as err:
-                self.log('error', err)
-                error = str(err)
-                break
+                connection_attempts += 1
 
-            except Exception as err:
-                self.log('error', err)
-                error = str(err)
+            if not error:
+                error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
 
-            connection_attempts += 1
+            self.close_socket(socket=socket)
 
-        if not error:
-            error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
-
-        self.close_socket(socket=socket)
         return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket) -> None:
