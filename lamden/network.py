@@ -498,10 +498,10 @@ class Network:
 
     async def heath_check(self):
         while not self.publisher or not self.publisher.is_running:
-            await asyncio.sleep(60)
+            await asyncio.sleep(1)
 
         while True:
-            await asyncio.sleep(60)
+            await asyncio.sleep(120)
             self.publisher.publish_heart_beat()
 
     def hello_response(self, challenge: str = None) -> str:

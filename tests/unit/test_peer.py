@@ -1,7 +1,7 @@
 import json
 
 from lamden.peer import Peer
-from lamden.sockets.request import Request, Result
+from lamden.sockets.request_new import Request, Result
 from lamden.sockets.subscriber import Subscriber
 from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, InMemDriver

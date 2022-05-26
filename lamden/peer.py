@@ -346,7 +346,7 @@ class Peer:
 
     async def heath_check(self):
         while self.running:
-            await asyncio.sleep(60)
+            await asyncio.sleep(120)
             res = await self.ping()
             if not res:
                 self.log('info', f'Health Check: Cannot ping Ping {self.local_vk}, reconnecting...')

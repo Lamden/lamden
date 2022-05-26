@@ -211,7 +211,7 @@ class Router():
         self.connect_socket()
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
-        asyncio.ensure_future(self.report_is_checking())
+        asyncio.ensure_future(self.router_is_checking_for_messages())
 
         self.running = True
 
@@ -227,7 +227,9 @@ class Router():
 
         while self.should_check:
             if await self.has_message(timeout_ms=self.poll_time_ms):
-                ident_vk_bytes, empty, msg = await self.socket.recv_multipart()
+                multi_message = await self.socket.recv_multipart()
+                print(f'multi_message: {multi_message}')
+                ident_vk_bytes, empty, msg = multi_message
 
                 self.log('info', f'Received request from {ident_vk_bytes}: {msg}')
 
@@ -238,17 +240,18 @@ class Router():
 
                 if self.message_callback:
                     self.message_callback(ident_vk_string, msg)
+
+                await asyncio.sleep(0)
             else:
-                pass
+                await asyncio.sleep(0.1)
                 # self.log('info', 'No Messages Found!')
 
-            await asyncio.sleep(0)
 
         self.log('info', 'Stopped Checking for messages.')
 
-    async def report_is_checking(self):
+    async def router_is_checking_for_messages(self):
         while self.running:
-            await asyncio.sleep(30)
+            await asyncio.sleep(120)
             self.log('info', f'should check {self.should_check}, task_check_for_messages.done(): {self.task_check_for_messages.done()}')
             self.log('info', f'currently approved in cred manager: {self.cred_provider.approved_keys}')
 

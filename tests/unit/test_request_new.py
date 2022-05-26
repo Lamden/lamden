@@ -5,7 +5,7 @@ from tests.unit.helpers.mock_router import MockRouter
 from tests.unit.helpers.mock_reply import MockReply
 import unittest
 
-from lamden.sockets.request import Request
+from lamden.sockets.request_new import Request
 
 
 class TestRequestSocket(unittest.TestCase):
@@ -36,14 +36,19 @@ class TestRequestSocket(unittest.TestCase):
     def start_peer(self):
         self.peer = MockReply()
 
-    def create_secure_request(self):
+    def create_secure_request(self, setup=False):
         self.request = Request(
             server_curve_vk=self.peer_wallet.curve_vk,
-            local_wallet=self.local_wallet
+            local_wallet=self.local_wallet,
+            to_address=self.peer_address
         )
+        if setup:
+            self.request.setup_socket()
 
-    def create_request(self):
-        self.request = Request()
+    def create_request(self, setup=False):
+        self.request = Request(to_address=self.peer_address)
+        if setup:
+            self.request.setup_socket()
 
     async def wrap_process_in_async(self, process, args={}):
         process(**args)
@@ -62,6 +67,7 @@ class TestRequestSocket(unittest.TestCase):
         )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
+
     '''
     def test_can_create_instance_MOCKROUTER(self):
         self.start_secure_peer()
@@ -69,7 +75,7 @@ class TestRequestSocket(unittest.TestCase):
         self.peer.stop()
         self.async_sleep(1)
         self.peer.join()
-
+    
     def test_can_create_instance_MOCKREPLY(self):
         self.start_peer()
         self.assertIsInstance(obj=self.peer, cls=MockReply)
@@ -77,7 +83,6 @@ class TestRequestSocket(unittest.TestCase):
         self.async_sleep(1)
         self.peer.join()
     '''
-
     def test_can_create_instance_REQUEST(self):
         self.create_request()
         self.assertIsInstance(obj=self.request, cls=Request)
@@ -89,12 +94,12 @@ class TestRequestSocket(unittest.TestCase):
         self.assertIsInstance(obj=self.request, cls=Request)
         self.assertTrue(self.request.secure_socket)
 
+
     def test_METHOD_send__get_successful_response(self):
         self.start_peer()
-        self.create_request()
+        self.create_request(setup=True)
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg
         })
 
@@ -108,10 +113,9 @@ class TestRequestSocket(unittest.TestCase):
 
     def test_METHOD_send__secure_msg_get_successful_response(self):
         self.start_secure_peer()
-        self.create_secure_request()
+        self.create_secure_request(setup=True)
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg
         })
 
@@ -126,13 +130,12 @@ class TestRequestSocket(unittest.TestCase):
         self.peer.stop()
 
     def test_METHOD_send__msg_no_receiver(self):
-        self.create_request()
+        self.create_request(setup=True)
 
         retries = 3
         timeout = 500
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg,
             'retries': retries,
             'timeout': timeout
@@ -148,16 +151,13 @@ class TestRequestSocket(unittest.TestCase):
 
         self.request.stop()
 
-        print("STOP")
-
     def test_METHOD_send__secure_msg_no_receiver(self):
-        self.create_secure_request()
+        self.create_secure_request(setup=True)
 
         retries = 3
         timeout = 500
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg,
             'retries': retries,
             'timeout': timeout
@@ -172,13 +172,12 @@ class TestRequestSocket(unittest.TestCase):
 
     def test_METHOD_send__reg_socket_to_secure_peer_expect_no_response(self):
         self.start_secure_peer()
-        self.create_request()
+        self.create_request(setup=True)
 
         retries = 3
         timeout = 500
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg,
             'retries': retries,
             'timeout': timeout
@@ -194,17 +193,14 @@ class TestRequestSocket(unittest.TestCase):
 
         self.request.stop()
 
-        print("STOP")
-
     def test_METHOD_send__secure_socket_to_reg_peer_expect_no_response(self):
         self.start_peer()
-        self.create_secure_request()
+        self.create_secure_request(setup=True)
 
         retries = 3
         timeout = 500
 
         res = self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
             'str_msg': self.ping_msg,
             'retries': retries,
             'timeout': timeout
@@ -243,94 +239,85 @@ class TestRequestSocket(unittest.TestCase):
 
     def test_METHOD_create_socket(self):
         self.create_request()
-        socket = self.request.create_socket()
-        self.assertIsNotNone(socket)
+        self.request.create_socket()
+        self.assertIsNotNone(self.request.socket)
 
     def test_METHOD_create_socket__secure(self):
         self.create_secure_request()
-        socket = self.request.create_socket()
-        self.assertIsNotNone(socket)
+        self.request.create_socket()
+        self.assertIsNotNone(self.request.socket)
 
     def test_METHOD_setup_polling__socket_is_None(self):
         self.create_request()
-        pollin = self.request.setup_polling()
+        self.request.setup_polling()
 
-        self.assertIsNotNone(pollin)
+        self.assertIsNotNone(self.request.pollin)
 
     def test_METHOD_setup_polling__secure_socket_is_None(self):
         self.create_secure_request()
-        pollin = self.request.setup_polling()
+        self.request.setup_polling()
 
-        self.assertIsNotNone(pollin)
+        self.assertIsNotNone(self.request.pollin)
 
     def test_METHOD_setup_polling__socket_is_setup(self):
         self.create_request()
-        socket = self.request.create_socket()
-        pollin = self.request.setup_polling(socket=socket)
+        self.request.create_socket()
+        self.request.setup_polling()
 
-        self.assertIsNotNone(pollin)
+        self.assertIsNotNone(self.request.pollin)
 
     def test_METHOD_setup_polling__secure_socket_is_setup(self):
         self.create_secure_request()
-        socket = self.request.create_socket()
-        self.request.setup_secure_socket(socket=socket)
-        pollin = self.request.setup_polling(socket=socket)
+        self.request.create_socket()
+        self.request.setup_secure_socket()
+        self.request.setup_polling()
 
-        self.assertIsNotNone(pollin)
+        self.assertIsNotNone(self.request.pollin)
 
     def test_METHOD_message_waiting__messages_waiting_FALSE(self):
         self.create_request()
-        socket = self.request.create_socket()
-        pollin = self.request.setup_polling(socket=socket)
+        self.request.create_socket()
+        self.request.setup_polling()
 
         loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100))
 
         self.assertFalse(res)
 
     def test_METHOD_message_waiting__secure_socket_messages_waiting_FALSE(self):
         self.create_secure_request()
-        socket = self.request.create_socket()
-        self.request.setup_secure_socket(socket=socket)
-        pollin = self.request.setup_polling(socket=socket)
+        self.request.create_socket()
+        self.request.setup_secure_socket()
+        self.request.setup_polling()
 
         loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100))
 
         self.assertFalse(res)
 
     def test_METHOD_message_waiting__messages_waiting_TRUE(self):
         self.start_peer()
 
-        self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        pollin = self.request.setup_polling(socket=socket)
+        self.create_request(setup=True)
 
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.send_string(str_msg=self.ping_msg)
         self.async_sleep(1)
-        self.assertTrue(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
-        socket.close()
+        self.assertTrue(self.request.message_waiting(poll_time=100))
 
     def test_METHOD_message_waiting__secure_socket_messages_waiting_TRUE(self):
         self.start_secure_peer()
 
-        self.create_secure_request()
-        socket = self.request.create_socket()
-        self.request.setup_secure_socket(socket=socket)
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        pollin = self.request.setup_polling(socket=socket)
+        self.create_secure_request(setup=True)
 
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.send_string(str_msg=self.ping_msg)
         self.async_sleep(1)
-        self.assertTrue(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
-        socket.close()
+        self.assertTrue(self.request.message_waiting(poll_time=100))
 
     def test_METHOD_send_string__no_socket_setup_raises_AttributeError(self):
         self.create_request()
 
         with self.assertRaises(AttributeError) as err:
-            self.request.send_string(str_msg=self.ping_msg, socket=None)
+            self.request.send_string(str_msg=self.ping_msg)
 
 
         self.assertEqual("Socket has not been created.", str(err.exception))
@@ -339,86 +326,86 @@ class TestRequestSocket(unittest.TestCase):
         self.create_secure_request()
 
         with self.assertRaises(AttributeError) as err:
-            self.request.send_string(str_msg=self.ping_msg, socket=None)
+            self.request.send_string(str_msg=self.ping_msg)
 
         self.assertEqual("Socket has not been created.", str(err.exception))
 
     def test_METHOD_send_string__socket_setup_not_bound_raises_AttributeError(self):
         self.create_request()
-        socket = self.request.create_socket()
+        self.request.create_socket()
 
         with self.assertRaises(AttributeError) as err:
-            self.request.send_string(str_msg=self.ping_msg, socket=socket)
+            self.request.send_string(str_msg=self.ping_msg)
 
         self.assertEqual("Socket is not bound to an address.", str(err.exception))
 
     def test_METHOD_send_string__secure_socket_setup_not_bound_raises_AttributeError(self):
         self.create_secure_request()
-        socket = self.request.create_socket()
-        self.request.setup_secure_socket(socket=socket)
+        self.request.create_socket()
+        self.request.setup_secure_socket()
 
         with self.assertRaises(AttributeError) as err:
-            self.request.send_string(str_msg=self.ping_msg, socket=socket)
+            self.request.send_string(str_msg=self.ping_msg)
 
         self.assertEqual("Socket is not bound to an address.", str(err.exception))
 
     def test_METHOD_send_string__peer_does_not_exists_no_erorrs(self):
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
+        self.request.send_string(str_msg=self.ping_msg)
 
     def test_METHOD_send_string__peer_exists_no_erorrs(self):
         self.start_peer()
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
+        self.request.send_string(str_msg=self.ping_msg)
 
     def test_METHOD_send_string__reg_socket_to_secure_peer_no_erorrs(self):
         self.start_secure_peer()
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
+        self.request.send_string(str_msg=self.ping_msg)
 
     def test_METHOD_send_string__secure_socket_to_reg_peer_no_erorrs(self):
         self.start_peer()
         self.create_secure_request()
-        socket = self.request.create_socket()
-        self.request.setup_secure_socket(socket=socket)
-        self.request.connect_socket(address=self.peer_address, socket=socket)
-        self.request.send_string(str_msg=self.ping_msg, socket=socket)
+        self.request.create_socket()
+        self.request.setup_secure_socket()
+        self.request.connect_socket(address=self.peer_address)
+        self.request.send_string(str_msg=self.ping_msg)
 
     def test_METHOD_send_string__enforces_message_is_string(self):
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
         with self.assertRaises(TypeError):
             self.request.send_string(str_msg=self.ping_msg.encode('UTF-8'))
 
     def test_METHOD_socket_is_bound__ret_TRUE(self):
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
 
-        self.assertTrue(self.request.socket_is_bound(socket))
+        self.assertTrue(self.request.socket_is_bound())
 
     def test_METHOD_socket_is_bound__socket_is_None_ret_FALSE(self):
         self.create_request()
 
-        self.assertFalse(self.request.socket_is_bound(socket=None))
+        self.assertFalse(self.request.socket_is_bound())
 
     def test_METHOD_socket_is_bound__socket_not_connected_ret_FALSE(self):
         self.create_request()
-        socket = self.request.create_socket()
+        self.request.create_socket()
 
-        self.assertFalse(self.request.socket_is_bound(socket))
+        self.assertFalse(self.request.socket_is_bound())
 
     def test_PROPERTY_id__ret_VK(self):
         self.create_request()
-        socket = self.request.create_socket()
-        self.request.connect_socket(address=self.peer_address, socket=socket)
+        self.request.create_socket()
+        self.request.connect_socket(address=self.peer_address)
 
         self.assertEqual(self.request.local_wallet.verifying_key, self.request.id)
 
