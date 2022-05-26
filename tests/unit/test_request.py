@@ -453,3 +453,43 @@ class TestRequestSocket(unittest.TestCase):
         self.create_request()
         self.request.running = False
         self.assertFalse(self.request.is_running)
+
+    def test_METHOD_send__can_send_multiple_requests_to_router_and_get_responses_back(self):
+        self.start_secure_peer()
+        self.create_secure_request()
+
+        task_list = list()
+        for i in range(20):
+            task = asyncio.ensure_future(self.request.send(
+                str_msg="TEST",
+                to_address='tcp://127.0.0.1:19000'
+            ))
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        passed = all([result.response.decode('UTF-8') == "TEST" for result in task_results ])
+        self.assertTrue(passed)
+
+    def test_METHOD_send__can_send_multiple_requests_sequentially(self):
+        self.start_secure_peer()
+        self.create_secure_request()
+
+        task_list = list()
+        for i in range(20):
+            task = asyncio.ensure_future(self.request.send(
+                str_msg=f"{i}",
+                to_address='tcp://127.0.0.1:19000'
+            ))
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        passed = all([int(result.response.decode('UTF-8')) == index for index, result in enumerate(task_results) ])
+        self.assertTrue(passed)
