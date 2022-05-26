@@ -211,7 +211,7 @@ class Router():
         self.connect_socket()
 
         self.task_check_for_messages = asyncio.ensure_future(self.check_for_messages())
-        asyncio.ensure_future(self.router_is_checking_for_messages())
+        # asyncio.ensure_future(self.router_is_checking_for_messages())
 
         self.running = True
 

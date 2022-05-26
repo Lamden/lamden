@@ -808,7 +808,7 @@ class TestNetwork(TestCase):
         for peer in network_1.peers.values():
             peer.connected = True
 
-        self.async_sleep(2)
+        self.async_sleep(10)
 
         self.assertTrue(task.done())
 

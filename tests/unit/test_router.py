@@ -778,6 +778,12 @@ class TestRouter(unittest.TestCase):
         self.assertTrue(all([result == "Done" for result in task_results]))
 
     def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__DISPOSABLE_REQUEST_SOCKETS_AT_ONCE(self):
+        '''
+            THIS TEST CASE WILL FAIL!!!
+            FINDING OUT WHY THE ROUTER CANNOT ACCEPT REQUESTS ASYNC NEEDS TO BE DETERMINED.
+        :return:
+        '''
+
         def router_callback(ident_vk_string: str, msg: str) -> None:
             print("ROUTER CALLBACK")
             if self.responses.get(ident_vk_string) is None:

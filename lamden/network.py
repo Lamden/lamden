@@ -195,7 +195,7 @@ class Network:
             self.publisher.start()
             self.router.run_curve_server()
 
-            self.start_health_check()
+            # self.start_health_check()
 
             asyncio.ensure_future(self.starting())
 
@@ -402,7 +402,7 @@ class Network:
         self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
 
         while self.num_of_peers_connected() < self.num_of_peers():
-            await asyncio.sleep(10)
+            await asyncio.sleep(1)
 
             peers_connected = list()
             peers_not_connected = list()

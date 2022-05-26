@@ -399,14 +399,8 @@ class TestNetwork(TestCase):
         bad_peer_ping_res = ping_bad_peer_task.result()
         self.assertIsNone(bad_peer_ping_res)
 
-    def test_router_can_handle_rapid_requests_from_peers(self):
-        def router_callback(ident_vk_string: str, msg: str) -> None:
-            if self.responses.get(ident_vk_string) is None:
-                self.responses[ident_vk_string] = 1
-            else:
-                self.responses[ident_vk_string] =+ 1
-
-        num_of_networks = 4
+    def test_router_can_handle_rapid_requests_from_peer(self):
+        num_of_networks = 2
 
         for i in range(num_of_networks):
             network = self.create_threaded_network(index=i)
@@ -415,59 +409,111 @@ class TestNetwork(TestCase):
             while not network.is_running:
                 self.async_sleep(0.1)
 
-            self.set_smart_contract_keys_threaded()
-            for network in self.networks:
-                network.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
 
-            # Connect network #1 to this new network
-            if i > 0:
-                network_1 = self.networks[0]
+        self.set_smart_contract_keys_threaded()
 
-                # Connect network #1 to network #2
-                network_1.n.connect_peer(
-                    ip=network.n.local_address,
-                    vk=network.vk
-                )
-                self.async_sleep(1)
+        network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
 
-        # All networks end up with 2 peers due to discovery
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+
+        self.async_sleep(5)
+
         for network in self.networks:
             num_of_peers_connected = network.n.num_of_peers_connected()
-            self.assertEqual(num_of_networks - 1, num_of_peers_connected)
+            self.assertEqual(1, num_of_peers_connected)
 
-        network_1.n.router.message_callback = router_callback
+        network_1_peer = network_2.n.get_peer(vk=network_1.n.vk)
 
-        num_of_requests = 1
-        network_1_vk = network_1.n.vk
+        num_of_requests = 20
 
-        print("--- STARTING REQUEST TEST ---")
-
+        task_list = list()
         for i in range(num_of_requests):
-            for network in self.networks:
-                if network.n.vk != network_1_vk:
-                    peer = network.n.get_peer(vk=network_1_vk)
-                    asyncio.ensure_future(peer.ping())
+            task = asyncio.ensure_future(
+                network_1_peer.ping()
+            )
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        self.assertTrue(all([result.get('success') for result in task_results]))
+
+    def test_router_can_handle_rapid_requests_from_peers(self):
+        num_of_networks = 5
+
+        for i in range(num_of_networks):
+            network = self.create_threaded_network(index=i)
+
+            network.start()
+            while not network.is_running:
+                self.async_sleep(0.1)
+
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
+        network_3 = self.networks[2]
+        network_4 = self.networks[3]
+        network_5 = self.networks[4]
+
+        self.set_smart_contract_keys_threaded()
+
+        network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_3.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_4.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_5.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_3.n.local_address,
+            vk=network_3.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_4.n.local_address,
+            vk=network_4.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_5.n.local_address,
+            vk=network_5.vk
+        )
 
         self.async_sleep(5)
 
+        for network in self.networks:
+            num_of_peers_connected = network.n.num_of_peers_connected()
+            self.assertEqual(4, num_of_peers_connected)
+
+        peer_list = [
+            network_2.n.get_peer(vk=network_1.n.vk),
+            network_3.n.get_peer(vk=network_1.n.vk),
+            network_4.n.get_peer(vk=network_1.n.vk),
+            network_5.n.get_peer(vk=network_1.n.vk)
+        ]
+
+        num_of_requests = 20
+
+        task_list = list()
         for i in range(num_of_requests):
-            for network in self.networks:
-                if network.n.vk != network_1_vk:
-                    peer = network.n.get_peer(vk=network_1_vk)
-                    asyncio.ensure_future(peer.ping())
+            for peer in peer_list:
+                task = asyncio.ensure_future(
+                    peer.ping()
+                )
+                task_list.append(task)
 
-        self.async_sleep(5)
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
 
-        for i in range(num_of_requests):
-            for network in self.networks:
-                if network.n.vk != network_1_vk:
-                    peer = network.n.get_peer(vk=network_1_vk)
-                    asyncio.ensure_future(peer.ping())
-
-        self.async_sleep(5)
-
-        self.assertEqual(3, len(self.responses))
-
-        for vk in self.responses.keys():
-            self.assertEqual(3, self.responses.get(vk))
+        self.assertEqual(num_of_requests * len(peer_list), len(task_results) )
+        self.assertTrue(all([result.get('success') for result in task_results]))
 

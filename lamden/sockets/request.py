@@ -6,6 +6,19 @@ from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
 
+class Lock:
+    def __init__(self):
+        self.lock = False
+
+    async def __aenter__(self):
+        while self.lock:
+            await asyncio.sleep(0)
+
+        self.lock = True
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.lock = False
+
 
 class Result:
     def __init__(self, success, response=None, error=None):
@@ -14,8 +27,6 @@ class Result:
         self.error = error
 
 class Request():
-    con_failed = 'con_failed'
-
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
@@ -28,10 +39,7 @@ class Request():
         self.local_wallet = local_wallet or Wallet()
         self.server_curve_vk = server_curve_vk
 
-        self.pollin = None
-
-        self.response = ''
-        self.result = False
+        self.lock = Lock()
 
     @property
     def is_running(self) -> bool:
@@ -110,69 +118,70 @@ class Request():
             return False
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:
-        error = None
-        connection_attempts = 0
+        async with self.lock:
+            error = None
+            connection_attempts = 0
 
-        while connection_attempts < retries:
-            self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
+            while connection_attempts < retries:
+                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
 
-            if not self.running:
-                break
+                if not self.running:
+                    break
 
-            try:
-                socket = self.create_socket()
+                try:
+                    socket = self.create_socket()
 
-                if self.secure_socket:
-                    self.setup_secure_socket(socket=socket)
+                    if self.secure_socket:
+                        self.setup_secure_socket(socket=socket)
 
-                pollin = self.setup_polling(socket=socket)
-                self.connect_socket(socket=socket, address=to_address)
+                    pollin = self.setup_polling(socket=socket)
+                    self.connect_socket(socket=socket, address=to_address)
 
-                tracking = self.send_string(str_msg=str_msg, socket=socket)
+                    tracking = self.send_string(str_msg=str_msg, socket=socket)
 
-                if isinstance(tracking, asyncio.Future):
-                    await tracking
-                    self.log('info', 'Message sent!')
-                else:
-                    self.log('error', 'Message NOT sent!')
+                    if isinstance(tracking, asyncio.Future):
+                        await tracking
+                        self.log('info', 'Message sent!')
+                    else:
+                        self.log('error', 'Message NOT sent!')
 
-                if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
-                    response = await socket.recv()
+                    if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
+                        response = await socket.recv()
 
-                    self.log('info', '%s received: %s' % (self.id, response))
+                        self.log('info', '%s received: %s' % (self.id, response))
 
-                    self.close_socket(socket=socket, pollin=pollin)
-                    return Result(success=True, response=response)
+                        self.close_socket(socket=socket, pollin=pollin)
+                        return Result(success=True, response=response)
 
-                else:
-                    self.log('warning', f'No response from {to_address} in poll time.')
+                    else:
+                        self.log('warning', f'No response from {to_address} in poll time.')
 
-            except zmq.ZMQError as err:
-                if err.errno == zmq.ETERM:
-                    self.log('error', f'Interrupted: {err.strerror}')
-                    break  # Interrupted
+                except zmq.ZMQError as err:
+                    if err.errno == zmq.ETERM:
+                        self.log('error', f'Interrupted: {err.strerror}')
+                        break  # Interrupted
 
-                else:
-                    self.log('error', err.strerror)
-                    error = err.strerror
+                    else:
+                        self.log('error', err.strerror)
+                        error = err.strerror
 
-            except TypeError as err:
-                self.log('error', err)
-                error = str(err)
-                break
+                except TypeError as err:
+                    self.log('error', err)
+                    error = str(err)
+                    break
 
-            except Exception as err:
-                self.log('error', err)
-                error = str(err)
+                except Exception as err:
+                    self.log('error', err)
+                    error = str(err)
 
-            connection_attempts += 1
-            self.close_socket(socket=socket, pollin=pollin)
-            await asyncio.sleep(0)
+                connection_attempts += 1
+                self.close_socket(socket=socket, pollin=pollin)
+                await asyncio.sleep(0)
 
-        if not error:
-            error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
+            if not error:
+                error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
 
-        return Result(success=False, error=error)
+            return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
         if socket:

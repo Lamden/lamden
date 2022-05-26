@@ -415,7 +415,7 @@ class Node:
                 await self.stop()
             else:
                 highest_peer_block = self.network.get_highest_peer_block()
-                await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
+                await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block + 1)
         except Exception as err:
             self.log.error(err)
             print(err)
@@ -456,17 +456,17 @@ class Node:
             await asyncio.sleep(0)
 
         first_block_minted = self.last_minted_block.get("number")
-        catchup_stop_block = first_block_minted - 1
+
         # if we have the block right before the block we just minted then return
         if (catchup_starting_height + 1) == first_block_minted:
             return
         else:
             catchup_peers = self.network.get_all_connected_peers()
-            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= catchup_stop_block, catchup_peers))
+            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= first_block_minted - 1, catchup_peers))
 
             await self.catchup_get_blocks(
                 catchup_peers=catchup_peers_with_block,
-                catchup_stop_block=catchup_stop_block
+                catchup_stop_block=first_block_minted
             )
 
         self.validation_queue.pause()

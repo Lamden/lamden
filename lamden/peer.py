@@ -328,7 +328,7 @@ class Peer:
 
             if res:
                 self.connected = True
-                self.start_health_check()
+                # self.start_health_check()
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
@@ -386,7 +386,7 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=10000, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=3)
         return msg_json
 
     async def hello(self) -> (dict, None):
