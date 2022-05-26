@@ -386,7 +386,7 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=3)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, retries=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
