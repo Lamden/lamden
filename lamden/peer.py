@@ -213,8 +213,6 @@ class Peer:
 
         self.start_verify_peer_loop()
 
-        print('ok')
-
     def start_verify_peer_loop(self) -> None:
         if self.is_verifying:
             return

@@ -304,7 +304,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_ping__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
         msg = self.await_sending_request(self.peer.ping)
-        expected_result = {'action': 'ping', 'success': True}
+        expected_result = {'response': 'ping', 'success': True}
 
         self.assertDictEqual(expected_result, msg)
 

@@ -78,17 +78,19 @@ class MockRouter(threading.Thread):
                 try:
                     msg_obj = json.loads(msg)
                 except Exception as err:
-                    msg_obj = None
-                    print(err)
+                    self.send_msg(ident=ident, msg=msg)
 
-                if isinstance(msg_obj, dict):
-                    if msg_obj.get('action') == 'ping':
+                action = msg_obj.get('action')
+
+                if action not in ['ping', 'hello', 'latest_block_info']:
+                    self.send_msg(ident=ident, msg=msg)
+                else:
+                    if action == 'ping':
                         resp_msg = json.dumps({
                             'response': 'ping'
                         }).encode('UTF-8')
-                        self.send_msg(ident=ident, msg=resp_msg)
 
-                    if msg_obj.get('action') == 'hello':
+                    if action == 'hello':
                         challenge = msg_obj.get('challenge')
                         if challenge:
                             challenge_response = self.wallet.sign(challenge)
@@ -101,20 +103,15 @@ class MockRouter(threading.Thread):
                                 }).encode('UTF-8')
                         else:
                             resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')
-                        self.send_msg(ident=ident, msg=resp_msg)
 
-                    if msg_obj.get('action') == 'latest_block_info':
+                    if action == 'latest_block_info':
                         resp_msg = json.dumps({
                             'response': 'latest_block_info',
                             'latest_block_number': 100,
                             'latest_hlc_timestamp': "1234"
                         }).encode('UTF-8')
-                        self.send_msg(ident=ident, msg=resp_msg)
 
-                    else:
-                        self.send_msg(ident=ident, msg=msg)
-                else:
-                    self.send_msg(ident=ident, msg=msg)
+                    self.send_msg(ident=ident, msg=resp_msg)
 
             await asyncio.sleep(0)
 
