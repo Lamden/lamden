@@ -31,7 +31,7 @@ class Request():
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
-        self.socket_monitor = SocketMonitor()
+        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
         self.socket_monitor.start()
 
         self.msg = ''

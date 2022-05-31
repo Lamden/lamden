@@ -16,7 +16,7 @@ class TestSocketMonitor(TestCase):
 
         self.ctx = zmq.asyncio.Context.instance()
 
-        self.monitor = SocketMonitor()
+        self.monitor = SocketMonitor(socket_type="REQUEST")
 
     def tearDown(self) -> None:
         if self.monitor is not None:

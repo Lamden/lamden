@@ -69,7 +69,7 @@ class Router():
     def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,
                  network_ip: str = None):
 
-        self.socket_monitor = SocketMonitor()
+        self.socket_monitor = SocketMonitor(socket_type="ROUTER")
         self.wallet = wallet
         self.message_callback = message_callback
 
@@ -164,8 +164,11 @@ class Router():
     def setup_socket(self):
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
+
         self.socket = self.ctx.socket(zmq.ROUTER)
+
         self.socket_monitor.monitor(socket=self.socket)
+
         self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
         self.socket.setsockopt(zmq.RCVTIMEO, 10000)
         self.socket.setsockopt(zmq.SNDTIMEO, 10000)

@@ -20,11 +20,12 @@ monitor_errors_map = {
 }
 
 class SocketMonitor:
-    def __init__(self):
+    def __init__(self, socket_type: str = ""):
         self.loop = None
         self.sockets_to_monitor = list()
         self.poller = zmq.asyncio.Poller()
         self.get_event_loop()
+        self.socket_type = socket_type
         self.running = False
 
         self.check_for_events_task = None
@@ -42,10 +43,9 @@ class SocketMonitor:
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-    @staticmethod
-    def log(log_type: str, message: str) -> None:
-        logger = get_logger(f'REQUEST_MONITOR')
-        print(f'[REQUEST_MONITOR] {message}\n')
+    def log(self, log_type: str, message: str) -> None:
+        logger = get_logger(f'{self.socket_type}_SOCKET_MONITOR')
+        print(f'[{self.socket_type}_SOCKET_MONITOR] {message}\n')
 
         if log_type == 'info':
             logger.info(message)
@@ -70,19 +70,19 @@ class SocketMonitor:
                 monitor_socket = socket[0]
                 monitor_result = await recv_monitor_message_async(monitor_socket)
                 if monitor_result:
-                    self.print_event_message(monitor_result=monitor_result)
+                    self.print_event_message(socket=socket, monitor_result=monitor_result)
 
             await asyncio.sleep(0)
 
         self.log('info', "No longer checking for monitor events.")
 
-    def print_event_message(self, monitor_result):
+    def print_event_message(self, socket, monitor_result):
         event_num = monitor_result.get("event")
         if event_num is not None:
             for key, value in monitor_errors_map.items():
                 if event_num == value:
                     endpoint = monitor_result.get('endpoint').decode('UTF-8')
-                    self.log('info', f'{endpoint}: {key}')
+                    self.log('info', f'[{socket}]{endpoint}: {key}')
 
     def monitor(self, socket: zmq.Socket) -> None:
         socket_monitor = socket.get_monitor_socket()
