@@ -21,7 +21,7 @@ class _MonitorMessage:
         self.endpoint = endpoint
 
 
-def parse_monitor_message(msg: List[bytes]) -> _MonitorMessage:
+def parse_monitor_message(msg: List[bytes]):
     """decode zmq_monitor event messages.
 
     Parameters
@@ -45,7 +45,11 @@ def parse_monitor_message(msg: List[bytes]) -> _MonitorMessage:
     if len(msg) != 2 or len(msg[0]) != 6:
         raise RuntimeError("Invalid event message format: %s" % msg)
     event_id, value = struct.unpack("=hi", msg[0])
-    event = _MonitorMessage(event=event_id, value=value, endpoint=msg[1])
+    event = {
+        'event': event_id,
+        'value': value,
+        'endpoint': msg[1]
+    }
     return event
 
 
