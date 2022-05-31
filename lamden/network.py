@@ -204,7 +204,7 @@ class Network:
             print (err)
 
     async def starting(self) -> None:
-        while not self.publisher.is_running or not self.router.is_running:
+        while not self.publisher.is_running and not self.router.is_running:
             await asyncio.sleep(0.1)
 
         self.running = True
