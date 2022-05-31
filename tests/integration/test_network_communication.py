@@ -31,6 +31,7 @@ class TestNetwork(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.loop.main = True
+        self.responses = dict()
 
     def tearDown(self):
         self.stop_threaded_networks()
@@ -324,3 +325,195 @@ class TestNetwork(TestCase):
         for network in self.networks:
             num_of_peers_connected = network.n.num_of_peers_connected()
             self.assertEqual(3, num_of_peers_connected)
+
+    def test_network_can_receive_messages_vai_router_while_awaiting_response_from_request_socket(self):
+        '''
+            Start up two networks, connect #1 to #2.
+            Then start a ping to a non-existent peer which should take about 10 seconds to fail.
+            Then send a ping from the network #2 to network #1.  Network #1 should still response to network #2 even
+            though it's waiting for the ping response.
+        '''
+
+        # Create two networks and connect them together
+        num_of_networks = 2
+
+        for i in range(num_of_networks):
+            network = self.create_threaded_network(index=i)
+
+            network.start()
+            while not network.is_running:
+                self.async_sleep(0.1)
+
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
+
+        self.set_smart_contract_keys_threaded()
+
+        network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+
+        self.async_sleep(1)
+
+        peer_2 = network_1.n.get_peer(vk=network_2.vk)
+        self.assertTrue(peer_2.is_verified)
+
+        peer_1 = network_2.n.get_peer(vk=network_1.vk)
+        self.assertTrue(peer_1.is_verified)
+
+        for network in self.networks:
+            num_of_peers_connected = network.n.num_of_peers_connected()
+            self.assertEqual(num_of_networks - 1, num_of_peers_connected)
+
+        # Create a bad peer for network #1
+        bad_peer_wallet = Wallet()
+        bad_peer_vk = bad_peer_wallet.verifying_key
+        bad_peer_ip = 'tcp://127.0.0.1:19002'
+
+        network_1.n.create_peer(
+            ip=bad_peer_ip,
+            vk=bad_peer_vk
+        )
+
+        bad_peer = network_1.n.get_peer(vk=bad_peer_vk)
+
+        bad_peer.verified = True
+        bad_peer.start()
+        self.async_sleep(1)
+
+        # Have network #1 ping the bad peer which will await on a response for 10 seconds.
+        ping_bad_peer_task = asyncio.ensure_future(bad_peer.ping())
+        self.async_sleep(1)
+
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(peer_1.ping())
+
+        self.assertIsNotNone(res)
+
+        while not ping_bad_peer_task.done():
+            self.async_sleep(1)
+
+        bad_peer_ping_res = ping_bad_peer_task.result()
+        self.assertIsNone(bad_peer_ping_res)
+
+    def test_router_can_handle_rapid_requests_from_peer(self):
+        num_of_networks = 2
+
+        for i in range(num_of_networks):
+            network = self.create_threaded_network(index=i)
+
+            network.start()
+            while not network.is_running:
+                self.async_sleep(0.1)
+
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
+
+        self.set_smart_contract_keys_threaded()
+
+        network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+
+        self.async_sleep(5)
+
+        for network in self.networks:
+            num_of_peers_connected = network.n.num_of_peers_connected()
+            self.assertEqual(1, num_of_peers_connected)
+
+        network_1_peer = network_2.n.get_peer(vk=network_1.n.vk)
+
+        num_of_requests = 20
+
+        task_list = list()
+        for i in range(num_of_requests):
+            task = asyncio.ensure_future(
+                network_1_peer.ping()
+            )
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        self.assertTrue(all([result.get('success') for result in task_results]))
+
+    def test_router_can_handle_rapid_requests_from_peers(self):
+        num_of_networks = 5
+
+        for i in range(num_of_networks):
+            network = self.create_threaded_network(index=i)
+
+            network.start()
+            while not network.is_running:
+                self.async_sleep(0.1)
+
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
+        network_3 = self.networks[2]
+        network_4 = self.networks[3]
+        network_5 = self.networks[4]
+
+        self.set_smart_contract_keys_threaded()
+
+        network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_3.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_4.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+        network_5.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_3.n.local_address,
+            vk=network_3.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_4.n.local_address,
+            vk=network_4.vk
+        )
+        self.async_sleep(1)
+        network_1.n.connect_peer(
+            ip=network_5.n.local_address,
+            vk=network_5.vk
+        )
+
+        self.async_sleep(5)
+
+        for network in self.networks:
+            num_of_peers_connected = network.n.num_of_peers_connected()
+            self.assertEqual(4, num_of_peers_connected)
+
+        peer_list = [
+            network_2.n.get_peer(vk=network_1.n.vk),
+            network_3.n.get_peer(vk=network_1.n.vk),
+            network_4.n.get_peer(vk=network_1.n.vk),
+            network_5.n.get_peer(vk=network_1.n.vk)
+        ]
+
+        num_of_requests = 20
+
+        task_list = list()
+        for i in range(num_of_requests):
+            for peer in peer_list:
+                task = asyncio.ensure_future(
+                    peer.ping()
+                )
+                task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        self.assertEqual(num_of_requests * len(peer_list), len(task_results) )
+        self.assertTrue(all([result.get('success') for result in task_results]))
+

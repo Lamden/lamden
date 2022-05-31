@@ -71,11 +71,13 @@ class TestNewNodeCatchup(TestCase):
         existing_node = self.network.masternodes[0]
         new_node = self.network.delegates[1]
 
+        self.async_sleep(5)
+
         blocks.add_block()
         new_block = blocks.get_block(num=6)
         new_node.node.last_minted_block = new_block
 
-        self.async_sleep(10)
+        self.async_sleep(5)
 
         self.assertEqual(existing_node.latest_block_height, new_node.latest_block_height)
 
@@ -93,14 +95,14 @@ class TestNewNodeCatchup(TestCase):
 
         new_node = self.network.delegates[1]
 
-        self.async_sleep(25)
+        self.async_sleep(5)
 
         blocks.add_block()
         new_block = blocks.get_block(num=6)
         new_node.node.last_minted_block = new_block
         new_node.node.apply_state_changes_from_block(block=new_block)
 
-        self.async_sleep(15)
+        self.async_sleep(5)
 
         for vk, amount in blocks.internal_state.items():
             state_amount = new_node.get_smart_contract_value(key=f'currency.balances:{vk}')

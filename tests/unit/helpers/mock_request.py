@@ -60,8 +60,6 @@ class MockRequest():
 
     def create_socket(self) -> zmq.Socket:
         socket = self.ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, 100)
-
         return socket
 
     def setup_secure_socket(self, socket: zmq.Socket) -> None:

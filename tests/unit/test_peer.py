@@ -304,7 +304,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_ping__returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
         msg = self.await_sending_request(self.peer.ping)
-        expected_result = {'action': 'ping', 'success': True}
+        expected_result = {'response': 'ping', 'success': True}
 
         self.assertDictEqual(expected_result, msg)
 
@@ -547,16 +547,16 @@ class TestPeer(unittest.TestCase):
 
         asyncio.ensure_future(self.peer.reconnect_loop())
 
-        self.async_sleep(2)
+        self.async_sleep(1)
         self.assertTrue(self.peer.reconnecting)
         self.assertFalse(self.peer.connected)
 
         self.peer.socket_ports['router'] = 19000
 
-        self.async_sleep(2)
+        self.async_sleep(11)
 
-        self.assertTrue(self.peer.connected)
         self.assertFalse(self.peer.reconnecting)
+        self.assertTrue(self.peer.connected)
 
 
     def test_METHOD_reconnect_loop__sets_peer_as_connected_once_successful(self):
@@ -583,7 +583,7 @@ class TestPeer(unittest.TestCase):
 
         self.async_sleep(1)
         self.peer.running = False
-        self.async_sleep(1)
+        self.async_sleep(11)
 
         self.assertFalse(self.peer.reconnecting)
         self.assertFalse(self.peer.connected)

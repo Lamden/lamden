@@ -62,7 +62,7 @@ class TestRequestSocket(unittest.TestCase):
         )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
-
+    '''
     def test_can_create_instance_MOCKROUTER(self):
         self.start_secure_peer()
         self.assertIsInstance(obj=self.peer, cls=MockRouter)
@@ -76,26 +76,18 @@ class TestRequestSocket(unittest.TestCase):
         self.peer.stop()
         self.async_sleep(1)
         self.peer.join()
+    '''
 
     def test_can_create_instance_REQUEST(self):
         self.create_request()
         self.assertIsInstance(obj=self.request, cls=Request)
         self.assertFalse(self.request.secure_socket)
 
-        self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
-            'str_msg': self.ping_msg
-        })
 
     def test_can_create_instance_secure_REQUEST(self):
         self.create_secure_request()
         self.assertIsInstance(obj=self.request, cls=Request)
         self.assertTrue(self.request.secure_socket)
-
-        self.await_async_process(process=self.request.send, args={
-            'to_address': self.peer_address,
-            'str_msg': self.ping_msg
-        })
 
     def test_METHOD_send__get_successful_response(self):
         self.start_peer()
@@ -286,18 +278,15 @@ class TestRequestSocket(unittest.TestCase):
 
         self.assertIsNotNone(pollin)
 
-    def test_METHOD_message_waiting__polling_not_setup_raises_AttributeError(self):
-        self.create_request()
-
-        with self.assertRaises(AttributeError):
-            self.request.message_waiting(poll_time=100)
-
     def test_METHOD_message_waiting__messages_waiting_FALSE(self):
         self.create_request()
         socket = self.request.create_socket()
         pollin = self.request.setup_polling(socket=socket)
 
-        self.assertFalse(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+
+        self.assertFalse(res)
 
     def test_METHOD_message_waiting__secure_socket_messages_waiting_FALSE(self):
         self.create_secure_request()
@@ -305,7 +294,10 @@ class TestRequestSocket(unittest.TestCase):
         self.request.setup_secure_socket(socket=socket)
         pollin = self.request.setup_polling(socket=socket)
 
-        self.assertFalse(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+        loop = asyncio.get_event_loop()
+        res = loop.run_until_complete(self.request.message_waiting(poll_time=100, socket=socket, pollin=pollin))
+
+        self.assertFalse(res)
 
     def test_METHOD_message_waiting__messages_waiting_TRUE(self):
         self.start_peer()
@@ -455,3 +447,43 @@ class TestRequestSocket(unittest.TestCase):
         self.create_request()
         self.request.running = False
         self.assertFalse(self.request.is_running)
+
+    def test_METHOD_send__can_send_multiple_requests_to_router_and_get_responses_back(self):
+        self.start_secure_peer()
+        self.create_secure_request()
+
+        task_list = list()
+        for i in range(20):
+            task = asyncio.ensure_future(self.request.send(
+                str_msg="TEST",
+                to_address='tcp://127.0.0.1:19000'
+            ))
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        passed = all([result.response.decode('UTF-8') == "TEST" for result in task_results ])
+        self.assertTrue(passed)
+
+    def test_METHOD_send__can_send_multiple_requests_sequentially(self):
+        self.start_secure_peer()
+        self.create_secure_request()
+
+        task_list = list()
+        for i in range(20):
+            task = asyncio.ensure_future(self.request.send(
+                str_msg=f"{i}",
+                to_address='tcp://127.0.0.1:19000'
+            ))
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        passed = all([int(result.response.decode('UTF-8')) == index for index, result in enumerate(task_results) ])
+        self.assertTrue(passed)

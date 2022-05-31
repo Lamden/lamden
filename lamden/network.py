@@ -91,6 +91,8 @@ class Network:
         self.setup_publisher()
         self.setup_router()
 
+        self.heath_check_task = None
+
         self.running = False
 
     @property
@@ -192,6 +194,8 @@ class Network:
 
             self.publisher.start()
             self.router.run_curve_server()
+
+            # self.start_health_check()
 
             asyncio.ensure_future(self.starting())
 
@@ -400,6 +404,18 @@ class Network:
         while self.num_of_peers_connected() < self.num_of_peers():
             await asyncio.sleep(1)
 
+            peers_connected = list()
+            peers_not_connected = list()
+
+            for peer in self.peer_list:
+                if peer.connected:
+                    peers_connected.append(peer.request_address)
+                else:
+                    peers_not_connected.append(peer.request_address)
+
+            self.log('info', f'Connected to: {peers_connected}')
+            self.log('warning', f'Awaiting connection to: {peers_not_connected}')
+
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
     def make_network_map(self) -> dict:
@@ -470,6 +486,23 @@ class Network:
 
     def get_masternode_and_delegate_vk_list(self) -> list:
         return self.get_masternode_vk_list() + self.get_delegate_vk_list()
+
+    def start_health_check(self):
+        self.stop_health_check()
+
+        asyncio.ensure_future(self.heath_check())
+
+    def stop_health_check(self):
+        if self.heath_check_task is not None:
+            self.heath_check_task.cancel()
+
+    async def heath_check(self):
+        while not self.publisher or not self.publisher.is_running:
+            await asyncio.sleep(1)
+
+        while True:
+            await asyncio.sleep(120)
+            self.publisher.publish_heart_beat()
 
     def hello_response(self, challenge: str = None) -> str:
         latest_block_info = self.get_latest_block_info()
@@ -549,6 +582,8 @@ class Network:
 
     async def stop(self):
         self.running = False
+        self.stop_health_check()
+
         tasks = []
         for peer in self.peers.values():
             task = asyncio.ensure_future(peer.stop())

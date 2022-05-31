@@ -8,6 +8,9 @@ from lamden.crypto.wallet import Wallet
 
 from tests.unit.helpers.mock_request import MockRequest
 from tests.unit.helpers.mock_reply import MockReply
+from contracting.db.encoder import encode
+
+import zmq.asyncio
 
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -30,6 +33,8 @@ class TestRouter(unittest.TestCase):
         self.callback_data = None
 
         self.all_peers = list([])
+
+        self.responses = dict()
 
     def tearDown(self) -> None:
         if self.router:
@@ -649,3 +654,191 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsNone(self.router.cred_provider.approved_keys.get(existing_vk))
         self.assertEqual(0, len(self.router.cred_provider.approved_keys.keys()))
+
+    def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__SAME_SOCKET_ONE_BY_ONE(self):
+        def router_callback(ident_vk_string: str, msg: str) -> None:
+            print("ROUTER CALLBACK")
+            if self.responses.get(ident_vk_string) is None:
+                self.responses[ident_vk_string] = 1
+            else:
+                self.responses[ident_vk_string] += 1
+
+            self.router.send_msg(to_vk=ident_vk_string, msg_str="Done")
+
+        async def send_request(socket, pollin):
+            response = None
+            ping_msg = json.dumps({'action': 'ping'})
+            socket.send_string(ping_msg)
+            sockets = await pollin.poll(1000)
+            if socket in dict(sockets):
+                res = await socket.recv()
+                response = res.decode('UTF-8')
+                print(f'response: {response}')
+
+            return response
+
+        self.start_secure_router()
+        self.async_sleep(1)
+
+        self.router.message_callback = router_callback
+        router_address = 'tcp://127.0.0.1:19000'
+
+        ctx = zmq.asyncio.Context()
+        socket = ctx.socket(zmq.REQ)
+
+        socket.curve_secretkey = self.request_wallet.curve_sk
+        socket.curve_publickey = self.request_wallet.curve_vk
+        socket.curve_serverkey = self.router_wallet.curve_vk
+        socket.identity = encode(self.request_wallet.verifying_key).encode()
+        pollin = zmq.asyncio.Poller()
+        pollin.register(socket, zmq.POLLIN)
+        socket.connect(router_address)
+
+        num_of_messages = 10
+        task_list = list()
+        for i in range(num_of_messages):
+            task = asyncio.ensure_future(
+                send_request(socket=socket, pollin=pollin)
+            )
+            task_list.append(task)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(task)
+            self.async_sleep(1)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        socket.close()
+        pollin.unregister(socket)
+
+        self.assertEqual(num_of_messages, self.responses.get(self.request_wallet.verifying_key))
+        self.assertTrue(all([result == "Done" for result in task_results]))
+
+    def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__DISPOSABLE_REQUEST_SOCKETS_ONE_BY_ONE(self):
+        def router_callback(ident_vk_string: str, msg: str) -> None:
+            print("ROUTER CALLBACK")
+            if self.responses.get(ident_vk_string) is None:
+                self.responses[ident_vk_string] = 1
+            else:
+                self.responses[ident_vk_string] += 1
+
+            self.router.send_msg(to_vk=ident_vk_string, msg_str="Done")
+
+        async def send_request():
+            response = None
+
+            router_address = 'tcp://127.0.0.1:19000'
+
+            ctx = zmq.asyncio.Context()
+            socket = ctx.socket(zmq.REQ)
+
+            socket.curve_secretkey = self.request_wallet.curve_sk
+            socket.curve_publickey = self.request_wallet.curve_vk
+            socket.curve_serverkey = self.router_wallet.curve_vk
+            socket.identity = encode(self.request_wallet.verifying_key).encode()
+            pollin = zmq.asyncio.Poller()
+            pollin.register(socket, zmq.POLLIN)
+            socket.connect(router_address)
+
+            ping_msg = json.dumps({'action': 'ping'})
+            socket.send_string(ping_msg)
+            sockets = await pollin.poll(1000)
+            if socket in dict(sockets):
+                res = await socket.recv()
+                response = res.decode('UTF-8')
+                print(f'response: {response}')
+
+            socket.close()
+            pollin.unregister(socket)
+
+            return response
+
+        self.start_secure_router()
+        self.async_sleep(1)
+
+        self.router.message_callback = router_callback
+
+        task_list = list()
+        num_of_messages = 10
+        for i in range(num_of_messages):
+            task = asyncio.ensure_future(
+                send_request()
+            )
+            task_list.append(task)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(task)
+            self.async_sleep(1)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+
+        self.assertEqual(num_of_messages, self.responses.get(self.request_wallet.verifying_key))
+        self.assertTrue(all([result == "Done" for result in task_results]))
+
+    def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__DISPOSABLE_REQUEST_SOCKETS_AT_ONCE(self):
+        '''
+            THIS TEST CASE WILL FAIL!!!
+            FINDING OUT WHY THE ROUTER CANNOT ACCEPT REQUESTS ASYNC NEEDS TO BE DETERMINED.
+        :return:
+        '''
+
+        def router_callback(ident_vk_string: str, msg: str) -> None:
+            print("ROUTER CALLBACK")
+            if self.responses.get(ident_vk_string) is None:
+                self.responses[ident_vk_string] = 1
+            else:
+                self.responses[ident_vk_string] += 1
+
+            self.router.send_msg(to_vk=ident_vk_string, msg_str="Done")
+
+        async def send_request():
+            router_address = 'tcp://127.0.0.1:19000'
+            response = None
+
+            ctx = zmq.asyncio.Context()
+            socket = ctx.socket(zmq.REQ)
+
+            socket.curve_secretkey = self.request_wallet.curve_sk
+            socket.curve_publickey = self.request_wallet.curve_vk
+            socket.curve_serverkey = self.router_wallet.curve_vk
+            socket.identity = encode(self.request_wallet.verifying_key).encode()
+            pollin = zmq.asyncio.Poller()
+            pollin.register(socket, zmq.POLLIN)
+            socket.connect(router_address)
+
+            ping_msg = json.dumps({'action': 'ping'})
+            socket.send_multipart([ping_msg.encode('UTF-8')])
+
+            sockets = await pollin.poll(100)
+            if socket in dict(sockets):
+                res = await socket.recv()
+                response = res.decode('UTF-8')
+                print(f'response: {response}')
+
+            socket.close()
+            pollin.unregister(socket)
+
+            return response
+
+        self.start_secure_router()
+        self.async_sleep(1)
+
+        self.router.message_callback = router_callback
+        num_of_messages = 20
+        task_list = list()
+        for i in range(num_of_messages):
+            task = asyncio.ensure_future(
+                send_request()
+            )
+            task_list.append(task)
+
+        tasks = asyncio.gather(*task_list)
+        loop = asyncio.get_event_loop()
+        task_results = loop.run_until_complete(tasks)
+        self.async_sleep(1)
+
+        self.assertEqual(num_of_messages, self.responses.get(self.request_wallet.verifying_key))
+        self.assertTrue(all([result == "Done" for result in task_results]))
+

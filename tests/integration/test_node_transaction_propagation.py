@@ -51,11 +51,11 @@ class TestNewNodeCatchup(TestCase):
         self.network.pause_all_queues()
 
         # wait for all publishers to register subscribers
-        self.async_sleep(50)
+        self.async_sleep(5)
 
         self.network.send_tx_to_random_masternode()
 
-        self.async_sleep(30)
+        self.async_sleep(5)
 
         for tn in self.network.all_nodes:
             self.assertEqual(1, len(tn.node.main_processing_queue))
@@ -67,13 +67,13 @@ class TestNewNodeCatchup(TestCase):
         )
 
         # wait for all publishers to register subscribers
-        self.async_sleep(60)
+        self.async_sleep(5)
 
         self.network.pause_all_validation_queues()
 
         self.network.send_tx_to_random_masternode()
 
-        self.async_sleep(60)
+        self.async_sleep(5)
 
         hlc_timestamp = self.network.masternodes[0].last_processed_hlc
         for tn in self.network.all_nodes:
@@ -90,7 +90,7 @@ class TestNewNodeCatchup(TestCase):
         )
 
         # wait for all publishers to register subscribers
-        self.async_sleep(60)
+        self.async_sleep(5)
 
         self.network.send_tx_to_random_masternode()
 

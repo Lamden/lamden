@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 LATEST_BLOCK_INFO = 'latest_block_info'
 GET_BLOCK = 'get_block'
 
-SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders"]
+SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
 
 
 class Peer:
@@ -66,6 +66,7 @@ class Peer:
 
         self.verify_task = None
         self.reconnect_task = None
+        self.heath_check_task = None
 
         self.setup_event_loop()
 
@@ -212,8 +213,6 @@ class Peer:
 
         self.start_verify_peer_loop()
 
-        print('ok')
-
     def start_verify_peer_loop(self) -> None:
         if self.is_verifying:
             return
@@ -309,6 +308,7 @@ class Peer:
         if self.reconnecting:
             return
 
+        self.stop_heath_check()
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
@@ -326,12 +326,32 @@ class Peer:
 
             if res:
                 self.connected = True
+                # self.start_health_check()
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
 
         self.log('info', f'Reconnected to {self.request_address}!')
         self.reconnecting = False
+
+    def start_health_check(self):
+        self.stop_heath_check()
+        self.heath_check_task = asyncio.ensure_future(self.heath_check())
+
+    def stop_heath_check(self):
+        if self.heath_check_task is not None:
+            self.heath_check_task.cancel()
+
+    async def heath_check(self):
+        while self.running:
+            await asyncio.sleep(120)
+            res = await self.ping()
+            if not res:
+                self.log('info', f'Health Check: Cannot ping Ping {self.local_vk}, reconnecting...')
+                self.reconnect()
+                break
+            else:
+                self.log('info', f'Health Check: Peer {self.local_vk} Okay.')
 
     async def update_ip(self, new_ip):
         verify_res = await self.verify_new_ip(new_ip=new_ip)
@@ -364,13 +384,13 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, retries=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=1000, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
@@ -378,14 +398,14 @@ class Peer:
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=500, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=2500, retries=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
         msg_obj = {'action': 'latest_block_info'}
-        msg_json = await self.send_request(msg_obj=msg_obj)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
         if isinstance(msg_json, dict):
             if msg_json.get('response') == LATEST_BLOCK_INFO:
                 self.set_latest_block_info(
@@ -396,12 +416,12 @@ class Peer:
 
     async def get_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': 'get_block', 'block_num': block_num}
-        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=500)
+        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=2500)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': 'get_network_map'}
-        msg_json = await self.send_request(msg_obj=msg_obj)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=5)
         return msg_json
 
     async def send_request(self, msg_obj: dict, to_address: str = None, timeout: int = 200,
