@@ -234,7 +234,9 @@ class Node:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
             self.network.start()
-            await self.network.starting()
+
+            while not self.network.running:
+                await asyncio.sleep(0.1)
 
             if self.should_seed:
                 asyncio.ensure_future(self.start_new_network())
