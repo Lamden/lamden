@@ -35,8 +35,8 @@ class ThreadedNode(threading.Thread):
                  should_seed=True,
                  metering=False,
                  wallet: Wallet = None,
-                 genesis_path: str = str(Path.cwd())
-                 ):
+                 genesis_path: str = str(Path.cwd()),
+                 reconnect_attempts=60):
 
         threading.Thread.__init__(self)
 
@@ -65,6 +65,8 @@ class ThreadedNode(threading.Thread):
         self.node: Node = None
 
         self.err = None
+
+        self.reconnect_attempts = reconnect_attempts
 
     @property
     def node_started(self) -> bool:
@@ -153,7 +155,8 @@ class ThreadedNode(threading.Thread):
                 blocks=self.block_storage,
                 should_seed=self.should_seed,
                 genesis_path=str(self.genesis_path),
-                tx_queue=self.tx_queue
+                tx_queue=self.tx_queue,
+                reconnect_attempts=self.reconnect_attempts
             )
 
             self.node.network.set_to_local()

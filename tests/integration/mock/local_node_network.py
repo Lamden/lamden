@@ -138,8 +138,7 @@ class LocalNodeNetwork:
                 'delegates': [d[1].verifying_key for d in node_wallets if d[0] == "delegate"],
             }
 
-        def create_node(self, node_type, index: int = None, node_wallet: Wallet = Wallet(), should_seed: bool = True,
-                        node: ThreadedNode = None):
+        def create_node(self, node_type, index: int = None, node_wallet: Wallet = Wallet(), should_seed: bool = True, node: ThreadedNode = None, reconnect_attempts=60):
 
             assert node_type in ['masternode', 'delegate'], "node_type must be 'masternode' or 'delegate'"
 
@@ -164,7 +163,8 @@ class LocalNodeNetwork:
                     block_storage=block_storage,
                     genesis_path=self.genesis_path,
                     should_seed=should_seed,
-                    tx_queue=tx_queue
+                    tx_queue=tx_queue,
+                    reconnect_attempts=reconnect_attempts
                 )
 
             if node.node_type == 'masternode':
@@ -175,7 +175,7 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_new_node_to_network(self, node_type: str, bootnodes: ThreadedNode = None, should_seed=False):
+        def add_new_node_to_network(self, node_type: str, bootnodes: ThreadedNode = None, should_seed=False, reconnect_attempts=60):
             new_node_wallet = Wallet()
             new_node_vk = new_node_wallet.verifying_key
             index = self.num_of_nodes
@@ -185,7 +185,8 @@ class LocalNodeNetwork:
             node = self.create_node(
                 node_type=node_type,
                 node_wallet=new_node_wallet,
-                should_seed=should_seed
+                should_seed=should_seed,
+                reconnect_attempts=reconnect_attempts
             )
 
             if bootnodes:
@@ -199,8 +200,9 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_masternode(self, should_seed=False):
-            return self.add_new_node_to_network(node_type="masternode", should_seed=should_seed)
+        def add_masternode(self, should_seed=False, reconnect_attempts=60):
+            return self.add_new_node_to_network(node_type="masternode", should_seed=should_seed,
+                reconnect_attempts=reconnect_attempts)
 
         def add_delegate(self):
             return self.add_new_node_to_network(node_type="delegate")

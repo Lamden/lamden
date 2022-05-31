@@ -1,11 +1,27 @@
 from lamden import contracts
 from lamden.crypto.wallet import Wallet
-from lamden.nodes.base import Node
+from lamden.nodes.base import Node, ensure_in_constitution
+from lamden.nodes.hlc import HLC_Clock
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.unit.helpers.mock_transactions import get_new_currency_tx
 from unittest import TestCase
 import asyncio
 import json
+
+class TestMisc(TestCase):
+    def test_ensure_in_constitution_raises_if_not_in_constitution(self):
+        constitution = {'masternodes': {Wallet().verifying_key: "127.0.0.1"},
+            'delegates': {Wallet().verifying_key: "127.0.0.1"}}
+
+        with self.assertRaises(AssertionError):
+            ensure_in_constitution(Wallet().verifying_key, constitution=constitution)
+
+    def test_ensure_in_constitution_doesnt_raises_if_in_constitution(self):
+        vk = Wallet().verifying_key
+        constitution = {'masternodes': {vk: "127.0.0.1"},
+            'delegates': {Wallet().verifying_key: "127.0.0.1"}}
+
+        ensure_in_constitution(vk, constitution=constitution)
 
 class TestNode(TestCase):
     def setUp(self):
@@ -76,13 +92,9 @@ class TestNode(TestCase):
         self.await_async_process(self.node.stop)
 
     def test_start_join_existing_network_bootnode_is_not_reachable(self):
-        '''
-            NOTE: lower number of 'attempts' inside Node.join_existing_network
-            before running this one so it doesn't take forever to complete.
-        '''
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        new_node = self.local_node_network.add_masternode()
+        new_node = self.local_node_network.add_masternode(reconnect_attempts=1)
         while new_node.node_is_running:
             self.await_async_process(asyncio.sleep, 0.1)
 
@@ -144,13 +156,116 @@ class TestNode(TestCase):
 
         self.assertFalse(self.node.node.pause_tx_queue_checking)
 
-    def test_check_tx_queue(self):
+    def test_check_tx_queue_triggers_block_creation(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+
+        self.assertIsNone(self.node.node.blocks.get_block(1))
 
         tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet))
         self.node.send_tx(tx.encode())
 
-        self.await_async_process(asyncio.sleep, 5)
+        self.await_async_process(asyncio.sleep, 2)
+
+        self.assertEqual(len(self.node.node.tx_queue), 0)
+        self.assertIsNotNone(self.node.node.blocks.get_block(1))
+
+    def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+
+        for i in range(3):
+            tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet))
+            self.node.send_tx(tx.encode())
+
+        self.await_async_process(asyncio.sleep, 3)
+
+        old_tx = get_new_currency_tx(wallet=self.node.wallet)
+        old_tx = self.node.node.make_tx_message(old_tx)
+
+        self.await_async_process(asyncio.sleep, 2)
+
+        for i in range(3):
+            tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet))
+            self.node.send_tx(tx.encode())
+
+        self.await_async_process(asyncio.sleep, 3)
+
+        self.node.node.main_processing_queue.append(old_tx)
+
+        self.await_async_process(asyncio.sleep, 2)
+
+        self.assertEqual(len(self.node.node.tx_queue), 0)
+        self.assertEqual(self.node.node.blocks.get_block(4)['hlc_timestamp'], old_tx['hlc_timestamp'])
+
+    def test_make_tx_message(self):
+        tx = get_new_currency_tx(wallet=self.node.wallet)
+
+        tx_message = self.node.node.make_tx_message(tx)
+
+        self.assertIsNotNone(tx_message.get('tx', None))
+        self.assertIsNotNone(tx_message.get('hlc_timestamp', None))
+        self.assertIsNotNone(tx_message.get('signature', None))
+        self.assertIsNotNone(tx_message.get('sender', None))
+
+    def test_process_main_queue_sets_last_processed_hlc(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+        tx = get_new_currency_tx(wallet=self.node.wallet)
+        tx = self.node.node.make_tx_message(tx)
+
+        self.node.node.main_processing_queue.append(tx)
+
+        self.await_async_process(asyncio.sleep, 2)
+
+        self.assertEqual(self.node.node.last_processed_hlc, tx['hlc_timestamp'])
+
+    def test_process_main_queue_doesnt_set_last_processed_hlc_if_later_than_last_hlc_in_consensus(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+        tx = get_new_currency_tx(wallet=self.node.wallet)
+        tx = self.node.node.make_tx_message(tx)
+        self.node.validation_queue.last_hlc_in_consensus = tx['hlc_timestamp']
+
+        self.node.node.main_processing_queue.append(tx)
+
+        self.await_async_process(asyncio.sleep, 2)
+
+        self.assertNotEqual(self.node.node.last_processed_hlc, tx['hlc_timestamp'])
+
+    def test_store_solution_and_send_to_network(self):
+        hlc = HLC_Clock().get_new_hlc_timestamp()
+        processing_results = {'hlc_timestamp': hlc, 'tx_result': {}, 'proof' : {}}
+
+        self.node.node.store_solution_and_send_to_network(processing_results)
+
+        self.assertIn(hlc, self.node.validation_queue.append_history)
+        self.assertIsNotNone(processing_results['proof'].get('tx_result_hash', None))
+
+    def test_update_block_db(self):
+        block = {'hash': 'sample_hash', 'number': 1}
+        self.node.node.update_block_db(block)
+
+        self.assertEqual(self.node.node.get_current_hash(), 'sample_hash')
+        self.assertEqual(self.node.node.get_current_height(), 1)
+
+    def test_get_state_changes_from_block(self):
+        block = {'processed': {'state': 'sample_state'}}
+
+        self.assertEqual(self.node.node.get_state_changes_from_block(block), 'sample_state')
+
+    def test_soft_apply_current_state(self):
+        hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.node.node.driver.set('key', 'sample_value')
+
+        self.node.node.soft_apply_current_state(hlc)
+
+        self.assertDictEqual(self.node.node.driver.pending_deltas[hlc],
+            {'writes': {'key': (None, 'sample_value')}, 'reads': {'key': None}})
+
+    def test_apply_state_changes_from_block(self):
+        block = {'hlc_timestamp': HLC_Clock().get_new_hlc_timestamp(),
+            'processed': {'state': [{'key': 'key', 'value': 'sample_value'}]}}
+
+        self.node.node.apply_state_changes_from_block(block)
+
+        self.assertEqual(self.node.node.driver.driver.get('key'), 'sample_value')
 
 import unittest
 if __name__ == '__main__':

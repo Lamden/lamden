@@ -67,8 +67,12 @@ class TxProcessingQueue(ProcessingQueue):
                 'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
             })
 
-        if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
-            return
+        ''' (?)
+            should we remove the check below because we handle the case when tx
+            hlc is earlier than consensus in hard_apply_block
+        '''
+        #if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
+        #    return
 
         if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
             if self.testing:
@@ -123,12 +127,16 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.currently_processing_hlc = tx['hlc_timestamp']
 
+        ''' (?)
+            should we remove the check below because we handle the case when tx
+            hlc is earlier than consensus in hard_apply_block
+        '''
         # if the last HLC in consensus was greater than this one then don't process it.
         # Returning here will basically ignore the tx
-        if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
-            del self.message_received_timestamps[self.currently_processing_hlc]
-            self.currently_processing_hlc = ""
-            return
+        #if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
+        #    del self.message_received_timestamps[self.currently_processing_hlc]
+        #    self.currently_processing_hlc = ""
+        #    return
 
         # get the amount of time the transaction has been in the queue
         received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
