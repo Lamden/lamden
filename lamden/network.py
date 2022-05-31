@@ -209,7 +209,7 @@ class Network:
 
         self.running = True
 
-        self.log('info', 'Started.')
+        self.log('info', 'Started the network.')
 
     def connect_to_bootnode(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
