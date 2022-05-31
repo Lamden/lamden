@@ -193,7 +193,8 @@ class Network:
             self.log('info', f'Router Address {self.router_address}')
 
             self.publisher.start()
-            self.router.run_curve_server()
+            # self.router.run_curve_server()
+            self.router.run_open_server()
 
             # self.start_health_check()
 
