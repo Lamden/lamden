@@ -81,6 +81,8 @@ class Request():
 
     def create_socket(self) -> zmq.Socket:
         socket = self.ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 500)
+        socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
         return socket
 
