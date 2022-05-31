@@ -117,7 +117,8 @@ class Request():
         try:
             sockets = await pollin.poll(timeout=poll_time)
             return socket in dict(sockets)
-        except:
+        except Exception as err:
+            self.log('error', err)
             return False
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:

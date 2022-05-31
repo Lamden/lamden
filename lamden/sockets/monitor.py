@@ -78,11 +78,12 @@ class SocketMonitor:
 
     def print_event_message(self, socket, monitor_result):
         event_num = monitor_result.get("event")
+        event_value = monitor_result.get("value")
         if event_num is not None:
             for key, value in monitor_errors_map.items():
                 if event_num == value:
                     endpoint = monitor_result.get('endpoint').decode('UTF-8')
-                    self.log('info', f'[{socket}]{endpoint}: {key}')
+                    self.log('info', f'[{socket}]{endpoint}: {key}-{event_value}')
 
     def monitor(self, socket: zmq.Socket) -> None:
         socket_monitor = socket.get_monitor_socket()
