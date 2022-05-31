@@ -11,12 +11,11 @@ from typing import List
 
 import zmq
 import zmq.asyncio
-from zmq._typing import TypedDict
 from zmq.error import _check_version
 
 
-class _MonitorMessage(TypedDict):
-    def __init__(event: int, value: int, endpoint: bytes):
+class _MonitorMessage:
+    def __init__(self, event: int, value: int, endpoint: bytes):
         self.event = event
         self.value = value
         self.endpoint = endpoint
@@ -46,11 +45,7 @@ def parse_monitor_message(msg: List[bytes]) -> _MonitorMessage:
     if len(msg) != 2 or len(msg[0]) != 6:
         raise RuntimeError("Invalid event message format: %s" % msg)
     event_id, value = struct.unpack("=hi", msg[0])
-    event = _MonitorMessage(
-        'event': event_id,
-        'value': value,
-        'endpoint': msg[1],
-    )
+    event = _MonitorMessage(event=event_id, value=value, endpoint=msg[1])
     return event
 
 
