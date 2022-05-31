@@ -169,7 +169,6 @@ class Router():
 
         self.socket_monitor.monitor(socket=self.socket)
 
-        self.socket.setsockopt(zmq.HELLO_MSG, "HELLO TO YOU!")
         self.socket.setsockopt(zmq.LINGER, 500)
         self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
         self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
