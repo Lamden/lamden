@@ -1,10 +1,13 @@
 import asyncio
+import time
 
 import zmq
 import zmq.asyncio
+from zmq.utils import monitor
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
+
 from lamden.sockets.monitor import SocketMonitor
 
 class Lock:
@@ -30,7 +33,8 @@ class Result:
 class Request():
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
-        self.ctx = ctx or zmq.asyncio.Context().instance()
+
+        self.ctx = zmq.Context().instance()
         self.socket_monitor = SocketMonitor()
         self.socket_monitor.start()
 
@@ -141,16 +145,10 @@ class Request():
                     pollin = self.setup_polling(socket=socket)
                     self.connect_socket(socket=socket, address=to_address)
 
-                    tracking = self.send_string(str_msg=str_msg, socket=socket)
-
-                    if isinstance(tracking, asyncio.Future):
-                        await tracking
-                        self.log('info', 'Message sent!')
-                    else:
-                        self.log('error', 'Message NOT sent!')
+                    self.send_string(str_msg=str_msg, socket=socket)
 
                     if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
-                        response = await socket.recv()
+                        response = socket.recv()
 
                         self.log('info', '%s received: %s' % (self.id, response))
 
@@ -206,10 +204,10 @@ class Request():
     def stop(self) -> None:
         self.running = False
         self.log('info', 'Stopping.')
-
         asyncio.ensure_future(self.socket_monitor.stop())
 
         while self.socket_monitor.running:
             loop = asyncio.get_event_loop()
             loop.run_until_complete(asyncio.sleep(1))
+
 

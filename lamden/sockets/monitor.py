@@ -2,6 +2,7 @@ import zmq
 import zmq.asyncio
 import asyncio
 from zmq.utils import monitor
+from lamden.utils.monitor import recv_monitor_message_async
 from lamden.logger.base import get_logger
 
 monitor_errors_map = {
@@ -67,7 +68,7 @@ class SocketMonitor:
 
             for socket in sockets:
                 monitor_socket = socket[0]
-                monitor_result = monitor.recv_monitor_message(monitor_socket)
+                monitor_result = await recv_monitor_message_async(monitor_socket)
                 if monitor_result:
                     self.print_event_message(monitor_result=monitor_result)
 

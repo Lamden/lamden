@@ -14,7 +14,7 @@ class TestSocketMonitor(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.ctx = zmq.Context.instance()
+        self.ctx = zmq.asyncio.Context.instance()
 
         self.monitor = SocketMonitor()
 

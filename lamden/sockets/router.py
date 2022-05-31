@@ -9,6 +9,8 @@ from lamden.crypto.z85 import z85_key
 from typing import Callable
 from lamden.crypto.wallet import Wallet
 
+from lamden.sockets.monitor import SocketMonitor
+
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -66,6 +68,8 @@ class CredentialsProvider(object):
 class Router():
     def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,
                  network_ip: str = None):
+
+        self.socket_monitor = SocketMonitor()
         self.wallet = wallet
         self.message_callback = message_callback
 
@@ -86,6 +90,7 @@ class Router():
 
         self.address = None
         self.set_address()
+        self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -160,6 +165,7 @@ class Router():
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket_monitor.monitor(socket=self.socket)
         self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
         self.socket.setsockopt(zmq.RCVTIMEO, 10000)
         self.socket.setsockopt(zmq.SNDTIMEO, 10000)
@@ -314,6 +320,12 @@ class Router():
             await self.stop_checking_for_messages()
             await self.stop_auth()
             await self.close_socket()
+            self.socket_monitor.stop_monitoring(socket=self.socket)
+            asyncio.ensure_future(self.socket_monitor.stop())
+
+            while self.socket_monitor.running:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(asyncio.sleep(1))
         except Exception as err:
             print(err)
 
