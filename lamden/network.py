@@ -186,6 +186,7 @@ class Network:
             network_ip=self.external_address
         )
         self.router.set_address(port=self.socket_ports.get('router'))
+        self.refresh_approved_peers_in_cred_provider()
 
     def start(self) -> None:
         try:

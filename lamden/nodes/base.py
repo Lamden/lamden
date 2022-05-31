@@ -283,8 +283,7 @@ class Node:
         self.log.info("Attempting to connect to all peers in constitution...")
         await self.network.connected_to_all_peers()
 
-
-        self.driver.clear_pending_state()
+        # self.driver.clear_pending_state()
 
         self.start_all_queues()
         asyncio.ensure_future(self.check_main_processing_queue())
