@@ -35,8 +35,8 @@ class ThreadedNode(threading.Thread):
                  should_seed=True,
                  metering=False,
                  wallet: Wallet = None,
-                 genesis_path: str = str(Path.cwd())
-                 ):
+                 genesis_path: str = str(Path.cwd()),
+                 reconnect_attempts=60):
 
         threading.Thread.__init__(self)
 
@@ -66,6 +66,8 @@ class ThreadedNode(threading.Thread):
 
         self.err = None
 
+        self.reconnect_attempts = reconnect_attempts
+
     @property
     def node_started(self) -> bool:
         if not self.node:
@@ -89,6 +91,30 @@ class ThreadedNode(threading.Thread):
         if not self.node:
             return None
         return self.node.network
+
+    @property
+    def main_processing_queue(self):
+        if not self.node:
+            return None
+        return self.node.main_processing_queue
+
+    @property
+    def validation_queue(self):
+        if not self.node:
+            return None
+        return self.node.validation_queue
+
+    @property
+    def system_monitor(self):
+        if not self.node:
+            return None
+        return self.node.system_monitor
+
+    @property
+    def node_is_running(self):
+        if not self.node:
+            return False
+        return self.node.running
 
     @property
     def latest_block_height(self) -> int:
@@ -129,7 +155,8 @@ class ThreadedNode(threading.Thread):
                 blocks=self.block_storage,
                 should_seed=self.should_seed,
                 genesis_path=str(self.genesis_path),
-                tx_queue=self.tx_queue
+                tx_queue=self.tx_queue,
+                reconnect_attempts=self.reconnect_attempts
             )
 
             self.node.network.set_to_local()

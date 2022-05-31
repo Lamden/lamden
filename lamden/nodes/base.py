@@ -67,8 +67,8 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     masternodes = constitution['masternodes']
     delegates = constitution['delegates']
 
-    is_masternode = verifying_key in masternodes.values()
-    is_delegate = verifying_key in delegates.values()
+    is_masternode = verifying_key in masternodes.keys()
+    is_delegate = verifying_key in delegates.keys()
 
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
@@ -77,7 +77,7 @@ class Node:
                  driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], consensus_percent=None,
                  nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
-                 socket_ports=None):
+                 socket_ports=None, reconnect_attempts=60):
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -213,6 +213,8 @@ class Node:
 
         self.bypass_catchup = bypass_catchup
 
+        self.reconnect_attempts = reconnect_attempts
+
     ''' NAH
     def __del__(self):
         self.network.stop()
@@ -259,33 +261,34 @@ class Node:
         self.log.error("!!!!!! STOPPED NODE !!!!!!")
 
     async def start_new_network(self):
-            '''
-                self.bootnodes is a {vk:ip} dict
-            '''
+        '''
+            self.bootnodes is a {vk:ip} dict
+        '''
 
-            for vk, ip in self.bootnodes.items():
-                self.log.info({"vk": vk, "ip": ip})
+        for vk, ip in self.bootnodes.items():
+            self.log.info({"vk": vk, "ip": ip})
 
-                if vk != self.wallet.verifying_key:
-                    print(f'Attempting to connect to peer "{vk}" @ {ip}')
-                    self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
+            if vk != self.wallet.verifying_key:
+                print(f'Attempting to connect to peer "{vk}" @ {ip}')
+                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
 
-                    # Use it to boot up the network
-                    self.network.connect_peer(
-                        ip=ip,
-                        vk=vk
-                    )
+                # Use it to boot up the network
+                self.network.connect_peer(
+                    ip=ip,
+                    vk=vk
+                )
 
-            self.log.info("Attempting to connect to all peers in constitution...")
-            await self.network.connected_to_all_peers()
+        self.log.info("Attempting to connect to all peers in constitution...")
+        await self.network.connected_to_all_peers()
 
-            self.driver.clear_pending_state()
 
-            self.start_all_queues()
-            asyncio.ensure_future(self.check_main_processing_queue())
-            asyncio.ensure_future(self.check_validation_queue())
+        self.driver.clear_pending_state()
 
-            self.started = True
+        self.start_all_queues()
+        asyncio.ensure_future(self.check_main_processing_queue())
+        asyncio.ensure_future(self.check_validation_queue())
+
+        self.started = True
 
     async def join_existing_network(self):
         bootnode = None
@@ -313,13 +316,12 @@ class Node:
                 bootnode = self.network.get_peer(vk=vk)
 
                 connection_attempts = 0
-                attempts = 60
                 sleep_for = 5
 
                 while not bootnode.is_connected:
                     connection_attempts += 1
 
-                    if connection_attempts > attempts:
+                    if connection_attempts > self.reconnect_attempts:
                         bootnode = None
                         self.network.revoke_peer_access(peer_vk=vk)
                         self.network.remove_peer(peer_vk=vk)
@@ -337,6 +339,8 @@ class Node:
 
             await self.stop()
 
+            return
+
         # Get the rest of the nodes from our bootnode
         response = await bootnode.get_network_map()
 
@@ -351,6 +355,8 @@ class Node:
             self.log.error(response)
 
             await self.stop()
+
+            return
 
         # Create a constitution file
         self.constitution = self.network.network_map_to_constitution(network_map=network_map)
@@ -658,7 +664,6 @@ class Node:
             self.log.error(err)
 
     def store_solution_and_send_to_network(self, processing_results):
-
         self.send_solution_to_network(processing_results=processing_results)
 
         processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
@@ -865,6 +870,7 @@ class Node:
             # Store the block in the block db
             encoded_block = encode(new_block)
             encoded_block = json.loads(encoded_block)
+
 
             self.blocks.store_block(copy.copy(encoded_block))
 
