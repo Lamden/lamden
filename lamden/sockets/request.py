@@ -1,10 +1,14 @@
 import asyncio
+import time
 
 import zmq
 import zmq.asyncio
+from zmq.utils import monitor
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
+
+from lamden.sockets.monitor import SocketMonitor
 
 class Lock:
     def __init__(self):
@@ -29,7 +33,10 @@ class Result:
 class Request():
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
-        self.ctx = ctx or zmq.asyncio.Context().instance()
+
+        self.ctx = zmq.Context().instance()
+        self.socket_monitor = SocketMonitor()
+        self.socket_monitor.start()
 
         self.msg = ''
 
@@ -130,6 +137,7 @@ class Request():
 
                 try:
                     socket = self.create_socket()
+                    self.socket_monitor.monitor(socket=socket)
 
                     if self.secure_socket:
                         self.setup_secure_socket(socket=socket)
@@ -140,7 +148,7 @@ class Request():
                     self.send_string(str_msg=str_msg, socket=socket)
 
                     if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
-                        response = await socket.recv()
+                        response = socket.recv()
 
                         self.log('info', '%s received: %s' % (self.id, response))
 
@@ -178,6 +186,8 @@ class Request():
             return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
+        self.socket_monitor.stop_monitoring(socket=socket)
+
         if socket:
             try:
                 socket.setsockopt(zmq.LINGER, 0)
@@ -194,5 +204,10 @@ class Request():
     def stop(self) -> None:
         self.running = False
         self.log('info', 'Stopping.')
+        asyncio.ensure_future(self.socket_monitor.stop())
+
+        while self.socket_monitor.running:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(asyncio.sleep(1))
 
 
