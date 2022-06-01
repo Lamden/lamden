@@ -209,15 +209,6 @@ class TestSubscriberSocket(unittest.TestCase):
 
         self.assertIsNotNone(self.subscriber.socket)
 
-    def test_METHOD_connect_socket__does_not_start_if_address_is_unbindable(self):
-        self.subscriber.create_socket()
-        self.subscriber.address = 'tcp://1.1.1.1:19000'
-
-        self.subscriber.connect_socket()
-
-        self.assertIsNone(self.subscriber.check_for_messages_task)
-        self.assertFalse(self.subscriber.socket_is_bound)
-
     def test_METHOD_setup_event_loop__creates_loop_if_none_exist(self):
         loop = asyncio.get_event_loop()
         loop.stop()
@@ -413,14 +404,6 @@ class TestSubscriberSocket(unittest.TestCase):
         self.async_sleep(0.5)
 
         self.assertFalse(self.subscriber.check_for_messages_task.done())
-
-    def test_METHOD_start__does_not_create_check_for_messages_task_if_socket_did_not_bind(self):
-        self.subscriber.address ="tcp://1.1.1.1:19000"
-        self.subscriber.start()
-
-        self.async_sleep(0.5)
-
-        self.assertIsNone(self.subscriber.check_for_messages_task)
 
     def test_METHOD_stop_checking_for_messages__waits_for_task_to_end(self):
         self.start_subscriber()

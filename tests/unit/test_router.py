@@ -400,6 +400,7 @@ class TestRouter(unittest.TestCase):
         self.create_request()
         self.start_secure_router()
 
+        self.router.cred_provider.approved_keys = {}
         to_address = 'tcp://127.0.0.1:19000'
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.request.send(to_address=to_address, msg_str="Testing"))

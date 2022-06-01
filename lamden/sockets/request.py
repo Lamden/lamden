@@ -108,7 +108,7 @@ class Request():
         if not isinstance(str_msg, str):
             raise TypeError("Message Must be string.")
 
-        return socket.send_string(str_msg, track=True)
+        return socket.send_string(str_msg)
 
     async def message_waiting(self, poll_time: int,  pollin: zmq.asyncio.Poller, socket: zmq.Socket,) -> bool:
         try:
@@ -137,13 +137,7 @@ class Request():
                     pollin = self.setup_polling(socket=socket)
                     self.connect_socket(socket=socket, address=to_address)
 
-                    tracking = self.send_string(str_msg=str_msg, socket=socket)
-
-                    if isinstance(tracking, asyncio.Future):
-                        await tracking
-                        self.log('info', 'Message sent!')
-                    else:
-                        self.log('error', 'Message NOT sent!')
+                    self.send_string(str_msg=str_msg, socket=socket)
 
                     if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
                         response = await socket.recv()

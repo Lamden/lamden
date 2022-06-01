@@ -84,6 +84,7 @@ class Subscriber():
     def connect_socket(self):
         if not self.socket:
             self.create_socket()
+
         self.log('info', f'Connecting to {self.address}')
 
         try:
@@ -94,7 +95,6 @@ class Subscriber():
                 self.log('error', f'Address {self.address} already in use.')
             else:
                 self.log('error', err)
-            pass
 
 
     def subscribe_to_topics(self) -> None:
