@@ -28,7 +28,7 @@ MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3
 
 class LocalNodeNetwork:
         def __init__(self, constitution: dict={}, bootnodes: list = [], num_of_masternodes: int = 0,
-                     num_of_delegates: int = 0, genesis_path: Path = Path.cwd()):
+                     num_of_delegates: int = 0, genesis_path: Path = Path.cwd(), should_seed=True):
             self.masternodes: List[Node] = []
             self.delegates: List[Node] = []
 
@@ -64,7 +64,8 @@ class LocalNodeNetwork:
 
             self.create_new_network(
                 num_of_delegates=num_of_delegates,
-                num_of_masternodes=num_of_masternodes
+                num_of_masternodes=num_of_masternodes,
+                should_seed=should_seed
             )
 
         @property
@@ -103,7 +104,7 @@ class LocalNodeNetwork:
                 if tn.vk == vk:
                     return tn
 
-        def create_new_network(self, num_of_masternodes: int = 0, num_of_delegates: int = 0):
+        def create_new_network(self, num_of_masternodes: int = 0, num_of_delegates: int = 0, should_seed=True):
             if num_of_masternodes + num_of_delegates == 0:
                 return
 
@@ -122,7 +123,8 @@ class LocalNodeNetwork:
                 tn = self.create_node(
                     node_type=node_info[0],
                     node_wallet=node_info[1],
-                    index=node_info[2]
+                    index=node_info[2],
+                    should_seed=should_seed
                 )
                 tn.start()
                 while tn.node is None:
@@ -150,8 +152,7 @@ class LocalNodeNetwork:
                 'delegates': [d[1].verifying_key for d in node_wallets if d[0] == "delegate"],
             }
 
-        def create_node(self, node_type, index: int = None, node_wallet: Wallet = Wallet(), should_seed: bool = True,
-                        node: ThreadedNode = None):
+        def create_node(self, node_type, index: int = None, node_wallet: Wallet = Wallet(), should_seed: bool = True, node: ThreadedNode = None, reconnect_attempts=60):
 
             assert node_type in ['masternode', 'delegate'], "node_type must be 'masternode' or 'delegate'"
 
@@ -176,7 +177,8 @@ class LocalNodeNetwork:
                     block_storage=block_storage,
                     genesis_path=self.genesis_path,
                     should_seed=should_seed,
-                    tx_queue=tx_queue
+                    tx_queue=tx_queue,
+                    reconnect_attempts=reconnect_attempts
                 )
 
             if node.node_type == 'masternode':
@@ -187,29 +189,34 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_new_node_to_network(self, node_type: str, bootnodes: ThreadedNode = None):
+        def add_new_node_to_network(self, node_type: str, bootnodes: ThreadedNode = None, should_seed=False, reconnect_attempts=60):
             new_node_wallet = Wallet()
             new_node_vk = new_node_wallet.verifying_key
+            index = self.num_of_nodes
 
             self.add_new_node_vk_to_network(node_type=node_type, vk=new_node_vk)
 
             node = self.create_node(
                 node_type=node_type,
                 node_wallet=new_node_wallet,
-                should_seed=False
+                should_seed=should_seed,
+                reconnect_attempts=reconnect_attempts
             )
 
             if bootnodes:
                 node.bootnodes = bootnodes
             else:
                 node.bootnodes = self.make_bootnode(self.masternodes[0])
+                if should_seed:
+                    self.constitution[f'{node_type}s'].append(new_node_vk)
 
             self.run_threaded_node(node)
 
             return node
 
-        def add_masternode(self):
-            return self.add_new_node_to_network(node_type="masternode")
+        def add_masternode(self, should_seed=False, reconnect_attempts=60):
+            return self.add_new_node_to_network(node_type="masternode", should_seed=should_seed,
+                reconnect_attempts=reconnect_attempts)
 
         def add_delegate(self):
             return self.add_new_node_to_network(node_type="delegate")
