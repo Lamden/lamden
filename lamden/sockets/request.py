@@ -31,18 +31,19 @@ class Request():
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
-        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
-        self.socket_monitor.start()
-
         self.msg = ''
 
         self.running = True
+
 
         self.local_ip = local_ip
         self.local_wallet = local_wallet or Wallet()
         self.server_curve_vk = server_curve_vk
 
         self.lock = Lock()
+
+        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
+        self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -113,7 +114,7 @@ class Request():
         if not isinstance(str_msg, str):
             raise TypeError("Message Must be string.")
 
-        return socket.send_string(str_msg, track=True)
+        return socket.send_string(str_msg)
 
     async def message_waiting(self, poll_time: int,  pollin: zmq.asyncio.Poller, socket: zmq.Socket,) -> bool:
         try:
@@ -136,6 +137,7 @@ class Request():
 
                 try:
                     socket = self.create_socket()
+
                     self.socket_monitor.monitor(socket=socket)
 
                     if self.secure_socket:
@@ -191,7 +193,7 @@ class Request():
             return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
-        self.socket_monitor.stop_monitoring(socket=socket)
+        self.socket_monitor.unregister_socket_from_poller(socket=socket)
 
         if socket:
             try:
@@ -206,13 +208,13 @@ class Request():
             except:
                 pass
 
-    def stop(self) -> None:
-        self.running = False
+    async def stop(self) -> None:
         self.log('info', 'Stopping.')
 
         asyncio.ensure_future(self.socket_monitor.stop())
 
-        while self.socket_monitor.running:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(asyncio.sleep(1))
+        await self.socket_monitor.stop()
+
+        self.running = False
+
 

@@ -8,6 +8,7 @@ from lamden.logger.base import get_logger
 from lamden.crypto.z85 import z85_key
 from typing import Callable
 from lamden.crypto.wallet import Wallet
+from lamden.sockets.monitor import SocketMonitor
 
 from lamden.sockets.monitor import SocketMonitor
 
@@ -92,6 +93,9 @@ class Router():
         self.set_address()
         self.socket_monitor.start()
 
+        self.socket_monitor = SocketMonitor(socket_type='ROUTER')
+        self.socket_monitor.start()
+
     @property
     def is_running(self) -> bool:
         return self.running
@@ -166,14 +170,11 @@ class Router():
             self.ctx = zmq.asyncio.Context().instance()
 
         self.socket = self.ctx.socket(zmq.ROUTER)
-
         self.socket_monitor.monitor(socket=self.socket)
+        self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        self.socket.setsockopt(zmq.RCVTIMEO, 10000)
+        self.socket.setsockopt(zmq.SNDTIMEO, 10000)
 
-        self.socket.setsockopt(zmq.LINGER, 500)
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        #self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
-        #self.socket.setsockopt(zmq.RCVTIMEO, 10000)
-        #self.socket.setsockopt(zmq.SNDTIMEO, 10000)
 
     def setup_auth(self):
         #self.auth = ThreadAuthenticator(self.ctx)
@@ -290,6 +291,8 @@ class Router():
                 self.cred_provider.remove_key(vk=vk)
 
     async def close_socket(self):
+        self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
+
         if not self.socket_is_closed:
             self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
@@ -325,12 +328,8 @@ class Router():
             await self.stop_checking_for_messages()
             await self.stop_auth()
             await self.close_socket()
-            self.socket_monitor.stop_monitoring(socket=self.socket)
-            asyncio.ensure_future(self.socket_monitor.stop())
+            await self.socket_monitor.stop()
 
-            while self.socket_monitor.running:
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(asyncio.sleep(1))
         except Exception as err:
             print(err)
 

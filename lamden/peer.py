@@ -496,7 +496,7 @@ class Peer:
             self.verify_task = None
 
         if self.request:
-            self.request.stop()
+            await self.request.stop()
         if self.subscriber:
             await self.subscriber.stop()
 

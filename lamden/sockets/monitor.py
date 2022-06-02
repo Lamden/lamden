@@ -68,7 +68,7 @@ class SocketMonitor:
 
             for socket in sockets:
                 monitor_socket = socket[0]
-                monitor_result = await recv_monitor_message_async(monitor_socket)
+                monitor_result = await monitor.recv_monitor_message(monitor_socket)
                 if monitor_result:
                     self.print_event_message(socket=socket, monitor_result=monitor_result)
 
@@ -97,7 +97,10 @@ class SocketMonitor:
         self.sockets_to_monitor.remove(socket_monitor)
 
     def unregister_socket_from_poller(self, socket: zmq.Socket):
-        self.poller.unregister(socket=socket)
+        try:
+            self.poller.unregister(socket=socket)
+        except KeyError:
+            pass
 
     def unregister_all_sockets_from_poller(self):
         for socket in self.sockets_to_monitor:
@@ -116,5 +119,4 @@ class SocketMonitor:
         self.unregister_all_sockets_from_poller()
 
         self.log('info', "Stopped.")
-
 

@@ -70,7 +70,7 @@ class MockRouter(threading.Thread):
             # print(sockets[self.socket])
             if self.socket in sockets:
                 ident, empty, msg = self.socket.recv_multipart()
-                print("[ROUTER] Received request: ", msg)
+                print("[MOCK_ROUTER] Received request: ", msg)
 
                 if self.message_callback:
                     self.message_callback(ident_vk_string=json.loads(ident), msg=msg)
@@ -122,8 +122,7 @@ class MockRouter(threading.Thread):
             self.ctx.term()
 
         except zmq.ZMQError as err:
-            self.log.error(f'[ROUTER] Error Stopping Socket: {err}')
-            print(f'[{self.log.name}][ROUTER] Error Stopping Socket: {err}')
+            print(f'[MOCK_ROUTER] Error Stopping Socket: {err}')
             pass
 
     def send_msg(self, ident: str, msg):
@@ -140,6 +139,7 @@ class MockRouter(threading.Thread):
             self.running = False
 
         if self.socket:
+            self.socket.close()
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.stopping())
 
@@ -152,6 +152,8 @@ class TestMockRouter(unittest.TestCase):
         self.responses = dict()
 
     def tearDown(self) -> None:
+        if self.router and self.router.running:
+            self.router.stop()
         del self.router
 
     def async_sleep(self, delay):
@@ -321,6 +323,7 @@ class TestMockRouter(unittest.TestCase):
         passed = all(ping_responses)
         self.assertTrue(passed)
 
+
     def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__DISPOSABLE_REQUEST_SOCKETS_AT_ONCE(self):
         '''
             THIS TEST CASE WILL FAIL!!!
@@ -372,7 +375,7 @@ class TestMockRouter(unittest.TestCase):
         self.async_sleep(1)
 
         self.router.message_callback = router_callback
-        num_of_messages = 20
+        num_of_messages = 5
         task_list = list()
         for i in range(num_of_messages):
             task = asyncio.ensure_future(
@@ -389,3 +392,4 @@ class TestMockRouter(unittest.TestCase):
         ping_responses = [result.get('response') == "ping" for result in task_results_decoded]
         passed = all(ping_responses)
         self.assertTrue(passed)
+

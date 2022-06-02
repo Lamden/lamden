@@ -88,40 +88,5 @@ class TestSocketMonitor(TestCase):
 
         self.async_sleep(1)
 
-    def test_monitoring_with_poller(self):
-        poller = zmq.asyncio.Poller()
-        ctx = zmq.Context()
-        """Test connected monitoring socket."""
-        s_rep = ctx.socket(zmq.REP)
-        s_req = ctx.socket(zmq.REQ)
-
-        poller.register(s_rep, zmq.POLLIN)
-
-        s_req.bind("tcp://127.0.0.1:6667")
-        # try monitoring the REP socket
-        # create listening socket for monitor
-        s_event = s_rep.get_monitor_socket()
-        s_event.linger = 0
-
-        # test receive event for connect event
-        s_rep.connect("tcp://127.0.0.1:6667")
-        m = monitor.recv_monitor_message(s_event)
-        if m['event'] == zmq.EVENT_CONNECT_DELAYED:
-            self.assertEqual(m['endpoint'], b"tcp://127.0.0.1:6667")
-            # test receive event for connected event
-            m = monitor.recv_monitor_message(s_event)
-        self.assertEqual(m['event'], zmq.EVENT_CONNECTED)
-        self.assertEqual(m['endpoint'], b"tcp://127.0.0.1:6667")
-
-        s_req.send_string("Hello")
-
-        task = self.loop.run_until_complete(poller.poll(timeout=1000))
-
-        self.assertEqual(1, len(task))
-        for socket in task:
-            msg = socket[0].recv()
-            self.assertEqual('Hello', msg.decode('UTF-8'))
-
-
 
 

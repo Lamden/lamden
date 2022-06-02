@@ -20,8 +20,8 @@ class MockPublisher():
 
         self.socket = self.ctx.socket(zmq.PUB)
 
-        self.socket.connect(f'tcp://127.0.0.1:{self.port}')
-        #self.socket.bind(f'tcp://*:{self.port}')
+        #self.socket.connect(f'tcp://127.0.0.1:{self.port}')
+        self.socket.bind(f'tcp://*:{self.port}')
 
         print(f'[PUBLISHER] Started...')
         self.running = True
