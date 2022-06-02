@@ -2,6 +2,7 @@ import zmq
 import zmq.asyncio
 import asyncio
 from zmq.utils import monitor
+from lamden.utils.monitor import recv_monitor_message_async
 from lamden.logger.base import get_logger
 
 monitor_errors_map = {

@@ -1,10 +1,13 @@
 import asyncio
+import time
 
 import zmq
 import zmq.asyncio
+from zmq.utils import monitor
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
+
 from lamden.sockets.monitor import SocketMonitor
 
 class Lock:
@@ -30,20 +33,20 @@ class Result:
 class Request():
     def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
-        self.ctx = ctx or zmq.asyncio.Context().instance()
+
+        self.ctx = zmq.Context().instance()
+        self.socket_monitor = SocketMonitor()
+        self.socket_monitor.start()
+
         self.msg = ''
 
         self.running = True
-
 
         self.local_ip = local_ip
         self.local_wallet = local_wallet or Wallet()
         self.server_curve_vk = server_curve_vk
 
         self.lock = Lock()
-
-        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
-        self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -82,8 +85,6 @@ class Request():
 
     def create_socket(self) -> zmq.Socket:
         socket = self.ctx.socket(zmq.REQ)
-        socket.setsockopt(zmq.LINGER, 500)
-        socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
 
         return socket
 
@@ -114,14 +115,13 @@ class Request():
         if not isinstance(str_msg, str):
             raise TypeError("Message Must be string.")
 
-        return socket.send_string(str_msg)
+        return socket.send_string(str_msg, track=True)
 
     async def message_waiting(self, poll_time: int,  pollin: zmq.asyncio.Poller, socket: zmq.Socket,) -> bool:
         try:
             sockets = await pollin.poll(timeout=poll_time)
             return socket in dict(sockets)
-        except Exception as err:
-            self.log('error', err)
+        except:
             return False
 
     async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:
@@ -137,7 +137,6 @@ class Request():
 
                 try:
                     socket = self.create_socket()
-
                     self.socket_monitor.monitor(socket=socket)
 
                     if self.secure_socket:
@@ -146,16 +145,10 @@ class Request():
                     pollin = self.setup_polling(socket=socket)
                     self.connect_socket(socket=socket, address=to_address)
 
-                    tracking = self.send_string(str_msg=str_msg, socket=socket)
-
-                    if isinstance(tracking, asyncio.Future):
-                        await tracking
-                        self.log('info', 'Message sent!')
-                    else:
-                        self.log('error', 'Message NOT sent!')
+                    self.send_string(str_msg=str_msg, socket=socket)
 
                     if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
-                        response = await socket.recv()
+                        response = socket.recv()
 
                         self.log('info', '%s received: %s' % (self.id, response))
 
@@ -193,7 +186,7 @@ class Request():
             return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
-        self.socket_monitor.unregister_socket_from_poller(socket=socket)
+        self.socket_monitor.stop_monitoring(socket=socket)
 
         if socket:
             try:
@@ -208,13 +201,13 @@ class Request():
             except:
                 pass
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
+        self.running = False
         self.log('info', 'Stopping.')
-
         asyncio.ensure_future(self.socket_monitor.stop())
 
-        await self.socket_monitor.stop()
-
-        self.running = False
+        while self.socket_monitor.running:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(asyncio.sleep(1))
 
 
