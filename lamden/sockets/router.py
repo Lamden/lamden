@@ -8,6 +8,7 @@ from lamden.logger.base import get_logger
 from lamden.crypto.z85 import z85_key
 from typing import Callable
 from lamden.crypto.wallet import Wallet
+from lamden.sockets.monitor import SocketMonitor
 
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -87,6 +88,9 @@ class Router():
         self.address = None
         self.set_address()
 
+        self.socket_monitor = SocketMonitor(socket_type='ROUTER')
+        self.socket_monitor.start()
+
     @property
     def is_running(self) -> bool:
         return self.running
@@ -160,6 +164,7 @@ class Router():
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket_monitor.monitor(socket=self.socket)
         self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
         self.socket.setsockopt(zmq.RCVTIMEO, 10000)
         self.socket.setsockopt(zmq.SNDTIMEO, 10000)
@@ -279,6 +284,8 @@ class Router():
                 self.cred_provider.remove_key(vk=vk)
 
     async def close_socket(self):
+        self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
+
         if not self.socket_is_closed:
             self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
@@ -314,6 +321,7 @@ class Router():
             await self.stop_checking_for_messages()
             await self.stop_auth()
             await self.close_socket()
+            await self.socket_monitor.stop()
         except Exception as err:
             print(err)
 

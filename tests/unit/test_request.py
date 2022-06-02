@@ -25,7 +25,9 @@ class TestRequestSocket(unittest.TestCase):
             self.peer.stop()
             self.peer.join()
         if self.request:
-            self.request.stop()
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.request.stop())
+
 
     def start_secure_peer(self):
         self.peer = MockRouter(

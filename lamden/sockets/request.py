@@ -5,6 +5,7 @@ import zmq.asyncio
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
+from lamden.sockets.monitor import SocketMonitor
 
 class Lock:
     def __init__(self):
@@ -35,11 +36,15 @@ class Request():
 
         self.running = True
 
+
         self.local_ip = local_ip
         self.local_wallet = local_wallet or Wallet()
         self.server_curve_vk = server_curve_vk
 
         self.lock = Lock()
+
+        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
+        self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -131,6 +136,8 @@ class Request():
                 try:
                     socket = self.create_socket()
 
+                    self.socket_monitor.monitor(socket=socket)
+
                     if self.secure_socket:
                         self.setup_secure_socket(socket=socket)
 
@@ -178,6 +185,8 @@ class Request():
             return Result(success=False, error=error)
 
     def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
+        self.socket_monitor.unregister_socket_from_poller(socket=socket)
+
         if socket:
             try:
                 socket.setsockopt(zmq.LINGER, 0)
@@ -191,8 +200,12 @@ class Request():
             except:
                 pass
 
-    def stop(self) -> None:
-        self.running = False
+    async def stop(self) -> None:
         self.log('info', 'Stopping.')
+
+        await self.socket_monitor.stop()
+
+        self.running = False
+
 
 
