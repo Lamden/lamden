@@ -237,9 +237,11 @@ class Node:
             await self.network.starting()
 
             if self.should_seed:
-                asyncio.ensure_future(self.start_new_network())
+                await self.start_new_network()
+                print("STARTED NODE")
             else:
-                asyncio.ensure_future(self.join_existing_network())
+                await self.join_existing_network()
+                print("STARTED NODE")
 
         except Exception as err:
             self.running = False

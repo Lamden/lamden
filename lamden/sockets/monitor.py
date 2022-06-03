@@ -54,6 +54,7 @@ class SocketMonitor:
             logger.warning(message)
 
     def start(self) -> None:
+        return
         if self.check_for_events_task is None or self.check_for_events_task.done():
             self.running = True
             self.check_for_events_task = asyncio.ensure_future(self.check_for_events())

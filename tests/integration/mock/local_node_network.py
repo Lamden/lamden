@@ -357,10 +357,13 @@ class TestLocalNodeNetwork(unittest.TestCase):
 
     def tearDown(self):
         if self.network:
-            task = asyncio.ensure_future(self.network.stop_all_nodes())
+            for tn in self.network.all_nodes:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(tn.stop())
 
-            while not task.done():
-                self.loop.run_until_complete(asyncio.sleep(0.1))
+            for tn in self.network.all_nodes:
+                tn.join()
+
 
         self.loop.stop()
         self.loop.close()
@@ -384,7 +387,7 @@ class TestLocalNodeNetwork(unittest.TestCase):
 
         self.assertIsInstance(self.network, LocalNodeNetwork)
 
-    def test_can_add_and_create_a_node_instance_inside_thread(self):
+    def test_2can_add_and_create_a_node_instance_inside_thread(self):
         wallet = Wallet()
 
         self.network = LocalNodeNetwork(
@@ -399,7 +402,6 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.assertEqual(1, self.network.num_of_nodes)
         self.async_sleep(2)
         self.assertIsNotNone(self.network.masternodes[0].node)
-
 
     def test_can_start_all_nodes(self):
         wallet_mn_1 = Wallet()
@@ -422,11 +424,11 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.assertEqual(4, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
-    def test_create_new_network__all_node_connect(self):
+    def test_3create_new_network__all_node_connect(self):
         self.network = LocalNodeNetwork()
 
-        num_of_masternodes = 4
-        num_of_delegates = 4
+        num_of_masternodes = 1
+        num_of_delegates = 1
 
         self.network.create_new_network(
             num_of_masternodes=num_of_masternodes,
@@ -436,21 +438,27 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.assertEqual(num_of_masternodes + num_of_delegates, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
-        timeout = 60
-        start_time = time.time()
-
         # Threaded Nodes add all peers
         for tn in self.network.all_nodes:
+            timeout = 20
+            start_time = time.time()
+
             connected = False
             while not connected:
                 num_of_peers_connected = tn.network.num_of_peers_connected()
                 num_of_peers = self.network.num_of_nodes - 1
                 connected = num_of_peers_connected == num_of_peers
 
+                if connected:
+                    break
+
                 if time.time() - start_time > timeout:
                     self.fail(f"Hit {timeout} second timeout waiting for all nodes to add peers!")
                 else:
-                    self.async_sleep(0.1)
+                    self.async_sleep(5)
+
+        for tn in self.network.all_nodes:
+            self.assertTrue(tn.node.network.connected_to_all_peers())
 
     def test_add_new_node_to_network__new_node_connects_and_all_existing_connect_back_to_it(self):
         self.network = LocalNodeNetwork()
@@ -480,7 +488,7 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.async_sleep(5)
         self.assertTrue(new_node.network.all_peers_connected())
 
-
+    
     def test_add_new_node_vk_to_network(self):
         self.network = LocalNodeNetwork()
 
@@ -500,7 +508,6 @@ class TestLocalNodeNetwork(unittest.TestCase):
 
         while existing_node.latest_block_height != new_node.latest_block_height:
             self.async_sleep(60)
-
 
     def test_testcase_can_preload_blocks(self):
         self.network = LocalNodeNetwork()
@@ -532,7 +539,8 @@ class TestLocalNodeNetwork(unittest.TestCase):
             state_amount = node.get_smart_contract_value(key=f'currency.balances:{vk}')
             self.assertEqual(amount, state_amount)
 
-    def test_can_create_and_send_tx_to_masternode(self):
+
+    def test_1can_create_and_send_tx_to_masternode(self):
         self.network = LocalNodeNetwork()
 
         self.network.create_new_network(
@@ -548,4 +556,5 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.async_sleep(1)
 
         self.assertEqual(1, len(tn.node.tx_queue))
+
 

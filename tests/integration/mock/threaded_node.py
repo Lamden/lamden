@@ -2,6 +2,9 @@ import asyncio
 import threading
 import time
 
+import zmq
+import zmq.asyncio
+
 from lamden.nodes.delegate import Delegate
 from lamden.nodes.masternode import Masternode
 from lamden.nodes.base import Node
@@ -194,6 +197,9 @@ class ThreadedNode(threading.Thread):
             return
 
         await self.node.stop()
+
+        ctx = zmq.asyncio.Context.instance()
+        ctx.destroy(linger=0)
 
         self.running = False
         print(f'Threaded Node ({self.node_type}) {self.index} Stopped.')

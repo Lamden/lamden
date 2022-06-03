@@ -22,6 +22,8 @@ class TestNetwork(TestCase):
         self.current_path = Path.cwd()
         self.nodes_fixtures_dir = Path(f'{self.current_path}/fixtures/nodes')
 
+        self.ctx = zmq.asyncio.Context.instance()
+
         try:
             shutil.rmtree(self.nodes_fixtures_dir)
         except:
@@ -36,9 +38,19 @@ class TestNetwork(TestCase):
     def tearDown(self):
         self.stop_threaded_networks()
 
+        self.loop.run_until_complete(asyncio.sleep(5))
+
+        self.ctx.destroy(linger=0)
+
+        self.loop.run_until_complete(asyncio.sleep(5))
         if not self.loop.is_closed():
             self.loop.stop()
             self.loop.close()
+
+
+
+        self.ctx = None
+        self.loop = None
 
     def get_latest_block(self):
         return {}
@@ -326,7 +338,7 @@ class TestNetwork(TestCase):
             num_of_peers_connected = network.n.num_of_peers_connected()
             self.assertEqual(3, num_of_peers_connected)
 
-    def test_network_can_receive_messages_vai_router_while_awaiting_response_from_request_socket(self):
+    def test_network_can_receive_messages_via_router_while_awaiting_response_from_request_socket(self):
         '''
             Start up two networks, connect #1 to #2.
             Then start a ping to a non-existent peer which should take about 10 seconds to fail.
@@ -429,7 +441,7 @@ class TestNetwork(TestCase):
 
         network_1_peer = network_2.n.get_peer(vk=network_1.n.vk)
 
-        num_of_requests = 20
+        num_of_requests = 5
 
         task_list = list()
         for i in range(num_of_requests):
@@ -445,7 +457,7 @@ class TestNetwork(TestCase):
         self.assertTrue(all([result.get('success') for result in task_results]))
 
     def test_router_can_handle_rapid_requests_from_peers(self):
-        num_of_networks = 5
+        num_of_networks = 4
 
         for i in range(num_of_networks):
             network = self.create_threaded_network(index=i)
@@ -458,49 +470,45 @@ class TestNetwork(TestCase):
         network_2 = self.networks[1]
         network_3 = self.networks[2]
         network_4 = self.networks[3]
-        network_5 = self.networks[4]
 
         self.set_smart_contract_keys_threaded()
 
         network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_3.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_4.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
-        network_5.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
 
+
+        self.async_sleep(2)
         network_1.n.connect_peer(
             ip=network_2.n.local_address,
             vk=network_2.vk
         )
-        self.async_sleep(1)
+        self.async_sleep(2)
         network_1.n.connect_peer(
             ip=network_3.n.local_address,
             vk=network_3.vk
         )
-        self.async_sleep(1)
+
+        self.async_sleep(2)
         network_1.n.connect_peer(
             ip=network_4.n.local_address,
             vk=network_4.vk
-        )
-        self.async_sleep(1)
-        network_1.n.connect_peer(
-            ip=network_5.n.local_address,
-            vk=network_5.vk
         )
 
         self.async_sleep(5)
 
         for network in self.networks:
             num_of_peers_connected = network.n.num_of_peers_connected()
-            self.assertEqual(4, num_of_peers_connected)
+            self.assertEqual(3, num_of_peers_connected)
 
         peer_list = [
             network_2.n.get_peer(vk=network_1.n.vk),
             network_3.n.get_peer(vk=network_1.n.vk),
-            network_4.n.get_peer(vk=network_1.n.vk),
-            network_5.n.get_peer(vk=network_1.n.vk)
+            network_4.n.get_peer(vk=network_1.n.vk)
         ]
 
-        num_of_requests = 20
+        print("STARTING PING TEST")
+        num_of_requests = 200
 
         task_list = list()
         for i in range(num_of_requests):
@@ -513,6 +521,8 @@ class TestNetwork(TestCase):
         tasks = asyncio.gather(*task_list)
         loop = asyncio.get_event_loop()
         task_results = loop.run_until_complete(tasks)
+
+        self.async_sleep(5)
 
         self.assertEqual(num_of_requests * len(peer_list), len(task_results) )
         self.assertTrue(all([result.get('success') for result in task_results]))

@@ -165,9 +165,16 @@ class Router():
             self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.socket_monitor.monitor(socket=self.socket)
+
+        # self.socket.set(zmq.HWM, 2)
+        # self.socket.set(zmq.TCP_KEEPALIVE, 1)
+        # self.socket.set(zmq.LINGER, 0)
+
         self.socket.setsockopt(zmq.ROUTER_MANDATORY, 1)
         self.socket.setsockopt(zmq.RCVTIMEO, 10000)
-        self.socket.setsockopt(zmq.SNDTIMEO, 10000)
+        self.socket.setsockopt(zmq.RCVHWM, 10000)
+        self.socket.setsockopt(zmq.SNDHWM, 10000)
+        #self.socket.setsockopt(zmq.SNDTIMEO, 50000)
 
     def setup_auth(self):
         #self.auth = ThreadAuthenticator(self.ctx)
@@ -240,17 +247,17 @@ class Router():
 
                 try:
                     ident_vk_string = json.loads(ident_vk_bytes.decode('UTF-8'))
-                except Exception:
+                except Exception as err:
+                    self.log('error', err)
                     ident_vk_string = None
 
                 if self.message_callback:
-                    self.message_callback(ident_vk_string, msg)
+                    asyncio.ensure_future(self.message_callback(ident_vk_string, msg))
 
                 await asyncio.sleep(0)
             else:
                 await asyncio.sleep(0.1)
                 # self.log('info', 'No Messages Found!')
-
 
         self.log('info', 'Stopped Checking for messages.')
 
@@ -284,7 +291,7 @@ class Router():
                 self.cred_provider.remove_key(vk=vk)
 
     async def close_socket(self):
-        self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
+        self.socket_monitor.stop_monitoring(socket=self.socket)
 
         if not self.socket_is_closed:
             self.socket.setsockopt(zmq.LINGER, 0)

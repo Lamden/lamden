@@ -28,11 +28,11 @@ class Result:
         self.error = error
 
 class Request():
-    def __init__(self, to_address: str, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
+    def __init__(self, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
 
-        self.to_address = to_address
+        self.msg = ''
 
         self.running = True
 
@@ -41,24 +41,10 @@ class Request():
         self.local_wallet = local_wallet or Wallet()
         self.server_curve_vk = server_curve_vk
 
-        self.socket = None
-        self.polling = None
         self.lock = Lock()
 
         self.socket_monitor = SocketMonitor(socket_type="REQUEST")
         self.socket_monitor.start()
-
-        self.create_socket()
-
-        self.socket_monitor.monitor(socket=self.socket)
-
-        if self.secure_socket:
-            self.setup_secure_socket()
-
-        self.setup_polling()
-
-        self.set_socket_options()
-        self.connect_socket()
 
     @property
     def is_running(self) -> bool:
@@ -89,50 +75,55 @@ class Request():
         if log_type == 'warning':
             logger.warning(named_message)
 
-    def socket_is_bound(self) -> bool:
+    def socket_is_bound(self, socket) -> bool:
         try:
-            return len(self.socket.LAST_ENDPOINT) > 0
+            return len(socket.LAST_ENDPOINT) > 0
         except AttributeError:
             return False
 
-    def create_socket(self) -> None:
-        self.socket = self.ctx.socket(zmq.REQ)
+    def create_socket(self) -> zmq.Socket:
+        socket = self.ctx.socket(zmq.REQ)
+        return socket
 
-    def set_socket_options(self) -> None:
-        self.socket.setsockopt(zmq.HEARTBEAT_IVL, 500)
+    def set_socket_options(self, socket: zmq.Socket) -> None:
+        pass
+        # socket.setsockopt(zmq.TCP_KEEPALIVE)
+        socket.setsockopt(zmq.HEARTBEAT_IVL, 500)
+        #socket.setsockopt(zmq.HEARTBEAT_TIMEOUT, 5000)
 
-    def setup_secure_socket(self) -> None:
+    def setup_secure_socket(self, socket: zmq.Socket) -> None:
         if not self.secure_socket:
             raise AttributeError("Provided server_curve_vk for a secure socket connection.")
 
-        self.socket.curve_secretkey = self.local_wallet.curve_sk
-        self.socket.curve_publickey = self.local_wallet.curve_vk
-        self.socket.curve_serverkey = self.server_curve_vk
-        self.socket.identity = encode(self.id).encode()
+        socket.curve_secretkey = self.local_wallet.curve_sk
+        socket.curve_publickey = self.local_wallet.curve_vk
+        socket.curve_serverkey = self.server_curve_vk
+        socket.identity = encode(self.id).encode()
 
-    def setup_polling(self) -> None:
-        self.pollin = zmq.asyncio.Poller()
-        self.pollin.register(self.socket, zmq.POLLIN)
+    def setup_polling(self, socket: zmq.Socket = None) -> zmq.Poller:
+        pollin = zmq.asyncio.Poller()
+        pollin.register(socket, zmq.POLLIN)
+        return pollin
 
-    def connect_socket(self) -> None:
-        self.socket.connect(self.to_address)
+    def connect_socket(self, address: str, socket: zmq.Socket = None) -> None:
+        socket.connect(address)
 
-    def send_string(self, str_msg: str) -> None:
-        if not self.socket:
+    def send_string(self, str_msg: str, socket: zmq.Socket) -> None:
+        if not socket:
             raise AttributeError("Socket has not been created.")
 
-        if not self.socket_is_bound():
+        if not self.socket_is_bound(socket=socket):
             raise AttributeError("Socket is not bound to an address.")
 
         if not isinstance(str_msg, str):
             raise TypeError("Message Must be string.")
 
-        return self.socket.send_string(str_msg)
+        return socket.send_string(str_msg)
 
-    async def message_waiting(self, poll_time: int) -> bool:
+    async def message_waiting(self, poll_time: int,  pollin: zmq.asyncio.Poller, socket: zmq.Socket,) -> bool:
         try:
-            sockets = await self.pollin.poll(timeout=poll_time)
-            return self.socket in dict(sockets)
+            sockets = await pollin.poll(timeout=poll_time)
+            return socket in dict(sockets)
         except:
             return False
 
@@ -142,23 +133,38 @@ class Request():
             connection_attempts = 0
 
             while connection_attempts < retries:
-                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {self.to_address}; sending {str_msg}')
+                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
 
                 if not self.running:
                     break
 
+                pollin = None
+                
                 try:
-                    self.send_string(str_msg=str_msg)
+                    socket = self.create_socket()
 
-                    if await self.message_waiting(poll_time=timeout):
-                        response = await self.socket.recv()
+                    self.socket_monitor.monitor(socket=socket)
+
+                    if self.secure_socket:
+                        self.setup_secure_socket(socket=socket)
+
+                    pollin = self.setup_polling(socket=socket)
+
+                    self.set_socket_options(socket=socket)
+                    self.connect_socket(socket=socket, address=to_address)
+
+                    self.send_string(str_msg=str_msg, socket=socket)
+
+                    if await self.message_waiting(socket=socket, pollin=pollin, poll_time=timeout):
+                        response = await socket.recv()
 
                         self.log('info', '%s received: %s' % (self.id, response))
 
+                        self.close_socket(socket=socket, pollin=pollin)
                         return Result(success=True, response=response)
 
                     else:
-                        self.log('warning', f'No response from {self.to_address} in poll time.')
+                        self.log('warning', f'No response from {to_address} in poll time.')
 
                 except zmq.ZMQError as err:
                     if err.errno == zmq.ETERM:
@@ -179,7 +185,8 @@ class Request():
                     error = str(err)
 
                 connection_attempts += 1
-
+                if socket is not None:
+                    self.close_socket(socket=socket, pollin=pollin)
                 await asyncio.sleep(0)
 
             if not error:
@@ -187,19 +194,19 @@ class Request():
 
             return Result(success=False, error=error)
 
-    def close_socket(self) -> None:
-        self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
+    def close_socket(self, socket: zmq.Socket, pollin: zmq.asyncio.Poller) -> None:
+        self.socket_monitor.unregister_socket_from_poller(socket=socket)
 
-        if self.socket:
+        if socket:
             try:
-                self.socket.setsockopt(zmq.LINGER, 0)
-                self.socket.close()
+                socket.setsockopt(zmq.LINGER, 0)
+                socket.close()
             except:
                 pass
 
-        if self.pollin:
+        if pollin:
             try:
-                self.pollin.unregister(self.socket)
+                pollin.unregister(socket)
             except:
                 pass
 

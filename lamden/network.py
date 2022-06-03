@@ -517,7 +517,7 @@ class Network:
 
         return '{"response":"%s", "challenge_response": "%s","latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, hlc_timestamp)
 
-    def router_callback(self, ident_vk_string: str, msg: str) -> None:
+    async def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
             print({'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = json.loads(msg)
@@ -529,7 +529,7 @@ class Network:
         if action == ACTION_PING:
             self.router.send_msg(
                 to_vk=ident_vk_string,
-                msg_str=json.dumps({"response": "ping"})
+                msg_str=json.dumps({"response": "ping", "from": ident_vk_string})
             )
 
         if action == ACTION_HELLO:
