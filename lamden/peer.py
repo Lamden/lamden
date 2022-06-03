@@ -159,7 +159,7 @@ class Peer:
 
     def setup_request(self) -> None:
         self.request = Request(
-            server_curve_vk=self.server_curve_vk,
+            #server_curve_vk=self.server_curve_vk,
             local_wallet=self.local_wallet,
             local_ip=self.get_network_ip(),
             to_address=self.request_address

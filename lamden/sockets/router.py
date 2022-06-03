@@ -10,6 +10,8 @@ from typing import Callable
 from lamden.crypto.wallet import Wallet
 from lamden.sockets.monitor import SocketMonitor
 
+from lamden.sockets.monitor import SocketMonitor
+
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -67,6 +69,8 @@ class CredentialsProvider(object):
 class Router():
     def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,
                  network_ip: str = None):
+
+        self.socket_monitor = SocketMonitor(socket_type="ROUTER")
         self.wallet = wallet
         self.message_callback = message_callback
 
@@ -87,6 +91,7 @@ class Router():
 
         self.address = None
         self.set_address()
+        self.socket_monitor.start()
 
         self.socket_monitor = SocketMonitor(socket_type='ROUTER')
         self.socket_monitor.start()
@@ -163,6 +168,7 @@ class Router():
     def setup_socket(self):
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
+
         self.socket = self.ctx.socket(zmq.ROUTER)
         self.socket_monitor.monitor(socket=self.socket)
 
@@ -175,6 +181,7 @@ class Router():
         self.socket.setsockopt(zmq.RCVHWM, 10000)
         self.socket.setsockopt(zmq.SNDHWM, 10000)
         #self.socket.setsockopt(zmq.SNDTIMEO, 50000)
+
 
     def setup_auth(self):
         #self.auth = ThreadAuthenticator(self.ctx)
@@ -329,6 +336,7 @@ class Router():
             await self.stop_auth()
             await self.close_socket()
             await self.socket_monitor.stop()
+
         except Exception as err:
             print(err)
 

@@ -186,6 +186,7 @@ class Network:
             network_ip=self.external_address
         )
         self.router.set_address(port=self.socket_ports.get('router'))
+        self.refresh_approved_peers_in_cred_provider()
 
     def start(self) -> None:
         try:
@@ -193,7 +194,8 @@ class Network:
             self.log('info', f'Router Address {self.router_address}')
 
             self.publisher.start()
-            self.router.run_curve_server()
+            # self.router.run_curve_server()
+            self.router.run_open_server()
 
             # self.start_health_check()
 
@@ -203,12 +205,12 @@ class Network:
             print (err)
 
     async def starting(self) -> None:
-        while not self.publisher.is_running or not self.router.is_running:
+        while not self.publisher.is_running and not self.router.is_running:
             await asyncio.sleep(0.1)
 
         self.running = True
 
-        self.log('info', 'Started.')
+        self.log('info', 'Started the network.')
 
     def connect_to_bootnode(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
