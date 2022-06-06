@@ -1,13 +1,19 @@
-from zmq.auth.thread import ThreadAuthenticator
+import time
+
+from zmq.auth.asyncio import AsyncioAuthenticator
+
 import json
 import threading
 import zmq
 import zmq.asyncio
+
 import asyncio
 import unittest
 from contracting.db.encoder import encode
 
 from lamden.crypto.wallet import Wallet
+
+from lamden.sockets.monitor import SocketMonitor
 
 class MockCredentialsProvider(object):
     def __init__(self, valid_peers=[]):
@@ -32,25 +38,41 @@ class MockRouter(threading.Thread):
         self.auth = None
         self.cred_provider = MockCredentialsProvider(valid_peers=valid_peers)
 
-        self.poller = zmq.Poller()
+        self.poller = zmq.asyncio.Poller()
         self.poll_time = 0.001
 
         self.running = False
+        self.checking = False
         self.loop = None
 
+        self.socket_monitor = SocketMonitor(socket_type='ROUTER')
+        self.socket_monitor.start()
+
+        self.check_for_messages_task = None
         self.start()
 
     def setup_socket(self):
-        self.ctx = zmq.Context()
+        self.ctx = zmq.asyncio.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
+        self.socket_monitor.monitor(socket=self.socket)
 
-        self.auth = ThreadAuthenticator(self.ctx)
+        self.setup_socket_opts()
+
+        self.auth = AsyncioAuthenticator(self.ctx)
         self.auth.start()
         self.auth.configure_curve_callback(domain="*", credentials_provider=self.cred_provider)
 
         self.poller.register(self.socket, zmq.POLLIN)
 
+    def setup_socket_opts(self):
+        pass
+        #self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        #self.socket.setsockopt(zmq.LINGER, 500)
+
     def run(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.setup_socket()
 
         self.socket.curve_secretkey = self.wallet.curve_sk
@@ -58,18 +80,24 @@ class MockRouter(threading.Thread):
         self.socket.curve_server = True  # must come before bind
 
         self.socket.bind(f"tcp://*:{self.port}")
+
+        self.check_for_messages_task = asyncio.ensure_future(self.check_for_messages())
+
         self.running = True
 
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-        self.loop.run_until_complete(self.check_for_messages())
+        while self.running:
+            self.loop.run_until_complete(asyncio.sleep(0))
+
+        print("[MOCK ROUTER] STOPPED")
 
     async def check_for_messages(self):
-        while self.running:
-            sockets = dict(self.poller.poll(self.poll_time))
-            # print(sockets[self.socket])
+        self.checking = True
+
+        while self.checking:
+            sockets = dict(await self.poller.poll(self.poll_time))
+
             if self.socket in sockets:
-                ident, empty, msg = self.socket.recv_multipart()
+                ident, empty, msg = await self.socket.recv_multipart()
                 print("[MOCK_ROUTER] Received request: ", msg)
 
                 if self.message_callback:
@@ -77,10 +105,10 @@ class MockRouter(threading.Thread):
 
                 try:
                     msg_obj = json.loads(msg)
+                    action = msg_obj.get('action')
                 except Exception as err:
                     self.send_msg(ident=ident, msg=msg)
-
-                action = msg_obj.get('action')
+                    continue
 
                 if action not in ['ping', 'hello', 'latest_block_info']:
                     self.send_msg(ident=ident, msg=msg)
@@ -115,33 +143,36 @@ class MockRouter(threading.Thread):
 
             await asyncio.sleep(0)
 
-        try:
-            self.socket.setsockopt(zmq.LINGER, 0)
-            self.auth.stop()
-            self.socket.close()
-            self.ctx.term()
-
-        except zmq.ZMQError as err:
-            print(f'[MOCK_ROUTER] Error Stopping Socket: {err}')
-            pass
-
     def send_msg(self, ident: str, msg):
         self.socket.send_multipart([ident, b'', msg])
 
     async def stopping(self):
-        self.running = False
+        try:
+            if not self.check_for_messages_task:
+                return
 
-        while not self.socket.closed:
-            await asyncio.sleep(0.1)
+            while not self.check_for_messages_task.done():
+                await asyncio.sleep(0.1)
+        except Exception as err:
+            pass
 
     def stop(self):
-        if self.running:
-            self.running = False
+        if self.checking:
+            self.checking = False
 
         if self.socket:
-            self.socket.close()
             loop = asyncio.get_event_loop()
+
+            if self.auth:
+                self.auth.stop()
+
+            self.socket.setsockopt(zmq.LINGER, 0)
+            self.socket.close()
+
+            loop.run_until_complete(self.socket_monitor.stop())
             loop.run_until_complete(self.stopping())
+
+        self.running = False
 
 class TestMockRouter(unittest.TestCase):
     def setUp(self) -> None:
@@ -188,6 +219,15 @@ class TestMockRouter(unittest.TestCase):
 
         self.assertFalse(self.router.running)
         self.assertTrue(self.router.socket.closed)
+
+    def test_can_start_checking(self):
+        self.router = MockRouter(
+            wallet=self.router_wallet,
+            valid_peers=[]
+        )
+        self.async_sleep(1)
+
+        self.assertTrue(self.router.checking)
 
     def test_SCENARIO_router_can_receive_multiple_messages_from_a_request_socket__SAME_SOCKET_ONE_BY_ONE(self):
         def router_callback(ident_vk_string: str, msg: str) -> None:

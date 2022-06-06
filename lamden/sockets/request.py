@@ -7,6 +7,8 @@ from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
 from lamden.sockets.monitor import SocketMonitor
 
+ATTRIBUTE_ERROR_TO_ADDRESS_NOT_NONE = "to_address property cannot be none."
+
 class Lock:
     def __init__(self):
         self.lock = False
@@ -42,23 +44,11 @@ class Request():
         self.server_curve_vk = server_curve_vk
 
         self.socket = None
-        self.polling = None
+        self.pollin = None
         self.lock = Lock()
 
         self.socket_monitor = SocketMonitor(socket_type="REQUEST")
         self.socket_monitor.start()
-
-        self.create_socket()
-
-        self.socket_monitor.monitor(socket=self.socket)
-
-        if self.secure_socket:
-            self.setup_secure_socket()
-
-        self.setup_polling()
-
-        self.set_socket_options()
-        self.connect_socket()
 
     @property
     def is_running(self) -> bool:
@@ -99,6 +89,9 @@ class Request():
         self.socket = self.ctx.socket(zmq.REQ)
 
     def set_socket_options(self) -> None:
+        pass
+        self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        #self.socket.setsockopt(zmq.LINGER, 500)
         self.socket.setsockopt(zmq.HEARTBEAT_IVL, 500)
 
     def setup_secure_socket(self) -> None:
@@ -136,13 +129,30 @@ class Request():
         except:
             return False
 
-    async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:
+    def start(self):
+        if self.to_address is None:
+            raise AttributeError(ATTRIBUTE_ERROR_TO_ADDRESS_NOT_NONE)
+
+        self.create_socket()
+
+        self.socket_monitor.monitor(socket=self.socket)
+
+        if self.secure_socket:
+            self.setup_secure_socket()
+
+        self.setup_polling()
+
+        self.set_socket_options()
+
+        self.connect_socket()
+
+    async def send(self, str_msg: str, timeout: int = 2500, attempts: int = 3) -> Result:
         async with self.lock:
             error = None
             connection_attempts = 0
 
-            while connection_attempts < retries:
-                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {self.to_address}; sending {str_msg}')
+            while connection_attempts < attempts:
+                self.log('info', f'Attempt {connection_attempts + 1}/{attempts} to {self.to_address}; sending {str_msg}')
 
                 if not self.running:
                     break
@@ -183,7 +193,7 @@ class Request():
                 await asyncio.sleep(0)
 
             if not error:
-                error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
+                error = f'Request Socket Error: Failed to receive response after {attempts} attempts each waiting {timeout}ms'
 
             return Result(success=False, error=error)
 
@@ -206,7 +216,11 @@ class Request():
     async def stop(self) -> None:
         self.log('info', 'Stopping.')
 
-        await self.socket_monitor.stop()
+        if self.socket_monitor.running:
+            await self.socket_monitor.stop()
+
+        if self.running:
+            self.close_socket()
 
         self.running = False
 

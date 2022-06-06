@@ -54,7 +54,6 @@ class SocketMonitor:
             logger.warning(message)
 
     def start(self) -> None:
-        return
         if self.check_for_events_task is None or self.check_for_events_task.done():
             self.running = True
             self.check_for_events_task = asyncio.ensure_future(self.check_for_events())
@@ -90,6 +89,8 @@ class SocketMonitor:
         socket_monitor.linger = 0
         self.poller.register(socket_monitor, zmq.POLLIN)
         self.sockets_to_monitor.append(socket_monitor)
+
+        self.log('info', f'Monitoring {socket}')
 
     def stop_monitoring(self, socket: zmq.Socket) -> None:
         socket_monitor = socket.get_monitor_socket()

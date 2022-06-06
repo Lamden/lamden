@@ -70,9 +70,12 @@ class TestPeer(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        if  cls.remote_peer:
+        if cls.remote_peer and cls.remote_peer.running:
             cls.remote_peer.stop()
             cls.remote_peer.join()
+
+    def disable_send_string(self, send_str):
+        pass
 
     def connected_callback(self, peer_vk):
         self.connected_callback_called = peer_vk
@@ -291,8 +294,9 @@ class TestPeer(unittest.TestCase):
         self.assertEqual(hlc_timestamp, self.peer.latest_block_info['hlc_timestamp'])
 
     def test_METHOD_is_available__returns_FALSE_request_cannot_ping(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         is_available = self.peer.is_available()
         self.assertFalse(is_available)
 
@@ -309,8 +313,9 @@ class TestPeer(unittest.TestCase):
         self.assertDictEqual(expected_result, msg)
 
     def test_METHOD_ping__returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(self.peer.ping)
 
         self.assertIsNone(msg)
@@ -334,8 +339,9 @@ class TestPeer(unittest.TestCase):
         self.assertDictEqual(expected_result, msg)
 
     def test_METHOD_hello__returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(self.peer.ping)
 
         self.assertIsNone(msg)
@@ -359,9 +365,9 @@ class TestPeer(unittest.TestCase):
         self.assertEqual(block_num, self.peer.latest_block_number)
         self.assertEqual(hlc_timestamp, self.peer.latest_block_hlc_timestamp)
 
-    def test_METHOD_get_latest_block_info__doesnot_set_peer_latest_block_info_after_unsuccessful_call(self):
-        self.peer.setup_request()
+    def test_METHOD_get_latest_block_info__does_not_set_peer_latest_block_info_after_unsuccessful_call(self):
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
 
         msg = self.await_sending_request(self.peer.get_latest_block_info)
         self.assertIsNone(msg)
@@ -370,8 +376,9 @@ class TestPeer(unittest.TestCase):
         self.assertEqual('0', self.peer.latest_block_info.get('hlc_timestamp'))
 
     def test_METHOD_get_latest_block_info__returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(self.peer.get_latest_block_info)
 
         self.assertIsNone(msg)
@@ -384,8 +391,9 @@ class TestPeer(unittest.TestCase):
         self.assertDictEqual(expected_result, msg)
 
     def test_METHOD_get_block__returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(process=self.peer.get_block, args={'block_num': 100})
 
         self.assertIsNone(msg)
@@ -398,11 +406,13 @@ class TestPeer(unittest.TestCase):
         self.assertDictEqual(expected_result, msg)
 
     def test_METHOD_get_network_map__returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(self.peer.get_network_map)
 
         self.assertIsNone(msg)
+
 
     def test_METHOD_send_request__result_returns_successful_msg_if_peer_available(self):
         self.peer.setup_request()
@@ -414,8 +424,9 @@ class TestPeer(unittest.TestCase):
         self.assertDictEqual(expected_result, msg)
 
     def test_METHOD_send_request__result_returns_NONE_if_peer_unavailable(self):
-        self.peer.setup_request()
         self.peer.socket_ports['router'] = 1000
+        self.peer.setup_request()
+
         msg = self.await_sending_request(process=self.peer.send_request, args={
             'msg_obj': {'action': 'test_send'}
         })
@@ -543,7 +554,13 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_reconnect_loop__loops_until_peer_is_available(self):
         self.peer.setup_request()
         self.peer.running = True
-        self.peer.socket_ports['router'] = 1000
+
+        def send_string_disabled(str_msg: str):
+            pass
+
+        send_string_proper = self.peer.request.send_string
+
+        self.peer.request.send_string = send_string_disabled
 
         asyncio.ensure_future(self.peer.reconnect_loop())
 
@@ -551,7 +568,7 @@ class TestPeer(unittest.TestCase):
         self.assertTrue(self.peer.reconnecting)
         self.assertFalse(self.peer.connected)
 
-        self.peer.socket_ports['router'] = 19000
+        self.peer.request.send_string = send_string_proper
 
         self.async_sleep(11)
 
@@ -575,9 +592,10 @@ class TestPeer(unittest.TestCase):
         self.assertFalse(self.peer.reconnecting)
 
     def test_METHOD_reconnect_loop__loop_exits_if_peer_set_to_running_FALSE(self):
+        self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
         self.peer.running = True
-        self.peer.socket_ports['router'] = 1000
+
 
         asyncio.ensure_future(self.peer.reconnect_loop())
 
@@ -964,11 +982,10 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_test_connection__returns_False_if_peer_unavailable(self):
         self.peer.start()
 
-
         while not self.peer.is_connected:
             self.async_sleep(0.1)
 
-        self.peer.set_ip(address='tcp://127.0.0.1:19001')
+        self.peer.request.send_string = self.disable_send_string
 
         task = asyncio.ensure_future(self.peer.test_connection())
         while not task.done():

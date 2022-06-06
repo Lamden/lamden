@@ -164,6 +164,7 @@ class Peer:
             local_ip=self.get_network_ip(),
             to_address=self.request_address
         )
+        self.request.start()
 
     def is_available(self) -> bool:
         tasks = asyncio.gather(
@@ -184,6 +185,10 @@ class Peer:
             if self.url.port:
                 self.socket_ports['router'] = self.url.port
                 self.calc_ports()
+
+    def set_request_ip(self):
+        if self.request is not None:
+            self.request.to_address = self.request_address
 
     def set_latest_block_number(self, number: int) -> None:
         if isinstance(number, int):
@@ -385,13 +390,13 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': 'ping'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, attempts=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
@@ -399,14 +404,14 @@ class Peer:
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, to_address=new_ip, timeout=2500, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
         msg_obj = {'action': 'latest_block_info'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if isinstance(msg_json, dict):
             if msg_json.get('response') == LATEST_BLOCK_INFO:
                 self.set_latest_block_info(
@@ -417,16 +422,16 @@ class Peer:
 
     async def get_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': 'get_block', 'block_num': block_num}
-        msg_json = await self.send_request(msg_obj=msg_obj, retries=10, timeout=2500)
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': 'get_network_map'}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, retries=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=5)
         return msg_json
 
-    async def send_request(self, msg_obj: dict, to_address: str = None, timeout: int = 200,
-                           retries: int = 3) -> (dict, None):
+    async def send_request(self, msg_obj: dict, timeout: int = 200,
+                           attempts: int = 3) -> (dict, None):
 
         if not self.request:
             raise AttributeError("Request socket not setup.")
@@ -442,10 +447,8 @@ class Peer:
 
             return None
 
-        to_address = to_address or self.request_address
-
         try:
-            result = await self.request.send(to_address=to_address, str_msg=str_msg, timeout=timeout, retries=retries)
+            result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
             return self.handle_result(result=result)
         except Exception as error:
             print(error)

@@ -1321,7 +1321,7 @@ class TestNetwork(TestCase):
         self.assertTrue(network_1.router.cred_provider.key_is_approved(curve_vk=new_del_wallet.curve_vk))
 
     def test_METHOD_refresh_peer_block_info(self):
-        async def mock_send_request(msg_obj, timeout=1, retries=1):
+        async def mock_send_request(msg_obj, timeout=1, attempts=1):
             return {
                 'response': LATEST_BLOCK_INFO,
                 'latest_block_number': 10,

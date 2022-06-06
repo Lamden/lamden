@@ -127,13 +127,13 @@ class Request():
         except:
             return False
 
-    async def send(self, to_address: str, str_msg: str, timeout: int = 2500, retries: int = 3) -> Result:
+    async def send(self, to_address: str, str_msg: str, timeout: int = 2500, attempts: int = 3) -> Result:
         async with self.lock:
             error = None
             connection_attempts = 0
 
-            while connection_attempts < retries:
-                self.log('info', f'Attempt {connection_attempts + 1}/{retries} to {to_address}; sending {str_msg}')
+            while connection_attempts < attempts:
+                self.log('info', f'Attempt {connection_attempts + 1}/{attempts} to {to_address}; sending {str_msg}')
 
                 if not self.running:
                     break
@@ -190,7 +190,7 @@ class Request():
                 await asyncio.sleep(0)
 
             if not error:
-                error = f'Request Socket Error: Failed to receive response after {retries} attempts each waiting {timeout}ms'
+                error = f'Request Socket Error: Failed to receive response after {attempts} attempts each waiting {timeout}ms'
 
             return Result(success=False, error=error)
 
