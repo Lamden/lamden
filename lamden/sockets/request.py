@@ -150,6 +150,7 @@ class Request():
             connection_attempts = 0
 
             while connection_attempts < attempts:
+
                 self.log('info', f'Attempt {connection_attempts + 1}/{attempts} to {self.to_address}; sending {str_msg}')
 
                 if not self.running:
@@ -168,11 +169,7 @@ class Request():
 
                     else:
                         self.log('warning', f'No response from {self.to_address} in poll time.')
-
-                        try:
-                            await self.socket.recv(flags=zmq.NOBLOCK)
-                        except zmq.ZMQError as e:
-                                pass
+                        self.reconnect_socket()
 
                 except zmq.ZMQError as err:
                     if err.errno == zmq.ETERM:
@@ -200,6 +197,19 @@ class Request():
                 error = f'Request Socket Error: Failed to receive response after {attempts} attempts each waiting {timeout}ms'
 
             return Result(success=False, error=error)
+
+    def reconnect_socket(self):
+        self.close_socket()
+        self.create_socket()
+        self.socket_monitor.monitor(socket=self.socket)
+        if self.secure_socket:
+            self.setup_secure_socket()
+
+        self.setup_polling()
+
+        self.set_socket_options()
+
+        self.connect_socket()
 
     def close_socket(self) -> None:
         self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
