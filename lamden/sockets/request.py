@@ -90,9 +90,7 @@ class Request():
 
     def set_socket_options(self) -> None:
         pass
-        self.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        #self.socket.setsockopt(zmq.LINGER, 500)
-        self.socket.setsockopt(zmq.HEARTBEAT_IVL, 500)
+        # self.socket.setsockopt(zmq.RCVTIMEO, 1000)
 
     def setup_secure_socket(self) -> None:
         if not self.secure_socket:
@@ -161,6 +159,7 @@ class Request():
                     self.send_string(str_msg=str_msg)
 
                     if await self.message_waiting(poll_time=timeout):
+
                         response = await self.socket.recv()
 
                         self.log('info', '%s received: %s' % (self.id, response))
@@ -169,6 +168,11 @@ class Request():
 
                     else:
                         self.log('warning', f'No response from {self.to_address} in poll time.')
+
+                        try:
+                            await self.socket.recv(flags=zmq.NOBLOCK)
+                        except zmq.ZMQError as e:
+                                pass
 
                 except zmq.ZMQError as err:
                     if err.errno == zmq.ETERM:
