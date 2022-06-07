@@ -8,6 +8,9 @@ from unittest import TestCase
 import asyncio
 import json
 
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
 class TestMisc(TestCase):
     def test_ensure_in_constitution_raises_if_not_in_constitution(self):
         constitution = {'masternodes': {Wallet().verifying_key: "127.0.0.1"},
@@ -25,11 +28,24 @@ class TestMisc(TestCase):
 
 class TestNode(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.local_node_network = LocalNodeNetwork(num_of_masternodes=1, genesis_path=contracts.__path__[0])
         self.node = self.local_node_network.masternodes[0]
 
     def tearDown(self):
-        self.await_async_process(self.local_node_network.stop_all_nodes)
+        if self.local_node_network:
+            for tn in self.local_node_network.all_nodes:
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(tn.stop())
+
+            for tn in self.local_node_network.all_nodes:
+                tn.join()
+
+        self.loop.stop()
+        self.loop.close()
+
 
     def await_async_process(self, process, *args, **kwargs):
         task = asyncio.gather(
@@ -140,6 +156,7 @@ class TestNode(TestCase):
         self.await_async_process(self.node.node.stop_main_processing_queue, force=True)
 
         self.assertFalse(self.node.main_processing_queue.currently_processing)
+
 
     def test_start_main_processing_queue(self):
         self.node.node.start_main_processing_queue()

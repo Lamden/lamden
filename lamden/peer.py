@@ -243,7 +243,7 @@ class Peer:
 
         res = await self.hello()
 
-        if res is not None and res.get('success'):
+        if res is not None and res.get('success') and self.running:
             response_type = res.get('response')
             if response_type == 'hello':
                 self.store_latest_block_info(
@@ -318,7 +318,7 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
-        if self.reconnecting:
+        if self.reconnecting or not self.running:
             return
 
         self.reconnecting = True
@@ -478,10 +478,15 @@ class Peer:
     async def cancel_reconnect_task(self):
         if self.reconnect_task:
             if not self.reconnect_task.done():
-                self.reconnect_task.cancel()
                 while not self.reconnect_task.done():
                     await asyncio.sleep(0.1)
                 self.reconnecting = False
+
+    async def cancel_verify_task(self):
+        if self.is_verifying:
+            if not self.verify_task.done():
+                while not self.verify_task.done():
+                    await asyncio.sleep(0.1)
 
     async def stopping(self):
         await self.cancel_reconnect_task()
@@ -495,9 +500,8 @@ class Peer:
     async def stop(self) -> None:
         self.running = False
 
-        if self.is_verifying:
-            self.verify_task.cancel()
-            self.verify_task = None
+        await self.cancel_reconnect_task()
+        await self.cancel_verify_task()
 
         if self.request:
             await self.request.stop()

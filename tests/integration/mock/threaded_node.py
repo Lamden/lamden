@@ -202,6 +202,7 @@ class ThreadedNode(threading.Thread):
         ctx.destroy(linger=0)
 
         self.running = False
+        return "Stopped"
         print(f'Threaded Node ({self.node_type}) {self.index} Stopped.')
 
 class TestThreadedNode(unittest.TestCase):

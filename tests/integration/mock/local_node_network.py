@@ -337,7 +337,12 @@ class LocalNodeNetwork:
             for node in self.all_nodes:
                 tasks.append(asyncio.ensure_future(node.stop()))
 
-            await asyncio.gather(*tasks)
+            running_tasks = await asyncio.gather(*tasks)
+
+            for node in self.all_nodes:
+                node.join()
+
+            print("Done")
 
 class TestLocalNodeNetwork(unittest.TestCase):
     def setUp(self):
@@ -363,7 +368,6 @@ class TestLocalNodeNetwork(unittest.TestCase):
 
             for tn in self.network.all_nodes:
                 tn.join()
-
 
         self.loop.stop()
         self.loop.close()
