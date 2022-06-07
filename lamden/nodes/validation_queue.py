@@ -116,14 +116,19 @@ class ValidationQueue(ProcessingQueue):
     async def process_next(self):
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
+            self.log.info(f'Process Next: {next_hlc_timestamp}')
 
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
                 block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
+                self.log.info(f'next_hlc_timestamp: {next_hlc_timestamp} is earlier than last_hlc_in_consensus: {self.last_hlc_in_consensus}')
                 if block:
+                    self.log.info(f'Have block for {next_hlc_timestamp}')
                     self.flush_hlc(next_hlc_timestamp)
-                    await self.process_next()
+                    return
+                    # await self.process_next()
 
             if self.hlc_has_consensus(next_hlc_timestamp):
+                self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.process(hlc_timestamp=next_hlc_timestamp)
 
     async def check_all(self):
@@ -153,8 +158,8 @@ class ValidationQueue(ProcessingQueue):
         except Exception as err:
             self.log.error(err)
             print(err)
-
-        self.checking = False
+        finally:
+            self.checking = False
 
     async def process(self, hlc_timestamp):
         '''
@@ -163,38 +168,18 @@ class ValidationQueue(ProcessingQueue):
         '''
 
         if self.hlc_has_consensus(hlc_timestamp):
-            results = self.validation_results.get(hlc_timestamp)
-            consensus_result = self.get_last_consensus_result(hlc_timestamp=hlc_timestamp)
-
-            #if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
-            if True:
-                # self.log.info(f'{next_hlc_timestamp} HAS A CONSENSUS OF {consensus_info["solution"]}')
-                '''
-                if self.debug:
-                    self.log.debug(json.dumps({
-                        'type': 'tx_lifecycle',
-                        'file': 'validation_queue',
-                        'event': 'has_consensus',
-                        'consensus_info': consensus_result,
-                        'hlc_timestamp': hlc_timestamp,
-                        'block_number': winning_result['hlc_timestamp'],
-                        'system_time': time.time()
-                    }))
-                '''
-
-                # if it matches us that means we did already processes this tx and the pending deltas should exist
+            if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
+                # if it matches us that means we did already process this tx and the pending deltas should exist
                 # in the driver
                 try:
                     await self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
 
-                    if self.testing:
-                        self.validation_results_history.append({hlc_timestamp: [{'matched_me':consensus_result['matches_me']}, results]})
                 except Exception as err:
                     print(err)
                     self.log.debug(err)
             else:
                 self.log.info("CHECKING FOR NEXT BLOCK")
-                await self.check_for_next_block()
+                # await self.check_for_next_block()
 
     def add_consensus_result(self, hlc_timestamp, consensus_result):
         # If the result has neither ideal_consensus_possible or eager_consensus_possible then nothing was attempted
@@ -341,23 +326,22 @@ class ValidationQueue(ProcessingQueue):
 
         # Hard apply these results on the driver
         try:
-            if hlc_timestamp <= self.last_hlc_in_consensus:
-                print("stop")
             await self.hard_apply_block(processing_results=processing_results)
+
+            # Set this as the last hlc that was in consensus
+            if hlc_timestamp > self.last_hlc_in_consensus:
+                self.last_hlc_in_consensus = hlc_timestamp
+
+            # remove HLC from processing
+            self.flush_hlc(hlc_timestamp=hlc_timestamp)
+
+            # Remove any HLC results in validation results that might be earlier
+            # TODO DO we want to do this?
+            # self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+
         except Exception as err:
             print(err)
-            self.log.debug(err)
-
-        # Set this as the last hlc that was in consensus
-        if hlc_timestamp > self.last_hlc_in_consensus:
-            self.last_hlc_in_consensus = hlc_timestamp
-
-        # remove HLC from processing
-        self.flush_hlc(hlc_timestamp=hlc_timestamp)
-
-        # Remove any HLC results in validation results that might be earlier
-        # TODO DO we want to do this?
-        # self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+            self.log.error(err)
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus

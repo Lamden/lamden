@@ -747,6 +747,8 @@ class Node:
             })
         '''
 
+        if processing_results is None:
+            raise AttributeError('Processing Results are NONE')
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
