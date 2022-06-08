@@ -47,7 +47,7 @@ class TestNode(TestCase):
     def tearDown(self):
         for node in self.nodes:
             if node.running:
-                self.stop_node(node=node)
+                self.loop.run_until_complete(node.stop())
 
         self.loop.close()
         self.b.blocks.flush()
@@ -56,18 +56,16 @@ class TestNode(TestCase):
     def create_a_node(self, constitution=None, bootnodes = None, node_num=0):
         driver = ContractDriver(driver=InMemDriver())
 
-        dl_wallet = Wallet()
         mn_wallet = Wallet()
 
         constitution = constitution or {
                 'masternodes': [mn_wallet.verifying_key],
-                'delegates': [dl_wallet.verifying_key]
+                'delegates': []
             }
 
         if bootnodes is None:
             bootnodes = {}
             bootnodes[mn_wallet.verifying_key] = f'tcp://127.0.0.1:19000'
-            bootnodes[dl_wallet.verifying_key] = f'tcp://127.0.0.1:19001'
 
         node = base.Node(
             socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
@@ -282,9 +280,7 @@ class TestNode(TestCase):
         self.assertEqual(0, archer_balance_after)
 
         debug_reprocessing_results = self.node.debug_reprocessing_results
-        self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_2]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_2]['sent_to_network'])
-        self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_3]['sent_to_network'])
 
 
@@ -346,7 +342,6 @@ class TestNode(TestCase):
         self.assertEqual(str(tx_amount), str(archer_balance_after))
 
         debug_reprocessing_results = self.node.debug_reprocessing_results
-        self.assertEqual('no_writes', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_3]['sent_to_network'])
 
     def test_reprocessing_should_send_new_results(self):
@@ -415,7 +410,7 @@ class TestNode(TestCase):
 
     def test_reprocessing_should_not_send_new_results_if_not_reprocessed(self):
         # This will validate the nodes don't resend results after reprocessing (assuming the tx wasn't reprocessed)
-        # TX #1 and #3 are related but TX #2 is early and causes reprocessing, but it's state is unrelated to #2 and #3
+        # TX #1 and #3 are related but TX #2 is early and causes reprocessing, but it's state is unrelated to #1 and #3
         sent_to_network = {}
 
         def mock_store_solution_and_send_to_network(processing_results):
@@ -450,7 +445,7 @@ class TestNode(TestCase):
         ))
         hlc_timestamp_2 = tx_message_2['hlc_timestamp']
 
-        # Send from Send from Stu to Archer
+        # Send from Stu to Archer
         tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.stu_wallet,
@@ -474,7 +469,7 @@ class TestNode(TestCase):
 
         self.assertFalse(sent_to_network.get(hlc_timestamp_1, False))
         self.assertFalse(sent_to_network.get(hlc_timestamp_3, False))
-        self.assertTrue(sent_to_network.get(hlc_timestamp_2, False))
+        self.assertTrue(sent_to_network.get(hlc_timestamp_2, True))
 
     def test_reprocessing_should_not_send_new_results_if_same_state(self):
         # This will validate the nodes don't resend results after reprocessing a transaction and getting the same state
@@ -549,24 +544,19 @@ class TestNode(TestCase):
         # reprocessing of the tx we processed ourselves
 
         # Create and start the nodes
+
         self.create_a_node(node_num=0)
 
-        m_wallet = Wallet()
-        constitution = {
-                'masternodes': [m_wallet.verifying_key],
-                'delegates': []
-            }
-
-        bootnodes = {}
-        bootnodes[m_wallet.verifying_key] = 'tcp://127.0.0.1:19002'
+        self.await_async_process(self.node.start)
+        self.await_async_process(self.node.network.stop)
 
         node_peer = self.create_a_node(
-            node_num=2,
-            constitution=constitution,
-            bootnodes=bootnodes
+            node_num=1
         )
 
-        self.start_all_nodes()
+        self.await_async_process(node_peer.start)
+        self.await_async_process(node_peer.network.stop)
+
 
         # Stop the node's validation queue to prevent consensus on our results
         self.node.validation_queue.stop()

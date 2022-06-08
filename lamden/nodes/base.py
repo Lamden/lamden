@@ -285,7 +285,7 @@ class Node:
         self.log.info("Attempting to connect to all peers in constitution...")
         await self.network.connected_to_all_peers()
 
-        # self.driver.clear_pending_state()
+        self.driver.clear_pending_state()
 
         self.start_all_queues()
         asyncio.ensure_future(self.check_main_processing_queue())
@@ -1014,6 +1014,9 @@ class Node:
                 # network
                 re_send_to_network = False
 
+                # get state changes from processing results
+                tx_state_changes = processing_results['tx_result'].get('state')
+
                 # Check if the previous run had any pending deltas
                 pending_deltas_writes = prev_pending_deltas.get('writes', {})
                 pending_writes = self.driver.pending_writes
@@ -1072,8 +1075,11 @@ class Node:
                             if pending_writes_key not in changed_keys_list:
                                 changed_keys_list.append(pending_writes_key)
 
-                            # Set flag to sent new results to the network
-                            re_send_to_network = True
+                            # Set flag to sent new results to the network only if this was a key in the tx state changes
+                            for state_change in tx_state_changes:
+                                key = state_change.get('key')
+                                if key == pending_writes_key:
+                                    re_send_to_network = True
 
                     # Check if there are any pending deltas we didn't deal with. This is a situation where
                     # there were writes that happened previously and not during reprocessing
