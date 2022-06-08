@@ -58,55 +58,6 @@ class TestMultiNode(TestCase):
     def send_transaction(self, node, tx):
         node.tx_queue.append(tx)
 
-    def test_mock_network_init_makes_correct_number_of_nodes(self):
-        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)
-        self.assertEqual(len(self.n.masternodes), 1)
-        self.assertEqual(len(self.n.delegates), 1)
-
-    def test_mock_network_init_makes_correct_number_of_nodes_many_nodes(self):
-        self.n = mocks_new.MockNetwork(num_of_delegates=123, num_of_masternodes=143, ctx=self.ctx, metering=False)
-        self.assertEqual(len(self.n.masternodes), 143)
-        self.assertEqual(len(self.n.delegates), 123)
-
-    def test_mock_network_init_creates_correct_bootnodes(self):
-        # 2 mn, 3 delegate
-        expected_ips = [
-            'tcp://127.0.0.1:19000',
-            'tcp://127.0.0.1:19001',
-            'tcp://127.0.0.1:19002',
-            'tcp://127.0.0.1:19003',
-            'tcp://127.0.0.1:19004',
-            'tcp://127.0.0.1:19005',
-            'tcp://127.0.0.1:19006',
-            'tcp://127.0.0.1:19007',
-            'tcp://127.0.0.1:19008'
-        ]
-
-        self.n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
-
-        for i in range(9):
-            node = self.n.nodes[i]
-            self.assertEqual('{}:{}'.format(node.tcp, node.socket_ports['router']), expected_ips[i])
-
-
-    def test_mock_network_starts(self):
-        # 2 mn, 3 delegate
-        expected_ips = [
-            'tcp://127.0.0.1:19000',
-            'tcp://127.0.0.1:19001',
-            'tcp://127.0.0.1:19002',
-            'tcp://127.0.0.1:19003'
-        ]
-
-        self.n = mocks_new.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
-
-        self.await_async_process(self.n.start)
-
-        self.assertEqual(self.n.masternodes[0].obj.running, True)
-        self.assertEqual(self.n.masternodes[1].obj.running, True)
-        self.assertEqual(self.n.delegates[0].obj.running, True)
-        self.assertEqual(self.n.delegates[1].obj.running, True)
-
     def test_startup_with_manual_node_creation_and_single_block_works(self):
         m = mocks_new.MockMaster(ctx=self.ctx, index=1, metering=False)
         d = mocks_new.MockDelegate(ctx=self.ctx, index=2, metering=False)

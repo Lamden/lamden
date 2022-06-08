@@ -77,7 +77,6 @@ class TestSocketMonitor(TestCase):
 
         self.assertTrue(pair_socket in sockets)
 
-
     def test_METHOD_check_for_events__can_receive_events_from_socket(self):
         self.monitor.start()
 

@@ -1,3 +1,5 @@
+import gc
+
 from lamden import contracts
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node, ensure_in_constitution
