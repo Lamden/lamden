@@ -30,7 +30,7 @@ def generate_blocks(number_of_blocks):
 
     return blocks
 
-def get_new_currency_tx(wallet=None, to=None, amount=None):
+def get_new_currency_tx(wallet=None, to=None, amount=None, processor=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract="currency",
@@ -40,7 +40,7 @@ def get_new_currency_tx(wallet=None, to=None, amount=None):
             'amount': {'__fixed__': amount or '100.5'},
         },
         nonce=0,
-        processor='0' * 64,
+        processor=processor or '0' * 64,
         stamps=50
     )
     return json.loads(txb)
