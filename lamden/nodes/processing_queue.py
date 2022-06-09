@@ -219,8 +219,8 @@ class TxProcessingQueue(ProcessingQueue):
             stamp_cost=stamp_cost
         )
 
-        # Distribute rewards
-        self.distribute_rewards(
+        # Calculate rewards
+        tx_result['rewards'] = self.calculate_and_build_rewards_state_changes(
             total_stamps_to_split=output['stamps_used'],
             contract_name=tx_result['transaction']['payload']['contract']
         )
@@ -334,8 +334,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         return writes
 
-    def distribute_rewards(self, total_stamps_to_split, contract_name):
-
+    def calculate_and_build_rewards_state_changes(self, total_stamps_to_split, contract_name):
         master_reward, delegate_reward, foundation_reward, developer_mapping = \
             self.reward_manager.calculate_tx_output_rewards(
                 total_stamps_to_split=total_stamps_to_split,
@@ -343,7 +342,7 @@ class TxProcessingQueue(ProcessingQueue):
                 client=self.client
             )
 
-        self.reward_manager.distribute_rewards(
+        return RewardManager.build_rewards_state_changes(
             master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
         )
 

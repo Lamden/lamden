@@ -68,6 +68,24 @@ class RewardManager:
         )
 
     @staticmethod
+    def build_state_change_for_participant(participant_vk, amount, client: ContractingClient):
+        # (?)
+        current_balance = client.get_var(contract='currency', variable='balances', arguments=[participant_vk])
+
+        if type(current_balance) is dict:
+            current_balance = ContractingDecimal(current_balance.get('__fixed__'))
+
+        if current_balance is None:
+            current_balance = ContractingDecimal(0)
+
+        amount = ContractingDecimal(amount)
+
+        return {
+            'key': f'currency.balances:{participant_vk}', 'value': current_balance + amount,
+            'reward': amount
+        }
+
+    @staticmethod
     def calculate_participant_reward(participant_ratio, number_of_participants, total_stamps_to_split):
         number_of_participants = number_of_participants if number_of_participants != 0 else 1
         reward = (decimal.Decimal(str(participant_ratio)) / number_of_participants) * decimal.Decimal(str(total_stamps_to_split))
@@ -192,6 +210,42 @@ class RewardManager:
         )
 
         RewardManager.distribute_rewards(*rewards, client=client)
+
+    @staticmethod
+    def build_rewards_state_changes(master_reward, delegate_reward, foundation_reward,
+                                    developer_mapping, client: ContractingClient):
+        rewards_state_changes = []
+
+        # (?)
+        stamp_cost = client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
+
+        master_reward /= stamp_cost
+        delegate_reward /= stamp_cost
+        foundation_reward /= stamp_cost
+
+        for m in client.get_var(contract='masternodes', variable='S', arguments=['members']):
+            rewards_state_changes.append(
+                RewardManager.build_state_change_for_participant(m, master_reward, client)
+            )
+
+        for d in client.get_var(contract='delegates', variable='S', arguments=['members']):
+            rewards_state_changes.append(
+                RewardManager.build_state_change_for_participant(d, delegate_reward, client)
+            )
+
+        foundation_wallet = client.get_var(contract='foundation', variable='owner')
+        rewards_state_changes.append(
+            RewardManager.build_state_change_for_participant(foundation_wallet, foundation_reward, client)
+        )
+
+        for recipient, amount in developer_mapping.items():
+            dev_reward = round((amount / stamp_cost), DUST_EXPONENT)
+            rewards_state_changes.append(
+                RewardManager.build_state_change_for_participant(recipient, dev_reward, client)
+            )
+
+        return rewards_state_changes
+
 
     @staticmethod
     def create_to_send_map(block, developer_ratio, client: ContractingClient):
