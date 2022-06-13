@@ -167,7 +167,8 @@ class ThreadedNode(threading.Thread):
                 should_seed=self.should_seed,
                 genesis_path=str(self.genesis_path),
                 tx_queue=self.tx_queue,
-                reconnect_attempts=self.reconnect_attempts
+                reconnect_attempts=self.reconnect_attempts,
+                testing=True
             )
 
             self.node.network.set_to_local()

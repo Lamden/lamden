@@ -153,7 +153,7 @@ class TestMultiNode(TestCase):
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
         # Send a bunch of transactions
-        amount_of_transactions = 25
+        amount_of_transactions = 2
         amount = 10.5
         test_tracker = {}
 
