@@ -260,6 +260,8 @@ class LocalNodeNetwork:
             tx = self.create_new_currency_transaction(**kwargs)
             self.send_tx(tx=tx)
 
+            return tx.as_dict()
+
         def send_tx_to_masternode(self, masternode_vk, **kwargs):
             kwargs['processor'] = masternode_vk
             tx = self.create_new_currency_transaction(**kwargs)
@@ -296,6 +298,8 @@ class LocalNodeNetwork:
             tx_dict = tx.as_dict()
             encoded_tx=json.dumps(tx_dict).encode('UTF-8')
             tn.send_tx(encoded_tx=encoded_tx)
+
+            return encoded_tx
 
         def pause_all_validation_queues(self):
             for tn in self.all_nodes:
