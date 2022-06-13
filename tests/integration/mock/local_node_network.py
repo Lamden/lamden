@@ -344,6 +344,23 @@ class LocalNodeNetwork:
 
             print("Done")
 
+        def await_all_nodes_done_processing(self, block_height):
+            done = False
+            while not done:
+                time.sleep(0.1)
+                results = [node.current_height == block_height for node in self.all_nodes]
+                done = all(results)
+        
+        def get_var_from_one(self, contract, variable, arguments, node):
+            return node.node.driver.get_var(
+                contract=contract,
+                variable=variable,
+                arguments=arguments
+            )
+
+        def get_var_from_all(self, contract, variable, arguments):
+            return [self.get_var_from_one(contract, variable, arguments, node) for node in self.all_nodes]
+
 class TestLocalNodeNetwork(unittest.TestCase):
     def setUp(self):
         self.network = None

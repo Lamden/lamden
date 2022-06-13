@@ -120,6 +120,14 @@ class ThreadedNode(threading.Thread):
         return self.node.running
 
     @property
+    def current_hash(self) -> str:
+        return self.node.get_current_hash()
+
+    @property
+    def current_height(self) -> int:
+        return self.node.get_current_height()
+
+    @property
     def latest_block_height(self) -> int:
         block_info = self.node.network.get_latest_block_info()
         return block_info.get("number")
