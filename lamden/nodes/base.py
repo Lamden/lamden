@@ -644,6 +644,9 @@ class Node:
         try:
             processing_results = await self.main_processing_queue.process_next()
 
+            if self.upgrade_manager.node_type == 'masternode' and processing_results is not None:
+                print("testing")
+
             if processing_results:
                 hlc_timestamp = processing_results.get('hlc_timestamp')
 
@@ -651,6 +654,7 @@ class Node:
                     self.debug_processing_results.append(processing_results)
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
+                    self.driver.clear_pending_state()
                     return
 
                 self.last_processed_hlc = hlc_timestamp
