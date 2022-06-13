@@ -51,7 +51,7 @@ class TestMultiNode(TestCase):
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
-        self.amount_of_transactions = 2
+        self.amount_of_transactions = 25
         self.test_tracker = {}
 
     def tearDown(self):
