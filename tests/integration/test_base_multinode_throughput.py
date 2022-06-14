@@ -6,39 +6,31 @@
 
 '''
 
-from tests.integration.mock import mocks_new
-
-from lamden.crypto.wallet import Wallet
-from lamden.crypto import transaction
-
-from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db import encoder
-
-import zmq.asyncio
-import asyncio
-from random import randrange
-import json
-
-
+from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden import contracts
+from lamden.crypto.wallet import Wallet
+from tests.integration.mock.local_node_network import LocalNodeNetwork
 from unittest import TestCase
-
+import asyncio
+import json
+import random
 
 class TestMultiNode(TestCase):
     def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        self.n = None
+        self.local_node_network = LocalNodeNetwork(num_of_masternodes=1, num_of_delegates=1,
+            genesis_path=contracts.__path__[0], delay={'base': 1, 'self': 1.5})
+        for node in self.local_node_network.all_nodes:
+            self.assertTrue(node.node_is_running)
+            node.contract_driver.set_var(
+                contract='currency',
+                variable='balances',
+                arguments=[self.local_node_network.founders_wallet.verifying_key],
+                value=1000000
+            )
 
     def tearDown(self):
-        if self.n:
-            for node in self.n.nodes:
-                if node.started:
-                    self.await_async_process(node.obj.stop)
-
-        self.ctx.destroy()
-        self.loop.close()
+        self.await_async_process(self.local_node_network.stop_all_nodes)
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -55,340 +47,175 @@ class TestMultiNode(TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    def send_transaction(self, node, tx):
-        node.tx_queue.append(tx)
-
-    def test_mock_network_init_makes_correct_number_of_nodes(self):
-        self.n = mocks_new.MockNetwork(num_of_delegates=1, num_of_masternodes=1, ctx=self.ctx, metering=False)
-        self.assertEqual(len(self.n.masternodes), 1)
-        self.assertEqual(len(self.n.delegates), 1)
-
-    def test_mock_network_init_makes_correct_number_of_nodes_many_nodes(self):
-        self.n = mocks_new.MockNetwork(num_of_delegates=123, num_of_masternodes=143, ctx=self.ctx, metering=False)
-        self.assertEqual(len(self.n.masternodes), 143)
-        self.assertEqual(len(self.n.delegates), 123)
-
-    def test_mock_network_init_creates_correct_bootnodes(self):
-        # 2 mn, 3 delegate
-        expected_ips = [
-            'tcp://127.0.0.1:19000',
-            'tcp://127.0.0.1:19001',
-            'tcp://127.0.0.1:19002',
-            'tcp://127.0.0.1:19003',
-            'tcp://127.0.0.1:19004',
-            'tcp://127.0.0.1:19005',
-            'tcp://127.0.0.1:19006',
-            'tcp://127.0.0.1:19007',
-            'tcp://127.0.0.1:19008'
-        ]
-
-        self.n = mocks_new.MockNetwork(num_of_masternodes=3, num_of_delegates=6, ctx=self.ctx)
-
-        for i in range(9):
-            node = self.n.nodes[i]
-            self.assertEqual('{}:{}'.format(node.tcp, node.socket_ports['router']), expected_ips[i])
-
-
-    def test_mock_network_starts(self):
-        # 2 mn, 3 delegate
-        expected_ips = [
-            'tcp://127.0.0.1:19000',
-            'tcp://127.0.0.1:19001',
-            'tcp://127.0.0.1:19002',
-            'tcp://127.0.0.1:19003'
-        ]
-
-        self.n = mocks_new.MockNetwork(num_of_masternodes=2, num_of_delegates=2, ctx=self.ctx)
-
-        self.await_async_process(self.n.start)
-
-        self.assertEqual(self.n.masternodes[0].obj.running, True)
-        self.assertEqual(self.n.masternodes[1].obj.running, True)
-        self.assertEqual(self.n.delegates[0].obj.running, True)
-        self.assertEqual(self.n.delegates[1].obj.running, True)
-
-    def test_startup_with_manual_node_creation_and_single_block_works(self):
-        m = mocks_new.MockMaster(ctx=self.ctx, index=1, metering=False)
-        d = mocks_new.MockDelegate(ctx=self.ctx, index=2, metering=False)
-
-        founder_waller = Wallet(seed=mocks_new.MOCK_FOUNDER_SK)
-
-        bootnodes = {
-            m.wallet.verifying_key: m.tcp,
-            d.wallet.verifying_key: d.tcp
-        }
-
-        constitution = {
-            'masternodes': [m.wallet.verifying_key],
-            'delegates': [d.wallet.verifying_key]
-        }
-
-        m.set_start_variables(bootnodes, constitution)
-        d.set_start_variables(bootnodes, constitution)
-
-        self.await_async_process(m.start)
-        self.await_async_process(d.start)
-
-        self.assertTrue(m.obj.running)
-        self.assertTrue(d.obj.running)
-
-        sender = Wallet()
-        tx_amount = 1_000_000
-
-        tx_1 = transaction.build_transaction(
-            wallet=founder_waller,
+    def add_node_and_fund_founder(self, node_type):
+        node = self.local_node_network.add_masternode() if node_type == 'm' else self.local_node_network.add_delegate()
+        node.contract_driver.set_var(
             contract='currency',
-            function='transfer',
-            kwargs={
-                'amount': tx_amount,
-                'to': sender.verifying_key
-            },
-            stamps=10000,
-            nonce=0,
-            processor=m.wallet.verifying_key
+            variable='balances',
+            arguments=[self.local_node_network.founders_wallet.verifying_key],
+            value=1000000
         )
-
-        self.send_transaction(node=m.obj, tx=tx_1.encode())
-        self.async_sleep(1)
-
-        mbal = m.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
-        dbal = d.driver.get_var(contract='currency', variable='balances', arguments=[sender.verifying_key])
-
-        self.assertEqual(mbal, tx_amount)
-        self.assertEqual(dbal, tx_amount)
-
-        self.await_async_process(m.stop)
-        self.await_async_process(d.stop)
 
     def test_network_linear_tx_throughput_test_founder_to_new_wallets(self):
         # This test will transfer from the founder wallet to a bunch of new wallets and never the same wallet twice
-        self.n = mocks_new.MockNetwork(num_of_delegates=6, num_of_masternodes=3, ctx=self.ctx, metering=False)
-        self.await_async_process(self.n.start)
-
-        for node in self.n.all_nodes():
-            self.assertTrue(node.obj.running)
-
         test_tracker = {}
-
-        # Send a bunch of transactions
         amount_of_transactions = 25
 
+        # Send a bunch of transactions
         for i in range(amount_of_transactions):
-            tx_info = json.loads(self.n.send_random_currency_transaction(sender_wallet=self.n.founder_wallet))
+            tx_info = self.local_node_network.send_tx_to_random_masternode(
+                sender_wallet=self.local_node_network.founders_wallet,
+                receiver_vk=Wallet().verifying_key
+            )
             to = tx_info['payload']['kwargs']['to']
-            amount = tx_info['payload']['kwargs']['amount']
-            test_tracker[to] = amount
+            test_tracker[to] = float(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=30)
+        self.local_node_network.await_all_nodes_done_processing(block_height=amount_of_transactions)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
         for key in test_tracker:
-            balance = test_tracker[key]
-            results = self.n.get_vars(
+            expected_balance = json.loads(encoder.encode(ContractingDecimal(test_tracker[key])))
+            actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
                 contract='currency',
                 variable='balances',
                 arguments=[key]
-            )
-
-            self.assertTrue(balance == results[0])
-            self.assertTrue(all([balance == results[0] for balance in results]))
+            )))
+            print({'expected_balance': expected_balance})
+            print({'actual_balances': actual_balances})
+            for actual_balance in actual_balances:
+                self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height
-        for node in self.n.all_nodes():
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+        for node in self.local_node_network.all_nodes:
+            self.assertEqual(amount_of_transactions, node.current_height)
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
+        all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
     def test_network_one_receiver__throughput_test__founder_to_one_wallet_multiple_times(self):
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
-        delay = {'base': 1, 'self': 1.5}
-        self.n = mocks_new.MockNetwork(num_of_delegates=2, num_of_masternodes=2, ctx=self.ctx, metering=False, delay=delay)
-        self.await_async_process(self.n.start)
-
-        for node in self.n.all_nodes():
-            self.assertTrue(node.obj.running)
 
         test_tracker = ContractingDecimal(0.0)
-
         receiver_wallet = Wallet()
+        amount_of_transactions = 20
 
         # Send a bunch of transactions
-        amount_of_transactions = 20
         for i in range(amount_of_transactions):
-            tx_info = json.loads(self.n.send_random_currency_transaction(
-                sender_wallet=self.n.founder_wallet,
-                receiver_wallet=receiver_wallet
-            ))
+            tx_info = self.local_node_network.send_tx_to_random_masternode(
+                sender_wallet=self.local_node_network.founders_wallet,
+                receiver_vk=receiver_wallet.verifying_key
+            )
 
             test_tracker = test_tracker + ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=0)
+        self.local_node_network.await_all_nodes_done_processing(block_height=amount_of_transactions)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
         # Decode all tracker values from ContractingDecimal to string
 
-        all_node_results = self.n.get_vars(
+        actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
             contract='currency',
             variable='balances',
             arguments=[receiver_wallet.verifying_key]
-        )
+        )))
+        expected_balance = json.loads(encoder.encode(test_tracker))
+        print({'expected_balance': expected_balance})
+        print({'actual_balances': actual_balances})
 
-        all_node_results = json.loads(encoder.encode(all_node_results))
-        balance = json.loads(encoder.encode(test_tracker))
-
-        if (balance != all_node_results[0]):
-            pass
-
-        if all([balance == all_node_results[0] for balance in all_node_results]) == False:
-            pass
-
-        self.assertTrue(balance == all_node_results[0])
-        self.assertTrue(all([balance == all_node_results[0] for balance in all_node_results]))
+        for actual_balance in actual_balances:
+            self.assertEqual(actual_balance, expected_balance)
 
         # All nodes are at the proper block height
-        for node in self.n.all_nodes():
-            print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
-            print(f'block height: {node.obj.get_current_hash()} hash: {node.obj.get_current_hash()}')
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+        for node in self.local_node_network.all_nodes:
+            self.assertEqual(amount_of_transactions, node.current_height)
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_hash() for node in self.n.all_nodes()]
-        for block_hash in all_hashes:
-            print(block_hash)
-        for node in self.n.all_nodes():
-            print(node.obj.get_current_height())
+        all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
-
     def template_network_mixed_receivers__founder_to_list_of_created_wallets(self, test_info):
-        num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
         # This test will transfer from the founder wallet to a random selection of existing wallets so that balances
         # accumulate as the test goes on
 
-        self.n = mocks_new.MockNetwork(
-            num_of_delegates=num_of_delegates,
-            num_of_masternodes=num_of_masternodes,
-            ctx=self.ctx,
-            metering=False,
-            delay=delay
-        )
-        self.await_async_process(self.n.start)
+        num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        for i in range(num_of_masternodes - 1):
+            self.add_node_and_fund_founder('m')
 
-        for node in self.n.all_nodes():
-            self.assertTrue(node.obj.running)
+        for i in range(num_of_delegates - 1):
+            self.add_node_and_fund_founder('d')
 
-        wallet_tracker = []
-
+        test_tracker = {}
         receiver_wallets = [Wallet() for i in range(num_of_receiver_wallets)]
 
         for i in range(amount_of_transactions):
-            tx_info = json.loads(self.n.send_random_currency_transaction(
-                sender_wallet=self.n.founder_wallet,
-                receiver_wallet=receiver_wallets[randrange(0, num_of_receiver_wallets)]
-            ))
-
+            tx_info = self.local_node_network.send_tx_to_random_masternode(
+                sender_wallet=self.local_node_network.founders_wallet,
+                receiver_vk=random.choice(receiver_wallets).verifying_key
+            )
             to = tx_info['payload']['kwargs']['to']
-
-            if to not in wallet_tracker:
-                wallet_tracker.append(to)
+            amount = float(tx_info['payload']['kwargs']['amount']['__fixed__'])
+            if test_tracker.get(to, None) is None:
+                test_tracker[to] = amount
+            else:
+                test_tracker[to] += amount
 
         # wait till all nodes reach the required block height
-        mocks_new.await_all_nodes_done_processing(nodes=self.n.all_nodes(), block_height=amount_of_transactions, timeout=0)
+        self.local_node_network.await_all_nodes_done_processing(block_height=amount_of_transactions)
         self.async_sleep(1)
 
         # All state values reflect the result of the processed transactions
-        all_node_results = {}
-        for wallet in wallet_tracker:
-            all_node_results[wallet] = self.n.get_vars(
+        for key, value in test_tracker.items():
+            expected_balance = json.loads(encoder.encode(ContractingDecimal(value)))
+            actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
                 contract='currency',
                 variable='balances',
-                arguments=[wallet]
-            )
-
-        for key in all_node_results:
-            # self.assertTrue(balance == all_node_results[key][0])
-            self.assertTrue(all([balance == all_node_results[key][0] for balance in all_node_results[key]]))
-
-
-        validation_history = self.n.masternodes[0].obj.validation_queue.validation_results_history
-
-        all_hlcs = [[k for k in item.keys()][0] for item in validation_history]
-        all_hlcs.sort()
-
-        test_tracker = {}
-        for hlc in all_hlcs:
-            for result in validation_history:
-                if result.get(hlc):
-                    result_history = result[hlc][1]
-
-            consensus_solution = result_history['last_check_info']['solution']
-            processed_results = result_history['result_lookup'][consensus_solution]
-
-            tx_result = processed_results.get('tx_result')
-
-            for state_change in tx_result['state']:
-                raw_key = state_change.get('key')
-                key_split = raw_key.split(":")
-                key = key_split[1]
-
-                try:
-                    value = state_change['value'].get('__fixed__')
-                except Exception:
-                    value = str(state_change.get('value'))
-
-                test_tracker[key] = value
-
-        for key in test_tracker:
-            if all_node_results.get(key):
-                self.assertEqual(all_node_results[key][0]['__fixed__'], test_tracker[key])
+                arguments=[key]
+            )))
+            print({'expected_balance': expected_balance})
+            print({'actual_balances': actual_balances})
+            for actual_balance in actual_balances:
+                self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height
-        for node in self.n.all_nodes():
-            print(f'{node.obj.upgrade_manager.node_type}-{node.index}')
-            print(f'block height: {node.obj.get_current_height()} hash: {node.obj.get_current_hash()}')
-            self.assertTrue(amount_of_transactions == node.obj.get_current_height())
+        for node in self.local_node_network.all_nodes:
+            self.assertEqual(amount_of_transactions, node.current_height)
 
         # All nodes arrived at the same block hash
-        all_hashes = [node.obj.get_current_height() for node in self.n.all_nodes()]
-        for block_hash in all_hashes:
-            print(block_hash)
-        for node in self.n.all_nodes():
-            print(node.obj.get_current_height())
+        all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
     def test_network_mixed_receivers__throughput_test__low_nodes_low_txcount(self):
-        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [1, 1, 5, 20, {'base': 1, 'self': 1.5}]
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        test_info = [1, 1, 5, 20]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__low_nodes_high_tx_count(self):
-        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [1, 1, 5, 50, {'base': 1, 'self': 1.5}]
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        test_info = [1, 1, 5, 50]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__high_nodes_low_tx_count(self):
-        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [2, 2, 5, 20, {'base': 1, 'self': 1.5}]
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        test_info = [2, 2, 5, 20]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__high_nodes_high_tx_count(self):
-        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [2, 2, 5, 50, {'base': 1, 'self': 1.5}]
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        test_info = [2, 2, 5, 50]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)
 
     def test_network_mixed_receivers__throughput_test__2_nodes_1_tx(self):
-        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions, delay = test_info
-        test_info = [2, 1, 1, 1, {'base': 1, 'self': 1.5}]
+        # num_of_masternodes, num_of_delegates, num_of_receiver_wallets, amount_of_transactions = test_info
+        test_info = [2, 1, 1, 1]
 
         self.template_network_mixed_receivers__founder_to_list_of_created_wallets(test_info)

@@ -28,7 +28,7 @@ MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3
 
 class LocalNodeNetwork:
         def __init__(self, constitution: dict={}, bootnodes: list = [], num_of_masternodes: int = 0,
-                     num_of_delegates: int = 0, genesis_path: Path = Path.cwd(), should_seed=True):
+                     num_of_delegates: int = 0, genesis_path: Path = Path.cwd(), should_seed=True, delay=None):
             self.masternodes: List[Node] = []
             self.delegates: List[Node] = []
 
@@ -61,6 +61,8 @@ class LocalNodeNetwork:
                 if not self.loop:
                     self.loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(self.loop)
+
+            self.delay = delay
 
             self.create_new_network(
                 num_of_delegates=num_of_delegates,
@@ -178,7 +180,8 @@ class LocalNodeNetwork:
                     genesis_path=self.genesis_path,
                     should_seed=should_seed,
                     tx_queue=tx_queue,
-                    reconnect_attempts=reconnect_attempts
+                    reconnect_attempts=reconnect_attempts,
+                    delay=self.delay
                 )
 
             if node.node_type == 'masternode':
@@ -348,10 +351,13 @@ class LocalNodeNetwork:
 
             print("Done")
 
-        def await_all_nodes_done_processing(self, block_height):
+        def await_all_nodes_done_processing(self, block_height, timeout=15):
             done = False
+            start = time.time()
             while not done:
-                time.sleep(0.1)
+                if timeout > 0 and time.time() - start > timeout:
+                    print(f'{__name__} TIMED OUT')
+                    break
                 results = [node.current_height == block_height for node in self.all_nodes]
                 done = all(results)
         
