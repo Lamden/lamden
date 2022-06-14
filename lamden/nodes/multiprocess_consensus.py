@@ -20,15 +20,11 @@ class MultiProcessConsensus:
 
         self.all_consensus_results = {}
 
-        self.debug_peers = []
-
     async def start(self, validation_results):
         try:
             self.all_consensus_results = {}
             processes = []
             num_of_peers = len(self.get_peers_for_consensus())
-
-            self.debug_peers.append(num_of_peers)
 
             for hlc_timestamp in validation_results:
                 parent_conn, child_conn = multiprocessing.Pipe()

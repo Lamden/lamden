@@ -202,7 +202,7 @@ class ThreadedNode(threading.Thread):
 
     def sleep(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.sleep(0))
+        loop.run_until_complete(asyncio.sleep(0.5))
 
     async def stop(self):
         if not self.node:

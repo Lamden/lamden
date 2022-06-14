@@ -106,6 +106,7 @@ class Node:
         self.debug_processing_results = []
         self.debug_reprocessing_results = {}
         self.debug_blocks_processed = []
+        self.debug_blocks_hard_applied = []
         self.debug_timeline = []
         self.debug_sent_solutions = []
         self.debug_last_checked_main = time.time()
@@ -632,17 +633,24 @@ class Node:
     async def check_validation_queue(self):
         while self.running:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
-                self.validation_queue.start_processing()
-                await self.validation_queue.check_all()
-                await self.validation_queue.process_next()
-                self.validation_queue.stop_processing()
+                if not self.validation_queue.checking:
+                    self.validation_queue.start_processing()
+                    await self.validation_queue.check_all()
 
-            self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
+                    # TODO Alter this method to process just the earliest HLC
+                    await self.validation_queue.process_next()
+                    self.validation_queue.stop_processing()
+
+                    self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
 
     async def process_main_queue(self):
         try:
             processing_results = await self.main_processing_queue.process_next()
+
+            if processing_results:
+                if len(processing_results['tx_result'].get('state')) == 0:
+                    print("STOP")
 
             if self.upgrade_manager.node_type == 'masternode' and processing_results is not None:
                 print("testing")
@@ -655,16 +663,12 @@ class Node:
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
                     self.driver.clear_pending_state()
-                    return
+                else:
+                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+
+                    self.store_solution_and_send_to_network(processing_results=processing_results)
 
                 self.last_processed_hlc = hlc_timestamp
-
-                try:
-                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-                except Exception as err:
-                    print(err)
-
-                self.store_solution_and_send_to_network(processing_results=processing_results)
         except Exception as err:
             self.log.error(err)
 
@@ -738,6 +742,7 @@ class Node:
             self.driver.set(s['key'], s['value'])
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+
         self.driver.hard_apply(hlc=hlc_timestamp)
 
     async def hard_apply_block(self, processing_results):
@@ -878,7 +883,6 @@ class Node:
             encoded_block = encode(new_block)
             encoded_block = json.loads(encoded_block)
 
-
             self.blocks.store_block(copy.copy(encoded_block))
 
             # Set the current block hash and height
@@ -897,12 +901,13 @@ class Node:
 
         if self.testing:
             self.debug_processed_hlcs.append(hlc_timestamp)
+            self.debug_blocks_hard_applied.append(new_block)
+            self.log.info(f'[{self.network.router_address}][HARD APPLY] {new_block.get("number")}')
 
         # Increment the internal block counter
         self.current_block_height += 1
 
         gc.collect()
-
 
 # Re-processing CODE
     async def reprocess(self, tx):

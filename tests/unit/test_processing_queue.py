@@ -26,7 +26,7 @@ def get_new_tx():
     return {
             'metadata': {
                 'signature': '7eac4c17004dced6d079e260952fffa7750126d5d2c646ded886e6b1ab4f6da1e22f422aad2e1954c9529cfa71a043af8c8ef04ccfed6e34ad17c6199c0eba0e',
-                'timestamp': 1624049397
+                'timestamp': time.time()
             },
             'payload': {
                 'contract': 'currency',
@@ -115,22 +115,18 @@ class TestProcessingQueue(TestCase):
     def sync(self):
         sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
 
-    def make_tx_message(self, tx):
-        timestamp = int(time.time())
 
-        h = hashlib.sha3_256()
-        h.update('{}'.format(timestamp).encode())
-        input_hash = h.hexdigest()
+    def make_tx_message(self, tx, hlc=None):
+        hlc_timestamp = hlc or self.hlc_clock.get_new_hlc_timestamp()
+        tx_hash = tx_hash_from_tx(tx=tx)
 
-        signature = self.wallet.sign(input_hash)
+        signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')
 
         return {
             'tx': tx,
-            'timestamp': timestamp,
-            'hlc_timestamp': self.hlc_clock.get_new_hlc_timestamp(),
+            'hlc_timestamp': hlc_timestamp,
             'signature': signature,
-            'sender': self.wallet.verifying_key,
-            'input_hash': input_hash
+            'sender': self.wallet.verifying_key
         }
 
     async def delay_processing_await(self, func, delay):
@@ -161,7 +157,7 @@ class TestProcessingQueue(TestCase):
         self.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
         self.main_processing_queue.append(tx)
 
-        self.assertEqual(len(self.main_processing_queue), 0)
+        self.assertEqual(0, len(self.main_processing_queue))
 
     def test_flush(self):
         # Add a bunch of transactions to the queue
@@ -480,6 +476,41 @@ class TestProcessingQueue(TestCase):
         nanos = self.main_processing_queue.get_nanos_from_tx(tx)
 
         self.assertEqual(self.main_processing_queue.get_now_from_nanos(nanos), Datetime._from_datetime(datetime.utcfromtimestamp(math.ceil(nanos / 1e9))))
+
+    def test_METHOD_filter_queue(self):
+        tx_1 = self.make_tx_message(tx=get_new_tx(), hlc="1")
+        tx_3 = self.make_tx_message(tx=get_new_tx(), hlc="3")
+
+        self.main_processing_queue.append(tx_1)
+        self.main_processing_queue.append(tx_3)
+
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='1'))
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='3'))
+
+        self.last_hlc_in_consensus = '2'
+
+        self.main_processing_queue.filter_queue()
+
+        self.assertFalse(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='1'))
+        self.assertTrue(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='3'))
+
+    def test_METHOD_sync_timestamp_object(self):
+        self.main_processing_queue.queue = [
+            {
+                'hlc_timestamp': '2'
+            }
+        ]
+
+        self.main_processing_queue.message_received_timestamps['1'] = time.time()
+        self.main_processing_queue.message_received_timestamps['2'] = time.time()
+
+        self.assertEqual(2, len(self.main_processing_queue.message_received_timestamps))
+
+        self.main_processing_queue.sync_timestamp_object()
+
+        self.assertEqual(1, len(self.main_processing_queue.message_received_timestamps))
+        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get('1'))
+        self.assertIsNotNone(self.main_processing_queue.message_received_timestamps.get('2'))
 
     def test_prune_history(self):
         raise NotImplementedError

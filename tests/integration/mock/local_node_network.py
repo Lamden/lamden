@@ -43,6 +43,8 @@ class LocalNodeNetwork:
 
             self.founders_wallet = Wallet(MOCK_FOUNDER_SK)
 
+            self.nonces = {}
+
             try:
                 shutil.rmtree(self.temp_network_dir)
             except FileNotFoundError:
@@ -274,11 +276,18 @@ class LocalNodeNetwork:
                                             sender_wallet: Wallet = None,
                                             receiver_vk: str = Wallet().verifying_key,
                                             amount: str = {'__fixed__': '10.5'},
-                                            nonce: int = 0,
                                             processor: str = None,
                                             stamps_supplied: int = 20
                                             ):
             tx = MockTransaction()
+            nonce = self.nonces.get(sender_wallet)
+            if nonce is None:
+                self.nonces[sender_wallet] = 0
+            else:
+                self.nonces[sender_wallet] += 1
+
+            nonce = self.nonces[sender_wallet]
+
             tx.create_transaction(
                 sender_wallet=sender_wallet or self.founders_wallet,
                 contract="currency",
@@ -361,15 +370,11 @@ class LocalNodeNetwork:
                 results = [node.current_height == block_height for node in self.all_nodes]
                 done = all(results)
         
-        def get_var_from_one(self, contract, variable, arguments, node):
-            return node.node.driver.get_var(
-                contract=contract,
-                variable=variable,
-                arguments=arguments
-            )
+        def get_var_from_one(self, key:str, tn:ThreadedNode):
+            return tn.raw_driver.get(key=key)
 
-        def get_var_from_all(self, contract, variable, arguments):
-            return [self.get_var_from_one(contract, variable, arguments, node) for node in self.all_nodes]
+        def get_var_from_all(self, key=str):
+            return [self.get_var_from_one(key, tn) for tn in self.all_nodes]
 
 class TestLocalNodeNetwork(unittest.TestCase):
     def setUp(self):

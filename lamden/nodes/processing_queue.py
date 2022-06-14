@@ -67,12 +67,9 @@ class TxProcessingQueue(ProcessingQueue):
                 'in_queue': self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
             })
 
-        ''' (?)
-            should we remove the check below because we handle the case when tx
-            hlc is earlier than consensus in hard_apply_block
-        '''
-        #if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
-        #    return
+
+        if self.hlc_earlier_than_consensus(hlc_timestamp=hlc_timestamp):
+            return
 
         if not self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp):
             if self.testing:
@@ -103,6 +100,23 @@ class TxProcessingQueue(ProcessingQueue):
         # sort the main processing queue by hlc_timestamp
         self.queue.sort(key=lambda x: x['hlc_timestamp'])
 
+    def filter_queue(self):
+        # filter the main processing to remove hlc that are already in consensus
+        last_hlc_in_consensus = self.get_last_hlc_in_consensus()
+        self.queue = [tx for tx in self.queue if tx.get('hlc_timestamp') > last_hlc_in_consensus]
+
+    def sync_timestamp_object(self):
+        # remove all timestamps from messsage_recieved_timestamps that are no longer in queue
+        hlcs_in_queue = [tx.get('hlc_timestamp') for tx in self.queue]
+
+        remove_from_list = []
+        for hlc_timestamp in self.message_received_timestamps:
+            if hlc_timestamp not in hlcs_in_queue:
+                remove_from_list.append(hlc_timestamp)
+
+        for hlc_timestamp in remove_from_list:
+                self.message_received_timestamps.pop(hlc_timestamp)
+
     def hlc_already_in_queue(self, hlc_timestamp):
         for tx in self.queue:
             if tx['hlc_timestamp'] == hlc_timestamp:
@@ -113,30 +127,21 @@ class TxProcessingQueue(ProcessingQueue):
         return hlc_timestamp < self.get_last_hlc_in_consensus()
 
     async def process_next(self):
-
-        # self.last_time_processed = datetime.datetime.now()
+        # filter out all HLCs that are less than our current consensus HLC
+        self.filter_queue()
+        self.sync_timestamp_object()
 
         # return if the queue is empty
         if len(self.queue) == 0:
             return
 
+        # sort the queue by HCL timestamp
         self.sort_queue()
 
         # Pop it out of the main processing queue
         tx = self.queue.pop(0)
 
         self.currently_processing_hlc = tx['hlc_timestamp']
-
-        ''' (?)
-            should we remove the check below because we handle the case when tx
-            hlc is earlier than consensus in hard_apply_block
-        '''
-        # if the last HLC in consensus was greater than this one then don't process it.
-        # Returning here will basically ignore the tx
-        #if self.currently_processing_hlc <= self.get_last_hlc_in_consensus():
-        #    del self.message_received_timestamps[self.currently_processing_hlc]
-        #    self.currently_processing_hlc = ""
-        #    return
 
         # get the amount of time the transaction has been in the queue
         received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
@@ -219,11 +224,15 @@ class TxProcessingQueue(ProcessingQueue):
             stamp_cost=stamp_cost
         )
 
+        # self.driver.soft_apply(hcl=hlc_timestamp)
+
         # Distribute rewards
         self.distribute_rewards(
             total_stamps_to_split=output['stamps_used'],
             contract_name=tx_result['transaction']['payload']['contract']
         )
+
+        # self.driver.soft_apply_rewards(hcl=hlc_timestamp)
 
         # Create merkle
         sign_info = self.sign_tx_results(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
@@ -243,6 +252,7 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO better error handling of anything in here
 
         try:
+            self.driver.clear_pending_state()
             # Execute transaction
             return self.executor.execute(
                 sender=transaction['payload']['sender'],

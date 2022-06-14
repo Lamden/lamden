@@ -479,10 +479,10 @@ class Network:
         return vk_to_ip_map
 
     def get_delegate_vk_list(self) -> list:
-        return self.driver.get(f'delegates.S:members') or []
+        return self.driver.get(f'delegates.S:members', save=False) or []
 
     def get_masternode_vk_list(self) -> list:
-        return self.driver.get(f'masternodes.S:members') or []
+        return self.driver.get(f'masternodes.S:members', save=False) or []
 
     def get_masternode_and_delegate_vk_list(self) -> list:
         return self.get_masternode_vk_list() + self.get_delegate_vk_list()

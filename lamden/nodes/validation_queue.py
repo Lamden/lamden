@@ -114,10 +114,15 @@ class ValidationQueue(ProcessingQueue):
             self.validation_results[hlc_timestamp]['result_lookup'][result_hash] = processing_results
 
     async def process_next(self):
+        # 1) Sort validation results object to get the earlist HLC
+        # 2) Run consensus on that HLC
+        # 3) Process the earliest if in consensus
+
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
             self.log.info(f'Process Next: {next_hlc_timestamp}')
 
+            # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
                 block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
                 self.log.info(f'next_hlc_timestamp: {next_hlc_timestamp} is earlier than last_hlc_in_consensus: {self.last_hlc_in_consensus}')
@@ -130,9 +135,11 @@ class ValidationQueue(ProcessingQueue):
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.process(hlc_timestamp=next_hlc_timestamp)
+            else:
+                # do nothing
+                pass
 
     async def check_all(self):
-        # TODO remove this try
         if self.checking:
             return
 
