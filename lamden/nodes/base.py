@@ -635,7 +635,7 @@ class Node:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 if not self.validation_queue.checking:
                     self.validation_queue.start_processing()
-                    await self.validation_queue.check_all()
+                    #await self.validation_queue.check_all()
 
                     # TODO Alter this method to process just the earliest HLC
                     await self.validation_queue.process_next()

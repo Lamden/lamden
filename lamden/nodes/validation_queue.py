@@ -132,12 +132,34 @@ class ValidationQueue(ProcessingQueue):
                     return
                     # await self.process_next()
 
+            self.check_one(hlc_timestamp=next_hlc_timestamp)
+
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.process(hlc_timestamp=next_hlc_timestamp)
             else:
                 # do nothing
                 pass
+
+    def check_one(self, hlc_timestamp):
+        results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
+
+        if results is None:
+            return
+
+        try:
+            consensus_result = self.determine_consensus.check_consensus(
+                solutions=results.get('solutions'),
+                num_of_participants=len(self.get_peers_for_consensus()) + 1,
+                last_check_info=results.get('last_check_info')
+            )
+        except Exception as err:
+            print(err)
+
+        self.add_consensus_result(
+            hlc_timestamp=hlc_timestamp,
+            consensus_result=consensus_result
+        )
 
     async def check_all(self):
         if self.checking:
