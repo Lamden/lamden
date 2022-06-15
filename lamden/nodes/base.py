@@ -608,6 +608,7 @@ class Node:
             if len(self.tx_queue) > 0:
                 tx_from_file = self.tx_queue.pop(0)
                 # TODO sometimes the tx info taken off the filequeue is None, investigate
+                self.log.info(f'GOT TX FROM FILE {tx_from_file}')
                 if tx_from_file is not None:
                     tx_message = self.make_tx_message(tx=tx_from_file)
 

@@ -122,7 +122,7 @@ class ValidationQueue(ProcessingQueue):
 
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
-            self.log.info(f'Process Next: {next_hlc_timestamp}')
+            # self.log.info(f'Process Next: {next_hlc_timestamp}')
 
             # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
