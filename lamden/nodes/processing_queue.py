@@ -252,7 +252,7 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO better error handling of anything in here
 
         try:
-            self.driver.clear_pending_state()
+            # self.driver.clear_pending_state()
             # Execute transaction
             return self.executor.execute(
                 sender=transaction['payload']['sender'],
@@ -300,9 +300,6 @@ class TxProcessingQueue(ProcessingQueue):
             tx_sender=transaction['payload']['sender']
         )
 
-        if self.testing:
-            self.debug_writes_log.append({hlc_timestamp: [writes, self.get_last_hlc_in_consensus()]})
-
         tx_output = {
             'hash': tx_hash,
             'transaction': transaction,
@@ -311,7 +308,6 @@ class TxProcessingQueue(ProcessingQueue):
             'stamps_used': output['stamps_used'],
             'result': safe_repr(output['result'])
         }
-
 
         tx_output = format_dictionary(tx_output)
 

@@ -36,7 +36,7 @@ class TestMultiNode(TestCase):
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
-        self.amount_of_transactions = 2
+        self.amount_of_transactions = 10
         self.test_tracker = {}
 
     def tearDown(self):
@@ -104,16 +104,16 @@ class TestMultiNode(TestCase):
             self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
+            # All state values reflect the result of the processed transaction
+            expected_balance = json.loads(
+                encoder.encode(ContractingDecimal(self.test_tracker[receiver_wallet.verifying_key])))
+            actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
+                key=f'currency.balances:{receiver_wallet.verifying_key}'
+            )))
+            print({'expected_balance': expected_balance})
+            print({'actual_balances': actual_balances})
+
         print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
-
-        # All state values reflect the result of the processed transactions
-        expected_balance = json.loads(encoder.encode(ContractingDecimal(self.test_tracker[receiver_wallet.verifying_key])))
-        actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
-            key=f'currency.balances:{receiver_wallet.verifying_key}'
-        )))
-
-        print({'expected_balance': expected_balance})
-        print({'actual_balances': actual_balances})
 
         # TODO INVESTIGATE: having multiple masternodes leads to incorrect balances
         for actual_balance in actual_balances:

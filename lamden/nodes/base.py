@@ -81,8 +81,8 @@ class Node:
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
-            'base': 0.75,
-            'self': 0.75
+            'base': 1,
+            'self': 0.5
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
         self.tx_queue = tx_queue

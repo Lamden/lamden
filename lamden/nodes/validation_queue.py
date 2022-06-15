@@ -32,6 +32,8 @@ class ValidationQueue(ProcessingQueue):
             get_peers_for_consensus=self.get_peers_for_consensus
         )
 
+        self.consensus_history = {}
+
         self.driver = driver
         self.wallet = wallet
 
@@ -160,6 +162,12 @@ class ValidationQueue(ProcessingQueue):
             hlc_timestamp=hlc_timestamp,
             consensus_result=consensus_result
         )
+
+        if self.consensus_history.get(hlc_timestamp) is None:
+            self.consensus_history[hlc_timestamp] = []
+
+        self.consensus_history[hlc_timestamp].append(consensus_result)
+
 
     async def check_all(self):
         if self.checking:

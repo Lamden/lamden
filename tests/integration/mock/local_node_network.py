@@ -10,7 +10,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage
 from lamden.nodes.base import Node
 
-from contracting.db.driver import FSDriver
+from contracting.db.driver import FSDriver, InMemDriver
 
 from pathlib import Path
 import shutil
@@ -165,7 +165,8 @@ class LocalNodeNetwork:
 
             node_state_dir.mkdir(parents=True, exist_ok=True)
 
-            raw_driver = FSDriver(root=Path(node_state_dir))
+            #raw_driver = FSDriver(root=Path(node_state_dir))
+            raw_driver = InMemDriver()
             block_storage = BlockStorage(home=Path(node_dir))
 
             tx_queue = FileQueue(root=node_dir.joinpath('txq'))
@@ -360,7 +361,7 @@ class LocalNodeNetwork:
 
             print("Done")
 
-        def await_all_nodes_done_processing(self, block_height, timeout=15):
+        def await_all_nodes_done_processing(self, block_height, timeout=25):
             done = False
             start = time.time()
             while not done:
