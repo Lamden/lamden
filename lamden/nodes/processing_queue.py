@@ -164,6 +164,7 @@ class TxProcessingQueue(ProcessingQueue):
             '''
 
             if self.currently_processing_hlc < self.get_last_processed_hlc():
+                self.log.error(f"ROLLING BACK to {currently_processing_hlc}")
                 await self.node_rollback(tx=tx)
             else:
                 # Process it to get the results

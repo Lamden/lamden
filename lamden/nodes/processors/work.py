@@ -48,6 +48,7 @@ class WorkValidator(Processor):
 
         if self.older_than_last_processed(msg=msg):
             self.log.error('OLDER HLC RECEIVED')
+            self.log.error(f'{msg["hlc_timestamp"]} received AFTER {self.get_last_processed_hlc()} was processed!')
             # TODO at this point we might be processing a message that is older than one that we already did (from
             # UPDATE Looks like we will catch this situation later.  We can ignore it here
             pass
@@ -88,11 +89,5 @@ class WorkValidator(Processor):
         return False
 
     def older_than_last_processed(self, msg):
-        tx_age = self.hlc_clock.get_nanos(timestamp=msg['hlc_timestamp'])
-        last_hlc = self.get_last_processed_hlc()
-        last_processed_age = self.hlc_clock.get_nanos(timestamp=last_hlc)
+        return msg.get('hlc_timestamp') <= self.get_last_processed_hlc()
 
-        if tx_age <= last_processed_age:
-            return True
-        self.log.error(f'{msg["hlc_timestamp"]} received AFTER {last_hlc} was processed!')
-        return False
