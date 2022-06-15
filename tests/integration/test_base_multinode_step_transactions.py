@@ -19,13 +19,35 @@ from unittest import TestCase
 
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from lamden import contracts
-from tests.unit.helpers.mock_transactions import get_new_currency_tx
 
 class TestMultiNode(TestCase):
     def setUp(self):
+        self.test_tracker = {}
+        self.amount_of_transactions = None
+        self.local_node_network = None
+
+        self.scenarios = {
+            "high_nodes_low_tx_amount":{
+                'num_of_masternodes': 3,
+                'num_of_delegates': 4,
+                'amount_of_transactions': 25
+            },
+            "low_nodes_high_tx_amount":{
+                'num_of_masternodes': 2,
+                'num_of_delegates': 2,
+                'amount_of_transactions': 60
+            }
+        }
+
+    def tearDown(self):
+        self.await_async_process(self.local_node_network.stop_all_nodes)
+
+    def setup_nodes(self, num_of_masternodes, num_of_delegates, amount_of_transactions):
         test_start = time.time()
 
-        self.local_node_network = LocalNodeNetwork(num_of_masternodes=2, num_of_delegates=1, genesis_path=contracts.__path__[0])
+        self.local_node_network = LocalNodeNetwork(
+            num_of_masternodes=num_of_masternodes, num_of_delegates=num_of_delegates, genesis_path=contracts.__path__[0]
+        )
         for node in self.local_node_network.all_nodes:
             self.assertTrue(node.node_is_running)
             node.raw_driver.set(
@@ -36,11 +58,7 @@ class TestMultiNode(TestCase):
         done_starting_networks = time.time()
         print(f"Took {done_starting_networks - test_start} seconds to start all networks.")
 
-        self.amount_of_transactions = 10
-        self.test_tracker = {}
-
-    def tearDown(self):
-        self.await_async_process(self.local_node_network.stop_all_nodes)
+        self.amount_of_transactions = amount_of_transactions
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -70,12 +88,23 @@ class TestMultiNode(TestCase):
         print(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
         self.assertTrue(all([all_hashes[0] == block_hash for block_hash in all_hashes]))
 
-    def test_network_one_recipient__step_by_step__validate_node_state_inbetween(self):
+    '''
+        one_recipient test cases
         # This test creates a multi-node network which will process transactions one at a time. Each transaction
         # is a tx from the FOUNDATION wallet to the same receiver wallet.
         # I will test that all nodes come to the same block height after each transaction, before sending the next.
         # After all transactions are done state will be tested to validate it is the same across all nodes.
+    '''
 
+    def test_network_one_recipient__step_by_step__validate_node_state_inbetween__high_nodes_low_tx_amount(self):
+        self.setup_nodes(**self.scenarios["high_nodes_low_tx_amount"])
+        self.one_recipient__step_by_step__validate_node_state_inbetween()
+
+    def test_network_one_recipient__step_by_step__validate_node_state_inbetween__low_nodes_high_tx_amount(self):
+        self.setup_nodes(**self.scenarios["low_nodes_high_tx_amount"])
+        self.one_recipient__step_by_step__validate_node_state_inbetween()
+
+    def one_recipient__step_by_step__validate_node_state_inbetween(self):
         receiver_wallet = Wallet()
 
         # Send a bunch of transactions
@@ -127,11 +156,23 @@ class TestMultiNode(TestCase):
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
-    def test_network_mixed_tx__step_by_step__validate_node_state_inbetween(self):
+    '''
+        mixed tx test cases
         # This test creates a multi-node network which will process transactions one at a time. Each transaction
         # is a tx from the FOUNDATION wallet to a new random wallet.
         # I will test that all nodes come to the same block height after each transaction, before sending the next.
         # After all transactions are done state will be tested to validate it is the same across all nodes.
+    '''
+
+    def test_network_mixed_tx__step_by_step__validate_node_state_inbetween__high_nodes_low_tx_amount(self):
+        self.setup_nodes(**self.scenarios["high_nodes_low_tx_amount"])
+        self.network_mixed_tx__step_by_step__validate_node_state_inbetween()
+
+    def test_network_mixed_tx__step_by_step__validate_node_state_inbetween___low_nodes_high_tx_amount(self):
+        self.setup_nodes(**self.scenarios["low_nodes_high_tx_amount"])
+        self.network_mixed_tx__step_by_step__validate_node_state_inbetween()
+
+    def network_mixed_tx__step_by_step__validate_node_state_inbetween(self):
 
         # Send a bunch of transactions
         test_start_sending_transactions = time.time()
@@ -158,20 +199,18 @@ class TestMultiNode(TestCase):
             self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
-        print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
+            # All state values reflect the result of the processed transactions
+            for key in self.test_tracker:
+                expected_balance = json.loads(encoder.encode(ContractingDecimal(self.test_tracker[key])))
+                actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
+                    key=f'currency.balances:{key}'
+                )))
+                print({'expected_balance': expected_balance})
+                print({'actual_balances': actual_balances})
+                for actual_balance in actual_balances:
+                    self.assertEqual(expected_balance, actual_balance)
 
-        # All state values reflect the result of the processed transactions
-        for key in self.test_tracker:
-            expected_balance = json.loads(encoder.encode(ContractingDecimal(self.test_tracker[key])))
-            actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
-                contract='currency',
-                variable='balances',
-                arguments=[key]
-            )))
-            print({'expected_balance': expected_balance})
-            print({'actual_balances': actual_balances})
-            for actual_balance in actual_balances:
-                self.assertEqual(expected_balance, actual_balance)
+        print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
@@ -181,12 +220,25 @@ class TestMultiNode(TestCase):
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all(block_hash == all_hashes[0] for block_hash in all_hashes))
 
-    def test_network_mixed_tx_set_group_step_by_step__validate_node_state_inbetween(self):
+    '''
+        mixed tx to set group of receivers
+        
         # This test creates a multi-node network which will process transactions one at a time. Each transaction
         # is a tx from the FOUNDATION wallet to a group of established wallets
         # I will test that all nodes come to the same block height after each transaction, before sending the next.
         # After all transactions are done state will be tested to validate it is the same across all nodes.
 
+    '''
+
+    def test_network_mixed_tx_set_group__step_by_step__validate_node_state_inbetween__high_nodes_low_tx_amount(self):
+        self.setup_nodes(**self.scenarios["high_nodes_low_tx_amount"])
+        self.network_mixed_tx_set_group__step_by_step__validate_node_state_inbetween()
+
+    def test_network_mixed_tx_set_group__step_by_step__validate_node_state_inbetween__low_nodes_high_tx_amount(self):
+        self.setup_nodes(**self.scenarios["low_nodes_high_tx_amount"])
+        self.network_mixed_tx_set_group__step_by_step__validate_node_state_inbetween()
+
+    def network_mixed_tx_set_group__step_by_step__validate_node_state_inbetween(self):
         receiver_wallets = [Wallet() for i in range(3)]
 
         # Send a bunch of transactions
@@ -218,20 +270,20 @@ class TestMultiNode(TestCase):
             self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
-        print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
+            # All state values reflect the result of the processed transactions
+            for key in self.test_tracker:
+                expected_balance = json.loads(encoder.encode(ContractingDecimal(self.test_tracker[key])))
+                actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
+                    key=f'currency.balances:{key}'
+                )))
+                print({'expected_balance': expected_balance})
+                print({'actual_balances': actual_balances})
+                for actual_balance in actual_balances:
+                    self.assertEqual(expected_balance, actual_balance)
 
-        # All state values reflect the result of the processed transactions
-        for key in self.test_tracker:
-            expected_balance = json.loads(encoder.encode(ContractingDecimal(self.test_tracker[key])))
-            actual_balances = json.loads(encoder.encode(self.local_node_network.get_var_from_all(
-                contract='currency',
-                variable='balances',
-                arguments=[key]
-            )))
-            print({'expected_balance': expected_balance})
-            print({'actual_balances': actual_balances})
-            for actual_balance in actual_balances:
-                self.assertEqual(expected_balance, actual_balance)
+            self.async_sleep(1)
+
+        print(f"Took {time.time() - test_start_sending_transactions } seconds to process ALL transactions.")
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:

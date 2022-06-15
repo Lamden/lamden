@@ -657,15 +657,22 @@ class Node:
 
             if processing_results:
                 hlc_timestamp = processing_results.get('hlc_timestamp')
+                self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
                 if self.testing:
                     self.debug_processing_results.append(processing_results)
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
-                    self.driver.clear_pending_state()
-                else:
-                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+                    block = self.blocks.get_block(v=hlc_timestamp)
+                    my_result_hash = tx_result_hash_from_tx_result_object(
+                        tx_result=processing_results['tx_result'],
+                        hlc_timestamp=hlc_timestamp
+                    )
+                    block_result_hash = block['processed']['hash']
 
+                    if my_result_hash != block_result_hash:
+                        await self.reprocess(tx=processing_results['tx_result']['transaction'])
+                else:
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
                 self.last_processed_hlc = hlc_timestamp

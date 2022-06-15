@@ -45,6 +45,7 @@ class LocalNodeNetwork:
 
             self.nonces = {}
 
+
             try:
                 shutil.rmtree(self.temp_network_dir)
             except FileNotFoundError:
@@ -361,7 +362,7 @@ class LocalNodeNetwork:
 
             print("Done")
 
-        def await_all_nodes_done_processing(self, block_height, timeout=25):
+        def await_all_nodes_done_processing(self, block_height, timeout=60):
             done = False
             start = time.time()
             while not done:
@@ -370,6 +371,10 @@ class LocalNodeNetwork:
                     break
                 results = [node.current_height == block_height for node in self.all_nodes]
                 done = all(results)
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(asyncio.sleep(1))
+
+            print(f'!!!!! ALL NODES AT BLOCK {block_height} !!!!!')
         
         def get_var_from_one(self, key:str, tn:ThreadedNode):
             return tn.raw_driver.get(key=key)

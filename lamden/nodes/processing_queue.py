@@ -166,21 +166,20 @@ class TxProcessingQueue(ProcessingQueue):
             if self.currently_processing_hlc < self.get_last_processed_hlc():
                 await self.node_rollback(tx=tx)
             else:
-                del self.message_received_timestamps[self.currently_processing_hlc]
-
-                # self.log.info("BEFORE EXECUTE")
-                # self.log.debug(json.loads(json.dumps(tx)))
                 # Process it to get the results
-                # TODO what to do with the tx if any error happen during processing
                 try:
                     processing_results = self.process_tx(tx=tx)
-                # self.log.info("AFTER EXECUTE")
-                # self.log.debug(json.loads(json.dumps(tx)))
+
+                    # if the state result from the tx is empty then something happened during execution and we should
+                    # add it back into the queue to have it run again.
+                    if len(processing_results['tx_result']['state']) == 0:
+                        self.queue.append(tx)
+                        return None
+
                 except Exception as err:
                     self.log.error(err)
                     print(err)
                     return
-
 
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
@@ -252,7 +251,7 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO better error handling of anything in here
 
         try:
-            # self.driver.clear_pending_state()
+            self.driver.clear_pending_state()
             # Execute transaction
             return self.executor.execute(
                 sender=transaction['payload']['sender'],
