@@ -149,24 +149,23 @@ class ValidationQueue(ProcessingQueue):
         if results is None:
             return
 
-        try:
-            consensus_result = self.determine_consensus.check_consensus(
-                solutions=results.get('solutions'),
-                num_of_participants=len(self.get_peers_for_consensus()) + 1,
-                last_check_info=results.get('last_check_info')
-            )
-        except Exception as err:
-            print(err)
 
-        self.add_consensus_result(
-            hlc_timestamp=hlc_timestamp,
-            consensus_result=consensus_result
+        consensus_result = self.determine_consensus.check_consensus(
+            solutions=results.get('solutions'),
+            num_of_participants=len(self.get_peers_for_consensus()) + 1,
+            last_check_info=results.get('last_check_info')
         )
 
-        if self.consensus_history.get(hlc_timestamp) is None:
-            self.consensus_history[hlc_timestamp] = []
+        if consensus_result:
+            self.add_consensus_result(
+                hlc_timestamp=hlc_timestamp,
+                consensus_result=consensus_result
+            )
 
-        self.consensus_history[hlc_timestamp].append(consensus_result)
+            if self.consensus_history.get(hlc_timestamp) is None:
+                self.consensus_history[hlc_timestamp] = []
+
+            self.consensus_history[hlc_timestamp].append(consensus_result)
 
 
     async def check_all(self):
