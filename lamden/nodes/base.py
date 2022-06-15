@@ -606,6 +606,7 @@ class Node:
     async def check_tx_queue(self):
         while self.running and not self.pause_tx_queue_checking:
             if len(self.tx_queue) > 0:
+                self.log.debug("Calling Check TX File Queue")
                 tx_from_file = self.tx_queue.pop(0)
                 # TODO sometimes the tx info taken off the filequeue is None, investigate
                 self.log.info(f'GOT TX FROM FILE {tx_from_file}')
@@ -625,6 +626,7 @@ class Node:
         while self.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
+                self.log.debug("Calling Check Main Processing Queue")
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
 
@@ -635,6 +637,7 @@ class Node:
         while self.running:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 if not self.validation_queue.checking:
+                    self.log.debug(f"Calling Check Validation Queue with a Lenght of {len(self.validation_queue)}")
                     self.validation_queue.start_processing()
                     #await self.validation_queue.check_all()
 
