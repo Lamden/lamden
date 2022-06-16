@@ -252,7 +252,6 @@ class TxProcessingQueue(ProcessingQueue):
         # TODO better error handling of anything in here
 
         try:
-            self.driver.clear_pending_state()
             # Execute transaction
             return self.executor.execute(
                 sender=transaction['payload']['sender'],
