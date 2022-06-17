@@ -728,12 +728,17 @@ class Node:
 
         # Commit the state changes and nonces to the database
 
-        storage.set_latest_block_hash(block['hash'], driver=self.driver)
-        storage.set_latest_block_height(block['number'], driver=self.driver)
+        # NOTE: write it directly to disk.
+        self.driver.driver.set(storage.BLOCK_HASH_KEY, block['hash'])
+        self.driver.driver.set(storage.BLOCK_NUM_HEIGHT, block['number'])
 
         self.new_block_processor.clean(self.get_current_height())
 
-        self.driver.commit()
+        # NOTE(for Jeff): we shouldn't do this. what if there are pending writes
+        # in driver.cache from a different HLC & not related to this block?
+        # this line prevents 'test_network_mixed_tx_set_group__throughput'
+        # from passing in a way that nodes aren't able to reach consensus at some point.
+        #self.driver.commit()
 
     def get_state_changes_from_block(self, block):
         tx_result = block.get('processed')
