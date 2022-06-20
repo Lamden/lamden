@@ -626,7 +626,7 @@ class Node:
         while self.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
-                self.log.debug("Calling Check Main Processing Queue")
+                # self.log.debug("Calling Check Main Processing Queue")
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
 
