@@ -216,6 +216,9 @@ class TxProcessingQueue(ProcessingQueue):
             environment=environment
         )
 
+        if len(output['writes']) == 0:
+            self.log.error("TX HAD NO WRITES!")
+
         # Process the result of the executor
         tx_result = self.process_tx_output(
             output=output,

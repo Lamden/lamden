@@ -122,7 +122,7 @@ class ValidationQueue(ProcessingQueue):
 
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
-            self.log.info(f'[Process Next] Checking: {next_hlc_timestamp}')
+            self.log.debug(f'[Process Next] Checking: {next_hlc_timestamp}')
 
             # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
@@ -135,6 +135,9 @@ class ValidationQueue(ProcessingQueue):
                     # await self.process_next()
 
             self.check_one(hlc_timestamp=next_hlc_timestamp)
+
+            results = self.validation_results.get(next_hlc_timestamp)
+            self.log.debug(results)
 
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
