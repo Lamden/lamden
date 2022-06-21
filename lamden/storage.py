@@ -62,8 +62,8 @@ import shutil
   }        
 '''
 
-BLOCK_HASH_KEY = '_current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height'
+BLOCK_HASH_KEY = '__latest_block.hash'
+BLOCK_NUM_HEIGHT = '__latest_block.height'
 NONCE_KEY = '__n'
 PENDING_NONCE_KEY = '__pn'
 
@@ -76,16 +76,13 @@ BLOCK_0 = {
     'hash': '0' * 64
 }
 
-
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
-        if type(home) is str:
-            home = pathlib.Path().joinpath(home)
         self.home = home
 
         self.blocks_dir = self.home.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.txs_dir = self.home.joinpath('txs')
+        self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.build_directories()
 
@@ -384,19 +381,7 @@ def get_latest_block_height(driver: ContractDriver):
 
 
 def set_latest_block_height(h, driver: ContractDriver):
-    #log.info(f'set_latest_block_height {h}')
     driver.set(BLOCK_NUM_HEIGHT, h)
-    '''
-    log.info('Driver')
-    log.info(driver.driver)
-    log.info('Cache')
-    log.info(driver.cache)
-    log.info('Writes')
-    log.info(driver.pending_writes)
-    log.info('Deltas')
-    log.info(driver.pending_deltas)
-    '''
-
 
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
     nonces_to_delete = []

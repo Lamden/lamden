@@ -4,7 +4,7 @@ from lamden.crypto.wallet import Wallet
 import zmq.asyncio
 from contracting.client import ContractingClient
 from decimal import Decimal
-from lamden import storage
+from lamden.utils import legacy as storage
 from .mock import mocks
 import contracting
 import lamden

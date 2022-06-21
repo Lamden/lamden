@@ -1,6 +1,7 @@
 from lamden.nodes.masternode import masternode
 from lamden.nodes import base
-from lamden import router, storage, network, authentication
+from lamden import router, network, authentication
+from lamden.utils import legacy as storage
 from lamden.crypto.wallet import Wallet
 from lamden.crypto import canonical
 from contracting.db.driver import InMemDriver, ContractDriver
