@@ -634,8 +634,6 @@ class Node:
             await asyncio.sleep(0)
 
     async def check_validation_queue(self):
-        return
-        '''
         while self.running:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 if not self.validation_queue.checking:
@@ -649,7 +647,6 @@ class Node:
 
                     self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
-        '''
 
     async def process_main_queue(self):
         try:
