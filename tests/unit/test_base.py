@@ -284,6 +284,31 @@ class TestNode(TestCase):
 
         self.assertEqual(self.node.node.driver.driver.get('key'), 'sample_value')
 
+    def test_processing_transactions_does_not_drop_state(self):
+        num_of_transactions = 1000
+
+        processing_delay_secs = {
+            'base': 0,
+            'self': 0
+        }
+
+        self.node.node.processing_delay_secs = processing_delay_secs
+        self.node.node.driver.driver.set(f'currency.balances:{self.node.wallet.verifying_key}', 10000000)
+
+        loop = asyncio.get_event_loop()
+
+        loop.run_until_complete(self.node.node.stop_all_queues())
+
+        for i in range(num_of_transactions):
+            currency_tx = get_new_currency_tx(wallet=self.node.wallet)
+            tx = self.node.node.make_tx_message(tx=currency_tx)
+
+            self.node.main_processing_queue.append(tx=tx)
+            processing_results = loop.run_until_complete(self.node.node.main_processing_queue.process_next())
+            tx_result = processing_results.get('tx_result')
+            self.assertGreater(len(tx_result['state']), 0)
+            self.node.node.soft_apply_current_state(processing_results.get('hlc_timestamp'))
+
 import unittest
 if __name__ == '__main__':
     unittest.main()

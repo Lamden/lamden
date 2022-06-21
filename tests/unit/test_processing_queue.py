@@ -32,13 +32,13 @@ def get_new_tx():
                 'contract': 'currency',
                 'function': 'transfer',
                 'kwargs': {
-                    'amount': {'__fixed__': '499950'},
-                    'to': '6e4f96fa89c508d2842bef3f7919814cd1f64c16954d653fada04e61cc997206',
-                    'nonce': 0,
-                    'processor': '92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e'
+                    'amount': {'__fixed__': '5'},
+                    'to': '6e4f96fa89c508d2842bef3f7919814cd1f64c16954d653fada04e61cc997206'
                 },
+                'nonce': 0,
+                'processor': '92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e',
                 'sender': "d48b174f71efb9194e9cd2d58de078882bd172fcc7c8ac5ae537827542ae604e",
-                'stamps_supplied': 100
+                'stamps_supplied': 5000
             }
         }
 
@@ -511,6 +511,29 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(1, len(self.main_processing_queue.message_received_timestamps))
         self.assertIsNone(self.main_processing_queue.message_received_timestamps.get('1'))
         self.assertIsNotNone(self.main_processing_queue.message_received_timestamps.get('2'))
+
+
+    def test_processing_transactions_does_not_drop_state(self):
+        num_of_transactions = 1000
+
+        processing_delay_secs = {
+            'base': 0,
+            'self': 0
+        }
+
+        self.main_processing_queue.processing_delay = lambda: processing_delay_secs
+        #self.main_processing_queue.executor.metering = True
+
+        self.driver.driver.set('currency.balances:d48b174f71efb9194e9cd2d58de078882bd172fcc7c8ac5ae537827542ae604e', 10000000)
+
+        loop = asyncio.get_event_loop()
+        for i in range(num_of_transactions):
+            tx = self.make_tx_message(tx=get_new_tx())
+            self.main_processing_queue.append(tx=tx)
+            processing_results = loop.run_until_complete(self.main_processing_queue.process_next())
+            tx_result = processing_results.get('tx_result')
+            self.assertGreater(len(tx_result['state']), 0)
+            self.driver.soft_apply(tx.get('hlc_timestamp'))
 
     def test_prune_history(self):
         raise NotImplementedError

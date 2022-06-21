@@ -618,7 +618,9 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg)
+        asyncio.ensure_future(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
+
+        self.async_sleep(1)
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg = self.router_msg
