@@ -1,4 +1,4 @@
-from lamden.utils import legacy as storage
+from lamden import storage
 from unittest import TestCase
 import json
 import decimal
