@@ -653,13 +653,6 @@ class Node:
             processing_results = await self.main_processing_queue.process_next()
 
             if processing_results:
-                if len(processing_results['tx_result'].get('state')) == 0:
-                    print("STOP")
-
-            if self.upgrade_manager.node_type == 'masternode' and processing_results is not None:
-                print("testing")
-
-            if processing_results:
                 hlc_timestamp = processing_results.get('hlc_timestamp')
                 self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
@@ -700,12 +693,7 @@ class Node:
 
     def soft_apply_current_state(self, hlc_timestamp):
         try:
-            print("PENDING READS BEFORE")
-            print(self.driver.pending_reads)
             self.driver.soft_apply(hcl=hlc_timestamp)
-            print("PENDING READS AFTER")
-            print(self.driver.pending_reads)
-
         except Exception as err:
             print(err)
 

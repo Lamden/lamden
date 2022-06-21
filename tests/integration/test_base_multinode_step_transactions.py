@@ -28,8 +28,8 @@ class TestMultiNode(TestCase):
 
         self.scenarios = {
             "high_nodes_low_tx_amount":{
-                'num_of_masternodes': 3,
-                'num_of_delegates': 4,
+                'num_of_masternodes': 5,
+                'num_of_delegates': 5,
                 'amount_of_transactions': 25
             },
             "low_nodes_high_tx_amount":{

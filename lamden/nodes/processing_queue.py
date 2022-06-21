@@ -14,6 +14,9 @@ from lamden.nodes.queue_base import ProcessingQueue
 from datetime import datetime
 from .filequeue import STORAGE_HOME
 
+from threading import Lock
+
+GLOBAL_LOCK = Lock()
 
 class TxProcessingQueue(ProcessingQueue):
     def __init__(self, client, driver, wallet, hlc_clock, processing_delay, stop_node,
@@ -173,7 +176,11 @@ class TxProcessingQueue(ProcessingQueue):
 
                     # if the state result from the tx is empty then something happened during execution and we should
                     # add it back into the queue to have it run again.
+                    # NOTE: this happened in testing where we run multiple nodes in
+                    # separate threads which caused a data race accessing global vars
+                    # like Runtime and DatabaseLoader in contracting.Executor.execute()
                     if len(processing_results['tx_result']['state']) == 0:
+                        # TODO: this should never happen, but what if it does?
                         self.queue.append(tx)
                         return None
 
@@ -210,11 +217,13 @@ class TxProcessingQueue(ProcessingQueue):
         hlc_timestamp = tx['hlc_timestamp']
 
         # Execute the transaction
+        GLOBAL_LOCK.acquire()
         output = self.execute_tx(
             transaction=transaction,
             stamp_cost=stamp_cost,
             environment=environment
         )
+        GLOBAL_LOCK.release()
 
         if len(output['writes']) == 0:
             self.log.error("TX HAD NO WRITES!")

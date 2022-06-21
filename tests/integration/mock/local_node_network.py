@@ -362,11 +362,11 @@ class LocalNodeNetwork:
 
             print("Done")
 
-        def await_all_nodes_done_processing(self, block_height, timeout=60):
+        def await_all_nodes_done_processing(self, block_height, timeout=360):
             done = False
             start = time.time()
             while not done:
-                if timeout > 0 and time.time() - start > timeout:
+                if 0 < timeout < time.time() - start:
                     print(f'{__name__} TIMED OUT')
                     break
                 results = [node.current_height == block_height for node in self.all_nodes]
