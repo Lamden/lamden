@@ -143,12 +143,10 @@ def get_nonces(sender, processor, driver: storage.NonceStorage):
 
 def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_block=15):
     # Attempt to get the current block's pending nonce
-    '''
     if tx_nonce - nonce > tx_per_block or pending_nonce - nonce >= tx_per_block:
         raise TransactionTooManyPendingException
-    '''
 
-    expected_nonce = nonce
+    expected_nonce = max(nonce, pending_nonce)
 
     if strict:
         if tx_nonce != expected_nonce:
@@ -162,6 +160,22 @@ def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_bl
 
     return expected_nonce
 
+def check_nonce(tx: dict, nonces: storage.NonceStorage):
+    tx_nonce = tx['payload']['nonce']
+    tx_processor = tx['payload']['processor']
+    tx_sender = tx['payload']['sender']
+
+    current_nonce = nonces.get_nonce(
+        sender=tx_sender,
+        processor=tx_processor
+    )
+
+    valid = current_nonce is None or tx_nonce > current_nonce
+
+    if not valid:
+        raise TransactionNonceInvalid
+
+    return valid
 
 def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, function=None, amount=0):
     if balance * stamps_per_tau < stamps_supplied:
@@ -227,21 +241,13 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     transaction_is_not_expired(transaction, timeout)
 
     # Put in to variables for visual ease
-    processor = transaction['payload']['processor']
     sender = transaction['payload']['sender']
 
     # Checks if correct processor and if signature is valid
     check_tx_formatting(transaction, expected_processor)
 
-    # Gets the expected nonces
-    nonce, pending_nonce = get_nonces(sender, processor, nonces)
-
-    # Get the provided nonce
-    tx_nonce = transaction['payload']['nonce']
-
-    # Check to see if the provided nonce is valid to what we expect and
-    # if there are less than the max pending txs in the block
-    get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=strict, tx_per_block=tx_per_block)
+    # Check the Nonce is greater than the current nonce we have
+    check_nonce(tx=transaction, nonces=nonces)
 
     # Get the senders balance and the current stamp rate
     balance = client.get_var(contract='currency', variable='balances', arguments=[sender], mark=False)

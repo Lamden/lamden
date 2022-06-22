@@ -245,32 +245,6 @@ class WebServer:
                 client=self.client,
                 nonces=self.nonces
             )
-            '''
-
-            nonce, pending_nonce = transaction.get_nonces(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                driver=self.nonces
-            )
-
-            pending_nonce = transaction.get_new_pending_nonce(
-                tx_nonce=tx['payload']['nonce'],
-                nonce=nonce,
-                pending_nonce=pending_nonce
-            )
-
-            self.nonces.set_pending_nonce(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                value=pending_nonce
-            )
-            '''
-
-            self.nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
 
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
@@ -279,9 +253,15 @@ class WebServer:
                 transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
             )
 
+        self.nonces.set_nonce(
+            sender=tx['payload']['sender'],
+            processor=tx['payload']['processor'],
+            value=tx['payload']['nonce']
+        )
+
         # Add TX to the processing queue
         self.queue.append(request.body)
-        log.info('Added to q')
+        log.error('Added to q')
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)

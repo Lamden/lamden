@@ -27,7 +27,7 @@ class CredentialsProvider(object):
 
     def add_key(self, vk: str) -> None:
         self.approved_keys[vk] = z85_key(vk)
-        self.log('info', f'Added {vk} to approved_keys.')
+        # self.log('info', f'Added {vk} to approved_keys.')
 
     def remove_key(self, vk: str) -> None:
         try:

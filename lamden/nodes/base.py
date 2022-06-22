@@ -191,7 +191,8 @@ class Node:
             hlc_clock=self.hlc_clock,
             get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop,
-            driver=self.driver
+            driver=self.driver,
+            nonces=self.nonces
         )
 
         self.block_contender = block_contender.Block_Contender(
