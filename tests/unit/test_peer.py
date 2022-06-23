@@ -39,7 +39,7 @@ class TestPeer(unittest.TestCase):
 
 
     def setUp(self):
-        self.ctx = zmq.asyncio.Context()
+        self.ctx = zmq.asyncio.Context().instance()
 
         self.remote_peer = self.__class__.remote_peer
         self.remote_peer_wallet = self.__class__.remote_peer_wallet
@@ -62,11 +62,12 @@ class TestPeer(unittest.TestCase):
         self.service_callback_data = None
 
     def tearDown(self) -> None:
-        task = asyncio.ensure_future(self.peer.stop())
-        while not task.done():
-            self.async_sleep(0.1)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.peer.stop())
 
         del self.peer
+
+        self.ctx.destroy()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -611,14 +612,13 @@ class TestPeer(unittest.TestCase):
         self.peer.reconnecting = True
         self.peer.connected = False
 
-        tasks = asyncio.gather(
-            self.peer.reconnect_loop()
-        )
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        loop.run_until_complete(self.peer.reconnect_loop())
 
         self.assertTrue(self.peer.reconnecting)
         self.assertFalse(self.peer.connected)
+
+        self.peer.reconnecting = False
 
     def test_METHOD_setup_subscriber(self):
         self.peer.setup_subscriber()
@@ -723,6 +723,7 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_verify_peer__sets_verified_when_peer_exists(self):
         self.peer.setup_request()
+        self.peer.running = True
 
         task = asyncio.ensure_future(self.peer.verify_peer())
         while not task.done():
@@ -743,6 +744,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_verify_peer__calls_connected_callback_if_exists_and_passes_vk(self):
         self.peer.setup_request()
         self.peer.connected_callback = self.connected_callback
+        self.peer.running = True
 
         task = asyncio.ensure_future(self.peer.verify_peer())
         while not task.done():
@@ -752,6 +754,7 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_verify_peer__starts_subscriber(self):
         self.peer.setup_request()
+        self.peer.running = True
 
         task = asyncio.ensure_future(self.peer.verify_peer())
         while not task.done():

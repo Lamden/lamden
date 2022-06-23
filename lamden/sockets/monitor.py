@@ -85,6 +85,8 @@ class SocketMonitor:
                     self.log('info', f'[{socket}]{endpoint}: {key}-{event_value}')
 
     def monitor(self, socket: zmq.Socket) -> None:
+        if socket is None:
+            return
         socket_monitor = socket.get_monitor_socket()
         socket_monitor.linger = 0
         self.poller.register(socket_monitor, zmq.POLLIN)
@@ -93,6 +95,8 @@ class SocketMonitor:
         self.log('info', f'Monitoring {socket}')
 
     def stop_monitoring(self, socket: zmq.Socket) -> None:
+        if socket is None:
+            return
         socket_monitor = socket.get_monitor_socket()
         self.unregister_socket_from_poller(socket=socket_monitor)
         self.sockets_to_monitor.remove(socket_monitor)

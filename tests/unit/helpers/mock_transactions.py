@@ -10,6 +10,7 @@ from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
 from lamden import rewards
+from lamden.contracts import sync
 
 def generate_blocks(number_of_blocks):
     previous_hash = '0' * 64
@@ -90,6 +91,8 @@ def get_processing_results(tx_message, driver=None, node_wallet=None, node=None)
     else:
         driver = driver or ContractDriver()
         client = ContractingClient(driver=driver)
+
+        sync.submit_from_genesis_json_file(client=client)
 
         main_processing_queue = TxProcessingQueue(
             testing=True,

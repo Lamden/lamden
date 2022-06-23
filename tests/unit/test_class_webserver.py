@@ -38,10 +38,6 @@ class TestClassWebserver(TestCase):
             driver=n
         )
 
-        self.ws.client.flush()
-        self.ws.blocks.flush()
-        self.ws.driver.flush()
-
     def tearDown(self):
         self.ws.client.flush()
         self.ws.blocks.flush()
@@ -534,7 +530,7 @@ def get():
 
         _, response = self.ws.app.test_client.post('/', data=tx)
 
-        self.assertEqual(len(self.ws.queue), 1)
+        self.assertEqual(1, len(self.ws.queue))
 
     def test_submit_transaction_error_if_queue_full(self):
         for i in range(10_000):

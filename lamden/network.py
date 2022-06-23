@@ -224,7 +224,10 @@ class Network:
 
         if self.peer_is_voted_in(peer_vk=vk):
             self.refresh_approved_peers_in_cred_provider()
-            self.add_peer(ip=ip, peer_vk=vk)
+            try:
+                self.add_peer(ip=ip, peer_vk=vk)
+            except Exception as err:
+                print(err)
         else:
             self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
 
@@ -254,7 +257,7 @@ class Network:
             else:
                 # TODO This might be causing a feedback loop.  Remove for now.
                 # check that our connection to this node is okay
-                #asyncio.ensure_future(peer.test_connection())
+                # asyncio.ensure_future(peer.test_connection())
                 pass
 
         else:
@@ -593,5 +596,7 @@ class Network:
 
         self.publisher.stop()
         await self.router.stop()
+
+        self.ctx.destroy(linger=0)
 
         self.log('info', 'Stopped.')

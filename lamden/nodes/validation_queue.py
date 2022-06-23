@@ -126,11 +126,7 @@ class ValidationQueue(ProcessingQueue):
 
             # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
-                block = self.get_block_by_hlc(hlc_timestamp=next_hlc_timestamp)
-                self.log.info(f'next_hlc_timestamp: {next_hlc_timestamp} is earlier than last_hlc_in_consensus: {self.last_hlc_in_consensus}')
-                if block:
-                    self.log.info(f'Have block for {next_hlc_timestamp}')
-                    self.flush_hlc(next_hlc_timestamp)
+                    self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
                     return
                     # await self.process_next()
 

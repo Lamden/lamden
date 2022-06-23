@@ -14,6 +14,7 @@ class Subscriber():
                 local_ip: str = None, local: bool = False):
 
         self.running = False
+        self.checking = False
 
         self.local_ip = local_ip
         self.local = local
@@ -138,6 +139,7 @@ class Subscriber():
 
     async def check_for_messages(self) -> None:
         self.running = True
+        self.checking = True
 
         # initial poll to contact publisher
         await self.messages_waiting()
@@ -150,6 +152,8 @@ class Subscriber():
 
                 if self.callback:
                     asyncio.ensure_future(self.callback(data))
+
+        self.checking = False
 
     async def stop_checking_for_messages(self):
         self.running = False
@@ -165,7 +169,7 @@ class Subscriber():
         self.socket.close()
 
     async def stopping(self) -> None:
-        while not self.socket_is_closed:
+        while not self.socket_is_closed and self.checking:
             await asyncio.sleep(0)
 
     async def stop(self) -> None:

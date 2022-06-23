@@ -14,6 +14,8 @@ class TestCredentialsProvider(unittest.TestCase):
 
     def create_credentials_provider(self):
         self.credentials_provider = CredentialsProvider()
+        for peer in self.all_peers:
+            self.credentials_provider.add_key(vk=peer.local_vk)
 
     def get_all_peers(self):
         return self.all_peers

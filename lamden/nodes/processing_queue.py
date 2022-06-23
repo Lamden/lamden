@@ -174,16 +174,6 @@ class TxProcessingQueue(ProcessingQueue):
                 try:
                     processing_results = self.process_tx(tx=tx)
 
-                    # if the state result from the tx is empty then something happened during execution and we should
-                    # add it back into the queue to have it run again.
-                    # NOTE: this happened in testing where we run multiple nodes in
-                    # separate threads which caused a data race accessing global vars
-                    # like Runtime and DatabaseLoader in contracting.Executor.execute()
-                    if len(processing_results['tx_result']['state']) == 0:
-                        # TODO: this should never happen, but what if it does?
-                        self.queue.append(tx)
-                        return None
-
                 except Exception as err:
                     self.log.error(err)
                     print(err)
@@ -192,6 +182,7 @@ class TxProcessingQueue(ProcessingQueue):
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
 
+                self.message_received_timestamps.pop(self.currently_processing_hlc)
                 self.currently_processing_hlc = ""
 
                 return processing_results
