@@ -191,7 +191,7 @@ class TestWorkValidator(TestCase):
 
         with self.assertLogs(level='ERROR') as log:
             self.process_message(msg)
-            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[1])
+            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[0])
             self.assertEqual(1, len(self.main_processing_queue))
 
     def test_process_message_doesnt_append_message_if_unknown_masternode(self):
