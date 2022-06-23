@@ -172,6 +172,8 @@ class MockRouter(threading.Thread):
             #loop.run_until_complete(self.socket_monitor.stop())
             loop.run_until_complete(self.stopping())
 
+        self.ctx.destroy(linger=0)
+
         self.running = False
 
 class TestMockRouter(unittest.TestCase):

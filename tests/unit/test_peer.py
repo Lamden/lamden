@@ -39,7 +39,7 @@ class TestPeer(unittest.TestCase):
 
 
     def setUp(self):
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = zmq.asyncio.Context()
 
         self.remote_peer = self.__class__.remote_peer
         self.remote_peer_wallet = self.__class__.remote_peer_wallet
@@ -52,7 +52,8 @@ class TestPeer(unittest.TestCase):
             get_network_ip=self.get_network_ip,
             server_vk=self.peer_vk,
             services=self.get_services,
-            local_wallet=self.local_wallet
+            local_wallet=self.local_wallet,
+            ctx=self.ctx
         )
 
         self.services = {}
@@ -65,9 +66,8 @@ class TestPeer(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.peer.stop())
 
-        del self.peer
-
-        self.ctx.destroy()
+        #self.peer.ctx.destroy(linger=0)
+        self.ctx.destroy(linger=0)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -199,19 +199,21 @@ class TestPeer(unittest.TestCase):
 
     def test_PROPERTY_is_verifying__returns_FALSE_if_verifying_task_is_Done(self):
         async def simple_task():
-            self.async_sleep(0.01)
+            task = asyncio.ensure_future(asyncio.sleep(0.01))
+            await asyncio.gather(task)
 
         self.peer.verify_task = asyncio.ensure_future(simple_task())
 
         while not self.peer.verify_task.done():
-            self.async_sleep(0.015)
+            self.async_sleep(0.1)
 
         self.assertTrue(self.peer.verify_task.done())
         self.assertFalse(self.peer.is_verifying)
 
     def test_PROPERTY_is_verifying__returns_True_if_verifying_task_is_NOT_Done(self):
         async def simple_task():
-            self.async_sleep(0.1)
+            task = asyncio.ensure_future(asyncio.sleep(1))
+            await asyncio.gather(task)
 
         self.peer.verify_task = asyncio.ensure_future(simple_task())
 

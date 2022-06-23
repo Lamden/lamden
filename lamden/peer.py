@@ -153,7 +153,8 @@ class Peer:
             topics=SUBSCRIPTIONS,
             callback=self.process_subscription,
             local_ip=self.get_network_ip(),
-            local=self.local
+            local=self.local,
+            ctx=self.ctx
         )
         self.subscriber.start()
 
@@ -162,7 +163,8 @@ class Peer:
             server_curve_vk=self.server_curve_vk,
             local_wallet=self.local_wallet,
             local_ip=self.get_network_ip(),
-            to_address=self.request_address
+            to_address=self.request_address,
+            ctx=self.ctx
         )
         self.request.start()
 

@@ -470,7 +470,8 @@ class TestNetwork(TestCase):
         msg = json.dumps({'testing': 'ping'})
 
         try:
-            network_1.router_callback(ident_vk_string="", msg=msg)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(network_1.router_callback(ident_vk_string="", msg=msg))
         except:
             self.fail('Calling router_callback with a message without an action should not trigger any exceptions.')
 
