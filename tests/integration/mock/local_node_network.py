@@ -7,7 +7,7 @@ from typing import List
 from tests.integration.mock.threaded_node import ThreadedNode
 from tests.integration.mock.mock_data_structures import MockBlocks, MockBlock, MockTransaction
 from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage
+from lamden.storage import BlockStorage, NonceStorage
 from lamden.nodes.base import Node
 
 from contracting.db.driver import FSDriver, InMemDriver
@@ -169,6 +169,7 @@ class LocalNodeNetwork:
             #raw_driver = FSDriver(root=Path(node_state_dir))
             raw_driver = InMemDriver()
             block_storage = BlockStorage(home=Path(node_dir))
+            nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
 
             tx_queue = FileQueue(root=node_dir.joinpath('txq'))
 
@@ -181,6 +182,7 @@ class LocalNodeNetwork:
                     bootnodes=self.bootnodes,
                     raw_driver=raw_driver,
                     block_storage=block_storage,
+                    nonce_storage=nonce_storage,
                     genesis_path=self.genesis_path,
                     should_seed=should_seed,
                     tx_queue=tx_queue,
@@ -360,7 +362,7 @@ class LocalNodeNetwork:
             for node in self.all_nodes:
                 node.join()
 
-            print("Done")
+            print("All Nodes Stopped.")
 
         def await_all_nodes_done_processing(self, block_height, timeout=360):
             done = False

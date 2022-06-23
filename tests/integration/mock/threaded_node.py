@@ -9,7 +9,7 @@ from lamden.nodes.delegate import Delegate
 from lamden.nodes.masternode import Masternode
 from lamden.nodes.base import Node
 
-from lamden.storage import BlockStorage
+from lamden.storage import BlockStorage, NonceStorage
 from contracting.db.driver import ContractDriver, FSDriver
 from lamden.network import Network
 
@@ -30,6 +30,7 @@ class ThreadedNode(threading.Thread):
                  node_type,
                  constitution: dict,
                  block_storage: BlockStorage,
+                 nonce_storage: NonceStorage,
                  raw_driver,
                  tx_queue: FileQueue = FileQueue(),
                  index=0,
@@ -54,6 +55,7 @@ class ThreadedNode(threading.Thread):
         self.raw_driver = raw_driver
         self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
+        self.nonces = nonce_storage
         self.genesis_path = genesis_path
         self.tx_queue = tx_queue
 
@@ -171,7 +173,8 @@ class ThreadedNode(threading.Thread):
                 tx_queue=self.tx_queue,
                 reconnect_attempts=self.reconnect_attempts,
                 testing=True,
-                delay=self.delay
+                delay=self.delay,
+                nonces=self.nonces
             )
 
             self.node.network.set_to_local()
