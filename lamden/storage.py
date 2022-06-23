@@ -1,22 +1,16 @@
-from contracting.db.driver import ContractDriver
-
-from lamden.logger.base import get_logger
-from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.driver import FSDriver
 from contracting import config
-
-from contracting.db.encoder import encode, decode, encode_kv
-
-import pathlib
-
-import json
-
+from contracting.db.driver import ContractDriver, FSDriver
+from contracting.db.encoder import encode, decode
+from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden.logger.base import get_logger
 import os
-
+import pathlib
 import shutil
 
-## Block Format
-'''
+# NOTE: move state related stuff out of here. see TODO's below.
+
+'''                             Block Format
+
 {
     "hash": "hashed(hlc_timestamp + number + previous_hash)",
     "number": number,
@@ -62,106 +56,41 @@ import shutil
   }        
 '''
 
-BLOCK_HASH_KEY = '_current_block_hash'
-BLOCK_NUM_HEIGHT = '_current_block_height'
-NONCE_KEY = '__n'
-PENDING_NONCE_KEY = '__pn'
-
+LATEST_BLOCK_HASH_KEY = '__latest_block.hash'
+LATEST_BLOCK_HEIGHT_KEY = '__latest_block.height'
 STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
-
-log = get_logger('STATE')
-
 BLOCK_0 = {
     'number': 0,
     'hash': '0' * 64
 }
 
-
 class BlockStorage:
     def __init__(self, home=STORAGE_HOME):
-        if type(home) is str:
-            home = pathlib.Path().joinpath(home)
+        self.log = get_logger('BlockStorage')
         self.home = home
 
         self.blocks_dir = self.home.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.txs_dir = self.home.joinpath('txs')
+        self.txs_dir = self.blocks_dir.joinpath('txs')
 
-        self.build_directories()
+        self.__build_directories()
 
-        self.cache = {}
-
-    def build_directories(self):
+    def __build_directories(self):
         self.home.mkdir(exist_ok=True, parents=True)
         self.blocks_dir.mkdir(exist_ok=True, parents=True)
         self.blocks_alias_dir.mkdir(exist_ok=True, parents=True)
         self.txs_dir.mkdir(exist_ok=True, parents=True)
 
-    def flush(self):
-        try:
-            shutil.rmtree(self.home)
-            self.build_directories()
-        except FileNotFoundError:
-            pass
-
-    def store_block_old(self, block):
-        if block.get('subblocks') is None:
-            return
-
-        txs, hashes = self.cull_txs(block)
-        self.write_block(block)
-        self.write_txs(txs, hashes)
-
-    def store_block(self, block):
-        tx, tx_hash = self.cull_tx(block)
-
-        if tx is None or tx_hash is None:
-            raise ValueError('Block has no transaction information or malformed tx data.')
-
-        self.write_block(block)
-        self.write_txs([tx], [tx_hash])
-
-    @staticmethod
-    def cull_txs(block):
+    def __cull_tx(self, block):
         # Pops all transactions from the block and replaces them with the hash only for storage space
         # Returns the data and hashes for storage in a different folder. Block is modified in place
-        txs = []
-        hashes = []
-        for subblock in block['subblocks']:
-            subblock_txs = []
-            subblock_hashes = []
+        tx = block.get('processed', None)
+        tx_hash = tx.get('hash', None)
+        block['processed'] = tx_hash
 
-            for i in range(len(subblock['transactions'])):
-                tx = subblock['transactions'].pop(0)
+        return tx, tx_hash
 
-                subblock_txs.append(tx)
-                subblock_hashes.append(tx['hash'])
-
-            subblock['transactions'] = subblock_hashes
-            try:
-                subblock['subblock'] = int(subblock['subblock'])
-            except:
-                pass
-
-            txs.extend(subblock_txs)
-            hashes.extend(subblock_hashes)
-
-        return txs, hashes
-
-    @staticmethod
-    def cull_tx(block):
-        # Pops all transactions from the block and replaces them with the hash only for storage space
-        # Returns the data and hashes for storage in a different folder. Block is modified in place
-        try:
-            tx = block.get('processed', None)
-            tx_hash = tx.get('hash', None)
-            block['processed'] = tx_hash
-
-            return tx, tx_hash
-        except Exception:
-            return None, None
-
-    def write_block(self, block):
+    def __write_block(self, block):
         num = block.get('number')
 
         if type(num) == dict:
@@ -181,36 +110,33 @@ class BlockStorage:
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
         except FileExistsError as err:
-            print(err)
+            self.log.info(err)
+
+    def __write_tx(self, tx_hash, tx):
+        with open(self.txs_dir.joinpath(tx_hash), 'w') as f:
+            encoded_tx = encode(tx)
+            f.write(encoded_tx)
+
+    def __fill_block(self, block):
+        tx_hash = block.get('processed')
+        tx = self.get_tx(tx_hash)
+        block['processed'] = tx
+
+    def flush(self):
+        try:
+            shutil.rmtree(self.home)
+            self.__build_directories()
+        except FileNotFoundError:
             pass
 
-    def write_txs(self, txs, hashes):
-        for file, data in zip(hashes, txs):
-            with open(self.txs_dir.joinpath(file), 'w') as f:
-                encoded_tx = encode(data)
-                f.write(encoded_tx)
+    def store_block(self, block):
+        tx, tx_hash = self.__cull_tx(block)
 
-    def get_block_old(self, v=None, no_id=True):
-        if v is None:
-            return None
+        if tx is None or tx_hash is None:
+            raise ValueError('Block has no transaction information or malformed tx data.')
 
-        try:
-            if isinstance(v, int):
-                f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
-            else:
-                f = open(self.blocks_alias_dir.joinpath(v))
-        except FileNotFoundError:
-            return None
-
-        encoded_block = f.read()
-
-        block = decode(encoded_block)
-
-        f.close()
-
-        self.fill_block(block)
-
-        return block
+        self.__write_block(block)
+        self.__write_tx(tx_hash, tx)
 
     def get_block(self, v=None):
         if v is None:
@@ -222,47 +148,24 @@ class BlockStorage:
             else:
                 f = open(self.blocks_alias_dir.joinpath(v))
         except Exception as err:
-            print(err)
+            self.log.error(f'Block {v} does not exist!')
             return None
 
         encoded_block = f.read()
-
         block = decode(encoded_block)
+        self.__fill_block(block)
 
         f.close()
-
-        self.fill_block(block)
 
         return block
 
     def get_previous_block(self, v=None):
-        block = self.get_block(v=v)
+        block = self.get_block(v)
 
         if block is None:
             return BLOCK_0
 
         return block
-
-    def soft_store_block(self, hlc, block):
-        self.cache[hlc] = block
-
-    def commit(self, hlc):
-        to_delete = []
-        for _hlc, block in sorted(self.cache.items()):
-
-            self.store_block(block)
-
-            to_delete.append(_hlc)
-            if _hlc == hlc:
-                break
-
-        for b in to_delete:
-            self.cache.pop(b)
-
-    def fill_block(self, block):
-        tx_hash = block.get('processed')
-        tx = self.get_tx(tx_hash)
-        block['processed'] = tx
 
     def get_tx(self, h):
         try:
@@ -272,7 +175,8 @@ class BlockStorage:
             tx = decode(encoded_tx)
 
             f.close()
-        except FileNotFoundError:
+        except FileNotFoundError as err:
+            self.log.error(err)
             tx = None
 
         return tx
@@ -306,7 +210,10 @@ class BlockStorage:
 
         return blocks
 
-
+# TODO: remove pending nonces if we end up getting rid of them.
+# TODO: move to component responsible for state maintenance.
+NONCE_KEY = '__n' # TODO: utilize
+PENDING_NONCE_KEY = '__pn' # TODO: utilize
 class NonceStorage:
     def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
                  pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
@@ -360,20 +267,20 @@ class NonceStorage:
     def flush_pending(self):
         self.pending_nonces.flush()
 
-
+# TODO: move to component responsible for state maintenance.
 def get_latest_block_hash(driver: ContractDriver):
-    latest_hash = driver.get(BLOCK_HASH_KEY)
+    latest_hash = driver.get(LATEST_BLOCK_HASH_KEY)
     if latest_hash is None:
         return '0' * 64
     return latest_hash
 
-
+# TODO: move to component responsible for state maintenance.
 def set_latest_block_hash(h, driver: ContractDriver):
-    driver.set(BLOCK_HASH_KEY, h)
+    driver.set(LATEST_BLOCK_HASH_KEY, h)
 
-
+# TODO: move to component responsible for state maintenance.
 def get_latest_block_height(driver: ContractDriver):
-    h = driver.get(BLOCK_NUM_HEIGHT, save=False)
+    h = driver.get(LATEST_BLOCK_HEIGHT_KEY, save=False)
     if h is None:
         return 0
 
@@ -382,50 +289,39 @@ def get_latest_block_height(driver: ContractDriver):
 
     return h
 
-
+# TODO: move to component responsible for state maintenance.
 def set_latest_block_height(h, driver: ContractDriver):
-    #log.info(f'set_latest_block_height {h}')
-    driver.set(BLOCK_NUM_HEIGHT, h)
-    '''
-    log.info('Driver')
-    log.info(driver.driver)
-    log.info('Cache')
-    log.info(driver.cache)
-    log.info('Writes')
-    log.info(driver.pending_writes)
-    log.info('Deltas')
-    log.info(driver.pending_deltas)
-    '''
+    driver.set(LATEST_BLOCK_HEIGHT_KEY, h)
 
-
+# TODO: implement and move to component responsible for state maintenance.
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):
-    nonces_to_delete = []
+    raise NotImplementedError
+    #nonces_to_delete = []
 
-    if tx['state'] is not None and len(tx['state']) > 0:
-        for delta in tx['state']:
-            driver.set(delta['key'], delta['value'])
-            # log.debug(f"{delta['key']} -> {delta['value']}")
+    #if tx['state'] is not None and len(tx['state']) > 0:
+    #    for delta in tx['state']:
+    #        driver.set(delta['key'], delta['value'])
 
-            nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
+    #        nonces.set_nonce(
+    #            sender=tx['transaction']['payload']['sender'],
+    #            processor=tx['transaction']['payload']['processor'],
+    #            value=tx['transaction']['payload']['nonce'] + 1
+    #        )
 
-            nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
+    #        nonces_to_delete.append((tx['transaction']['payload']['sender'], tx['transaction']['payload']['processor']))
 
-    for n in nonces_to_delete:
-        nonces.set_pending_nonce(*n, value=None)
+    #for n in nonces_to_delete:
+    #    nonces.set_pending_nonce(*n, value=None)
 
-
+# TODO: implement and move to component responsible for state maintenance.
 def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage, set_hash_and_height=True):
-    if block.get('subblocks') is not None:
-        for sb in block['subblocks']:
-            for tx in sb['transactions']:
-                update_state_with_transaction(tx, driver, nonces)
+    raise NotImplementedError
+    #if block.get('subblocks') is not None:
+    #    for sb in block['subblocks']:
+    #        for tx in sb['transactions']:
+    #            update_state_with_transaction(tx, driver, nonces)
 
-    # Update our block hash and block num
-    if set_hash_and_height:
-        set_latest_block_hash(block['hash'], driver=driver)
-        set_latest_block_height(block['number'], driver=driver)
-
+    ## Update our block hash and block num
+    #if set_hash_and_height:
+    #    set_latest_block_hash(block['hash'], driver=driver)
+    #    set_latest_block_height(block['number'], driver=driver)

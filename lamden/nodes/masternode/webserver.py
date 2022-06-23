@@ -30,6 +30,7 @@ import argparse
 
 log = get_logger("MN-WebServer")
 
+log = get_logger("MN-WebServer")
 
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
@@ -138,7 +139,7 @@ class WebServer:
 
         self.ws_clients = set()
         self.app.add_websocket_route(self.ws_handler, '/')
-
+    
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
@@ -155,7 +156,7 @@ class WebServer:
         @self.sio.event
         async def event(data):
             for client in self.ws_clients:
-                await client.send(json.dumps(data))
+                await client.send(encode(data))
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
@@ -177,19 +178,12 @@ class WebServer:
             num = storage.get_latest_block_height(self.driver)
             block = self.blocks.get_block(int(num))
 
-            log.info(block)
-
-            encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block)
-
-            log.info(encoded_block)
-
             eventData = {
                 'event': 'latest_block',
-                'data': encoded_block
+                'data': block
             }
 
-            await ws.send(json.dumps(eventData))
+            await ws.send(encode(eventData))
 
             async for message in ws:
                 pass
@@ -223,17 +217,25 @@ class WebServer:
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
         log.debug(f'New request: {request}')
+
+        if request.method == "OPTIONS":
+            return response.text("",headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': "origin, content-type"
+            })
+
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        tx_raw = _json.loads(request.body)
-        log.error(tx_raw)
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:
             return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
+
+        tx_raw = _json.loads(request.body)
+        log.error(tx_raw)
 
         # Check that the TX is correctly formatted
         try:
@@ -384,7 +386,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         self.driver.clear_pending_state()
@@ -415,7 +417,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
@@ -435,7 +437,7 @@ class WebServer:
             return response.json({'error': 'Transaction not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(tx, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(tx, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
         self.client.raw_driver.clear_pending_state()

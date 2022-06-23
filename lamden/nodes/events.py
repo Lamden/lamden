@@ -51,8 +51,7 @@ class EventListener:
             with open(file, 'r') as f:
                 try:
                     e = json.load(f)
-                    event = Event(e['topics'], e['data'])
-                    events.append(event)
+                    events.append(Event(e['topics'], e['data']))
                 except:
                     # TODO(nikita): proper handling
                     print('failed to load event')

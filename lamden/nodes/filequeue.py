@@ -35,11 +35,14 @@ class FileQueue:
         return i
 
     def flush(self):
-        shutil.rmtree(self.root)
+        try:
+            shutil.rmtree(self.root)
+        except FileNotFoundError:
+            pass
 
     def refresh(self):
         self.flush()
-        os.makedirs(self.root)
+        self.root.mkdir(exist_ok=True, parents=True)
 
     def __len__(self):
         try:

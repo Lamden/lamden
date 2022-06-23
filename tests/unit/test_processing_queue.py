@@ -218,7 +218,6 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(hlc_timestamp, first_tx.get('hlc_timestamp'))
         self.assertIsNotNone(processing_results.get('proof'))
         self.assertIsNotNone(processing_results.get('tx_result'))
-        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get(first_tx['hlc_timestamp']))
         self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
 
     def test_hlc_already_in_queue(self):
