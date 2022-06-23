@@ -13,9 +13,7 @@ class TestCredentialsProvider(unittest.TestCase):
         del self.credentials_provider
 
     def create_credentials_provider(self):
-        self.credentials_provider = CredentialsProvider(
-            get_all_peers=self.get_all_peers
-        )
+        self.credentials_provider = CredentialsProvider()
 
     def get_all_peers(self):
         return self.all_peers

@@ -28,24 +28,11 @@ class TestMisc(TestCase):
 
 class TestNode(TestCase):
     def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
         self.local_node_network = LocalNodeNetwork(num_of_masternodes=1, genesis_path=contracts.__path__[0])
         self.node = self.local_node_network.masternodes[0]
 
     def tearDown(self):
-        if self.local_node_network:
-            for tn in self.local_node_network.all_nodes:
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(tn.stop())
-
-            for tn in self.local_node_network.all_nodes:
-                tn.join()
-
-        self.loop.stop()
-        self.loop.close()
-
+        self.await_async_process(self.local_node_network.stop_all_nodes)
 
     def await_async_process(self, process, *args, **kwargs):
         task = asyncio.gather(

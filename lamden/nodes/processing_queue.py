@@ -118,7 +118,7 @@ class TxProcessingQueue(ProcessingQueue):
                 remove_from_list.append(hlc_timestamp)
 
         for hlc_timestamp in remove_from_list:
-                self.message_received_timestamps.pop(hlc_timestamp)
+            self.message_received_timestamps.pop(hlc_timestamp)
 
     def hlc_already_in_queue(self, hlc_timestamp):
         for tx in self.queue:

@@ -90,7 +90,7 @@ class TestWorkValidator(TestCase):
         self.wallet = Wallet()
         self.main_processing_queue = []
         self.network = Network()
-        self.last_processed_hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.wv = WorkValidator(
             self.hlc_clock,
@@ -179,7 +179,7 @@ class TestWorkValidator(TestCase):
 
     def test_process_message_appends_message_if_valid(self):
         msg = self.make_tx(wallet=self.wallet)
-        self.last_processed_hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.process_message(msg)
         
@@ -191,7 +191,7 @@ class TestWorkValidator(TestCase):
 
         with self.assertLogs(level='ERROR') as log:
             self.process_message(msg)
-            self.assertIn(f'{OLDER_HLC_RECEIVED}: {msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[0])
+            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[1])
             self.assertEqual(1, len(self.main_processing_queue))
 
     def test_process_message_doesnt_append_message_if_unknown_masternode(self):

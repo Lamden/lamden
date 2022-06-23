@@ -42,7 +42,7 @@ class BlockService(Processor):
         block = self.blocks.get_block(num)
 
         if block is None:
-            return None
+            return {"error": "block does not exist"}
 
         return block
 
