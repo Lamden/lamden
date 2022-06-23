@@ -159,6 +159,14 @@ class BlockStorage:
 
         return block
 
+    def get_previous_block(self, v=None):
+        block = self.get_block(v)
+
+        if block is None:
+            return BLOCK_0
+
+        return block
+
     def get_tx(self, h):
         try:
             f = open(self.txs_dir.joinpath(h))
