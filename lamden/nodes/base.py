@@ -722,8 +722,8 @@ class Node:
         # Commit the state changes and nonces to the database
 
         # NOTE: write it directly to disk.
-        self.driver.driver.set(storage.BLOCK_HASH_KEY, block['hash'])
-        self.driver.driver.set(storage.BLOCK_NUM_HEIGHT, block['number'])
+        self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
+        self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
 
         self.new_block_processor.clean(self.get_current_height())
 
@@ -772,7 +772,7 @@ class Node:
 
         next_block_num = self.current_block_height + 1
 
-        prev_block = self.blocks.get_previous_block(v=self.current_block_height)
+        prev_block = self.blocks.get_block(v=self.current_block_height)
 
         # Get any blocks that have been commited that are later than this hlc_timestamp
         later_blocks = self.blocks.get_later_blocks(block_height=self.current_block_height, hlc_timestamp=hlc_timestamp)
@@ -789,7 +789,7 @@ class Node:
             # Get the block number of the block right after where we want to put this tx this will be the block number
             # for our new block
             next_block_num = later_blocks[0].get('number')
-            prev_block = self.blocks.get_previous_block(v=later_blocks[0].get('number') - 1)
+            prev_block = self.blocks.get_block(v=next_block_num - 1)
 
             new_block = block_from_tx_results(
                 processing_results=processing_results,

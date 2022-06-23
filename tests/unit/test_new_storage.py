@@ -1,14 +1,12 @@
-from contracting.db.driver import ContractDriver
-from lamden import storage
-from lamden.storage import BlockStorage
+from lamden.nodes.hlc import HLC_Clock
+from lamden.storage import BlockStorage, NonceStorage
+from tests.unit.helpers.mock_blocks import generate_blocks
 from unittest import TestCase
-import copy
-import json
+import os, copy
 
 class TestNonce(TestCase):
     def setUp(self):
-        self.nonces = storage.NonceStorage()
-        self.nonces.flush()
+        self.nonces = NonceStorage()
 
     def tearDown(self):
         self.nonces.flush()
@@ -93,726 +91,104 @@ class TestNonce(TestCase):
 
         self.assertEqual(n, 2)
 
+SAMPLE_BLOCK = {
+    'number': 1,
+    'hash': 'sample_block_hash',
+    'hlc_timestamp': '1',
+    'processed': {'hash': 'sample_tx_hash'}
+}
 
-class TestStorage(TestCase):
+class TestBlockStorage(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
-        self.driver.flush()
+        self.bs = BlockStorage()
+        self.hlc_clock = HLC_Clock()
 
     def tearDown(self):
-        self.driver.flush()
-
-    def test_get_latest_block_hash_0s_if_none(self):
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, '0' * 64)
-
-    def test_get_latest_block_hash_correct_after_set(self):
-        storage.set_latest_block_hash('a' * 64, self.driver)
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, 'a' * 64)
-
-    def test_get_latest_block_height_0_if_none(self):
-        h = storage.get_latest_block_height(self.driver)
-        self.assertEqual(h, 0)
-
-    def test_get_latest_block_height_correct_after_set(self):
-        storage.set_latest_block_height(123, self.driver)
-        h = storage.get_latest_block_height(self.driver)
-        self.assertEqual(h, 123)
-
-
-tx_1 = {
-    'transaction': {
-        'payload': {
-            'sender': 'abc',
-            'processor': 'def',
-            'nonce': 123,
-        }
-    },
-    'state': [
-        {
-            'key': 'hello', 'value': 'there'
-        },
-        {
-            'key': 'name', 'value': 'jeff'
-        }
-    ]
-}
-
-tx_2 = {
-    'transaction': {
-        'payload': {
-            'sender': 'abc',
-            'processor': 'def',
-            'nonce': 124,
-        }
-    },
-    'state': [
-        {
-            'key': 'hello', 'value': 'there2'
-        },
-        {
-            'key': 'name2', 'value': 'jeff2'
-        }
-    ]
-}
-
-tx_3 = {
-    'transaction': {
-        'payload': {
-            'sender': 'xxx',
-            'processor': 'yyy',
-            'nonce': 42,
-        }
-    },
-    'state': [
-        {
-            'key': 'another', 'value': 'value'
-        },
-        {
-            'key': 'something', 'value': 'else'
-        }
-    ]
-}
-
-
-block = {
-    'hash': 'f' * 64,
-    'number': 555,
-    'subblocks': [
-        {
-            'transactions': [tx_1, tx_2]
-        },
-        {
-            'transactions': [tx_3]
-        }
-    ]
-}
-
-
-class TestUpdatingState(TestCase):
-    def setUp(self):
-        self.driver = ContractDriver()
-        self.nonces = storage.NonceStorage()
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
-
-    def tearDown(self):
-        self.nonces.flush()
-        self.driver.flush()
-        self.driver.clear_pending_state()
-
-    def test_state_updated_to_correct_values_in_tx(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        self.assertIsNone(v1)
-        self.assertIsNone(v2)
-
-        storage.update_state_with_transaction(
-            tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        self.assertEqual(v1, 'there')
-        self.assertEqual(v2, 'jeff')
-
-    def test_nonces_set_to_tx_value(self):
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 0)
-
-        storage.update_state_with_transaction(
-            tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 124)
-
-    def test_nonces_deleted_after_all_updates(self):
-        self.nonces.set_pending_nonce(
-            sender='abc',
-            processor='def',
-            value=122
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-
-        self.assertEqual(n, 122)
-
-        storage.update_state_with_transaction(
-            tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-
-        self.assertEqual(n, None)
-
-    def test_multiple_txs_deletes_multiple_nonces(self):
-        self.nonces.set_pending_nonce(
-            sender='abc',
-            processor='def',
-            value=122
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 122)
-
-        self.nonces.set_pending_nonce(
-            sender='xxx',
-            processor='yyy',
-            value=4
-        )
-
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, 4)
-
-        storage.update_state_with_transaction(
-            tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        storage.update_state_with_transaction(
-            tx=tx_2,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        storage.update_state_with_transaction(
-            tx=tx_3,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-        self.assertEqual(n, None)
-
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, None)
-
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 125)
-
-        n = self.nonces.get_latest_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, 43)
-
-    def test_multiple_tx_state_updates_correctly(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        v3 = self.driver.get('name2', mark=False)
-
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
-
-        self.assertIsNone(v1)
-        self.assertIsNone(v2)
-        self.assertIsNone(v3)
-        self.assertIsNone(v4)
-        self.assertIsNone(v5)
-
-        storage.update_state_with_transaction(
-            tx=tx_1,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        storage.update_state_with_transaction(
-            tx=tx_2,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        storage.update_state_with_transaction(
-            tx=tx_3,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        v3 = self.driver.get('name2', mark=False)
-
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
-
-        self.assertEqual(v1, 'there2')
-        self.assertEqual(v2, 'jeff')
-        self.assertEqual(v3, 'jeff2')
-        self.assertEqual(v4, 'value')
-        self.assertEqual(v5, 'else')
-
-    def test_update_with_block_sets_hash_and_height(self):
-        _hash = storage.get_latest_block_hash(self.driver)
-        num = storage.get_latest_block_height(self.driver)
-
-        self.assertEqual(_hash, '0' * 64)
-        self.assertEqual(num, 0)
-
-        storage.update_state_with_block(
-            block=block,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        _hash = storage.get_latest_block_hash(self.driver)
-        num = storage.get_latest_block_height(self.driver)
-
-        self.assertEqual(_hash, 'f' * 64)
-        self.assertEqual(num, 555)
-
-    def test_update_with_block_sets_nonces_correctly(self):
-        self.nonces.set_pending_nonce(
-            sender='abc',
-            processor='def',
-            value=122
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 122)
-
-        self.nonces.set_pending_nonce(
-            sender='xxx',
-            processor='yyy',
-            value=4
-        )
-
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, 4)
-
-        storage.update_state_with_block(
-            block=block,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        n = self.nonces.get_pending_nonce(sender='abc', processor='def')
-        self.assertEqual(n, None)
-
-        n = self.nonces.get_pending_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, None)
-
-        n = self.nonces.get_latest_nonce(sender='abc', processor='def')
-        self.assertEqual(n, 125)
-
-        n = self.nonces.get_latest_nonce(sender='xxx', processor='yyy')
-        self.assertEqual(n, 43)
-
-    def test_update_state_with_block_sets_state_correctly(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        v3 = self.driver.get('name2', mark=False)
-
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
-
-        self.assertIsNone(v1)
-        self.assertIsNone(v2)
-        self.assertIsNone(v3)
-        self.assertIsNone(v4)
-        self.assertIsNone(v5)
-
-        storage.update_state_with_block(
-            block=block,
-            driver=self.driver,
-            nonces=self.nonces
-        )
-
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
-
-        v3 = self.driver.get('name2', mark=False)
-
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
-
-        self.assertEqual(v1, 'there2')
-        self.assertEqual(v2, 'jeff')
-        self.assertEqual(v3, 'jeff2')
-        self.assertEqual(v4, 'value')
-        self.assertEqual(v5, 'else')
-
-
-class TestStorage(TestCase):
-    def setUp(self):
-        self.db = storage.BlockStorage()
-
-    def tearDown(self):
-        self.db.flush()
-
-    def test_cull_transaction_works_single_sb_and_tx(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        tx = {
-                'hash': 'XXX',
-                'foo': 'bar'
-            }
-
-        txs, hashes = self.db.cull_txs(block)
-        expected_txs = [tx]
-        expected_hashes = ['XXX']
-
-        self.assertEqual(txs, expected_txs)
-        self.assertEqual(hashes, expected_hashes)
-
-    def test_cull_transaction_works_single_sb_multi_txs(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        },
-                        {
-                            'hash': 'XXY',
-                            'foo': 'bar2'
-                        },
-                        {
-                            'hash': 'XXF',
-                            'foo2': 'bar'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        expected_txs = [
-            {
-                'hash': 'XXX',
-                'foo': 'bar'
-            },
-            {
-                'hash': 'XXY',
-                'foo': 'bar2'
-            },
-            {
-                'hash': 'XXF',
-                'foo2': 'bar'
-            }
-        ]
-
-        expected_hashes = ['XXX', 'XXY', 'XXF']
-
-        txs, hashes = self.db.cull_txs(block)
-
-        self.assertEqual(txs, expected_txs)
-        self.assertEqual(hashes, expected_hashes)
-
-    def test_cull_transaction_works_multi_sb_multi_txs(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        },
-                        {
-                            'hash': 'XXY',
-                            'foo': 'bar2'
-                        },
-                        {
-                            'hash': 'XXF',
-                            'foo2': 'bar'
-                        }
-                    ]
-                },
-                {
-                    'transactions': [
-                        {
-                            'hash': 'YYY',
-                            'foo3': 'bar3'
-                        },
-                        {
-                            'hash': 'YYX',
-                            'foo4': 'bar4'
-                        },
-                        {
-                            'hash': 'YSX',
-                            'foo5': 'bar5'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        expected_txs = [
-            {
-                'hash': 'XXX',
-                'foo': 'bar'
-            },
-            {
-                'hash': 'XXY',
-                'foo': 'bar2'
-            },
-            {
-                'hash': 'XXF',
-                'foo2': 'bar'
-            },
-            {
-                'hash': 'YYY',
-                'foo3': 'bar3'
-            },
-            {
-                'hash': 'YYX',
-                'foo4': 'bar4'
-            },
-            {
-                'hash': 'YSX',
-                'foo5': 'bar5'
-            }
-        ]
-
-        expected_hashes = ['XXX', 'XXY', 'XXF', 'YYY', 'YYX', 'YSX']
-
-        txs, hashes = self.db.cull_txs(block)
-
-        self.assertEqual(txs, expected_txs)
-        self.assertEqual(hashes, expected_hashes)
-
-    def test_write_block_stores_block_by_num(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        self.db.write_block(block)
-
-        filename = ('0' * 63) + '1'
-
-        with open(self.db.blocks_dir.joinpath(filename)) as f:
-            b = json.load(f)
-
-        self.assertEqual(block, b)
-
-    def test_write_block_stores_symlink_by_hash(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        self.db.write_block(block)
-
-        with open(self.db.blocks_alias_dir.joinpath(block.get('hash'))) as f:
-            b = json.load(f)
-
-        self.assertEqual(block, b)
-
-    def test_write_txs_stores_transactions_by_hash_and_payload(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        }
-                    ]
-                }
-            ]
-        }
-
-        txs, hashes = self.db.cull_txs(block)
-
-        self.db.write_txs(txs, hashes)
-
-        with open(self.db.txs_dir.joinpath('XXX')) as f:
-            t = json.load(f)
-
-        self.assertEqual(txs[0], t)
-
-    def test_store_block_completes_loop(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'hash': 'XXX',
-                            'foo': 'bar'
-                        },
-
-                    ]
-                },
-            ]
-        }
-
-        self.db.store_block(block)
-
-        with open(self.db.txs_dir.joinpath('XXX')) as f:
-            t = json.load(f)
-
-        _t = {
-            'hash': 'XXX',
-            'foo': 'bar'
-        }
-
-        self.assertEqual(t, _t)
-
-        filename = ('0' * 63) + '1'
-        with open(self.db.blocks_dir.joinpath(filename)) as f:
-            b = json.load(f)
-
-        self.assertEqual(b, block)
-
-        with open(self.db.blocks_alias_dir.joinpath('a')) as f:
-            bb = json.load(f)
-
-        self.assertEqual(bb, block)
+        self.bs.flush()
+
+    def test_creates_directories(self):
+        self.assertTrue(self.bs.blocks_dir.is_dir())
+        self.assertTrue(self.bs.blocks_alias_dir.is_dir())
+        self.assertTrue(self.bs.txs_dir.is_dir())
+
+    def test_flush(self):
+        self.bs.flush()
+
+        self.assertEqual(len(os.listdir(self.bs.blocks_dir)), 2)
+        self.assertEqual(len(os.listdir(self.bs.txs_dir)), 0)
+        self.assertEqual(len(os.listdir(self.bs.blocks_alias_dir)), 0)
+
+    def test_store_block(self):
+        prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        block = generate_blocks(
+            number_of_blocks=1,
+            starting_block_num=0,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=prev_block_hlc
+        )[0]
+
+        self.bs.store_block(copy.deepcopy(block))
+
+        self.assertIsNotNone(self.bs.get_block(1))
+        self.assertTrue(self.bs.blocks_dir.joinpath(str(block['number']).zfill(64)).is_file())
+        self.assertTrue(self.bs.txs_dir.joinpath(block['processed'].get('hash')).is_file())
+        self.assertTrue(self.bs.blocks_alias_dir.joinpath(block['hash']).is_symlink())
+        self.assertTrue(self.bs.blocks_alias_dir.joinpath(block['hlc_timestamp']).is_symlink())
+
+    def test_store_block_raises_if_no_or_malformed_tx(self):
+        block = copy.deepcopy(SAMPLE_BLOCK)
+        block['processed'] = {}
+
+        self.assertRaises(ValueError, lambda: self.bs.store_block(block))
 
     def test_get_block(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'data': 'woop',
-            'subblocks':[]
-        }
+        prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
-        self.db.store_block(block)
+        blocks = generate_blocks(
+            number_of_blocks=3,
+            starting_block_num=0,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=prev_block_hlc
+        )
 
-        got_block = self.db.get_block(1)
+        for block in blocks:
+            self.bs.store_block(block)
 
-        self.assertEqual(block, got_block)
+        block_2 = self.bs.get_block(2)
 
-    def test_get_block_hash(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'data': 'woop',
-            'subblocks': []
-        }
+        self.assertEqual(2, block_2.get('number'))
 
-        self.db.store_block(block)
+    def test_get_tx(self):
+        block = copy.deepcopy(SAMPLE_BLOCK)
+        self.bs.store_block(block)
 
-        got_block = self.db.get_block('a')
+        self.assertDictEqual(self.bs.get_tx(SAMPLE_BLOCK['processed']['hash']), SAMPLE_BLOCK['processed'])
 
-        self.assertEqual(block, got_block)
+    def test_get_later_blocks(self):
+        blocks_1 = generate_blocks(
+            number_of_blocks=3,
+            starting_block_num=0,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
 
-    def test_get_none_block(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'data': 'woop'
-        }
+        for block in blocks_1:
+            self.bs.store_block(block)
 
-        self.db.store_block(block)
+        consensus_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
-        got_block = self.db.get_block('b')
+        blocks_2 = generate_blocks(
+            number_of_blocks=3,
+            starting_block_num=blocks_1[2].get('number'),
+            prev_block_hash=blocks_1[2].get('previous'),
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
 
-        self.assertIsNone(got_block)
+        for block in blocks_2:
+            self.bs.store_block(block)
 
-    def test_got_none_block_num(self):
-        block = {
-            'hash': 'a',
-            'number': 1,
-            'data': 'woop',
-            'subblocks': []
-        }
+        later_blocks = self.bs.get_later_blocks(6, consensus_hlc)
 
-        self.db.store_block(block)
-
-        got_block = self.db.get_block(2)
-
-        self.assertIsNone(got_block)
-
-    def test_get_non_existant_tx_returns_none(self):
-        tx_got = self.db.get_tx(h='something')
-
-        self.assertIsNone(tx_got)
-
-    def test_store_block_stores_txs_and_block(self):
-        tx_1 = {
-            'hash': 'something1',
-            'key': '1'
-        }
-
-        tx_2 = {
-            'hash': 'something2',
-            'key': '2'
-        }
-
-        tx_3 = {
-            'hash': 'something3',
-            'key': '3'
-        }
-
-        block = {
-            'hash': 'hello',
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [tx_1, tx_2, tx_3]
-                }
-            ]
-        }
-
-        expected = copy.deepcopy(block)
-
-        self.db.store_block(block)
-
-        got_1 = self.db.get_tx(h='something1')
-        got_2 = self.db.get_tx(h='something2')
-        got_3 = self.db.get_tx(h='something3')
-
-        self.assertDictEqual(tx_1, got_1)
-        self.assertDictEqual(tx_2, got_2)
-        self.assertDictEqual(tx_3, got_3)
-
-        got_block = self.db.get_block('hello')
-
-        self.assertDictEqual(expected, got_block)
-
-    def test_get_block_v_none_returns_none(self):
-        self.assertIsNone(self.db.get_block())
+        self.assertEqual(3, len(later_blocks))
+        self.assertEqual(6, later_blocks[2].get('number'))

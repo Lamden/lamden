@@ -61,7 +61,7 @@ class CredentialsProvider(object):
             self.log('info', f'Authorizing: {domain}, {key}')
             return True
         else:
-            self.log('warning' f'NOT Authorizing: {domain}, {key}')
+            self.log('warning', f'NOT Authorizing: {domain}, {key}')
             return False
 
 class Router():

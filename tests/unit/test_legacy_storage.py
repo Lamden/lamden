@@ -201,8 +201,8 @@ class TestUpdatingState(TestCase):
         self.driver.clear_pending_state()
 
     def test_state_updated_to_correct_values_in_tx(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
@@ -213,8 +213,8 @@ class TestUpdatingState(TestCase):
             nonces=self.nonces
         )
 
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
         self.assertEqual(v1, 'there')
         self.assertEqual(v2, 'jeff')
@@ -303,13 +303,13 @@ class TestUpdatingState(TestCase):
         self.assertEqual(n, 43)
 
     def test_multiple_tx_state_updates_correctly(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
-        v3 = self.driver.get('name2', mark=False)
+        v3 = self.driver.get('name2')
 
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
+        v4 = self.driver.get('another')
+        v5 = self.driver.get('something')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
@@ -335,13 +335,13 @@ class TestUpdatingState(TestCase):
             nonces=self.nonces
         )
 
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
-        v3 = self.driver.get('name2', mark=False)
+        v3 = self.driver.get('name2')
 
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
+        v4 = self.driver.get('another')
+        v5 = self.driver.get('something')
 
         self.assertEqual(v1, 'there2')
         self.assertEqual(v2, 'jeff')
@@ -406,13 +406,13 @@ class TestUpdatingState(TestCase):
         self.assertEqual(n, 43)
 
     def test_update_state_with_block_sets_state_correctly(self):
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
-        v3 = self.driver.get('name2', mark=False)
+        v3 = self.driver.get('name2')
 
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
+        v4 = self.driver.get('another')
+        v5 = self.driver.get('something')
 
         self.assertIsNone(v1)
         self.assertIsNone(v2)
@@ -426,13 +426,13 @@ class TestUpdatingState(TestCase):
             nonces=self.nonces
         )
 
-        v1 = self.driver.get('hello', mark=False)
-        v2 = self.driver.get('name', mark=False)
+        v1 = self.driver.get('hello')
+        v2 = self.driver.get('name')
 
-        v3 = self.driver.get('name2', mark=False)
+        v3 = self.driver.get('name2')
 
-        v4 = self.driver.get('another', mark=False)
-        v5 = self.driver.get('something', mark=False)
+        v4 = self.driver.get('another')
+        v5 = self.driver.get('something')
 
         self.assertEqual(v1, 'there2')
         self.assertEqual(v2, 'jeff')

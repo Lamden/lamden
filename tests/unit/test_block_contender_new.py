@@ -1,14 +1,14 @@
-from unittest import TestCase
 from contracting.db.driver import ContractDriver
-from lamden.nodes.processors import block_contender
+from contracting.client import ContractingClient
+from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
-from lamden.nodes.hlc import HLC_Clock
 from lamden.network import Network
-from copy import deepcopy
-
-from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
-
+from lamden.nodes.hlc import HLC_Clock
+from lamden.nodes.processors import block_contender
+from tests.unit.helpers.mock_transactions import get_tx_message, get_processing_results
+from unittest import TestCase
 import asyncio
+import lamden
 
 SAMPLE_MESSAGES = [
     {
@@ -108,6 +108,19 @@ class TestProcessingQueue(TestCase):
             network=network
         )
 
+        genesis_path = lamden.contracts.__path__[0]
+        self.client = ContractingClient(
+            driver=self.driver,
+            submission_filename=genesis_path + '/submission.s.py'
+        )
+        sync.setup_genesis_contracts(
+            initial_masternodes=Wallet().verifying_key,
+            initial_delegates=Wallet().verifying_key,
+            client=self.client,
+            filename=genesis_path + '/genesis.json',
+            root=genesis_path
+        )
+
         print("\n")
 
     def tearDown(self):
@@ -137,7 +150,8 @@ class TestProcessingQueue(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
 
         # Create Tx and Results
-        tx_message = get_tx_message()
+        self.driver.driver.set(f'currency.balances:{self.wallet.verifying_key}', 1000)
+        tx_message = get_tx_message(wallet=self.wallet)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
 
@@ -221,7 +235,8 @@ class TestProcessingQueue(TestCase):
         # This logic isn't implemented from the node yet but the logic is in the block contender
         self.peers.append(self.stu_wallet.verifying_key)
 
-        tx_message = get_tx_message()
+        self.driver.driver.set(f'currency.balances:{self.wallet.verifying_key}', 1000)
+        tx_message = get_tx_message(wallet=self.wallet)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
         self.validation_queue.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()

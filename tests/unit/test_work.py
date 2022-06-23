@@ -69,7 +69,7 @@ class TestWorkValidator(TestCase):
         self.wallet = Wallet()
         self.main_processing_queue = []
         self.network = Network()
-        self.last_processed_hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.wv = WorkValidator(self.hlc_clock, self.wallet, self.main_processing_queue,
             self.get_last_processed_hlc, self.stop_node, self.network)
@@ -154,13 +154,11 @@ class TestWorkValidator(TestCase):
         self.last_processed_hlc = HLC_Clock().get_new_hlc_timestamp()
         msg = self.make_tx()
 
-        with self.assertLogs(level='ERROR') as log:
-            self.assertFalse(self.wv.older_than_last_processed(msg))
-            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[0])
+        self.assertFalse(self.wv.older_than_last_processed(msg))
 
     def test_process_message_appends_message_if_valid(self):
         msg = self.make_tx(wallet=self.wallet)
-        self.last_processed_hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.process_message(msg)
         
@@ -168,10 +166,11 @@ class TestWorkValidator(TestCase):
 
     def test_process_message_appends_message_older_than_last_processed(self):
         msg = self.make_tx(wallet=self.wallet)
+        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         with self.assertLogs(level='ERROR') as log:
             self.process_message(msg)
-            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[0])
+            self.assertIn(f'{msg["hlc_timestamp"]} received AFTER {self.last_processed_hlc} was processed!', log.output[1])
             self.assertEqual(1, len(self.main_processing_queue))
 
     def test_process_message_doesnt_append_message_if_unknown_masternode(self):
