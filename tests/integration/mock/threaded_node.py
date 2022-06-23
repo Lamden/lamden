@@ -207,11 +207,9 @@ class ThreadedNode(threading.Thread):
     async def stop(self):
         if not self.node:
             return
-
+        print('AWAITING NODE STOP')
         await self.node.stop()
-
-        ctx = zmq.asyncio.Context.instance()
-        ctx.destroy(linger=0)
+        print('NODE STOP EXITED')
 
         self.running = False
         return "Stopped"

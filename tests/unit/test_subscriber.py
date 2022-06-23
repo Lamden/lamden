@@ -15,6 +15,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestSubscriberSocket(unittest.TestCase):
     def setUp(self):
+        self.ctx = zmq.asyncio.Context().instance()
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -43,6 +45,8 @@ class TestSubscriberSocket(unittest.TestCase):
                 self.async_sleep(0.1)
             del self.subscriber
 
+        self.ctx.destroy()
+
         loop = asyncio.get_event_loop()
         loop.stop()
         loop.close()
@@ -58,7 +62,7 @@ class TestSubscriberSocket(unittest.TestCase):
         #self.await_async_process(self.wait_for_subscriber_started)
         self.async_sleep(1)
 
-    def get_message(self, data):
+    async def get_message(self, data):
         self.data = data
         try:
             topic, message = self.data

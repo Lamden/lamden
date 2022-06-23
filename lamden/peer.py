@@ -491,7 +491,7 @@ class Peer:
     async def stopping(self):
         await self.cancel_reconnect_task()
 
-        if not self.reconnecting or not self.is_verifying:
+        if not self.reconnecting and not self.is_verifying:
             return
 
         while self.reconnecting or self.is_verifying:

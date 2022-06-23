@@ -191,7 +191,7 @@ class TestProcessingQueue(TestCase):
         # load a bunch of transactions into the queue
         for i in range(10):
             self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
-            self.assertEqual(len(self.main_processing_queue), i+1)
+            self.assertEqual(i+1, len(self.main_processing_queue))
 
             # if this is the first transaction get the HLC for it for comparison later
             if i == 0:
