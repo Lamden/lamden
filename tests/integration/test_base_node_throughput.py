@@ -1,13 +1,10 @@
 import gc
 
-from lamden.nodes.masternode import masternode
 from lamden.nodes import base
-from lamden import storage
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.transaction import build_transaction
 
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.db import encoder
 
 from tests.integration.mock.mock_data_structures import MockTransaction
@@ -30,26 +27,9 @@ class TestNode(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.num_of_nodes = 0
-        self.amount_of_txn = 50
-
-        self.blocks = storage.BlockStorage()
+        self.amount_of_txn = 1000
         self.nonces = {}
-
-        self.driver = ContractDriver(driver=InMemDriver())
-
-        self.stu_wallet = Wallet()
-
-        self.b = masternode.BlockService(
-            blocks=self.blocks,
-            driver=self.driver
-        )
-
-        self.blocks.flush()
-        self.driver.flush()
-
         self.tn: ThreadedNode = None
-
         self.tx_history = {}
         self.tx_accumulator ={}
         print("\n")
@@ -57,9 +37,6 @@ class TestNode(TestCase):
     def tearDown(self):
         if self.node.running:
             self.await_async_process(self.tn.stop)
-
-        self.b.blocks.flush()
-        self.b.driver.flush()
 
         if not self.loop.is_closed():
             self.loop.stop()

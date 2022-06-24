@@ -21,6 +21,7 @@ from pathlib import Path
 import shutil
 import inspect
 import os
+import shutil
 
 node_class_map = {
     'masternode': Masternode,
@@ -37,12 +38,16 @@ def create_constitution(self, node_wallets: list = []):
 def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constitution=None, bootnodes=None):
     current_path = Path.cwd()
     temp_network_dir = Path(f'{current_path}/temp_network')
+    try:
+        shutil.rmtree(temp_network_dir)
+    except FileNotFoundError:
+        pass
+    temp_network_dir.mkdir(exist_ok=True, parents=True)
 
     node_dir = Path(f'{temp_network_dir}/{node_wallet.verifying_key}')
     node_state_dir = Path(f'{node_dir}/state')
 
-    node_state_dir.mkdir(parents=True, exist_ok=True)
-
+    #raw_driver = FSDriver(node_state_dir)
     raw_driver = InMemDriver()
     block_storage = BlockStorage(home=Path(node_dir))
     nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
