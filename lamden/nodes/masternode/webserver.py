@@ -57,7 +57,7 @@ class NonceEncoder(_json.JSONEncoder):
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
                  blocks: storage.BlockStorage,
-                 queue=FileQueue(),
+                 queue=None,
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
@@ -65,6 +65,7 @@ class WebServer:
                  max_queue_len=10_000,
                  event_service_port=8000,
                  topics=[]):
+
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -83,7 +84,7 @@ class WebServer:
         self.static_headers = {}
 
         self.wallet = wallet
-        self.queue = queue
+        self.queue = queue or FileQueue()
         self.max_queue_len = max_queue_len
 
         self.port = port

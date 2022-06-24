@@ -125,9 +125,9 @@ class BlockStorage:
     def flush(self):
         try:
             shutil.rmtree(self.home)
-            self.__build_directories()
         except FileNotFoundError:
             pass
+        self.__build_directories()
 
     def store_block(self, block):
         tx, tx_hash = self.__cull_tx(block)

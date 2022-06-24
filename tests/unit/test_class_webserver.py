@@ -1,16 +1,12 @@
 from unittest import TestCase
 
-# from lamden.webserver.webserver import WebServer
 from lamden.nodes.masternode.webserver import WebServer
-# from lamden.webserver.readers import AsyncBlockReader
 from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode
 from lamden.storage import BlockStorage
 from lamden.crypto.transaction import build_transaction
 from lamden import storage
-from sanic import Sanic
-import asyncio
 from lamden.nodes.events import EventWriter, Event, EventService
 import websockets
 from multiprocessing import Process
@@ -23,29 +19,23 @@ from tests.unit.helpers.mock_blocks import generate_blocks
 import copy
 from lamden.nodes.hlc import HLC_Clock
 
-n = ContractDriver()
 EVENT_SERVICE_PORT = 8000
 SAMPLE_TOPIC = 'new_block'
 
 class TestClassWebserver(TestCase):
     def setUp(self):
         self.w = Wallet()
-
         self.blocks = BlockStorage()
-        # self.block_writer = BlockStorage()
         self.driver = ContractDriver()
-
         self.ws = WebServer(
             wallet=self.w,
-            contracting_client=ContractingClient(),
+            contracting_client=ContractingClient(driver=self.driver),
             blocks=self.blocks,
-            driver=n
+            driver=self.driver
         )
 
     def tearDown(self):
-        self.ws.client.flush()
         self.ws.blocks.flush()
-        self.ws.driver.flush()
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -391,7 +381,6 @@ def get():
 
     def test_good_transaction_is_put_into_queue(self):
         self.assertEqual(len(self.ws.queue), 0)
-        self.ws.queue.refresh()
 
         w = Wallet()
 
@@ -429,7 +418,6 @@ def get():
 
     def test_fixed_objects_do_not_fail_signature(self):
         self.assertEqual(len(self.ws.queue), 0)
-        self.ws.queue.refresh()
 
         w = Wallet()
 
@@ -465,7 +453,6 @@ def get():
         self.assertEqual(1, len(self.ws.queue))
 
     def test_submit_transaction_error_if_queue_full(self):
-        self.ws.queue.refresh()
         for i in range(10_000):
             self.ws.queue.append(bytes(i))
 
