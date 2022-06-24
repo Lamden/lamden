@@ -8,6 +8,8 @@ from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.driver import InMemDriver, ContractDriver
 from contracting.db import encoder
 
+from tests.integration.mock.mock_data_structures import MockTransaction
+
 import asyncio
 import random
 import json
@@ -15,6 +17,7 @@ import time
 import pprint
 
 from unittest import TestCase
+from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
 
 
 class TestNode(TestCase):
@@ -35,7 +38,7 @@ class TestNode(TestCase):
         self.blocks.flush()
         self.driver.flush()
 
-        self.node = None
+        self.tn: ThreadedNode = None
 
         self.tx_history = {}
         self.tx_accumulator ={}
@@ -47,6 +50,12 @@ class TestNode(TestCase):
 
         self.b.blocks.flush()
         self.b.driver.flush()
+
+    @property
+    def node(self):
+        if not self.tn:
+            return None
+        return self.tn.node
 
     def start_node(self):
             self.await_async_process(self.node.start)
@@ -63,33 +72,19 @@ class TestNode(TestCase):
         )
         node.driver.commit()
 
-    def create_a_node(self, constitution=None):
-        driver = ContractDriver(driver=InMemDriver())
+    def create_node(self):
+        self.tn = create_a_node()
 
-        dl_wallet = Wallet()
-        mn_wallet = Wallet()
+    def start_node(self):
+        self.tn.start()
+        self.async_sleep(1)
 
-        constitution = constitution or {
-                'masternodes': [mn_wallet.verifying_key],
-                'delegates': [dl_wallet.verifying_key]
-            }
+        while not self.node or not self.node.started or not self.node.network.running:
+            self.async_sleep(1)
 
-        node = base.Node(
-            socket_base=f'tcp://127.0.0.1:{self.num_of_nodes}',
-            wallet=mn_wallet,
-            constitution=constitution,
-            driver=driver,
-            delay={
-                'base': 0,
-                'self': 0
-            },
-            metering=False,
-            testing=True
-        )
-
-        self.num_of_nodes = self.num_of_nodes + 1
-
-        self.node = node
+    def create_and_start_node(self):
+        self.create_node()
+        self.start_node()
 
     def await_async_process(self, process):
         tasks = asyncio.gather(
@@ -122,21 +117,25 @@ class TestNode(TestCase):
         for i in range(amount_of_txs):
             receiver_wallet = Wallet()
             amount = str(round(random.uniform(1, 200), 4))
-            tx = json.loads(build_transaction(
-                wallet=sender_wallet,
+
+            tx = MockTransaction()
+
+            tx.create_transaction(
+                sender_wallet=sender_wallet,
                 contract="currency",
                 function="transfer",
                 kwargs={
-                    'to': receiver_wallet.verifying_key,
-                    'amount': {"__fixed__": amount}
+                    'amount': {"__fixed__": amount},
+                    'to': receiver_wallet.verifying_key
                 },
-                stamps=100,
-                processor=node.wallet.verifying_key,
-                nonce=1
-            ))
+                nonce=i,
+                processor=self.node.wallet.verifying_key,
+                stamps_supplied=100
+            )
 
-            tx_message = node.make_tx_message(tx)
-            self.await_async_process_work(node=node, msg=tx_message)
+            tx_dict = tx.as_dict()
+            encoded_tx=json.dumps(tx_dict).encode('UTF-8')
+            self.tn.send_tx(encoded_tx=encoded_tx)
 
             self.tx_history[receiver_wallet.verifying_key] = {
                 "amount":amount,
@@ -179,40 +178,47 @@ class TestNode(TestCase):
                 }
                 self.tx_accumulator[receiver_wallet.verifying_key] += ContractingDecimal(amount)
 
-    def await_all_processed(self, node, expected_block_height):
+    def await_all_processed(self, expected_block_height):
         def check():
-            current_height = node.get_current_height()
-            if current_height != expected_block_height:
+            current_height = self.tn.get_latest_block()
+            if current_height.get('number') != expected_block_height:
                 self.async_sleep(.1)
                 check()
         check()
 
+    def test_node_starts(self):
+        self.create_and_start_node()
+        self.assertTrue(self.node.started and self.node.network.running)
+
     def test_transaction_throughput__founder_to_new_wallets__queued_and_then_processed(self):
         # Get and start a node
-        self.create_a_node()
+        self.create_and_start_node()
         # Set the consensus percent to 0 so all processed transactions will "be in consensus"
         self.node.consensus_percent = 0
-        self.start_node()
 
         self.assertTrue(self.node.running)
         self.assertTrue(self.node.validation_queue.running)
 
-        self.node.main_processing_queue.running = False
-        self.assertFalse(self.node.main_processing_queue.running)
+        self.await_async_process(self.node.pause_main_processing_queue)
+        self.async_sleep(0.1)
+        self.assertTrue(self.node.main_processing_queue.paused)
 
         # Create a wallet with a balance
         jeff_wallet = Wallet()
         receiver_wallet = Wallet()
 
         # Seed initial currency balances
-        self.add_currency_balance_to_node(node=self.node, to=jeff_wallet.verifying_key, amount=1_000_000_000)
+        self.tn.set_smart_contract_value(
+            key=f'currency.balances:{jeff_wallet.verifying_key}',
+            value=1000000000
+        )
 
         amount_of_txn = 100
         self.send_transactions(amount_of_txs=amount_of_txn, node=self.node, sender_wallet=jeff_wallet)
 
         start_time = time.time()
-        self.node.main_processing_queue.start()
-        self.await_all_processed(node=self.node, expected_block_height=amount_of_txn)
+        self.node.unpause_all_queues()
+        self.await_all_processed(expected_block_height=amount_of_txn)
         end_time = time.time()
         print(f'Processing took {end_time - start_time} seconds')
 
@@ -223,12 +229,7 @@ class TestNode(TestCase):
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
-            balance = self.node.executor.driver.get_var(
-                contract='currency',
-                variable='balances',
-                arguments=[key],
-                mark=False
-            )
+            balance = self.tn.get_smart_contract_value(key=f'currency.balances:{key}')
             balance = json.loads(encoder.encode(balance))
             if type(balance) is dict:
                 balance = balance['__fixed__']
