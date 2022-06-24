@@ -1,15 +1,17 @@
 from lamden.nodes.masternode import masternode
-from lamden.nodes import base
-from lamden import router, storage, network, authentication
+
+from lamden import storage
 from lamden.crypto.wallet import Wallet
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from contracting.db.driver import InMemDriver, ContractDriver
-from contracting.client import ContractingClient
-from contracting.db import encoder
-from contracting.db.driver import encode
-from contracting.stdlib.bridge.decimal import ContractingDecimal
-import zmq.asyncio
+
+from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
+from tests.integration.mock.mock_data_structures import MockTransaction
+
 import asyncio
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+import gc
 
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
 
@@ -39,79 +41,44 @@ class TestNode(TestCase):
         self.blocks.flush()
         self.driver.flush()
 
-        self.node = None
+        self.tn: ThreadedNode = None
         self.nodes = []
 
         print("\n")
 
     def tearDown(self):
-        for node in self.nodes:
-            if node.running:
-                self.stop_node(node=node)
+        for tn in self.nodes:
+            if tn.node.running:
+                self.await_async_process(self.tn.stop)
 
-        self.loop.close()
         self.b.blocks.flush()
         self.b.driver.flush()
 
-    def create_a_node(self, constitution=None, bootnodes = None, node_num=0):
-        driver = ContractDriver(driver=InMemDriver())
+        if not self.loop.is_closed():
+            self.loop.stop()
+            self.loop.close()
 
-        dl_wallet = Wallet()
-        mn_wallet = Wallet()
+        gc.collect()
 
-        constitution = constitution or {
-                'masternodes': [mn_wallet.verifying_key],
-                'delegates': [dl_wallet.verifying_key]
-            }
+    @property
+    def node(self):
+        if not self.tn:
+            return None
+        return self.tn.node
 
-        if bootnodes is None:
-            bootnodes = {}
-            bootnodes[mn_wallet.verifying_key] = f'tcp://127.0.0.1:19000'
-            bootnodes[dl_wallet.verifying_key] = f'tcp://127.0.0.1:19001'
+    def create_node(self):
+        self.tn = create_a_node()
 
-        node = base.Node(
-            socket_base=f'tcp://127.0.0.1:{19000 + node_num}',
-            wallet=mn_wallet,
-            constitution=constitution,
-            bootnodes=bootnodes,
-            driver=driver,
-            testing=True,
-            metering=False,
-            delay={
-                'base': 0,
-                'self': 0
-            }
-        )
+    def start_node(self):
+        self.tn.start()
+        self.async_sleep(1)
 
-        node.network.socket_ports['router'] = 19000 + node_num
-        node.network.socket_ports['webserver'] = 18080 + node_num
-        node.network.socket_ports['publisher'] = 19080 + node_num
+        while not self.node or not self.node.started or not self.node.network.running:
+            self.async_sleep(1)
 
-        node.client.set_var(
-            contract='currency',
-            variable='balances',
-            arguments=[self.stu_wallet.verifying_key],
-            value=1_000_000
-        )
-
-        node.driver.commit()
-
-        self.num_of_nodes = self.num_of_nodes + 1
-
-        self.nodes.append(node)
-
-        if node_num > 0:
-            return node
-        else:
-            self.node = node
-
-    def start_node(self, node=None):
-        if (node):
-            print("other node")
-            self.await_async_process(node.start)
-        else:
-            print("self node")
-            self.await_async_process(self.node.start)
+    def create_and_start_node(self):
+        self.create_node()
+        self.start_node()
 
     def start_all_nodes(self):
         for node in self.nodes:
@@ -176,13 +143,12 @@ class TestNode(TestCase):
     def test_reprocessing_should_reprocess_all_has_both(self):
         # This will test where all transactions share keys
         # TX #2 and #3 would have created state but will have different state after #1 is reprocessed
-        self.create_a_node()
-        self.start_all_nodes()
+        self.create_and_start_node()
 
         # stop the validation queue
-        self.node.validation_queue.pause()
+        self.await_async_process(self.node.pause_validation_queue)
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         tx_args = {
@@ -210,7 +176,7 @@ class TestNode(TestCase):
 
         self.node.driver.hard_apply(hlc=hlc_timestamp_3)
 
-        stu_balance_after = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
 
         stu_balance_delta = stu_balance_before - stu_balance_after
 
