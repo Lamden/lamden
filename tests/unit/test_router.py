@@ -22,6 +22,7 @@ class TestRouter(unittest.TestCase):
         cls.request_wallet = Wallet()
 
     def setUp(self) -> None:
+        self.ctx = zmq.asyncio.Context()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
@@ -46,6 +47,8 @@ class TestRouter(unittest.TestCase):
             self.request.stop()
             del self.request
 
+        self.ctx.destroy(linger=0)
+
         loop = asyncio.get_event_loop()
         loop.stop()
         loop.close()
@@ -59,13 +62,15 @@ class TestRouter(unittest.TestCase):
     def create_router(self):
         self.router = Router(
             wallet=self.router_wallet,
-            message_callback=self.get_data
+            message_callback=self.get_data,
+            ctx=self.ctx
         )
 
     def create_secure_router(self):
         self.router = Router(
             wallet=self.router_wallet,
-            message_callback=self.get_data
+            message_callback=self.get_data,
+            ctx=self.ctx
         )
         self.router.setup_socket()
         self.router.setup_auth()
@@ -88,12 +93,14 @@ class TestRouter(unittest.TestCase):
     def create_request(self):
         self.request = MockRequest(
             local_wallet=self.request_wallet,
+            ctx=self.ctx
         )
 
     def create_secure_request(self):
         self.request = MockRequest(
             local_wallet=self.request_wallet,
-            server_curve_vk=self.router_wallet.curve_vk
+            server_curve_vk=self.router_wallet.curve_vk,
+            ctx=self.ctx
         )
 
     def async_sleep(self, delay):

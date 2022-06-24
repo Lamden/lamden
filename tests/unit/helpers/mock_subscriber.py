@@ -6,10 +6,10 @@ import asyncio
 import unittest
 
 class MockSubscriber():
-    def __init__(self, callback=None, port=19080, multipart=True):
+    def __init__(self, callback=None, port=19080, multipart=True, ctx=None):
         self.running = False
 
-        self.ctx = None
+        self.ctx = ctx or zmq.asyncio.Context().instance()
         self.socket = None
         self.address = f'tcp://127.0.0.1:{port}'
         self.callback = callback
@@ -23,7 +23,6 @@ class MockSubscriber():
             asyncio.set_event_loop(self.loop)
 
     def start(self):
-        self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.SUB)
         self.socket.bind(self.address)
         self.socket.setsockopt(zmq.SUBSCRIBE, b'')

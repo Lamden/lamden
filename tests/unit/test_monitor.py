@@ -14,13 +14,16 @@ class TestSocketMonitor(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.ctx = zmq.asyncio.Context.instance()
+        self.ctx = zmq.asyncio.Context()
 
         self.monitor = SocketMonitor(socket_type="REQUEST")
 
     def tearDown(self) -> None:
         if self.monitor is not None:
             self.loop.run_until_complete(self.monitor.stop())
+
+        self.ctx.destroy(linger=0)
+
         self.loop.stop()
         self.loop.close()
         self.loop = None

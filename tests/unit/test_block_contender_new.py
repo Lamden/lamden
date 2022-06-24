@@ -74,7 +74,7 @@ class MockValidationQueue:
     def __len__(self):
         return len(self.validation_results)
 
-class TestProcessingQueue(TestCase):
+class TestBlockContenderProcessor(TestCase):
     def setUp(self):
         self.wallet = Wallet()
         self.stu_wallet = Wallet()

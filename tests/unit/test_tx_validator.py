@@ -355,7 +355,8 @@ class TestValidator(TestCase):
 
         with self.assertRaises(transaction.TransactionStaleError):
             transaction.transaction_is_not_expired(decoded)
-
+    '''
+    Timestamp is no longer used
     def test_future_transactions_raise_error_if_beyond_expiry(self):
         w = Wallet()
 
@@ -377,6 +378,7 @@ class TestValidator(TestCase):
 
         with self.assertRaises(transaction.TransactionInvalidTimestampError):
             transaction.transaction_is_not_expired(decoded)
+    '''
 
     def test_future_transactions_fine_if_in_expiry(self):
         w = Wallet()

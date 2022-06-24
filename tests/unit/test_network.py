@@ -961,6 +961,8 @@ class TestNetwork(TestCase):
 
         self.assertEqual(0, network_1.num_of_peers())
 
+    # THIS WILL FAIL!
+    # TODO look at this logic for when we get a diff IP from another node.
     def test_METHOD_connect_peer__calls_test_connection_if_peer_exists_with_same_ip(self):
         network_1 = self.create_network()
 

@@ -1,5 +1,8 @@
 import json
 import asyncio
+
+import zmq.asyncio
+
 from lamden.crypto.wallet import Wallet
 from tests.unit.helpers.mock_router import MockRouter
 from tests.unit.helpers.mock_reply import MockReply
@@ -11,6 +14,8 @@ from lamden.sockets.request_disp import Request as DisposableRequest
 
 class TestRequestSocket(unittest.TestCase):
     def setUp(self):
+        self.ctx = zmq.asyncio.Context()
+
         self.local_wallet = Wallet()
         self.peer_wallet = Wallet()
 
@@ -29,6 +34,8 @@ class TestRequestSocket(unittest.TestCase):
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.request.stop())
 
+        self.ctx.destroy(linger=0)
+
 
     def start_secure_peer(self):
         self.peer = MockRouter(
@@ -43,11 +50,12 @@ class TestRequestSocket(unittest.TestCase):
         self.request = Request(
             server_curve_vk=self.peer_wallet.curve_vk,
             local_wallet=self.local_wallet,
-            to_address=self.peer_address
+            to_address=self.peer_address,
+            ctx=self.ctx
         )
 
     def create_request(self):
-        self.request = Request(to_address=self.peer_address)
+        self.request = Request(to_address=self.peer_address, ctx=self.ctx)
 
     async def wrap_process_in_async(self, process, args={}):
         process(**args)
