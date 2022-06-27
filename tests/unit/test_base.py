@@ -84,20 +84,14 @@ class TestNode(TestCase):
     def test_start_join_existing_network_no_bootnodes(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        wallet = Wallet()
-        self.node = Node(socket_base='', wallet=wallet, constitution={}, should_seed=False)
+        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, should_seed=False)
         self.await_async_process(self.node.start)
-
-        # NOTE: wait for node to stop
-        self.await_async_process(asyncio.sleep, 0.5)
 
         self.assertFalse(self.node.running)
         self.assertFalse(self.node.network.running)
         self.assertFalse(self.node.main_processing_queue.running)
         self.assertFalse(self.node.validation_queue.running)
         self.assertFalse(self.node.system_monitor.running)
-
-        self.await_async_process(self.node.stop)
 
     def test_start_join_existing_network_bootnode_is_not_reachable(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
@@ -107,7 +101,7 @@ class TestNode(TestCase):
             self.await_async_process(asyncio.sleep, 0.1)
 
         # NOTE: wait for node to stop
-        self.await_async_process(asyncio.sleep, 0.5)
+        self.await_async_process(asyncio.sleep, 3)
 
         self.assertFalse(new_node.node_is_running)
         self.assertFalse(new_node.node_started)
@@ -175,6 +169,7 @@ class TestNode(TestCase):
         self.assertEqual(len(self.node.node.tx_queue), 0)
         self.assertIsNotNone(self.node.node.blocks.get_block(1))
 
+    ''' N/A
     def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
 
@@ -201,6 +196,7 @@ class TestNode(TestCase):
 
         self.assertEqual(len(self.node.node.tx_queue), 0)
         self.assertEqual(self.node.node.blocks.get_block(4)['hlc_timestamp'], old_tx['hlc_timestamp'])
+    '''
 
     def test_make_tx_message(self):
         tx = get_new_currency_tx(wallet=self.node.wallet)
