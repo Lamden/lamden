@@ -379,7 +379,7 @@ class LocalNodeNetwork:
             print(f'!!!!! ALL NODES AT BLOCK {block_height} !!!!!')
         
         def get_var_from_one(self, key:str, tn:ThreadedNode):
-            return tn.raw_driver.get(key=key)
+            return tn.raw_driver.get(key)
 
         def get_var_from_all(self, key=str):
             return [self.get_var_from_one(key, tn) for tn in self.all_nodes]
