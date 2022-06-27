@@ -64,9 +64,9 @@ class TestClassWebserver(TestCase):
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key))
 
-        expected = {'nonce': 123, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
+        expected = {'nonce': 124, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
 
-        self.assertDictEqual(response.json, expected)
+        self.assertDictEqual(expected, response.json)
 
     def test_get_nonce_pending_nonce_is_none_but_nonce_is_not_returns_nonce(self):
         w2 = Wallet()
@@ -75,7 +75,7 @@ class TestClassWebserver(TestCase):
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key))
 
-        expected = {'nonce': 555, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
+        expected = {'nonce': 556, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
 
         self.assertDictEqual(response.json, expected)
 

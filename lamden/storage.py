@@ -260,6 +260,17 @@ class NonceStorage:
 
         return latest_nonce
 
+    def get_next_nonce(self, sender, processor):
+        current_nonce = self.get_pending_nonce(sender=sender, processor=processor)
+
+        if current_nonce is None:
+            current_nonce = self.get_nonce(sender=sender, processor=processor)
+
+        if current_nonce is None:
+            return 0
+
+        return current_nonce + 1
+
     def flush(self):
         self.nonces.flush()
         self.pending_nonces.flush()
