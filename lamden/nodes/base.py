@@ -253,6 +253,9 @@ class Node:
             self.log.error(err)
             print(err)
 
+            await asyncio.sleep(1)
+            await self.stop()
+
     async def stop(self):
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
 
@@ -342,9 +345,7 @@ class Node:
             self.log.error("Could not connect to any bootnodes!")
             self.log.error(self.bootnodes)
 
-            await self.stop()
-
-            return
+            raise Exception("Could not connect to any bootnodes!")
 
         # Get the rest of the nodes from our bootnode
         response = await bootnode.get_network_map()
@@ -359,9 +360,7 @@ class Node:
             self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
             self.log.error(response)
 
-            await self.stop()
-
-            return
+            raise Exception(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
 
         # Create a constitution file
         self.constitution = self.network.network_map_to_constitution(network_map=network_map)
