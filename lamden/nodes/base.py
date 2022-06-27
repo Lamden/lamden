@@ -191,7 +191,8 @@ class Node:
             hlc_clock=self.hlc_clock,
             get_last_processed_hlc=self.get_last_processed_hlc,
             stop_node=self.stop,
-            driver=self.driver
+            driver=self.driver,
+            nonces=self.nonces
         )
 
         self.block_contender = block_contender.Block_Contender(
@@ -215,6 +216,9 @@ class Node:
         self.bypass_catchup = bypass_catchup
 
         self.reconnect_attempts = reconnect_attempts
+
+        self.check_main_processing_queue_task = None
+        self.check_validation_queue_task = None
 
     ''' NAH
     def __del__(self):
@@ -253,7 +257,7 @@ class Node:
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
 
         self.running = False
-        await self.stop_all_queues()
+        await self.cancel_checking_all_queues()
 
         await self.network.stop()
         self.system_monitor.stop()
@@ -286,9 +290,8 @@ class Node:
 
         self.driver.clear_pending_state()
 
-        self.start_all_queues()
-        asyncio.ensure_future(self.check_main_processing_queue())
-        asyncio.ensure_future(self.check_validation_queue())
+        self.start_validation_queue_task()
+        self.start_main_processing_queue_task()
 
         self.started = True
 
@@ -394,20 +397,19 @@ class Node:
             await self.catchup_continuous(block_threshold=10)
 
             # Start the validation queue so we start accepting block results
-            self.start_validation_queue_and_check()
+            self.start_validation_queue_task()
 
             # Now start catching up to minting of blocks from validation queue
             await self.catchup_to_validation_queue(catchup_starting_height=self.get_current_height())
         else:
             # Start the validation queue so we start accepting block results
-            self.start_validation_queue_and_check()
+            self.start_validation_queue_task()
 
 
         self.driver.clear_pending_state()
 
         # Start the processing queue
-        self.main_processing_queue.start()
-        asyncio.ensure_future(self.check_main_processing_queue())
+        self.start_main_processing_queue_task()
 
         self.started = True
 
@@ -541,35 +543,43 @@ class Node:
 
             current = next_block_num
 
-    def start_all_queues(self):
-        self.log.info("!!!!!! STARTING ALL QUEUES !!!!!!")
-        self.main_processing_queue.start()
-        self.validation_queue.start()
-        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
-        self.log.info(f"validation_queue running: {self.validation_queue.running}")
+    def start_main_processing_queue_task(self):
+        self.log.info('STARTING MAIN PROCESSING QUEUE')
+        self.check_main_processing_queue_task = asyncio.ensure_future(self.check_main_processing_queue())
 
-    def start_validation_queue_and_check(self):
-        print('STARTING VALIDATION QUEUE')
+    def start_validation_queue_task(self):
         self.log.info('STARTING VALIDATION QUEUE')
+        self.check_validation_queue_task = asyncio.ensure_future(self.check_validation_queue())
 
-        self.validation_queue.start()
-        asyncio.ensure_future(self.check_validation_queue())
-
-    async def stop_all_queues(self):
+    async def cancel_checking_all_queues(self):
         self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
+        self.log.debug(f'NODE RUNNING: {self.running}')
+
         self.main_processing_queue.stop()
         self.validation_queue.stop()
 
-        await self.main_processing_queue.stopping()
+        while self.check_main_processing_queue_task and not self.check_main_processing_queue_task.done():
+            await asyncio.sleep(0)
         self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
-        await self.validation_queue.stopping()
+
+        while self.check_validation_queue_task and not self.check_validation_queue_task.done():
+            await asyncio.sleep(0)
         self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
 
-        self.log.info(f"main_processing_queue running: {self.main_processing_queue.running}")
-        self.log.info(f"validation_queue running: {self.validation_queue.running}")
+    async def pause_main_processing_queue(self):
+        self.log.info("!!!!!! PAUSING main_processing_queue !!!!!!")
+        self.main_processing_queue.pause()
+        await self.main_processing_queue.pausing()
+        self.log.info("!!!!!! main_processing_queue PAUSED !!!!!!")
+
+    async def pause_validation_queue(self):
+        self.log.info("!!!!!! PAUSING validation_queue !!!!!!")
+        self.validation_queue.pause()
+        await self.validation_queue.pausing()
+        self.log.info("!!!!!! validation_queue PAUSED !!!!!!")
 
     def unpause_all_queues(self):
-        self.log.info("!!!!!! UNPAUSING ALL QUEUES !!!!!!")
+        self.log.info("!!!!!! RESUMING ALL QUEUES !!!!!!")
         self.main_processing_queue.unpause()
         self.validation_queue.unpause()
         self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
@@ -577,25 +587,8 @@ class Node:
 
     async def pause_all_queues(self):
         self.log.info("!!!!!! PAUSING ALL QUEUES !!!!!!")
-        self.main_processing_queue.pause()
-        self.validation_queue.pause()
-
-        await self.main_processing_queue.pausing()
-        self.log.info("!!!!!! main_processing_queue PAUSED !!!!!!")
-        await self.validation_queue.pausing()
-        self.log.info("!!!!!! validation_queue PAUSED !!!!!!")
-
-        self.log.info(f"main_processing_queue paused: {self.main_processing_queue.paused}")
-        self.log.info(f"validation_queue paused: {self.validation_queue.paused}")
-
-    async def stop_main_processing_queue(self, force=False):
-        self.main_processing_queue.stop()
-        if force:
-            self.main_processing_queue.currently_processing = False
-        await self.main_processing_queue.stopping()
-
-    def start_main_processing_queue(self):
-        self.main_processing_queue.start()
+        await self.pause_main_processing_queue()
+        await self.pause_validation_queue()
 
     def pause_tx_queue(self):
         self.pause_tx_queue_checking = True
@@ -623,18 +616,23 @@ class Node:
             await asyncio.sleep(0)
 
     async def check_main_processing_queue(self):
-        while self.running:
+        self.main_processing_queue.start()
+
+        while self.main_processing_queue.running:
             if len(self.main_processing_queue) > 0 and self.main_processing_queue.active:
                 self.main_processing_queue.start_processing()
-                # self.log.debug("Calling Check Main Processing Queue")
                 await self.process_main_queue()
                 self.main_processing_queue.stop_processing()
 
             self.debug_loop_counter['main'] = self.debug_loop_counter['main'] + 1
             await asyncio.sleep(0)
 
+        self.log.info(f'Exited Check Main Processing Queue.')
+
     async def check_validation_queue(self):
-        while self.running:
+        self.validation_queue.start()
+
+        while self.validation_queue.running:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 if not self.validation_queue.checking:
                     self.log.debug(f"Calling Check Validation Queue with a Lenght of {len(self.validation_queue)}")
@@ -648,11 +646,13 @@ class Node:
                     self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
 
+        self.log.info(f'Exited Check Validation Queue.')
+
     async def process_main_queue(self):
         try:
             processing_results = await self.main_processing_queue.process_next()
 
-            if processing_results:
+            if processing_results and self.running:
                 hlc_timestamp = processing_results.get('hlc_timestamp')
                 self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
@@ -694,11 +694,9 @@ class Node:
     def soft_apply_current_state(self, hlc_timestamp):
         try:
             self.driver.soft_apply(hcl=hlc_timestamp)
+            gc.collect()
         except Exception as err:
-            print(err)
-
-        self.nonces.flush_pending()
-        gc.collect()
+            self.log.error(err)
 
     def make_tx_message(self, tx):
         hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
@@ -722,8 +720,8 @@ class Node:
         # Commit the state changes and nonces to the database
 
         # NOTE: write it directly to disk.
-        self.driver.driver.set(storage.BLOCK_HASH_KEY, block['hash'])
-        self.driver.driver.set(storage.BLOCK_NUM_HEIGHT, block['number'])
+        self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
+        self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
 
         self.new_block_processor.clean(self.get_current_height())
 
@@ -780,7 +778,7 @@ class Node:
         # If there are later blocks then we need to process them
         if len(later_blocks) > 0:
             try:
-                await self.stop_main_processing_queue(force=True)
+                await self.pause_main_processing_queue()
             except Exception as err:
                 errors = err
                 print(errors)
@@ -789,7 +787,7 @@ class Node:
             # Get the block number of the block right after where we want to put this tx this will be the block number
             # for our new block
             next_block_num = later_blocks[0].get('number')
-            prev_block = self.blocks.get_previous_block(v=later_blocks[0].get('number') - 1)
+            prev_block = self.blocks.get_previous_block(v=next_block_num - 1)
 
             new_block = block_from_tx_results(
                 processing_results=processing_results,
@@ -870,7 +868,7 @@ class Node:
             if len(new_block_writes) > 0:
                 self.reprocess_after_earlier_block(new_keys_list=new_block_writes)
 
-            self.start_main_processing_queue()
+            self.start_main_processing_queue_task()
 
         else:
             new_block = block_from_tx_results(

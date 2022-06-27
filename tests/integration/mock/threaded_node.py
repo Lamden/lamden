@@ -9,8 +9,8 @@ from lamden.nodes.delegate import Delegate
 from lamden.nodes.masternode import Masternode
 from lamden.nodes.base import Node
 
-from lamden.storage import BlockStorage
-from contracting.db.driver import ContractDriver, FSDriver
+from lamden.storage import BlockStorage, NonceStorage
+from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.network import Network
 
 from lamden.crypto.wallet import Wallet
@@ -19,17 +19,66 @@ from lamden.nodes.filequeue import FileQueue
 import unittest
 from pathlib import Path
 import shutil
+import inspect
+import os
+import shutil
 
 node_class_map = {
     'masternode': Masternode,
     'delegate': Delegate
 }
 
+
+def create_constitution(self, node_wallets: list = []):
+    return {
+        'masternodes': [m[1].verifying_key for m in node_wallets if m[0] == "masternode"],
+        'delegates': [d[1].verifying_key for d in node_wallets if d[0] == "delegate"],
+    }
+
+def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constitution=None, bootnodes=None):
+    current_path = Path.cwd()
+    temp_network_dir = Path(f'{current_path}/temp_network')
+    try:
+        shutil.rmtree(temp_network_dir)
+    except FileNotFoundError:
+        pass
+    temp_network_dir.mkdir(exist_ok=True, parents=True)
+
+    node_dir = Path(f'{temp_network_dir}/{node_wallet.verifying_key}')
+    node_state_dir = Path(f'{node_dir}/state')
+
+    #raw_driver = FSDriver(node_state_dir)
+    raw_driver = InMemDriver()
+    block_storage = BlockStorage(home=Path(node_dir))
+    nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
+
+    tx_queue = FileQueue(root=node_dir.joinpath('txq'))
+
+    constitution = constitution or {
+        'masternodes': [node_wallet.verifying_key],
+        'delegates': [],
+    }
+
+    bootnodes = bootnodes or {}
+
+    return ThreadedNode(
+        index=index,
+        node_type=node_type,
+        wallet=node_wallet,
+        constitution=constitution,
+        bootnodes=bootnodes,
+        raw_driver=raw_driver,
+        block_storage=block_storage,
+        nonce_storage=nonce_storage,
+        tx_queue=tx_queue
+    )
+
 class ThreadedNode(threading.Thread):
     def __init__(self,
                  node_type,
                  constitution: dict,
                  block_storage: BlockStorage,
+                 nonce_storage: NonceStorage,
                  raw_driver,
                  tx_queue: FileQueue = FileQueue(),
                  index=0,
@@ -38,11 +87,12 @@ class ThreadedNode(threading.Thread):
                  should_seed=True,
                  metering=False,
                  wallet: Wallet = None,
-                 genesis_path: str = str(Path.cwd()),
+                 genesis_path: str = None,
                  reconnect_attempts=60,
                  delay=None):
 
         threading.Thread.__init__(self)
+
 
         self.daemon = True
 
@@ -54,7 +104,10 @@ class ThreadedNode(threading.Thread):
         self.raw_driver = raw_driver
         self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
-        self.genesis_path = genesis_path
+        self.nonces = nonce_storage
+
+        self.class_path = os.path.abspath(inspect.getfile(self.__class__))
+        self.genesis_path = genesis_path or self.class_path.split('/threaded_node.py')[0]
         self.tx_queue = tx_queue
 
         self.bypass_catchup = bypass_catchup
@@ -171,7 +224,8 @@ class ThreadedNode(threading.Thread):
                 tx_queue=self.tx_queue,
                 reconnect_attempts=self.reconnect_attempts,
                 testing=True,
-                delay=self.delay
+                delay=self.delay,
+                nonces=self.nonces
             )
 
             self.node.network.set_to_local()
@@ -192,7 +246,7 @@ class ThreadedNode(threading.Thread):
         self.raw_driver.set(key=key, value=value)
 
     def get_smart_contract_value(self, key: str) -> any:
-        return self.raw_driver.get(key=key)
+        return self.raw_driver.get(item=key)
 
     def get_latest_block(self) -> dict:
         return self.network.get_latest_block()
@@ -207,15 +261,12 @@ class ThreadedNode(threading.Thread):
     async def stop(self):
         if not self.node:
             return
-
+        print('AWAITING NODE STOP')
         await self.node.stop()
-
-        ctx = zmq.asyncio.Context.instance()
-        ctx.destroy(linger=0)
+        print('NODE STOP EXITED')
 
         self.running = False
-        return "Stopped"
-        print(f'Threaded Node ({self.node_type}) {self.index} Stopped.')
+        print(f'Threaded Node {self.node_type.upper()}-{self.index} Stopped.')
 
 class TestThreadedNode(unittest.TestCase):
     def setUp(self):

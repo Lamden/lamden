@@ -1,3 +1,5 @@
+import time
+
 from lamden import contracts
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node, ensure_in_constitution
@@ -28,24 +30,14 @@ class TestMisc(TestCase):
 
 class TestNode(TestCase):
     def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
         self.local_node_network = LocalNodeNetwork(num_of_masternodes=1, genesis_path=contracts.__path__[0])
         self.node = self.local_node_network.masternodes[0]
 
+        while not self.node.node.started or not self.node.network.is_running:
+            self.loop.run_until_complete(asyncio.sleep(1))
+
     def tearDown(self):
-        if self.local_node_network:
-            for tn in self.local_node_network.all_nodes:
-                loop = asyncio.get_event_loop()
-                loop.run_until_complete(tn.stop())
-
-            for tn in self.local_node_network.all_nodes:
-                tn.join()
-
-        self.loop.stop()
-        self.loop.close()
-
+        self.await_async_process(self.local_node_network.stop_all_nodes)
 
     def await_async_process(self, process, *args, **kwargs):
         task = asyncio.gather(
@@ -136,42 +128,39 @@ class TestNode(TestCase):
         self.assertFalse(self.node.system_monitor.running)
         self.assertFalse(self.node.node_started)
 
+    def test_METHOD_cancel_checking_all_queues__waits_for_all_checking_tasks_to_be_done(self):
+        loop = asyncio.get_event_loop()
+
+        loop.run_until_complete(self.node.node.cancel_checking_all_queues())
+
+        self.assertTrue(self.node.node.check_main_processing_queue_task.done())
+        self.assertTrue(self.node.node.check_validation_queue_task.done())
+
+    def test_METHOD_pause_main_processing_queue(self):
+        self.await_async_process(self.node.node.pause_main_processing_queue)
+        self.assertTrue(self.node.main_processing_queue.paused)
+
+    def test_METHOD_pause_validation_queue(self):
+        self.await_async_process(self.node.node.pause_validation_queue)
+        self.assertTrue(self.node.validation_queue.paused)
+
     def test_pause_all_queues(self):
         self.await_async_process(self.node.node.pause_all_queues)
 
         self.assertTrue(self.node.main_processing_queue.paused)
         self.assertTrue(self.node.validation_queue.paused)
-
-        self.node.node.unpause_all_queues()
-
-        self.assertFalse(self.node.main_processing_queue.paused)
-        self.assertFalse(self.node.validation_queue.paused)
-
-    def test_stop_main_processing_queue(self):
-        self.await_async_process(self.node.node.stop_main_processing_queue)
-
-        self.assertFalse(self.node.main_processing_queue.running)
-
-    def test_force_stop_main_processing_queue(self):
-        self.await_async_process(self.node.node.stop_main_processing_queue, force=True)
-
-        self.assertFalse(self.node.main_processing_queue.currently_processing)
-
-
-    def test_start_main_processing_queue(self):
-        self.node.node.start_main_processing_queue()
-
-        self.assertTrue(self.node.main_processing_queue.running)
-
+    '''
     def test_pause_tx_queue(self):
         self.node.node.pause_tx_queue()
 
+        self.await_async_process(asyncio.sleep(1))
         self.assertTrue(self.node.node.pause_tx_queue_checking)
     
     def test_unpause_tx_queue(self):
         self.node.node.unpause_tx_queue()
-
+        self.await_async_process(asyncio.sleep(1))
         self.assertFalse(self.node.node.pause_tx_queue_checking)
+    '''
 
     def test_check_tx_queue_triggers_block_creation(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
@@ -282,7 +271,7 @@ class TestNode(TestCase):
 
         self.node.node.apply_state_changes_from_block(block)
 
-        self.assertEqual(self.node.node.driver.driver.get('key'), 'sample_value')
+        self.assertEqual('sample_value', self.node.node.driver.driver.get('key'))
 
     def test_processing_transactions_does_not_drop_state(self):
         num_of_transactions = 1000
@@ -297,7 +286,7 @@ class TestNode(TestCase):
 
         loop = asyncio.get_event_loop()
 
-        loop.run_until_complete(self.node.node.stop_all_queues())
+        loop.run_until_complete(self.node.node.cancel_checking_all_queues())
 
         for i in range(num_of_transactions):
             currency_tx = get_new_currency_tx(wallet=self.node.wallet)

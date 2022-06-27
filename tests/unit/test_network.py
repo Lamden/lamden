@@ -324,10 +324,8 @@ class TestNetwork(TestCase):
         while not peer.is_verifying:
             self.async_sleep(0.1)
 
-        task = asyncio.ensure_future(network_1.stop())
-
-        while not task.done():
-            self.async_sleep(0.1)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.stop())
 
         peer = network_1.get_peer(vk=peer_vk)
         self.assertFalse(peer.is_running)
@@ -472,7 +470,8 @@ class TestNetwork(TestCase):
         msg = json.dumps({'testing': 'ping'})
 
         try:
-            network_1.router_callback(ident_vk_string="", msg=msg)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(network_1.router_callback(ident_vk_string="", msg=msg))
         except:
             self.fail('Calling router_callback with a message without an action should not trigger any exceptions.')
 
@@ -484,7 +483,8 @@ class TestNetwork(TestCase):
 
         ping_msg = json.dumps({'action': ACTION_PING})
 
-        network_1.router_callback(ident_vk_string="testing_vk", msg=ping_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string="testing_vk", msg=ping_msg))
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg_str = self.router_msg
@@ -506,7 +506,8 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg))
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg_str = self.router_msg
@@ -532,7 +533,8 @@ class TestNetwork(TestCase):
         peer_vk = wallet.verifying_key
         self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg))
 
         self.assertEqual(1, network_1.num_of_peers())
 
@@ -560,7 +562,8 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg = self.router_msg
@@ -590,7 +593,8 @@ class TestNetwork(TestCase):
             }
         })
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg = self.router_msg
@@ -648,7 +652,8 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
 
         self.assertIsNotNone(self.router_msg)
         to_vk, msg = self.router_msg
@@ -956,6 +961,8 @@ class TestNetwork(TestCase):
 
         self.assertEqual(0, network_1.num_of_peers())
 
+    # THIS WILL FAIL!
+    # TODO look at this logic for when we get a diff IP from another node.
     def test_METHOD_connect_peer__calls_test_connection_if_peer_exists_with_same_ip(self):
         network_1 = self.create_network()
 

@@ -2,6 +2,8 @@ import json
 import unittest
 import asyncio
 
+import zmq.asyncio
+
 from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING
 from tests.unit.helpers.mock_subscriber import MockSubscriber
 
@@ -10,6 +12,8 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestPublisherSocket(unittest.TestCase):
     def setUp(self):
+        self.ctx = zmq.asyncio.Context()
+
         self.publisher = None
         self.subscriber = None
 
@@ -23,6 +27,8 @@ class TestPublisherSocket(unittest.TestCase):
             self.subscriber.stop()
             del self.subscriber
 
+        self.ctx.destroy(linger=0)
+
     def async_sleep(self, delay):
         tasks = asyncio.gather(
             asyncio.sleep(delay)
@@ -31,10 +37,10 @@ class TestPublisherSocket(unittest.TestCase):
         loop.run_until_complete(tasks)
 
     def create_publisher(self):
-        self.publisher = Publisher()
+        self.publisher = Publisher(ctx=self.ctx)
 
     def start_subscriber(self, multipart=True):
-        self.subscriber = MockSubscriber(callback=self.message_callback, multipart=multipart)
+        self.subscriber = MockSubscriber(callback=self.message_callback, multipart=multipart, ctx=self.ctx)
         self.subscriber.start()
         self.async_sleep(1)
 

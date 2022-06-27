@@ -191,7 +191,7 @@ class TestProcessingQueue(TestCase):
         # load a bunch of transactions into the queue
         for i in range(10):
             self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
-            self.assertEqual(len(self.main_processing_queue), i+1)
+            self.assertEqual(i+1, len(self.main_processing_queue))
 
             # if this is the first transaction get the HLC for it for comparison later
             if i == 0:
@@ -218,7 +218,6 @@ class TestProcessingQueue(TestCase):
         self.assertEqual(hlc_timestamp, first_tx.get('hlc_timestamp'))
         self.assertIsNotNone(processing_results.get('proof'))
         self.assertIsNotNone(processing_results.get('tx_result'))
-        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get(first_tx['hlc_timestamp']))
         self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
 
     def test_hlc_already_in_queue(self):

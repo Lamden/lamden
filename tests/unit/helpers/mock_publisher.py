@@ -16,7 +16,7 @@ class MockPublisher():
 
 
     def start(self):
-        self.ctx = zmq.asyncio.Context().instance()
+        self.ctx = zmq.asyncio.Context()
 
         self.socket = self.ctx.socket(zmq.PUB)
 
@@ -46,6 +46,8 @@ class MockPublisher():
             if self.socket:
                 self.socket.setsockopt(zmq.LINGER, 0)
                 self.socket.close()
+
+            self.ctx.destroy()
 
             print(f'[PUBLISHER] Stopped...')
 

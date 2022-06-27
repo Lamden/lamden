@@ -30,6 +30,7 @@ import argparse
 
 log = get_logger("MN-WebServer")
 
+log = get_logger("MN-WebServer")
 
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
@@ -56,7 +57,7 @@ class NonceEncoder(_json.JSONEncoder):
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
                  blocks: storage.BlockStorage,
-                 queue=FileQueue(),
+                 queue=None,
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
@@ -64,6 +65,7 @@ class WebServer:
                  max_queue_len=10_000,
                  event_service_port=8000,
                  topics=[]):
+
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -82,7 +84,7 @@ class WebServer:
         self.static_headers = {}
 
         self.wallet = wallet
-        self.queue = queue
+        self.queue = queue or FileQueue()
         self.max_queue_len = max_queue_len
 
         self.port = port
@@ -138,7 +140,7 @@ class WebServer:
 
         self.ws_clients = set()
         self.app.add_websocket_route(self.ws_handler, '/')
-
+    
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
@@ -155,7 +157,7 @@ class WebServer:
         @self.sio.event
         async def event(data):
             for client in self.ws_clients:
-                await client.send(json.dumps(data))
+                await client.send(encode(data))
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
@@ -177,19 +179,12 @@ class WebServer:
             num = storage.get_latest_block_height(self.driver)
             block = self.blocks.get_block(int(num))
 
-            log.info(block)
-
-            encoded_block = encode(block)
-            encoded_block = json.loads(encoded_block)
-
-            log.info(encoded_block)
-
             eventData = {
                 'event': 'latest_block',
-                'data': encoded_block
+                'data': block
             }
 
-            await ws.send(json.dumps(eventData))
+            await ws.send(encode(eventData))
 
             async for message in ws:
                 pass
@@ -223,17 +218,25 @@ class WebServer:
     # Main Endpoint to Submit TXs
     async def submit_transaction(self, request):
         log.debug(f'New request: {request}')
+
+        if request.method == "OPTIONS":
+            return response.text("",headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': "origin, content-type"
+            })
+
         # Reject TX if the queue is too large
         if len(self.queue) >= self.max_queue_len:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        tx_raw = _json.loads(request.body)
-        log.error(tx_raw)
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:
             return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
+
+        tx_raw = _json.loads(request.body)
+        log.error(tx_raw)
 
         # Check that the TX is correctly formatted
         try:
@@ -245,32 +248,6 @@ class WebServer:
                 client=self.client,
                 nonces=self.nonces
             )
-            '''
-
-            nonce, pending_nonce = transaction.get_nonces(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                driver=self.nonces
-            )
-
-            pending_nonce = transaction.get_new_pending_nonce(
-                tx_nonce=tx['payload']['nonce'],
-                nonce=nonce,
-                pending_nonce=pending_nonce
-            )
-
-            self.nonces.set_pending_nonce(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                value=pending_nonce
-            )
-            '''
-
-            self.nonces.set_nonce(
-                sender=tx['transaction']['payload']['sender'],
-                processor=tx['transaction']['payload']['processor'],
-                value=tx['transaction']['payload']['nonce'] + 1
-            )
 
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
@@ -279,9 +256,15 @@ class WebServer:
                 transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
             )
 
+        self.nonces.set_nonce(
+            sender=tx['payload']['sender'],
+            processor=tx['payload']['processor'],
+            value=tx['payload']['nonce']
+        )
+
         # Add TX to the processing queue
         self.queue.append(request.body)
-        log.info('Added to q')
+        log.error('Added to q')
 
         # Return the TX hash to the user so they can track it
         tx_hash = tx_hash_from_tx(tx)
@@ -404,7 +387,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         self.driver.clear_pending_state()
@@ -435,7 +418,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
@@ -455,7 +438,7 @@ class WebServer:
             return response.json({'error': 'Transaction not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(tx, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(tx, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
         self.client.raw_driver.clear_pending_state()

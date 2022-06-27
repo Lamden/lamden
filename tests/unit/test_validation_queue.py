@@ -435,25 +435,6 @@ class TestValidationQueue(TestCase):
         self.assertFalse(self.hard_apply_block_called)
         self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
 
-    def test_process_next_earlier_than_last_hlc_in_consensus_block_doesnt_exist(self):
-        self.add_solution()
-        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
-
-        self.process_next()
-
-        self.assertTrue(self.get_block_by_hlc_called)
-        self.assertEqual(len(self.validation_queue), 1)
-
-    def test_process_next_earlier_than_last_hlc_in_consensus_block_exists(self):
-        self.add_solution()
-        self.validation_queue.last_hlc_in_consensus = HLC_Clock().get_new_hlc_timestamp()
-        self.block = 'not none'
-
-        self.process_next()
-
-        self.assertTrue(self.get_block_by_hlc_called)
-        self.assertEqual(len(self.validation_queue), 0)
-
     def test_process_next_hlc_has_consensus(self):
         pr = self.add_solution()
         self.validation_queue.validation_results[pr['hlc_timestamp']]['last_check_info']['has_consensus'] = True

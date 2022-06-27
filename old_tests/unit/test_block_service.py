@@ -1,6 +1,7 @@
 from lamden.nodes.masternode import masternode
 from lamden.nodes import base
-from lamden import router, storage, authentication
+from lamden import router, authentication
+from lamden import storage
 from contracting.db.driver import ContractDriver
 from contracting.client import ContractingClient
 import zmq.asyncio
