@@ -284,15 +284,15 @@ class WebServer:
 
     # Get the Nonce of a VK
     async def get_nonce(self, request, vk):
-        current_nonce = self.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
+        next_nonce = self.nonces.get_next_nonce(sender=vk, processor=self.wallet.verifying_key)
 
         try:
-            current_nonce = int(current_nonce)
+            next_nonce = int(next_nonce)
         except:
             pass
 
         return response.json({
-            'nonce': current_nonce + 1,
+            'nonce': next_nonce,
             'processor': self.wallet.verifying_key,
             'sender': vk
         }, headers={'Access-Control-Allow-Origin': '*'})
