@@ -73,10 +73,10 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
     assert is_masternode or is_delegate, 'You are not in the constitution!'
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=storage.BlockStorage(),
-                 driver=ContractDriver(), delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
+    def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=None,
+                 driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
                  genesis_path=contracts.__path__[0], consensus_percent=None,
-                 nonces=storage.NonceStorage(), parallelism=4, should_seed=True, metering=False, tx_queue=FileQueue(),
+                 nonces=None, parallelism=4, should_seed=True, metering=False, tx_queue=None,
                  socket_ports=None, reconnect_attempts=60):
 
         self.consensus_percent = consensus_percent or 51
@@ -85,16 +85,16 @@ class Node:
             'self': 0.5
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
-        self.tx_queue = tx_queue
+        self.tx_queue = tx_queue if tx_queue is not None else FileQueue
         self.pause_tx_queue_checking = False
 
-        self.driver = driver
-        self.nonces = nonces
+        self.driver = driver if driver is not None else ContractDriver()
+        self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.event_writer = EventWriter()
 
         self.seed = seed
 
-        self.blocks = blocks
+        self.blocks = blocks if blocks is not None else storage.BlockStorage()
         self.current_block_height = 0
 
         self.log = get_logger('Base')

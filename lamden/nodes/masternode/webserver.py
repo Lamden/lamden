@@ -84,7 +84,7 @@ class WebServer:
         self.static_headers = {}
 
         self.wallet = wallet
-        self.queue = queue or FileQueue()
+        self.queue = queue if queue is not None else FileQueue()
         self.max_queue_len = max_queue_len
 
         self.port = port

@@ -80,7 +80,7 @@ class ThreadedNode(threading.Thread):
                  block_storage: BlockStorage,
                  nonce_storage: NonceStorage,
                  raw_driver,
-                 tx_queue: FileQueue = FileQueue(),
+                 tx_queue: FileQueue,
                  index=0,
                  bootnodes={},
                  bypass_catchup=False,
@@ -108,7 +108,7 @@ class ThreadedNode(threading.Thread):
 
         self.class_path = os.path.abspath(inspect.getfile(self.__class__))
         self.genesis_path = genesis_path or self.class_path.split('/threaded_node.py')[0]
-        self.tx_queue = tx_queue
+        self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
 
         self.bypass_catchup = bypass_catchup
 

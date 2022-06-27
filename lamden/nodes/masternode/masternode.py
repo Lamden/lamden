@@ -19,9 +19,9 @@ WORK_SERVICE = 'work'
 
 
 class BlockService(Processor):
-    def __init__(self, blocks: BlockStorage=None, driver=ContractDriver()):
+    def __init__(self, blocks: BlockStorage=None, driver=None):
         self.blocks = blocks
-        self.driver = driver
+        self.driver = driver if driver is not None else ContractDriver()
 
     async def process_message(self, msg):
         response = None
@@ -48,9 +48,9 @@ class BlockService(Processor):
 
 
 class TransactionBatcher:
-    def __init__(self, wallet: Wallet, queue=FileQueue()):
+    def __init__(self, wallet: Wallet, queue=None):
         self.wallet = wallet
-        self.queue = queue
+        self.queue = queue if queue is not None else FileQueue()
 
     def make_batch(self, transactions):
         timestamp = int(time.time())
