@@ -65,19 +65,18 @@ BLOCK_0 = {
 }
 
 class BlockStorage:
-    def __init__(self, home=None):
+    def __init__(self, root=None):
         self.log = get_logger('BlockStorage')
-        self.home = pathlib.Path(home) if home is not None else STORAGE_HOME
-        self.blocks_dir = self.home.joinpath('blocks')
+        self.root = pathlib.Path(root) if root is not None else STORAGE_HOME
+        self.blocks_dir = self.root.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
         self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.__build_directories()
-
-        self.log.debug(f'Created storage at \'{self.home}\'')
+        self.log.debug(f'Created block & tx storage at \'{self.root}\'')
 
     def __build_directories(self):
-        self.home.mkdir(exist_ok=True, parents=True)
+        self.root.mkdir(exist_ok=True, parents=True)
         self.blocks_dir.mkdir(exist_ok=True, parents=True)
         self.blocks_alias_dir.mkdir(exist_ok=True, parents=True)
         self.txs_dir.mkdir(exist_ok=True, parents=True)
@@ -124,13 +123,15 @@ class BlockStorage:
         block['processed'] = tx
 
     def flush(self):
-        try:
-            shutil.rmtree(self.home)
-        except FileNotFoundError as e:
-            pass
-        self.__build_directories()
+        if self.blocks_dir.is_dir():
+            shutil.rmtree(self.blocks_dir)
+        if self.blocks_alias_dir.is_dir():
+            shutil.rmtree(self.blocks_dir)
+        if self.txs_dir.is_dir():
+            shutil.rmtree(self.blocks_dir)
 
-        self.log.debug(f'Flushed storage at \'{self.home}\'')
+        self.__build_directories()
+        self.log.debug(f'Flushed block & tx storage at \'{self.root}\'')
 
     def store_block(self, block):
         tx, tx_hash = self.__cull_tx(block)
