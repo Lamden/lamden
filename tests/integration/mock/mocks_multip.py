@@ -312,7 +312,7 @@ class MockMaster(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home='./fixtures/block_storage/' + self.wallet.verifying_key)
+            blocks=storage.BlockStorage(root='./fixtures/block_storage/' + self.wallet.verifying_key)
         )
 
         await self.obj.start()

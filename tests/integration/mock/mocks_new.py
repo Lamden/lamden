@@ -123,7 +123,7 @@ class MockMaster(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path),
+            blocks=storage.BlockStorage(root=self.block_storage_path),
             socket_ports=self.socket_ports,
             should_seed=should_seed
         )
@@ -160,7 +160,7 @@ class MockDelegate(MockNode):
             nonces=self.nonces,
             metering=self.metering,
             delay=self.delay,
-            blocks=storage.BlockStorage(home=self.block_storage_path),
+            blocks=storage.BlockStorage(root=self.block_storage_path),
             socket_ports=self.socket_ports,
             should_seed=should_seed
         )

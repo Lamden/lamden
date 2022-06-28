@@ -81,7 +81,7 @@ class TestNode(TestCase):
                 'base': 0,
                 'self': 0
             },
-            blocks=storage.BlockStorage(home=f'{self.block_storage_path}/{mn_wallet.verifying_key}')
+            blocks=storage.BlockStorage(root=f'{self.block_storage_path}/{mn_wallet.verifying_key}')
         )
 
         node.network.socket_ports['router'] = 19000 + node_num

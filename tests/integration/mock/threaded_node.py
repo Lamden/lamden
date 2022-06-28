@@ -49,7 +49,7 @@ def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constit
 
     #raw_driver = FSDriver(node_state_dir)
     raw_driver = InMemDriver()
-    block_storage = BlockStorage(home=Path(node_dir))
+    block_storage = BlockStorage(root=Path(node_dir))
     nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
 
     tx_queue = FileQueue(root=node_dir.joinpath('txq'))
@@ -287,7 +287,7 @@ class TestThreadedNode(unittest.TestCase):
         self.node_state_dir.mkdir(parents=True, exist_ok=True)
 
         self.driver = ContractDriver(driver=FSDriver(root=Path(self.node_state_dir)))
-        self.block_storage = BlockStorage(home=Path(self.node_block_dir))
+        self.block_storage = BlockStorage(root=Path(self.node_block_dir))
 
 
         self.loop = asyncio.new_event_loop()
@@ -415,7 +415,7 @@ class TestThreadedNode(unittest.TestCase):
             node_type="masternode",
             constitution=constitution,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
-            block_storage=BlockStorage(home=Path(mn_dir)),
+            block_storage=BlockStorage(root=Path(mn_dir)),
             wallet=wallet_mn
         )
         masternode.start()
@@ -427,7 +427,7 @@ class TestThreadedNode(unittest.TestCase):
             node_type="delegate",
             constitution=constitution,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
-            block_storage=BlockStorage(home=Path(del_dir)),
+            block_storage=BlockStorage(root=Path(del_dir)),
             wallet=wallet_del,
             index=1
         )
@@ -471,7 +471,7 @@ class TestThreadedNode(unittest.TestCase):
             constitution=constitution,
             bootnodes=bootnodes,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
-            block_storage=BlockStorage(home=Path(mn_dir)),
+            block_storage=BlockStorage(root=Path(mn_dir)),
             wallet=wallet_mn
         )
         masternode.start()
@@ -484,7 +484,7 @@ class TestThreadedNode(unittest.TestCase):
             constitution=constitution,
             bootnodes=bootnodes,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
-            block_storage=BlockStorage(home=Path(del_dir)),
+            block_storage=BlockStorage(root=Path(del_dir)),
             wallet=wallet_del,
             index=1
         )

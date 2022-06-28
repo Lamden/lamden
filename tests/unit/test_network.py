@@ -73,7 +73,7 @@ class TestNetwork(TestCase):
         except:
             pass
 
-        self.storage = BlockStorage(home=Path(lamden_storage_directory))
+        self.storage = BlockStorage(root=Path(lamden_storage_directory))
 
     def tearDown(self):
         for network in self.networks:
