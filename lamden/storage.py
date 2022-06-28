@@ -125,10 +125,10 @@ class BlockStorage:
     def flush(self):
         if self.blocks_dir.is_dir():
             shutil.rmtree(self.blocks_dir)
-        if self.blocks_alias_dir.is_dir():
-            shutil.rmtree(self.blocks_dir)
         if self.txs_dir.is_dir():
-            shutil.rmtree(self.blocks_dir)
+            shutil.rmtree(self.txs_dir)
+        if self.blocks_alias_dir.is_dir():
+            shutil.rmtree(self.blocks_alias_dir)
 
         self.__build_directories()
         self.log.debug(f'Flushed block & tx storage at \'{self.root}\'')
