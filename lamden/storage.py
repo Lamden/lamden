@@ -65,15 +65,16 @@ BLOCK_0 = {
 }
 
 class BlockStorage:
-    def __init__(self, home=STORAGE_HOME):
+    def __init__(self, home=None):
         self.log = get_logger('BlockStorage')
-        self.home = home
-
+        self.home = pathlib.Path(home) if home is not None else STORAGE_HOME
         self.blocks_dir = self.home.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
         self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.__build_directories()
+
+        self.log.debug(f'Created storage at \'{self.home}\'')
 
     def __build_directories(self):
         self.home.mkdir(exist_ok=True, parents=True)
@@ -110,7 +111,7 @@ class BlockStorage:
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
         except FileExistsError as err:
-            self.log.info(err)
+            self.log.debug(err)
 
     def __write_tx(self, tx_hash, tx):
         with open(self.txs_dir.joinpath(tx_hash), 'w') as f:
@@ -125,9 +126,11 @@ class BlockStorage:
     def flush(self):
         try:
             shutil.rmtree(self.home)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
             pass
         self.__build_directories()
+
+        self.log.debug(f'Flushed storage at \'{self.home}\'')
 
     def store_block(self, block):
         tx, tx_hash = self.__cull_tx(block)
@@ -148,7 +151,7 @@ class BlockStorage:
             else:
                 f = open(self.blocks_alias_dir.joinpath(v))
         except Exception as err:
-            self.log.error(f'Block {v} does not exist!')
+            self.log.error(f'Block \'{v}\' was not found: {err}')
             return None
 
         encoded_block = f.read()
