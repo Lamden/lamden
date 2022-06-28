@@ -55,15 +55,7 @@ class ValidationQueue(ProcessingQueue):
         self.append_history.append(hlc_timestamp)
 
         if hlc_timestamp <= self.last_hlc_in_consensus:
-            block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
-            if block:
-                return
-
-        # TODO how late of an HLC timestamp are we going to accept?
-        '''
-        if hlc_timestamp < self.last_hlc_in_consensus:
             return
-        '''
 
         # self.log.debug(f'ADDING {node_vk[:8]}\'s BLOCK INFO {block_info["hash"][:8]} TO NEEDS VALIDATION RESULTS STORE')
         # Store data about the tx so it can be processed for consensus later.
