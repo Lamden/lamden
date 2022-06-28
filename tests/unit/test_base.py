@@ -217,7 +217,7 @@ class TestNode(TestCase):
 
         self.await_async_process(asyncio.sleep, 2)
 
-        self.assertEqual(self.node.node.last_processed_hlc, tx['hlc_timestamp'])
+        self.assertEqual(self.node.node.get_last_processed_hlc(), tx['hlc_timestamp'])
 
     def test_process_main_queue_doesnt_set_last_processed_hlc_if_later_than_last_hlc_in_consensus(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
@@ -229,7 +229,7 @@ class TestNode(TestCase):
 
         self.await_async_process(asyncio.sleep, 2)
 
-        self.assertNotEqual(self.node.node.last_processed_hlc, tx['hlc_timestamp'])
+        self.assertNotEqual(self.node.node.get_last_processed_hlc(), tx['hlc_timestamp'])
 
     def test_store_solution_and_send_to_network(self):
         hlc = HLC_Clock().get_new_hlc_timestamp()
