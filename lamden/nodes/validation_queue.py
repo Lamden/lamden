@@ -340,7 +340,7 @@ class ValidationQueue(ProcessingQueue):
                 'tx': processing_results['tx_result'].get('transaction'),
                 'hlc_timestamp': hlc_timestamp,
                 'signature': processing_results['tx_message'].get('signature'),
-                'sender': processing_results['tx_message'].get('signer')
+                'sender': processing_results['tx_message'].get('sender')
             }
         except:
             return None
