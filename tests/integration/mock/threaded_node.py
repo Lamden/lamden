@@ -93,7 +93,6 @@ class ThreadedNode(threading.Thread):
 
         threading.Thread.__init__(self)
 
-
         self.daemon = True
 
         self.node_type = node_type
@@ -195,6 +194,10 @@ class ThreadedNode(threading.Thread):
     @property
     def last_processed_hlc(self) -> str:
         return self.node.last_processed_hlc
+
+    @property
+    def blocks(self):
+        return self.node.blocks
 
     def create_socket_ports(self, index=0):
         return {
