@@ -38,7 +38,7 @@ class TestNode(TestCase):
 
         self.current_path = Path.cwd()
         self.file_queue_path = f'{self.current_path}/fixtures/file_queue'
-        self.tx_queue_path = f'{self.file_queue_path}/{self.mn_wallet.verifying_key}/txq'
+        self.tx_queue_path = f'{self.file_queue_path}/{self.mn_wallet.verifying_key}'
 
         self.stu_wallet = Wallet()
         self.jeff_wallet = Wallet()

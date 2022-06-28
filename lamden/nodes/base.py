@@ -85,7 +85,7 @@ class Node:
             'self': 0.5
         }
         # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
-        self.tx_queue = tx_queue if tx_queue is not None else FileQueue
+        self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
         self.pause_tx_queue_checking = False
 
         self.driver = driver if driver is not None else ContractDriver()

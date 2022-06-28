@@ -104,7 +104,7 @@ class MockMaster(MockNode):
         self.webserver_port = 18080 + index
         self.webserver_ip = f'http://0.0.0.0:{self.webserver_port}'
         self.metering = metering
-        self.tx_queue = tx_queue or filequeue.FileQueue(root=f'{self.current_path}/fixtures/file_queue/{self.wallet.verifying_key}/txq')
+        self.tx_queue = tx_queue or filequeue.FileQueue(root=f'{self.current_path}/fixtures/file_queue/{self.wallet.verifying_key}')
 
     async def start(self, should_seed=True):
         assert self.ready_to_start, 'Not ready to start!'

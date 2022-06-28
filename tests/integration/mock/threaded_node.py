@@ -49,10 +49,10 @@ def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constit
 
     #raw_driver = FSDriver(node_state_dir)
     raw_driver = InMemDriver()
-    block_storage = BlockStorage(root=Path(node_dir))
+    block_storage = BlockStorage(root=node_dir)
     nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
 
-    tx_queue = FileQueue(root=node_dir.joinpath('txq'))
+    tx_queue = FileQueue(root=node_dir)
 
     constitution = constitution or {
         'masternodes': [node_wallet.verifying_key],

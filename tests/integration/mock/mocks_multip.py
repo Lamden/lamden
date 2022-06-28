@@ -290,7 +290,7 @@ class MockMaster(MockNode):
         self.webserver_port = 18080 + index
         self.webserver_ip = f'http://0.0.0.0:{self.webserver_port}'
         self.metering = metering
-        self.tx_queue = tx_queue or filequeue.FileQueue(root="./fixtures/file_queue/" + self.wallet.verifying_key + '/txq')
+        self.tx_queue = tx_queue or filequeue.FileQueue(root="./fixtures/file_queue/" + self.wallet.verifying_key)
         self.conn = conn
         self.node_num = index
 

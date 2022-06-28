@@ -171,7 +171,7 @@ class LocalNodeNetwork:
             block_storage = BlockStorage(root=Path(node_dir))
             nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
 
-            tx_queue = FileQueue(root=node_dir.joinpath('txq'))
+            tx_queue = FileQueue(root=node_dir)
 
             if not node:
                 node = ThreadedNode(
