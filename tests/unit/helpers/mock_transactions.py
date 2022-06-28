@@ -102,7 +102,6 @@ def get_processing_results(tx_message, driver=None, node_wallet=None, node=None)
             wallet=node_wallet or Wallet(),
             hlc_clock=HLC_Clock(),
             processing_delay=lambda: 0,
-            get_last_processed_hlc=lambda: "0",
             get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,
             reprocess=lambda: True,
