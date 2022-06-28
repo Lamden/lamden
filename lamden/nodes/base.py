@@ -121,7 +121,6 @@ class Node:
         self.socket_base = socket_base
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
-        self.last_processed_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         self.system_monitor = system_usage.SystemUsage()
 
@@ -161,13 +160,12 @@ class Node:
             wallet=self.wallet,
             metering=metering,
             hlc_clock=self.hlc_clock,
-            processing_delay=lambda: self.processing_delay_secs,
-            get_last_processed_hlc=self.get_last_processed_hlc,                         # Abstract
+            processing_delay=lambda: self.processing_delay_secs,                        # Abstract
             get_last_hlc_in_consensus=self.get_last_hlc_in_consensus,                   # Abstract
             stop_node=self.stop,
             reprocess=self.reprocess,
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
-            pause_all_queues=self.pause_all_queues,
+            pause_all_queues=self.pause_validation_queue,
             unpause_all_queues=self.unpause_all_queues
         )
 
@@ -671,7 +669,6 @@ class Node:
                 else:
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
-                self.last_processed_hlc = hlc_timestamp
         except Exception as err:
             self.log.error(err)
 
@@ -1174,8 +1171,6 @@ class Node:
             self.log.debug(to_delete)
             [self.driver.pending_deltas.pop(key) for key in to_delete]
 
-        #self.driver.rollback(hlc=hlc_timestamp)
-
         self.log.debug(f"Length of Pending Deltas AFTER {len(self.driver.pending_deltas.keys())}")
 
     def update_last_minted_block(self, new_minted_block):
@@ -1270,7 +1265,7 @@ class Node:
         return block
 
     def get_last_processed_hlc(self):
-        return self.last_processed_hlc
+        return self.main_processing_queue.last_processed_hlc
 
     def get_last_hlc_in_consensus(self):
         return self.validation_queue.last_hlc_in_consensus

@@ -69,6 +69,8 @@ class TestNode(TestCase):
     def create_node(self):
         self.tn = create_a_node()
 
+        self.tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', 10000000)
+
     def start_node(self):
         self.tn.start()
         self.async_sleep(1)
@@ -164,15 +166,21 @@ class TestNode(TestCase):
         tx_message_3 = self.node.make_tx_message(tx=get_new_currency_tx(**tx_args))
         hlc_timestamp_3 = tx_message_3['hlc_timestamp']
 
+        last_processed_hlc = self.tn.node.get_last_processed_hlc()
+
         # add this tx the processing queue so we can process it
         self.node.main_processing_queue.append(tx=tx_message_2)
         self.node.main_processing_queue.append(tx=tx_message_3)
 
-        self.async_sleep(0.1)
+        while self.tn.node.get_last_processed_hlc() != hlc_timestamp_3:
+            self.async_sleep(0.1)
 
         self.node.main_processing_queue.append(tx=tx_message_1)
 
-        self.async_sleep(0.1)
+        while self.tn.node.main_processing_queue.detected_rollback == True:
+            self.async_sleep(0.1)
+
+        self.async_sleep(3)
 
         self.node.driver.hard_apply(hlc=hlc_timestamp_3)
 
@@ -192,17 +200,16 @@ class TestNode(TestCase):
         # This will test where TX #2 and #3 would fail due to no balance to send
         # TX #1 is the late tx and after reprocessing it will supply the balance for #2 and #3 to be successful
 
-        self.create_a_node()
-        self.start_all_nodes()
+        self.create_and_start_node()
 
         # stop the validation queue
-        self.node.validation_queue.stop()
+        self.await_async_process(self.node.pause_validation_queue)
 
         # Set the HLC of the last consensus
         self.node.validation_queue.last_hlc_in_consensus = "0"
         self.node.last_processed_hlc = "0"
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         # Send from Stu to Jeff
@@ -231,26 +238,30 @@ class TestNode(TestCase):
         self.node.main_processing_queue.append(tx=tx_message_2)
         self.node.main_processing_queue.append(tx=tx_message_3)
 
-        self.async_sleep(0.1)
+        while self.tn.node.get_last_processed_hlc() != hlc_timestamp_3:
+            self.async_sleep(0.1)
 
         self.node.main_processing_queue.append(tx=tx_message_1)
 
-        self.async_sleep(0.1)
+        while self.tn.node.main_processing_queue.detected_rollback == True:
+            self.async_sleep(0.1)
+
+        self.async_sleep(3)
 
         self.node.driver.hard_apply(hlc=hlc_timestamp_3)
 
-        stu_balance_after = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
-        jeff_balance_after = self.node.driver.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
-        archer_balance_after = self.node.driver.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
+        stu_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
+        jeff_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
+        archer_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.archer_wallet.verifying_key}')
 
         self.assertEqual(tx_amount, stu_balance_before - stu_balance_after)
         self.assertEqual(tx_amount, jeff_balance_after)
         self.assertEqual(0, archer_balance_after)
 
         debug_reprocessing_results = self.node.debug_reprocessing_results
-        self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_2]['reprocess_type'])
+        self.assertEqual('has_both', debug_reprocessing_results[hlc_timestamp_2]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_2]['sent_to_network'])
-        self.assertEqual('no_deltas', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
+        self.assertEqual('has_both', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_3]['sent_to_network'])
 
 
@@ -259,17 +270,16 @@ class TestNode(TestCase):
         # TX #2 will be late late tx and after reprocessing TX #2 will not have the balance to send (no deltas) as TX #3
         # will have spent it
 
-        self.create_a_node()
-        self.start_all_nodes()
+        self.create_and_start_node()
 
         # stop the validation queue
-        self.node.validation_queue.stop()
+        self.await_async_process(self.node.pause_validation_queue)
 
         # Set the HLC of the last consensus
         self.node.validation_queue.last_hlc_in_consensus = "0"
         self.node.last_processed_hlc = "0"
 
-        stu_balance_before = self.node.driver.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
+        stu_balance_before = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
 
         tx_amount = 200.1
         # Send from Stu to Jeff
@@ -303,16 +313,16 @@ class TestNode(TestCase):
 
         self.async_sleep(0.2)
 
-        stu_balance_after = self.node.driver.get(f'currency.balances:{self.stu_wallet.verifying_key}')
-        jeff_balance_after = self.node.driver.get(f'currency.balances:{self.jeff_wallet.verifying_key}')
-        archer_balance_after = self.node.driver.get(f'currency.balances:{self.archer_wallet.verifying_key}')
+        stu_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.stu_wallet.verifying_key}')
+        jeff_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
+        archer_balance_after = self.tn.get_smart_contract_value(key=f'currency.balances:{self.archer_wallet.verifying_key}')
 
         self.assertEqual(str(tx_amount), str(stu_balance_before - stu_balance_after))
         self.assertEqual(str('0.0'), str(jeff_balance_after))
         self.assertEqual(str(tx_amount), str(archer_balance_after))
 
         debug_reprocessing_results = self.node.debug_reprocessing_results
-        self.assertEqual('no_writes', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
+        self.assertEqual('has_both', debug_reprocessing_results[hlc_timestamp_3]['reprocess_type'])
         self.assertTrue(debug_reprocessing_results[hlc_timestamp_3]['sent_to_network'])
 
     def test_reprocessing_should_send_new_results(self):
@@ -331,11 +341,10 @@ class TestNode(TestCase):
             sent_to_network[hlc_timestamp].append(tx_result_hash)
             self.node.mock_store_solution_and_send_to_network(processing_results=processing_results)
 
-        self.create_a_node()
-        self.start_all_nodes()
+        self.create_and_start_node()
 
         # stop the validation queue
-        self.node.validation_queue.stop()
+        self.await_async_process(self.node.pause_validation_queue)
 
         # Set the HLC of the last consensus
         self.node.validation_queue.last_hlc_in_consensus = "0"
@@ -388,11 +397,10 @@ class TestNode(TestCase):
             sent_to_network[processing_results['hlc_timestamp']] = True
             self.node.mock_store_solution_and_send_to_network(processing_results=processing_results)
 
-        self.create_a_node()
-        self.start_all_nodes()
+        self.create_and_start_node()
 
         # stop the validation queue
-        self.node.validation_queue.stop()
+        self.await_async_process(self.node.pause_validation_queue)
 
         # Set the HLC of the last consensus
         self.node.validation_queue.last_hlc_in_consensus = "0"

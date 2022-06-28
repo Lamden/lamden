@@ -19,8 +19,7 @@ from threading import Lock
 GLOBAL_LOCK = Lock()
 
 class TxProcessingQueue(ProcessingQueue):
-    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, stop_node,
-                 get_last_processed_hlc, check_if_already_has_consensus,
+    def __init__(self, client, driver, wallet, hlc_clock, processing_delay, stop_node, check_if_already_has_consensus,
                  get_last_hlc_in_consensus, pause_all_queues, unpause_all_queues, reprocess, metering=False, testing=False, debug=False):
         super().__init__()
 
@@ -35,8 +34,8 @@ class TxProcessingQueue(ProcessingQueue):
         self.driver = driver
         self.hlc_clock = hlc_clock
         self.reprocess = reprocess
+        self.last_processed_hlc = "0"
 
-        self.get_last_processed_hlc = get_last_processed_hlc
         self.get_last_hlc_in_consensus = get_last_hlc_in_consensus
         self.check_if_already_has_consensus = check_if_already_has_consensus
         self.pause_all_queues = pause_all_queues
@@ -166,7 +165,7 @@ class TxProcessingQueue(ProcessingQueue):
                 }))
             '''
 
-            if self.currently_processing_hlc < self.get_last_processed_hlc():
+            if self.currently_processing_hlc < self.last_processed_hlc:
                 self.log.error(f"ROLLING BACK to {self.currently_processing_hlc}")
                 await self.node_rollback(tx=tx)
             else:
@@ -181,7 +180,7 @@ class TxProcessingQueue(ProcessingQueue):
 
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
-
+                self.last_processed_hlc = self.currently_processing_hlc
                 self.message_received_timestamps.pop(self.currently_processing_hlc)
                 self.currently_processing_hlc = ""
 
@@ -411,7 +410,6 @@ class TxProcessingQueue(ProcessingQueue):
     async def node_rollback(self, tx):
         start_time = time.time()
         try:
-            self.currently_processing = False
             self.log.info('pause_all_queues')
             await self.pause_all_queues()
             self.log.info('reprocess')
