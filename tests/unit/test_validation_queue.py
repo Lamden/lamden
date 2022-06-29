@@ -473,20 +473,20 @@ class TestValidationQueue(TestCase):
 
         self.assertFalse(self.validation_queue.checking)
 
-    def test_add_consensus_adds_consensus_result(self):
+    def test_METHOD_add_consensus__adds_consensus_result(self):
         pr = self.add_solution()
         hlc = pr['hlc_timestamp']
 
         self.validation_queue.validation_results[hlc]['last_check_info'] = {
             'ideal_consensus_possible': False,
             'eager_consensus_possible': False,
-            'has_consensus': 'something'
+            'has_consensus': True
         }
 
         consensus_result = {
             'ideal_consensus_possible': True,
             'eager_consensus_possible': True,
-            'has_consensus': 'something_else'
+            'has_consensus': True
         }
 
         self.validation_queue.add_consensus_result(hlc, consensus_result)
@@ -494,19 +494,19 @@ class TestValidationQueue(TestCase):
         self.assertDictEqual(consensus_result, self.validation_queue.validation_results[hlc]['last_check_info'])
 
 
-    def test_add_consensus_changes_just_one_consensus_result(self):
+    def test_METHOD_add_consensus__changes_just_one_consensus_result(self):
         pr = self.add_solution()
         hlc = pr['hlc_timestamp']
 
         self.validation_queue.validation_results[hlc]['last_check_info'] = {
             'ideal_consensus_possible': False,
             'eager_consensus_possible': False,
-            'has_consensus': 'something'
+            'has_consensus': False
         }
 
         consensus_result = {
             'ideal_consensus_possible': True,
-            'has_consensus': 'something_else'
+            'has_consensus': False
         }
 
         self.validation_queue.add_consensus_result(hlc, consensus_result)
@@ -514,7 +514,31 @@ class TestValidationQueue(TestCase):
         self.assertTrue(self.validation_queue.validation_results[hlc]['last_check_info']['ideal_consensus_possible'])
         self.assertFalse(self.validation_queue.validation_results[hlc]['last_check_info']['eager_consensus_possible'])
 
-    def test_add_consensus_returns_if_consensus_results_is_None(self):
+    def test_METHOD_add_consensus__overwrites_dict_if_consensus_is_True(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {
+            'ideal_consensus_possible': True,
+            'eager_consensus_possible': False,
+            'has_consensus': False
+        }
+
+        consensus_result = {
+            'ideal_consensus_possible': True,
+            'eager_consensus_possible': False,
+            'has_consensus': True,
+            'new_value': 'something'
+        }
+
+        self.validation_queue.add_consensus_result(hlc, consensus_result)
+
+        last_check_info = self.validation_queue.validation_results[hlc]['last_check_info']
+        self.assertTrue(last_check_info['ideal_consensus_possible'])
+        self.assertFalse(last_check_info['eager_consensus_possible'])
+        self.assertDictEqual(consensus_result, last_check_info)
+
+    def test_METHOD_add_consensus__returns_if_consensus_results_is_None(self):
         pr = self.add_solution()
         hlc = pr['hlc_timestamp']
 

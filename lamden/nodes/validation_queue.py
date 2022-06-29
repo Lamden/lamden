@@ -130,7 +130,7 @@ class ValidationQueue(ProcessingQueue):
 
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
-                await self.process(hlc_timestamp=next_hlc_timestamp)
+                await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
             else:
                 # do nothing
                 pass
@@ -197,17 +197,19 @@ class ValidationQueue(ProcessingQueue):
         if consensus_result is None:
             return
 
-        ideal_consensus_possible = consensus_result.get('ideal_consensus_possible')
-        if ideal_consensus_possible is not None:
-            self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_possible
-
-        eager_consensus_possible = consensus_result.get('eager_consensus_possible')
-        if eager_consensus_possible is not None:
-            self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_possible
-
         has_consensus = consensus_result.get('has_consensus')
-        if has_consensus is not None:
-            self.validation_results[hlc_timestamp]['last_check_info']['has_consensus'] = has_consensus
+        if has_consensus is not None and has_consensus:
+            self.validation_results[hlc_timestamp]['last_check_info'] = consensus_result
+        else:
+            ideal_consensus_possible = consensus_result.get('ideal_consensus_possible')
+            if ideal_consensus_possible is not None:
+                self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_possible
+
+            eager_consensus_possible = consensus_result.get('eager_consensus_possible')
+            if eager_consensus_possible is not None:
+                self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_possible
+
+
 
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
@@ -346,7 +348,6 @@ class ValidationQueue(ProcessingQueue):
         processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
 
         # Hard apply these results on the driver
-
         await self.hard_apply_block(processing_results=processing_results)
 
         # Set this as the last hlc that was in consensus
