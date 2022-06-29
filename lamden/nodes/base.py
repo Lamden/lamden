@@ -632,7 +632,7 @@ class Node:
         while self.validation_queue.running:
             if len(self.validation_queue.validation_results) > 0 and self.validation_queue.active:
                 if not self.validation_queue.checking:
-                    self.log.debug(f"Calling Check Validation Queue with a Lenght of {len(self.validation_queue)}")
+                    #self.log.debug(f"Calling Check Validation Queue with a Lenght of {len(self.validation_queue)}")
                     self.validation_queue.start_processing()
                     #await self.validation_queue.check_all()
 
@@ -674,6 +674,8 @@ class Node:
 
     def store_solution_and_send_to_network(self, processing_results):
         self.send_solution_to_network(processing_results=processing_results)
+
+        processing_results = json.loads(encode(processing_results))
 
         processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
             tx_result=processing_results['tx_result'],
