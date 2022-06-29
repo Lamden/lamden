@@ -916,13 +916,11 @@ class Node:
     async def reprocess(self, tx):
         # make a copy of all the values before reprocessing, so we can compare transactions that are rerun
         pending_delta_history = deepcopy(self.driver.pending_deltas)
-        self.log.debug(f"pending_delta_history: {pending_delta_history}")
 
         self.log.debug(f"Reprocessing {len(pending_delta_history.keys())} Transactions")
 
         # Get HLC of tx that needs to be run
         new_tx_hlc_timestamp = tx.get("hlc_timestamp")
-        self.log.debug(f"new_tx_hlc_timestamp: {new_tx_hlc_timestamp}")
 
         # Get the read history of all transactions that were run
         changed_keys_list = []
@@ -934,16 +932,9 @@ class Node:
 
         # Check the read_history if all HLCs that were processed, in order of oldest to newest
         for index, read_history_hlc in enumerate(pending_delta_items):
-            self.log.debug(f"read_history_hlc: {read_history_hlc}")
 
             # if this is the transaction we have to rerun,
             if read_history_hlc == new_tx_hlc_timestamp:
-                self.log.debug(f"read_history_hlc: EQUALS")
-                if self.testing:
-                    self.debug_reprocessing_results[read_history_hlc] = {
-                        'reprocess_type': 'run',
-                        'sent_to_network': True
-                    }
                 try:
                     # rollback to this point
                     self.rollback_drivers(hlc_timestamp=new_tx_hlc_timestamp)
@@ -959,12 +950,10 @@ class Node:
 
             # if the hlc is less than the hlc we need to run then leave it alone, it won't need any changes
             if read_history_hlc < new_tx_hlc_timestamp:
-                self.log.debug(f"read_history_hlc: LESS THAN")
                 continue
 
             # If HLC is greater than rollback point check it for reprocessing
             if read_history_hlc > new_tx_hlc_timestamp:
-                self.log.debug(f"read_history_hlc: GREATER THAN")
                 try:
                     self.reprocess_hlc(
                         hlc_timestamp=read_history_hlc,
@@ -1030,14 +1019,9 @@ class Node:
                 pending_deltas_writes = prev_pending_deltas.get('writes', {})
                 pending_writes = self.driver.pending_writes
 
-                # FOR TESTING
-                reprocess_type = ""
-
                 # If there were no previous writes but reprocessing had writes then just add then all to
                 # the changed_keys_list and flag to resend our results to the network
                 if len(pending_deltas_writes) is 0 and len(pending_writes) > 0:
-                    reprocess_type = 'no_deltas'
-
                     # Flag that we need to resend our results to the network
                     re_send_to_network = True
 
@@ -1049,7 +1033,6 @@ class Node:
                 # If there WERE writes before AND reprocessing had no writes then add all the before
                 # writes to the changed_keys_list and flag to resend our results to the network
                 if len(pending_deltas_writes) > 0 and len(pending_writes) is 0:
-                    reprocess_type = 'no_writes'
 
                     # Flag that we need to resend our results to the network
                     re_send_to_network = True
@@ -1062,7 +1045,6 @@ class Node:
                 # If there were writes previously and after reprocessing then compare then to see if
                 # anything changed
                 if len(pending_deltas_writes) > 0 and len(pending_writes) > 0:
-                    reprocess_type = 'has_both'
 
                     # check the value of each key written during processing against the value of the
                     # previous run
@@ -1090,7 +1072,6 @@ class Node:
                     # Check if there are any pending deltas we didn't deal with. This is a situation where
                     # there were writes that happened previously and not during reprocessing
                     if len(pending_deltas_writes) > 0:
-                        reprocess_type = 'has_extra_deltas'
 
                         # Add all the the extra keys to the changed key list because they will now be None
                         # and could effect transactions later on
@@ -1105,31 +1086,9 @@ class Node:
                     self.log.debug({"RESENDING_TO_NETWORK": processing_results})
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
-                self.log.debug({
-                        'reprocess_type': reprocess_type,
-                        'sent_to_network': re_send_to_network
-                    })
-
-                if self.testing:
-                    self.debug_reprocessing_results[hlc_timestamp] = {
-                        'reprocess_type': reprocess_type,
-                        'sent_to_network': re_send_to_network
-                    }
-
             except Exception as err:
                 self.log.error(err)
         else:
-            if self.testing:
-                self.debug_reprocessing_results[hlc_timestamp] = {
-                    'reprocess_type': "no_match",
-                    'sent_to_network': False
-                }
-
-            self.log.debug({
-                    'reprocess_type': "no_match",
-                    'sent_to_network': False
-                })
-
             for pending_delta_key, pending_delta_value in pending_deltas.items():
                 self.driver.pending_writes[pending_delta_key] = pending_delta_value[1]
 

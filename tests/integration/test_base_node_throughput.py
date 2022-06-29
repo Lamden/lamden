@@ -27,7 +27,7 @@ class TestNode(TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-        self.amount_of_txn = 1000
+        self.amount_of_txn = 250
         self.nonces = {}
         self.tn: ThreadedNode = None
         self.tx_history = {}

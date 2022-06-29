@@ -251,6 +251,17 @@ class ThreadedNode(threading.Thread):
     def get_smart_contract_value(self, key: str) -> any:
         return self.raw_driver.get(item=key)
 
+    def get_cached_smart_contract_value(self, key: str) -> any:
+        key_split = key.split(".")
+        contract = key_split.pop(0)
+
+        key_split = key_split[0].split(":")
+        variable = key_split.pop(0)
+
+        arguments = key_split
+
+        return self.node.driver.get_var(contract=contract, variable=variable, arguments=arguments)
+
     def get_latest_block(self) -> dict:
         return self.network.get_latest_block()
 
