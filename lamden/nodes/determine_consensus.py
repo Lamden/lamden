@@ -1,10 +1,12 @@
 import math
+from lamden.logger.base import get_logger
 
 class DetermineConsensus:
     def __init__(self, consensus_percent, my_wallet):
 
         self.consensus_percent = consensus_percent
         self.vk = my_wallet.verifying_key
+        self.log  = get_logger("Determine Consensus")
 
     def check_consensus(self, solutions, num_of_participants, last_check_info):
         '''
@@ -58,13 +60,15 @@ class DetermineConsensus:
         tally_info = self.tally_solutions(solutions=solutions)
         # print({'tally_info':tally_info})
 
-        '''
+
         self.log.debug({
+            'num_of_participants': num_of_participants,
             'my_solution': my_solution,
             'solutions_missing': solutions_missing,
-            'tally_info': tally_info
+            'tally_info': tally_info,
+            'consensus_needed': consensus_needed
         })
-        '''
+
         ideal_consensus_results = None
 
         if last_check_info.get('ideal_consensus_possible', None):
@@ -76,11 +80,11 @@ class DetermineConsensus:
                 solutions_missing=solutions_missing
             )
             # print({'ideal_consensus_results':ideal_consensus_results})
-            '''
+
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
             })
-            
+            '''
             self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_results['ideal_consensus_possible']
             '''
             # Return if we found ideal consensus on a solution
@@ -96,6 +100,9 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+            self.log.debug({
+                'eager_consensus_results': eager_consensus_results
+            })
             if ideal_consensus_results is not None:
                 eager_consensus_results['ideal_consensus_possible'] = False
             '''
@@ -108,11 +115,16 @@ class DetermineConsensus:
 
             # Return Failed situation if ideal and eager consensus is not possible
             # This should always return a consensus result
-            return self.check_failed_consensus(
+            failed_consensus_results = self.check_failed_consensus(
                 tally_info=tally_info,
                 my_solution=my_solution,
                 consensus_needed=consensus_needed
             )
+
+            self.log.debug({
+                'failed_consensus_results': failed_consensus_results
+            })
+            return failed_consensus_results
 
 
     def check_ideal_consensus(self, tally_info, my_solution, solutions_missing, consensus_needed):
