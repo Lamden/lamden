@@ -473,27 +473,46 @@ class TestValidationQueue(TestCase):
 
         self.assertFalse(self.validation_queue.checking)
 
-    def test_add_consensus_result_returns_if_ideal_consensus_and_eager_consensus_not_possible(self):
-        pr = self.add_solution()
-        hlc = pr['hlc_timestamp']
-        initial_check_info = self.validation_queue.validation_results[hlc]['last_check_info']
-
-        self.validation_queue.add_consensus_result(hlc, {})
-
-        self.assertDictEqual(initial_check_info, self.validation_queue.validation_results[hlc]['last_check_info'])
-
     def test_add_consensus_adds_consensus_result(self):
         pr = self.add_solution()
         hlc = pr['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {
+            'ideal_consensus_possible': False,
+            'eager_consensus_possible': False,
+            'has_consensus': 'something'
+        }
+
         consensus_result = {
             'ideal_consensus_possible': True,
             'eager_consensus_possible': True,
-            'sample_key': 'sample_value'
+            'has_consensus': 'something_else'
         }
 
         self.validation_queue.add_consensus_result(hlc, consensus_result)
 
         self.assertDictEqual(consensus_result, self.validation_queue.validation_results[hlc]['last_check_info'])
+
+
+    def test_add_consensus_changes_just_one_consensus_result(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {
+            'ideal_consensus_possible': False,
+            'eager_consensus_possible': False,
+            'has_consensus': 'something'
+        }
+
+        consensus_result = {
+            'ideal_consensus_possible': True,
+            'has_consensus': 'something_else'
+        }
+
+        self.validation_queue.add_consensus_result(hlc, consensus_result)
+
+        self.assertTrue(self.validation_queue.validation_results[hlc]['last_check_info']['ideal_consensus_possible'])
+        self.assertFalse(self.validation_queue.validation_results[hlc]['last_check_info']['eager_consensus_possible'])
 
     def test_check_num_of_solutions_no_validation_results(self):
         self.assertEqual(0, self.validation_queue.check_num_of_solutions('sample_stamp'))

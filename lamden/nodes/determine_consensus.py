@@ -69,9 +69,7 @@ class DetermineConsensus:
             'consensus_needed': consensus_needed
         })
 
-        ideal_consensus_results = None
-
-        if last_check_info.get('ideal_consensus_possible', None):
+        if last_check_info.get('ideal_consensus_possible', False):
             # Check ideal situation
             ideal_consensus_results = self.check_ideal_consensus(
                 tally_info=tally_info,
@@ -84,15 +82,13 @@ class DetermineConsensus:
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
             })
-            '''
-            self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = ideal_consensus_results['ideal_consensus_possible']
-            '''
+
             # Return if we found ideal consensus on a solution
             # or there are still enough respondents left that ideal consensus is possible
             if ideal_consensus_results['has_consensus'] or ideal_consensus_results['ideal_consensus_possible']:
                 return ideal_consensus_results
 
-        if last_check_info.get('eager_consensus_possible', None):
+        if last_check_info.get('eager_consensus_possible', False):
             # Check eager situation
             eager_consensus_results = self.check_eager_consensus(
                 tally_info=tally_info,
@@ -105,9 +101,7 @@ class DetermineConsensus:
             })
             if ideal_consensus_results is not None:
                 eager_consensus_results['ideal_consensus_possible'] = False
-            '''
-            self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_results['eager_consensus_possible']
-            '''
+
             # Return if we found eager consensus on a solution
             # or there are still enough respondents left that eager consensus is possible
             if eager_consensus_results['has_consensus'] or eager_consensus_results['eager_consensus_possible']:
