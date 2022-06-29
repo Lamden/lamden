@@ -56,7 +56,7 @@ class NonceEncoder(_json.JSONEncoder):
 
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
-                 blocks: storage.BlockStorage,
+                 blocks: storage.BlockStorage, nonces: storage.NonceStorage=None,
                  queue=None,
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
@@ -78,7 +78,7 @@ class WebServer:
         # Initialize the backend data interfaces
         self.client = contracting_client
         self.driver = driver
-        self.nonces = storage.NonceStorage()
+        self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.blocks = blocks
 
         self.static_headers = {}

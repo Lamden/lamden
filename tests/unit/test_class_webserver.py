@@ -1,41 +1,48 @@
-from unittest import TestCase
-
-from lamden.nodes.masternode.webserver import WebServer
-from lamden.crypto.wallet import Wallet
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver, decode, encode
-from lamden.storage import BlockStorage
-from lamden.crypto.transaction import build_transaction
+from contracting.db.driver import ContractDriver, decode, encode, FSDriver
 from lamden import storage
+from lamden.crypto.transaction import build_transaction
+from lamden.crypto.wallet import Wallet
 from lamden.nodes.events import EventWriter, Event, EventService
-import websockets
-from multiprocessing import Process
-import json
-import time
-
-import asyncio
-
-from tests.unit.helpers.mock_blocks import generate_blocks
-import copy
+from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
+from lamden.nodes.masternode.webserver import WebServer
+from lamden.storage import BlockStorage
+from multiprocessing import Process
+from tests.unit.helpers.mock_blocks import generate_blocks
+from unittest import TestCase
+import asyncio
+import copy
+import json
+import pathlib
+import shutil
+import time
+import websockets
 
 EVENT_SERVICE_PORT = 8000
 SAMPLE_TOPIC = 'new_block'
 
 class TestClassWebserver(TestCase):
     def setUp(self):
+        self.storage_root = pathlib.Path().cwd().joinpath('test_class_webserver')
+        if self.storage_root.is_dir():
+            shutil.rmtree(self.storage_root)
+        self.storage_root.mkdir()
+
         self.w = Wallet()
-        self.blocks = BlockStorage()
-        self.driver = ContractDriver()
+        self.blocks = BlockStorage(root=self.storage_root)
+        self.driver = ContractDriver(driver=FSDriver(root=self.storage_root.joinpath('state')))
         self.ws = WebServer(
             wallet=self.w,
             contracting_client=ContractingClient(driver=self.driver),
             blocks=self.blocks,
-            driver=self.driver
+            driver=self.driver,
+            queue=FileQueue(root=self.storage_root),
+            nonces=storage.NonceStorage(nonce_collection=self.storage_root.joinpath('nonces'), pending_collection=self.storage_root.joinpath('pending_nonces'))
         )
 
     def tearDown(self):
-        self.ws.blocks.flush()
+        shutil.rmtree(self.storage_root)
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
