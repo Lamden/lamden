@@ -140,12 +140,13 @@ class ValidationQueue(ProcessingQueue):
         if results is None:
             return
 
-
         consensus_result = self.determine_consensus.check_consensus(
             solutions=results.get('solutions'),
             num_of_participants=len(self.get_peers_for_consensus()) + 1,
             last_check_info=results.get('last_check_info')
         )
+
+        self.log.info({'consensus_result':consensus_result})
 
         if consensus_result:
             self.add_consensus_result(
