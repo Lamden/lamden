@@ -514,6 +514,22 @@ class TestValidationQueue(TestCase):
         self.assertTrue(self.validation_queue.validation_results[hlc]['last_check_info']['ideal_consensus_possible'])
         self.assertFalse(self.validation_queue.validation_results[hlc]['last_check_info']['eager_consensus_possible'])
 
+    def test_add_consensus_returns_if_consensus_results_is_None(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {
+            'ideal_consensus_possible': False,
+            'eager_consensus_possible': False,
+            'has_consensus': 'something'
+        }
+
+        try:
+            self.validation_queue.add_consensus_result(hlc, None)
+        except Exception as err:
+            self.fail("add_consensus should return on None and not raise any errors")
+
+
     def test_check_num_of_solutions_no_validation_results(self):
         self.assertEqual(0, self.validation_queue.check_num_of_solutions('sample_stamp'))
 

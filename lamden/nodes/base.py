@@ -634,8 +634,6 @@ class Node:
                 if not self.validation_queue.checking:
                     #self.log.debug(f"Calling Check Validation Queue with a Lenght of {len(self.validation_queue)}")
                     self.validation_queue.start_processing()
-                    #await self.validation_queue.check_all()
-
                     # TODO Alter this method to process just the earliest HLC
                     await self.validation_queue.process_next()
                     self.validation_queue.stop_processing()
