@@ -5,6 +5,7 @@ from unittest import TestCase
 import json
 import os
 import pathlib
+import shutil
 
 class TestProcessingQueue(TestCase):
     def setUp(self):
@@ -13,7 +14,7 @@ class TestProcessingQueue(TestCase):
 
     def tearDown(self):
         self.tx_queue.flush()
-        self.tx_queue_path.rmdir()
+        shutil.rmtree(self.tx_queue_path)
 
     def test_append_tx(self):
         receiver_wallet = Wallet()
