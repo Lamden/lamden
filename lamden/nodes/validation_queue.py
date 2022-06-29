@@ -178,7 +178,7 @@ class ValidationQueue(ProcessingQueue):
                         consensus_result=all_consensus_results[hlc_timestamp]
                     )
 
-        except Exception as err
+        except Exception as err:
             self.log.error(err)
             print(err)
         finally:
@@ -191,14 +191,7 @@ class ValidationQueue(ProcessingQueue):
         '''
 
         if self.hlc_has_consensus(hlc_timestamp):
-            if self.is_earliest_hlc(hlc_timestamp=hlc_timestamp):
-                # if it matches us that means we did already process this tx and the pending deltas should exist
-                # in the driver
-
-                await self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
-            else:
-                self.log.info("CHECKING FOR NEXT BLOCK")
-                # await self.check_for_next_block()
+            await self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
 
     def add_consensus_result(self, hlc_timestamp: str, consensus_result: dict) -> None:
         if consensus_result is None:
