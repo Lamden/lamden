@@ -7,6 +7,8 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results, get_new_processing_result
 import asyncio
+import hashlib
+from contracting.db.encoder import encode
 
 class TestValidationQueue(TestCase):
     def setUp(self):
@@ -807,3 +809,57 @@ class TestValidationQueue(TestCase):
         
         self.assertEqual(self.validation_queue[0], first)
         self.assertEqual(self.validation_queue[1], second)
+
+    def test_METHOD_check_one__checks_one_result_has_ideal(self):
+        node_wallet_1 = Wallet()
+        node_wallet_2 = Wallet()
+
+        self.num_of_peers = 1
+
+        processing_results_1, processing_results_2 = self.add_solutions(
+            amount_of_solutions=2,
+            node_wallets=[node_wallet_1, node_wallet_2]
+        )
+
+        hlc_timestamp = processing_results_1['hlc_timestamp']
+
+        self.assertFalse(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
+
+        self.validation_queue.check_one(hlc_timestamp=hlc_timestamp)
+
+        self.assertTrue(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
+
+    def test_METHOD_check_one__checks_one_result_has_failed(self):
+        node_wallet_1 = Wallet()
+        node_wallet_2 = Wallet()
+
+        self.num_of_peers = 1
+
+        processing_results_1, processing_results_2 = self.add_solutions(
+            amount_of_solutions=2,
+            node_wallets=[node_wallet_1, node_wallet_2]
+        )
+
+        hlc_timestamp = processing_results_1['hlc_timestamp']
+
+        h = hashlib.sha3_256()
+        encoded_tx = encode({'hlc_timestamp': hlc_timestamp}).encode()
+        h.update(encoded_tx)
+        solution_2 =  h.hexdigest()
+
+        self.validation_queue.validation_results[hlc_timestamp]['solutions'][node_wallet_2.verifying_key] = solution_2
+
+        solution_1 = self.validation_queue.validation_results[hlc_timestamp]['solutions'][node_wallet_1.verifying_key]
+
+        if int(solution_1, 16) < int(solution_2, 16):
+            expected_consensus_solution = solution_1
+        else:
+            expected_consensus_solution = solution_2
+
+        self.assertFalse(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
+
+        self.validation_queue.check_one(hlc_timestamp=hlc_timestamp)
+
+        self.assertTrue(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
+
+        self.assertEqual(expected_consensus_solution, self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['solution'])

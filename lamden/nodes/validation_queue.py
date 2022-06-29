@@ -119,6 +119,7 @@ class ValidationQueue(ProcessingQueue):
             # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
                     self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
+                    self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
                     return
                     # await self.process_next()
 
@@ -146,19 +147,13 @@ class ValidationQueue(ProcessingQueue):
             last_check_info=results.get('last_check_info')
         )
 
-        self.log.info({'consensus_result':consensus_result})
+        self.log.info({'consensus_result': consensus_result})
 
         if consensus_result:
             self.add_consensus_result(
                 hlc_timestamp=hlc_timestamp,
                 consensus_result=consensus_result
             )
-
-            if self.consensus_history.get(hlc_timestamp) is None:
-                self.consensus_history[hlc_timestamp] = []
-
-            self.consensus_history[hlc_timestamp].append(consensus_result)
-
 
     async def check_all(self):
         if self.checking:
