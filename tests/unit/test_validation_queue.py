@@ -304,13 +304,13 @@ class TestValidationQueue(TestCase):
             node_vk=node_wallet.verifying_key
         )
 
-        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=processing_results['tx_result'],
-                                                              hlc_timestamp=hlc_timestamp)
+        #tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=processing_results['tx_result'],
+        #                                                      hlc_timestamp=hlc_timestamp)
 
-        self.assertEqual(result_hash, tx_result_hash)
+        self.assertIsNone(result_hash)
 
-        self.assertEqual(len(self.validation_queue), 1)
-        self.assertEqual(self.validation_queue[0], hlc_timestamp)
+        self.assertEqual(len(self.validation_queue), 0)
+        #self.assertEqual(self.validation_queue[0], hlc_timestamp)
 
     def test_append_hlc_timestamp_older_than_consensus_block_exist(self):
         receiver_wallet = Wallet()
