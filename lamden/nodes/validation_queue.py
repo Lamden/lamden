@@ -126,7 +126,6 @@ class ValidationQueue(ProcessingQueue):
             self.check_one(hlc_timestamp=next_hlc_timestamp)
 
             results = self.validation_results.get(next_hlc_timestamp)
-            self.log.debug(results)
 
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
@@ -146,8 +145,6 @@ class ValidationQueue(ProcessingQueue):
             num_of_participants=len(self.get_peers_for_consensus()) + 1,
             last_check_info=results.get('last_check_info')
         )
-
-        self.log.info({'consensus_result': consensus_result})
 
         if consensus_result is not None:
             self.add_consensus_result(
