@@ -902,10 +902,7 @@ class Node:
         # remove the processing results and read history from the main_processing queue memory
         self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
 
-        if self.testing:
-            self.debug_processed_hlcs.append(hlc_timestamp)
-            self.debug_blocks_hard_applied.append(new_block)
-            self.log.info(f'[{self.network.router_address}][HARD APPLY] {new_block.get("number")}')
+        self.log.info(f'[HARD APPLY] {new_block.get("number")}')
 
         # Increment the internal block counter
         self.current_block_height += 1
