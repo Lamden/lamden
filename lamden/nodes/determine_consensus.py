@@ -104,8 +104,6 @@ class DetermineConsensus:
             self.log.debug({
                 'eager_consensus_results': eager_consensus_results
             })
-            if ideal_consensus_results is not None:
-                eager_consensus_results['ideal_consensus_possible'] = False
 
             # Return if we found eager consensus on a solution
             # or there are still enough respondents left that eager consensus is possible
