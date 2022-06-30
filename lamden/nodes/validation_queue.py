@@ -124,23 +124,16 @@ class ValidationQueue(ProcessingQueue):
                     self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
                     self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
                     return
-                    # await self.process_next()
 
             self.check_one(hlc_timestamp=next_hlc_timestamp)
 
-            results = self.validation_results.get(next_hlc_timestamp)
-
             if self.hlc_has_consensus(next_hlc_timestamp):
-                self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
+                self.log.info(f'{next_hlc_timestamp} is in consensus, processing. Queue Length is {len(self.validation_results)} ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
+                self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
 
-        elapsed = time.time() - self.last_reported
-        if elapsed > 30:
-            self.log.debug(f"Nothing to Check! Queue Length = {len(self.validation_results)}")
-            self.log.debug(self.validation_results)
-            self.last_reported = time.time()
-
-        self.log.debug('[STOP] process_next')
+        self.log.debug(self.validation_results)
+        self.log.debug(f"[STOP] process_next Queue Length = {len(self.validation_results)}")
 
     def check_one(self, hlc_timestamp):
         self.log.debug('[START] check_one')
