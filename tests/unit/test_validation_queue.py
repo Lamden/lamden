@@ -925,3 +925,8 @@ class TestValidationQueue(TestCase):
         self.assertTrue(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
 
         self.assertEqual(expected_consensus_solution, self.validation_queue.validation_results[hlc_timestamp]['last_check_info']['solution'])
+
+    def test_prints_debug_if_queue_is_empty(self):
+        loop = asyncio.get_event_loop()
+        self.async_sleep(2)
+        loop.run_until_complete(self.validation_queue.process_next())

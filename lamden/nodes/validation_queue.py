@@ -114,7 +114,7 @@ class ValidationQueue(ProcessingQueue):
         # 1) Sort validation results object to get the earlist HLC
         # 2) Run consensus on that HLC
         # 3) Process the earliest if in consensus
-
+        self.log.debug('[START] process_next')
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
             self.log.debug(f'[Process Next] Checking: {next_hlc_timestamp}')
@@ -134,10 +134,13 @@ class ValidationQueue(ProcessingQueue):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
         else:
-            if time.time() - self.last_reported > 10:
+            elapsed = time.time() - self.last_reported
+            if elapsed > 30:
                 self.log.debug(f"Nothing to Check! Queue Length = {len(self.validation_results)}")
                 self.log.debug(self.validation_results)
                 self.last_reported = time.time()
+
+        self.log.debug('[STOP] process_next')
 
     def check_one(self, hlc_timestamp):
         results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
