@@ -229,6 +229,10 @@ class Node:
     def node_type(self) -> str:
         return self.upgrade_manager.node_type
 
+    @property
+    def is_running(self) -> bool:
+        return self.running
+
     async def start(self):
         try:
             # Start running
@@ -673,11 +677,11 @@ class Node:
             self.log.error(err)
 
     async def debug_print_loop_counter(self):
-        if self.last_printed_loop_counter - time.time() > 30:
-            if not self.running:
-                return
-            self.log.debug({'debug_loop_counter': self.debug_loop_counter})
-            self.last_printed_loop_counter = time.time()
+        while True:
+            elapsed_secs = time.time() - self.last_printed_loop_counter
+            if elapsed_secs > 1:
+                self.log.debug({'debug_loop_counter': self.debug_loop_counter})
+                self.last_printed_loop_counter = time.time()
 
             await asyncio.sleep(5)
 
