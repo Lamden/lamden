@@ -133,12 +133,12 @@ class ValidationQueue(ProcessingQueue):
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
-        else:
-            elapsed = time.time() - self.last_reported
-            if elapsed > 30:
-                self.log.debug(f"Nothing to Check! Queue Length = {len(self.validation_results)}")
-                self.log.debug(self.validation_results)
-                self.last_reported = time.time()
+
+        elapsed = time.time() - self.last_reported
+        if elapsed > 30:
+            self.log.debug(f"Nothing to Check! Queue Length = {len(self.validation_results)}")
+            self.log.debug(self.validation_results)
+            self.last_reported = time.time()
 
         self.log.debug('[STOP] process_next')
 
@@ -222,7 +222,7 @@ class ValidationQueue(ProcessingQueue):
             if eager_consensus_possible is not None:
                 self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_possible
 
-        self.log.debug('[START] add_consensus_result')
+        self.log.debug('[STOP] add_consensus_result')
 
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
