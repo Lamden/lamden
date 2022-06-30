@@ -143,7 +143,7 @@ class ValidationQueue(ProcessingQueue):
         self.log.debug('[STOP] process_next')
 
     def check_one(self, hlc_timestamp):
-        self.log.debug('[STOP] check_one')
+        self.log.debug('[START] check_one')
 
         results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
 
