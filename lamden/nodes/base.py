@@ -910,7 +910,20 @@ class Node:
         # Increment the internal block counter
         self.current_block_height += 1
 
+        self.check_peers(processing_results)
+
         gc.collect()
+
+    def check_peers(self, processing_results):
+        state_changes = processing_results.get('tx_result', [])
+        exiled_peers = []
+        for change in state_changes:
+            if change['key'] == 'masternodes.S:members' or change['key'] == 'delegates.S:members':
+                exiled_peers = self.network.remove_exiled_peers()
+                break
+        hlc = processing_results.get('hlc_timestamp')
+        for vk in exiled_peers:
+            self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
 
 # Re-processing CODE
     async def reprocess(self, tx):

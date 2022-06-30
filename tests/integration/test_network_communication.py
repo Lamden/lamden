@@ -47,7 +47,10 @@ class TestNetwork(TestCase):
             self.loop.stop()
             self.loop.close()
 
-
+        try:
+            shutil.rmtree(self.nodes_fixtures_dir)
+        except:
+            pass
 
         self.ctx = None
         self.loop = None
@@ -527,5 +530,66 @@ class TestNetwork(TestCase):
         self.assertEqual(num_of_requests * len(peer_list), len(task_results) )
         self.assertTrue(all([result.get('success') for result in task_results]))
 
-    def test_can_remove_peer_when_members_state_change_is_hard_applied(self):
-        raise NotImplementedError
+    def test_can_remove_peer_when_members_state_changes(self):
+        start_time = time.time()
+        num_of_networks = 3
+
+        for i in range(num_of_networks):
+            network = self.create_threaded_network(index=i)
+            network.start()
+            while not network.is_running:
+                self.async_sleep(0.1)
+
+        done_starting = time.time()
+        print(f'It took {done_starting - start_time} seconds to start all networks')
+
+        network_1 = self.networks[0]
+        network_2 = self.networks[1]
+        network_3 = self.networks[2]
+
+        self.set_smart_contract_keys_threaded()
+
+        for network in self.networks:
+            network.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
+
+        # Connect network #1 to network #2
+        network_1.n.connect_peer(
+            ip=network_2.n.local_address,
+            vk=network_2.vk
+        )
+        self.async_sleep(1)
+
+        # Connect network #2 to network #3
+        network_2.n.connect_peer(
+            ip=network_3.n.local_address,
+            vk=network_3.vk
+        )
+
+        # Wait for network discovery to happen
+        self.async_sleep(5)
+
+        # All networks end up with 2 peers due to discovery
+        for network in self.networks:
+            num_of_peers_connected = network.n.num_of_peers_connected()
+            self.assertEqual(2, num_of_peers_connected)
+
+        network_1.n.driver.driver.set(
+            key="masternodes.S:members",
+            value=[network_1.vk, network_2.vk]
+        )
+        network_2.n.driver.driver.set(
+            key="masternodes.S:members",
+            value=[network_1.vk, network_2.vk]
+        )
+
+        exiled_peers_1 = network_1.n.remove_exiled_peers()
+        self.assertEqual(exiled_peers_1[0], network_3.vk)
+        exiled_peers_2 = network_2.n.remove_exiled_peers()
+        self.assertEqual(exiled_peers_2[0], network_3.vk)
+
+        self.async_sleep(1)
+
+        self.assertIsNone(network_1.n.get_peer(network_3.vk))
+        self.assertIsNone(network_2.n.get_peer(network_3.vk))
+        self.assertEqual(1, network_1.n.num_of_peers_connected())
+        self.assertEqual(1, network_2.n.num_of_peers_connected())

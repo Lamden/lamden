@@ -59,7 +59,7 @@ class Network:
 
         self.wallet = wallet
         self.driver = driver
-        self.block_storage = block_storage or BlockStorage()
+        self.block_storage = block_storage if block_storage is not None else BlockStorage()
 
         self.local = local
 
@@ -245,6 +245,16 @@ class Network:
         print({'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
+
+    def remove_exiled_peers(self):
+        exiles = []
+        for peer_vk in self.peers.keys():
+            if not self.peer_is_voted_in(peer_vk):
+                self.revoke_peer_access(peer_vk)
+                self.remove_peer(peer_vk)
+                exiles.append(peer_vk)
+
+        return exiles
 
     def add_peer(self, ip: str, peer_vk: str):
         # Get a reference to this peer

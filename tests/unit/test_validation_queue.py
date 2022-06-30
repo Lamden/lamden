@@ -633,18 +633,22 @@ class TestValidationQueue(TestCase):
         self.assertTrue(self.hard_apply_block_called)
         self.assertEqual(self.num_times_hard_apply_block_called, 1)
 
-    def test_clear_my_solutions(self):
+    def test_clear_solutions(self):
         self.validation_queue.validation_results = {
             'hlc_1': {
                 'solutions': {
                     self.validation_queue.wallet.verifying_key: 'solution',
                     '2': 'solution'
-                }
+                },
+                'last_check_info': {},
+                'proofs': {}
             },
             'hlc_2': {
                 'solutions': {
                     self.validation_queue.wallet.verifying_key: 'solution'
-                }
+                },
+                'last_check_info': {},
+                'proofs': {}
             },
             'hlc_3': {
                 'solutions': {
@@ -656,7 +660,7 @@ class TestValidationQueue(TestCase):
                 'solutions': {}
             }
         }
-        self.validation_queue.clear_my_solutions()
+        self.validation_queue.clear_solutions(node_vk=self.validation_queue.wallet.verifying_key)
 
         self.assertIsNone(self.validation_queue.validation_results['hlc_1']['solutions'].get(self.validation_queue.wallet.verifying_key))
         self.assertIsNotNone(self.validation_queue.validation_results['hlc_1']['solutions'].get('2'))
