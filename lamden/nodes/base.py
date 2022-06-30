@@ -637,12 +637,12 @@ class Node:
 
         while self.validation_queue.running:
             if self.validation_queue.active:
-                self.log.debug('[START] check_validation_queue')
+                #self.log.debug('[START] check_validation_queue')
                 self.validation_queue.start_processing()
                 # TODO Alter this method to process just the earliest HLC
                 await self.validation_queue.process_next()
                 self.validation_queue.stop_processing()
-                self.log.debug('[END] check_validation_queue')
+                #self.log.debug('[END] check_validation_queue')
 
             self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
@@ -650,6 +650,7 @@ class Node:
         self.log.info(f'Exited Check Validation Queue.')
 
     async def process_main_queue(self):
+
         try:
             processing_results = await self.main_processing_queue.process_next()
 

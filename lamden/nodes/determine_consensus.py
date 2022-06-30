@@ -16,7 +16,7 @@ class DetermineConsensus:
                 failure: Consensus is SPLIT, all results are in and the top results are tied. In this case take the numerical hex value that is the highest.
         '''
 
-        self.log.debug('[START] check_consensus')
+        #self.log.debug('[START] check_consensus')
 
         # Get the number of current solutions
         total_solutions_received = len(solutions)
@@ -51,7 +51,7 @@ class DetermineConsensus:
         })
         '''
         if total_solutions_received < consensus_needed:
-            self.log.debug('[STOP] check_consensus - 1')
+            #self.log.debug('[STOP] check_consensus - 1')
 
             # TODO Discuss possible scenario where enough peers go offline that we never reach the consensus number..
             return {
@@ -90,7 +90,7 @@ class DetermineConsensus:
             # Return if we found ideal consensus on a solution
             # or there are still enough respondents left that ideal consensus is possible
             if ideal_consensus_results['has_consensus'] or ideal_consensus_results['ideal_consensus_possible']:
-                self.log.debug('[STOP] check_consensus - 2')
+                #self.log.debug('[STOP] check_consensus - 2')
                 return ideal_consensus_results
 
         if last_check_info.get('eager_consensus_possible', False):
@@ -108,7 +108,7 @@ class DetermineConsensus:
             # Return if we found eager consensus on a solution
             # or there are still enough respondents left that eager consensus is possible
             if eager_consensus_results['has_consensus'] or eager_consensus_results['eager_consensus_possible']:
-                self.log.debug('[STOP] check_consensus - 3')
+                #self.log.debug('[STOP] check_consensus - 3')
                 return eager_consensus_results
 
             # Return Failed situation if ideal and eager consensus is not possible
@@ -122,18 +122,18 @@ class DetermineConsensus:
             self.log.debug({
                 'failed_consensus_results': failed_consensus_results
             })
-            self.log.debug('[STOP] check_consensus - 4')
+            #self.log.debug('[STOP] check_consensus - 4')
             return failed_consensus_results
 
-        self.log.debug('[STOP] check_consensus - 5')
+        #self.log.debug('[STOP] check_consensus - 5')
 
 
     def check_ideal_consensus(self, tally_info, my_solution, solutions_missing, consensus_needed):
-        self.log.debug('[START] check_ideal_consensus')
+        #self.log.debug('[START] check_ideal_consensus')
         top_solution = tally_info['results_list'][0]
 
         if top_solution['consensus_amount'] >= consensus_needed:
-            self.log.debug('[STOP] check_ideal_consensus - 1')
+            #self.log.debug('[STOP] check_ideal_consensus - 1')
             return {
                 'has_consensus': True,
                 'ideal_consensus_possible': True,
@@ -155,23 +155,23 @@ class DetermineConsensus:
 
         # Check if ideal consensus is mathematically possible
         if top_solution['consensus_amount'] + solutions_missing >= consensus_needed:
-            self.log.debug('[STOP] check_ideal_consensus - 2')
+            #self.log.debug('[STOP] check_ideal_consensus - 2')
             return {
                 'has_consensus': False,
                 'ideal_consensus_possible': True
             }
 
-        self.log.debug('[STOP] check_ideal_consensus - 3')
+        #self.log.debug('[STOP] check_ideal_consensus - 3')
         return {
             'has_consensus': False,
             'ideal_consensus_possible': False
         }
 
     def check_eager_consensus(self, tally_info, my_solution, solutions_missing, consensus_needed):
-        self.log.debug('[START] check_eager_consensus')
+        #self.log.debug('[START] check_eager_consensus')
         # if consensus is tied and there are not more expected solutions then eager consensus is not possible
         if tally_info['is_tied'] and solutions_missing == 0:
-            self.log.debug('[STOP] check_eager_consensus - 1')
+            #self.log.debug('[STOP] check_eager_consensus - 1')
             return {
                 'has_consensus': False,
                 'eager_consensus_possible': False
@@ -180,7 +180,7 @@ class DetermineConsensus:
         # if the winning solution is more than the next best + any new possible solutions then we have eager consensus
         if tally_info['results_list'][0]['consensus_amount'] > tally_info['results_list'][1][
             'consensus_amount'] + solutions_missing:
-            self.log.debug('[STOP] check_eager_consensus - 2')
+            #self.log.debug('[STOP] check_eager_consensus - 2')
             return {
                 'has_consensus': True,
                 'eager_consensus_possible': True,
@@ -191,7 +191,7 @@ class DetermineConsensus:
                 'matches_me': my_solution == tally_info['results_list'][0]['solution']
             }
 
-        self.log.debug('[STOP] check_eager_consensus - 3')
+        #self.log.debug('[STOP] check_eager_consensus - 3')
 
         return {
             'has_consensus': False,
@@ -199,13 +199,13 @@ class DetermineConsensus:
         }
 
     def check_failed_consensus(self, tally_info, my_solution, consensus_needed):
-        self.log.debug('[START] check_failed_consensus')
+        #self.log.debug('[START] check_failed_consensus')
         for i in range(len(tally_info['top_solutions_list'])):
             tally_info['top_solutions_list'][i]['int'] = int(tally_info['top_solutions_list'][i]['solution'], 16)
 
         tally_info['top_solutions_list'] = sorted(tally_info['top_solutions_list'], key=lambda x: x['int'])
 
-        self.log.debug('[STOP] check_failed_consensus')
+        #self.log.debug('[STOP] check_failed_consensus')
         return {
             'has_consensus': True,
             'consensus_type': 'failed',

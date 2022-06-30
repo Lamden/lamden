@@ -114,7 +114,7 @@ class ValidationQueue(ProcessingQueue):
         # 1) Sort validation results object to get the earlist HLC
         # 2) Run consensus on that HLC
         # 3) Process the earliest if in consensus
-        self.log.debug('[START] process_next')
+        #self.log.debug('[START] process_next')
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
             self.log.debug(f'[Process Next] Checking: {next_hlc_timestamp}')
@@ -132,16 +132,16 @@ class ValidationQueue(ProcessingQueue):
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
                 self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
 
-        self.log.debug(self.validation_results)
-        self.log.debug(f"[STOP] process_next Queue Length = {len(self.validation_results)}")
+        #self.log.debug(self.validation_results)
+        #self.log.debug(f"[STOP] process_next Queue Length = {len(self.validation_results)}")
 
     def check_one(self, hlc_timestamp):
-        self.log.debug('[START] check_one')
+        #self.log.debug('[START] check_one')
 
         results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
 
         if results is None:
-            self.log.debug('[STOP] check_one - results are None')
+            #self.log.debug('[STOP] check_one - results are None')
             return
 
         consensus_result = self.determine_consensus.check_consensus(
@@ -156,7 +156,7 @@ class ValidationQueue(ProcessingQueue):
                 consensus_result=consensus_result
             )
 
-        self.log.debug('[STOP] check_one')
+        #self.log.debug('[STOP] check_one')
 
     async def check_all(self):
         if self.checking:
@@ -197,10 +197,10 @@ class ValidationQueue(ProcessingQueue):
             await self.commit_consensus_block(hlc_timestamp=hlc_timestamp)
 
     def add_consensus_result(self, hlc_timestamp: str, consensus_result: dict) -> None:
-        self.log.debug('[START] add_consensus_result')
+        #self.log.debug('[START] add_consensus_result')
 
         if consensus_result is None:
-            self.log.debug('[STOP] add_consensus_result - consensus_result is None')
+            #self.log.debug('[STOP] add_consensus_result - consensus_result is None')
             return
 
         has_consensus = consensus_result.get('has_consensus')
@@ -215,7 +215,7 @@ class ValidationQueue(ProcessingQueue):
             if eager_consensus_possible is not None:
                 self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = eager_consensus_possible
 
-        self.log.debug('[STOP] add_consensus_result')
+        #self.log.debug('[STOP] add_consensus_result')
 
     def awaiting_validation(self, hlc_timestamp):
         return hlc_timestamp in self.validation_results
@@ -350,7 +350,7 @@ class ValidationQueue(ProcessingQueue):
         return my_solution == consensus_solution
 
     async def commit_consensus_block(self, hlc_timestamp):
-        self.log.debug('[START] commit_consensus_block')
+        #self.log.debug('[START] commit_consensus_block')
         # Get the tx results for this timestamp
         processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
 
@@ -367,7 +367,7 @@ class ValidationQueue(ProcessingQueue):
         # get rid of any results that might have come in earlier ?
         self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
 
-        self.log.debug('[END] commit_consensus_block')
+        #self.log.debug('[END] commit_consensus_block')
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
