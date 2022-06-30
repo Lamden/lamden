@@ -4,6 +4,8 @@ from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 
+import time
+
 class ValidationQueue(ProcessingQueue):
     def __init__(self, driver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
                  debug=False):
@@ -43,6 +45,7 @@ class ValidationQueue(ProcessingQueue):
         self.append_history = []
         self.validation_results_history = []
         self.detected_rollback = False
+        self.last_reported = time.time()
 
         self.checking = False
 
@@ -130,6 +133,11 @@ class ValidationQueue(ProcessingQueue):
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
+        else:
+            if time.time() - self.last_reported > 10:
+                self.log.debug(f"Nothing to Check! Queue Length = {len(self.validation_results)}")
+                self.log.debug(self.validation_results)
+                self.last_reported = time.time()
 
     def check_one(self, hlc_timestamp):
         results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
