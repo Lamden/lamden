@@ -808,6 +808,7 @@ class TestValidationQueue(TestCase):
     def test_prune_earlier_results_all_results_are_earlier(self):
         for i in range(2):
             self.add_solution()
+        self.assertEqual(2, len(self.validation_queue.validation_results))
 
         self.validation_queue.prune_earlier_results(HLC_Clock().get_new_hlc_timestamp())
 
@@ -817,6 +818,8 @@ class TestValidationQueue(TestCase):
         self.add_solution()
         earlier_than = HLC_Clock().get_new_hlc_timestamp()
         self.add_solution()
+
+        self.assertEqual(2, len(self.validation_queue.validation_results))
 
         self.validation_queue.prune_earlier_results(earlier_than)
 

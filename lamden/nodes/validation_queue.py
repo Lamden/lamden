@@ -130,9 +130,6 @@ class ValidationQueue(ProcessingQueue):
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing... ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
-            else:
-                # do nothing
-                pass
 
     def check_one(self, hlc_timestamp):
         results = self.get_validation_result(hlc_timestamp=hlc_timestamp)
@@ -341,6 +338,7 @@ class ValidationQueue(ProcessingQueue):
         return my_solution == consensus_solution
 
     async def commit_consensus_block(self, hlc_timestamp):
+        self.log.debug('[START] commit_consensus_block')
         # Get the tx results for this timestamp
         processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
 
@@ -354,16 +352,17 @@ class ValidationQueue(ProcessingQueue):
         # remove HLC from processing
         self.flush_hlc(hlc_timestamp=hlc_timestamp)
 
-        # Remove any HLC results in validation results that might be earlier
-        # TODO DO we want to do this?
-        # self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+        # get rid of any results that might have come in earlier ?
+        self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+
+        self.log.debug('[END] commit_consensus_block')
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
-        self.validation_results.pop(hlc_timestamp)
-
-        # Remove all instances of this HLC from the checking queue to prevent re-checking it
-        # self.remove_all_hlcs_from_queue(hlc_timestamp=hlc_timestamp)
+        try:
+            self.validation_results.pop(hlc_timestamp)
+        except Exception as err:
+            self.log.error(f'[flush_hlc] {err}')
 
     def hlc_has_consensus(self, hlc_timestamp):
         validation_result = self.validation_results.get(hlc_timestamp)

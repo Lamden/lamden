@@ -116,6 +116,7 @@ class Node:
             'validation': 0,
             'file_check': 0
         }
+        self.last_printed_loop_counter = time.time()
 
         self.log.propagate = debug
         self.socket_base = socket_base
@@ -235,6 +236,7 @@ class Node:
 
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
+                asyncio.ensure_future(self.debug_print_loop_counter())
 
             self.network.start()
             await self.network.starting()
@@ -638,7 +640,7 @@ class Node:
                     await self.validation_queue.process_next()
                     self.validation_queue.stop_processing()
 
-                    self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
+            self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
             await asyncio.sleep(0)
 
         self.log.info(f'Exited Check Validation Queue.')
@@ -669,6 +671,16 @@ class Node:
 
         except Exception as err:
             self.log.error(err)
+
+    async def debug_print_loop_counter(self):
+        if self.last_printed_loop_counter - time.time() > 30:
+            if not self.running:
+                return
+            self.log.debug({'debug_loop_counter': self.debug_loop_counter})
+            self.last_printed_loop_counter = time.time()
+
+            await asyncio.sleep(5)
+
 
     def store_solution_and_send_to_network(self, processing_results):
         self.send_solution_to_network(processing_results=processing_results)
