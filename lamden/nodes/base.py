@@ -915,7 +915,7 @@ class Node:
         gc.collect()
 
     def check_peers(self, processing_results):
-        state_changes = processing_results.get('tx_result', [])
+        state_changes = processing_results['tx_result'].get('state', [])
         exiled_peers = []
         for change in state_changes:
             if change['key'] == 'masternodes.S:members' or change['key'] == 'delegates.S:members':
