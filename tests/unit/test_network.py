@@ -1358,3 +1358,35 @@ class TestNetwork(TestCase):
 
         self.assertEqual(10, peer.latest_block_number)
         self.assertEqual('10', peer.latest_block_hlc_timestamp)
+
+    def test_METHOD_revoke_peer_access_and_remove_peer(self):
+        network_1 = self.create_network()
+        peer_wallet = Wallet()
+        peer_vk = peer_wallet.verifying_key
+        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+
+        network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
+        self.async_sleep(0.1)
+
+        self.assertEqual(1, network_1.num_of_peers())
+
+        network_1.revoke_access_and_remove_peer(peer_vk=peer_vk)
+
+        self.async_sleep(7)
+
+        self.assertEqual(0, network_1.num_of_peers())
+        self.assertFalse(network_1.router.cred_provider.key_is_approved(curve_vk=peer_wallet.curve_vk))
+
+    def test_METHOD_get_exiled_peers(self):
+        network_1 = self.create_network()
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_vk = Wallet().verifying_key
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
+
+        self.assertListEqual(network_1.get_exiled_peers(), [network_1.vk, peer_vk])
+
+        self.add_vk_to_smartcontract('masternode', network_1, network_1.vk)
+        self.assertListEqual(network_1.get_exiled_peers(), [peer_vk])
+
+        self.add_vk_to_smartcontract('delegate', network_1, peer_vk)
+        self.assertListEqual(network_1.get_exiled_peers(), [])
