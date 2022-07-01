@@ -277,6 +277,8 @@ class ValidationQueue(ProcessingQueue):
                     self.validation_results[hlc]['last_check_info']['ideal_consensus_possible'] = True
                     self.validation_results[hlc]['last_check_info']['eager_consensus_possible'] = True
 
+                    # TODO: should we clean results lookup here as well?
+
     def get_last_consensus_result(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp, None)
         if results is None:

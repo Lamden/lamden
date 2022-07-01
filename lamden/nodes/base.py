@@ -917,13 +917,23 @@ class Node:
     def check_peers(self, processing_results):
         state_changes = processing_results['tx_result'].get('state', [])
         exiled_peers = []
+
         for change in state_changes:
             if change['key'] == 'masternodes.S:members' or change['key'] == 'delegates.S:members':
-                exiled_peers = self.network.remove_exiled_peers()
+                exiled_peers = self.network.get_exiled_peers()
                 break
-        hlc = processing_results.get('hlc_timestamp')
-        for vk in exiled_peers:
-            self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
+
+        if len(exiled_peers) == 0:
+            return
+
+        if self.wallet.verifying_key in exiled_peers:
+            self.log.info('I was voted out from the network... Shutting down!')
+            asyncio.ensure_future(self.stop())
+        else:
+            hlc = processing_results.get('hlc_timestamp')
+            for vk in exiled_peers:
+                self.network.revoke_access_and_remove_peer(peer_vk=vk)
+                self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
 
 # Re-processing CODE
     async def reprocess(self, tx):

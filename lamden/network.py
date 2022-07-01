@@ -246,15 +246,19 @@ class Network:
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
 
-    def remove_exiled_peers(self):
+    def get_exiled_peers(self):
         exiles = []
+        if not self.peer_is_voted_in(self.vk):
+            exiles.append(self.vk)
         for peer_vk in self.peers.keys():
             if not self.peer_is_voted_in(peer_vk):
-                self.revoke_peer_access(peer_vk)
-                self.remove_peer(peer_vk)
                 exiles.append(peer_vk)
 
         return exiles
+
+    def revoke_access_and_remove_peer(self, peer_vk):
+        self.revoke_peer_access(peer_vk=peer_vk)
+        self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
         # Get a reference to this peer
