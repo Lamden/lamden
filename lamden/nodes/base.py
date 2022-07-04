@@ -1193,6 +1193,8 @@ class Node:
         self.log.info(f'Initial Masternodes: {self.constitution["masternodes"]}')
         self.log.info(f'Initial Delegates: {self.constitution["delegates"]}')
 
+        sync.raw_submit(filename=sync.STAMP_FORWARDING_PATH, name='stamp_forwarding', client=self.client)
+
         sync.setup_genesis_contracts(
             initial_masternodes=self.constitution['masternodes'],
             initial_delegates=self.constitution['delegates'],

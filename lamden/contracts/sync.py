@@ -6,6 +6,7 @@ from contracting.client import ContractingClient
 DEFAULT_PATH = os.path.dirname(__file__)
 DEFAULT_GENESIS_PATH = os.path.dirname(__file__) + '/genesis.json'
 DEFAULT_SUBMISSION_PATH = os.path.dirname(__file__) + '/submission.s.py'
+STAMP_FORWARDING_PATH = os.path.dirname(__file__) + '/stamp_forwarding.s.py'
 
 
 # Maintains order and a set of constructor args that can be included in the constitution file
@@ -122,3 +123,11 @@ def setup_genesis_contracts(initial_masternodes, initial_delegates, client: Cont
 
     client.raw_driver.commit()
     client.raw_driver.clear_pending_state()
+
+
+def raw_submit(filename, name, client: ContractingClient):
+    with open(filename) as f:
+        contract = f.read()
+
+    client.raw_driver.set_contract(name=name, code=contract)
+    client.raw_driver.commit()
