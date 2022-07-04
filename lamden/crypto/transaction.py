@@ -54,6 +54,18 @@ class TransactionTrailingZerosFixedError(TransactionException):
     pass
 
 
+class TransactionForwardingDisabled(TransactionException):
+    pass
+
+
+class TransactionForwardingBlacklist(TransactionException):
+    pass
+
+
+class TransactionForwardingWhitelist(TransactionException):
+    pass
+
+
 EXCEPTION_MAP = {
     TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
     TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
@@ -64,7 +76,10 @@ EXCEPTION_MAP = {
     TransactionStampsNegative: {'error': 'Transaction has negative stamps supplied.'},
     TransactionException: {'error': 'Another error has occured.'},
     TransactionFormattingError: {'error': 'Transaction is not formatted properly.'},
-    TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'}
+    TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'},
+    TransactionForwardingDisabled: {'error': 'Forwarding added to transaction, but contract does not support stamp forwarding.'},
+    TransactionForwardingWhitelist: {'error': 'Contract has not whitelisted the current sender for stamp forwarding.'},
+    TransactionForwardingBlacklist: {'error': 'Contract has blacklisted the current sender for stamp forwarding.'}
 }
 
 
@@ -182,7 +197,6 @@ def transaction_is_not_expired(transaction, timeout=5):
     timestamp = transaction['metadata']['timestamp']
     return (int(time.time()) - timestamp) < timeout
 
-
 def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce: int, processor: str, stamps: int):
     payload = {
         'contract': contract,
@@ -215,7 +229,48 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
     return encode(format_dictionary(tx))
 
 
+def stamp_forwarding_enabled(client: ContractingClient, contract: str):
+    enabled = client.get_var(contract, variable='__stamps__.enabled')
+    return enabled
+
+
+def get_contract_mode(client: ContractingClient, contract: str):
+    mode = client.get_var(contract, variable='__stamps__.mode')
+    if mode is None:
+        mode = 'all'
+
+    return mode
+
+
 # Run through all tests
+def sender_is_whitelisted(client: ContractingClient, contract: str, sender: str):
+    whitelisted = client.get_var(contract, f'__stamps__.whitelist.{sender}')
+    if whitelisted is None:
+        return False
+    return True
+
+
+def sender_is_blacklisted(client: ContractingClient, contract: str, sender: str):
+    blacklisted = client.get_var(contract, f'__stamps__.blacklist.{sender}')
+    if blacklisted is None:
+        return False
+    return True
+
+
+def check_forwarding(transaction, client, sender):
+    if 'forwarding' in transaction['payload']:
+        contract = transaction['payload']['contract']
+        if not stamp_forwarding_enabled(client, contract=contract):
+            raise TransactionForwardingDisabled
+
+        mode = get_contract_mode(client, contract)
+
+        if mode == 'whitelist' and not sender_is_whitelisted(client, contract, sender):
+            raise TransactionForwardingWhitelist
+        elif mode == 'blacklist' and sender_is_blacklisted(client, contract, sender):
+            raise TransactionForwardingBlacklist
+
+
 def transaction_is_valid(transaction, expected_processor, client: ContractingClient, nonces: storage.NonceStorage, strict=True,
                          tx_per_block=15, timeout=5):
     # Check basic formatting so we can access via __getitem__ notation without errors
@@ -241,11 +296,16 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     # if there are less than the max pending txs in the block
     get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=strict, tx_per_block=tx_per_block)
 
-    # Get the senders balance and the current stamp rate
-    balance = client.get_var(contract='currency', variable='balances', arguments=[sender], mark=False)
-    stamp_rate = client.get_var(contract='stamp_cost', variable='S', arguments=['value'], mark=False)
+    # Checks stamp forwarding requirements
+    check_forwarding(transaction, client, sender)
 
     contract = transaction['payload']['contract']
+    sending_account = sender if 'forwarding' not in transaction['payload'] else contract
+
+    # Get the senders balance and the current stamp rate
+    balance = client.get_var(contract='currency', variable='balances', arguments=[sending_account], mark=False)
+    stamp_rate = client.get_var(contract='stamp_cost', variable='S', arguments=['value'], mark=False)
+
     func = transaction['payload']['function']
     stamps_supplied = transaction['payload']['stamps_supplied']
     if stamps_supplied is None:
@@ -261,7 +321,6 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     amount = transaction['payload']['kwargs'].get('amount')
     if amount is None:
         amount = 0
-
 
     # Check if they have enough stamps for the operation
     has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)
