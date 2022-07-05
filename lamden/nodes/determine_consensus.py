@@ -64,7 +64,7 @@ class DetermineConsensus:
         tally_info = self.tally_solutions(solutions=solutions)
         # print({'tally_info':tally_info})
 
-
+        '''
         self.log.debug({
             'num_of_participants': num_of_participants,
             'my_solution': my_solution,
@@ -72,6 +72,7 @@ class DetermineConsensus:
             'tally_info': tally_info,
             'consensus_needed': consensus_needed
         })
+        '''
 
         if last_check_info.get('ideal_consensus_possible', False):
             # Check ideal situation
@@ -83,9 +84,11 @@ class DetermineConsensus:
             )
             # print({'ideal_consensus_results':ideal_consensus_results})
 
+            '''
             self.log.debug({
                 'ideal_consensus_results': ideal_consensus_results
             })
+            '''
 
             # Return if we found ideal consensus on a solution
             # or there are still enough respondents left that ideal consensus is possible
@@ -101,9 +104,11 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed,
                 solutions_missing=solutions_missing
             )
+            '''
             self.log.debug({
                 'eager_consensus_results': eager_consensus_results
             })
+            '''
 
             # Return if we found eager consensus on a solution
             # or there are still enough respondents left that eager consensus is possible
@@ -119,9 +124,11 @@ class DetermineConsensus:
                 consensus_needed=consensus_needed
             )
 
+            '''
             self.log.debug({
                 'failed_consensus_results': failed_consensus_results
             })
+            '''
             #self.log.debug('[STOP] check_consensus - 4')
             return failed_consensus_results
 
