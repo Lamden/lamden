@@ -129,7 +129,7 @@ class TxProcessingQueue(ProcessingQueue):
         return hlc_timestamp < self.get_last_hlc_in_consensus()
 
     async def process_next(self):
-        self.log.debug('[START] process_main_queue')
+        #self.log.debug('[START] process_main_queue')
 
         # filter out all HLCs that are less than our current consensus HLC
         self.filter_queue()
@@ -137,7 +137,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         # return if the queue is empty
         if len(self.queue) == 0:
-            self.log.debug('[STOP] process_main_queue - 1')
+            #self.log.debug('[STOP] process_main_queue - 1')
             return
 
         # sort the queue by HCL timestamp
@@ -179,7 +179,7 @@ class TxProcessingQueue(ProcessingQueue):
                 except Exception as err:
                     self.log.error(err)
                     print(err)
-                    self.log.debug('[STOP] process_main_queue - 2')
+                    # self.log.debug('[STOP] process_main_queue - 2')
                     return
 
                 # TODO Remove this as it's for testing
@@ -188,12 +188,12 @@ class TxProcessingQueue(ProcessingQueue):
                 self.message_received_timestamps.pop(self.currently_processing_hlc)
                 self.currently_processing_hlc = ""
 
-                self.log.debug('[STOP] process_main_queue - 3')
+                # self.log.debug('[STOP] process_main_queue - 3')
                 return processing_results
         else:
             # else, put it back in queue
             self.queue.append(tx)
-            self.log.debug('[STOP] process_main_queue - 4')
+            # self.log.debug('[STOP] process_main_queue - 4')
             return None
 
     def hold_time(self, tx):
