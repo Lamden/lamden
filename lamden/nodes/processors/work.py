@@ -10,6 +10,50 @@ BAD_MESSAGE_PAYLOAD = "BAD MESSAGE PAYLOAD"
 MASTERNODE_NOT_KNOWN = 'MASTERNODE NOT KNOWN'
 OLDER_HLC_RECEIVED = "OLDER HLC RECEIVED"
 
+
+def valid_message_payload(msg: dict) -> bool:
+    if not isinstance(msg, dict):
+        return False
+
+    tx = msg.get('tx')
+    if not isinstance(tx, dict):
+        return False
+
+    payload = tx.get('payload')
+    if not isinstance(payload, dict):
+        return False
+
+    if not isinstance(payload.get("contract"), str):
+        return False
+    if not isinstance(payload.get("function"), str):
+        return False
+    if not isinstance(payload.get("kwargs"), dict):
+        return False
+    if not isinstance(payload.get("nonce"), int):
+        return False
+    if not isinstance(payload.get("processor"), str):
+        return False
+    if not isinstance(payload.get("sender"), str):
+        return False
+    if not isinstance(payload.get("stamps_supplied"), int):
+        return False
+
+    metadata = tx.get('metadata')
+    if not isinstance(metadata, dict):
+        return False
+
+    if not isinstance(metadata.get("signature"), str):
+        return False
+
+    if not isinstance(msg.get("hlc_timestamp"), str):
+        return False
+    if not isinstance(msg.get("sender"), str):
+        return False
+    if not isinstance(msg.get("signature"), str):
+        return False
+
+    return True
+
 class WorkValidator(Processor):
     def __init__(self, hlc_clock, wallet, main_processing_queue, get_last_processed_hlc, stop_node,
                  driver: ContractDriver, nonces = storage.NonceStorage()):
@@ -32,7 +76,7 @@ class WorkValidator(Processor):
         # self.log.info(f'Received work from {msg["sender"][:8]} {msg["hlc_timestamp"]} {msg["tx"]["metadata"]["signature"][:12] }')
 
         # NOTE(nikita) make sure message payload is valid BEFORE doing other checks
-        if not self.valid_message_payload(msg=msg):
+        if not valid_message_payload(msg=msg):
             # TODO I assume just stopping here is good. But what to do from a node audit perspective if nodes are
             # sending bad messages??
             self.log.error(f' {BAD_MESSAGE_PAYLOAD}')
@@ -71,49 +115,6 @@ class WorkValidator(Processor):
         self.main_processing_queue.append(msg)
 
         # print(f'Received new work from {msg["sender"][:8]} to my queue.')
-
-    def valid_message_payload(self, msg: dict) -> bool:
-        if not isinstance(msg, dict):
-            return False
-
-        tx = msg.get('tx')
-        if not isinstance(tx, dict):
-            return False
-
-        payload = tx.get('payload')
-        if not isinstance(payload, dict):
-            return False
-
-        if not isinstance(payload.get("contract"), str):
-            return False
-        if not isinstance(payload.get("function"), str):
-            return False
-        if not isinstance(payload.get("kwargs"), dict):
-            return False
-        if not isinstance(payload.get("nonce"), int):
-            return False
-        if not isinstance(payload.get("processor"), str):
-            return False
-        if not isinstance(payload.get("sender"), str):
-            return False
-        if not isinstance(payload.get("stamps_supplied"), int):
-            return False
-
-        metadata = tx.get('metadata')
-        if not isinstance(metadata, dict):
-            return False
-
-        if not isinstance(metadata.get("signature"), str):
-            return False
-
-        if not isinstance(msg.get("hlc_timestamp"), str):
-            return False
-        if not isinstance(msg.get("sender"), str):
-            return False
-        if not isinstance(msg.get("signature"), str):
-            return False
-
-        return True
 
     def known_masternode(self, msg: dict)  -> bool:
         masternodes_from_smartcontract = self.driver.driver.get(f'masternodes.S:members') or []

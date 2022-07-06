@@ -4,6 +4,56 @@ from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.network import Network
 from lamden.nodes.processors.processor import Processor
 
+
+def valid_message_payload(msg):
+    if not isinstance(msg, dict):
+        return False
+
+    tx_result = msg.get('tx_result')
+    if not isinstance(tx_result, dict):
+        return False
+
+    if not isinstance(tx_result.get('hash'), str):
+        return False
+    if not isinstance(tx_result.get('transaction'), dict):
+        return False
+    if not isinstance(tx_result.get('status'), int):
+        return False
+    if not isinstance(tx_result.get('state'), list):
+        return False
+    if not isinstance(tx_result.get('stamps_used'), int):
+        return False
+    if not isinstance(tx_result.get('result'), str):
+        return False
+
+    if not isinstance(msg.get('hlc_timestamp'), str):
+        return False
+
+    if not isinstance(msg.get('rewards'), list):
+        return False
+
+    proof = msg.get('proof')
+    if not isinstance(proof, dict):
+        return False
+
+    if not isinstance(proof.get("signature"), str):
+        return False
+
+    if not isinstance(proof.get("signer"), str):
+        return False
+
+    tx_message = msg.get('tx_message')
+    if not isinstance(tx_message, dict):
+        return False
+
+    if not isinstance(tx_message.get("signature"), str):
+        return False
+
+    if not isinstance(tx_message.get("sender"), str):
+        return False
+
+    return True
+
 class Block_Contender(Processor):
     def __init__(self, validation_queue, get_block_by_hlc, wallet, network: Network, debug=False, testing=False):
 
@@ -26,7 +76,7 @@ class Block_Contender(Processor):
     async def process_message(self, msg):
 
         # Make sure the message has the correct properties to process
-        if not self.valid_message_payload(msg=msg):
+        if not valid_message_payload(msg=msg):
             self.log.error(
                 f'Received Invalid Processing Results from {msg.get("proof", "No Proof provided")}'
             )
@@ -36,10 +86,14 @@ class Block_Contender(Processor):
         tx_result = msg['tx_result']
         proof = msg["proof"]
         hlc_timestamp = msg['hlc_timestamp']
+        rewards = msg['rewards']
 
         # Create a hash of the tx_result
-        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
-        #self.debug_recieved_solutions.append({hlc_timestamp: [proof['signer'], tx_result_hash]})
+        tx_result_hash = tx_result_hash_from_tx_result_object(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards
+        )
 
         if not self.validate_message_signature(tx_result_hash=tx_result_hash, proof=proof):
             self.log.debug(f"Could not verify message signature {msg['proof']}")
@@ -79,19 +133,3 @@ class Block_Contender(Processor):
             return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
         except Exception:
             return False
-
-    def valid_message_payload(self, msg):
-        if msg.get("tx_result", None) is None:
-            return False
-        if msg["tx_result"].get("transaction", None) is None:
-            return False
-        if msg.get("hlc_timestamp", None) is None:
-            return False
-        if msg.get("proof", None) is None:
-            return False
-        if msg["proof"].get("signature", None) is None:
-            return False
-        if msg["proof"].get("signer", None) is None:
-            return False
-
-        return True

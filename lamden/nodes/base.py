@@ -694,7 +694,8 @@ class Node:
 
         processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
             tx_result=processing_results['tx_result'],
-            hlc_timestamp=processing_results['hlc_timestamp']
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            rewards=processing_results['rewards']
         )
 
         self.validation_queue.append(
@@ -750,12 +751,19 @@ class Node:
 
     def apply_state_changes_from_block(self, block):
         state_changes = block['processed'].get('state', [])
+        rewards = block.get('rewards', [])
         hlc_timestamp = block['processed'].get('hlc_timestamp', None)
 
         if hlc_timestamp is None:
             hlc_timestamp = block.get('hlc_timestamp')
 
         for s in state_changes:
+            if type(s['value']) is dict:
+                s['value'] = convert_dict(s['value'])
+
+            self.driver.set(s['key'], s['value'])
+
+        for s in rewards:
             if type(s['value']) is dict:
                 s['value'] = convert_dict(s['value'])
 
@@ -1212,16 +1220,6 @@ class Node:
             return False
 
         return True
-
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
 
     # Put into 'super driver'
     def get_current_height(self):

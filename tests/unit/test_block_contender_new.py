@@ -4,7 +4,7 @@ from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network
 from lamden.nodes.hlc import HLC_Clock
-from lamden.nodes.processors import block_contender
+from lamden.nodes.processors.block_contender import Block_Contender, valid_message_payload
 from tests.unit.helpers.mock_transactions import get_tx_message, get_processing_results
 from unittest import TestCase
 import asyncio
@@ -62,6 +62,29 @@ SAMPLE_MESSAGES = [
     }
 ]
 
+
+def make_good_message():
+    return {
+        "tx_result": {
+            "hash": "some_hash",
+            'transaction': {},
+            'status': 0,
+            'state': [],
+            'stamps_used': 0,
+            'result': 'some_result'
+        },
+        "hlc_timestamp": "0",
+        "proof": {
+            "signer": "node_vk",
+            "signature": "some_sig"
+        },
+        "rewards": [],
+        "tx_message": {
+            "sender": "sending_masternode_vk",
+            "signature": "some_sig"
+        }
+    }
+
 class MockValidationQueue:
     def __init__(self):
         self.validation_results = {}
@@ -99,7 +122,7 @@ class TestBlockContenderProcessor(TestCase):
 
         network.get_all_peers = self.get_all_peers
 
-        self.block_contender = block_contender.Block_Contender(
+        self.block_contender = Block_Contender(
             testing=True,
             debug=True,
             validation_queue=self.validation_queue,
@@ -232,9 +255,108 @@ class TestBlockContenderProcessor(TestCase):
         # Validate test case results
         self.assertEqual(1, len(self.validation_queue))
 
-    def test_valid_message_payload(self):
-        for msg in SAMPLE_MESSAGES:
-            if msg['valid']:
-                self.assertTrue(self.block_contender.valid_message_payload(msg))
-            else:
-                self.assertFalse(self.block_contender.valid_message_payload(msg))
+    def test__valid_message_payload__TRUE_if_message_is_all_valid(self):
+        good_message = make_good_message()
+        self.assertTrue(valid_message_payload(msg=good_message))
+
+    def test__valid_message_payload__FALSE_if_message_is_not_dict_or_None(self):
+        self.assertFalse(valid_message_payload(msg="some_message"))
+        self.assertFalse(valid_message_payload(msg=None))
+
+    def test__valid_message_payload__FALSE_if_tx_result_is_not_dict(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result'] = "some_result"
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_result_hash_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result']['hash'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']['hash']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_result_transaction_is_not_dict_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result']['transaction'] = 'some_transaction'
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']['transaction']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_result_status_is_not_int_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result']['status'] = 'some_status'
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']['status']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_result_stamps_used_is_not_int_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result']['stamps_used'] = 'some_stamps_used'
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']['stamps_used']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_result_result_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_result']['result'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_result']['result']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_hlc_timestamp_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['hlc_timestamp'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['hlc_timestamp']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_rewards_is_not_list_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['rewards'] = "some_rewards_list"
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['rewards']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_proof_is_not_dict_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['proof'] = "some_proof"
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['proof']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_proof_signature_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['proof']['signature'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['proof']['signature']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_proof_signer_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['proof']['signer'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['proof']['signer']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_message_is_not_dict(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_message'] = "some_tx_message"
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_message']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_message_signature_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_message']['signature'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_message']['signature']
+        self.assertFalse(valid_message_payload(msg=bad_message))
+
+    def test__valid_message_payload__FALSE_if_tx_message_sender_is_not_str_or_None(self):
+        good_message = make_good_message()
+        bad_message = good_message['tx_message']['sender'] = 1
+        self.assertFalse(valid_message_payload(msg=bad_message))
+        del good_message['tx_message']['sender']
+        self.assertFalse(valid_message_payload(msg=bad_message))

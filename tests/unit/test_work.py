@@ -4,7 +4,7 @@ from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network
 from lamden.nodes.hlc import HLC_Clock
-from lamden.nodes.processors.work import WorkValidator, OLDER_HLC_RECEIVED, MASTERNODE_NOT_KNOWN
+from lamden.nodes.processors.work import WorkValidator, OLDER_HLC_RECEIVED, MASTERNODE_NOT_KNOWN, valid_message_payload
 from unittest import TestCase
 import asyncio
 
@@ -222,102 +222,102 @@ class TestWorkValidator(TestCase):
             self.assertEqual(0, len(self.main_processing_queue))
 
     def test_METHOD_valid_message_payload__TRUE_if_message_is_good_payload(self):
-        self.assertTrue(self.wv.valid_message_payload(msg=make_good_message()))
+        self.assertTrue(valid_message_payload(msg=make_good_message()))
 
     def test_METHOD_valid_message_payload__FALSE_if_message_is_not_dict_instance(self):
-        self.assertFalse(self.wv.valid_message_payload(msg=None))
-        self.assertFalse(self.wv.valid_message_payload(msg="message"))
+        self.assertFalse(valid_message_payload(msg=None))
+        self.assertFalse(valid_message_payload(msg="message"))
 
     def test_METHOD_valid_message_payload__FALSE_if_tx_is_not_dict_instance(self):
         message = make_good_message()
         bad_message = message['tx'] = "testing"
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_is_not_dict_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload'] = "testing"
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_contract_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['contract'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['contract']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_function_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['function'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['function']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_kwargs_is_not_dict_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['kwargs'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['kwargs']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_nonce_is_not_int_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['nonce'] = "fail"
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['nonce']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_processor_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['processor'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['processor']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_payload_stamps_supplied_is_not_int_instance(self):
         message = make_good_message()
         bad_message = message['tx']['payload']['stamps_supplied'] = "fail"
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['payload']['stamps_supplied']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_metadata_is_not_dict_instance(self):
         message = make_good_message()
         bad_message = message['tx']['metadata'] = "fail"
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['metadata']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_metadata_signature_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['tx']['metadata']['signature'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['tx']['metadata']['signature']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_hlc_timestamp_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['hlc_timestamp'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['hlc_timestamp']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_sender_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['sender'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['sender']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_valid_message_payload__FALSE_if_signature_is_not_str_instance(self):
         message = make_good_message()
         bad_message = message['signature'] = 1
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
         del message['signature']
-        self.assertFalse(self.wv.valid_message_payload(msg=bad_message))
+        self.assertFalse(valid_message_payload(msg=bad_message))
 
     def test_METHOD_sent_from_processor__TRUE_if_sender_matches_processor(self):
         self.assertTrue(self.wv.sent_from_processor(message=make_good_message()))

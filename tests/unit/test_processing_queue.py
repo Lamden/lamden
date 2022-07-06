@@ -230,12 +230,10 @@ class TestProcessingQueue(TestCase):
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
-        # Await the queue stopping and then mark the queue as not processing after X seconds
-        tasks = asyncio.gather(
-            self.delay_processing_await(self.main_processing_queue.process_next, hold_time),
-        )
+        time.sleep(hold_time)
+
         loop = asyncio.get_event_loop()
-        hlc_timestamp = loop.run_until_complete(tasks)[0]
+        hlc_timestamp = loop.run_until_complete(self.main_processing_queue.process_next())
 
         self.assertIsNotNone(hlc_timestamp)
 
@@ -447,11 +445,19 @@ class TestProcessingQueue(TestCase):
 
     def test_sign_tx_results(self):
         timestamp = self.hlc_clock.get_new_hlc_timestamp()
-        result = 'sample result'
+        result = 'sample result',
+        rewards = [{}, {}]
 
         self.assertDictEqual(
-            self.main_processing_queue.sign_tx_results(result, timestamp),
-            {'signature': self.main_processing_queue.wallet.sign(tx_result_hash_from_tx_result_object(tx_result=result, hlc_timestamp=timestamp)), 'signer': self.main_processing_queue.wallet.verifying_key}
+            self.main_processing_queue.sign_tx_results(result, timestamp, rewards),
+            {
+                'signature': self.main_processing_queue.wallet.sign(tx_result_hash_from_tx_result_object(
+                    tx_result=result,
+                    hlc_timestamp=timestamp,
+                    rewards=rewards
+                )),
+                'signer': self.main_processing_queue.wallet.verifying_key
+            }
         )
 
     def test_get_hlc_hash_from_tx(self):

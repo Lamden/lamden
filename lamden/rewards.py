@@ -35,6 +35,10 @@ class RewardManager:
                 return False
         return True
 
+    '''
+        NO LONGER USED
+    '''
+    # TODO Remove
     @staticmethod
     def stamps_in_block(block):
         total = 0
@@ -59,13 +63,21 @@ class RewardManager:
 
         amount = ContractingDecimal(amount)
 
+        new_balance = amount + current_balance
+
         client.set_var(
             contract='currency',
             variable='balances',
             arguments=[vk],
-            value=amount + current_balance,
+            value=new_balance,
             mark=True
         )
+
+        return {
+            'key': f'currency.balances:{vk}',
+            'value': new_balance,
+            'reward': amount
+        }
 
     @staticmethod
     def calculate_participant_reward(participant_ratio, number_of_participants, total_stamps_to_split):
@@ -73,6 +85,11 @@ class RewardManager:
         reward = (decimal.Decimal(str(participant_ratio)) / number_of_participants) * decimal.Decimal(str(total_stamps_to_split))
         rounded_reward = round(reward, DUST_EXPONENT)
         return rounded_reward
+
+    '''
+        NO LONGER USED
+    '''
+    # TODO Remove
 
     @staticmethod
     def calculate_all_rewards(block, client: ContractingClient):
@@ -155,34 +172,33 @@ class RewardManager:
         return send_map
 
     @staticmethod
-    def distribute_rewards(master_reward, delegate_reward, foundation_reward, developer_mapping, client: ContractingClient):
+    def distribute_rewards(master_reward, delegate_reward, foundation_reward, developer_mapping, client: ContractingClient) -> dict:
         stamp_cost = client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
 
         master_reward /= stamp_cost
         delegate_reward /= stamp_cost
         foundation_reward /= stamp_cost
 
-        '''
-        log.info(f'Master reward: {format(master_reward, ".4f")}t per master. '
-                 f'Delegate reward: {format(delegate_reward, ".4f")}t per delegate. '
-                 f'Foundation reward: {format(foundation_reward, ".4f")}t.')
-        '''
+        rewards = []
 
         for m in client.get_var(contract='masternodes', variable='S', arguments=['members']):
-            RewardManager.add_to_balance(vk=m, amount=master_reward, client=client)
+            rewards.append(RewardManager.add_to_balance(vk=m, amount=master_reward, client=client))
 
         for d in client.get_var(contract='delegates', variable='S', arguments=['members']):
-            RewardManager.add_to_balance(vk=d, amount=delegate_reward, client=client)
+            rewards.append(RewardManager.add_to_balance(vk=d, amount=delegate_reward, client=client))
 
         foundation_wallet = client.get_var(contract='foundation', variable='owner')
-        RewardManager.add_to_balance(vk=foundation_wallet, amount=foundation_reward, client=client)
+        rewards.append(RewardManager.add_to_balance(vk=foundation_wallet, amount=foundation_reward, client=client))
 
         # Send rewards to each developer calculated from the block
         for recipient, amount in developer_mapping.items():
             dev_reward = round((amount / stamp_cost), DUST_EXPONENT)
-            RewardManager.add_to_balance(vk=recipient, amount=dev_reward, client=client)
+            rewards.append(RewardManager.add_to_balance(vk=recipient, amount=dev_reward, client=client))
 
-        # log.info(f'Remainder is burned.')
+        # Remainder is BURNED
+
+        return rewards
+
 
     @staticmethod
     def issue_rewards(block, client: ContractingClient):

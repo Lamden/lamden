@@ -141,8 +141,9 @@ def remove_result_hash_from_proofs(proofs) -> list:
 
     return proofs
 
-def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp):
+def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp, rewards):
     h = hashlib.sha3_256()
     h.update('{}'.format(encode(tx_result).encode()).encode())
+    h.update('{}'.format(encode(rewards).encode()).encode())
     h.update('{}'.format(hlc_timestamp).encode())
     return h.hexdigest()
