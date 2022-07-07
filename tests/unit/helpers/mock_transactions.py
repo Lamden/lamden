@@ -61,6 +61,37 @@ def get_new_vote_tx(type, vk, sender):
     )
     return json.loads(txb)
 
+def get_members_introduce_motion_tx(node_type, motion, vk):
+    # REMOVE_MEMBER = 1
+    txb = build_transaction(
+        wallet=Wallet(),
+        contract=f'{node_type}s',
+        function="vote",
+        kwargs={
+            'vk': vk,
+            'obj': ['introduce_motion', motion, vk]
+        },
+        nonce=0,
+        processor='0' * 64,
+        stamps=50
+    )
+    return json.loads(txb)
+
+def get_members_vote_tx(node_type, vk, vote):
+    txb = build_transaction(
+        wallet=Wallet(),
+        contract=f'{node_type}s',
+        function="vote",
+        kwargs={
+            'vk': vk,
+            'obj': ['vote_on_motion', vote]
+        },
+        nonce=0,
+        processor='0' * 64,
+        stamps=50
+    )
+    return json.loads(txb)
+
 def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None):
     wallet = wallet or Wallet()
 
