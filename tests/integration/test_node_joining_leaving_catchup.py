@@ -1,15 +1,15 @@
-from unittest import TestCase
+from lamden import contracts
 from pathlib import Path
-import copy
-
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.integration.mock.mock_data_structures import MockBlocks
+from tests.unit.helpers.mock_transactions import get_introduce_motion_tx, get_vote_tx, get_new_currency_tx
+from unittest import TestCase
+import copy
+import json
 
 import asyncio
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-from tests.unit.helpers.mock_transactions import get_members_introduce_motion_tx, get_members_vote_tx, get_new_currency_tx
 
 class TestNewNodeCatchup(TestCase):
     def setUp(self):
@@ -111,30 +111,15 @@ class TestNewNodeCatchup(TestCase):
 
 class TestNodeLeaving(TestCase):
     def setUp(self):
-        try:
-            self.loop = asyncio.get_event_loop()
-
-            if self.loop.is_closed():
-                self.loop = None
-        except:
-            self.loop = None
-        finally:
-            if not self.loop:
-                self.loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(self.loop)
-
         self.network = LocalNodeNetwork(
-            genesis_path=Path(f'{Path.cwd()}/mock')
+            genesis_path=Path(contracts.__path__[0])
         )
 
     def tearDown(self):
         task = asyncio.ensure_future(self.network.stop_all_nodes())
+        loop = asyncio.get_event_loop()
         while not task.done():
-            self.loop.run_until_complete(asyncio.sleep(0.1))
-
-        if not self.loop.is_closed():
-            self.loop.stop()
-            self.loop.close()
+            loop.run_until_complete(asyncio.sleep(0.1))
 
     def await_async_process(self, process, *args, **kwargs):
         tasks = asyncio.gather(
@@ -149,33 +134,19 @@ class TestNodeLeaving(TestCase):
         exile = self.network.masternodes[0]
         voters = [self.network.masternodes[1], self.network.masternodes[2]]
 
-        # assert state BEFORE kick
-        expected_members = [member.vk for member in self.network.all_nodes]
-        for voter in voters:
-            self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
-            self.assertEqual(voter.network.num_of_peers(), 2)
-
-        kick_tx = get_members_introduce_motion_tx(
-            node_type='masternode', motion=1, vk=exile.vk
+        introduce_motion_remove_member_tx = get_introduce_motion_tx(
+            policy='masternodes', motion=1, vk=exile.vk, wallet=voters[0].node.wallet
         )
-        kick_tx['payload']['sender'] = 'election_house'
-        kick_tx_message = self.network.masternodes[0].node.make_tx_message(kick_tx)
-        for node in self.network.all_nodes:
-            node.main_processing_queue.append(kick_tx_message)
+        voters[0].send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
         for voter in voters:
-            vote_yay_tx = get_members_vote_tx(node_type='masternode', vk=voter.vk, vote=True)
-            vote_yay_tx['payload']['sender'] = 'election_house'
-            vote_tx_message = self.network.masternodes[0].node.make_tx_message(vote_yay_tx)
-            for node in self.network.all_nodes:
-                node.main_processing_queue.append(vote_tx_message)
+            vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
+            voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         self.network.await_all_nodes_done_processing(block_height=3)
 
-        # assert state AFTER kick
         expected_members = [voter.vk for voter in voters]
         for voter in voters:
             self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
             self.assertEqual(voter.network.num_of_peers(), 1)
-
         self.assertFalse(exile.node_is_running)

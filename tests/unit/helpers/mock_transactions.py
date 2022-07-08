@@ -61,33 +61,32 @@ def get_new_vote_tx(type, vk, sender):
     )
     return json.loads(txb)
 
-def get_members_introduce_motion_tx(node_type, motion, vk):
-    # REMOVE_MEMBER = 1
+def get_introduce_motion_tx(policy, motion, vk, wallet=None, nonce=None):
     txb = build_transaction(
-        wallet=Wallet(),
-        contract=f'{node_type}s',
-        function="vote",
+        wallet=wallet or Wallet(),
+        contract='election_house',
+        function='vote',
         kwargs={
-            'vk': vk,
-            'obj': ['introduce_motion', motion, vk]
+            'policy': policy,
+            'value': ['introduce_motion', motion, vk]
         },
-        nonce=0,
-        processor='0' * 64,
+        nonce=nonce or 0,
+        processor=wallet.verifying_key or '0' * 64,
         stamps=50
     )
     return json.loads(txb)
 
-def get_members_vote_tx(node_type, vk, vote):
+def get_vote_tx(policy, vote, wallet=None, nonce=None):
     txb = build_transaction(
-        wallet=Wallet(),
-        contract=f'{node_type}s',
-        function="vote",
+        wallet=wallet or Wallet(),
+        contract='election_house',
+        function='vote',
         kwargs={
-            'vk': vk,
-            'obj': ['vote_on_motion', vote]
+            'policy': policy,
+            'value': ['vote_on_motion', vote]
         },
-        nonce=0,
-        processor='0' * 64,
+        nonce=nonce or 0,
+        processor=wallet.verifying_key or '0' * 64,
         stamps=50
     )
     return json.loads(txb)
