@@ -69,6 +69,8 @@ class DetermineConsensus:
             'consensus_needed': consensus_needed
         })
 
+        ideal_consensus_results = None
+
         if last_check_info.get('ideal_consensus_possible', False):
             # Check ideal situation
             ideal_consensus_results = self.check_ideal_consensus(
