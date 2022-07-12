@@ -38,9 +38,11 @@ class WorkProcessor(router.Processor):
 
     async def process_message(self, msg):
         self.log.info(f'Received work from {msg["sender"][:8]}')
-        # if msg['sender'] not in self.masters:
-        #     self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
-        #     return
+        self.log.info(msg)
+
+        if msg['sender'] not in self.masters:
+            self.log.error(f'TX Batch received from non-master {msg["sender"][:8]}')
+            return
 
         shim = {
             'transactions': [],
