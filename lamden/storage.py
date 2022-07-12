@@ -199,7 +199,7 @@ def set_latest_block_hash(h, driver: ContractDriver):
     driver.driver.set(BLOCK_HASH_KEY, h)
 
 def get_latest_block_height(driver: ContractDriver):
-    h = driver.get(BLOCK_NUM_HEIGHT, mark=False)
+    h = driver.get(BLOCK_NUM_HEIGHT)
     if h is None:
         return 0
 
