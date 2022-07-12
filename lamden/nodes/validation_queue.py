@@ -279,6 +279,8 @@ class ValidationQueue(ProcessingQueue):
 
                     # TODO: should we clean results lookup here as well?
 
+                    self.log.debug(f'Cleared results from node: {node_vk[:8]}, hlc: {hlc}')
+
     def get_last_consensus_result(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp, None)
         if results is None:

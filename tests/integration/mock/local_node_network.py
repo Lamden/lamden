@@ -363,14 +363,14 @@ class LocalNodeNetwork:
 
             print("All Nodes Stopped.")
 
-        def await_all_nodes_done_processing(self, block_height, timeout=360):
+        def await_all_nodes_done_processing(self, block_height, timeout=360, nodes=None):
             done = False
             start = time.time()
             while not done:
                 if 0 < timeout < time.time() - start:
                     print(f'{__name__} TIMED OUT')
                     break
-                results = [node.current_height == block_height for node in self.all_nodes]
+                results = [node.current_height == block_height for node in (nodes if nodes is not None else self.all_nodes)]
                 done = all(results)
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(asyncio.sleep(1))

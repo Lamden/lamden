@@ -150,3 +150,60 @@ class TestNodeLeaving(TestCase):
             self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
             self.assertEqual(voter.network.num_of_peers(), 1)
         self.assertFalse(exile.node_is_running)
+
+    def test_node_kick_out_clears_results_from_kicked_peer(self):
+        self.network.create_new_network(num_of_masternodes=3)
+        for node in self.network.all_nodes:
+            self.assertTrue(node.node_is_running)
+            node.set_smart_contract_value(
+                key=f'currency.balances:{self.network.founders_wallet.verifying_key}',
+                value=1000000
+            )
+        for node in self.network.all_nodes:
+            self.await_async_process(node.node.pause_validation_queue)
+
+        exile = self.network.masternodes[0]
+        voters = [self.network.masternodes[1], self.network.masternodes[2]]
+
+        introduce_motion_remove_member_tx = get_introduce_motion_tx(
+            policy='masternodes', motion=1, vk=exile.vk, wallet=voters[0].node.wallet
+        )
+        voters[0].send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
+
+        for voter in voters:
+            vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
+            voter.send_tx(json.dumps(vote_yay_tx).encode())
+
+        # TODO: should legit nodes eventually not process this TX?
+        exile.send_tx(
+            json.dumps(get_new_currency_tx(wallet=self.network.founders_wallet, processor=exile.vk)).encode()
+        )
+
+        for node in self.network.all_nodes:
+            while len(node.validation_queue) != 4:
+                self.await_async_process(asyncio.sleep, 0.1)
+            while node.current_height != 2:
+                self.await_async_process(node.validation_queue.process_next)
+
+        last_hlc = exile.validation_queue[-1]
+        for node in self.network.all_nodes:
+            # Assert results from exile node are present before we process 3rd TX
+            self.assertIsNotNone(
+                node.validation_queue.validation_results[last_hlc]['solutions'].get(exile.wallet.verifying_key, None)
+            )
+            while node.current_height != 3:
+                self.await_async_process(node.validation_queue.process_next)
+            if node != exile:
+                # Assert TX number 3 has cleared the results from exile node
+                self.assertIsNone(
+                    node.validation_queue.validation_results[last_hlc]['solutions'].get(exile.wallet.verifying_key, None)
+                )
+                node.node.unpause_all_queues()
+
+        self.network.await_all_nodes_done_processing(block_height=4, nodes=voters)
+
+        expected_members = [voter.vk for voter in voters]
+        for voter in voters:
+            self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
+            self.assertEqual(voter.network.num_of_peers(), 1)
+        self.assertFalse(exile.node_is_running)
