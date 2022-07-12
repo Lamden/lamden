@@ -157,19 +157,6 @@ class TestBlockContenderProcessor(TestCase):
         # Validate test case results
         self.assertEqual(1, len(self.validation_queue))
 
-    # NOTE: this logic was removed since it should be handled on network/router level
-    #def test_does_not_append_if_signer_not_in_peer_group(self):
-    #    tx_message = get_tx_message()
-    #    processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
-    #    self.remove_from_peer_group(vk=self.stu_wallet.verifying_key)
-
-    #    with self.assertLogs(level='ERROR') as log:
-    #        self.await_process_message(msg=processing_results)
-    #        self.assertIn('Contender sender is not a valid peer!', log.output[0])
-
-    #        # Validate test case results
-    #        self.assertEqual(0, len(self.validation_queue))
-
     def test_does_not_append_invalid_payload(self):
         self.peers.append(self.stu_wallet.verifying_key)
 
