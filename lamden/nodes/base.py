@@ -748,6 +748,10 @@ class Node:
 
         self.driver.hard_apply(hlc=hlc_timestamp)
 
+    # TODO: move to state manager in the future.
+    def is_known_masternode(self, processor_vk):
+        return processor_vk in (self.driver.driver.get('masternodes.S:members') or [])
+
     async def hard_apply_block(self, processing_results):
         '''
         if self.testing:
@@ -763,9 +767,12 @@ class Node:
             raise AttributeError('Processing Results are NONE')
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
+        processor = processing_results['tx_result']['transaction']['payload']['processor']
+        if not self.is_known_masternode(processor):
+            self.log.error(f'Processor {processor[:8]} is not a known masternode. Dropping {hlc_timestamp}')
+            return
 
         next_block_num = self.current_block_height + 1
-
         prev_block = self.blocks.get_previous_block(v=self.current_block_height)
 
         # Get any blocks that have been commited that are later than this hlc_timestamp
@@ -927,7 +934,7 @@ class Node:
             return
 
         if self.wallet.verifying_key in exiled_peers:
-            self.log.info('I was voted out from the network... Shutting down!')
+            self.log.fatal('I was voted out from the network... Shutting down!')
             asyncio.ensure_future(self.stop())
         else:
             hlc = processing_results.get('hlc_timestamp')
