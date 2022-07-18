@@ -227,7 +227,6 @@ class TxProcessingQueue(ProcessingQueue):
         # Process the result of the executor
         tx_result = self.process_tx_output(
             output=output,
-            hlc_timestamp=hlc_timestamp,
             transaction=transaction,
             stamp_cost=stamp_cost
         )
@@ -287,7 +286,7 @@ class TxProcessingQueue(ProcessingQueue):
             })
             self.stop_node()
 
-    def process_tx_output(self, output, transaction, stamp_cost, hlc_timestamp):
+    def process_tx_output(self, output, transaction, stamp_cost):
         # Clear pending writes, stu said to comment this out
         # self.executor.driver.pending_writes.clear()
 

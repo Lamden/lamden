@@ -224,6 +224,9 @@ class Node:
         self.network.stop()
         self.system_monitor.stop()
     '''
+    @property
+    def vk(self) -> str:
+        return self.wallet.verifying_key
 
     @property
     def node_type(self) -> str:
@@ -663,9 +666,8 @@ class Node:
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
                     block = self.blocks.get_block(v=hlc_timestamp)
-                    my_result_hash = tx_result_hash_from_tx_result_object(
-                        tx_result=processing_results['tx_result'],
-                        hlc_timestamp=hlc_timestamp
+                    my_result_hash = self.make_result_hash_from_processing_results(
+                        processing_results=processing_results
                     )
                     block_result_hash = block['processed']['hash']
 
@@ -692,14 +694,19 @@ class Node:
 
         processing_results = json.loads(encode(processing_results))
 
-        processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
-            tx_result=processing_results['tx_result'],
-            hlc_timestamp=processing_results['hlc_timestamp'],
-            rewards=processing_results['rewards']
+        processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
+            processing_results=processing_results
         )
 
         self.validation_queue.append(
             processing_results=processing_results
+        )
+
+    def make_result_hash_from_processing_results(self, processing_results: dict) -> dict:
+        return tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            rewards=processing_results['rewards']
         )
 
     def send_solution_to_network(self, processing_results):
@@ -977,11 +984,7 @@ class Node:
             # If HLC is greater than rollback point check it for reprocessing
             if read_history_hlc > new_tx_hlc_timestamp:
                 try:
-                    self.reprocess_hlc(
-                        hlc_timestamp=read_history_hlc,
-                        pending_deltas=pending_delta_history.get(read_history_hlc, {}),
-                        changed_keys_list=changed_keys_list
-                    )
+                    self.reprocess_hlc_simple(hlc_timestamp=read_history_hlc)
                 except Exception as err:
                     self.log.error(err)
 
@@ -1008,6 +1011,26 @@ class Node:
                 )
             except Exception as err:
                 self.log.error(err)
+
+    def reprocess_hlc_simple(self, hlc_timestamp):
+        recreated_tx_message = self.validation_queue.get_recreated_tx_message(hlc_timestamp)
+        if recreated_tx_message is None:
+            return
+
+        processing_results = self.main_processing_queue.process_tx(tx=recreated_tx_message)
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+
+        new_result_hash = self.make_result_hash_from_processing_results(
+            processing_results=processing_results
+        )
+
+        previous_result_hash = self.validation_queue.get_result_hash_for_vk(
+            hlc_timestamp=hlc_timestamp,
+            node_vk=self.vk
+        )
+
+        if previous_result_hash is None or new_result_hash != previous_result_hash:
+            self.store_solution_and_send_to_network(processing_results=processing_results)
 
     def reprocess_hlc(self, hlc_timestamp, pending_deltas, changed_keys_list):
         # Create a flag to determine there were any matching keys

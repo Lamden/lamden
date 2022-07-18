@@ -193,7 +193,7 @@ class ThreadedNode(threading.Thread):
 
     @property
     def last_processed_hlc(self) -> str:
-        return self.node.last_processed_hlc
+        return self.node.get_last_processed_hlc()
 
     @property
     def blocks(self):

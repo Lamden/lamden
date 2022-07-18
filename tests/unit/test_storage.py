@@ -467,3 +467,4 @@ class TestStorage(TestCase):
 
     def test_get_block_v_none_returns_none(self):
         self.assertIsNone(self.block_storage.get_block())
+

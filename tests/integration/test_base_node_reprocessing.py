@@ -151,7 +151,8 @@ class TestNode(TestCase):
             self.sent_to_network[hlc_timestamp] = []
         tx_result_hash = tx_result_hash_from_tx_result_object(
             tx_result=processing_results['tx_result'],
-            hlc_timestamp=processing_results['hlc_timestamp']
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            rewards=processing_results['rewards']
         )
         self.sent_to_network[hlc_timestamp].append(tx_result_hash)
 
