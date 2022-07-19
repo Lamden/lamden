@@ -1,12 +1,10 @@
-from unittest import TestCase
 from pathlib import Path
-import shutil
-import copy
-
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.integration.mock.mock_data_structures import MockBlocks
-
+from unittest import TestCase
 import asyncio
+import copy
+
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -107,9 +105,3 @@ class TestNewNodeCatchup(TestCase):
         for vk, amount in blocks.internal_state.items():
             state_amount = new_node.get_smart_contract_value(key=f'currency.balances:{vk}')
             self.assertEqual(amount, state_amount)
-
-
-
-
-
-

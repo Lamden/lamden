@@ -276,16 +276,19 @@ class ValidationQueue(ProcessingQueue):
             except:
                 pass
 
-    def clear_my_solutions(self):
-        for hlc_timestamp in self.validation_results:
-            try:
-                del self.validation_results[hlc_timestamp]['solutions'][self.wallet.verifying_key]
+    def clear_solutions(self, node_vk, max_hlc=None):
+        for hlc in self.validation_results:
+            if max_hlc is None or hlc > max_hlc:
+                res = self.validation_results[hlc]['solutions'].pop(node_vk, None)
+                if res is not None:
+                    self.validation_results[hlc]['proofs'].pop(node_vk, None)
+                    # Set the possible consensus flags back to True
+                    self.validation_results[hlc]['last_check_info']['ideal_consensus_possible'] = True
+                    self.validation_results[hlc]['last_check_info']['eager_consensus_possible'] = True
 
-                # Set the possible consensus flags back to True
-                self.validation_results[hlc_timestamp]['last_check_info']['ideal_consensus_possible'] = True
-                self.validation_results[hlc_timestamp]['last_check_info']['eager_consensus_possible'] = True
-            except KeyError:
-                pass
+                    # TODO: should we clean results lookup here as well?
+
+                    self.log.debug(f'Cleared results from node: {node_vk[:8]}, hlc: {hlc}')
 
     def get_last_consensus_result(self, hlc_timestamp):
         results = self.validation_results.get(hlc_timestamp, None)

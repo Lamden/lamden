@@ -59,7 +59,7 @@ class Network:
 
         self.wallet = wallet
         self.driver = driver
-        self.block_storage = block_storage or BlockStorage()
+        self.block_storage = block_storage if block_storage is not None else BlockStorage()
 
         self.local = local
 
@@ -245,6 +245,20 @@ class Network:
         print({'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
+
+    def get_exiled_peers(self):
+        exiles = []
+        if not self.peer_is_voted_in(self.vk):
+            exiles.append(self.vk)
+        for peer_vk in self.peers.keys():
+            if not self.peer_is_voted_in(peer_vk):
+                exiles.append(peer_vk)
+
+        return exiles
+
+    def revoke_access_and_remove_peer(self, peer_vk):
+        self.revoke_peer_access(peer_vk=peer_vk)
+        self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
         # Get a reference to this peer
@@ -482,10 +496,10 @@ class Network:
         return vk_to_ip_map
 
     def get_delegate_vk_list(self) -> list:
-        return self.driver.get(f'delegates.S:members', save=False) or []
+        return self.driver.driver.get('delegates.S:members') or []
 
     def get_masternode_vk_list(self) -> list:
-        return self.driver.get(f'masternodes.S:members', save=False) or []
+        return self.driver.driver.get('masternodes.S:members') or []
 
     def get_masternode_and_delegate_vk_list(self) -> list:
         return self.get_masternode_vk_list() + self.get_delegate_vk_list()

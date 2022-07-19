@@ -31,7 +31,7 @@ def generate_blocks(number_of_blocks):
 
     return blocks
 
-def get_new_currency_tx(wallet=None, to=None, amount=None, processor=None):
+def get_new_currency_tx(wallet=None, to=None, amount=None, processor=None, nonce=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract="currency",
@@ -40,7 +40,7 @@ def get_new_currency_tx(wallet=None, to=None, amount=None, processor=None):
             'to': to or Wallet().verifying_key,
             'amount': {'__fixed__': amount or '100.5'},
         },
-        nonce=0,
+        nonce=nonce or 0,
         processor=processor or '0' * 64,
         stamps=50
     )
@@ -57,6 +57,36 @@ def get_new_vote_tx(type, vk, sender):
         },
         nonce=0,
         processor='0' * 64,
+        stamps=50
+    )
+    return json.loads(txb)
+
+def get_introduce_motion_tx(policy, motion, vk, wallet=None, nonce=None):
+    txb = build_transaction(
+        wallet=wallet or Wallet(),
+        contract='election_house',
+        function='vote',
+        kwargs={
+            'policy': policy,
+            'value': ['introduce_motion', motion, vk]
+        },
+        nonce=nonce or 0,
+        processor=wallet.verifying_key or '0' * 64,
+        stamps=50
+    )
+    return json.loads(txb)
+
+def get_vote_tx(policy, vote, wallet=None, nonce=None):
+    txb = build_transaction(
+        wallet=wallet or Wallet(),
+        contract='election_house',
+        function='vote',
+        kwargs={
+            'policy': policy,
+            'value': ['vote_on_motion', vote]
+        },
+        nonce=nonce or 0,
+        processor=wallet.verifying_key or '0' * 64,
         stamps=50
     )
     return json.loads(txb)

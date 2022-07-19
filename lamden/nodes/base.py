@@ -785,6 +785,10 @@ class Node:
 
         self.driver.hard_apply(hlc=hlc_timestamp)
 
+    # TODO: move to state manager in the future.
+    def is_known_masternode(self, processor_vk):
+        return processor_vk in (self.driver.driver.get('masternodes.S:members') or [])
+
     async def hard_apply_block(self, processing_results):
         '''
         if self.testing:
@@ -800,9 +804,12 @@ class Node:
             raise AttributeError('Processing Results are NONE')
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
+        processor = processing_results['tx_result']['transaction']['payload']['processor']
+        if not self.is_known_masternode(processor):
+            self.log.error(f'Processor {processor[:8]} is not a known masternode. Dropping {hlc_timestamp}')
+            return
 
         next_block_num = self.current_block_height + 1
-
         prev_block = self.blocks.get_previous_block(v=self.current_block_height)
 
         # Get any blocks that have been commited that are later than this hlc_timestamp
@@ -950,7 +957,30 @@ class Node:
         # Increment the internal block counter
         self.current_block_height += 1
 
+        self.check_peers(processing_results)
+
         gc.collect()
+
+    def check_peers(self, processing_results):
+        state_changes = processing_results['tx_result'].get('state', [])
+        exiled_peers = []
+
+        for change in state_changes:
+            if change['key'] == 'masternodes.S:members' or change['key'] == 'delegates.S:members':
+                exiled_peers = self.network.get_exiled_peers()
+                break
+
+        if len(exiled_peers) == 0:
+            return
+
+        if self.wallet.verifying_key in exiled_peers:
+            self.log.fatal('I was voted out from the network... Shutting down!')
+            asyncio.ensure_future(self.stop())
+        else:
+            hlc = processing_results.get('hlc_timestamp')
+            for vk in exiled_peers:
+                self.network.revoke_access_and_remove_peer(peer_vk=vk)
+                self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
 
 # Re-processing CODE
     async def reprocess(self, tx):

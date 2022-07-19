@@ -5,7 +5,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node, ensure_in_constitution
 from lamden.nodes.hlc import HLC_Clock
 from tests.integration.mock.local_node_network import LocalNodeNetwork
-from tests.unit.helpers.mock_transactions import get_new_currency_tx
+from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
 import json
@@ -237,10 +237,10 @@ class TestNode(TestCase):
         hlc = HLC_Clock().get_new_hlc_timestamp()
         processing_results = {'hlc_timestamp': hlc, 'tx_result': {}, 'proof' : {'tx_result_hash':"123"}, 'rewards': []}
 
+        self.await_async_process(self.node.node.pause_validation_queue)
         self.node.node.store_solution_and_send_to_network(processing_results)
 
         self.assertIn(hlc, self.node.validation_queue.append_history)
-        self.assertIsNotNone(processing_results['proof'].get('tx_result_hash', None))
 
     def test_update_block_db(self):
         block = {'hash': 'sample_hash', 'number': 1}
@@ -295,6 +295,96 @@ class TestNode(TestCase):
             tx_result = processing_results.get('tx_result')
             self.assertGreater(len(tx_result['state']), 0)
             self.node.node.soft_apply_current_state(processing_results.get('hlc_timestamp'))
+
+    def test_check_peers_stops_self_if_kicked_out(self):
+        self.node.set_smart_contract_value('masternodes.S:members', [''])
+        processing_results = {
+            'tx_result': {
+                'state': [
+                    {'key': 'masternodes.S:members', 'value': ['']}
+                ]
+            }
+        }
+
+        self.node.node.check_peers(processing_results)
+
+        self.await_async_process(asyncio.sleep, 3)
+
+        self.assertFalse(self.node.node_is_running)
+        self.assertFalse(self.node.network.running)
+        self.assertFalse(self.node.main_processing_queue.running)
+        self.assertFalse(self.node.validation_queue.running)
+        self.assertFalse(self.node.system_monitor.running)
+
+    def test_check_peers_stops_peer_if_kicked_out(self):
+        other_node = self.local_node_network.add_masternode()
+
+        self.await_async_process(asyncio.sleep, 1)
+        self.assertEqual(self.node.network.num_of_peers(), 1)
+
+        self.node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])
+        other_node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])
+        processing_results = {
+            'tx_result': {
+                'state': [
+                    {'key': 'masternodes.S:members', 'value': [f'{self.node.wallet.verifying_key}']}
+                ]
+            }
+        }
+
+        self.node.node.check_peers(processing_results)
+        other_node.node.check_peers(processing_results)
+
+        self.await_async_process(asyncio.sleep, 3)
+
+        # node
+        self.assertEqual(self.node.network.num_of_peers(), 0)
+        self.assertTrue(self.node.node_is_running)
+        self.assertTrue(self.node.network.running)
+        self.assertTrue(self.node.main_processing_queue.running)
+        self.assertTrue(self.node.validation_queue.running)
+        self.assertTrue(self.node.system_monitor.running)
+
+        # other_node
+        self.assertFalse(other_node.node_is_running)
+        self.assertFalse(other_node.network.running)
+        self.assertFalse(other_node.main_processing_queue.running)
+        self.assertFalse(other_node.validation_queue.running)
+        self.assertFalse(other_node.system_monitor.running)
+
+    def test_check_peers_removes_results_which_belong_to_exiled_node(self):
+        peer_wallet = Wallet()
+        peer_vk = peer_wallet.verifying_key
+        self.node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key, peer_vk])
+        self.node.network.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
+        self.assertEqual(self.node.network.num_of_peers(), 1)
+
+        self.await_async_process(self.node.node.cancel_checking_all_queues)
+
+        processing_results = get_processing_results(
+            tx_message=self.node.node.make_tx_message(tx=get_new_currency_tx(wallet=self.node.wallet)),
+            node_wallet=peer_wallet
+        )
+        older_hlc = processing_results['hlc_timestamp']
+
+        self.node.validation_queue.append(processing_results)
+
+        self.assertIsNotNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
+        self.assertIsNotNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))
+
+        processing_results = {
+            'hlc_timestamp': '0', # NOTE: earlier HLC than we already have in validation queue
+            'tx_result': {
+                'state': [
+                    {'key': 'masternodes.S:members', 'value': [f'{self.node.wallet.verifying_key}']}
+                ]
+            }
+        }
+        self.node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])
+        self.node.node.check_peers(processing_results)
+
+        self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
+        self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))
 
 import unittest
 if __name__ == '__main__':

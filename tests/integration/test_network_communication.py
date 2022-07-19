@@ -47,7 +47,10 @@ class TestNetwork(TestCase):
             self.loop.stop()
             self.loop.close()
 
-
+        try:
+            shutil.rmtree(self.nodes_fixtures_dir)
+        except:
+            pass
 
         self.ctx = None
         self.loop = None
@@ -526,6 +529,3 @@ class TestNetwork(TestCase):
 
         self.assertEqual(num_of_requests * len(peer_list), len(task_results) )
         self.assertTrue(all([result.get('success') for result in task_results]))
-
-    def test_can_remove_peer_when_members_state_change_is_hard_applied(self):
-        raise NotImplementedError

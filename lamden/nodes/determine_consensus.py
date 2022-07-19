@@ -77,6 +77,8 @@ class DetermineConsensus:
         ideal_consensus_results = None
         eager_consensus_results = None
 
+        ideal_consensus_results = None
+
         if last_check_info.get('ideal_consensus_possible', False):
             # Check ideal situation
             ideal_consensus_results = self.check_ideal_consensus(

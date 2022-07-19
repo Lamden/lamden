@@ -102,14 +102,6 @@ class Block_Contender(Processor):
         # tack on the tx_result_hash to the proof for this node
         msg['proof']['tx_result_hash'] = tx_result_hash
 
-        peers = self.network.get_masternode_and_delegate_vk_list()
-        # self.log.info(f'Received BLOCK {msg["hash"][:8]} from {signer[:8]}')
-
-        if proof['signer'] not in peers and proof['signer'] != self.wallet.verifying_key:
-            # TODO not sure how we would have connections from peers that are't in the quorum but we should blacklist these connection
-            self.log.error('Contender sender is not a valid peer!')
-            return
-
         '''
         if not self.network.check_peer_in_consensus(proof['signer']):
             # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
