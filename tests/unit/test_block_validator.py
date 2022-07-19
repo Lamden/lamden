@@ -7,139 +7,150 @@ from lamden.crypto.canonical import format_dictionary
 from copy import deepcopy
 
 TRANSACTION = dict({
-        "metadata": {
-            "signature": "81d34f903f80a39969faf93174c384b1c9929a62b99ba5c33f77f66382a779e8e6e4ebdac5b8e4025a662b4669ec5e253b9c1521adad778209b2000cd5b54701"
+      "metadata": {
+        "signature": "e832a8bfd4ba9598bdf380547342a8f8cd431a77d1d1f080fbe665e43bfcd20a3a4c67e6aa4ed0fad2504b7b399fc04617b5597d4bae7350a0babf93e2439c07",
+        "timestamp": 1658163894
+      },
+      "payload": {
+        "contract": "currency",
+        "function": "transfer",
+        "kwargs": {
+          "amount": {
+            "__fixed__": "499900"
+          },
+          "to": "c0006724aa6fc81619b7e27816e69ab824ad04d39640bb87fb86720f452a1ed5"
         },
-        "payload": {
-            "contract": "currency",
-            "function": "transfer",
-            "kwargs": {
-                "amount": {"__fixed__": "10.5"},
-                "to": "12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a"
-            },
-            "nonce": 1,
-            "processor": "2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1",
-            "sender": "203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506",
-            "stamps_supplied": 20
-        }
+        "nonce": 0,
+        "processor": "92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e",
+        "sender": "3515aa7b15d7b97855a0266935bf26c44ad8d8198b2dc81ce035ba1b86b0f340",
+        "stamps_supplied": 100
+      }
     })
 
 PROCESSED_TRANSACTION = dict({
-    "hash": "f05519affba9bec4c8e1e44d252cb2ade9353eb32294d0c4f238755e162ac4d4",
+    "hash": "bedbf2872cf337c40408d3b17f1ed649af173e812156d7066ccabc8cda26ad4a",
     "result": "None",
     "stamps_used": 1,
     "state": [
-        {
-            "key": "currency.balances:203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506",
-            "value": {"__fixed__": "999979.0"}
-        },
-        {
-            "key": "currency.balances:12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a",
-            "value": {"__fixed__": "10.5"}
+      {
+        "key": "currency.balances:3515aa7b15d7b97855a0266935bf26c44ad8d8198b2dc81ce035ba1b86b0f340",
+        "value": {
+          "__fixed__": "50"
         }
+      },
+      {
+        "key": "currency.balances:c0006724aa6fc81619b7e27816e69ab824ad04d39640bb87fb86720f452a1ed5",
+        "value": {
+          "__fixed__": "499900"
+        }
+      }
     ],
     "status": 0,
     "transaction": TRANSACTION
-})
+  })
 
 BLOCK_V2 = dict({
-    "hash": "6ee9a1f2b0c5d3d720814f8878cdaf36f2ceaaacad6619957390712b5237da70",
-    "number": 2,
-    "hlc_timestamp": "2022-07-06T18:15:00.379629056Z_0",
-    "previous": "33c5777cc0880a501babee6ab9fbaf23ead7aa2e2b69a2c06e450bf66c9dd56e",
-    "proofs": [
-        {
-            "signature": "c4b6dbd7a2786159849cd951a1b7e46f3b44653b713f2d4bddda449cab5f6cd59d1430c30df40146796aaa3d46ff1eabce52d9784a7c8e1daef4e6616aaa6d03",
-            "signer": "0b13fae291610526d84497c5fe6d7e93696ea6927abbcfa6d85fd7b8aca04554"
-        },
-        {
-            "signature": "4777b74c4cdcadd5df2ff292907547ff4ebac53c0865af033921c4cd5ffb9013201905a258e47a58d6f3e079afeeac1f2b686888f8a5c19dafeee447d07e8e00",
-            "signer": "4a6290aa7c0b5964262d39df5a82ee23d8a730832a4c1ed0693e13502b439ac2"
-        },
-        {
-            "signature": "dc339b1bcfc93574d38ae413de7537de388c38c90b2d2f81ed874f560880bf5148ae1d937c6f1b7e7a1a54bdfd416f7ca484a00ce4f17c6e5f47b9bda6b67506",
-            "signer": "67b4d37b24025dc401b2f174b8435ff93090f16dbee3f67e24b64f2e555d865a"
-        },
-        {
-            "signature": "be67d0eb51ee5ca10e8e3cb215a9cb95d9c8fbde90bfda787a474d643bdb01c909dbd8976bea767a9b22ee2b7074dce08eb3bf82e7b26b9ddca2f08a108f3903",
-            "signer": "55296200c42ade25f6b7d32f2d7a6ed3e04b7a3a7c1d7cb65bb54dd607761aab"
-        },
-        {
-            "signature": "de79bba578733ad85bbb4f79d9dea5409c61afea41b7d307f33cccc6a2c4ed2ca004e02ed6bcc6b1469f04c83d738a85ca5dc7ad2da1bb6c921445244a430101",
-            "signer": "223b23ffb180ebd68f9fcddd804331b1dd2d53b86e2bf90eca54b4c5dcb6c571"
-        },
-        {
-            "signature": "be616cc509b92a0a9d4846367c9b335951b6030c640cc9e1f53b02120b0b4944a6444f111b76cbdc71fd2a8a55edefe20bdcb6a74fbf58057d117f9f551ec40c",
-            "signer": "ec5add0d16d4146016c3c868db8f39c6ce9bbc7ea42b4d2d46a3614d9616a5b0"
-        }
-    ],
-    "processed": PROCESSED_TRANSACTION,
-    "rewards": [
-        {
-            "key": "currency.balances:2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:ec5add0d16d4146016c3c868db8f39c6ce9bbc7ea42b4d2d46a3614d9616a5b0",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:09e5f8f3e697fb6ec55c3058bbd154d9bc581aca7f273907c207b64f3d9ca5f9",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:4df9640eafaf9df7fa5da0fd33162860870c385990313adf4901b13daa1c3915",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:0b13fae291610526d84497c5fe6d7e93696ea6927abbcfa6d85fd7b8aca04554",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:4a6290aa7c0b5964262d39df5a82ee23d8a730832a4c1ed0693e13502b439ac2",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:55296200c42ade25f6b7d32f2d7a6ed3e04b7a3a7c1d7cb65bb54dd607761aab",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:223b23ffb180ebd68f9fcddd804331b1dd2d53b86e2bf90eca54b4c5dcb6c571",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:eea02a5b3b7757ad10854699bacfa5ae31e834c56bf7a744f7fe8702a11ea458",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:67b4d37b24025dc401b2f174b8435ff93090f16dbee3f67e24b64f2e555d865a",
-            "value": {"__fixed__": "0.00880000"},
-            "reward": {"__fixed__": "0.00440000"}
-        },
-        {
-            "key": "currency.balances:0000803efd5df09c75c0c6670742db5074e5a011b829dfd8a0c50726d263a345",
-            "value": {"__fixed__": "288090567.00100000"},
-            "reward": {"__fixed__": "0.00050000"}
-        },
-        {
-            "key": "currency.balances:sys",
-            "value": {"__fixed__": "0.01000000"},
-            "reward": {"__fixed__": "0.00500000"}
-        }
-    ],
-    "origin": {
-        "signature": "7cdd808568e55268ab5bf024cdb1bf1081ab300122c7cee0f7a0a1c4759a1898f9f89137c4c95d61507b0c62de7ad52eb6b1806b9c2a00070ee93f353fde3609",
-        "sender": "2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1"
+  "hash": "e9b93384b73c83a073079b86ce2790d6b2558ae5760bbac48cfc7b8e13ac0106",
+  "number": 3,
+  "hlc_timestamp": "2022-07-18T17:04:54.967101696Z_0",
+  "previous": "15707bfc75f0140a66dd1303fc5a9101006193e0278da880f2db483d3f21d646",
+  "proofs": [
+    {
+      "signature": "32192497c0332b60f30ab7264a304dbd26a98851455b129c73f11ed9345c6eb78ea1673ed715706f1955fbd8a11c3e00e7506d1b2fa464481d2bca36a40c0701",
+      "signer": "3cc7090dab1cc57df4d75be68d9f9cdbdbff639095488b68b0f90014f5cd20bc"
+    },
+    {
+      "signature": "f1366e72f7c6179ba4bd6330fc11173e992b4ae77088a32d873edfa332faf90e8843f707eae5fc5735236780cc809cb442fdf1392bc097c7b26f5823fe84ec0d",
+      "signer": "1c37fa8be2f0d029cd2c66d53fa2797c4697e127af556f123f662302cb0670c4"
+    },
+    {
+      "signature": "eef303a975c3e28af5941d7746ca40e2a07b989603686ff0a2967a6ead04c7a2cc8392a9ed2023f0306e5c5001deea4ff757219fec8443a1d070ab7a3bd1810d",
+      "signer": "a9d0cbe69b7217c85bbf685c94ed00e0eb0960ae7742cf789422f92da6ba1c86"
+    },
+    {
+      "signature": "3ddf2a6b3026219bccd1a5e9970a814014626fd4643dc1883f8d058705cc3c82a94eb1752b9e882471a44d737178220e3e2b7321d7f5f74c6038be1fb4ebdc03",
+      "signer": "41f48cd73574e6cbb5c5329eac7a5404eb12ee5a964d034044727fa3f4acbc9f"
     }
+  ],
+  "processed": PROCESSED_TRANSACTION,
+  "rewards": [
+    {
+      "key": "currency.balances:92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:01dcfdde08d22e837b0bdda38d2096cc23f05008c3253251ae70fe5477dd24b2",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:a9d0cbe69b7217c85bbf685c94ed00e0eb0960ae7742cf789422f92da6ba1c86",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:3cc7090dab1cc57df4d75be68d9f9cdbdbff639095488b68b0f90014f5cd20bc",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:1c37fa8be2f0d029cd2c66d53fa2797c4697e127af556f123f662302cb0670c4",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:41f48cd73574e6cbb5c5329eac7a5404eb12ee5a964d034044727fa3f4acbc9f",
+      "value": {
+        "__fixed__": "0.021999999"
+      },
+      "reward": {
+        "__fixed__": "0.007333333"
+      }
+    },
+    {
+      "key": "currency.balances:45f943fb2a63ac12ef9321af33322e514a873589400247ad983d278fa8b450b1",
+      "value": {
+        "__fixed__": "287590567.00150000"
+      },
+      "reward": {
+        "__fixed__": "0.00050000"
+      }
+    },
+    {
+      "key": "currency.balances:sys",
+      "value": {
+        "__fixed__": "0.01500000"
+      },
+      "reward": {
+        "__fixed__": "0.00500000"
+      }
+    }
+  ],
+  "origin": {
+    "signature": "024850ef8591bf0020ce10e53e305f0daf90ad026e3b9bcaf9524807208b24c3dfb3f54ab93f4db5c8d65fa3a29d3991a27330715ecfcf2b3c8a5989b5ea7508",
+    "sender": "92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e"
+  }
 })
 
 class TestBlockValidator(TestCase):
@@ -375,43 +386,7 @@ class TestBlockValidator(TestCase):
         self.assertEqual(PROCESSED_TX_EXCEPTIONS['ProcessedTxHashMalformed'], str(err.exception))
 
     def test_verify_transaction_signature__returns_True_if_signature_valid(self):
-        tx = {
-            "metadata": {
-                "signature": 'bfa776bef57f5889622aac24b782febd009ed8949d0878a468f8458051b9bb61216cc64111096281f9fa8893e4e46644365151f121f14b95d54e17cc8e38050f'
-            },
-            "payload": {
-                "contract": 'currency',
-                "function": 'transfer',
-                "kwargs": {
-                    "amount": {"__fixed__": '500000'},
-                    "to": '160c15c964f2cc51a6f5c1a1ffb1b6406ff2777ab45561da51e8cbd90bec2843'
-                },
-                "nonce": 0,
-                "processor": '92e45fb91c8f76fbfdc1ff2a58c2e901f3f56ec38d2f10f94ac52fcfa56fce2e',
-                "sender": '45f943fb2a63ac12ef9321af33322e514a873589400247ad983d278fa8b450b1',
-                "stamps_supplied": 100
-            }
-        }
-
-        tx_2 = {
-            "metadata": {
-                "signature": '81d34f903f80a39969faf93174c384b1c9929a62b99ba5c33f77f66382a779e8e6e4ebdac5b8e4025a662b4669ec5e253b9c1521adad778209b2000cd5b54701'
-            },
-            "payload": {
-                "contract": 'currency',
-                "function": 'transfer',
-                "kwargs": {
-                    "amount": {"__fixed__": "10.5"},
-                    "to": '12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a'
-                },
-                "nonce": 1,
-                "processor": '2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1',
-                "sender": '203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506',
-                "stamps_supplied": 20
-            }
-        }
-        self.assertTrue(block_validator.verify_transaction_signature(transaction=tx))
-        #self.assertTrue(block_validator.verify_transaction_signature(transaction=tx_2))
+        self.assertTrue(block_validator.verify_transaction_signature(transaction=TRANSACTION))
 
     def test_verify_transaction_signature__testing(self):
         signature = "5e5cbcc7d3331e1f2d983c280fd88fc3bf4ee6582f9a253f4690b75920ce2c02b2d5704b30669d164523dbe2a3153ebd0ec7e12332a3f8f2028590547bcf600c"
@@ -445,14 +420,15 @@ class TestBlockValidator(TestCase):
         self.assertTrue(block_validator.validate_all_signatures(block=self.block))
 
     def test_validate_all_signatures__raises_TransactionMetadataSignatureMalformed(self):
-        with self.assertRaises(block_validator.ProcessedTxHashMalformed) as err:
+        with self.assertRaises(block_validator.TransactionMetadataSignatureMalformed) as err:
             self.block['processed']['transaction']['payload']['contract'] = "123"
             block_validator.validate_all_signatures(block=self.block)
-        self.assertEqual(PROCESSED_TX_EXCEPTIONS['ProcessedTxHashMalformed'], str(err.exception))
+        self.assertEqual(PAYLOAD_EXCEPTIONS['TransactionMetadataSignatureMalformed'], str(err.exception))
 
     def test_validate_all_signatures__raises_BlockOriginSignatureMalformed(self):
+        bad_signature = self.wallet.sign('TESTING')
         with self.assertRaises(block_validator.BlockOriginSignatureMalformed) as err:
-            self.block['processed']['transaction']['payload']['contract'] = "123"
+            self.block['origin']['signature'] = bad_signature
             block_validator.validate_all_signatures(block=self.block)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockOriginSignatureMalformed'], str(err.exception))
 

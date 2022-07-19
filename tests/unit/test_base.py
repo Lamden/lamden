@@ -235,7 +235,7 @@ class TestNode(TestCase):
 
     def test_store_solution_and_send_to_network(self):
         hlc = HLC_Clock().get_new_hlc_timestamp()
-        processing_results = {'hlc_timestamp': hlc, 'tx_result': {}, 'proof' : {}}
+        processing_results = {'hlc_timestamp': hlc, 'tx_result': {}, 'proof' : {'tx_result_hash':"123"}, 'rewards': []}
 
         self.node.node.store_solution_and_send_to_network(processing_results)
 

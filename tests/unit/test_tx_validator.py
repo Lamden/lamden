@@ -315,6 +315,8 @@ class TestValidator(TestCase):
                 name='co_hello'
             )
 
+    '''
+    Timestamp is no longer used
     def test_transaction_is_not_expired_true_if_within_timeout(self):
         w = Wallet()
 
@@ -333,6 +335,10 @@ class TestValidator(TestCase):
 
         decoded = decode(tx)
         transaction.transaction_is_not_expired(decoded)
+    '''
+
+    '''
+    Timestamp is no longer used
 
     def test_transaction_is_expired_false_if_outside_timeout(self):
         w = Wallet()
@@ -355,6 +361,8 @@ class TestValidator(TestCase):
 
         with self.assertRaises(transaction.TransactionStaleError):
             transaction.transaction_is_not_expired(decoded)
+    '''
+
     '''
     Timestamp is no longer used
     def test_future_transactions_raise_error_if_beyond_expiry(self):
@@ -380,6 +388,8 @@ class TestValidator(TestCase):
             transaction.transaction_is_not_expired(decoded)
     '''
 
+    '''
+    Timestamp is no longer used
     def test_future_transactions_fine_if_in_expiry(self):
         w = Wallet()
 
@@ -400,6 +410,7 @@ class TestValidator(TestCase):
         decoded['metadata']['timestamp'] += 4
 
         transaction.transaction_is_not_expired(decoded)
+    '''
 
     def test_transaction_is_valid_complete_test_passes(self):
         w = Wallet()

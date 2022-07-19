@@ -398,7 +398,6 @@ class TestProcessingQueue(TestCase):
 
         tx_result = self.main_processing_queue.process_tx_output(
             output=output,
-            hlc_timestamp=tx['hlc_timestamp'],
             transaction=tx['tx'],
             stamp_cost=stamp_cost
         )

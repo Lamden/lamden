@@ -353,7 +353,7 @@ class TestNode(TestCase):
         jeff_balance_mid = self.tn.get_cached_smart_contract_value(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
         self.assertEqual(0, float(str(jeff_balance_mid)))
 
-        # Archer has no balance
+        # Archer has a balance
         archer_balance_mid = self.tn.get_cached_smart_contract_value(key=f'currency.balances:{self.archer_wallet.verifying_key}')
         self.assertEqual(str(tx_amount), str(archer_balance_mid))
 
@@ -363,6 +363,8 @@ class TestNode(TestCase):
             self.async_sleep(0.1)
 
         self.async_sleep(3)
+
+        self.node.driver.hard_apply(hlc=hlc_timestamp_3)
 
         # TEST that after reprocessing, Jeff no longer has a balance to complete TX#3 but instead Archer was sent
         # currency in TX#2
@@ -433,6 +435,8 @@ class TestNode(TestCase):
             self.async_sleep(0.1)
 
         self.async_sleep(3)
+
+        self.node.driver.hard_apply(hlc=hlc_timestamp_3)
 
         # TEST TX#2 and TX#3 sent two different results to the network because the results where different after
         # reprocessing

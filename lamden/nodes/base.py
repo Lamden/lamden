@@ -25,7 +25,7 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
 from lamden.nodes.events import Event, EventWriter
-
+from lamden.crypto.block_validator import verify_block
 from typing import List
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -519,6 +519,11 @@ class Node:
                 new_block = response.get("block_info")
                 self.log.info(new_block)
 
+                if not verify_block(block=new_block):
+                    await self.stop()
+                    self.log.error("Block provided by catchup peer had errors.")
+                    return
+
                 if new_block:
                     block_number = new_block.get('number')
                     if block_number == next_block_num:
@@ -824,6 +829,9 @@ class Node:
                 prev_block_hash=prev_block.get('hash')
             )
 
+            if not verify_block(new_block):
+                return
+
             for i in range(len(later_blocks)):
                 if i is 0:
                     prev_block_in_list = new_block
@@ -905,6 +913,9 @@ class Node:
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
+
+            if not verify_block(new_block):
+                return
 
             consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
 

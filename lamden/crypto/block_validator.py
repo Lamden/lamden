@@ -161,6 +161,9 @@ def validate_processed_transaction_structure(processed_transaction: dict) -> boo
     if not hash_is_sha256(hash_str=hash_str):
         raise ProcessedTxHashMalformed(EXCEPTION_PROCESSED_TX_HASH_MALFORMED)
 
+    if 'result' not in processed_transaction:
+        raise ProcessedTxResultInvalid(EXCEPTION_PROCESSED_TX_RESULT_INVALID)
+
     result = processed_transaction.get('result')
     if not isinstance(result, str):
         raise ProcessedTxResultInvalid(EXCEPTION_PROCESSED_TX_RESULT_INVALID)
@@ -334,8 +337,8 @@ def validate_all_signatures(block: dict) -> bool:
     processed = block.get('processed')
     transaction = processed.get('transaction')
 
-    # if not verify_transaction_signature(transaction=transaction):
-    #    raise TransactionMetadataSignatureMalformed(EXCEPTION_TRANSACTION_METADATA_SIGNATURE_MALFORMED)
+    if not verify_transaction_signature(transaction=transaction):
+        raise TransactionMetadataSignatureMalformed(EXCEPTION_TRANSACTION_METADATA_SIGNATURE_MALFORMED)
 
     if not verify_origin_signature(block=block):
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
