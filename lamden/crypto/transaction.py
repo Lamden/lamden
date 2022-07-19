@@ -239,8 +239,7 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
     signature = wallet.sign(true_payload)
 
     metadata = {
-        'signature': signature,
-        'timestamp': int(time.time())
+        'signature': signature
     }
 
     tx = {
@@ -258,7 +257,7 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     if not check_format(transaction, rules.TRANSACTION_RULES):
         return TransactionFormattingError
 
-    transaction_is_not_expired(transaction, timeout)
+    #transaction_is_not_expired(transaction, timeout)
 
     # Put in to variables for visual ease
     sender = transaction['payload']['sender']

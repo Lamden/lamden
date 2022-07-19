@@ -336,18 +336,10 @@ class TestFormatting(TestCase):
 
     def test_tx_metadata_passes(self):
         t = {
-            'signature': 'a' * 128,
-            'timestamp': 123
+            'signature': 'a' * 128
         }
 
         self.assertTrue(primatives.check_format(t, rules.TRANSACTION_METADATA_RULES))
-
-    def test_tx_metadata_missing_key_fails(self):
-        t = {
-            'signature': 'a' * 128,
-        }
-
-        self.assertFalse(primatives.check_format(t, rules.TRANSACTION_METADATA_RULES))
 
     def test_tx_metadata_extra_key_fails(self):
         t = {

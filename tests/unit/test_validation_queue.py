@@ -242,8 +242,11 @@ class TestValidationQueue(TestCase):
             node_vk=node_wallet.verifying_key
         )
 
-        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=processing_results['tx_result'],
-                                                              hlc_timestamp=hlc_timestamp)
+        tx_result_hash = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=hlc_timestamp,
+            rewards=processing_results['rewards']
+        )
 
         self.assertEqual(result_hash, tx_result_hash)
 
@@ -276,11 +279,13 @@ class TestValidationQueue(TestCase):
 
         tx_result_hash_1 = tx_result_hash_from_tx_result_object(
             tx_result=processing_results_1['tx_result'],
-            hlc_timestamp=processing_results_1['hlc_timestamp']
+            hlc_timestamp=processing_results_1['hlc_timestamp'],
+            rewards=processing_results_1['rewards']
         )
         tx_result_hash_2 = tx_result_hash_from_tx_result_object(
             tx_result=processing_results_2['tx_result'],
-            hlc_timestamp=processing_results_2['hlc_timestamp']
+            hlc_timestamp=processing_results_2['hlc_timestamp'],
+            rewards=processing_results_1['rewards']
         )
 
         self.assertEqual(node_wallet_1_solution, tx_result_hash_1)

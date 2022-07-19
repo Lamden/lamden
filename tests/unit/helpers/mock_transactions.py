@@ -109,12 +109,17 @@ def get_processing_results(tx_message, driver=None, node_wallet=None, node=None)
             pause_all_queues=lambda: True,
             unpause_all_queues=lambda: True
         )
-        main_processing_queue.distribute_rewards = lambda total_stamps_to_split, contract_name: True
+        main_processing_queue.distribute_rewards = lambda total_stamps_to_split, contract_name: []
 
         processing_results = main_processing_queue.process_tx(tx=tx_message)
         hlc_timestamp = processing_results.get('hlc_timestamp')
         tx_result = processing_results.get('tx_result')
-        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+        rewards = processing_results.get('rewards')
+        tx_result_hash = tx_result_hash_from_tx_result_object(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards
+        )
         processing_results['proof']['tx_result_hash'] = tx_result_hash
     return processing_results
 

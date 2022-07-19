@@ -227,7 +227,6 @@ class TxProcessingQueue(ProcessingQueue):
         # Process the result of the executor
         tx_result = self.process_tx_output(
             output=output,
-            hlc_timestamp=hlc_timestamp,
             transaction=transaction,
             stamp_cost=stamp_cost
         )
@@ -235,7 +234,7 @@ class TxProcessingQueue(ProcessingQueue):
         # self.driver.soft_apply(hcl=hlc_timestamp)
 
         # Distribute rewards
-        self.distribute_rewards(
+        rewards = self.distribute_rewards(
             total_stamps_to_split=output['stamps_used'],
             contract_name=tx_result['transaction']['payload']['contract']
         )
@@ -243,13 +242,14 @@ class TxProcessingQueue(ProcessingQueue):
         # self.driver.soft_apply_rewards(hcl=hlc_timestamp)
 
         # Create merkle
-        sign_info = self.sign_tx_results(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+        sign_info = self.sign_tx_results(tx_result=tx_result, hlc_timestamp=hlc_timestamp, rewards=rewards)
 
         # Return a sub block
         return {
             'tx_result': tx_result,
             'proof': sign_info,
             'hlc_timestamp': hlc_timestamp,
+            'rewards': rewards,
             'tx_message': {
                 'signature': tx['signature'],
                 'sender': tx['sender']
@@ -286,7 +286,7 @@ class TxProcessingQueue(ProcessingQueue):
             })
             self.stop_node()
 
-    def process_tx_output(self, output, transaction, stamp_cost, hlc_timestamp):
+    def process_tx_output(self, output, transaction, stamp_cost):
         # Clear pending writes, stu said to comment this out
         # self.executor.driver.pending_writes.clear()
 
@@ -347,7 +347,7 @@ class TxProcessingQueue(ProcessingQueue):
 
         return writes
 
-    def distribute_rewards(self, total_stamps_to_split, contract_name):
+    def distribute_rewards(self, total_stamps_to_split, contract_name: str) -> dict:
 
         master_reward, delegate_reward, foundation_reward, developer_mapping = \
             self.reward_manager.calculate_tx_output_rewards(
@@ -356,12 +356,16 @@ class TxProcessingQueue(ProcessingQueue):
                 client=self.client
             )
 
-        self.reward_manager.distribute_rewards(
+        return self.reward_manager.distribute_rewards(
             master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
         )
 
-    def sign_tx_results(self, tx_result, hlc_timestamp):
-        tx_result_hash = tx_result_hash_from_tx_result_object(tx_result=tx_result, hlc_timestamp=hlc_timestamp)
+    def sign_tx_results(self, tx_result, hlc_timestamp, rewards):
+        tx_result_hash = tx_result_hash_from_tx_result_object(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards
+        )
 
         signature = self.wallet.sign(tx_result_hash)
 

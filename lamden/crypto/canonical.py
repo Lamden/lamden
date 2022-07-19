@@ -102,22 +102,30 @@ def block_from_tx_results(processing_results, proofs, block_num, prev_block_hash
     tx_result = processing_results.get('tx_result')
     hlc_timestamp = processing_results.get('hlc_timestamp')
 
-    h = hashlib.sha3_256()
-
-    h.update('{}{}{}'.format(hlc_timestamp, block_num, prev_block_hash).encode())
-
     pruned_proofs = remove_result_hash_from_proofs(proofs)
+    block_hash = block_hash_from_block(
+        hlc_timestamp=hlc_timestamp,
+        block_number=block_num,
+        previous_block_hash=prev_block_hash
+    )
 
     block = {
-        'hash': h.hexdigest(),
+        'hash': block_hash,
         'number': block_num,
         'hlc_timestamp': hlc_timestamp,
         'previous': prev_block_hash,
         'proofs': pruned_proofs,
-        'processed': tx_result
+        'processed': tx_result,
+        'rewards': processing_results.get('rewards'),
+        'origin': processing_results.get('tx_message')
     }
 
     return block
+
+def block_hash_from_block(hlc_timestamp: str, block_number: int, previous_block_hash: str) -> str:
+    h = hashlib.sha3_256()
+    h.update('{}{}{}'.format(hlc_timestamp, block_number, previous_block_hash).encode())
+    return h.hexdigest()
 
 def recalc_block_info(block, new_block_num, new_prev_hash) -> dict:
     hlc_timestamp = block.get('hlc_timestamp')
@@ -141,8 +149,9 @@ def remove_result_hash_from_proofs(proofs) -> list:
 
     return proofs
 
-def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp):
+def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp, rewards):
     h = hashlib.sha3_256()
     h.update('{}'.format(encode(tx_result).encode()).encode())
+    h.update('{}'.format(encode(rewards).encode()).encode())
     h.update('{}'.format(hlc_timestamp).encode())
     return h.hexdigest()

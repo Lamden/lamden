@@ -25,7 +25,7 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
 from lamden.nodes.events import Event, EventWriter
-
+from lamden.crypto.block_validator import verify_block
 from typing import List
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -224,6 +224,9 @@ class Node:
         self.network.stop()
         self.system_monitor.stop()
     '''
+    @property
+    def vk(self) -> str:
+        return self.wallet.verifying_key
 
     @property
     def node_type(self) -> str:
@@ -516,6 +519,11 @@ class Node:
                 new_block = response.get("block_info")
                 self.log.info(new_block)
 
+                if not verify_block(block=new_block):
+                    await self.stop()
+                    self.log.error("Block provided by catchup peer had errors.")
+                    return
+
                 if new_block:
                     block_number = new_block.get('number')
                     if block_number == next_block_num:
@@ -663,9 +671,8 @@ class Node:
 
                 if hlc_timestamp <= self.get_last_hlc_in_consensus():
                     block = self.blocks.get_block(v=hlc_timestamp)
-                    my_result_hash = tx_result_hash_from_tx_result_object(
-                        tx_result=processing_results['tx_result'],
-                        hlc_timestamp=hlc_timestamp
+                    my_result_hash = self.make_result_hash_from_processing_results(
+                        processing_results=processing_results
                     )
                     block_result_hash = block['processed']['hash']
 
@@ -692,13 +699,19 @@ class Node:
 
         processing_results = json.loads(encode(processing_results))
 
-        processing_results['proof']['tx_result_hash'] = tx_result_hash_from_tx_result_object(
-            tx_result=processing_results['tx_result'],
-            hlc_timestamp=processing_results['hlc_timestamp']
+        processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
+            processing_results=processing_results
         )
 
         self.validation_queue.append(
             processing_results=processing_results
+        )
+
+    def make_result_hash_from_processing_results(self, processing_results: dict) -> dict:
+        return tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            rewards=processing_results['rewards']
         )
 
     def send_solution_to_network(self, processing_results):
@@ -750,12 +763,19 @@ class Node:
 
     def apply_state_changes_from_block(self, block):
         state_changes = block['processed'].get('state', [])
+        rewards = block.get('rewards', [])
         hlc_timestamp = block['processed'].get('hlc_timestamp', None)
 
         if hlc_timestamp is None:
             hlc_timestamp = block.get('hlc_timestamp')
 
         for s in state_changes:
+            if type(s['value']) is dict:
+                s['value'] = convert_dict(s['value'])
+
+            self.driver.set(s['key'], s['value'])
+
+        for s in rewards:
             if type(s['value']) is dict:
                 s['value'] = convert_dict(s['value'])
 
@@ -808,6 +828,9 @@ class Node:
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
+
+            if not verify_block(new_block):
+                return
 
             for i in range(len(later_blocks)):
                 if i is 0:
@@ -891,6 +914,9 @@ class Node:
                 prev_block_hash=prev_block.get('hash')
             )
 
+            if not verify_block(new_block):
+                return
+
             consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
 
             # Hard apply this hlc_timestamps state changes
@@ -969,11 +995,7 @@ class Node:
             # If HLC is greater than rollback point check it for reprocessing
             if read_history_hlc > new_tx_hlc_timestamp:
                 try:
-                    self.reprocess_hlc(
-                        hlc_timestamp=read_history_hlc,
-                        pending_deltas=pending_delta_history.get(read_history_hlc, {}),
-                        changed_keys_list=changed_keys_list
-                    )
+                    self.reprocess_hlc_simple(hlc_timestamp=read_history_hlc)
                 except Exception as err:
                     self.log.error(err)
 
@@ -1000,6 +1022,26 @@ class Node:
                 )
             except Exception as err:
                 self.log.error(err)
+
+    def reprocess_hlc_simple(self, hlc_timestamp):
+        recreated_tx_message = self.validation_queue.get_recreated_tx_message(hlc_timestamp)
+        if recreated_tx_message is None:
+            return
+
+        processing_results = self.main_processing_queue.process_tx(tx=recreated_tx_message)
+        self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
+
+        new_result_hash = self.make_result_hash_from_processing_results(
+            processing_results=processing_results
+        )
+
+        previous_result_hash = self.validation_queue.get_result_hash_for_vk(
+            hlc_timestamp=hlc_timestamp,
+            node_vk=self.vk
+        )
+
+        if previous_result_hash is None or new_result_hash != previous_result_hash:
+            self.store_solution_and_send_to_network(processing_results=processing_results)
 
     def reprocess_hlc(self, hlc_timestamp, pending_deltas, changed_keys_list):
         # Create a flag to determine there were any matching keys
@@ -1212,16 +1254,6 @@ class Node:
             return False
 
         return True
-
-    def update_cache_state(self, results):
-        # TODO This should be the actual cache write but it's HDD for now
-        self.driver.clear_pending_state()
-
-        storage.update_state_with_transaction(
-            tx=results['transactions'][0],
-            driver=self.driver,
-            nonces=self.nonces
-        )
 
     # Put into 'super driver'
     def get_current_height(self):
