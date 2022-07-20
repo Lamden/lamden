@@ -836,9 +836,6 @@ class Node:
                 prev_block_hash=prev_block.get('hash')
             )
 
-            if not verify_block(new_block):
-                return
-
             for i in range(len(later_blocks)):
                 if i is 0:
                     prev_block_in_list = new_block
@@ -920,9 +917,6 @@ class Node:
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
-
-            if not verify_block(new_block):
-                return
 
             consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
 
