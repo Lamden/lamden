@@ -48,8 +48,6 @@ class TestNode(TestCase):
 
     def test_node_type(self):
         self.assertEqual(self.node.node.node_type, 'masternode')
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.sleep(60))
 
     def test_start_new_network_no_bootnodes(self):
         while not self.node.node_started:
@@ -163,7 +161,7 @@ class TestNode(TestCase):
 
         self.assertIsNone(self.node.node.blocks.get_block(1))
 
-        tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet))
+        tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet, processor=self.node.vk))
         self.node.send_tx(tx.encode())
 
         self.await_async_process(asyncio.sleep, 2)
