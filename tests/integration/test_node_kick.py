@@ -130,6 +130,4 @@ class TestNodeKick(TestCase):
         for voter in self.voters:
             self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
             self.assertEqual(voter.network.num_of_peers(), len(self.voters) - 1)
-            self.assertEqual(0, len(voter.validation_queue))
-            self.assertEqual(0, len(voter.main_processing_queue))
         self.assertFalse(self.exile.node_is_running)
