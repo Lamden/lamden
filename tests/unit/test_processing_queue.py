@@ -160,15 +160,11 @@ class TestProcessingQueue(TestCase):
         for i in range(10):
             self.main_processing_queue.append(tx=self.make_tx_message(get_new_tx()))
 
-        # Add a received timestamp
-        self.main_processing_queue.message_received_timestamps['testing_hlc'] = 0
-
         # flush queue
         self.main_processing_queue.flush()
 
         # Assert queue is empty
         self.assertEqual(len(self.main_processing_queue), 0)
-        self.assertEqual(len(self.main_processing_queue.message_received_timestamps), 0)
 
     def test_sort_queue(self):
         for i in range(10):
@@ -192,9 +188,6 @@ class TestProcessingQueue(TestCase):
             # if this is the first transaction get the HLC for it for comparison later
             if i == 0:
                 first_tx = self.main_processing_queue.queue[0]
-
-        # Shuffle the processing queue so the hlcs are out of order
-        random.shuffle(self.main_processing_queue.queue)
 
         hold_time = self.processing_delay_secs['base'] + self.processing_delay_secs['self'] + 0.1
 
@@ -291,7 +284,6 @@ class TestProcessingQueue(TestCase):
         processing_results = loop.run_until_complete(tasks)[0]
 
         self.assertIsNone(processing_results)
-        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get(tx['hlc_timestamp']))
         self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
 
     def test_process_next_returns_none_if_less_than_delay(self):
@@ -493,25 +485,6 @@ class TestProcessingQueue(TestCase):
 
         self.assertFalse(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='1'))
         self.assertTrue(self.main_processing_queue.hlc_already_in_queue(hlc_timestamp='3'))
-
-    def test_METHOD_sync_timestamp_object(self):
-        self.main_processing_queue.queue = [
-            {
-                'hlc_timestamp': '2'
-            }
-        ]
-
-        self.main_processing_queue.message_received_timestamps['1'] = time.time()
-        self.main_processing_queue.message_received_timestamps['2'] = time.time()
-
-        self.assertEqual(2, len(self.main_processing_queue.message_received_timestamps))
-
-        self.main_processing_queue.sync_timestamp_object()
-
-        self.assertEqual(1, len(self.main_processing_queue.message_received_timestamps))
-        self.assertIsNone(self.main_processing_queue.message_received_timestamps.get('1'))
-        self.assertIsNotNone(self.main_processing_queue.message_received_timestamps.get('2'))
-
 
     def test_processing_transactions_does_not_drop_state(self):
         num_of_transactions = 1000
