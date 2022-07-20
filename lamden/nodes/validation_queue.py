@@ -360,10 +360,6 @@ class ValidationQueue(ProcessingQueue):
         # Hard apply these results on the driver
         await self.hard_apply_block(processing_results=processing_results)
 
-        # Set this as the last hlc that was in consensus
-        if hlc_timestamp > self.last_hlc_in_consensus:
-            self.last_hlc_in_consensus = hlc_timestamp
-
         # remove HLC from processing
         self.flush_hlc(hlc_timestamp=hlc_timestamp)
 

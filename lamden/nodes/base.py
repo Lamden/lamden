@@ -957,6 +957,9 @@ class Node:
         # Increment the internal block counter
         self.current_block_height += 1
 
+        if hlc_timestamp > self.validation_queue.last_hlc_in_consensus:
+            self.validation_queue.last_hlc_in_consensus = hlc_timestamp
+
         self.check_peers(processing_results)
 
         gc.collect()
