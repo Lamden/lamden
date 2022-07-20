@@ -364,7 +364,7 @@ class ValidationQueue(ProcessingQueue):
         self.flush_hlc(hlc_timestamp=hlc_timestamp)
 
         # get rid of any results that might have come in earlier ?
-        self.prune_earlier_results(consensus_hlc_timestamp=hlc_timestamp)
+        self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
 
         #self.log.debug('[END] commit_consensus_block')
 
