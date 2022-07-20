@@ -25,8 +25,6 @@ class TxProcessingQueue(ProcessingQueue):
 
         self.log = get_logger('MAIN PROCESSING QUEUE')
 
-        self.message_received_timestamps = {}
-
         self.processing_delay = processing_delay
 
         self.client = client
@@ -78,25 +76,12 @@ class TxProcessingQueue(ProcessingQueue):
                 tx['in_queue'] = self.hlc_already_in_queue(hlc_timestamp=hlc_timestamp)
                 self.append_history.append(tx)
 
+            tx['timestamp'] = time.time()
             super().append(tx)
-
-        if self.message_received_timestamps.get(tx['hlc_timestamp']) is None:
-            '''
-            if self.debug:
-                self.log.debug(json.dumps({
-                    'type': 'tx_lifecycle',
-                    'file': 'processing_queue',
-                    'event': 'append_new',
-                    'hlc_timestamp': hlc_timestamp,
-                    'system_time': time.time()
-                }))
-            '''
-            self.message_received_timestamps[hlc_timestamp] = time.time()
-            # self.log.debug(f"ADDING {hlc_timestamp} TO MAIN PROCESSING QUEUE AT {self.message_received_timestamps[hlc_timestamp]}")
+            self.sort_queue()
 
     def flush(self):
         super().flush()
-        self.message_received_timestamps = {}
 
     def sort_queue(self):
         # sort the main processing queue by hlc_timestamp
@@ -106,18 +91,6 @@ class TxProcessingQueue(ProcessingQueue):
         # filter the main processing to remove hlc that are already in consensus
         last_hlc_in_consensus = self.get_last_hlc_in_consensus()
         self.queue = [tx for tx in self.queue if tx.get('hlc_timestamp') > last_hlc_in_consensus]
-
-    def sync_timestamp_object(self):
-        # remove all timestamps from messsage_recieved_timestamps that are no longer in queue
-        hlcs_in_queue = [tx.get('hlc_timestamp') for tx in self.queue]
-
-        remove_from_list = []
-        for hlc_timestamp in self.message_received_timestamps:
-            if hlc_timestamp not in hlcs_in_queue:
-                remove_from_list.append(hlc_timestamp)
-
-        for hlc_timestamp in remove_from_list:
-            self.message_received_timestamps.pop(hlc_timestamp)
 
     def hlc_already_in_queue(self, hlc_timestamp):
         for tx in self.queue:
@@ -133,15 +106,11 @@ class TxProcessingQueue(ProcessingQueue):
 
         # filter out all HLCs that are less than our current consensus HLC
         self.filter_queue()
-        self.sync_timestamp_object()
 
         # return if the queue is empty
         if len(self.queue) == 0:
             #self.log.debug('[STOP] process_main_queue - 1')
             return
-
-        # sort the queue by HCL timestamp
-        self.sort_queue()
 
         # Pop it out of the main processing queue
         tx = self.queue.pop(0)
@@ -149,8 +118,7 @@ class TxProcessingQueue(ProcessingQueue):
         self.currently_processing_hlc = tx['hlc_timestamp']
 
         # get the amount of time the transaction has been in the queue
-        received_timestamp = self.message_received_timestamps.get(self.currently_processing_hlc)
-        time_in_queue = time.time() - received_timestamp
+        time_in_queue = time.time() - tx.get('timestamp')
 
         # get the amount of time this node should hold the transactions
         time_delay = self.hold_time(tx=tx)
@@ -174,6 +142,7 @@ class TxProcessingQueue(ProcessingQueue):
             else:
                 # Process it to get the results
                 try:
+                    del tx['timestamp']
                     processing_results = self.process_tx(tx=tx)
 
                 except Exception as err:
@@ -185,14 +154,13 @@ class TxProcessingQueue(ProcessingQueue):
                 # TODO Remove this as it's for testing
                 self.total_processed = self.total_processed + 1
                 self.last_processed_hlc = self.currently_processing_hlc
-                self.message_received_timestamps.pop(self.currently_processing_hlc)
                 self.currently_processing_hlc = ""
 
                 # self.log.debug('[STOP] process_main_queue - 3')
                 return processing_results
         else:
             # else, put it back in queue
-            self.queue.append(tx)
+            self.queue.insert(0, tx)
             # self.log.debug('[STOP] process_main_queue - 4')
             return None
 
