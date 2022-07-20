@@ -765,7 +765,6 @@ class TestValidationQueue(TestCase):
         self.commit_consensus_block(hlc)
 
         self.assertTrue(self.hard_apply_block_called)
-        self.assertEqual(self.validation_queue.last_hlc_in_consensus, hlc)
         self.assertEqual(len(self.validation_queue.validation_results), 0)
 
     def test_commit_consensus_block_doesnt_update_last_hlc_in_consensus(self):
