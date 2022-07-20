@@ -3,6 +3,7 @@ from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
+import json
 
 class TestNode(TestCase):
     def setUp(self):
@@ -58,12 +59,11 @@ class TestNode(TestCase):
         tx_args = {
             'to': self.jeff_wallet.verifying_key,
             'wallet': self.stu_wallet,
-            'amount': tx_amount
+            'amount': tx_amount,
+            'processor': tn.wallet.verifying_key
         }
 
-        tx_message_1 = tn.node.make_tx_message(tx=get_new_currency_tx(**tx_args))
-
-        tn.main_processing_queue.append(tx=tx_message_1)
+        tn.send_tx(json.dumps(get_new_currency_tx(**tx_args)).encode())
 
         self.await_node_reaches_height(tn, 1)
 
@@ -83,29 +83,35 @@ class TestNode(TestCase):
 
         tx_amount = 200.1
         # Send from Stu to Jeff
-        tx_message_1 = tn.node.make_tx_message(tx=get_new_currency_tx(
+        tx_messages = []
+        tx_messages.append(get_new_currency_tx(
             to=self.jeff_wallet.verifying_key,
             wallet=self.stu_wallet,
-            amount=tx_amount
+            amount=tx_amount,
+            processor=tn.wallet.verifying_key,
+            nonce=1
         ))
 
         # Send from Jeff to Archer
-        tx_message_2 = tn.node.make_tx_message(tx=get_new_currency_tx(
+        tx_messages.append(get_new_currency_tx(
             to=self.archer_wallet.verifying_key,
             wallet=self.jeff_wallet,
-            amount=tx_amount
+            amount=tx_amount,
+            processor=tn.wallet.verifying_key,
+            nonce=2
         ))
 
         # Send from Archer to Oliver
-        tx_message_3 = tn.node.make_tx_message(tx=get_new_currency_tx(
+        tx_messages.append(get_new_currency_tx(
             to=self.oliver_wallet.verifying_key,
             wallet=self.archer_wallet,
-            amount=tx_amount
+            amount=tx_amount,
+            processor=tn.wallet.verifying_key,
+            nonce=3
         ))
 
-        tn.main_processing_queue.append(tx=tx_message_1)
-        tn.main_processing_queue.append(tx=tx_message_2)
-        tn.main_processing_queue.append(tx=tx_message_3)
+        for tx_message in tx_messages:
+            tn.send_tx(json.dumps(tx_message).encode())
 
         self.await_node_reaches_height(tn, 3)
 
