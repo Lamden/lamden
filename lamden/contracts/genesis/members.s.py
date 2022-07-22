@@ -66,7 +66,7 @@ def vote(vk: str, obj: list):
             S['nays'] += 1
             S['positions', vk] = position
 
-        if S['yays'] > S['nays']:
+        if S['yays'] >= len(S['members']) // 2 + 1:
             pass_current_motion()
             reset()
 
@@ -74,6 +74,9 @@ def vote(vk: str, obj: list):
             reset()
 
         elif now - S['motion_opened'] >= VOTING_PERIOD:
+            if S['yays'] > S['nays']:
+                pass_current_motion()
+
             reset()
 
 
