@@ -8,7 +8,7 @@ REMOVE_MEMBER = 1
 ADD_SEAT = 2
 REMOVE_SEAT = 3
 
-VOTING_PERIOD = datetime.DAYS * 1
+VOTING_PERIOD = datetime.DAYS * 7
 
 S = Hash()
 minimum_nodes = Variable()
