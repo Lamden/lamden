@@ -243,7 +243,7 @@ class Node:
 
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
-                asyncio.ensure_future(self.debug_print_loop_counter())
+                # asyncio.ensure_future(self.debug_print_loop_counter())
 
             self.network.start()
             await self.network.starting()
@@ -913,7 +913,6 @@ class Node:
         else:
             new_block = block_from_tx_results(
                 processing_results=processing_results,
-                block_num=next_block_num,
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
@@ -949,7 +948,7 @@ class Node:
         self.log.info(f'[HARD APPLY] {new_block.get("number")}')
 
         # Increment the internal block counter
-        self.current_block_height += 1
+        self.current_block_height = new_block.get('number')
 
         if hlc_timestamp > self.validation_queue.last_hlc_in_consensus:
             self.validation_queue.last_hlc_in_consensus = hlc_timestamp
@@ -978,6 +977,7 @@ class Node:
             for vk in exiled_peers:
                 self.network.revoke_access_and_remove_peer(peer_vk=vk)
                 self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
+
 
 # Re-processing CODE
     async def reprocess(self, tx):

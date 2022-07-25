@@ -322,6 +322,7 @@ def verify_block_hash(block) -> bool:
         block_number=block.get('number'),
         previous_block_hash=block.get('previous')
     )
+    print(block_hash)
 
     return block_hash == block.get('hash')
 

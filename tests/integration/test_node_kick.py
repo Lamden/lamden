@@ -13,6 +13,11 @@ class TestNodeKick(TestCase):
             genesis_path=Path(contracts.__path__[0]),
             num_of_masternodes=5
         )
+
+        loop = asyncio.get_event_loop()
+        while not self.network.all_nodes_started:
+            loop.run_until_complete(asyncio.sleep(1))
+
         self.exile = self.network.masternodes[-1]
         self.voters = self.network.masternodes[:-1]
         self.num_yays_needed = len(self.network.all_nodes) // 2 + 1
@@ -32,7 +37,7 @@ class TestNodeKick(TestCase):
 
     def fund_founder(self):
         for node in self.network.all_nodes:
-            self.assertTrue(node.node_is_running)
+            #self.assertTrue(node.node_is_running)
             node.set_smart_contract_value(
                 key=f'currency.balances:{self.network.founders_wallet.verifying_key}',
                 value=1000000
@@ -80,7 +85,7 @@ class TestNodeKick(TestCase):
         for node in self.network.all_nodes:
             while len(node.validation_queue) != num_tx_total:
                 self.await_async_process(asyncio.sleep, 0.1)
-            while node.current_height != 2:
+            while node.blocks.total_blocks() != 2:
                 self.await_async_process(node.validation_queue.process_next)
 
         last_hlc = self.exile.validation_queue[-1]
@@ -89,7 +94,7 @@ class TestNodeKick(TestCase):
             self.assertIsNotNone(
                 node.validation_queue.validation_results[last_hlc]['solutions'].get(self.exile.wallet.verifying_key, None)
             )
-            while node.current_height != num_tx_total - 1:
+            while node.blocks.total_blocks() != num_tx_total - 1:
                 self.await_async_process(node.validation_queue.process_next)
             if node != self.exile:
                 # Assert last vote TX passed the motion thus removing older results from exile

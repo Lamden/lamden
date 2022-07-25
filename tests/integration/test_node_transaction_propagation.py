@@ -3,9 +3,10 @@ from unittest import TestCase
 from pathlib import Path
 
 from tests.integration.mock.local_node_network import LocalNodeNetwork
-
+from lamden.utils.hlc import nanos_from_hlc_timestamp
 import asyncio
 import uvloop
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestNewNodeCatchup(TestCase):
@@ -102,8 +103,10 @@ class TestNewNodeCatchup(TestCase):
             all_nodes_have_block = True
 
             for tn in self.network.all_nodes:
-                latest_block = tn.node.get_current_height()
-                if latest_block < 1:
+                last_hlc_in_consensus = tn.node.validation_queue.last_hlc_in_consensus
+                latest_block_number = nanos_from_hlc_timestamp(last_hlc_in_consensus)
+
+                if latest_block_number <= 0:
                     all_nodes_have_block = False
 
             if time.time() - start_time > timeout:
@@ -111,7 +114,7 @@ class TestNewNodeCatchup(TestCase):
                 break
 
         for tn in self.network.all_nodes:
-            latest_block = tn.node.get_current_height()
+            latest_block = tn.node.blocks.total_blocks()
             self.assertEqual(1, latest_block)
 
 

@@ -167,7 +167,8 @@ class TestNode(TestCase):
         self.await_async_process(asyncio.sleep, 2)
 
         self.assertEqual(len(self.node.node.tx_queue), 0)
-        self.assertIsNotNone(self.node.node.blocks.get_block(1))
+        last_hlc_timestamp = self.node.validation_queue.last_hlc_in_consensus
+        self.assertIsNotNone(self.node.node.blocks.get_block(last_hlc_timestamp))
 
     ''' N/A
     def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):

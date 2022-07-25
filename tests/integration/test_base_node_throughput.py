@@ -167,9 +167,9 @@ class TestNode(TestCase):
         self.tn.send_tx(encoded_tx=encoded_tx)
 
     def await_all_processed(self):
-        current_height = {'number': 0}
-        while current_height.get('number') != self.amount_of_txn:
-            current_height = self.tn.get_latest_block()
+        current_height = self.node.blocks.total_blocks()
+        while current_height != self.amount_of_txn:
+            current_height = self.node.blocks.total_blocks()
             self.async_sleep(1)
 
     def test_node_starts(self):
@@ -208,7 +208,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.get_current_height())
+        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
@@ -253,7 +253,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.get_current_height())
+        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
@@ -311,7 +311,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.get_current_height())
+        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:
@@ -361,7 +361,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.get_current_height())
+        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:

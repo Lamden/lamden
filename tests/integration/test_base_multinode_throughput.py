@@ -117,8 +117,8 @@ class TestMultiNode(TestCase):
             self.assertEqual(actual_balance, expected_balance)
 
         # All nodes are at the proper block height
-        for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+        for tn in self.local_node_network.all_nodes:
+            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -164,8 +164,8 @@ class TestMultiNode(TestCase):
                 self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height
-        for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+        for tn in self.local_node_network.all_nodes:
+            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -217,8 +217,8 @@ class TestMultiNode(TestCase):
                 self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height
-        for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+        for tn in self.local_node_network.all_nodes:
+            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]

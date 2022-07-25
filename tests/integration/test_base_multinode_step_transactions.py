@@ -76,7 +76,7 @@ class TestMultiNode(TestCase):
         loop.run_until_complete(tasks)
 
     def validate_block_height_in_all_nodes(self, nodes, valid_height):
-        all_heights = [node.current_height for node in nodes]
+        all_heights = [node.blocks.total_blocks() for node in nodes]
         print({'valid_height': valid_height})
         print({'all_heights': all_heights})
         print(all([valid_height == height for height in all_heights]))
@@ -150,7 +150,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -214,7 +214,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -287,7 +287,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.current_height)
+            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
