@@ -303,13 +303,13 @@ def get():
     def test_get_latest_block(self):
         blocks = generate_blocks(
             number_of_blocks=2,
-            starting_block_num=0,
             prev_block_hash='0'*64,
             prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
         )
         for b in blocks:
             self.ws.blocks.store_block(copy.deepcopy(b))
-        storage.set_latest_block_height(2, driver=self.ws.driver)
+
+        storage.set_latest_block_height(blocks[-1].get('number'), driver=self.ws.driver)
         self.ws.driver.commit()
 
         _, response = self.ws.app.test_client.get('/latest_block')
@@ -333,14 +333,15 @@ def get():
     def test_get_block_by_num_that_exists(self):
         block = generate_blocks(
             number_of_blocks=1,
-            starting_block_num=0,
             prev_block_hash='0'*64,
             prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
         )[0]
 
         self.ws.blocks.store_block(copy.deepcopy(block))
 
-        _, response = self.ws.app.test_client.get('/blocks?num=1')
+        block_num = block.get('number')
+
+        _, response = self.ws.app.test_client.get(f'/blocks?num={block_num}')
 
         self.assertDictEqual(response.json, block)
 
@@ -352,7 +353,6 @@ def get():
     def test_get_block_by_hash_that_exists(self):
         block = generate_blocks(
             number_of_blocks=1,
-            starting_block_num=0,
             prev_block_hash='0'*64,
             prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
         )[0]
@@ -483,7 +483,6 @@ def get():
     def test_get_tx_by_hash_if_it_exists(self):
         block = generate_blocks(
             number_of_blocks=1,
-            starting_block_num=0,
             prev_block_hash='0'*64,
             prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
         )[0]

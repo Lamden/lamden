@@ -812,8 +812,11 @@ class Node:
         next_block_num = self.current_block_height + 1
         prev_block = self.blocks.get_previous_block(v=self.current_block_height)
 
+        if not prev_block:
+            prev_block = storage.BLOCK_0
+
         # Get any blocks that have been commited that are later than this hlc_timestamp
-        later_blocks = self.blocks.get_later_blocks(block_height=self.current_block_height, hlc_timestamp=hlc_timestamp)
+        later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
 
         # If there are later blocks then we need to process them
         if len(later_blocks) > 0:

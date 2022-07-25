@@ -1,4 +1,5 @@
 from lamden.nodes.hlc import HLC_Clock
+from lamden.utils import hlc
 from lamden.storage import BlockStorage, NonceStorage
 from tests.unit.helpers.mock_blocks import generate_blocks
 from unittest import TestCase
@@ -123,18 +124,18 @@ class TestBlockStorage(TestCase):
 
         block = generate_blocks(
             number_of_blocks=1,
-            starting_block_num=0,
             prev_block_hash='0' * 64,
             prev_block_hlc=prev_block_hlc
         )[0]
 
         self.bs.store_block(copy.deepcopy(block))
 
-        self.assertIsNotNone(self.bs.get_block(1))
+        block_number = block.get('number')
+
+        self.assertIsNotNone(self.bs.get_block(block_number))
         self.assertTrue(self.bs.blocks_dir.joinpath(str(block['number']).zfill(64)).is_file())
         self.assertTrue(self.bs.txs_dir.joinpath(block['processed'].get('hash')).is_file())
         self.assertTrue(self.bs.blocks_alias_dir.joinpath(block['hash']).is_symlink())
-        self.assertTrue(self.bs.blocks_alias_dir.joinpath(block['hlc_timestamp']).is_symlink())
 
     def test_store_block_raises_if_no_or_malformed_tx(self):
         block = copy.deepcopy(SAMPLE_BLOCK)
@@ -142,12 +143,11 @@ class TestBlockStorage(TestCase):
 
         self.assertRaises(ValueError, lambda: self.bs.store_block(block))
 
-    def test_get_block(self):
+    def test_get_block_by_block_number(self):
         prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
 
         blocks = generate_blocks(
             number_of_blocks=3,
-            starting_block_num=0,
             prev_block_hash='0' * 64,
             prev_block_hlc=prev_block_hlc
         )
@@ -155,9 +155,39 @@ class TestBlockStorage(TestCase):
         for block in blocks:
             self.bs.store_block(block)
 
-        block_2 = self.bs.get_block(2)
+        block_2_hlc_timestamp = blocks[1].get('hlc_timestamp')
+        block_2 = self.bs.get_block(hlc.nanos_from_hlc_timestamp(hlc_timestamp=block_2_hlc_timestamp))
 
-        self.assertEqual(2, block_2.get('number'))
+        self.assertEqual(hlc.nanos_from_hlc_timestamp(hlc_timestamp=block_2_hlc_timestamp), block_2.get('number'))
+
+    def test_get_block__by_hcl_timestamp(self):
+        prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        blocks = generate_blocks(
+            number_of_blocks=3,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=prev_block_hlc
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        block_2_hlc_timestamp = blocks[1].get('hlc_timestamp')
+        block_2 = self.bs.get_block(v=block_2_hlc_timestamp)
+
+        self.assertEqual(block_2_hlc_timestamp, block_2.get('hlc_timestamp'))
+
+    def test_get_block__None_returns_None(self):
+        block_2 = self.bs.get_block(v=None)
+        self.assertIsNone(block_2)
+
+    def test_get_block__invalid_hlc_returns_none(self):
+        block_2 = self.bs.get_block(v="1234")
+        self.assertIsNone(block_2)
+
+    def test_get_block__neg_block_num_returns_none(self):
+        block_2 = self.bs.get_block(v=-1)
+        self.assertIsNone(block_2)
 
     def test_get_tx(self):
         block = copy.deepcopy(SAMPLE_BLOCK)
@@ -168,7 +198,6 @@ class TestBlockStorage(TestCase):
     def test_get_later_blocks(self):
         blocks_1 = generate_blocks(
             number_of_blocks=3,
-            starting_block_num=0,
             prev_block_hash='0' * 64,
             prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
         )
@@ -180,7 +209,6 @@ class TestBlockStorage(TestCase):
 
         blocks_2 = generate_blocks(
             number_of_blocks=3,
-            starting_block_num=blocks_1[2].get('number'),
             prev_block_hash=blocks_1[2].get('previous'),
             prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
         )
@@ -188,7 +216,70 @@ class TestBlockStorage(TestCase):
         for block in blocks_2:
             self.bs.store_block(block)
 
-        later_blocks = self.bs.get_later_blocks(6, consensus_hlc)
+        later_blocks = self.bs.get_later_blocks(hlc_timestamp=consensus_hlc)
 
         self.assertEqual(3, len(later_blocks))
-        self.assertEqual(6, later_blocks[2].get('number'))
+
+    def test_get_previous_block__by_block_number(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        block_2_num = blocks[1].get('number')
+        block_3_num = blocks[2].get('number')
+
+        prev_block = self.bs.get_previous_block(v=block_3_num)
+
+        self.assertEqual(prev_block.get('number'), block_2_num)
+
+    def test_get_previous_block__by_hlc_timestamp(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        block_2_hlc_timestamp = blocks[1].get('hlc_timestamp')
+        block_3_hlc_timestamp = blocks[2].get('hlc_timestamp')
+
+        prev_block = self.bs.get_previous_block(v=block_3_hlc_timestamp)
+
+        self.assertEqual(prev_block.get('hlc_timestamp'), block_2_hlc_timestamp)
+
+    def test_get_previous_block__high_block_num_returns_lastest_block(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        block_6_num = blocks[5].get('number')
+        high_block_num = block_6_num + 1
+
+        prev_block = self.bs.get_previous_block(v=high_block_num)
+
+        self.assertEqual(prev_block.get('number'), block_6_num)
+
+    def test_get_previous_block__None_returns_None(self):
+        prev_block = self.bs.get_previous_block(v=None)
+        self.assertIsNone(prev_block)
+
+    def test_get_previous_block__zero_block_num_returns_None(self):
+        prev_block = self.bs.get_previous_block(v=0)
+        self.assertIsNone(prev_block)
+
+    def test_get_previous_block__neg_block_num_returns_None(self):
+        prev_block = self.bs.get_previous_block(v=-1)
+        self.assertIsNone(prev_block)
+

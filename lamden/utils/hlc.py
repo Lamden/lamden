@@ -6,3 +6,10 @@ def nanos_from_hlc_timestamp(hlc_timestamp: str) -> int:
         return hlc.nanos
     except:
         return 0
+
+def is_hcl_timestamp(hlc_timestamp: str) -> int:
+    try:
+        HLC.from_str(hlc_timestamp)
+        return True
+    except:
+        return False

@@ -213,7 +213,7 @@ class TestStorage(TestCase):
     def test_PRIVATE_METHOD_cull_transaction__return_tx_and_hash(self):
         block = {
             'hash': 'a',
-            'number': 1,
+            'number': 1658163894967101696,
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -228,7 +228,7 @@ class TestStorage(TestCase):
     def test_PRIVATE_METHOD_cull_transaction__replaces_processed_with_hash(self):
         block = {
             'hash': 'a',
-            'number': 1,
+            'number': 1658163894967101696,
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -243,8 +243,8 @@ class TestStorage(TestCase):
     def test_PRIVATE_METHOD_write_block__stores_block_by_num(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -253,7 +253,7 @@ class TestStorage(TestCase):
 
         self.block_storage._BlockStorage__write_block(block)
 
-        filename = ('0' * 63) + '1'
+        filename = ('0' * 45) + '1658163894967101696'
 
         with open(self.block_storage.blocks_dir.joinpath(filename)) as f:
             b = json.load(f)
@@ -263,8 +263,8 @@ class TestStorage(TestCase):
     def test_PRIVATE_METHOD_write_block__stores_hash_symlink(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -281,8 +281,8 @@ class TestStorage(TestCase):
     def test_PRIVATE_METHOD_write_txs__stores_transactions_by_hash_and_payload(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -301,8 +301,8 @@ class TestStorage(TestCase):
     def test_METHOD_store_block__stores_block_and_aliases(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -321,7 +321,7 @@ class TestStorage(TestCase):
 
         self.assertEqual(t, _t)
 
-        filename = ('0' * 63) + '1'
+        filename = ('0' * 45) + '1658163894967101696'
         with open(self.block_storage.blocks_dir.joinpath(filename)) as f:
             b = json.load(f)
 
@@ -332,16 +332,12 @@ class TestStorage(TestCase):
 
         self.assertEqual(bb, block)
 
-        with open(self.block_storage.blocks_alias_dir.joinpath('1')) as f:
-            cc = json.load(f)
-
-        self.assertEqual(cc, block)
 
     def test_METHOD_get_block__returns_block_by_block_number(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -350,15 +346,15 @@ class TestStorage(TestCase):
 
         self.block_storage.store_block(deepcopy(block))
 
-        got_block = self.block_storage.get_block(1)
+        got_block = self.block_storage.get_block(1658163894967101696)
 
         self.assertEqual(block, got_block)
 
     def test_METHOD_get_block__returns_block_by_block_hash(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -374,8 +370,8 @@ class TestStorage(TestCase):
     def test_METHOD_get_block__returns_block_by_hlc_timestamp(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '2',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -384,15 +380,15 @@ class TestStorage(TestCase):
 
         self.block_storage.store_block(deepcopy(block))
 
-        got_block = self.block_storage.get_block('2')
+        got_block = self.block_storage.get_block("2022-07-18T17:04:54.967101696Z_0")
 
         self.assertEqual(block, got_block)
 
     def test_METHOD_get_block__cannot_find_hash_returns_None_block(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '2',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -408,8 +404,8 @@ class TestStorage(TestCase):
     def test_METHOD_get_block__cannot_find_hlc_timestamp_returns_None_block(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '2',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -430,8 +426,8 @@ class TestStorage(TestCase):
     def test_METHOD_get_tx__returns_tx(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '2',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX'
             },
@@ -449,8 +445,8 @@ class TestStorage(TestCase):
     def test_METHOD_store_block__stores_txs_and_block(self):
         block = {
             'hash': 'a',
-            'number': 1,
-            'hlc_timestamp': '1',
+            'number': 1658163894967101696,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
                 'hash': 'XXX',
                 'foo': 'bar'
@@ -461,9 +457,9 @@ class TestStorage(TestCase):
 
         self.assertDictEqual(block.get('processed'), self.block_storage.get_tx(h='XXX'))
 
-        self.assertDictEqual(block, self.block_storage.get_block(1))
+        self.assertDictEqual(block, self.block_storage.get_block(1658163894967101696))
         self.assertDictEqual(block, self.block_storage.get_block('a'))
-        self.assertDictEqual(block, self.block_storage.get_block('1'))
+        self.assertDictEqual(block, self.block_storage.get_block("2022-07-18T17:04:54.967101696Z_0"))
 
     def test_get_block_v_none_returns_none(self):
         self.assertIsNone(self.block_storage.get_block())
