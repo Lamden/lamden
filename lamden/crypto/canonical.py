@@ -7,6 +7,8 @@ from contracting.db.encoder import encode
 
 from lamden.logger.base import get_logger
 
+from lamden.utils.hlc import nanos_from_hlc_timestamp
+
 log = get_logger('CANON')
 
 
@@ -98,9 +100,11 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
 
     return block
 
-def block_from_tx_results(processing_results, proofs, block_num, prev_block_hash) -> dict:
+def block_from_tx_results(processing_results, proofs, prev_block_hash) -> dict:
     tx_result = processing_results.get('tx_result')
     hlc_timestamp = processing_results.get('hlc_timestamp')
+
+    block_num = nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
 
     pruned_proofs = remove_result_hash_from_proofs(proofs)
     block_hash = block_hash_from_block(

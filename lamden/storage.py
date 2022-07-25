@@ -122,6 +122,9 @@ class BlockStorage:
         tx = self.get_tx(tx_hash)
         block['processed'] = tx
 
+    def total_blocks(self):
+        return len([name for name in os.listdir(self.blocks_dir) if os.path.isfile(os.path.join(self.blocks_dir, name))])
+
     def flush(self):
         if self.blocks_dir.is_dir():
             shutil.rmtree(self.blocks_dir)

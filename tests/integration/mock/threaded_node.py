@@ -196,7 +196,7 @@ class ThreadedNode(threading.Thread):
         return self.node.get_last_processed_hlc()
 
     @property
-    def blocks(self):
+    def blocks(self) -> BlockStorage:
         return self.node.blocks
 
     def create_socket_ports(self, index=0):

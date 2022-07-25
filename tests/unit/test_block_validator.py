@@ -50,8 +50,8 @@ PROCESSED_TRANSACTION = dict({
   })
 
 BLOCK_V2 = dict({
-  "hash": "e9b93384b73c83a073079b86ce2790d6b2558ae5760bbac48cfc7b8e13ac0106",
-  "number": 3,
+  "hash": "accad90068e248f9c1df68095c491af389b18cde26402fd01cd602c5238663ce",
+  "number": 1658163894967101696,
   "hlc_timestamp": "2022-07-18T17:04:54.967101696Z_0",
   "previous": "15707bfc75f0140a66dd1303fc5a9101006193e0278da880f2db483d3f21d646",
   "proofs": [
