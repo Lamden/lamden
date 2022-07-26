@@ -159,12 +159,12 @@ class TestNode(TestCase):
     def test_check_tx_queue_triggers_block_creation(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
 
-        self.assertIsNone(self.node.node.blocks.get_block(1))
+        self.assertEqual(0, self.node.blocks.total_blocks())
 
         tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet, processor=self.node.vk))
         self.node.send_tx(tx.encode())
 
-        self.await_async_process(asyncio.sleep, 2)
+        self.await_async_process(asyncio.sleep, 5)
 
         self.assertEqual(len(self.node.node.tx_queue), 0)
         last_hlc_timestamp = self.node.validation_queue.last_hlc_in_consensus

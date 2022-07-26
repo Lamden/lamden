@@ -46,7 +46,7 @@ class TestNode(TestCase):
         return res
 
     def await_node_reaches_height(self, tn: ThreadedNode, height):
-        while tn.current_height != height:
+        while tn.blocks.total_blocks() != height:
             self.await_async_process(asyncio.sleep, 0.1)
 
     def test_hard_apply_block(self):
@@ -67,13 +67,13 @@ class TestNode(TestCase):
 
         self.await_node_reaches_height(tn, 1)
 
-        block = tn.blocks.get_block(v=1)
+        block = tn.blocks.get_block(v=tn.latest_block_height)
 
         self.assertIsNotNone(block)
 
         self.assertEqual(tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
         self.assertEqual(stu_balance_before - tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}'))
-        self.assertEqual(1, tn.current_height)
+        self.assertEqual(1, tn.blocks.total_blocks())
 
     def test_hard_apply_block_multiple_concurrent(self):
         # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions
@@ -115,15 +115,12 @@ class TestNode(TestCase):
 
         self.await_node_reaches_height(tn, 3)
 
-        self.assertIsNotNone(tn.blocks.get_block(v=1))
-        self.assertIsNotNone(tn.blocks.get_block(v=2))
-        self.assertIsNotNone(tn.blocks.get_block(v=3))
+        self.assertEqual(3, tn.blocks.total_blocks())
 
         self.assertEqual(stu_balance_before - tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}'))
         self.assertEqual(0, tn.get_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
         self.assertEqual(0, tn.get_smart_contract_value(f'currency.balances:{self.archer_wallet.verifying_key}'))
         self.assertEqual(tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.oliver_wallet.verifying_key}'))
-        self.assertEqual(3, tn.current_height)
 
 ''' NOTE: Probably N\A anymore but let's see.
 

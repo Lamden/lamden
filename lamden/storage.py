@@ -3,6 +3,7 @@ from contracting.db.driver import ContractDriver, FSDriver
 from contracting.db.encoder import encode, decode
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.logger.base import get_logger
+from lamden.utils import hlc
 import os
 import pathlib
 import shutil
@@ -100,7 +101,6 @@ class BlockStorage:
         name = str(num).zfill(64)
 
         hash_symlink_name = block.get('hash')
-        hlc_symlink_name = block.get('hlc_timestamp')
 
         encoded_block = encode(block)
         with open(self.blocks_dir.joinpath(name), 'w') as f:
@@ -108,7 +108,6 @@ class BlockStorage:
 
         try:
             os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
-            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hlc_symlink_name))
         except FileExistsError as err:
             self.log.debug(err)
 
@@ -121,6 +120,13 @@ class BlockStorage:
         tx_hash = block.get('processed')
         tx = self.get_tx(tx_hash)
         block['processed'] = tx
+
+    def __is_block_file(self, filename):
+        try:
+            return os.path.isfile(os.path.join(self.blocks_dir, filename)) and isinstance(int(filename), int)
+        except:
+            return False
+
 
     def total_blocks(self):
         return len([name for name in os.listdir(self.blocks_dir) if os.path.isfile(os.path.join(self.blocks_dir, name))])
@@ -149,6 +155,11 @@ class BlockStorage:
         if v is None:
             return None
 
+        if isinstance(v, str) and hlc.is_hcl_timestamp(hlc_timestamp=v):
+            nanos = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
+            if nanos > 0:
+                v = nanos
+
         try:
             if isinstance(v, int):
                 f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
@@ -166,13 +177,26 @@ class BlockStorage:
 
         return block
 
-    def get_previous_block(self, v=None):
-        block = self.get_block(v)
+    def get_previous_block(self, v):
+        if not v:
+            return None
 
-        if block is None:
-            return BLOCK_0
+        if hlc.is_hcl_timestamp(hlc_timestamp=v):
+            v = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
+        else:
+            if not isinstance(v, int) or v < 0:
+                return None
 
-        return block
+        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
+        earlier_blocks = list(filter(lambda block_num: block_num < v, all_blocks))
+
+        if len(earlier_blocks) == 0:
+            return None
+
+        earlier_blocks.sort()
+        prev_block = earlier_blocks[-1]
+
+        return self.get_block(v=prev_block)
 
     def get_tx(self, h):
         try:
@@ -188,34 +212,13 @@ class BlockStorage:
 
         return tx
 
-    def get_later_blocks(self, block_height, hlc_timestamp):
-        blocks = []
+    def get_later_blocks(self, hlc_timestamp):
+        starting_block_num = hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
+        later_blocks = list(filter(lambda block_num: block_num > starting_block_num, all_blocks))
+        later_blocks.sort()
+        return [self.get_block(v=block_num) for block_num in later_blocks]
 
-        current_block = self.get_block(v=block_height)
-        if current_block is None:
-            return blocks
-
-        current_block_hlc_timestamp = current_block.get('hlc_timestamp')
-
-        if current_block_hlc_timestamp < hlc_timestamp:
-            return blocks
-
-        blocks.append(current_block)
-        while hlc_timestamp < current_block_hlc_timestamp:
-            block_height -= 1
-            block = self.get_block(v=block_height)
-
-            if block is None:
-                break
-
-            current_block_hlc_timestamp = block.get('hlc_timestamp', '')
-
-            if hlc_timestamp < current_block_hlc_timestamp:
-                blocks.insert(0, block)
-            else:
-                break
-
-        return blocks
 
 # TODO: remove pending nonces if we end up getting rid of them.
 # TODO: move to component responsible for state maintenance.
