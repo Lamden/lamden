@@ -809,10 +809,9 @@ class Node:
             self.log.error(f'Processor {processor[:8]} is not a known masternode. Dropping {hlc_timestamp}')
             return
 
-        next_block_num = self.current_block_height + 1
-        prev_block = self.blocks.get_previous_block(v=self.current_block_height)
+        prev_block = self.blocks.get_previous_block(v=hlc_timestamp)
 
-        if not prev_block:
+        if prev_block is None:
             prev_block = storage.BLOCK_0
 
         # Get any blocks that have been commited that are later than this hlc_timestamp

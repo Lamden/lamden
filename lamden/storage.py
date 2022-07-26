@@ -189,6 +189,10 @@ class BlockStorage:
 
         all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
         earlier_blocks = list(filter(lambda block_num: block_num < v, all_blocks))
+
+        if len(earlier_blocks) == 0:
+            return None
+
         earlier_blocks.sort()
         prev_block = earlier_blocks[-1]
 

@@ -283,3 +283,7 @@ class TestBlockStorage(TestCase):
         prev_block = self.bs.get_previous_block(v=-1)
         self.assertIsNone(prev_block)
 
+    def test_get_previous_block__returns_None_if_no_earlier_blocks(self):
+        prev_block = self.bs.get_previous_block(v="2022-07-18T17:04:54.967101696Z_0")
+        self.assertIsNone(prev_block)
+
