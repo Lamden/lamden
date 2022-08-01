@@ -44,16 +44,8 @@ def confirm_and_flush_state(state: FSDriver) -> bool:
 
     return True
 
-def setup_genesis_contracts(state: FSDriver) -> dict:
-    state_changes = {}
-
-    contract_driver = ContractDriver(driver=state)
-    contracting_client = ContractingClient(
-        driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH, commit=False
-    )
-    state_changes.update(contract_driver.pending_writes)
-    contract_driver.commit()
-    contracting_client.submission_contract = contracting_client.get_contract('submission')
+def setup_genesis_contracts(contracting_client: ContractingClient):
+    contracting_client.set_submission_contract()
 
     constitution = None
     with open(pathlib.Path.home().joinpath('constitution.json')) as f:
@@ -62,13 +54,8 @@ def setup_genesis_contracts(state: FSDriver) -> dict:
     sync.setup_genesis_contracts(
         initial_masternodes=constitution['masternodes'],
         initial_delegates=constitution['delegates'],
-        client=contracting_client,
-        commit=False
+        client=contracting_client
     )
-    state_changes.update(contract_driver.pending_writes)
-    contract_driver.commit()
-
-    return state_changes
 
 if __name__ == '__main__':
     log = get_logger('GENESIS_BLOCK')
@@ -95,26 +82,36 @@ if __name__ == '__main__':
     
     bs = BlockStorage()
     state = FSDriver()
+    contract_driver = ContractDriver(driver=state)
+    contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
 
     if not confirm_and_flush_blocks(bs):
         log.info('Aborting')
         sys.exit(1)
 
     if args.migrate == 'filesystem':
-        log.info('Filling genesis block...')
-        for key in state.keys():
-            genesis_block['genesis'].append({
-                'key': key,
-                'value': state.get(key)
-            })
-    elif args.migrate == 'mongo':
+        sync.flush_sys_contracts(client=contracting_client)
+        log.info('Flushed genesis contracts')
+    else:
         if not confirm_and_flush_state(state):
             log.info('Aborting')
             sys.exit(1)
 
+    log.info('Setting up genesis contracts...')
+    setup_genesis_contracts(contracting_client)
+
+    log.info('Adding genesis contracts state changes to genesis block...')
+    for key in state.keys():
+        genesis_block['genesis'].append({
+            'key': key,
+            'value': state.get(key)
+        })
+
+    if args.migrate == 'mongo':
+        mongo_skip_keys = state.keys() + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
-        log.info('Migrating state data from mongo to file-based storage and filling genesis block...')
-        for record in client.lamden.state.find({'_id': {'$nin': [BLOCK_NUM_HEIGHT, BLOCK_HASH_KEY]}}):
+        log.info('Migrating state data from mongo and filling genesis block...')
+        for record in client.lamden.state.find({'_id': {'$nin': mongo_skip_keys}}):
             try:
                 state.set(record['_id'], decode(record['v']))
                 genesis_block['genesis'].append({
@@ -123,18 +120,6 @@ if __name__ == '__main__':
                 })
             except ValueError as err:
                 log.error(f'Skipped key: "{record["_id"]}", due to error: {err}')
-    else:
-        if not confirm_and_flush_state(state):
-            log.info('Aborting')
-            sys.exit(1)
-
-    log.info('Setting up genesis contracts')
-    state_changes = setup_genesis_contracts(state)
-    for key, value in state_changes.items():
-        genesis_block['genesis'].append({
-            'key': key,
-            'value': value
-        })
 
     log.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
