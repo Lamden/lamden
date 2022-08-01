@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from checksumdir import dirhash
 from contracting.client import ContractingClient
-from contracting.db.driver import FSDriver, ContractDriver
+from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY
 from contracting.db.encoder import decode
 from hashlib import sha3_256
 from lamden.contracts import sync
@@ -19,6 +19,7 @@ import sys
 GENESIS_HLC = '0000-00-00T00:00:00.000000000Z_0'
 GENESIS_NUMBER = 0
 GENESIS_PREV = 64 * '0'
+GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation']
 
 def confirm_and_flush_blocks(bs: BlockStorage) -> bool:
     if bs.total_blocks() > 0:
@@ -90,7 +91,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if args.migrate == 'filesystem':
-        sync.flush_sys_contracts(client=contracting_client)
+        for con in GENESIS_CONTRACTS:
+            state.delete(con + '.' + CODE_KEY)
         log.info('Flushed genesis contracts')
     else:
         if not confirm_and_flush_state(state):
@@ -100,7 +102,7 @@ if __name__ == '__main__':
     log.info('Setting up genesis contracts...')
     setup_genesis_contracts(contracting_client)
 
-    log.info('Adding genesis contracts state changes to genesis block...')
+    log.info('Filling genesis block...')
     for key in state.keys():
         genesis_block['genesis'].append({
             'key': key,
