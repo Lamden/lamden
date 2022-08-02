@@ -1,11 +1,12 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import FSDriver, ContractDriver
 from lamden.contracts import sync
+from lamden.crypto.block_validator import validate_block_structure
 from lamden.storage import BlockStorage, STORAGE_HOME
 from lamden.utils.create_genesis import main
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
-from pathlib import Path
 import json
 
 class TestCreateGenesisBlock(TestCase):
@@ -48,19 +49,21 @@ class TestCreateGenesisBlock(TestCase):
     def test_migration_scheme_none(self, flush_blocks, flush_state):
         main(self.founder_sk, 'none', self.bs, self.state, self.contract_driver, self.contracting_client)
 
-        genesis_block = self.bs.get_genesis_block()
+        genesis_block = self.bs.get_block(0)
         self.assertIsNotNone(genesis_block)
         gen_block_state_keys = [item['key'] for item in genesis_block['genesis']]
     
         for key in TestCreateGenesisBlock.genesis_contracts_state_changes:
             self.assertIn(key, gen_block_state_keys)
             self.assertIsNotNone(self.state.get(key))
+
+        self.assertTrue(validate_block_structure(genesis_block))
         
     @patch('lamden.utils.create_genesis.confirm_and_flush_blocks', return_value=True)
     def test_migration_scheme_filesystem(self, flush_blocks):
-        pass
+        raise NotImplementedError
 
     @patch('lamden.utils.create_genesis.confirm_and_flush_blocks', return_value=True)
     @patch('lamden.utils.create_genesis.confirm_and_flush_state', return_value=True)
     def test_migration_scheme_mongo(self):
-        pass
+        raise NotImplementedError

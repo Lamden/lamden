@@ -3,9 +3,9 @@ from checksumdir import dirhash
 from contracting.client import ContractingClient
 from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY
 from contracting.db.encoder import decode
-from hashlib import sha3_256
 from lamden.contracts import sync
-from lamden.crypto.canonical import block_hash_from_block
+from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIMESTAMP, GENESIS_PREVIOUS_HASH
+from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.storage import BlockStorage
@@ -16,9 +16,6 @@ import json
 import pathlib
 import sys
 
-GENESIS_HLC = '0000-00-00T00:00:00.000000000Z_0'
-GENESIS_NUMBER = 0
-GENESIS_PREV = 64 * '0'
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation']
 LOG = get_logger('GENESIS_BLOCK')
 
@@ -68,16 +65,15 @@ def main(
     contracting_client: ContractingClient
 ):
     genesis_block = {
-        'hash': block_hash_from_block(GENESIS_HLC, GENESIS_NUMBER, GENESIS_PREV),
-        'number': GENESIS_NUMBER,
-        'hlc_timestamp': GENESIS_HLC,
-        'previous': GENESIS_PREV,
+        'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
+        'number': GENESIS_BLOCK_NUMBER,
+        'hlc_timestamp': GENESIS_HLC_TIMESTAMP,
+        'previous': GENESIS_PREVIOUS_HASH,
         'genesis': [],
         'origin': {
             'signature': '',
-            'signer': ''
-        },
-        'state_hash': ''
+            'sender': ''
+        }
     }
 
     if not confirm_and_flush_blocks(bs):
@@ -120,18 +116,17 @@ def main(
     LOG.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
 
-    LOG.info('Computing state storage hash...')
-    genesis_block['state_hash'] = dirhash(state.root)
+    # TODO: do we want to have this?
+    # LOG.info('Computing state storage hash...')
+    # genesis_block['state_hash'] = dirhash(state.root, hashfunc='sha256')
 
     LOG.info('Signing state changes...')
     founders_wallet = Wallet(seed=bytes.fromhex(founder_sk))
-    h = sha3_256()
-    h.update('{}'.format(genesis_block['genesis']).encode())
-    genesis_block['origin']['signer'] = founders_wallet.verifying_key
-    genesis_block['origin']['signature'] = founders_wallet.sign(h.hexdigest())
+    genesis_block['origin']['sender'] = founders_wallet.verifying_key
+    genesis_block['origin']['signature'] = founders_wallet.sign(hash_genesis_block_state_changes(genesis_block['genesis']))
 
     LOG.info('Storing genesis block...')
-    bs.store_genesis_block(genesis_block)
+    bs.store_block(genesis_block)
 
     # TODO: set latest block hash & height?
 
