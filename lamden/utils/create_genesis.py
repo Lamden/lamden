@@ -20,6 +20,7 @@ GENESIS_HLC = '0000-00-00T00:00:00.000000000Z_0'
 GENESIS_NUMBER = 0
 GENESIS_PREV = 64 * '0'
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation']
+LOG = get_logger('GENESIS_BLOCK')
 
 def confirm_and_flush_blocks(bs: BlockStorage) -> bool:
     if bs.total_blocks() > 0:
@@ -58,15 +59,14 @@ def setup_genesis_contracts(contracting_client: ContractingClient):
         client=contracting_client
     )
 
-if __name__ == '__main__':
-    log = get_logger('GENESIS_BLOCK')
-    parser = ArgumentParser()
-    parser.add_argument('-k', '--key', type=str, required=True)
-    parser.add_argument('--migrate', choices=['none', 'mongo', 'filesystem'], required=True)
-    args = parser.parse_args()
-
-    founders_wallet = Wallet(seed=bytes.fromhex(args.key))
-
+def main(
+    founder_sk: str,
+    migration_scheme: str,
+    bs: BlockStorage,
+    state: FSDriver,
+    contract_driver: ContractDriver,
+    contracting_client: ContractingClient
+):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC, GENESIS_NUMBER, GENESIS_PREV),
         'number': GENESIS_NUMBER,
@@ -80,39 +80,33 @@ if __name__ == '__main__':
         'state_hash': ''
     }
 
-    
-    bs = BlockStorage()
-    state = FSDriver()
-    contract_driver = ContractDriver(driver=state)
-    contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
-
     if not confirm_and_flush_blocks(bs):
-        log.info('Aborting')
+        LOG.info('Aborting')
         sys.exit(1)
 
-    if args.migrate == 'filesystem':
+    if migration_scheme == 'filesystem':
         for con in GENESIS_CONTRACTS:
             state.delete(con + '.' + CODE_KEY)
-        log.info('Flushed genesis contracts')
+        LOG.info('Flushed genesis contracts')
     else:
         if not confirm_and_flush_state(state):
-            log.info('Aborting')
+            LOG.info('Aborting')
             sys.exit(1)
 
-    log.info('Setting up genesis contracts...')
+    LOG.info('Setting up genesis contracts...')
     setup_genesis_contracts(contracting_client)
 
-    log.info('Filling genesis block...')
+    LOG.info('Filling genesis block...')
     for key in state.keys():
         genesis_block['genesis'].append({
             'key': key,
             'value': state.get(key)
         })
 
-    if args.migrate == 'mongo':
+    if migration_scheme == 'mongo':
         mongo_skip_keys = state.keys() + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
-        log.info('Migrating state data from mongo and filling genesis block...')
+        LOG.info('Migrating state data from mongo and filling genesis block...')
         for record in client.lamden.state.find({'_id': {'$nin': mongo_skip_keys}}):
             try:
                 state.set(record['_id'], decode(record['v']))
@@ -121,21 +115,35 @@ if __name__ == '__main__':
                     'value': decode(record['v'])
                 })
             except ValueError as err:
-                log.error(f'Skipped key: "{record["_id"]}", due to error: {err}')
+                LOG.error(f'Skipped key: "{record["_id"]}", due to error: {err}')
 
-    log.info('Sorting state changes inside genesis block...')
+    LOG.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
 
-    log.info('Computing state storage hash...')
+    LOG.info('Computing state storage hash...')
     genesis_block['state_hash'] = dirhash(state.root)
 
-    log.info('Signing state changes...')
+    LOG.info('Signing state changes...')
+    founders_wallet = Wallet(seed=bytes.fromhex(founder_sk))
     h = sha3_256()
     h.update('{}'.format(genesis_block['genesis']).encode())
     genesis_block['origin']['signer'] = founders_wallet.verifying_key
     genesis_block['origin']['signature'] = founders_wallet.sign(h.hexdigest())
 
-    log.info('Storing genesis block...')
+    LOG.info('Storing genesis block...')
     bs.store_genesis_block(genesis_block)
 
     # TODO: set latest block hash & height?
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-k', '--key', type=str, required=True)
+    parser.add_argument('--migrate', choices=['none', 'mongo', 'filesystem'], required=True)
+    args = parser.parse_args()
+
+    bs = BlockStorage()
+    state = FSDriver()
+    contract_driver = ContractDriver(driver=state)
+    contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
+
+    main(args.key, args.migrate, bs, state, contract_driver, contracting_client)

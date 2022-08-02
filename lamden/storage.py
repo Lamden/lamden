@@ -151,16 +151,6 @@ class BlockStorage:
         self.__write_block(block)
         self.__write_tx(tx_hash, tx)
 
-    def store_genesis_block(self, genesis_block):
-        name = str(0).zfill(64)
-        with open(self.blocks_dir.joinpath(name), 'w') as f:
-            f.write(encode(genesis_block))
-
-        try:
-            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(genesis_block.get('hash')))
-        except FileExistsError as err:
-            self.log.debug(err)
-
     def get_block(self, v=None):
         if v is None:
             return None
