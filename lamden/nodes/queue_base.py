@@ -4,6 +4,7 @@ class ProcessingQueue:
     def __init__(self):
         self.running = False
         self.paused = False
+        self.allow_append = True
         self.currently_processing = False
 
         self.queue = []
@@ -28,6 +29,12 @@ class ProcessingQueue:
 
     def unpause(self):
         self.paused = False
+
+    def disable_append(self):
+        self.allow_append = False
+
+    def enable_append(self):
+        self.allow_append = True
 
     def start_processing(self):
         self.currently_processing = True

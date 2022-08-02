@@ -1,8 +1,8 @@
 import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
-from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT, ACTION_GET_LATEST_BLOCK, ACTION_PING, ACTION_HELLO, ACTION_GET_BLOCK, ACTION_GET_NETWORK_MAP
-from lamden.peer import Peer, LATEST_BLOCK_INFO
+from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 from lamden.storage import BlockStorage
@@ -573,8 +573,8 @@ class TestNetwork(TestCase):
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_LATEST_BLOCK, msg_obj.get("response"))
-        self.assertEqual(0, msg_obj.get("number"))
-        self.assertEqual("0", msg_obj.get("hlc_timestamp"))
+        self.assertEqual(0, msg_obj.get("latest_block_number"))
+        self.assertEqual("0", msg_obj.get("latest_hlc_timestamp"))
 
     def test_METHOD_router_callback__get_block_action_creates_proper_response_if_block_exists(self):
         network_1 = self.create_network()
@@ -636,6 +636,70 @@ class TestNetwork(TestCase):
         self.assertEqual(ACTION_GET_BLOCK, msg_obj.get("response"))
         block_info = msg_obj.get("block_info")
         self.assertEqual(None, block_info)
+
+    def test_METHOD_router_callback__get_next_block_action_creates_proper_response_if_block_exists(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        latest_block_info_msg = json.dumps({'action': ACTION_GET_NEXT_BLOCK, 'block_num': 1})
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        network_1.block_storage.store_block(block={
+            'number': 2,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '2',
+            'processed': {
+                'hash': 'testing'
+            }
+        })
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
+
+        self.assertIsNotNone(self.router_msg)
+        to_vk, msg = self.router_msg
+
+
+        self.assertIsInstance(to_vk, str)
+        self.assertIsInstance(msg, str)
+
+        msg_obj = json.loads(msg)
+
+
+        self.assertEqual(ACTION_GET_NEXT_BLOCK, msg_obj.get("response"))
+        block_info = msg_obj.get("block_info")
+
+        self.assertIsNotNone(msg_obj)
+        self.assertEqual(2, block_info.get("number"))
+        self.assertEqual("1a2b3c", block_info.get("hash"))
+        self.assertEqual("2", block_info.get("hlc_timestamp"))
+
+    def test_METHOD_router_callback__get_next_block_action_returns_block_info_None_if_no_next_block(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        latest_block_info_msg = json.dumps({'action': ACTION_GET_NEXT_BLOCK, 'block_num': 1})
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=latest_block_info_msg))
+
+        self.assertIsNotNone(self.router_msg)
+        to_vk, msg = self.router_msg
+
+
+        self.assertIsInstance(to_vk, str)
+        self.assertIsInstance(msg, str)
+
+        msg_obj = json.loads(msg)
+
+
+        self.assertEqual(ACTION_GET_NEXT_BLOCK, msg_obj.get("response"))
+        block_info = msg_obj.get("block_info")
+
+        self.assertIsNone(block_info)
 
     def test_METHOD_router_callback__get_network_action_creates_proper_response(self):
         network_1 = self.create_network()
@@ -1335,7 +1399,7 @@ class TestNetwork(TestCase):
     def test_METHOD_refresh_peer_block_info(self):
         async def mock_send_request(msg_obj, timeout=1, attempts=1):
             return {
-                'response': LATEST_BLOCK_INFO,
+                'response': ACTION_GET_LATEST_BLOCK,
                 'latest_block_number': 10,
                 'latest_hlc_timestamp': '10'
             }

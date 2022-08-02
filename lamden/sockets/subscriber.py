@@ -57,11 +57,9 @@ class Subscriber():
         if self.local_ip:
             named_message = f'[SUBSCRIBER] {message}'
             logger = get_logger(f'{self.local_ip}')
-            print(f'[{self.local_ip}]{named_message}\n')
         else:
             named_message = message
             logger = get_logger(f'SUBSCRIBER')
-            print(f'[SUBSCRIBER] {named_message}\n')
 
         if log_type == 'info':
             logger.info(named_message)

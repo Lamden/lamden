@@ -91,7 +91,7 @@ def get_vote_tx(policy, vote, wallet=None, nonce=None):
     )
     return json.loads(txb)
 
-def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None):
+def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None, hlc_timestamp=None):
     wallet = wallet or Wallet()
 
     if tx is None:
@@ -103,7 +103,7 @@ def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None)
 
 
     hlc_clock = HLC_Clock()
-    hlc_timestamp = hlc_clock.get_new_hlc_timestamp()
+    hlc_timestamp = hlc_timestamp or hlc_clock.get_new_hlc_timestamp()
     tx_hash = tx_hash_from_tx(tx=tx)
 
     signature = wallet.sign(f'{tx_hash}{hlc_timestamp}')
@@ -115,7 +115,9 @@ def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None)
         'sender': wallet.verifying_key
     }
 
-def get_processing_results(tx_message, driver=None, node_wallet=None, node=None):
+def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=None):
+    if tx_message is None:
+        tx_message = get_tx_message()
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:

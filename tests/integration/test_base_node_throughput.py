@@ -223,8 +223,6 @@ class TestNode(TestCase):
 
             self.assertEqual(self.tx_history[key]['amount'], balance)
 
-        self.assertEqual(0, len(self.node.main_processing_queue.read_history))
-
     def test_transaction_throughput__founder_to_new_wallets__processing_as_added(self):
         # Get and start a node
         self.create_and_start_node()
@@ -267,8 +265,6 @@ class TestNode(TestCase):
                 pprint.pprint(self.tx_history[key]["tx"])
 
             self.assertEqual(self.tx_history[key]['amount'], balance)
-
-        self.assertEqual(0, len(self.node.main_processing_queue.read_history))
 
     def test_transaction_throughput__founder_to_existing_wallet_list__queued_and_then_processed(self):
         # Get and start a node

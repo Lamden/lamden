@@ -95,7 +95,6 @@ class Node:
         self.seed = seed
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
-        self.current_block_height = 0
 
         self.log = get_logger('Base')
         self.debug = debug
@@ -174,8 +173,10 @@ class Node:
             testing=self.testing,
             driver=self.driver,
             debug=self.debug,
+            blocks=self.blocks,
             consensus_percent=lambda: self.consensus_percent,
-            get_block_by_hlc=self.get_block_by_hlc,                                     # Abstract
+            get_block_by_hlc=self.get_block_by_hlc,
+            get_block_from_network=self.get_block_from_network,# Abstract
             hard_apply_block=self.hard_apply_block,                                     # Abstract
             wallet=self.wallet,
             stop_node=self.stop
@@ -211,6 +212,8 @@ class Node:
         self.upgrade = False
 
         self.last_minted_block = None
+        self.held_blocks = []
+        self.hold_blocks = False
 
         self.bypass_catchup = bypass_catchup
 
@@ -252,6 +255,9 @@ class Node:
                 await self.start_new_network()
                 print("STARTED NODE")
             else:
+                self.main_processing_queue.disable_append()
+                self.validation_queue.disable_append()
+
                 await self.join_existing_network()
                 print("STARTED NODE")
 
@@ -400,21 +406,22 @@ class Node:
             await self.catchup()
 
             # Run a continuous catchup to get any blocks that have been minted during the initial catchup.
-            await self.catchup_continuous(block_threshold=10)
+            await self.catchup_continuous()
 
             # Start the validation queue so we start accepting block results
-            self.start_validation_queue_task()
+            self.validation_queue.enable_append()
 
             # Now start catching up to minting of blocks from validation queue
-            await self.catchup_to_validation_queue(catchup_starting_height=self.get_current_height())
-        else:
-            # Start the validation queue so we start accepting block results
-            self.start_validation_queue_task()
+            await self.catchup_to_validation_queue()
 
+
+        # Start the validation queue so we start accepting block results
+        self.start_validation_queue_task()
 
         self.driver.clear_pending_state()
 
         # Start the processing queue
+        self.main_processing_queue.enable_append()
         self.start_main_processing_queue_task()
 
         self.started = True
@@ -423,110 +430,142 @@ class Node:
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
 
-        try:
-            catchup_peers = self.network.get_all_connected_peers()
+        catchup_peers = self.network.get_all_connected_peers()
 
-            if len(catchup_peers) == 0:
-                self.log.error(f'No peers available for catchup!')
-                await self.stop()
-            else:
-                highest_peer_block = self.network.get_highest_peer_block()
-                await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block + 1)
-        except Exception as err:
-            self.log.error(err)
-            print(err)
-            await self.stop()
+        if len(catchup_peers) == 0:
+            raise ValueError(f'No peers available for catchup!')
+        else:
+            highest_peer_block = self.network.get_highest_peer_block()
+            await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
 
-    async def catchup_continuous(self, block_threshold: int):
+    async def catchup_continuous(self, block_threshold: int = 300000000000):
         '''
-            This will run till the node has caught up within the block_threshold number of blocks.
+            This will run till the node has caught up within the block_threshold number of blocks by time.
+            Default is a block number difference of 300000000000 which equates to 5 minutes.
             After each iteration of catchup_blocks we will see the new block height of each peer and if we are not
             within the supplied block_threshold we run it again.
         '''
         await self.network.refresh_peer_block_info()
+        highest_peer_block = self.network.get_highest_peer_block()
 
-        try:
-            while (self.network.get_highest_peer_block() - self.get_current_height()) > block_threshold:
-                catchup_peers = self.network.get_all_connected_peers()
+        while (highest_peer_block - self.get_current_height()) > block_threshold:
+            await self.network.refresh_peer_block_info()
+            catchup_peers = self.network.get_all_connected_peers()
 
-                if len(catchup_peers) == 0:
-                    raise Exception('No peers available for catchup!')
-                else:
-                    highest_peer_block = self.network.get_highest_peer_block()
-                    await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
+            if len(catchup_peers) == 0:
+                raise ValueError('No peers available for catchup!')
+            else:
+                highest_peer_block = self.network.get_highest_peer_block()
+                await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
 
-                await self.network.refresh_peer_block_info()
 
-        except Exception as err:
-            self.log.error(err)
-            await self.stop()
-
-    async def catchup_to_validation_queue(self, catchup_starting_height: int) -> None:
+    async def catchup_to_validation_queue(self) -> None:
         '''
             This will get blocks upto the point that we don't need them because we are producing them from the
             validation queue
         '''
 
         self.log.info('Waiting for new block to be minted from validation queue.')
-        while self.last_minted_block is None:
-            await asyncio.sleep(0)
 
-        first_block_minted = self.last_minted_block.get("number")
+        # This will hold the blocks we mint off the validation queue so we can apply their state after catchup
+        self.hold_blocks = True
+
+        while self.validation_queue.last_hlc_in_consensus == "":
+            await self.validation_queue.process_next()
+            await asyncio.sleep(1)
+
+        self.held_blocks.sort(key=lambda x: x.get('number'))
+        first_block_minted = self.held_blocks[0]
+        catchup_stop_block = first_block_minted.get('number')
 
         # if we have the block right before the block we just minted then return
-        if (catchup_starting_height + 1) == first_block_minted:
-            return
-        else:
-            catchup_peers = self.network.get_all_connected_peers()
-            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= first_block_minted - 1, catchup_peers))
 
-            await self.catchup_get_blocks(
-                catchup_peers=catchup_peers_with_block,
-                catchup_stop_block=first_block_minted
-            )
+        catchup_peers = self.network.get_all_connected_peers()
+        catchup_peers_with_block = []
+        while len(catchup_peers_with_block) == 0:
+            await self.network.refresh_peer_block_info()
+            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= first_block_minted.get('number'), catchup_peers))
+            await asyncio.sleep(10)
 
-        self.validation_queue.pause()
+            self.log.warning(f"No peers at block {catchup_stop_block}. Waiting...")
 
-        current = self.get_current_height()
 
-        for i in range(current - first_block_minted):
-            block = self.blocks.get_block(v=first_block_minted + 1)
-            self.apply_state_changes_from_block(block=encode(block))
+        await self.catchup_get_blocks(
+            catchup_peers=catchup_peers_with_block,
+            catchup_stop_block=catchup_stop_block - 1
+        )
 
-        self.validation_queue.start()
+        if len(self.held_blocks) > 0:
+            new_block = self.held_blocks.pop(0)
+            # Apply state to DB
+            self.apply_state_changes_from_block(block=new_block)
 
+            # Store the block in the block db
+            encoded_block = encode(new_block)
+            encoded_block = json.loads(encoded_block)
+
+            self.blocks.store_block(block=deepcopy(encoded_block))
+
+            # Set the current block hash and height
+            self.update_block_db(block=encoded_block)
+
+            # create New Block Event
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_EVENT],
+                data=encoded_block
+            ))
+
+        self.hold_blocks = False
+        self.held_blocks = []
 
     async def catchup_get_blocks(self, catchup_peers: List[Peer], catchup_stop_block: int):
-        current = self.get_current_height()
+        run_catchup = True
 
-        while current < catchup_stop_block:
-            next_block_num = current + 1
-
-            catchup_peers = list(filter(lambda x: x.latest_block_number >= next_block_num, catchup_peers))
+        while run_catchup:
+            catchup_peers = list(filter(lambda x: x.latest_block_number >= catchup_stop_block, catchup_peers))
             block_catchup_peers = copy.copy(catchup_peers)
 
-            response = None
             while len(block_catchup_peers) > 0:
+                def remove_peer(block_catchup_peers, peer_vk):
+                    return list(filter(lambda x: x.server_vk != peer_vk, block_catchup_peers))
+
+                current_height = self.get_current_height()
                 catchup_peer = random.choice(block_catchup_peers)
-                response = await catchup_peer.get_block(block_num=next_block_num)
 
-                if response is None:
-                    block_catchup_peers = list(filter(lambda x: x.local_vk != catchup_peer.local_vk, block_catchup_peers))
-                else:
-                    break
+                response = await catchup_peer.get_next_block(block_num=current_height)
 
-            if type(response) is dict:
+                if not isinstance(response, dict):
+                    block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
+                    continue
+
                 new_block = response.get("block_info")
                 self.log.info(new_block)
 
-                if not verify_block(block=new_block):
-                    await self.stop()
-                    self.log.error("Block provided by catchup peer had errors.")
-                    return
+                if new_block is None or not verify_block(block=new_block):
+                    self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')
+                    block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
+                    continue
 
-                if new_block:
-                    block_number = new_block.get('number')
-                    if block_number == next_block_num:
+                if current_height > 0:
+                    current_block = self.blocks.get_block(v=self.get_current_height())
+                    expected_previous_block_hash = current_block.get('hash')
+                    previous_block_hash = new_block.get('previous')
+                    if expected_previous_block_hash != previous_block_hash:
+                        block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
+                        self.log.warning(
+                            f'Block received from peer {catchup_peer.server_vk} was out of order.  '
+                            + f'Expected previous block hash of {expected_previous_block_hash} but got {previous_block_hash}.'
+                        )
+                        continue
+
+                new_block_number = new_block.get('number')
+
+                has_block = self.blocks.get_block(v=new_block_number)
+
+                if has_block is None:
+                    if len(self.held_blocks) > 0 and self.held_blocks[0].get('number') == new_block_number:
+                        pass
+                    else:
                         # Apply state to DB
                         self.apply_state_changes_from_block(block=new_block)
 
@@ -539,20 +578,18 @@ class Node:
                         # Set the current block hash and height
                         self.update_block_db(block=encoded_block)
 
-                        #create New Block Event
+                        # create New Block Event
                         self.event_writer.write_event(Event(
                             topics=[NEW_BLOCK_EVENT],
                             data=encoded_block
                         ))
-                        self.current_block_height = block_number
-                    else:
-                        self.log.error("Incorrect Block Number response in catchup!")
-                        print("Incorrect Block Number response in catchup!")
-            else:
-                self.log.error(f"Cannot find block {next_block_num} on any node. Skipping...")
-                print(f"Cannot find block {next_block_num} on node on any node. Skipping...")
 
-            current = next_block_num
+                # Exit from loop when the block receive is greater than the catchup_stop_block
+                if new_block_number >= catchup_stop_block:
+                    return
+
+            if len(block_catchup_peers) == 0:
+                raise ConnectionError("Could not catchup from network.")
 
     def start_main_processing_queue_task(self):
         self.log.info('STARTING MAIN PROCESSING QUEUE')
@@ -738,36 +775,31 @@ class Node:
         }
 
     def update_block_db(self, block):
-        # if self.testing:
-        #    self.debug_stack.append({'method': 'update_block_db', 'block': self.current_height})
-        # TODO Do we need to tdo this again? it was done in "soft_apply_current_state" which is run before this
-        # self.driver.clear_pending_state()
+        # NOTE: write it directly to disk if it's greater then current
+        if block.get('number') > self.get_current_height():
+            self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
+            self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
 
-        # Commit the state changes and nonces to the database
-
-        # NOTE: write it directly to disk.
-        self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
-        self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
-
-        self.new_block_processor.clean(self.get_current_height())
-
-        # NOTE(for Jeff): we shouldn't do this. what if there are pending writes
-        # in driver.cache from a different HLC & not related to this block?
-        # this line prevents 'test_network_mixed_tx_set_group__throughput'
-        # from passing in a way that nodes aren't able to reach consensus at some point.
-        #self.driver.commit()
+            self.new_block_processor.clean(self.get_current_height())
 
     def get_state_changes_from_block(self, block):
-        tx_result = block.get('processed')
-        return tx_result.get('state')
+        try:
+            if self.blocks.is_genesis_block(block):
+                return block.get('genesis', [])
+            else:
+                return block['processed'].get('state', [])
+        except Exception:
+            return []
 
     def apply_state_changes_from_block(self, block):
-        state_changes = block['processed'].get('state', [])
-        rewards = block.get('rewards', [])
-        hlc_timestamp = block['processed'].get('hlc_timestamp', None)
+        if self.blocks.is_genesis_block(block):
+            state_changes = block.get('genesis', [])
+        else:
+            state_changes = block['processed'].get('state', [])
 
-        if hlc_timestamp is None:
-            hlc_timestamp = block.get('hlc_timestamp')
+        rewards = block.get('rewards', [])
+
+        hlc_timestamp = block.get('hlc_timestamp')
 
         for s in state_changes:
             if type(s['value']) is dict:
@@ -785,111 +817,112 @@ class Node:
 
         self.driver.hard_apply(hlc=hlc_timestamp)
 
+
     # TODO: move to state manager in the future.
     def is_known_masternode(self, processor_vk):
         return processor_vk in (self.driver.driver.get('masternodes.S:members') or [])
 
-    async def hard_apply_block(self, processing_results):
-        '''
-        if self.testing:
+    async def hard_apply_block(self, processing_results: dict = None, block: dict = None):
+        if block is not None:
+            hlc_timestamp = block.get('hlc_timestamp')
 
-            self.debug_stack.append({
-                'system_time' :time.time(), 
-                'method': 'hard_apply_block',
-                'hlc_timestamp': hlc_timestamp
-            })
-        '''
+            # Get any blocks that have been commited that are later than this hlc_timestamp
+            later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
 
-        if processing_results is None:
-            raise AttributeError('Processing Results are NONE')
+            if len(later_blocks) == 0:
+                # Apply the state changes from the block to the db
+                self.apply_state_changes_from_block(block)
 
-        hlc_timestamp = processing_results.get('hlc_timestamp')
-        processor = processing_results['tx_result']['transaction']['payload']['processor']
-        if not self.is_known_masternode(processor):
-            self.log.error(f'Processor {processor[:8]} is not a known masternode. Dropping {hlc_timestamp}')
-            return
+                self.hard_apply_store_block(block=block)
+                self.hard_apply_block_finish(block=block)
+            else:
+                self.hard_apply_has_later_blocks(later_blocks=later_blocks, block=block)
 
-        prev_block = self.blocks.get_previous_block(v=hlc_timestamp)
+            return block
+
+        else:
+            if processing_results is None:
+                raise AttributeError('Processing Results are NONE')
+
+            hlc_timestamp = processing_results.get('hlc_timestamp')
+            processor = processing_results['tx_result']['transaction']['payload']['processor']
+
+            if not self.is_known_masternode(processor):
+                self.log.error(f'Processor {processor[:8]} is not a known masternode. Dropping {hlc_timestamp}')
+                return
+
+            # Get any blocks that have been commited that are later than this hlc_timestamp
+            later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
+
+            # If there are later blocks then we need to process them
+            if len(later_blocks) == 0:
+                block = self.hard_apply_processing_results(processing_results=processing_results)
+            else:
+                block = self.hard_apply_has_later_blocks(later_blocks=later_blocks, processing_results=processing_results)
+
+            return block
+
+
+    def hard_apply_has_later_blocks(self, later_blocks: list, processing_results: dict = None, block: dict = None):
+        # Get the block number of the block right after where we want to put this tx this will be the block number
+        # for our new block
+        next_block_num = later_blocks[0].get('number')
+
+        # get the block currently previous to the next block
+        prev_block = self.blocks.get_previous_block(v=next_block_num)
 
         if prev_block is None:
             prev_block = storage.BLOCK_0
 
-        # Get any blocks that have been commited that are later than this hlc_timestamp
-        later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
-
-        # If there are later blocks then we need to process them
-        if len(later_blocks) > 0:
-            try:
-                await self.pause_main_processing_queue()
-            except Exception as err:
-                errors = err
-                print(errors)
-                pass
-
-            # Get the block number of the block right after where we want to put this tx this will be the block number
-            # for our new block
-            next_block_num = later_blocks[0].get('number')
-            prev_block = self.blocks.get_previous_block(v=next_block_num - 1)
+        if block is None:
+            hlc_timestamp = processing_results.get('hlc_timestamp')
 
             new_block = block_from_tx_results(
                 processing_results=processing_results,
-                block_num=next_block_num,
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
                 prev_block_hash=prev_block.get('hash')
             )
+        else:
+            new_block = block
+            hlc_timestamp = new_block.get('hlc_timestamp')
 
-            for i in range(len(later_blocks)):
-                if i is 0:
-                    prev_block_in_list = new_block
-                else:
-                    prev_block_in_list = later_blocks[i - 1]
+        for i in range(len(later_blocks)):
+            if i is 0:
+                prev_block_in_list = new_block
+            else:
+                prev_block_in_list = later_blocks[i - 1]
 
-                later_blocks[i] = recalc_block_info(
-                    block=later_blocks[i],
-                    new_block_num=later_blocks[i].get('number') + 1,
-                    new_prev_hash=prev_block_in_list.get('hash')
-                )
+            later_blocks[i] = recalc_block_info(
+                block=later_blocks[i],
+                new_prev_hash=prev_block_in_list.get('hash')
+            )
 
-            # Get all the writes that this new block will make to state
-            new_block_writes = []
-            new_block_state_changes = processing_results['tx_result'].get('state')
+        # Apply the state changes from the block to the db
+        self.apply_state_changes_from_block(new_block)
 
-            for state_change in new_block_state_changes:
-                new_block_writes.append(state_change.get('key'))
+        # Store the new block in the block db
+        self.blocks.store_block(new_block)
 
-            # Apply the state changes from the block to the db
-            self.apply_state_changes_from_block(new_block)
+        # Emit a block reorg event
 
-            # Store the new block in the block db
-            self.blocks.store_block(new_block)
+        # create a NEW_BLOCK_REORG_EVENT
+        encoded_block = encode(new_block)
+        encoded_block = json.loads(encoded_block)
 
-            # Emit a block reorg event
+        self.event_writer.write_event(Event(
+            topics=[NEW_BLOCK_REORG_EVENT],
+            data=encoded_block
+        ))
 
-            # create a NEW_BLOCK_REORG_EVENT
-            encoded_block = encode(new_block)
-            encoded_block = json.loads(encoded_block)
+        # reapply the state changes in the later blocks and re-save them
+        for block in later_blocks:
+            # Apply the state changes for this block to the db
+            self.apply_state_changes_from_block(block)
 
-            self.event_writer.write_event(Event(
-                topics=[NEW_BLOCK_REORG_EVENT],
-                data=encoded_block
-            ))
-
-            # Next we'll cycle through the later blocks and remove any keys from the new_block_writes list if they are
-            # overwritten.  This is so when we reprocess we don't rerun a transaction that depended on a key we already
-            # had the correct value for.
-            for block in later_blocks:
-                block_state_changes = self.get_state_changes_from_block(block=block)
-
-                for state_change in block_state_changes:
-                    state_key = state_change.get('key')
-                    if state_key in new_block_writes:
-                        new_block_writes.remove(state_key)
-
-                # Apply the state changes for this block to the db
-                self.apply_state_changes_from_block(block)
-
-            # Re-save each block to the database
-            for block in later_blocks:
+            if self.hold_blocks:
+                # Hold blocks till after we are caught up and then apply state
+                self.held_blocks.append(encoded_block)
+            else:
                 self.blocks.store_block(block)
 
                 # create a NEW_BLOCK_REORG_EVENT
@@ -901,42 +934,52 @@ class Node:
                     data=encoded_block
                 ))
 
-            # Set the current block hash and height
-            self.update_block_db(block=later_blocks[-1])
-            self.update_last_minted_block(new_minted_block=later_blocks[-1])
+        self.hard_apply_block_finish(block=new_block)
 
-            # if there are new keys that have been applied to state then we need to reassess everything we have
-            # processed thus far
-            if len(new_block_writes) > 0:
-                self.reprocess_after_earlier_block(new_keys_list=new_block_writes)
+        return new_block
 
-            self.start_main_processing_queue_task()
+    def hard_apply_processing_results(self, processing_results: dict):
+        hlc_timestamp = processing_results.get('hlc_timestamp')
 
+        prev_block = self.blocks.get_previous_block(v=hlc_timestamp)
+
+        if prev_block is None:
+            prev_block = storage.BLOCK_0
+
+        new_block = block_from_tx_results(
+            processing_results=processing_results,
+            proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
+            prev_block_hash=prev_block.get('hash')
+        )
+
+        consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
+
+        # Hard apply this hlc_timestamps state changes
+        if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
+            self.driver.hard_apply(hlc_timestamp)
         else:
-            new_block = block_from_tx_results(
-                processing_results=processing_results,
-                proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
-                prev_block_hash=prev_block.get('hash')
-            )
+            self.apply_state_changes_from_block(new_block)
 
-            consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)
+        self.hard_apply_store_block(block=new_block)
+        self.hard_apply_block_finish(block=new_block)
 
-            # Hard apply this hlc_timestamps state changes
-            if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
-                self.driver.hard_apply(hlc_timestamp)
-            else:
-                self.apply_state_changes_from_block(new_block)
+        return new_block
 
-            # Store the block in the block db
-            encoded_block = encode(new_block)
-            encoded_block = json.loads(encoded_block)
+    def hard_apply_store_block(self, block: dict):
+        self.log.info(f'[HARD APPLY] {block.get("number")}')
 
+        # Store the block in the block db
+        encoded_block = encode(block)
+        encoded_block = json.loads(encoded_block)
+
+        if self.hold_blocks:
+            # Hold blocks till after we are caught up and then apply state
+            self.held_blocks.append(encoded_block)
+        else:
             self.blocks.store_block(copy.copy(encoded_block))
 
             # Set the current block hash and height
             self.update_block_db(block=encoded_block)
-
-            self.update_last_minted_block(new_minted_block=new_block)
 
             # create New Block Event
             self.event_writer.write_event(Event(
@@ -944,23 +987,12 @@ class Node:
                 data=encoded_block
             ))
 
-        # remove the processing results and read history from the main_processing queue memory
-        self.main_processing_queue.prune_history(hlc_timestamp=hlc_timestamp)
-
-        self.log.info(f'[HARD APPLY] {new_block.get("number")}')
-
-        # Increment the internal block counter
-        self.current_block_height = new_block.get('number')
-
-        if hlc_timestamp > self.validation_queue.last_hlc_in_consensus:
-            self.validation_queue.last_hlc_in_consensus = hlc_timestamp
-
-        self.check_peers(processing_results)
-
+    def hard_apply_block_finish(self, block: dict):
+        hlc_timestamp = block.get('hlc_timestamp')
+        self.check_peers(state_changes=self.get_state_changes_from_block(block=block), hlc_timestamp=hlc_timestamp)
         gc.collect()
 
-    def check_peers(self, processing_results):
-        state_changes = processing_results['tx_result'].get('state', [])
+    def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []
 
         for change in state_changes:
@@ -975,10 +1007,9 @@ class Node:
             self.log.fatal('I was voted out from the network... Shutting down!')
             asyncio.ensure_future(self.stop())
         else:
-            hlc = processing_results.get('hlc_timestamp')
             for vk in exiled_peers:
                 self.network.revoke_access_and_remove_peer(peer_vk=vk)
-                self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc)
+                self.validation_queue.clear_solutions(node_vk=vk, max_hlc=hlc_timestamp)
 
 
 # Re-processing CODE
@@ -1217,21 +1248,25 @@ class Node:
 
         self.log.debug(f"Length of Pending Deltas AFTER {len(self.driver.pending_deltas.keys())}")
 
-    def update_last_minted_block(self, new_minted_block):
-        if self.last_minted_block is None:
-            self.last_minted = new_minted_block
-        else:
-            last_minted_hlc = self.last_minted_block.get("hlc_timestamp", '0')
-            new_minted_hlc = new_minted_block.get("hlc_timestamp")
-            if new_minted_hlc > last_minted_hlc:
-                self.last_minted = new_minted_block
-
-    def reset_last_hlc_processed(self):
-        self.last_processed_hlc = self.validation_queue.last_hlc_in_consensus
-
     # Put into 'super driver'
     def get_block_by_hlc(self, hlc_timestamp):
         return self.blocks.get_block(v=hlc_timestamp)
+
+    # Put into 'super driver'
+    async def get_block_from_network(self, hlc_timestamp):
+        blocks = []
+        try:
+            for peer in self.network.peer_list:
+                task = peer.get_block(hlc_timestamp=hlc_timestamp)
+                blocks.append(task)
+
+            blocks = await asyncio.gather(*blocks)
+        except Exception as err:
+            self.log.error(err)
+        return [
+            block.get('block_info') for block in blocks
+            if block.get('success') and block.get('block_info') is not None and verify_block(block.get('block_info'))
+        ]
 
     # Put into 'super driver'
     def get_block_by_number(self, block_number):
@@ -1315,45 +1350,3 @@ class Node:
 
     def check_if_already_has_consensus(self, hlc_timestamp):
         return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
-
-
-    '''
-    async def catchup(self, mn_seed, mn_vk):
-        # Get the current latest block stored and the latest block of the network
-        self.log.info('Running catchup.')
-        current = self.current_height
-        latest = await get_latest_block_height(
-            ip=mn_seed,
-            vk=mn_vk,
-            wallet=self.wallet,
-            ctx=self.ctx
-        )
-
-        self.log.info(f'Current block: {current}, Latest available block: {latest}')
-
-        if latest == 0 or latest is None or type(latest) == dict:
-            self.log.info('No need to catchup. Proceeding.')
-            return
-
-        # Increment current by one. Don't count the genesis block.
-        if current == 0:
-            current = 1
-
-        # Find the missing blocks process them
-        for i in range(current, latest + 1):
-            block = None
-            while block is None:
-                block = await get_block(
-                    block_num=i,
-                    ip=mn_seed,
-                    vk=mn_vk,
-                    wallet=self.wallet,
-                    ctx=self.ctx
-                )
-            self.process_new_block(block)
-
-        # Process any blocks that were made while we were catching up
-        while len(self.new_block_processor.q) > 0:
-            block = self.new_block_processor.q.pop(0)
-            self.process_new_block(block)
-    '''
