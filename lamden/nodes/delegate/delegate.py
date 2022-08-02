@@ -30,7 +30,8 @@ class Delegate(base.Node):
 
         self.driver.clear_pending_state()
 
-        self.log.info('Done starting...')
+        if self.started:
+            self.log.info('Done starting...')
 
     '''
     async def update_sockets(self):

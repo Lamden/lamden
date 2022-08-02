@@ -116,7 +116,7 @@ class TestEventService(TestCase):
 
         self.assertEqual(len(self.client.events), 0)
 
-    def test_service_sends_event_if_subsribed(self):
+    def test_service_sends_event_if_subscribed(self):
         self.loop.run_until_complete(self.client.sio.emit('join', {'room': SAMPLE_TOPIC}))
         EventWriter().write_event(SAMPLE_EVENT)
         self.loop.run_until_complete(asyncio.sleep(TIMEOUT))

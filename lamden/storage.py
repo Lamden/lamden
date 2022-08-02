@@ -127,6 +127,8 @@ class BlockStorage:
         except:
             return False
 
+    def is_genesis_block(self, block):
+        return block.get('genesis', None) is not None
 
     def total_blocks(self):
         return len([name for name in os.listdir(self.blocks_dir) if os.path.isfile(os.path.join(self.blocks_dir, name))])
@@ -143,13 +145,16 @@ class BlockStorage:
         self.log.debug(f'Flushed block & tx storage at \'{self.root}\'')
 
     def store_block(self, block):
-        tx, tx_hash = self.__cull_tx(block)
+        if not self.is_genesis_block(block=block):
+            tx, tx_hash = self.__cull_tx(block)
 
-        if tx is None or tx_hash is None:
-            raise ValueError('Block has no transaction information or malformed tx data.')
+            if tx is None or tx_hash is None:
+                raise ValueError('Block has no transaction information or malformed tx data.')
+
+            self.__write_tx(tx_hash, tx)
 
         self.__write_block(block)
-        self.__write_tx(tx_hash, tx)
+
 
     def get_block(self, v=None):
         if v is None:
@@ -171,7 +176,9 @@ class BlockStorage:
 
         encoded_block = f.read()
         block = decode(encoded_block)
-        self.__fill_block(block)
+
+        if not self.is_genesis_block(block=block):
+            self.__fill_block(block)
 
         f.close()
 
@@ -197,6 +204,24 @@ class BlockStorage:
         prev_block = earlier_blocks[-1]
 
         return self.get_block(v=prev_block)
+
+    def get_next_block(self, v):
+        if hlc.is_hcl_timestamp(hlc_timestamp=v):
+            v = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
+        else:
+            if not isinstance(v, int):
+                v = -1
+
+        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
+        later_blocks = list(filter(lambda block_num: block_num > v, all_blocks))
+
+        if len(later_blocks) == 0:
+            return None
+
+        later_blocks.sort()
+        next_block = later_blocks[0]
+
+        return self.get_block(v=next_block)
 
     def get_tx(self, h):
         try:
@@ -303,7 +328,7 @@ def set_latest_block_hash(h, driver: ContractDriver):
 def get_latest_block_height(driver: ContractDriver):
     h = driver.get(LATEST_BLOCK_HEIGHT_KEY, save=False)
     if h is None:
-        return 0
+        return -1
 
     if type(h) == ContractingDecimal:
         h = int(h._d)

@@ -56,10 +56,8 @@ class Publisher():
     def log(self, log_type: str, message: str) -> None:
         if self.network_ip:
             named_message = f'[PUBLISHER] {message}'
-            print(f'[{self.network_ip}]{named_message}\n')
         else:
             named_message = message
-            print(f'[PUBLISHER] {named_message}\n')
 
         logger_name = self.network_ip or 'PUBLISHER'
         logger = get_logger(logger_name)

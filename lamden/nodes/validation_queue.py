@@ -3,12 +3,13 @@ from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
-
+from lamden.storage import BlockStorage
+from lamden.crypto.wallet import Wallet
 import time
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc, testing=False,
-                 debug=False):
+    def __init__(self, driver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc,
+                 get_block_from_network, blocks, testing=False, debug=False):
         super().__init__()
 
         self.log = get_logger("VALIDATION QUEUE")
@@ -18,8 +19,10 @@ class ValidationQueue(ProcessingQueue):
 
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
+        self.max_hlc_in_consensus = ""
 
         self.get_block_by_hlc = get_block_by_hlc
+        self.get_block_from_network = get_block_from_network
         self.hard_apply_block = hard_apply_block
         self.stop_node = stop_node
 
@@ -37,7 +40,8 @@ class ValidationQueue(ProcessingQueue):
         self.consensus_history = {}
 
         self.driver = driver
-        self.wallet = wallet
+        self.wallet: Wallet = wallet
+        self.blocks: BlockStorage = blocks
 
         # For debugging
         self.testing = testing
@@ -50,6 +54,9 @@ class ValidationQueue(ProcessingQueue):
         self.checking = False
 
     def append(self, processing_results):
+        if not self.allow_append:
+            return
+
         # self.log.debug(f'ADDING {block_info["hash"][:8]} TO NEEDS VALIDATION QUEUE')
         node_vk = processing_results["proof"].get('signer')
 
@@ -125,15 +132,23 @@ class ValidationQueue(ProcessingQueue):
                     self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
                     return
 
-            self.check_one(hlc_timestamp=next_hlc_timestamp)
+            #self.check_one(hlc_timestamp=next_hlc_timestamp)
+
+            await self.check_all()
 
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing. Queue Length is {len(self.validation_results)} ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
                 self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
-
-        #self.log.debug(self.validation_results)
-        #self.log.debug(f"[STOP] process_next Queue Length = {len(self.validation_results)}")
+            else:
+                if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
+                    blocks = await self.get_block_from_network(hlc_timestamp=next_hlc_timestamp)
+                    try:
+                        block = self.get_consensus_block(blocks=blocks)
+                    except Exception as err:
+                        print(err)
+                    if block:
+                        await self.commit_consensus_block(block=block)
 
     def check_one(self, hlc_timestamp):
         #self.log.debug('[START] check_one')
@@ -146,7 +161,7 @@ class ValidationQueue(ProcessingQueue):
 
         consensus_result = self.determine_consensus.check_consensus(
             solutions=results.get('solutions'),
-            num_of_participants=len(self.get_peers_for_consensus()) + 1,
+            num_of_participants=len(self.get_peers_for_consensus()),
             last_check_info=results.get('last_check_info')
         )
 
@@ -251,6 +266,46 @@ class ValidationQueue(ProcessingQueue):
         if last_check_info is None: return False
         return last_check_info['eager_consensus_possible']
 
+    def later_consensus_exists(self, hlc_timestamp: str) -> bool:
+        hlc_list = self.validation_results.keys()
+        hlc_list = list(filter(lambda x: x != hlc_timestamp, hlc_list))
+        hlc_list.sort()
+
+        for hlc_timestamp in hlc_list:
+            if self.hlc_has_consensus(hlc_timestamp):
+                return True
+
+        return False
+
+    def get_consensus_block(self, blocks: list) -> dict:
+        tally_results = {}
+        for block in blocks:
+            block_hash = block.get('hash')
+            if tally_results.get(block_hash) is None:
+                tally_results[block_hash] = 1
+            else:
+                tally_results[block_hash] += 1
+
+        winning_hash = None
+        ties = []
+        for block_hash, tally in tally_results.items():
+            winner_obj = {
+                    'block_hash': block_hash,
+                    'tally': tally
+                }
+            if winning_hash is None or tally > winning_hash.get('tally'):
+                winning_hash = winner_obj
+                ties = []
+            else:
+                if tally == winning_hash.get('tally'):
+                    if len(ties) == 0:
+                        ties.append(winning_hash)
+                    ties.append(winner_obj)
+
+        for block in blocks:
+            if block.get('hash') == winning_hash.get('block_hash'):
+                return block
+
     def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
         results = self.validation_results.get(hlc_timestamp)
         if not results:
@@ -352,21 +407,30 @@ class ValidationQueue(ProcessingQueue):
 
         return my_solution == consensus_solution
 
-    async def commit_consensus_block(self, hlc_timestamp):
-        #self.log.debug('[START] commit_consensus_block')
-        # Get the tx results for this timestamp
-        processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
+    async def commit_consensus_block(self, hlc_timestamp: str = None, block: dict = None):
+        if hlc_timestamp is not None:
+            # Get the tx results for this timestamp
+            processing_results = self.get_consensus_results(hlc_timestamp=hlc_timestamp)
 
-        # Hard apply these results on the driver
-        await self.hard_apply_block(processing_results=processing_results)
+            # Hard apply these results on the driver
+            new_block = await self.hard_apply_block(processing_results=processing_results)
+
+        if block is not None:
+            hlc_timestamp = block.get('hlc_timestamp')
+            # Hard apply these results on the driver
+            new_block = await self.hard_apply_block(block=block)
 
         # remove HLC from processing
         self.flush_hlc(hlc_timestamp=hlc_timestamp)
 
-        # get rid of any results that might have come in earlier ?
+        if new_block is None:
+            self.log.error(f"Error while minting block HLC: {hlc_timestamp}.")
+            return
+
+        self.set_last_hlc_in_consensus(hlc_timestamp=hlc_timestamp)
         self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
 
-        #self.log.debug('[END] commit_consensus_block')
+
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
@@ -417,6 +481,14 @@ class ValidationQueue(ProcessingQueue):
                     break
             if not exists:
                 self.validation_results[hlc_timestamp]['result_lookup'].pop(solution)
+
+    def set_last_hlc_in_consensus(self, hlc_timestamp: str) -> None:
+        self.last_hlc_in_consensus = hlc_timestamp
+        self.set_max_hlc_in_consensus(hlc_timestamp=hlc_timestamp)
+
+    def set_max_hlc_in_consensus(self, hlc_timestamp: str) -> None:
+        if hlc_timestamp > self.max_hlc_in_consensus:
+            self.max_hlc_in_consensus = hlc_timestamp
 
     def get_delegate_vk_list(self) -> list:
         return self.driver.driver.get(f'delegates.S:members') or []

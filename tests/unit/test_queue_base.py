@@ -124,3 +124,15 @@ class TestProcessingQueue(TestCase):
     def test_is_subscriptable_ret_None_if_indexError(self):
         # assert queue has items in it
         self.assertIsNone(self.processing_queue[0])
+
+    def test_disable_append__sets_allow_append_to_False(self):
+        self.processing_queue.allow_append = True
+        self.assertTrue(self.processing_queue.allow_append)
+        self.processing_queue.disable_append()
+        self.assertFalse(self.processing_queue.allow_append)
+
+    def test_enable_append__sets_allow_append_to_True(self):
+        self.processing_queue.allow_append = False
+        self.assertFalse(self.processing_queue.allow_append)
+        self.processing_queue.enable_append()
+        self.assertTrue(self.processing_queue.allow_append)

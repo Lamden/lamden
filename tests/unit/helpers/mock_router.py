@@ -1,7 +1,7 @@
 import time
 
 from zmq.auth.asyncio import AsyncioAuthenticator
-
+from lamden.peer import ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
 import json
 import threading
 import zmq
@@ -110,21 +110,21 @@ class MockRouter(threading.Thread):
                     self.send_msg(ident=ident, msg=msg)
                     continue
 
-                if action not in ['ping', 'hello', 'latest_block_info']:
+                if action not in [ACTION_PING, ACTION_HELLO, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK]:
                     self.send_msg(ident=ident, msg=msg)
                 else:
-                    if action == 'ping':
+                    if action == ACTION_PING:
                         resp_msg = json.dumps({
-                            'response': 'ping'
+                            'response': ACTION_PING
                         }).encode('UTF-8')
 
-                    if action == 'hello':
+                    if action == ACTION_HELLO:
                         challenge = msg_obj.get('challenge')
                         if challenge:
                             challenge_response = self.wallet.sign(challenge)
                             resp_msg = json.dumps(
                                 {
-                                    'response': 'hello',
+                                    'response': ACTION_HELLO,
                                     'challenge_response': challenge_response,
                                     'latest_block_number': 1,
                                     'latest_hlc_timestamp': "1"
@@ -132,11 +132,21 @@ class MockRouter(threading.Thread):
                         else:
                             resp_msg = json.dumps({'response': 'hello'}).encode('UTF-8')
 
-                    if action == 'latest_block_info':
+                    if action == ACTION_GET_LATEST_BLOCK:
                         resp_msg = json.dumps({
-                            'response': 'latest_block_info',
+                            'response': ACTION_GET_LATEST_BLOCK,
                             'latest_block_number': 100,
                             'latest_hlc_timestamp': "1234"
+                        }).encode('UTF-8')
+
+                    if action == ACTION_GET_NEXT_BLOCK:
+                        block_num = msg_obj.get('block_num')
+                        resp_msg = json.dumps({
+                            'response': ACTION_GET_NEXT_BLOCK,
+                            'block_info': {
+                                'number': block_num + 1,
+                                'hlc_timestamp': str(block_num + 1)
+                            }
                         }).encode('UTF-8')
 
                     self.send_msg(ident=ident, msg=resp_msg)

@@ -153,6 +153,20 @@ BLOCK_V2 = dict({
   }
 })
 
+GENESIS_BLOCK = {
+    'hash': '2bb4e112aca11805538842bd993470f18f337797ec3f2f6ab02c47385caf088e',
+    'number': 0,
+    'hlc_timestamp': '0000-00-00T00:00:00.000000000Z_0',
+    'previous': '0000000000000000000000000000000000000000000000000000000000000000',
+    'genesis': [
+        {'key': 'currency.balances:9fb2b57b1740e8d86ecebe5bb1d059628df02236b69ed74de38b5e9d71230286', 'value': 100000000}
+    ],
+    'origin': {
+        'sender': '9fb2b57b1740e8d86ecebe5bb1d059628df02236b69ed74de38b5e9d71230286',
+        'signature': '82beb173f13ecc239ac108789b45428110ff56a84a3d999c0a1251a22974ea9b426ef61b13e04819d19556657448ba49a2f37230b8450b4de28a1a3cc85a3504'
+    }
+}
+
 class TestBlockValidator(TestCase):
     def setUp(self):
         self.block = deepcopy(BLOCK_V2)
@@ -197,11 +211,11 @@ class TestBlockValidator(TestCase):
     def test_hash_is_sha256_signature__retuns_False_if_hash_is_not_str(self):
         self.assertFalse(block_validator.hash_is_sha256_signature(signature=1234))
 
-    def test_is_hcl_timestamp__returns_True_if_hlc_is_valid(self):
-        self.assertTrue(block_validator.is_hlc_timestamp("2022-07-06T18:15:00.379629056Z_0"))
+    def test_is_iso8601_hlc_timestamp__returns_True_if_hlc_is_valid(self):
+        self.assertTrue(block_validator.is_iso8601_hlc_timestamp("2022-07-06T18:15:00.379629056Z_0"))
 
-    def test_is_hcl_timestamp__returns_False_if_hlc_is_not_valid(self):
-        self.assertFalse(block_validator.is_hlc_timestamp("202207T18:15:00.379629056"))
+    def test_is_iso8601_hlc_timestamp__returns_False_if_hlc_is_not_valid(self):
+        self.assertFalse(block_validator.is_iso8601_hlc_timestamp("202207T18:15:00.379629056"))
 
     def test_validate_block_structure__raises_no_exceptions_if_block_is_valid(self):
         self.assertTrue(block_validator.validate_block_structure(block=self.block))
@@ -370,6 +384,13 @@ class TestBlockValidator(TestCase):
 
         self.assertEqual(BLOCK_EXCEPTIONS['BlockProcessedInvalid'], str(err.exception))
 
+    def test_validate_block_structure__raises_BlockKeysInvalidNumber(self):
+        with self.assertRaises(block_validator.BlockKeysInvalidNumber) as err:
+            self.block['testing'] = True
+            block_validator.validate_block_structure(block=self.block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['BlockKeysInvalidNumber'], str(err.exception))
+
     def test_validate_all_hashes__returns_true_if_all_valid(self):
         self.assertTrue(block_validator.validate_all_hashes(block=self.block))
 
@@ -442,42 +463,6 @@ class TestBlockValidator(TestCase):
             self.block['proofs'].append(bad_proof)
             block_validator.validate_all_signatures(block=self.block)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockProofMalformed'], str(err.exception))
-
-'''
-PROCESSED_TRANSACTION = {
-    "hash": "f05519affba9bec4c8e1e44d252cb2ade9353eb32294d0c4f238755e162ac4d4",
-    "result": "None",
-    "stamps_used": 1,
-    "state": [
-        {
-            "key": "currency.balances:203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506",
-            "value": {"__fixed__": "999979.0"}
-        },
-        {
-            "key": "currency.balances:12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a",
-            "value": {"__fixed__": "10.5"}
-        }
-    ],
-    "status": 0,e
-    "transaction": {
-        "metadata": {
-            "signature": "81d34f903f80a39969faf93174c384b1c9929a62b99ba5c33f77f66382a779e8e6e4ebdac5b8e4025a662b4669ec5e253b9c1521adad778209b2000cd5b54701"
-        },
-        "payload": {
-            "contract": "currency",
-            "function": "transfer",
-            "kwargs": {
-                "amount": {"__fixed__": "10.5"},
-                "to": "12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a"
-            },
-            "nonce": 1,
-            "processor": "2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1",
-            "sender": "203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506",
-            "stamps_supplied": 20
-        }
-    }
-},
-'''
 
 
 class TestProcessedTransactionValidator(TestCase):
@@ -585,26 +570,6 @@ class TestProcessedTransactionValidator(TestCase):
             block_validator.validate_processed_transaction_structure(processed_transaction=self.processed)
 
         self.assertEqual(PROCESSED_TX_EXCEPTIONS['ProcessedTransactionPayloadInvalid'], str(err.exception))
-
-'''
-PAYLOAD = dict({
-        "metadata": {
-            "signature": "81d34f903f80a39969faf93174c384b1c9929a62b99ba5c33f77f66382a779e8e6e4ebdac5b8e4025a662b4669ec5e253b9c1521adad778209b2000cd5b54701"
-        },
-        "payload": {
-            "contract": "currency",
-            "function": "transfer",
-            "kwargs": {
-                "amount": {"__fixed__": "10.5"},
-                "to": "12331ea5bfb49aca46004d5da40fb2b05ef26d0b4188787b230c330e2c4d018a"
-            },
-            "nonce": 1,
-            "processor": "2462a8c76f145068ef9b6c926889772d82fcae19004abbbabab1fee2d2a1c5e1",
-            "sender": "203c3e9807590023cb59c47e619e4f8e1d594d39f421789239b3bac424b2f506",
-            "stamps_supplied": 20
-        }
-    })
-'''
 
 
 class TestTransactionValidator(TestCase):
@@ -722,3 +687,72 @@ class TestTransactionValidator(TestCase):
             block_validator.validate_transaction_structure(transaction=self.transaction)
 
         self.assertEqual(PAYLOAD_EXCEPTIONS['TransactionPayloadStampSuppliedInvalid'], str(err.exception))
+
+class TestGenesisBlockValidator(TestCase):
+    def setUp(self):
+        self.genesis_block = deepcopy(GENESIS_BLOCK)
+
+    def test_verify_block__returns_True_on_valid_genesis_block(self):
+        self.assertTrue(block_validator.verify_block(block=self.genesis_block))
+
+    def test_verify_block__returns_False_if_block_raises_exception(self):
+        del self.genesis_block['number']
+        self.assertFalse(block_validator.verify_block(block=self.genesis_block))
+
+    def test_validate_genesis_hashes__return_True_if_hashes_valid(self):
+        self.assertTrue(block_validator.validate_genesis_hashes(block=self.genesis_block))
+
+    def test_validate_genesis_hashes__raises_BlockHashMalformed_exception_if_hashes_invalid(self):
+        with self.assertRaises(block_validator.BlockHashMalformed):
+            self.genesis_block['hash'] = '0' * 64
+            block_validator.validate_genesis_hashes(block=self.genesis_block)
+
+    def test_validate_genesis_signatures__return_True_if_signatures_are_valid(self):
+        self.assertTrue(block_validator.validate_genesis_signatures(block=self.genesis_block))
+
+    def test_validate_genesis_signatures__raises_BlockOriginSignatureMalformed_exception_if_hashes_invalid(self):
+        with self.assertRaises(block_validator.BlockOriginSignatureMalformed):
+            self.genesis_block['genesis'] = []
+            block_validator.validate_genesis_signatures(block=self.genesis_block)
+
+    def test_verify_genesis_origin_signature__returns_True_if_signature_valid(self):
+        self.assertTrue(block_validator.verify_genesis_origin_signature(block=self.genesis_block))
+
+    def test_verify_genesis_origin_signature__returns_False_if_signature_invalid(self):
+        self.genesis_block['origin']['sender'] = '0' * 64
+        self.assertFalse(block_validator.verify_genesis_origin_signature(block=self.genesis_block))
+
+    def test_validate_block_structure__raises_GenesisBlockNumberInvalid(self):
+        with self.assertRaises(block_validator.GenesisBlockNumberInvalid) as err:
+            self.genesis_block['number'] = 1
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockNumberInvalid'], str(err.exception))
+
+    def test_validate_block_structure__raises_GenesisBlockHLCInvalid(self):
+        with self.assertRaises(block_validator.GenesisBlockHLCInvalid) as err:
+            self.genesis_block['hlc_timestamp'] = BLOCK_V2['hlc_timestamp']
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockHLCInvalid'], str(err.exception))
+
+        with self.assertRaises(block_validator.GenesisBlockHLCInvalid) as err:
+            del self.genesis_block['hlc_timestamp']
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockHLCInvalid'], str(err.exception))
+
+    def test_validate_block_structure__raises_GenesisBlockPreviousHashInvalid(self):
+        with self.assertRaises(block_validator.GenesisBlockPreviousHashInvalid) as err:
+            self.genesis_block['previous'] = BLOCK_V2['previous']
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockPreviousHashInvalid'], str(err.exception))
+
+
+    def test_validate_block_structure__raises_GenesisBlockKeysInvalidNumber(self):
+        with self.assertRaises(block_validator.GenesisBlockKeysInvalidNumber) as err:
+            self.genesis_block['testing'] = True
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockKeysInvalidNumber'], str(err.exception))

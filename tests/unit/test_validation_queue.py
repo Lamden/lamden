@@ -10,6 +10,10 @@ import asyncio
 import hashlib
 from contracting.db.encoder import encode
 
+from lamden.utils.hlc import nanos_from_hlc_timestamp
+from pathlib import Path
+from lamden.storage import BlockStorage
+
 class TestValidationQueue(TestCase):
     def setUp(self):
         self.wallet = Wallet()
@@ -35,6 +39,13 @@ class TestValidationQueue(TestCase):
 
         self.current_block = 64 * f'0'
 
+        self.current_path = Path.cwd()
+        self.temp_storage_dir = Path(f'{self.current_path}/temp_storage')
+
+        node_dir = Path(f'{self.temp_storage_dir}/{self.wallet.verifying_key}')
+        blocks_dir = Path(f'{node_dir}/blocks')
+        block_storage = BlockStorage(root=blocks_dir)
+
         self.validation_queue = validation_queue.ValidationQueue(
             driver=self.driver,
             wallet=self.wallet,
@@ -42,10 +53,13 @@ class TestValidationQueue(TestCase):
             hard_apply_block=self.hard_apply_block,
             stop_node=self.stop,
             testing=True,
-            get_block_by_hlc=self.get_block_by_hlc
+            get_block_by_hlc=self.get_block_by_hlc,
+            get_block_from_network=self.get_block_from_network,
+            blocks=block_storage
         )
 
         self.validation_queue.get_peers_for_consensus = self.get_peers_for_consensus
+        self.validation_queue.multiprocess_consensus.get_peers_for_consensus = self.get_peers_for_consensus
 
         self.block = None
         self.get_block_by_hlc_called = False
@@ -63,6 +77,16 @@ class TestValidationQueue(TestCase):
         self.get_block_by_hlc_called = True
         return self.block
 
+    async def get_block_from_network(self, hlc_timestamp):
+        blocks = []
+        for i in range(5):
+            blocks.append({
+                'hash': hlc_timestamp,
+                'hlc_timestamp': hlc_timestamp,
+                'number': nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+            })
+        return blocks
+
     async def stop_all_queues(self):
         return
 
@@ -71,14 +95,14 @@ class TestValidationQueue(TestCase):
 
     def get_peers_for_consensus(self):
         peers = {}
-        for i in range(self.num_of_peers):
+        for i in range(self.num_of_peers + 1):
             peers[i] = i
         return peers
 
     def set_peers_not_in_consensus(self):
         self.set_peers_not_in_consensus = True
 
-    async def hard_apply_block(self, processing_results):
+    async def hard_apply_block(self, processing_results=None, block=None):
         self.hard_apply_block_called = True
         self.num_times_hard_apply_block_called += 1
 
@@ -434,13 +458,23 @@ class TestValidationQueue(TestCase):
     def test_process_next_not_enough_solutions_to_attempt_consensus(self):
         self.add_solution()
 
-        self.num_of_peers = 1  # Does not include me
+        self.num_of_peers = 1
 
-        # Await the the queue attempting consensus
+        # Await the queue attempting consensus
         self.process_next()
 
         self.assertFalse(self.hard_apply_block_called)
         self.assertEqual(self.validation_queue.last_hlc_in_consensus, "")
+
+    def test_process_next__gets_block_from_network_if_consensus_stalled_and_there_is_later_consensus(self):
+        self.add_solution()
+        self.add_solutions(amount_of_solutions=2)
+
+        self.num_of_peers = 1
+
+        self.process_next()
+
+        self.assertTrue(self.hard_apply_block_called)
 
     def test_process_next_hlc_has_consensus(self):
         pr = self.add_solution()
@@ -928,7 +962,7 @@ class TestValidationQueue(TestCase):
 
         self.assertFalse(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
 
-        self.validation_queue.check_one(hlc_timestamp=hlc_timestamp)
+        self.check_all()
 
         self.assertTrue(self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp))
 

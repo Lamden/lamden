@@ -6,7 +6,9 @@ import asyncio
 import uvloop
 from typing import List
 
-from lamden.peer import Peer
+from lamden.utils import hlc
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
+
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
 
@@ -20,12 +22,6 @@ from lamden.sockets.router import Router
 
 WORK_SERVICE = 'work'
 LATEST_BLOCK_INFO = 'latest_block_info'
-
-ACTION_PING = "ping"
-ACTION_HELLO = "hello"
-ACTION_GET_LATEST_BLOCK = 'get_latest_block'
-ACTION_GET_BLOCK = "get_block"
-ACTION_GET_NETWORK_MAP = "get_network_map"
 
 GET_CONSTITUTION = "get_constitution"
 GET_ALL_PEERS = "get_all_peers"
@@ -147,8 +143,6 @@ class Network:
             logger.error(named_message)
         if log_type == 'warning':
             logger.warning(named_message)
-
-        print(f'[{self.external_address}]{named_message}\n')
 
     def setup_event_loop(self):
         try:
@@ -536,7 +530,7 @@ class Network:
 
     async def router_callback(self, ident_vk_string: str, msg: str) -> None:
         try:
-            print({'ident_vk_string': ident_vk_string, 'msg': msg})
+            self.log('info', {'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
@@ -563,12 +557,14 @@ class Network:
             self.connect_peer(vk=ident_vk_string, ip=ip)
 
         if action == ACTION_GET_LATEST_BLOCK:
+            self.log('warning', "ACTION_GET_LATEST_BLOCK")
             latest_block_info = self.get_latest_block_info()
+            self.log('info', latest_block_info)
 
             block_num = latest_block_info.get('number')
             hlc_timestamp = latest_block_info.get("hlc_timestamp")
 
-            resp_msg = ('{"response": "%s", "number": %d, "hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp))
+            resp_msg = ('{"response": "%s", "latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp))
 
             self.router.send_msg(
                 to_vk=ident_vk_string,
@@ -578,7 +574,7 @@ class Network:
         if action == ACTION_GET_BLOCK:
             block_num = msg.get('block_num', None)
             hlc_timestamp = msg.get('hlc_timestamp', None)
-            if block_num or hlc_timestamp:
+            if isinstance(block_num, int) or hlc.is_hcl_timestamp(hlc_timestamp):
                 block_info = self.block_storage.get_block(v=block_num or hlc_timestamp)
                 block_info = encode(block_info)
 
@@ -586,6 +582,26 @@ class Network:
                     to_vk=ident_vk_string,
                     msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info))
                 )
+
+        if action == ACTION_GET_NEXT_BLOCK:
+            block_num = msg.get('block_num')
+            hlc_timestamp = msg.get('hlc_timestamp')
+            v = block_num
+            if not isinstance(block_num, int):
+                if hlc.is_hcl_timestamp(hlc_timestamp):
+                    v = hlc_timestamp
+                else:
+                    return
+
+            block_info = self.block_storage.get_next_block(v=v)
+            block_info = encode(block_info)
+
+            self.router.send_msg(
+                to_vk=ident_vk_string,
+                msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_NEXT_BLOCK, block_info))
+            )
+
+            self.log('warning', f'sent block num {block_num}')
 
         if action == ACTION_GET_NETWORK_MAP:
             node_list = json.dumps(self.make_network_map())

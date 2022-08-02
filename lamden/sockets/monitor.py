@@ -19,13 +19,14 @@ monitor_errors_map = {
 }
 
 class SocketMonitor:
-    def __init__(self, socket_type: str = ""):
+    def __init__(self, socket_type: str = "", parent_ip: str = ""):
         self.loop = None
         self.sockets_to_monitor = list()
         self.poller = zmq.asyncio.Poller()
         self.get_event_loop()
         self.socket_type = socket_type
         self.running = False
+        self.parent_ip = parent_ip
 
         self.check_for_events_task = None
         self.check_for_events_task_stopped = True
@@ -43,8 +44,7 @@ class SocketMonitor:
         asyncio.set_event_loop(self.loop)
 
     def log(self, log_type: str, message: str) -> None:
-        logger = get_logger(f'{self.socket_type}_SOCKET_MONITOR')
-        print(f'[{self.socket_type}_SOCKET_MONITOR] {message}\n')
+        logger = get_logger(f'{self.socket_type}_SOCKET_MONITOR - {self.parent_ip}')
 
         if log_type == 'info':
             logger.info(message)

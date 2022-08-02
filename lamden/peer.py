@@ -12,11 +12,14 @@ from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION
 from typing import Callable
 from urllib.parse import urlparse
 
-LATEST_BLOCK_INFO = 'latest_block_info'
-GET_BLOCK = 'get_block'
-
 SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
 
+ACTION_PING = "ping"
+ACTION_HELLO = "hello"
+ACTION_GET_LATEST_BLOCK = 'get_latest_block'
+ACTION_GET_BLOCK = "get_block"
+ACTION_GET_NEXT_BLOCK = "get_next_block"
+ACTION_GET_NETWORK_MAP = "get_network_map"
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
@@ -130,8 +133,6 @@ class Peer:
             logger.error(named_message)
         if log_type == 'warning':
             logger.warning(named_message)
-
-        print(f'[{self.get_network_ip()}]{named_message}\n')
 
     def setup_event_loop(self):
         try:
@@ -391,13 +392,13 @@ class Peer:
         self.start()
 
     async def ping(self) -> dict:
-        msg_obj = {'action': 'ping'}
+        msg_obj = {'action': ACTION_PING}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, attempts=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
-        msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
+        msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
@@ -405,30 +406,35 @@ class Peer:
 
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
-        msg_obj = {'action': 'hello', 'ip': self.get_network_ip(), 'challenge': challenge}
+        msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
-        msg_obj = {'action': 'latest_block_info'}
+        msg_obj = {'action': ACTION_GET_LATEST_BLOCK}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
         if isinstance(msg_json, dict):
-            if msg_json.get('response') == LATEST_BLOCK_INFO:
+            if msg_json.get('response') == ACTION_GET_LATEST_BLOCK:
                 self.set_latest_block_info(
                     number=msg_json.get('latest_block_number'),
                     hlc_timestamp=msg_json.get('latest_hlc_timestamp')
                 )
         return msg_json
 
-    async def get_block(self, block_num: int) -> (dict, None):
-        msg_obj = {'action': 'get_block', 'block_num': block_num}
+    async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
+        msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': block_num, 'hlc_timestamp': hlc_timestamp}
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
+        return msg_json
+
+    async def get_next_block(self, block_num: int) -> (dict, None):
+        msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': block_num}
         msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
-        msg_obj = {'action': 'get_network_map'}
+        msg_obj = {'action': ACTION_GET_NETWORK_MAP}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=5)
         return msg_json
 

@@ -45,22 +45,24 @@ class TestNewNodeCatchup(TestCase):
     def add_blocks_to_network(self, num_of_blocks):
         new_blocks = copy.copy(MockBlocks(num_of_blocks=num_of_blocks))
         for i in range(num_of_blocks):
-            block_num = i + 1
-
+            new_block = new_blocks.get_block_by_index(index=i)
             for tn in self.network.all_nodes:
-                new_block = new_blocks.get_block(num=block_num)
                 tn.node.blocks.store_block(block=copy.deepcopy(new_block))
                 tn.node.update_block_db(block=new_block)
                 tn.node.apply_state_changes_from_block(block=new_block)
         return new_blocks
 
-    def test_new_peer_can_catchup_blocks_to_block_height_of_highest_node_block_height(self):
+    def test_new_peer_can_catchup_blocks_to_block_height_of_highest_node_block_height_and_state_is_correct(self):
         self.network.create_new_network(
             num_of_masternodes=1,
             num_of_delegates=1
         )
 
-        blocks = self.add_blocks_to_network(num_of_blocks=5)
+        # self.add_blocks_to_network(num_of_blocks=5)
+
+        for i in range(5):
+            self.network.send_tx_to_random_masternode()
+            self.async_sleep(1)
 
         self.network.add_new_node_to_network(
             node_type="delegate"
@@ -69,39 +71,28 @@ class TestNewNodeCatchup(TestCase):
         existing_node = self.network.masternodes[0]
         new_node = self.network.delegates[1]
 
-        self.async_sleep(5)
+        self.assertFalse(new_node.node.started)
 
-        blocks.add_block()
-        new_block = blocks.get_block(num=6)
-        new_node.node.last_minted_block = new_block
-
-        self.async_sleep(5)
-
-        self.assertEqual(existing_node.latest_block_height, new_node.latest_block_height)
-
-    def test_new_node_state_is_the_same_as_peers_after_catchup(self):
-        self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=1
-        )
-
-        blocks = self.add_blocks_to_network(num_of_blocks=5)
-
-        self.network.add_new_node_to_network(
-            node_type="delegate"
-        )
-
-        new_node = self.network.delegates[1]
+        while not new_node.validation_queue.allow_append:
+            self.async_sleep(1)
 
         self.async_sleep(5)
 
-        blocks.add_block()
-        new_block = blocks.get_block(num=6)
-        new_node.node.last_minted_block = new_block
-        new_node.node.apply_state_changes_from_block(block=new_block)
+        for i in range(3):
+            self.network.send_tx_to_random_masternode()
+            self.async_sleep(3)
 
+        while not new_node.node.started:
+            self.async_sleep(1)
+
+        # Let new node catchup
         self.async_sleep(5)
 
-        for vk, amount in blocks.internal_state.items():
-            state_amount = new_node.get_smart_contract_value(key=f'currency.balances:{vk}')
-            self.assertEqual(amount, state_amount)
+        self.assertEqual(existing_node.node.get_current_height(), new_node.node.get_current_height())
+        self.assertTrue(new_node.node.started)
+
+        for key_bytes in existing_node.node.driver.driver.db:
+            key = key_bytes.decode('utf-8')
+            expected_value = existing_node.node.driver.get(key=key)
+            value = new_node.node.driver.get(key=key)
+            self.assertEqual(expected_value, value)

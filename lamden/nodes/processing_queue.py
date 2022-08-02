@@ -40,8 +40,6 @@ class TxProcessingQueue(ProcessingQueue):
         self.unpause_all_queues = unpause_all_queues
 
         self.stop_node = stop_node
-        self.read_history = {}
-        self.processing_results = {}
 
         self.reward_manager = RewardManager()
         self.executor = Executor(driver=self.driver, metering=metering)
@@ -59,6 +57,9 @@ class TxProcessingQueue(ProcessingQueue):
         self.currently_processing_hlc = ""
 
     def append(self, tx):
+        if not self.allow_append:
+            return
+
         hlc_timestamp = tx['hlc_timestamp']
 
         if self.testing:
@@ -370,20 +371,6 @@ class TxProcessingQueue(ProcessingQueue):
         return Datetime._from_datetime(
             datetime.utcfromtimestamp(math.ceil(nanos / 1e9))
         )
-
-    def prune_history(self, hlc_timestamp):
-        self.prune_processing_results(hlc_timestamp=hlc_timestamp)
-        self.prune_read_history(hlc_timestamp=hlc_timestamp)
-
-    def prune_processing_results(self, hlc_timestamp):
-        for hlc in list(self.processing_results):
-            if hlc <= hlc_timestamp:
-                self.processing_results.pop(hlc, None)
-
-    def prune_read_history(self, hlc_timestamp):
-        for hlc in list(self.read_history):
-            if hlc <= hlc_timestamp:
-                self.read_history.pop(hlc, None)
 
     async def node_rollback(self, tx):
         start_time = time.time()

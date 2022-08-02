@@ -45,7 +45,6 @@ def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constit
     temp_network_dir.mkdir(exist_ok=True, parents=True)
 
     node_dir = Path(f'{temp_network_dir}/{node_wallet.verifying_key}')
-    node_state_dir = Path(f'{node_dir}/state')
 
     #raw_driver = FSDriver(node_state_dir)
     raw_driver = InMemDriver()
