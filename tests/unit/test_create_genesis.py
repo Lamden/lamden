@@ -1,10 +1,9 @@
 from contracting.client import ContractingClient
 from contracting.db.driver import FSDriver, ContractDriver, TIME_KEY, Driver
-from contracting.db.encoder import encode, decode
 from contracting.stdlib.bridge.time import Datetime
 from lamden.contracts import sync
 from lamden.crypto.block_validator import validate_block_structure
-from lamden.storage import BlockStorage
+from lamden.storage import BlockStorage, LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY
 from lamden.utils.create_genesis import main, setup_genesis_contracts, GENESIS_CONTRACTS
 from pathlib import Path
 from unittest import TestCase
@@ -58,7 +57,9 @@ class TestCreateGenesisBlock(TestCase):
         genesis_block = self.bs.get_block(0)
         self.assertIsNotNone(genesis_block)
         gen_block_state_keys = [item['key'] for item in genesis_block['genesis']]
-    
+
+        self.assertEqual(self.state.get(LATEST_BLOCK_HEIGHT_KEY),  genesis_block['number'])
+        self.assertEqual(self.state.get(LATEST_BLOCK_HASH_KEY),  genesis_block['hash'])
         for key in TestCreateGenesisBlock.genesis_contracts_state_changes:
             self.assertIn(key, gen_block_state_keys)
             self.assertIsNotNone(self.state.get(key))
@@ -76,7 +77,9 @@ class TestCreateGenesisBlock(TestCase):
         genesis_block = self.bs.get_block(0)
         self.assertIsNotNone(genesis_block)
         gen_block_state_keys = [item['key'] for item in genesis_block['genesis']]
-    
+
+        self.assertEqual(self.state.get(LATEST_BLOCK_HEIGHT_KEY),  genesis_block['number'])
+        self.assertEqual(self.state.get(LATEST_BLOCK_HASH_KEY),  genesis_block['hash'])
         for key in TestCreateGenesisBlock.genesis_contracts_state_changes:
             self.assertIn(key, gen_block_state_keys)
             self.assertIsNotNone(self.state.get(key))
@@ -100,7 +103,9 @@ class TestCreateGenesisBlock(TestCase):
         genesis_block = self.bs.get_block(0)
         self.assertIsNotNone(genesis_block)
         gen_block_state_keys = [item['key'] for item in genesis_block['genesis']]
-    
+
+        self.assertEqual(self.state.get(LATEST_BLOCK_HEIGHT_KEY),  genesis_block['number'])
+        self.assertEqual(self.state.get(LATEST_BLOCK_HASH_KEY),  genesis_block['hash'])
         for key in TestCreateGenesisBlock.genesis_contracts_state_changes:
             self.assertIn(key, gen_block_state_keys)
             self.assertIsNotNone(self.state.get(key))

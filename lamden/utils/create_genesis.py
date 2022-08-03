@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-from checksumdir import dirhash
 from contracting.client import ContractingClient
 from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY
 from contracting.db.encoder import decode
@@ -8,7 +7,7 @@ from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIME
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.storage import BlockStorage
+from lamden.storage import BlockStorage, LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
 from lamden.utils.legacy import BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT
 from os import listdir
 from pymongo import MongoClient
@@ -94,6 +93,10 @@ def main(
     LOG.info('Setting up genesis contracts...')
     setup_genesis_contracts(contracting_client)
 
+    LOG.info('Setting latest block hash & height...')
+    state.set(LATEST_BLOCK_HASH_KEY, genesis_block['hash'])
+    state.set(LATEST_BLOCK_HEIGHT_KEY, genesis_block['number'])
+
     LOG.info('Filling genesis block...')
     for key in state.keys():
         genesis_block['genesis'].append({
@@ -125,8 +128,6 @@ def main(
 
     LOG.info('Storing genesis block...')
     bs.store_block(genesis_block)
-
-    # TODO: set latest block hash & height?
 
 if __name__ == '__main__':
     parser = ArgumentParser()
