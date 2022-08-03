@@ -6,11 +6,6 @@ import asyncio
 import subprocess
 from subprocess import call
 
-import zmq.asyncio
-
-from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
-
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.masternode.masternode import Masternode
 from lamden.nodes.delegate.delegate import Delegate
@@ -18,17 +13,6 @@ from lamden.logger.base import get_logger
 
 import time
 
-
-def start_mongo():
-    try:
-        c = MongoClient(serverSelectionTimeoutMS=200)
-        c.server_info()
-    except ServerSelectionTimeoutError:
-        subprocess.Popen(['mongod', '--dbpath ~/blocks', '--logpath /dev/null', '--bind_ip_all'],
-                         stdout=open('/dev/null', 'w'),
-                         stderr=open('/dev/null', 'w'))
-        # print('Starting MongoDB...')
-        time.sleep(3)
 
 def cfg_and_start_rsync_daemon():
     os.system('cp rsyncd.conf /etc/ && rsync --daemon > /dev/null 2>&1')
@@ -142,8 +126,6 @@ def start_node(args):
         subprocess.check_call(['kill', '-15', str(args.pid)])
 
     if args.node_type == 'masternode':
-        # Start mongo
-        start_mongo()
         cfg_and_start_rsync_daemon()
 
         n = Masternode(
@@ -196,8 +178,6 @@ def join_network(args):
     os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
 
     if args.node_type == 'masternode':
-        # Start mongo
-        start_mongo()
         cfg_and_start_rsync_daemon()
 
         n = Masternode(
@@ -211,7 +191,6 @@ def join_network(args):
             should_seed=False
         )
     elif args.node_type == 'delegate':
-        start_mongo()
         n = Delegate(
             wallet=wallet,
             socket_base=socket_base,

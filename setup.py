@@ -15,7 +15,6 @@ setup(
         "uvloop==0.14.0",
         "sanic==20.6.3",
         "coloredlogs",
-        "pymongo",
         "pyzmq",
         "requests",
         "contracting",
