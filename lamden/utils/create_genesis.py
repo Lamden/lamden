@@ -16,7 +16,7 @@ import json
 import pathlib
 import sys
 
-GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation']
+GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
 LOG = get_logger('GENESIS_BLOCK')
 
 def confirm_and_flush_blocks(bs: BlockStorage) -> bool:
