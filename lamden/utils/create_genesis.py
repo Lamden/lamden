@@ -62,7 +62,9 @@ def main(
     bs: BlockStorage,
     state: FSDriver,
     contract_driver: ContractDriver,
-    contracting_client: ContractingClient
+    contracting_client: ContractingClient,
+    db: str = '',
+    collection: str =''
 ):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
@@ -103,7 +105,7 @@ def main(
         mongo_skip_keys = state.keys() + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
         LOG.info('Migrating state data from mongo and filling genesis block...')
-        for record in client.lamden.state.find({'_id': {'$nin': mongo_skip_keys}}):
+        for record in client[db][collection].find({'_id': {'$nin': mongo_skip_keys}}):
             try:
                 state.set(record['_id'], decode(record['v']))
                 genesis_block['genesis'].append({
@@ -115,10 +117,6 @@ def main(
 
     LOG.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
-
-    # TODO: do we want to have this?
-    # LOG.info('Computing state storage hash...')
-    # genesis_block['state_hash'] = dirhash(state.root, hashfunc='sha256')
 
     LOG.info('Signing state changes...')
     founders_wallet = Wallet(seed=bytes.fromhex(founder_sk))
@@ -134,11 +132,15 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-k', '--key', type=str, required=True)
     parser.add_argument('--migrate', choices=['none', 'mongo', 'filesystem'], required=True)
+    parser.add_argument('--db', type=str)
+    parser.add_argument('--collection', type=str)
     args = parser.parse_args()
 
     bs = BlockStorage()
     state = FSDriver()
     contract_driver = ContractDriver(driver=state)
     contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
+    db = args.db if args.migrate == 'mongo' else ''
+    collection = args.collection if args.migrate == 'mongo' else ''
 
-    main(args.key, args.migrate, bs, state, contract_driver, contracting_client)
+    main(args.key, args.migrate, bs, state, contract_driver, contracting_client, db=db, collection=collection)
