@@ -25,7 +25,8 @@ setup(
         "stdlib_list==0.8.0",
         "psutil==5.9.1",
         "python-socketio==5.5.0",
-        "aiohttp==3.8.1"
+        "aiohttp==3.8.1",
+        "iso8601"
     ],
     entry_points={
         'console_scripts': [
