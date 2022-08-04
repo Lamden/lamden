@@ -1,6 +1,5 @@
-from hlcpy import HLC
+from lamden.hlcpy import HLC
 from lamden.logger.base import get_logger
-import time
 
 class HLC_Clock():
     def __init__(self, processing_delay=3):
