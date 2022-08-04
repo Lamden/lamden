@@ -15,6 +15,7 @@ setup(
         "ujson==1.35",  # locking dep for websockets
         "idna==2.10",  # locking dep for sanic
         "typing_extensions==3.10.0.0",  # locking dep for pyzmq
+        "bidict==0.21.4",  # locking deb for socketio
         "uvloop==0.14.0",
         "sanic==20.6.3",
         "coloredlogs==15.0.1",
