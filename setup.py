@@ -12,6 +12,7 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
+        "ujson==1.35", # locking dep for websockets
         "uvloop==0.14.0",
         "sanic==20.6.3",
         "coloredlogs",
