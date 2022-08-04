@@ -13,19 +13,19 @@ setup(
     packages=find_packages(),
     install_requires=[
         "ujson==1.35",  # locking dep for websockets
-        "idna==2,10",  # locking dep for sanic
+        "idna==2.10",  # locking dep for sanic
+        "typing_extensions==3.10.0.0",  # locking dep for pyzmq
         "uvloop==0.14.0",
         "sanic==20.6.3",
-        "coloredlogs",
-        "pyzmq",
-        "requests",
-        "contracting",
-        "checksumdir",
-        "pynacl",
-        "stdlib_list",
-        "psutil",
-        "python-socketio",
-        "aiohttp"
+        "coloredlogs==15.0.1",
+        "pyzmq==23.1.0",
+        "requests==2.25.1",
+        "checksumdir==1.2.0",
+        "pynacl==1.5.0",
+        "stdlib_list==0.8.0",
+        "psutil==5.9.1",
+        "python-socketio==5.5.0",
+        "aiohttp==3.8.1"
     ],
     entry_points={
         'console_scripts': [
