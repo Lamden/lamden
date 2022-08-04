@@ -12,11 +12,12 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
+        "chardet==3.0.4",
         "ujson==1.35",  # locking dep for websockets
         "idna==2.10",  # locking dep for sanic
         "typing_extensions==3.10.0.0",  # locking dep for pyzmq
         "bidict==0.21.4",  # locking deb for socketio
-        "multidict==4.7.6",
+        "multidict==4.7.6", # locking dep for sanic
         "uvloop==0.14.0",
         "sanic==20.6.3",
         "coloredlogs==15.0.1",
