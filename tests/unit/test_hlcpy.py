@@ -1,6 +1,6 @@
 import time
 from unittest import TestCase
-from lamden.hlcpy import HLC
+from lamden.hlcpy import HLC, iso8601_to_nanos, nanos_to_iso8601
 
 class TestUtilsHLC(TestCase):
     def get_nanoseconds(self):
@@ -91,3 +91,29 @@ class TestUtilsHLC(TestCase):
         h1.sync()
         _, logical = h1.tuple()
         self.assertEqual(logical, 0)
+
+    def test_nanos_to_str(self):
+        nanos = 1606141759 * 1e9
+        self.assertEqual(nanos_to_iso8601(nanos),'2020-11-23T14:29:19.000000000Z')
+        nanos = 1606141759000000001
+        self.assertEqual(nanos_to_iso8601(nanos), '2020-11-23T14:29:19.000000001Z')
+        nanos = 1606141759001001001
+        self.assertEqual(nanos_to_iso8601(nanos), '2020-11-23T14:29:19.001001001Z')
+
+
+    def test_str_to_nanos(self):
+        s = '2020-11-23T14:29:19.000000001Z'
+        nanos = 1606141759000000001
+        self.assertEqual( iso8601_to_nanos(s), nanos)
+
+        s = '2020-11-23T14:29:19.000000000Z'
+        nanos = 1606141759 * 1e9
+        self.assertEqual( iso8601_to_nanos(s), nanos)
+
+        s = '2020-11-23T14:29:19.001001001Z'
+        nanos = 1606141759001001001
+        self.assertEqual( iso8601_to_nanos(s), nanos)
+
+        s = '2020-11-23T14:29:19.0011Z'
+        nanos = 1606141759001100000
+        self.assertEqual( iso8601_to_nanos(s), nanos)
