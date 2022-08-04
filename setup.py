@@ -12,7 +12,8 @@ setup(
     version=__version__,
     packages=find_packages(),
     install_requires=[
-        "ujson==1.35", # locking dep for websockets
+        "ujson==1.35",  # locking dep for websockets
+        "idna==2,10",  # locking dep for sanic
         "uvloop==0.14.0",
         "sanic==20.6.3",
         "coloredlogs",
