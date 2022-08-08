@@ -14,3 +14,11 @@ class TestUtilsHLC(TestCase):
 
         expected_nanos = 0
         self.assertEqual(expected_nanos, hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
+
+    def test_nanos_from_hlc_timestamp__hlc_of_zeros_returns_block_number_0(self):
+        hlc_timestamp = "0000-00-00T00:00:00.000000000Z_0"
+
+        expected_nanos = 0
+
+        self.assertEqual(expected_nanos, hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
+

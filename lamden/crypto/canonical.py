@@ -131,16 +131,17 @@ def block_hash_from_block(hlc_timestamp: str, block_number: int, previous_block_
     h.update('{}{}{}'.format(hlc_timestamp, block_number, previous_block_hash).encode())
     return h.hexdigest()
 
-def recalc_block_info(block, new_block_num, new_prev_hash) -> dict:
+def recalc_block_info(block, new_prev_hash) -> dict:
     hlc_timestamp = block.get('hlc_timestamp')
+    block_num = nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
 
     h = hashlib.sha3_256()
 
-    h.update('{}{}{}'.format(hlc_timestamp, new_block_num, new_prev_hash).encode())
+    h.update('{}{}{}'.format(hlc_timestamp, block_num, new_prev_hash).encode())
 
     block['hash'] = h.hexdigest()
     block['previous'] = new_prev_hash
-    block['number'] = new_block_num
+    block['number'] = block_num
 
     return block
 
@@ -158,4 +159,10 @@ def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp, rewards):
     h.update('{}'.format(encode(tx_result).encode()).encode())
     h.update('{}'.format(encode(rewards).encode()).encode())
     h.update('{}'.format(hlc_timestamp).encode())
+    return h.hexdigest()
+
+def hash_genesis_block_state_changes(state_changes: list) -> str:
+    state_changes.sort(key=lambda x: x.get('key'))
+    h = hashlib.sha3_256()
+    h.update('{}'.format(encode(state_changes).encode()).encode())
     return h.hexdigest()

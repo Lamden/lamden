@@ -43,13 +43,14 @@ class DetermineConsensus:
             total_solutions_received = 6 (we can now start checking consensus moving from ideal to eager to
                                           failure as more solutions arrive)
         '''
-        '''
+
         self.log.debug({
             'total_solutions_received': total_solutions_received,
             'consensus_needed': consensus_needed,
             'num_of_participants': num_of_participants
         })
-        '''
+
+
         if total_solutions_received < consensus_needed:
             #self.log.debug('[STOP] check_consensus - 1')
 

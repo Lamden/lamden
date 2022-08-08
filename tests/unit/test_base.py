@@ -305,7 +305,10 @@ class TestNode(TestCase):
             }
         }
 
-        self.node.node.check_peers(processing_results)
+        self.node.node.check_peers(
+            state_changes=processing_results['tx_result'].get('state'),
+            hlc_timestamp=processing_results.get('hlc_timestamap')
+        )
 
         self.await_async_process(asyncio.sleep, 3)
 
@@ -331,8 +334,15 @@ class TestNode(TestCase):
             }
         }
 
-        self.node.node.check_peers(processing_results)
-        other_node.node.check_peers(processing_results)
+        self.node.node.check_peers(
+            state_changes=processing_results['tx_result'].get('state'),
+            hlc_timestamp=processing_results.get('hlc_timestamap')
+        )
+
+        other_node.node.check_peers(
+            state_changes=processing_results['tx_result'].get('state'),
+            hlc_timestamp=processing_results.get('hlc_timestamap')
+        )
 
         self.await_async_process(asyncio.sleep, 3)
 
@@ -380,7 +390,10 @@ class TestNode(TestCase):
             }
         }
         self.node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])
-        self.node.node.check_peers(processing_results)
+        self.node.node.check_peers(
+            state_changes=processing_results['tx_result'].get('state'),
+            hlc_timestamp=processing_results.get('hlc_timestamap')
+        )
 
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))

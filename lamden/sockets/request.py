@@ -6,6 +6,7 @@ from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
 from lamden.sockets.monitor import SocketMonitor
+from typing import Callable
 
 ATTRIBUTE_ERROR_TO_ADDRESS_NOT_NONE = "to_address property cannot be none."
 
@@ -31,7 +32,7 @@ class Result:
 
 class Request():
     def __init__(self, to_address: str, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
-                 local_ip: str = None):
+                 local_ip: str = None, reconnect_callback: Callable = None):
         self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.to_address = to_address
@@ -47,7 +48,10 @@ class Request():
         self.pollin = None
         self.lock = Lock()
 
-        self.socket_monitor = SocketMonitor(socket_type="REQUEST")
+        self.socket_monitor = SocketMonitor(
+            socket_type="REQUEST",
+            parent_ip=self.local_ip
+        )
         self.socket_monitor.start()
 
     @property
@@ -66,11 +70,9 @@ class Request():
         if self.local_ip:
             named_message = f'[REQUEST] {message}'
             logger = get_logger(self.local_ip)
-            print(f'[{self.local_ip}]{named_message}\n')
         else:
             named_message = message
             logger = get_logger(f'REQUEST')
-            print(f'[REQUEST] {named_message}\n')
 
         if log_type == 'info':
             logger.info(named_message)

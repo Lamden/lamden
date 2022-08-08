@@ -1,9 +1,16 @@
 from iso8601 import parse_date
-from lamden.crypto.canonical import block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object
-from contracting.db.encoder import encode, decode
+from lamden.crypto.canonical import block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object, hash_genesis_block_state_changes
+from contracting.db.encoder import encode
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
-import json
+from lamden.utils import hlc
+
+GENESIS_BLOCK_NUMBER = 0
+GENESIS_HLC_TIMESTAMP = '0000-00-00T00:00:00.000000000Z_0'
+GENESIS_PREVIOUS_HASH = '0' * 64
+GENESIS_BLOCK_NUMBER_OF_KEYS = 6
+
+BLOCK_NUMBER_OF_KEYS = 8
 
 EXCEPTION_BLOCK_HASH_MALFORMED = "Block Hash is Malformed."
 EXCEPTION_BLOCK_PREVIOUS_HASH_MALFORMED = "Block Previous Hash is Malformed."
@@ -16,6 +23,12 @@ EXCEPTION_BLOCK_REWARDS_INVALID = "Block Rewards are Invalid."
 EXCEPTION_BLOCK_PROOFS_INVALID = "Block Proofs are Invalid."
 EXCEPTION_BLOCK_PROOF_MALFORMED = "Block Proof is Malformed."
 EXCEPTION_BLOCK_PROCESSED_INVALID = "Block Processed is Invalid."
+EXCEPTION_BLOCK_KEYS_INVALID_NUMBER = f"Block should only have {BLOCK_NUMBER_OF_KEYS} keys."
+
+EXCEPTION_GENESIS_BLOCK_HLC_INVALID = f"Genesis Block HLC is Invalid. Should be '{GENESIS_HLC_TIMESTAMP}'."
+EXCEPTION_GENESIS_BLOCK_NUMBER_INVALID = f"Genesis Block Number is Invalid. Should be {GENESIS_BLOCK_NUMBER}."
+EXCEPTION_GENESIS_BLOCK_PREVIOUS_HASH_INVALID = f"Genesis Block Previous Hash is Invalid. Should be {GENESIS_PREVIOUS_HASH}."
+EXCEPTION_GENESIS_BLOCK_KEYS_INVALID_NUMBER = f"Genesis Block should only have {GENESIS_BLOCK_NUMBER_OF_KEYS} keys."
 
 BLOCK_EXCEPTIONS = {
     'BlockHashMalformed': EXCEPTION_BLOCK_HASH_MALFORMED,
@@ -28,7 +41,12 @@ BLOCK_EXCEPTIONS = {
     'BlockRewardsInvalid': EXCEPTION_BLOCK_REWARDS_INVALID,
     'BlockProofsInvalid': EXCEPTION_BLOCK_PROOFS_INVALID,
     'BlockProofMalformed': EXCEPTION_BLOCK_PROOF_MALFORMED,
-    'BlockProcessedInvalid': EXCEPTION_BLOCK_PROCESSED_INVALID
+    'BlockProcessedInvalid': EXCEPTION_BLOCK_PROCESSED_INVALID,
+    'BlockKeysInvalidNumber': EXCEPTION_BLOCK_KEYS_INVALID_NUMBER,
+    'GenesisBlockNumberInvalid': EXCEPTION_GENESIS_BLOCK_NUMBER_INVALID,
+    'GenesisBlockHLCInvalid': EXCEPTION_GENESIS_BLOCK_HLC_INVALID,
+    'GenesisBlockPreviousHashInvalid': EXCEPTION_GENESIS_BLOCK_PREVIOUS_HASH_INVALID,
+    'GenesisBlockKeysInvalidNumber': EXCEPTION_GENESIS_BLOCK_KEYS_INVALID_NUMBER
 }
 
 class BlockHashMalformed(Exception):
@@ -64,10 +82,29 @@ class BlockProofMalformed(Exception):
 class BlockProcessedInvalid(Exception):
     pass
 
+class BlockKeysInvalidNumber(Exception):
+    pass
+
+class GenesisBlockNumberInvalid(Exception):
+    pass
+
+class GenesisBlockHLCInvalid(Exception):
+    pass
+
+class GenesisBlockPreviousHashInvalid(Exception):
+    pass
+
+class GenesisBlockKeysInvalidNumber(Exception):
+    pass
+
 
 def validate_block_structure(block: dict) -> bool:
     if not isinstance(block, dict):
         return False
+
+    number = block.get('number')
+    if not isinstance(number, int):
+        raise BlockNumberInvalid(EXCEPTION_BLOCK_NUMBER_INVALID)
 
     hash_str = block.get('hash')
     if not hash_is_sha256(hash_str=hash_str):
@@ -76,14 +113,6 @@ def validate_block_structure(block: dict) -> bool:
     previous_hash_str = block.get('previous')
     if not hash_is_sha256(hash_str=previous_hash_str):
         raise BlockPreviousHashMalformed(EXCEPTION_BLOCK_PREVIOUS_HASH_MALFORMED)
-
-    number = block.get('number')
-    if not isinstance(number, int) or number < 0:
-        raise BlockNumberInvalid(EXCEPTION_BLOCK_NUMBER_INVALID)
-
-    hlc_timestamp = block.get('hlc_timestamp')
-    if not is_hlc_timestamp(hlc_timestamp=hlc_timestamp):
-        raise BlockHLCInvalid(EXCEPTION_BLOCK_HLC_INVALID)
 
     origin = block.get('origin')
     if not isinstance(origin, dict):
@@ -97,19 +126,47 @@ def validate_block_structure(block: dict) -> bool:
     if not hash_is_sha256_signature(origin_signature):
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
-    rewards = block.get('rewards')
-    if not isinstance(rewards, list):
-        raise BlockRewardsInvalid(EXCEPTION_BLOCK_REWARDS_INVALID)
+    genesis = block.get('genesis')
+    if not isinstance(genesis, list):
+        hlc_timestamp = block.get('hlc_timestamp')
+        if not is_iso8601_hlc_timestamp(hlc_timestamp=hlc_timestamp):
+            raise BlockHLCInvalid(EXCEPTION_BLOCK_HLC_INVALID)
 
-    proofs = block.get('proofs')
-    if not isinstance(proofs, list) or len(proofs) < 1:
-        raise BlockProofsInvalid(EXCEPTION_BLOCK_PROOFS_INVALID)
+        expected_number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+        if expected_number != number:
+            raise BlockNumberInvalid(EXCEPTION_BLOCK_NUMBER_INVALID)
 
-    processed_transaction = block.get('processed')
-    if not isinstance(processed_transaction, dict):
-        raise BlockProcessedInvalid(EXCEPTION_BLOCK_PROCESSED_INVALID)
+        rewards = block.get('rewards')
+        if not isinstance(rewards, list):
+            raise BlockRewardsInvalid(EXCEPTION_BLOCK_REWARDS_INVALID)
 
-    validate_processed_transaction_structure(processed_transaction=processed_transaction)
+        proofs = block.get('proofs')
+        if not isinstance(proofs, list) or len(proofs) < 1:
+            raise BlockProofsInvalid(EXCEPTION_BLOCK_PROOFS_INVALID)
+
+        processed_transaction = block.get('processed')
+        if not isinstance(processed_transaction, dict):
+            raise BlockProcessedInvalid(EXCEPTION_BLOCK_PROCESSED_INVALID)
+
+        if len(block.keys()) != BLOCK_NUMBER_OF_KEYS:
+            raise BlockKeysInvalidNumber(EXCEPTION_BLOCK_KEYS_INVALID_NUMBER)
+
+        validate_processed_transaction_structure(processed_transaction=processed_transaction)
+    else:
+        hlc_timestamp = block.get('hlc_timestamp')
+        if hlc_timestamp != GENESIS_HLC_TIMESTAMP:
+            raise GenesisBlockHLCInvalid(EXCEPTION_GENESIS_BLOCK_HLC_INVALID)
+
+        number = block.get('number')
+        if number != GENESIS_BLOCK_NUMBER:
+            raise GenesisBlockNumberInvalid(EXCEPTION_GENESIS_BLOCK_NUMBER_INVALID)
+
+        previous_hash_str = block.get('previous')
+        if previous_hash_str != GENESIS_PREVIOUS_HASH:
+            raise GenesisBlockPreviousHashInvalid(EXCEPTION_GENESIS_BLOCK_PREVIOUS_HASH_INVALID)
+
+        if len(block.keys()) != GENESIS_BLOCK_NUMBER_OF_KEYS:
+            raise GenesisBlockKeysInvalidNumber(EXCEPTION_GENESIS_BLOCK_KEYS_INVALID_NUMBER)
 
     return True
 
@@ -298,8 +355,13 @@ def verify_block(block: dict) -> bool:
     log = get_logger('BLOCK VALIDATOR')
     try:
         validate_block_structure(block=block)
-        validate_all_hashes(block=block)
-        validate_all_signatures(block=block)
+        is_genesis_block = block.get('genesis') is not None
+        if is_genesis_block:
+            validate_genesis_hashes(block=block)
+            validate_genesis_signatures(block=block)
+        else:
+            validate_all_hashes(block=block)
+            validate_all_signatures(block=block)
     except Exception as err:
         log.error(err)
         return False
@@ -380,6 +442,21 @@ def verify_origin_signature(block: dict) -> bool:
         print(err)
         return False
 
+def verify_genesis_origin_signature(block: dict) -> bool:
+    try:
+        sender = block['origin'].get('sender')
+        genesis_state_changes = block.get('genesis')
+        genesis_state_changes.sort(key=lambda x: x.get('key'))
+        message = hash_genesis_block_state_changes(state_changes=genesis_state_changes)
+        signature = block['origin'].get('signature')
+
+        valid = verify(vk=sender, msg=message, signature=signature
+        )
+        return valid
+    except Exception as err:
+        print(err)
+        return False
+
 def verify_proofs(block: dict) -> bool:
     tx_result = block.get('processed')
     rewards = block.get('rewards')
@@ -410,6 +487,18 @@ def verify_proof(proof: dict, tx_result: str, rewards: dict, hlc_timestamp: str)
         print(err)
         return False
 
+def validate_genesis_hashes(block: dict):
+    if not verify_block_hash(block=block):
+        raise BlockHashMalformed(EXCEPTION_BLOCK_HASH_MALFORMED)
+
+    return True
+
+def validate_genesis_signatures(block: dict):
+    if not verify_genesis_origin_signature(block=block):
+        raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
+
+    return True
+
 def hash_is_sha256(hash_str: str):
     if not isinstance(hash_str, str):
         return False
@@ -432,7 +521,7 @@ def hash_is_sha256_signature(signature: str):
 
     return len(signature) == 128
 
-def is_hlc_timestamp(hlc_timestamp: str) -> bool:
+def is_iso8601_hlc_timestamp(hlc_timestamp: str) -> bool:
     if not isinstance(hlc_timestamp, str):
         return False
 

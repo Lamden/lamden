@@ -136,10 +136,8 @@ class Router():
     def log(self, log_type: str, message: str) -> None:
         if self.network_ip:
             named_message = f'[ROUTER] {message}'
-            print(f'[{self.network_ip}]{named_message}\n')
         else:
             named_message = message
-            print(f'[ROUTER] {named_message}\n')
 
         logger_name = self.network_ip or 'ROUTER'
 
@@ -240,7 +238,7 @@ class Router():
         while self.should_check:
             if await self.has_message(timeout_ms=self.poll_time_ms):
                 multi_message = await self.socket.recv_multipart()
-                print(f'multi_message: {multi_message}')
+                self.log('info', f'multi_message: {multi_message}')
                 ident_vk_bytes, empty, msg = multi_message
 
                 self.log('info', f'Received request from {ident_vk_bytes}: {msg}')

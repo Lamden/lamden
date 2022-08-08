@@ -107,7 +107,7 @@ def setup_member_election_contracts(client: ContractingClient, masternode_price=
         })
 
 
-def setup_genesis_contracts(initial_masternodes, initial_delegates, client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH):
+def setup_genesis_contracts(initial_masternodes, initial_delegates, client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH, commit=True):
     submit_from_genesis_json_file(client=client, filename=filename, root=root)
 
     setup_member_contracts(
@@ -120,5 +120,6 @@ def setup_genesis_contracts(initial_masternodes, initial_delegates, client: Cont
 
     setup_member_election_contracts(client=client)
 
-    client.raw_driver.commit()
-    client.raw_driver.clear_pending_state()
+    if commit:
+        client.raw_driver.commit()
+        client.raw_driver.clear_pending_state()
