@@ -19,6 +19,6 @@ class TestUtilsHLC(TestCase):
         hlc_timestamp = "0000-00-00T00:00:00.000000000Z_0"
 
         expected_nanos = 0
-        print(hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
+
         self.assertEqual(expected_nanos, hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
 

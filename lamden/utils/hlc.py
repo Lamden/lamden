@@ -1,4 +1,4 @@
-from hlcpy import HLC
+from lamden.hlcpy import HLC
 
 def nanos_from_hlc_timestamp(hlc_timestamp: str) -> int:
     try:
