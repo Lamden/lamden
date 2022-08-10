@@ -9,6 +9,7 @@ from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.nodes.filequeue import FileQueue
 from lamden.utils import hlc
 from lamden.crypto.wallet import Wallet
+from lamden.cli.start import resolve_genesis_block
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.unit.helpers.mock_transactions import get_processing_results, get_tx_message
@@ -60,14 +61,18 @@ class TestBaseNode_Catchup(TestCase):
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
 
+        self.genesis_block = resolve_genesis_block(Path(f'{self.current_path}/helpers/genesis_block.json'))
+
         try:
             shutil.rmtree(self.temp_storage)
         except FileNotFoundError:
             pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
-        self.node: Node = self.create_node_instance()
-        self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True)
+        self.node_wallet = Wallet()
+
+        self.node = self.create_node_instance()
+        self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True, initial_members=[self.node_wallet.verifying_key])
         self.catchup_peers: List[Peer] = []
 
     def tearDown(self):
@@ -100,7 +105,6 @@ class TestBaseNode_Catchup(TestCase):
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
             blocks=block_storage,
-            genesis_path=str(self.genesis_path),
             tx_queue=tx_queue,
             testing=True,
             nonces=nonce_storage

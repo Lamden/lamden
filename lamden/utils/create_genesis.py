@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from contracting.client import ContractingClient
 from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY
-from contracting.db.encoder import decode
+from contracting.db.encoder import decode, encode
 from lamden.contracts import sync
 from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIMESTAMP, GENESIS_PREVIOUS_HASH
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
@@ -50,8 +50,8 @@ def setup_genesis_contracts(contracting_client: ContractingClient):
         constitution = json.load(f)
 
     sync.setup_genesis_contracts(
-        initial_masternodes=constitution['masternodes'],
-        initial_delegates=constitution['delegates'],
+        initial_masternodes=[ vk for vk in constitution['masternodes'].keys()],
+        initial_delegates=[ vk for vk in constitution['delegates'].keys()],
         client=contracting_client
     )
 
@@ -129,10 +129,16 @@ def main(
     LOG.info('Storing genesis block...')
     bs.store_block(genesis_block)
 
+    LOG.info('Saving genesis_block.json into Home directory...')
+    encoded_block = encode(genesis_block)
+
+    with open(f'{pathlib.Path.home()}/genesis_block.json', 'w') as f:
+        f.write(encoded_block)
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-k', '--key', type=str, required=True)
-    parser.add_argument('--migrate', choices=['none', 'mongo', 'filesystem'], required=True)
+    parser.add_argument('--migrate', default='none', choices=['mongo', 'filesystem'])
     parser.add_argument('--db', type=str)
     parser.add_argument('--collection', type=str)
     args = parser.parse_args()
