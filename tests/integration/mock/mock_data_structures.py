@@ -175,8 +175,9 @@ class TestMockProcessed(TestCase):
 class MockGenesisBlock:
     def __init__(self,
             internal_state: dict = {},
-            founder_wallet: Wallet = Wallet()
-        ):
+            founder_wallet: Wallet = Wallet(),
+            initial_members: list = []
+            ):
 
         self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
         self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
@@ -188,6 +189,10 @@ class MockGenesisBlock:
         self.add_to_genesis(
             key=f'currency.balances:{self.founder_wallet.verifying_key}',
             value=100000000
+        )
+        self.add_to_genesis(
+            key=f'masternodes.S:members',
+            value=initial_members
         )
 
         for key, value in internal_state.items():
@@ -355,10 +360,11 @@ class TestMockBlock(TestCase):
         self.assertEqual([], block_dict.get('rewards'))
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False):
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: list = []):
         self.blocks = dict()
         self.internal_state = dict()
         self.founder_wallet = Wallet()
+        self.initial_members = initial_members
 
         self.receiver_wallet = None
         if one_wallet:
@@ -414,7 +420,8 @@ class MockBlocks:
         if self.current_block_height == -1:
             new_block =  copy.deepcopy(MockGenesisBlock(
                 founder_wallet=self.founder_wallet,
-                internal_state=self.internal_state
+                internal_state=self.internal_state,
+                initial_members=self.initial_members
             ))
 
             for state_change in new_block.genesis:

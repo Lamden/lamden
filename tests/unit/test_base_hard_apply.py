@@ -12,7 +12,7 @@ from lamden.crypto.wallet import Wallet
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.unit.helpers.mock_transactions import get_processing_results, get_tx_message
-
+from lamden.cli.start import resolve_genesis_block
 
 import asyncio
 import uvloop
@@ -23,6 +23,8 @@ class TestBaseNode_HardApply(TestCase):
         self.current_path = Path.cwd()
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
+
+        self.genesis_block = resolve_genesis_block(Path(f'{self.current_path}/helpers/genesis_block.json'))
 
         try:
             shutil.rmtree(self.temp_storage)
@@ -66,7 +68,8 @@ class TestBaseNode_HardApply(TestCase):
             genesis_path=str(self.genesis_path),
             tx_queue=tx_queue,
             testing=True,
-            nonces=nonce_storage
+            nonces=nonce_storage,
+            genesis_block=self.genesis_block,
         )
 
     def start_node(self):

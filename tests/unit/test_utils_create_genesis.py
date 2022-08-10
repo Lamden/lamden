@@ -9,12 +9,14 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 import json
+import shutil
 
 SAMPLE_KEY = 'something.something'
 SAMPLE_VAL = 'something'
 
 class TestCreateGenesisBlock(TestCase):
-    def setUpClass():
+    @classmethod
+    def setUpClass(cls):
         other_state = FSDriver(Path().home().joinpath('test'))
         other_contract_driver = ContractDriver(driver=other_state)
         other_contracting_client = ContractingClient(driver=other_contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
@@ -23,9 +25,10 @@ class TestCreateGenesisBlock(TestCase):
         constitution = None
         with open(Path.home().joinpath('constitution.json')) as f:
             constitution = json.load(f)
+
         sync.setup_genesis_contracts(
-            initial_masternodes=constitution['masternodes'],
-            initial_delegates=constitution['delegates'],
+            initial_masternodes=[vk for vk in constitution['masternodes'].keys()],
+            initial_delegates=[vk for vk in constitution['delegates'].keys()],
             client=other_contracting_client,
             commit=False
         )
@@ -35,9 +38,21 @@ class TestCreateGenesisBlock(TestCase):
         }
 
     def setUp(self):
+
         self.founder_sk = 'beef' * 16
-        self.bs = BlockStorage()
-        self.state = FSDriver()
+
+        self.current_path = Path.cwd()
+        self.temp_storage = Path(f'{self.current_path}/temp_storage')
+
+        try:
+            shutil.rmtree(self.temp_storage)
+        except FileNotFoundError:
+            pass
+        self.temp_storage.mkdir(exist_ok=True, parents=True)
+
+        self.bs = BlockStorage(root=self.temp_storage)
+        self.state = FSDriver(root=Path(f'{self.temp_storage}/state'))
+
         self.contract_driver = ContractDriver(driver=self.state)
         self.contracting_client = ContractingClient(driver=self.contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
         self.earlier_time = Datetime(year=1, month=1, day=1)
