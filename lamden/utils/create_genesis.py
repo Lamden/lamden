@@ -7,12 +7,11 @@ from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIME
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.storage import LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY, STORAGE_HOME
+from lamden.storage import LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
 from lamden.utils.legacy import BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT
+from pathlib import Path
 from pymongo import MongoClient
 import json
-from pathlib import Path
-import shutil
 import sys
 
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
@@ -104,7 +103,7 @@ def build_block(founder_sk: str, additional_state: list):
         else:
             genesis_block['genesis'].append(delta)
 
-    LOG.info('Sorting state changes inside genesis block...')
+    LOG.info('Sorting state changes...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
 
     LOG.info('Signing state changes...')
@@ -149,4 +148,4 @@ if __name__ == '__main__':
     collection = args.collection if args.migrate == 'mongo' else ''
     filebased_state_path = FSDRIVER_HOME if args.migrate == 'filesystem' else None
 
-    main(args.key, args.migrate, db=db, collection=collection, filebased_state_path=filebased_state_path)
+    main(founder_sk=args.key, migration_scheme=args.migrate, db=db, collection=collection, filebased_state_path=filebased_state_path)
