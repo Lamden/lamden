@@ -21,7 +21,7 @@ GENESIS_BLOCK_PATH = pathlib.Path().home().joinpath('genesis_block.json')
 GENESIS_STATE_PATH = STORAGE_HOME.joinpath('tmp_genesis_block_state')
 LOG = get_logger('GENESIS_BLOCK')
 
-def get_genesis_contracts_state_changes(contracting_client: ContractingClient):
+def setup_genesis_contracts(contracting_client: ContractingClient):
     state_changes = {}
 
     contracting_client.set_submission_contract(filename=sync.DEFAULT_SUBMISSION_PATH, commit=False)
@@ -41,16 +41,17 @@ def get_genesis_contracts_state_changes(contracting_client: ContractingClient):
     )
 
     state_changes.update(contracting_client.raw_driver.pending_writes)
-    contracting_client.raw_driver.clear_pending_state()
+    contracting_client.raw_driver.commit()
 
-    return state_changes
+    return {k: v for k, v in state_changes.items() if v is not None}
 
 def main(
     founder_sk: str,
     migration_scheme: str,
     contracting_client: ContractingClient,
     db: str = '',
-    collection: str =''
+    collection: str = '',
+    existing_state_driver: FSDriver = None
 ):
     if GENESIS_BLOCK_PATH.is_file():
         LOG.error(f'"{GENESIS_BLOCK_PATH}" already exist')
@@ -69,7 +70,7 @@ def main(
     }
 
     LOG.info('Setting up genesis contracts...')
-    state_changes = get_genesis_contracts_state_changes(contracting_client)
+    state_changes = setup_genesis_contracts(contracting_client)
     for key, value in state_changes.items():
         genesis_block['genesis'].append({
             'key': key,
@@ -81,24 +82,31 @@ def main(
     genesis_block['genesis'].append({'key': LATEST_BLOCK_HASH_KEY, 'value': genesis_block['hash']})
 
     if migration_scheme == 'filesystem':
-        existing_state = FSDriver()
         LOG.info('Migrating state data from filesystem and filling genesis block...')
-        for key in existing_state.keys():
+        for key in existing_state_driver.keys():
             if key not in GENESIS_CONTRACTS_KEYS:
-                genesis_block['genesis'].append({
-                    'key': key,
-                    'value': existing_state.get(key)
-                })
+                entry = next((item for item in genesis_block['genesis'] if item['key'] == key), None)
+                if entry is not None:
+                    entry['value'] = existing_state_driver.get(key)
+                else:
+                    genesis_block['genesis'].append({
+                        'key': key,
+                        'value': existing_state_driver.get(key)
+                    })
 
     elif migration_scheme == 'mongo':
         mongo_skip_keys = GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
         LOG.info('Migrating state data from mongo and filling genesis block...')
         for record in client[db][collection].find({'_id': {'$nin': mongo_skip_keys}}):
-            genesis_block['genesis'].append({
-                'key': record['_id'],
-                'value': decode(record['v'])
-            })
+            entry = next((item for item in genesis_block['genesis'] if item['key'] == record['_id']), None)
+            if entry is not None:
+                entry['value'] = decode(record['v'])
+            else:
+                genesis_block['genesis'].append({
+                    'key': record['_id'],
+                    'value': decode(record['v'])
+                })
 
     LOG.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
@@ -127,5 +135,6 @@ if __name__ == '__main__':
     contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
     db = args.db if args.migrate == 'mongo' else ''
     collection = args.collection if args.migrate == 'mongo' else ''
+    existing_state_driver = FSDriver() if args.migrate == 'filesystem' else None
 
-    main(args.key, args.migrate, contracting_client, db=db, collection=collection)
+    main(args.key, args.migrate, contracting_client, db=db, collection=collection, existing_state_driver=existing_state_driver)
