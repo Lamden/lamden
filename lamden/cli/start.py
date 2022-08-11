@@ -11,7 +11,7 @@ from lamden.nodes.masternode.masternode import Masternode
 from lamden.nodes.delegate.delegate import Delegate
 from lamden.logger.base import get_logger
 
-import time
+from contracting.db.encoder import decode
 
 
 def cfg_and_start_rsync_daemon():
@@ -84,7 +84,7 @@ def resolve_genesis_block(fp):
     path.touch()
 
     f = open(str(path), 'r')
-    genesis_block = json.load(f)
+    genesis_block = decode(f.read())
     f.close()
 
     return genesis_block
