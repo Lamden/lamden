@@ -64,7 +64,7 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
 
     return state
 
-def build_block(founder_sk: str, additional_state: dict):
+def build_block(founder_sk: str, additional_state: dict = {}):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
         'number': GENESIS_BLOCK_NUMBER,
