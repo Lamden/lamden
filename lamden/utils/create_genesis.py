@@ -45,7 +45,7 @@ def setup_genesis_contracts(contracting_client: ContractingClient):
 
     return {k: v for k, v in state_changes.items() if v is not None}
 
-def main(
+def build_block(
     founder_sk: str,
     migration_scheme: str,
     contracting_client: ContractingClient,
@@ -53,10 +53,6 @@ def main(
     collection: str = '',
     existing_state_driver: FSDriver = None
 ):
-    if GENESIS_BLOCK_PATH.is_file():
-        LOG.error(f'"{GENESIS_BLOCK_PATH}" already exist')
-        sys.exit(1)
-
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
         'number': GENESIS_BLOCK_NUMBER,
@@ -93,7 +89,7 @@ def main(
                         'key': key,
                         'value': existing_state_driver.get(key)
                     })
-
+    
     elif migration_scheme == 'mongo':
         mongo_skip_keys = GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
@@ -115,6 +111,22 @@ def main(
     founders_wallet = Wallet(seed=bytes.fromhex(founder_sk))
     genesis_block['origin']['sender'] = founders_wallet.verifying_key
     genesis_block['origin']['signature'] = founders_wallet.sign(hash_genesis_block_state_changes(genesis_block['genesis']))
+
+    return genesis_block
+
+def main(
+    founder_sk: str,
+    migration_scheme: str,
+    contracting_client: ContractingClient,
+    db: str = '',
+    collection: str = '',
+    existing_state_driver: FSDriver = None
+):
+    if GENESIS_BLOCK_PATH.is_file():
+        LOG.error(f'"{GENESIS_BLOCK_PATH}" already exist')
+        sys.exit(1)
+
+    genesis_block = build_block(founder_sk, migration_scheme, contracting_client, db, collection, existing_state_driver)
 
     LOG.info(f'Saving genesis block to "{GENESIS_BLOCK_PATH}"...')
     with open(GENESIS_BLOCK_PATH, 'w') as f:
