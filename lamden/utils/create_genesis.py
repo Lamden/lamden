@@ -48,29 +48,23 @@ def build_genesis_contracts_changes():
     return {k: v for k, v in state_changes.items() if v is not None}
 
 def fetch_filebased_state(filebased_state_path: Path, ignore_keys: list = []):
-    state = []
+    state = {}
     driver = FSDriver(root=filebased_state_path)
     for key in driver.keys():
         if key not in ignore_keys:
-            state.append({
-                'key': key,
-                'value': driver.get(key)
-            })
+            state[key] = driver.get(key)
 
     return state
 
 def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
-    state = []
+    state = {}
     client = MongoClient()
     for record in client[db][collection].find({'_id': {'$nin': ignore_keys}}):
-        state.append({
-            'key': record['_id'],
-            'value': decode(record['v'])
-        })
+        state[record['_id']] = decode(record['v'])
 
     return state
 
-def build_block(founder_sk: str, additional_state: list):
+def build_block(founder_sk: str, additional_state: dict):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
         'number': GENESIS_BLOCK_NUMBER,
@@ -85,23 +79,18 @@ def build_block(founder_sk: str, additional_state: list):
 
     LOG.info('Building genesis contracts state...')
     state_changes = build_genesis_contracts_changes()
+
+    LOG.info('Merging additional state...')
+    state_changes.update(additional_state)
+
+    LOG.info('Filling genesis block...')
     for key, value in state_changes.items():
         genesis_block['genesis'].append({
             'key': key,
             'value': value
         })
-
-    LOG.info('Setting latest block hash & height...')
     genesis_block['genesis'].append({'key': LATEST_BLOCK_HEIGHT_KEY, 'value': genesis_block['number']})
     genesis_block['genesis'].append({'key': LATEST_BLOCK_HASH_KEY, 'value': genesis_block['hash']})
-
-    LOG.info('Adding additional state...')
-    for delta in additional_state:
-        entry = next((item for item in genesis_block['genesis'] if item['key'] == delta['key']), None)
-        if entry is not None:
-            entry['value'] = delta['value']
-        else:
-            genesis_block['genesis'].append(delta)
 
     LOG.info('Sorting state changes...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
