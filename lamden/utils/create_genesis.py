@@ -1,69 +1,57 @@
 from argparse import ArgumentParser
 from contracting.client import ContractingClient
-from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY
-from contracting.db.encoder import decode, encode
+from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY
+from contracting.db.encoder import encode, decode
 from lamden.contracts import sync
 from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIMESTAMP, GENESIS_PREVIOUS_HASH
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.storage import BlockStorage, LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
+from lamden.storage import LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY, STORAGE_HOME
 from lamden.utils.legacy import BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT
-from os import listdir
 from pymongo import MongoClient
 import json
 import pathlib
+import shutil
 import sys
 
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
+GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
+GENESIS_BLOCK_PATH = pathlib.Path().home().joinpath('genesis_block.json')
+GENESIS_STATE_PATH = STORAGE_HOME.joinpath('tmp_genesis_block_state')
 LOG = get_logger('GENESIS_BLOCK')
 
-def confirm_and_flush_blocks(bs: BlockStorage) -> bool:
-    if bs.total_blocks() > 0:
-        i = ''
-        while i != 'y' and i != 'n':
-            i = input(f'Confirm deletion of block data located under {bs.root} (y/n)\n> ')
-        if i == 'y':
-            bs.flush()
-        else:
-            return False
-    
-    return True
-
-def confirm_and_flush_state(state: FSDriver) -> bool:
-    if len(listdir(state.root)) > 0:
-        i = ''
-        while i != 'y' and i != 'n':
-            i = input(f'Confirm deletion of state data located under {state.root} (y/n)\n> ')
-        if i == 'y':
-            state.flush()
-        else:
-            return False
-
-    return True
-
 def setup_genesis_contracts(contracting_client: ContractingClient):
-    contracting_client.set_submission_contract()
+    state_changes = {}
+
+    contracting_client.set_submission_contract(filename=sync.DEFAULT_SUBMISSION_PATH, commit=False)
+    state_changes.update(contracting_client.raw_driver.pending_writes)
+    contracting_client.raw_driver.commit()
+    contracting_client.submission_contract = contracting_client.get_contract('submission')
 
     constitution = None
     with open(pathlib.Path.home().joinpath('constitution.json')) as f:
         constitution = json.load(f)
 
     sync.setup_genesis_contracts(
-        initial_masternodes=[ vk for vk in constitution['masternodes'].keys()],
-        initial_delegates=[ vk for vk in constitution['delegates'].keys()],
-        client=contracting_client
+        initial_masternodes=[vk for vk in constitution['masternodes'].keys()] + [vk for vk in constitution['delegates'].keys()],
+        initial_delegates=[vk for vk in constitution['delegates'].keys()],
+        client=contracting_client,
+        commit=False
     )
 
-def main(
+    state_changes.update(contracting_client.raw_driver.pending_writes)
+    contracting_client.raw_driver.commit()
+
+    return {k: v for k, v in state_changes.items() if v is not None}
+
+def build_block(
     founder_sk: str,
     migration_scheme: str,
-    bs: BlockStorage,
-    state: FSDriver,
-    contract_driver: ContractDriver,
     contracting_client: ContractingClient,
     db: str = '',
-    collection: str =''
+    collection: str = '',
+    existing_state_driver: FSDriver = None
 ):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
@@ -77,46 +65,44 @@ def main(
         }
     }
 
-    if not confirm_and_flush_blocks(bs):
-        LOG.info('Aborting')
-        sys.exit(1)
-
-    if migration_scheme == 'filesystem':
-        for con in GENESIS_CONTRACTS:
-            state.delete(con + '.' + CODE_KEY)
-        LOG.info('Flushed genesis contracts')
-    else:
-        if not confirm_and_flush_state(state):
-            LOG.info('Aborting')
-            sys.exit(1)
-
     LOG.info('Setting up genesis contracts...')
-    setup_genesis_contracts(contracting_client)
-
-    LOG.info('Setting latest block hash & height...')
-    state.set(LATEST_BLOCK_HASH_KEY, genesis_block['hash'])
-    state.set(LATEST_BLOCK_HEIGHT_KEY, genesis_block['number'])
-
-    LOG.info('Filling genesis block...')
-    for key in state.keys():
+    state_changes = setup_genesis_contracts(contracting_client)
+    for key, value in state_changes.items():
         genesis_block['genesis'].append({
             'key': key,
-            'value': state.get(key)
+            'value': value
         })
 
-    if migration_scheme == 'mongo':
-        mongo_skip_keys = state.keys() + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
+    LOG.info('Setting latest block hash & height...')
+    genesis_block['genesis'].append({'key': LATEST_BLOCK_HEIGHT_KEY, 'value': genesis_block['number']})
+    genesis_block['genesis'].append({'key': LATEST_BLOCK_HASH_KEY, 'value': genesis_block['hash']})
+
+    if migration_scheme == 'filesystem':
+        LOG.info('Migrating state data from filesystem and filling genesis block...')
+        for key in existing_state_driver.keys():
+            if key not in GENESIS_CONTRACTS_KEYS:
+                entry = next((item for item in genesis_block['genesis'] if item['key'] == key), None)
+                if entry is not None:
+                    entry['value'] = existing_state_driver.get(key)
+                else:
+                    genesis_block['genesis'].append({
+                        'key': key,
+                        'value': existing_state_driver.get(key)
+                    })
+    
+    elif migration_scheme == 'mongo':
+        mongo_skip_keys = GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT]
         client = MongoClient()
         LOG.info('Migrating state data from mongo and filling genesis block...')
         for record in client[db][collection].find({'_id': {'$nin': mongo_skip_keys}}):
-            try:
-                state.set(record['_id'], decode(record['v']))
+            entry = next((item for item in genesis_block['genesis'] if item['key'] == record['_id']), None)
+            if entry is not None:
+                entry['value'] = decode(record['v'])
+            else:
                 genesis_block['genesis'].append({
                     'key': record['_id'],
                     'value': decode(record['v'])
                 })
-            except ValueError as err:
-                LOG.error(f'Skipped key: "{record["_id"]}", due to error: {err}')
 
     LOG.info('Sorting state changes inside genesis block...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
@@ -126,14 +112,27 @@ def main(
     genesis_block['origin']['sender'] = founders_wallet.verifying_key
     genesis_block['origin']['signature'] = founders_wallet.sign(hash_genesis_block_state_changes(genesis_block['genesis']))
 
-    LOG.info('Storing genesis block...')
-    bs.store_block(genesis_block)
+    return genesis_block
 
-    LOG.info('Saving genesis_block.json into Home directory...')
-    encoded_block = encode(genesis_block)
+def main(
+    founder_sk: str,
+    migration_scheme: str,
+    contracting_client: ContractingClient,
+    db: str = '',
+    collection: str = '',
+    existing_state_driver: FSDriver = None
+):
+    if GENESIS_BLOCK_PATH.is_file():
+        LOG.error(f'"{GENESIS_BLOCK_PATH}" already exist')
+        sys.exit(1)
 
-    with open(f'{pathlib.Path.home()}/genesis_block.json', 'w') as f:
-        f.write(encoded_block)
+    genesis_block = build_block(founder_sk, migration_scheme, contracting_client, db, collection, existing_state_driver)
+
+    LOG.info(f'Saving genesis block to "{GENESIS_BLOCK_PATH}"...')
+    with open(GENESIS_BLOCK_PATH, 'w') as f:
+        f.write(encode(genesis_block))
+
+    shutil.rmtree(GENESIS_STATE_PATH)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -143,11 +142,11 @@ if __name__ == '__main__':
     parser.add_argument('--collection', type=str)
     args = parser.parse_args()
 
-    bs = BlockStorage()
-    state = FSDriver()
+    state = FSDriver(GENESIS_STATE_PATH)
     contract_driver = ContractDriver(driver=state)
     contracting_client = ContractingClient(driver=contract_driver, submission_filename=sync.DEFAULT_SUBMISSION_PATH)
     db = args.db if args.migrate == 'mongo' else ''
     collection = args.collection if args.migrate == 'mongo' else ''
+    existing_state_driver = FSDriver() if args.migrate == 'filesystem' else None
 
-    main(args.key, args.migrate, bs, state, contract_driver, contracting_client, db=db, collection=collection)
+    main(args.key, args.migrate, contracting_client, db=db, collection=collection, existing_state_driver=existing_state_driver)
