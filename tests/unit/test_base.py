@@ -30,7 +30,7 @@ class TestMisc(TestCase):
 
 class TestNode(TestCase):
     def setUp(self):
-        self.local_node_network = LocalNodeNetwork(num_of_masternodes=1, genesis_path=contracts.__path__[0])
+        self.local_node_network = LocalNodeNetwork(num_of_masternodes=1)
         self.node = self.local_node_network.masternodes[0]
 
         while not self.node.node.started or not self.node.network.is_running:

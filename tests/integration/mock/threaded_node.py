@@ -22,6 +22,7 @@ import shutil
 import inspect
 import os
 import shutil
+from tests.integration.mock.mock_data_structures import MockBlocks
 
 node_class_map = {
     'masternode': Masternode,
@@ -35,7 +36,7 @@ def create_constitution(self, node_wallets: list = []):
         'delegates': [d[1].verifying_key for d in node_wallets if d[0] == "delegate"],
     }
 
-def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constitution=None, bootnodes=None):
+def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None):
     current_path = Path.cwd()
     temp_network_dir = Path(f'{current_path}/temp_network')
     try:
@@ -54,8 +55,8 @@ def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constit
     tx_queue = FileQueue(root=node_dir)
 
     constitution = constitution or {
-        'masternodes': [node_wallet.verifying_key],
-        'delegates': [],
+        'masternodes': {node_wallet.verifying_key: 'tcp://127.0.0.1:19000'},
+        'delegates': {},
     }
 
     bootnodes = bootnodes or {}
@@ -69,7 +70,8 @@ def create_a_node(index=0, node_type="masternode", node_wallet=Wallet(), constit
         raw_driver=raw_driver,
         block_storage=block_storage,
         nonce_storage=nonce_storage,
-        tx_queue=tx_queue
+        tx_queue=tx_queue,
+        genesis_block=genesis_block
     )
 
 class ThreadedNode(threading.Thread):
@@ -79,15 +81,14 @@ class ThreadedNode(threading.Thread):
                  block_storage: BlockStorage,
                  nonce_storage: NonceStorage,
                  raw_driver,
-                 tx_queue: FileQueue,
+                 tx_queue: FileQueue = None,
                  index=0,
                  bootnodes={},
                  bypass_catchup=False,
-                 should_seed=True,
                  metering=False,
                  wallet: Wallet = None,
-                 genesis_path: str = None,
                  reconnect_attempts=60,
+                 genesis_block=None,
                  delay=None):
 
         threading.Thread.__init__(self)
@@ -98,6 +99,7 @@ class ThreadedNode(threading.Thread):
         self.index = index
         self.constitution = constitution
         self.bootnodes = bootnodes
+        self.genesis_block = genesis_block
 
         self.raw_driver = raw_driver
         self.contract_driver = ContractDriver(driver=self.raw_driver)
@@ -105,12 +107,10 @@ class ThreadedNode(threading.Thread):
         self.nonces = nonce_storage
 
         self.class_path = os.path.abspath(inspect.getfile(self.__class__))
-        self.genesis_path = genesis_path or self.class_path.split('/threaded_node.py')[0]
         self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
 
         self.bypass_catchup = bypass_catchup
 
-        self.should_seed = should_seed
         self.metering = metering
 
         self.wallet = wallet or Wallet()
@@ -221,8 +221,7 @@ class ThreadedNode(threading.Thread):
                 socket_ports=self.create_socket_ports(index=self.index),
                 driver=self.contract_driver,
                 blocks=self.block_storage,
-                should_seed=self.should_seed,
-                genesis_path=str(self.genesis_path),
+                genesis_block=self.genesis_block,
                 tx_queue=self.tx_queue,
                 reconnect_attempts=self.reconnect_attempts,
                 testing=True,
@@ -301,7 +300,9 @@ class TestThreadedNode(unittest.TestCase):
 
         self.driver = ContractDriver(driver=FSDriver(root=Path(self.node_state_dir)))
         self.block_storage = BlockStorage(root=Path(self.node_block_dir))
+        self.nonce_storage = NonceStorage()
 
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={'masternodes': [self.node_wallet.verifying_key]})
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -356,7 +357,9 @@ class TestThreadedNode(unittest.TestCase):
                 constitution=self.create_constitution(node_type=node_type),
                 raw_driver=self.driver,
                 block_storage=self.block_storage,
-                wallet=self.node_wallet
+                wallet=self.node_wallet,
+                nonce_storage=self.nonce_storage,
+                genesis_block=self.blocks.get_block_by_index(index=0)
             )
         except Exception as err:
             print(err)
@@ -372,7 +375,9 @@ class TestThreadedNode(unittest.TestCase):
             constitution=self.create_constitution(node_type=node_type),
             raw_driver=self.driver,
             block_storage=self.block_storage,
-            wallet=self.node_wallet
+            wallet=self.node_wallet,
+            nonce_storage=self.nonce_storage,
+            genesis_block=self.blocks.get_block_by_index(index=0)
         )
 
         self.tn.start()
@@ -394,7 +399,9 @@ class TestThreadedNode(unittest.TestCase):
             constitution=self.create_constitution(node_type=node_type),
             raw_driver=self.driver,
             block_storage=self.block_storage,
-            wallet=self.node_wallet
+            wallet=self.node_wallet,
+            nonce_storage=self.nonce_storage,
+            genesis_block=self.blocks.get_block_by_index(index=0)
         )
 
         self.tn.start()
@@ -424,12 +431,22 @@ class TestThreadedNode(unittest.TestCase):
             'delegates': [wallet_del.verifying_key]
         }
 
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={
+            'masternodes': [wallet_mn.verifying_key],
+            'delegates': [wallet_del.verifying_key]
+        })
+
         masternode = ThreadedNode(
             node_type="masternode",
             constitution=constitution,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
             block_storage=BlockStorage(root=Path(mn_dir)),
-            wallet=wallet_mn
+            wallet=wallet_mn,
+            nonce_storage=NonceStorage(
+                nonce_collection=mn_dir.joinpath('pending-nonces'),
+                pending_collection=mn_dir.joinpath('nonces'),
+            ),
+            genesis_block=self.blocks.get_block_by_index(index=0)
         )
         masternode.start()
 
@@ -442,6 +459,11 @@ class TestThreadedNode(unittest.TestCase):
             raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
             block_storage=BlockStorage(root=Path(del_dir)),
             wallet=wallet_del,
+            nonce_storage=NonceStorage(
+                nonce_collection=del_dir.joinpath('pending-nonces'),
+                pending_collection=del_dir.joinpath('nonces'),
+            ),
+            genesis_block=self.blocks.get_block_by_index(index=0),
             index=1
         )
         delegate.start()
@@ -479,12 +501,19 @@ class TestThreadedNode(unittest.TestCase):
             wallet_del.verifying_key: 'tcp://127.0.0.1:19001'
         }
 
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={
+            'masternodes': [wallet_mn.verifying_key],
+            'delegates': [wallet_del.verifying_key]
+        })
+
         masternode = ThreadedNode(
             node_type="masternode",
             constitution=constitution,
             bootnodes=bootnodes,
             raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
             block_storage=BlockStorage(root=Path(mn_dir)),
+            nonce_storage=self.nonce_storage,
+            genesis_block=self.blocks.get_block_by_index(index=0),
             wallet=wallet_mn
         )
         masternode.start()
@@ -499,6 +528,8 @@ class TestThreadedNode(unittest.TestCase):
             raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
             block_storage=BlockStorage(root=Path(del_dir)),
             wallet=wallet_del,
+            nonce_storage=self.nonce_storage,
+            genesis_block=self.blocks.get_block_by_index(index=0),
             index=1
         )
         delegate.start()

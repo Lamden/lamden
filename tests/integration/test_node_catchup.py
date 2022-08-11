@@ -22,9 +22,7 @@ class TestNewNodeCatchup(TestCase):
                 self.loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self.loop)
 
-        self.network = LocalNodeNetwork(
-            genesis_path=Path(f'{Path.cwd()}/mock')
-        )
+        self.network = LocalNodeNetwork()
 
     def tearDown(self):
         task = asyncio.ensure_future(self.network.stop_all_nodes())

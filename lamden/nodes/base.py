@@ -79,6 +79,11 @@ class Node:
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=60):
 
+        self.main_processing_queue = None
+        self.validation_queue = None
+        self.check_main_processing_queue_task = None
+        self.check_validation_queue_task = None
+
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
             'base': 1,
@@ -151,6 +156,8 @@ class Node:
             stop_node=self.stop
         )
 
+        self.new_block_processor = NewBlock(driver=self.driver)
+
         self.new_network_start = False
         if genesis_block:
             self.new_network_start = self.store_genesis_block(genesis_block=genesis_block)
@@ -164,8 +171,6 @@ class Node:
 
         # Number of core / processes we push to
         self.parallelism = parallelism
-
-        self.new_block_processor = NewBlock(driver=self.driver)
 
         self.main_processing_queue = TxProcessingQueue(
             testing=self.testing,
@@ -216,9 +221,6 @@ class Node:
         self.bypass_catchup = bypass_catchup
 
         self.reconnect_attempts = reconnect_attempts
-
-        self.check_main_processing_queue_task = None
-        self.check_validation_queue_task = None
 
     @property
     def vk(self) -> str:
@@ -603,7 +605,7 @@ class Node:
 
         self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
 
-        if self.validation_queue  is not None:
+        if self.validation_queue is not None:
             self.validation_queue.stop()
             while self.check_validation_queue_task and not self.check_validation_queue_task.done():
                 await asyncio.sleep(0)

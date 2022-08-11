@@ -71,7 +71,7 @@ class TestBaseNode_Catchup(TestCase):
 
         self.node_wallet = Wallet()
 
-        self.node = self.create_node_instance()
+        self.node = None
         self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True, initial_members=[self.node_wallet.verifying_key])
         self.catchup_peers: List[Peer] = []
 
@@ -81,7 +81,7 @@ class TestBaseNode_Catchup(TestCase):
 
         del self.node
 
-    def create_node_instance(self) -> Node:
+    def create_node_instance(self, genesis_block=False) -> Node:
         node_wallet = Wallet()
         node_dir = Path(f'{self.temp_storage}/{node_wallet.verifying_key}')
         # node_state_dir = Path(f'{node_dir}/state')
@@ -93,21 +93,27 @@ class TestBaseNode_Catchup(TestCase):
         tx_queue = FileQueue(root=node_dir)
 
         constitution = {
-            'masternodes': [node_wallet.verifying_key],
-            'delegates': [],
+            'masternodes': {self.node_wallet.verifying_key: 'tcp://127.0.0.1:19000'},
+            'delegates': {},
         }
+
+        if genesis_block:
+            genesis_block_data = self.genesis_block
+        else:
+            genesis_block_data = None
 
         return Node(
             constitution=constitution,
             bootnodes={},
             socket_base="",
-            wallet=node_wallet,
+            wallet=self.node_wallet,
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
             blocks=block_storage,
             tx_queue=tx_queue,
             testing=True,
-            nonces=nonce_storage
+            nonces=nonce_storage,
+            genesis_block=genesis_block_data
         )
 
     def start_node(self):
@@ -139,17 +145,20 @@ class TestBaseNode_Catchup(TestCase):
         loop.run_until_complete(tasks)
 
     def test_can_create_node_instance(self):
+        self.node = self.create_node_instance()
         self.assertIsNotNone(self.node)
 
     def test_can_start_node_instance(self):
+        self.node = self.create_node_instance(genesis_block=True)
         try:
             self.start_node()
-        except Exception as err:
+        except Exception:
             self.fail('Node should not throw exceptions on startup')
 
         self.assertTrue(self.node.running)
 
     def test_catchup_get_blocks__gets_blocks_from_peers(self):
+        self.node = self.create_node_instance()
         latest_block_num = self.mock_blocks.latest_block_num
 
         for i in range(5):
@@ -167,6 +176,7 @@ class TestBaseNode_Catchup(TestCase):
             self.async_sleep(1)
 
     def test_catchup_get_blocks__no_peer_responds_with_block_rasies_ConnectionError(self):
+        self.node = self.create_node_instance()
         for i in range(5):
             peer = Peer(blocks=self.mock_blocks.get_blocks())
             self.catchup_peers.append(peer)
@@ -184,6 +194,7 @@ class TestBaseNode_Catchup(TestCase):
             ))
 
     def test_catchup_continuous__raises_ValueError_if_no_catchup_peers_are_available(self):
+        self.node = self.create_node_instance()
         for i in range(5):
             peer = Peer(blocks=self.mock_blocks.get_blocks())
             self.catchup_peers.append(peer)
@@ -199,6 +210,7 @@ class TestBaseNode_Catchup(TestCase):
 
 
     def test_catchup_continuous__node_stops_catchup_at_block_threshold(self):
+        self.node = self.create_node_instance()
         for i in range(5):
             peer = Peer(blocks=self.mock_blocks.get_blocks())
             self.catchup_peers.append(peer)
@@ -218,6 +230,7 @@ class TestBaseNode_Catchup(TestCase):
         self.assertLessEqual(block_difference, block_threshold)
 
     def test_catchup_to_validation_queue__waits_for_validation_queue_to_mint_a_block_before_continuing(self):
+        self.node = self.create_node_instance()
         self.node.started = True
         self.node.network.get_all_connected_peers = self.get_catchup_peers
         self.node.network.get_highest_peer_block = self.mock_get_highest_peer_blocks
@@ -254,6 +267,7 @@ class TestBaseNode_Catchup(TestCase):
         self.assertTrue(task.done())
 
     def test_catchup_to_validation_queue__catchup_from_last_received_to_last_minted_block(self):
+        self.node = self.create_node_instance()
         loop = asyncio.get_event_loop()
         # Peers need some blocks
         for i in range(5):
@@ -280,12 +294,14 @@ class TestBaseNode_Catchup(TestCase):
         tx_message = get_tx_message(
             hlc_timestamp=hlc_timestamp
         )
-        self.node.driver.driver.set('masternodes.S:members', [tx_message['tx']['payload']['processor']])
+        current_members = self.node.driver.driver.get(item='masternodes.S:members')
+        current_members.append(tx_message['tx']['payload']['processor'])
+        self.node.driver.driver.set('masternodes.S:members', current_members)
         for i in range(2):
             processing_results = get_processing_results(tx_message=tx_message)
             self.node.validation_queue.append(processing_results)
 
-        # set the latest block higher for all the catchup peers to mimick them also processing these blocks
+        # set the latest block higher for all the catchup peers to mimic them also processing these blocks
         for peer in self.catchup_peers:
             peer.hard_code_latest_block = hlc.nanos_from_hlc_timestamp(hlc_timestamp)
 
@@ -298,6 +314,7 @@ class TestBaseNode_Catchup(TestCase):
         self.assertTrue(self.node.started)
 
     def test_catchup__can_catchup_from_peers(self):
+        self.node = self.create_node_instance()
         self.node.network.get_all_connected_peers = self.get_catchup_peers
         self.node.network.get_highest_peer_block = self.mock_get_highest_peer_blocks
 
@@ -311,6 +328,7 @@ class TestBaseNode_Catchup(TestCase):
         self.assertEqual(self.mock_blocks.latest_block_num, self.node.get_current_height())
 
     def test_catchup__raises_ValueError_if_no_peers_are_available(self):
+        self.node = self.create_node_instance()
         with self.assertRaises(ValueError):
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self.node.catchup())

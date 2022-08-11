@@ -5,8 +5,9 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from contracting.db.encoder import encode
 from lamden.crypto.transaction import build_transaction
-from lamden.utils import hlc
+from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
 
 class MockTransaction:
@@ -121,19 +122,20 @@ class MockProcessed:
                 kwargs = self.transaction.payload.get('kwargs')
                 to = kwargs.get('to')
                 amount = kwargs.get('amount')
+                key = f'currency.balances:{to}'
                 if amount.get('__fixed__') is not None:
                     amount = amount.get('__fixed__')
 
-                current_bal = internal_state.get(to)
+                current_bal = internal_state.get(key)
 
                 if current_bal is None:
-                    internal_state[to] = ContractingDecimal(amount)
+                    internal_state[key] = ContractingDecimal(amount)
                 else:
-                    internal_state[to] += ContractingDecimal(amount)
+                    internal_state[key] += ContractingDecimal(amount)
 
                 self.state = [{
-                    'key': f'currency.balances:{to}',
-                    'value': {'__fixed__': str(internal_state[to]) }
+                    'key': key,
+                    'value': {'__fixed__': str(internal_state[key])}
                 }]
 
                 print (self.state)
@@ -176,7 +178,7 @@ class MockGenesisBlock:
     def __init__(self,
             internal_state: dict = {},
             founder_wallet: Wallet = Wallet(),
-            initial_members: list = []
+            initial_members: dict = {}
             ):
 
         self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
@@ -190,9 +192,17 @@ class MockGenesisBlock:
             key=f'currency.balances:{self.founder_wallet.verifying_key}',
             value=100000000
         )
+
+        initial_masternodes = initial_members.get('masternodes')
         self.add_to_genesis(
             key=f'masternodes.S:members',
-            value=initial_members
+            value=initial_masternodes or []
+        )
+
+        initial_delegates = initial_members.get('delegates')
+        self.add_to_genesis(
+            key=f'delegates.S:members',
+            value=initial_delegates or []
         )
 
         for key, value in internal_state.items():
@@ -207,6 +217,10 @@ class MockGenesisBlock:
             block_number=self.number,
             previous_block_hash=self.previous
         )
+
+        create_genesis.main(self.founder_wallet.sk, '', self.bs, internal_state, self.contract_driver, self.contracting_client, db='test', collection='test')
+
+        return self.bs.get_block(0)
 
     def create_origin(self, signer_wallet: Wallet):
         state_changes_hash = hash_genesis_block_state_changes(state_changes=self.genesis)
@@ -360,10 +374,11 @@ class TestMockBlock(TestCase):
         self.assertEqual([], block_dict.get('rewards'))
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: list = []):
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
+                 founder_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()
-        self.founder_wallet = Wallet()
+        self.founder_wallet = founder_wallet or Wallet()
         self.initial_members = initial_members
 
         self.receiver_wallet = None
@@ -438,8 +453,15 @@ class MockBlocks:
             for state_change in new_block.processed.get('state'):
                 self.internal_state[state_change.get('key')] = state_change.get('value')
 
-        block_dict = dict(new_block.as_dict())
-        self.blocks[new_block.number] = dict(new_block.as_dict())
+        block_dict = self.add_to_blocks_dict(block=new_block)
+        return block_dict
+
+    def add_to_blocks_dict(self, block):
+        block_dict = block
+        if not isinstance(block_dict, dict):
+            block_dict = dict(block.as_dict())
+
+        self.blocks[block.number] = dict(block.as_dict())
         return block_dict
 
     def add_blocks(self, num_of_blocks):

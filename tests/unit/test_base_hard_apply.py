@@ -24,7 +24,7 @@ class TestBaseNode_HardApply(TestCase):
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
 
-        self.genesis_block = resolve_genesis_block(Path(f'{self.current_path}/helpers/genesis_block.json'))
+
 
         try:
             shutil.rmtree(self.temp_storage)
@@ -32,8 +32,13 @@ class TestBaseNode_HardApply(TestCase):
             pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
+        self.node_wallet = Wallet()
+        self.mock_blocks = MockBlocks(num_of_blocks=5, one_wallet=True,
+                                      initial_members=[self.node_wallet.verifying_key])
+        self.genesis_block = self.mock_blocks.get_block_by_index(0)
+
         self.node: Node = self.create_node_instance()
-        self.mock_blocks = MockBlocks(num_of_blocks=5, one_wallet=True)
+
 
     def tearDown(self):
         loop = asyncio.get_event_loop()
@@ -42,8 +47,7 @@ class TestBaseNode_HardApply(TestCase):
         del self.node
 
     def create_node_instance(self) -> Node:
-        node_wallet = Wallet()
-        node_dir = Path(f'{self.temp_storage}/{node_wallet.verifying_key}')
+        node_dir = Path(f'{self.temp_storage}/{self.node_wallet.verifying_key}')
         # node_state_dir = Path(f'{node_dir}/state')
         raw_driver = InMemDriver()
         contract_driver = ContractDriver(driver=raw_driver)
@@ -53,19 +57,18 @@ class TestBaseNode_HardApply(TestCase):
         tx_queue = FileQueue(root=node_dir)
 
         constitution = {
-            'masternodes': [node_wallet.verifying_key],
-            'delegates': [],
+            'masternodes': {self.node_wallet.verifying_key: 'tcp://127.0.0.1:19000'},
+            'delegates': {},
         }
 
         return Node(
             constitution=constitution,
             bootnodes={},
             socket_base="",
-            wallet=node_wallet,
+            wallet=self.node_wallet,
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
             blocks=block_storage,
-            genesis_path=str(self.genesis_path),
             tx_queue=tx_queue,
             testing=True,
             nonces=nonce_storage,
@@ -122,16 +125,15 @@ class TestBaseNode_HardApply(TestCase):
 
         self.assertEqual(block.get('number'), self.node.get_current_height())
         self.assertEqual(block.get('hash'), self.node.get_current_hash())
-        self.assertEqual(1, self.node.blocks.total_blocks())
+        self.assertEqual(2, self.node.blocks.total_blocks())
 
     def test_hard_apply_store_block__stores_in_holding_during_catchup(self):
         self.node.hold_blocks = True
         block = self.mock_blocks.get_block_by_index(1)
         self.node.hard_apply_store_block(block=block)
 
-        self.assertEqual(-1, self.node.get_current_height())
-        self.assertEqual('0' * 64, self.node.get_current_hash())
-        self.assertEqual(0, self.node.blocks.total_blocks())
+        self.assertEqual(0, self.node.get_current_height())
+        self.assertEqual(1, self.node.blocks.total_blocks())
 
         self.assertEqual(1, len(self.node.held_blocks))
 
@@ -147,7 +149,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.assertIsNotNone(new_block)
         self.assertEqual(expected_block_num, self.node.get_current_height())
-        self.assertEqual(1, self.node.blocks.total_blocks())
+        self.assertEqual(2, self.node.blocks.total_blocks())
 
 
         # Validate the state was hard applied
@@ -212,7 +214,7 @@ class TestBaseNode_HardApply(TestCase):
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
-        self.assertEqual(3, self.node.blocks.total_blocks())
+        self.assertEqual(4, self.node.blocks.total_blocks())
 
         early_block = self.mock_blocks.get_block_by_index(1)
 
@@ -227,7 +229,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.node.hard_apply_has_later_blocks(later_blocks=later_blocks, block=early_block)
 
-        self.assertEqual(4, self.node.blocks.total_blocks())
+        self.assertEqual(5, self.node.blocks.total_blocks())
 
         receiver_amount = self.node.driver.get(f'currency.balances:{self.mock_blocks.receiver_wallet.verifying_key}')
         expected_amount = 10.5 * 4
@@ -239,9 +241,8 @@ class TestBaseNode_HardApply(TestCase):
             to=self.mock_blocks.receiver_wallet.verifying_key,
             amount=tx_amount,
             wallet=self.mock_blocks.founder_wallet,
-            hlc_timestamp='0001-01-01T01:01:01.000000000Z_0'
+            hlc_timestamp='1970-01-01T01:01:01.000000000Z_0'
         )
-
 
         self.node.driver.driver.set(
             f'currency.balances:{self.mock_blocks.founder_wallet.verifying_key}',
@@ -257,8 +258,7 @@ class TestBaseNode_HardApply(TestCase):
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
-        self.assertEqual(3, self.node.blocks.total_blocks())
-
+        self.assertEqual(4, self.node.blocks.total_blocks())
 
         # Get any blocks that have been committed that are later than this hlc_timestamp
         later_blocks = self.node.blocks.get_later_blocks(hlc_timestamp=early_processing_results_hlc_timestamp)
@@ -269,7 +269,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.node.hard_apply_has_later_blocks(later_blocks=later_blocks, processing_results=processing_results)
 
-        self.assertEqual(4, self.node.blocks.total_blocks())
+        self.assertEqual(5, self.node.blocks.total_blocks())
 
         receiver_amount = self.node.driver.get(f'currency.balances:{self.mock_blocks.receiver_wallet.verifying_key}')
         expected_amount = 10.5 * 4
@@ -308,9 +308,9 @@ class TestBaseNode_HardApply(TestCase):
         state_changes = self.node.get_state_changes_from_block(block=gen_block)
         self.assertIsNotNone(state_changes)
         self.assertIsInstance(state_changes, list)
-        self.assertEqual(1, len(state_changes))
+        self.assertEqual(2, len(state_changes))
 
-    def test_get_state_changes_from_block__returns_state_changes_from_regualr_block(self):
+    def test_get_state_changes_from_block__returns_state_changes_from_regular_block(self):
         block = self.mock_blocks.get_block_by_index(1)
         state_changes = self.node.get_state_changes_from_block(block=block)
         self.assertIsNotNone(state_changes)
