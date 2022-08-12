@@ -4,7 +4,6 @@ from contracting.db.encoder import decode
 from contracting.stdlib.bridge.time import Datetime
 from lamden.contracts import sync
 from lamden.crypto.block_validator import validate_block_structure
-from lamden.storage import LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY
 from lamden.utils import create_genesis
 from pathlib import Path
 from unittest import TestCase
@@ -116,7 +115,7 @@ class TestCreateGenesisBlock(TestCase):
         self.assertGreater(len(genesis_block['genesis']), 0)
 
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys()) + [LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY]
+        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys())
         expected_state_keys.sort()
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
@@ -129,7 +128,7 @@ class TestCreateGenesisBlock(TestCase):
         self.assertGreater(len(genesis_block['genesis']), 0)
 
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys()) + [LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY, SAMPLE_KEY]
+        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys()) + [SAMPLE_KEY]
         expected_state_keys.sort()
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
@@ -150,7 +149,7 @@ class TestCreateGenesisBlock(TestCase):
         self.assertGreater(len(genesis_block['genesis']), 0)
 
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys()) + [LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY]
+        expected_state_keys = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys())
         expected_state_keys.sort()
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
@@ -168,7 +167,7 @@ class TestCreateGenesisBlock(TestCase):
         self.assertGreater(len(genesis_block['genesis']), 0)
 
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = self.fsdriver.keys() + [LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY]
+        expected_state_keys = self.fsdriver.keys()
         expected_state_keys.sort()
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
@@ -188,7 +187,7 @@ class TestCreateGenesisBlock(TestCase):
         self.assertGreater(len(genesis_block['genesis']), 0)
 
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = self.mongo_driver.keys() + [LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY]
+        expected_state_keys = self.mongo_driver.keys()
         expected_state_keys.sort()
 
         self.assertListEqual(expected_state_keys, actual_state_keys)

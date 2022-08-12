@@ -7,7 +7,6 @@ from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIME
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
-from lamden.storage import LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
 from lamden.utils.legacy import BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT
 from pathlib import Path
 from pymongo import MongoClient
@@ -28,7 +27,6 @@ def build_genesis_contracts_changes():
     state_changes.update(contracting_client.raw_driver.pending_writes)
 
     contracting_client.raw_driver.commit()
-    contracting_client.submission_contract = contracting_client.get_contract('submission')
 
     constitution = None
     with open(Path.home().joinpath('constitution.json')) as f:
@@ -43,7 +41,7 @@ def build_genesis_contracts_changes():
 
     state_changes.update(contracting_client.raw_driver.pending_writes)
 
-    contracting_client.flush()
+    contracting_client.raw_driver.flush()
 
     return {k: v for k, v in state_changes.items() if v is not None}
 
@@ -89,8 +87,6 @@ def build_block(founder_sk: str, additional_state: dict = {}):
             'key': key,
             'value': value
         })
-    genesis_block['genesis'].append({'key': LATEST_BLOCK_HEIGHT_KEY, 'value': genesis_block['number']})
-    genesis_block['genesis'].append({'key': LATEST_BLOCK_HASH_KEY, 'value': genesis_block['hash']})
 
     LOG.info('Sorting state changes...')
     genesis_block['genesis'] = sorted(genesis_block['genesis'], key=lambda d: d['key'])
