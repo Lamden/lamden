@@ -16,12 +16,12 @@ import sys
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
-GENESIS_STATE_PATH = Path('/tmp/tmp_state')
+TMP_STATE_PATH = Path('/tmp/tmp_state')
 LOG = get_logger('GENESIS_BLOCK')
 
 def build_genesis_contracts_changes():
     state_changes = {}
-    contracting_client = ContractingClient(driver=ContractDriver(FSDriver(root=GENESIS_STATE_PATH)), submission_filename=sync.DEFAULT_SUBMISSION_PATH)
+    contracting_client = ContractingClient(driver=ContractDriver(FSDriver(root=TMP_STATE_PATH)), submission_filename=sync.DEFAULT_SUBMISSION_PATH)
 
     contracting_client.set_submission_contract(filename=sync.DEFAULT_SUBMISSION_PATH, commit=False)
     state_changes.update(contracting_client.raw_driver.pending_writes)
@@ -109,7 +109,7 @@ def main(
         LOG.error(f'"{GENESIS_BLOCK_PATH}" already exist')
         sys.exit(1)
 
-    additional_state = []
+    additional_state = {}
     if migration_scheme == 'filesystem':
         additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS)
     elif migration_scheme == 'mongo':
