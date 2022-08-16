@@ -499,16 +499,12 @@ class Node:
             new_block = self.held_blocks.pop(0)
 
             if int(new_block.get('number')) > self.get_current_height():
-                self.log.warning(f'HELD_BLOCK_PREVIOUS_HASH: {new_block.get("previous")}')
-
                 # Apply state to DB
                 self.apply_state_changes_from_block(block=new_block)
 
                 # change to previous hash and recalculate the hash
                 self.blocks.set_previous_hash(block=new_block)
                 new_block = recalc_block_info(block=new_block)
-
-                self.log.warning(f'HELD_BLOCK_PREVIOUS_HASH: {new_block.get("previous")}')
 
                 # Store the block in the block db
                 encoded_block = encode(new_block)
@@ -521,8 +517,6 @@ class Node:
 
                 latest_block = self.get_current_height()
                 latest_block_hash = self.get_current_hash()
-
-                self.log.warning(f'LASTEST_BLOCk_HASH: {latest_block_hash}')
 
                 # create New Block Event
                 self.event_writer.write_event(Event(
