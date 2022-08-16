@@ -65,7 +65,7 @@ class NewBlock(router.Processor):
         self.q = [nbn for nbn in self.q if nbn['number'] > height]
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=None,
+    def __init__(self, socket_base,  wallet, constitution: list, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=60):
@@ -251,6 +251,9 @@ class Node:
 
             await asyncio.sleep(1)
             await self.stop()
+
+    def start_node(self):
+        asyncio.ensure_future(self.start())
 
     async def stop(self):
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
