@@ -318,7 +318,7 @@ class TxProcessingQueue(ProcessingQueue):
 
     def distribute_rewards(self, total_stamps_to_split, contract_name: str) -> dict:
 
-        master_reward, delegate_reward, foundation_reward, developer_mapping = \
+        master_reward, foundation_reward, developer_mapping = \
             self.reward_manager.calculate_tx_output_rewards(
                 total_stamps_to_split=total_stamps_to_split,
                 contract=contract_name,
@@ -326,7 +326,7 @@ class TxProcessingQueue(ProcessingQueue):
             )
 
         return self.reward_manager.distribute_rewards(
-            master_reward, delegate_reward, foundation_reward, developer_mapping, self.client
+            master_reward, foundation_reward, developer_mapping, self.client
         )
 
     def sign_tx_results(self, tx_result, hlc_timestamp, rewards):

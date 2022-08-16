@@ -1,10 +1,8 @@
-import argparse
-from lamden.cli.start import start_node, join_network
-# from lamden.cli.update import verify_access, verify_pkg, trigger, vote, check_ready_quorum
-from lamden.storage import BlockStorage
 from contracting.client import ContractDriver, ContractingClient
+from lamden.cli.start import start_node, join_network
 from lamden.contracts import sync
-
+from lamden.storage import BlockStorage
+import argparse
 
 def flush(args):
     if args.storage_type == 'blocks':
@@ -34,8 +32,6 @@ def setup_cilparser(parser):
                                       help='Shows set of update cmd options', dest='command')
 
     start_parser = subparser.add_parser('start')
-
-    start_parser.add_argument('node_type', type=str)
     start_parser.add_argument('-k', '--key', type=str)
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
@@ -48,7 +44,6 @@ def setup_cilparser(parser):
     flush_parser.add_argument('storage_type', type=str)
 
     join_parser = subparser.add_parser('join')
-    join_parser.add_argument('node_type', type=str)
     join_parser.add_argument('-k', '--key', type=str)
     join_parser.add_argument('-m', '--mn_seed', type=str)
     join_parser.add_argument('-mp', '--mn_seed_port', type=int, default=18080)

@@ -227,7 +227,7 @@ class Network:
 
     def peer_is_voted_in(self, peer_vk: str) -> bool:
         # Get list of approved nodes from state
-        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
+        node_vk_list_from_smartcontracts = self.get_node_list()
 
         if peer_vk not in node_vk_list_from_smartcontracts:
             return False
@@ -235,7 +235,7 @@ class Network:
         return True
 
     def refresh_approved_peers_in_cred_provider(self):
-        node_vk_list_from_smartcontracts = self.get_masternode_and_delegate_vk_list()
+        node_vk_list_from_smartcontracts = self.get_node_list()
         print({'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
@@ -430,47 +430,21 @@ class Network:
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
     def make_network_map(self) -> dict:
-        return {
-            'masternodes': self.map_vk_to_ip(self.get_masternode_vk_list()),
-            'delegates': self.map_vk_to_ip(self.get_delegate_vk_list())
-        }
-
-    def make_constitution(self) -> dict:
-        return {
-            'masternodes': self.get_masternode_vk_list(),
-            'delegates': self.get_delegate_vk_list()
-        }
+        return self.map_vk_to_ip(self.get_node_list())
 
     def network_map_to_node_list(self, network_map: dict = dict({})) -> list:
         node_list = []
 
-        for vk, ip in network_map.get('masternodes').items():
-            node_list.append({'vk': vk, 'ip': ip, 'node_type': 'masternode'})
-
-        for vk, ip in network_map.get('delegates').items():
-            node_list.append({'vk': vk, 'ip': ip, 'node_type': 'delegate'})
+        for vk, ip in network_map.items():
+            node_list.append({'vk': vk, 'ip': ip})
 
         return node_list
 
-    def network_map_to_constitution(self, network_map: dict = dict({})) -> dict:
-        constitution = dict({})
-        masternodes = network_map.get('masternodes')
-
-        if masternodes is not None:
-            constitution['masternodes'] = [vk for vk in masternodes.keys()]
-        else:
-            constitution['masternodes'] = {}
-
-        delegates = network_map.get('delegates')
-        if delegates is not None:
-            constitution['delegates'] = [vk for vk in delegates.keys()]
-        else:
-            constitution['delegates'] = {}
-
-        return constitution
+    def network_map_to_constitution(self, network_map: dict = dict({})) -> list:
+        return list(network_map.keys())
 
     def get_peers_for_consensus(self) -> list:
-        all_peers = self.get_masternode_and_delegate_vk_list()
+        all_peers = self.get_node_list()
         if self.vk in all_peers:
             all_peers.remove(self.vk)
         return all_peers
@@ -489,14 +463,8 @@ class Network:
 
         return vk_to_ip_map
 
-    def get_delegate_vk_list(self) -> list:
-        return self.driver.driver.get('delegates.S:members') or []
-
-    def get_masternode_vk_list(self) -> list:
+    def get_node_list(self) -> list:
         return self.driver.driver.get('masternodes.S:members') or []
-
-    def get_masternode_and_delegate_vk_list(self) -> list:
-        return self.get_masternode_vk_list() + self.get_delegate_vk_list()
 
     def start_health_check(self):
         self.stop_health_check()
