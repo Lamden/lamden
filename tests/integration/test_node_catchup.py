@@ -95,4 +95,6 @@ class TestNewNodeCatchup(TestCase):
             key = key_bytes.decode('utf-8')
             expected_value = existing_node.node.driver.get(key=key)
             value = new_node.node.driver.get(key=key)
+            if key == '__latest_block.hash':
+                print(expected_value, value)
             self.assertEqual(expected_value, value)

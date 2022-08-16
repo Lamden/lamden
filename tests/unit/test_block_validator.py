@@ -51,7 +51,7 @@ PROCESSED_TRANSACTION = dict({
 
 BLOCK_V2 = dict({
   "hash": "accad90068e248f9c1df68095c491af389b18cde26402fd01cd602c5238663ce",
-  "number": 1658163894967101696,
+  "number": "1658163894967101696",
   "hlc_timestamp": "2022-07-18T17:04:54.967101696Z_0",
   "previous": "15707bfc75f0140a66dd1303fc5a9101006193e0278da880f2db483d3f21d646",
   "proofs": [
@@ -155,7 +155,7 @@ BLOCK_V2 = dict({
 
 GENESIS_BLOCK = {
     'hash': '2bb4e112aca11805538842bd993470f18f337797ec3f2f6ab02c47385caf088e',
-    'number': 0,
+    'number': "0",
     'hlc_timestamp': '0000-00-00T00:00:00.000000000Z_0',
     'previous': '0000000000000000000000000000000000000000000000000000000000000000',
     'genesis': [
@@ -267,6 +267,12 @@ class TestBlockValidator(TestCase):
 
         with self.assertRaises(block_validator.BlockNumberInvalid) as err:
             self.block['number'] = "1"
+            block_validator.validate_block_structure(block=self.block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['BlockNumberInvalid'], str(err.exception))
+
+        with self.assertRaises(block_validator.BlockNumberInvalid) as err:
+            self.block['number'] = "abc"
             block_validator.validate_block_structure(block=self.block)
 
         self.assertEqual(BLOCK_EXCEPTIONS['BlockNumberInvalid'], str(err.exception))
@@ -722,9 +728,15 @@ class TestGenesisBlockValidator(TestCase):
         self.genesis_block['origin']['sender'] = '0' * 64
         self.assertFalse(block_validator.verify_genesis_origin_signature(block=self.genesis_block))
 
-    def test_validate_block_structure__raises_GenesisBlockNumberInvalid(self):
+    def test_validate_block_structure__raises_GenesisBlockNumberInvalid_not_zero(self):
         with self.assertRaises(block_validator.GenesisBlockNumberInvalid) as err:
-            self.genesis_block['number'] = 1
+            self.genesis_block['number'] = "1"
+            block_validator.validate_block_structure(block=self.genesis_block)
+
+        self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockNumberInvalid'], str(err.exception))
+
+        with self.assertRaises(block_validator.GenesisBlockNumberInvalid) as err:
+            self.genesis_block['number'] = "abc"
             block_validator.validate_block_structure(block=self.genesis_block)
 
         self.assertEqual(BLOCK_EXCEPTIONS['GenesisBlockNumberInvalid'], str(err.exception))

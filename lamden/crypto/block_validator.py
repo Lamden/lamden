@@ -5,7 +5,7 @@ from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
 from lamden.utils import hlc
 
-GENESIS_BLOCK_NUMBER = 0
+GENESIS_BLOCK_NUMBER = "0"
 GENESIS_HLC_TIMESTAMP = '0000-00-00T00:00:00.000000000Z_0'
 GENESIS_PREVIOUS_HASH = '0' * 64
 GENESIS_BLOCK_NUMBER_OF_KEYS = 6
@@ -103,7 +103,7 @@ def validate_block_structure(block: dict) -> bool:
         return False
 
     number = block.get('number')
-    if not isinstance(number, int):
+    if not isinstance(number, str):
         raise BlockNumberInvalid(EXCEPTION_BLOCK_NUMBER_INVALID)
 
     hash_str = block.get('hash')
@@ -132,7 +132,7 @@ def validate_block_structure(block: dict) -> bool:
         if not is_iso8601_hlc_timestamp(hlc_timestamp=hlc_timestamp):
             raise BlockHLCInvalid(EXCEPTION_BLOCK_HLC_INVALID)
 
-        expected_number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+        expected_number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
         if expected_number != number:
             raise BlockNumberInvalid(EXCEPTION_BLOCK_NUMBER_INVALID)
 
@@ -384,7 +384,6 @@ def verify_block_hash(block) -> bool:
         block_number=block.get('number'),
         previous_block_hash=block.get('previous')
     )
-    print(block_hash)
 
     return block_hash == block.get('hash')
 

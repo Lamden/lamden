@@ -95,7 +95,7 @@ def main(
 
     LOG.info('Setting latest block hash & height...')
     state.set(LATEST_BLOCK_HASH_KEY, genesis_block['hash'])
-    state.set(LATEST_BLOCK_HEIGHT_KEY, genesis_block['number'])
+    state.set(LATEST_BLOCK_HEIGHT_KEY, int(genesis_block['number']))
 
     LOG.info('Filling genesis block...')
     for key in state.keys():

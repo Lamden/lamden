@@ -4,6 +4,9 @@ from lamden.storage import BlockStorage, NonceStorage
 from tests.unit.helpers.mock_blocks import generate_blocks
 from unittest import TestCase
 import os, copy
+from pathlib import Path
+import shutil
+
 
 class TestNonce(TestCase):
     def setUp(self):
@@ -101,7 +104,18 @@ SAMPLE_BLOCK = {
 
 class TestBlockStorage(TestCase):
     def setUp(self):
-        self.bs = BlockStorage()
+        self.temp_storage_dir = Path.cwd().joinpath('temp_storage')
+        try:
+            shutil.rmtree(self.temp_storage_dir)
+        except FileNotFoundError:
+            pass
+
+        self.temp_storage_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.bs = BlockStorage(root=Path.cwd().joinpath('temp_storage'))
+        except Exception as err:
+            print(err)
+
         self.hlc_clock = HLC_Clock()
 
     def tearDown(self):
@@ -286,4 +300,44 @@ class TestBlockStorage(TestCase):
     def test_get_previous_block__returns_None_if_no_earlier_blocks(self):
         prev_block = self.bs.get_previous_block(v="2022-07-18T17:04:54.967101696Z_0")
         self.assertIsNone(prev_block)
+
+    def test_set_previous_hash__can_set_hash_in_block(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            prev_hash = block.get('hash')
+            self.bs.store_block(block)
+
+        hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+        next_block = {
+            'previous': '0' * 64,
+            'hash': '0' * 64,
+            'hlc_timestamp': hlc_timestamp,
+            'number': hlc.nanos_from_hlc_timestamp(hlc_timestamp)
+        }
+
+        self.bs.set_previous_hash(block=next_block)
+
+        self.assertEqual(prev_hash, next_block.get('previous'))
+
+    def test_remove_block_alias(self):
+        blocks = generate_blocks(
+            number_of_blocks=1,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            block_hash = block.get('hash')
+            self.bs.store_block(block)
+
+        self.bs._BlockStorage__remove_block_alias(block_hash=block_hash)
+
+        file_path = os.path.join(self.bs.blocks_alias_dir, block_hash)
+
+        self.assertFalse(os.path.isfile(file_path))
 

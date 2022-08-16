@@ -214,6 +214,8 @@ class TestMultiNode(TestCase):
             print({'expected_balance': expected_balance})
             print({'actual_balances': actual_balances})
             for actual_balance in actual_balances:
+                if expected_balance != actual_balance:
+                    print(expected_balance, actual_balance)
                 self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height

@@ -109,13 +109,13 @@ def block_from_tx_results(processing_results, proofs, prev_block_hash) -> dict:
     pruned_proofs = remove_result_hash_from_proofs(proofs)
     block_hash = block_hash_from_block(
         hlc_timestamp=hlc_timestamp,
-        block_number=block_num,
+        block_number=str(block_num),
         previous_block_hash=prev_block_hash
     )
 
     block = {
         'hash': block_hash,
-        'number': block_num,
+        'number': str(block_num),
         'hlc_timestamp': hlc_timestamp,
         'previous': prev_block_hash,
         'proofs': pruned_proofs,
@@ -126,14 +126,19 @@ def block_from_tx_results(processing_results, proofs, prev_block_hash) -> dict:
 
     return block
 
-def block_hash_from_block(hlc_timestamp: str, block_number: int, previous_block_hash: str) -> str:
+def block_hash_from_block(hlc_timestamp: str, block_number: str, previous_block_hash: str) -> str:
     h = hashlib.sha3_256()
     h.update('{}{}{}'.format(hlc_timestamp, block_number, previous_block_hash).encode())
     return h.hexdigest()
 
-def recalc_block_info(block, new_prev_hash) -> dict:
+def recalc_block_info(block: dict, new_prev_hash: str = None) -> dict:
+    if new_prev_hash is None:
+        new_prev_hash = block.get('previous')
+
     hlc_timestamp = block.get('hlc_timestamp')
+
     block_num = nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+    block_num = str(block_num)
 
     h = hashlib.sha3_256()
 
