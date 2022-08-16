@@ -175,75 +175,24 @@ class TestMockProcessed(TestCase):
         self.assertNotEqual(64 * '0', processed.hash)
 
 class MockGenesisBlock:
-    def __init__(self,
-            internal_state: dict = {},
-            founder_wallet: Wallet = Wallet(),
-            initial_members: dict = {}
-            ):
+    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: dict = {}):
 
-        self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
-        self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
-        self.previous = 64 * "0"
-        self.origin = {}
-        self.genesis = []
         self.founder_wallet = founder_wallet
-
-        self.add_to_genesis(
-            key=f'currency.balances:{self.founder_wallet.verifying_key}',
-            value=100000000
+        internal_state.update({'masternodes.S:members': initial_members.get('masternodes', [])})
+        internal_state.update({f'currency.balances:{founder_wallet.verifying_key}': 100000000})
+        self.block = create_genesis.build_block(
+            founder_sk=founder_wallet.signing_key,
+            additional_state=internal_state
         )
 
-        initial_masternodes = initial_members.get('masternodes')
-        self.add_to_genesis(
-            key=f'masternodes.S:members',
-            value=initial_masternodes or []
-        )
-
-        initial_delegates = initial_members.get('delegates')
-        self.add_to_genesis(
-            key=f'delegates.S:members',
-            value=initial_delegates or []
-        )
-
-        for key, value in internal_state.items():
-            self.add_to_genesis(key=key, value=value)
-
-        self.genesis.sort(key=lambda x: x.get('key'))
-
-        self.create_origin(signer_wallet=self.founder_wallet)
-
-        self.hash = block_hash_from_block(
-            hlc_timestamp=self.hlc_timestamp,
-            block_number=self.number,
-            previous_block_hash=self.previous
-        )
-
-        create_genesis.main(self.founder_wallet.sk, '', self.bs, internal_state, self.contract_driver, self.contracting_client, db='test', collection='test')
-
-        return self.bs.get_block(0)
-
-    def create_origin(self, signer_wallet: Wallet):
-        state_changes_hash = hash_genesis_block_state_changes(state_changes=self.genesis)
-        self.origin = {
-            'sender': signer_wallet.verifying_key,
-            'signature': signer_wallet.sign(msg=state_changes_hash)
-        }
-
-    def add_to_genesis(self, key: str, value: any):
-        self.genesis.append({
-                'key': key,
-                'value': value
-            })
+        self.hlc_timestamp = self.block['hlc_timestamp']
+        self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
+        self.previous = self.block['previous']
+        self.origin = self.block['origin']
+        self.genesis = self.block['genesis']
 
     def as_dict(self):
-        return dict({
-            'hash': self.hash,
-            'number': self.number,
-            'hlc_timestamp': self.hlc_timestamp,
-            'previous': self.previous,
-            'genesis': self.genesis,
-            'origin': self.origin
-        })
+        return self.block
 
 class TestMockGenesisBlock(TestCase):
     def setUp(self):
@@ -272,7 +221,7 @@ class TestMockGenesisBlock(TestCase):
             signature=signature
         ))
 
-        self.assertEqual(5, len(block_dict))
+        self.assertEqual(6, len(block_dict))
 
 class MockBlock:
     def __init__(self,
@@ -439,7 +388,7 @@ class MockBlocks:
                 initial_members=self.initial_members
             ))
 
-            for state_change in new_block.genesis:
+            for state_change in new_block.block['genesis']:
                 self.internal_state[state_change.get('key')] = state_change.get('value')
         else:
             previous_block = self.get_block(num=self.current_block_height)
@@ -467,7 +416,6 @@ class MockBlocks:
     def add_blocks(self, num_of_blocks):
         for i in range(num_of_blocks):
             block = self.add_block()
-            print(block)
 
     def get_block(self, num: int):
         return self.blocks.get(num)
