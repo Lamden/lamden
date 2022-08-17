@@ -308,7 +308,7 @@ class TestBaseNode_HardApply(TestCase):
         state_changes = self.node.get_state_changes_from_block(block=gen_block)
         self.assertIsNotNone(state_changes)
         self.assertIsInstance(state_changes, list)
-        self.assertEqual(2, len(state_changes))
+        self.assertEqual(92, len(state_changes))
 
     def test_get_state_changes_from_block__returns_state_changes_from_regular_block(self):
         block = self.mock_blocks.get_block_by_index(1)
