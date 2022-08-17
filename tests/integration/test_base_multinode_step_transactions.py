@@ -18,6 +18,7 @@ import time
 from unittest import TestCase
 
 from tests.integration.mock.local_node_network import LocalNodeNetwork
+from tests.integration.mock.mock_data_structures import MockBlocks
 from lamden import contracts
 
 class TestMultiNode(TestCase):
@@ -46,7 +47,7 @@ class TestMultiNode(TestCase):
         test_start = time.time()
 
         self.local_node_network = LocalNodeNetwork(
-            num_of_masternodes=num_of_masternodes, num_of_delegates=num_of_delegates, genesis_path=contracts.__path__[0]
+            num_of_masternodes=num_of_masternodes, num_of_delegates=num_of_delegates
         )
         for node in self.local_node_network.all_nodes:
             self.assertTrue(node.node_is_running)
@@ -125,12 +126,12 @@ class TestMultiNode(TestCase):
                 self.test_tracker[to] += amount
 
             # wait till all nodes reach the required block height
-            self.local_node_network.await_all_nodes_done_processing(block_height=i+1)
+            self.local_node_network.await_all_nodes_done_processing(block_height=i+2)
 
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
+            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+2)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
             # All state values reflect the result of the processed transaction
@@ -150,7 +151,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -176,6 +177,7 @@ class TestMultiNode(TestCase):
 
         # Send a bunch of transactions
         test_start_sending_transactions = time.time()
+
         for i in range(self.amount_of_transactions):
             test_start_sending_transaction = time.time()
 
@@ -192,11 +194,11 @@ class TestMultiNode(TestCase):
                 self.test_tracker[to] += amount
 
             # wait till all nodes reach the required block height
-            self.local_node_network.await_all_nodes_done_processing(block_height=i+1)
+            self.local_node_network.await_all_nodes_done_processing(block_height=i+2)
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
+            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+2)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
             # All state values reflect the result of the processed transactions
@@ -214,7 +216,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -263,11 +265,11 @@ class TestMultiNode(TestCase):
                 self.test_tracker[to] += amount
 
             # wait till all nodes reach the required block height
-            self.local_node_network.await_all_nodes_done_processing(block_height=i+1)
+            self.local_node_network.await_all_nodes_done_processing(block_height=i+2)
             end_sending_transaction = time.time()
             print(f"Took {end_sending_transaction - test_start_sending_transaction} seconds to process tx {i + 1}.")
 
-            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+1)
+            self.validate_block_height_in_all_nodes(nodes=self.local_node_network.all_nodes, valid_height=i+2)
             self.validate_block_hash_in_all_nodes(nodes=self.local_node_network.all_nodes)
 
             # All state values reflect the result of the processed transactions
@@ -287,7 +289,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for node in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]

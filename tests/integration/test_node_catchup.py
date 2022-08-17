@@ -1,5 +1,6 @@
 from pathlib import Path
 from tests.integration.mock.local_node_network import LocalNodeNetwork
+from tests.integration.mock.local_node_network import ThreadedNode
 from tests.integration.mock.mock_data_structures import MockBlocks
 from unittest import TestCase
 import asyncio
@@ -66,8 +67,8 @@ class TestNewNodeCatchup(TestCase):
             node_type="delegate"
         )
 
-        existing_node = self.network.masternodes[0]
-        new_node = self.network.delegates[1]
+        existing_node:ThreadedNode = self.network.masternodes[0]
+        new_node:ThreadedNode = self.network.delegates[1]
 
         self.assertFalse(new_node.node.started)
 
@@ -89,8 +90,13 @@ class TestNewNodeCatchup(TestCase):
         self.assertEqual(existing_node.node.get_current_height(), new_node.node.get_current_height())
         self.assertTrue(new_node.node.started)
 
+        delegate_members = existing_node.get_smart_contract_value(key="delegates.S:members")
+        new_node.set_smart_contract_value(key="delegates.S:members", value=delegate_members)
+
         for key_bytes in existing_node.node.driver.driver.db:
             key = key_bytes.decode('utf-8')
             expected_value = existing_node.node.driver.get(key=key)
             value = new_node.node.driver.get(key=key)
+            if expected_value != value:
+                print({'key': key})
             self.assertEqual(expected_value, value)

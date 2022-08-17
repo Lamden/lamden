@@ -1,5 +1,6 @@
 from lamden.crypto.wallet import Wallet
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
+from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
@@ -12,6 +13,19 @@ class TestNode(TestCase):
         self.oliver_wallet = Wallet()
         self.archer_wallet = Wallet()
 
+        self.founder_wallet = Wallet()
+        self.node_wallet = Wallet()
+        self.blocks = MockBlocks(
+            num_of_blocks=1,
+            founder_wallet=self.founder_wallet,
+            initial_members={
+                'masternodes': [
+                    self.node_wallet.verifying_key
+                ]
+            }
+        )
+        self.genesis_block = self.blocks.get_block_by_index(index=0)
+
         self.threaded_nodes = []
 
     def tearDown(self):
@@ -19,7 +33,11 @@ class TestNode(TestCase):
             self.await_async_process(tn.stop)
 
     def create_node(self, index=0):
-        tn = create_a_node(index=index)
+        tn = create_a_node(
+            node_wallet=self.node_wallet,
+            genesis_block=self.genesis_block,
+            index=index
+        )
         tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', value=1_000_000)
         self.threaded_nodes.append(tn)
 
@@ -31,7 +49,7 @@ class TestNode(TestCase):
         while not tn.node or not tn.node.started or not tn.node.network.running:
             self.await_async_process(asyncio.sleep, 1)
 
-    def create_and_start_node(self, index=0):
+    def create_and_start_node(self, index=0) -> ThreadedNode:
         tn = self.create_node(index=index)
         self.start_node(tn)
 
@@ -65,7 +83,7 @@ class TestNode(TestCase):
 
         tn.send_tx(json.dumps(get_new_currency_tx(**tx_args)).encode())
 
-        self.await_node_reaches_height(tn, 1)
+        self.await_node_reaches_height(tn, 2)
 
         block = tn.blocks.get_block(v=tn.latest_block_height)
 
@@ -73,7 +91,7 @@ class TestNode(TestCase):
 
         self.assertEqual(tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
         self.assertEqual(stu_balance_before - tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}'))
-        self.assertEqual(1, tn.blocks.total_blocks())
+        self.assertEqual(2, tn.blocks.total_blocks())
 
     def test_hard_apply_block_multiple_concurrent(self):
         # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions
@@ -113,9 +131,9 @@ class TestNode(TestCase):
         for tx_message in tx_messages:
             tn.send_tx(json.dumps(tx_message).encode())
 
-        self.await_node_reaches_height(tn, 3)
+        self.await_node_reaches_height(tn, 4)
 
-        self.assertEqual(3, tn.blocks.total_blocks())
+        self.assertEqual(4, tn.blocks.total_blocks())
 
         self.assertEqual(stu_balance_before - tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}'))
         self.assertEqual(0, tn.get_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))

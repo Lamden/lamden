@@ -60,7 +60,7 @@ class TestNode(TestCase):
         self.assertTrue(self.node.system_monitor.running)
 
     def test_start_new_network_bootnode_exists(self):
-        new_node = self.local_node_network.add_masternode(should_seed=True)
+        new_node = self.local_node_network.add_masternode()
         while not new_node.node_started:
             self.await_async_process(asyncio.sleep, 0.1)
 
@@ -84,7 +84,7 @@ class TestNode(TestCase):
     def test_start_join_existing_network_no_bootnodes(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, should_seed=False)
+        self.node = Node(socket_base='', wallet=Wallet(), constitution={})
         self.await_async_process(self.node.start)
 
         self.assertFalse(self.node.running)
@@ -159,7 +159,7 @@ class TestNode(TestCase):
     def test_check_tx_queue_triggers_block_creation(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
 
-        self.assertEqual(0, self.node.blocks.total_blocks())
+        self.assertEqual(1, self.node.blocks.total_blocks())
 
         tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet, processor=self.node.vk))
         self.node.send_tx(tx.encode())

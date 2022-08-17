@@ -220,7 +220,6 @@ class LocalNodeNetwork:
                 node_wallet=new_node_wallet,
                 reconnect_attempts=reconnect_attempts,
                 genesis_block=genesis_block
-
             )
 
             if bootnodes:

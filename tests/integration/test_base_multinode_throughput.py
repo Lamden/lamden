@@ -25,8 +25,8 @@ class TestMultiNode(TestCase):
 
         self.scenarios = {
             "high_nodes_low_tx_amount":{
-                'num_of_masternodes': 5,
-                'num_of_delegates': 5,
+                'num_of_masternodes': 3,
+                'num_of_delegates': 3,
                 'amount_of_transactions': 25
             },
             "low_nodes_high_tx_amount":{
@@ -44,8 +44,7 @@ class TestMultiNode(TestCase):
 
         self.local_node_network = LocalNodeNetwork(
             num_of_masternodes=num_of_masternodes,
-            num_of_delegates=num_of_delegates,
-            genesis_path=contracts.__path__[0]
+            num_of_delegates=num_of_delegates
         )
         for node in self.local_node_network.all_nodes:
             self.assertTrue(node.node_is_running)
@@ -103,7 +102,7 @@ class TestMultiNode(TestCase):
             self.test_tracker[receiver_wallet.verifying_key] += ContractingDecimal(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
-        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions)
+        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions + 1)
 
         # All state values reflect the result of the processed transactions
         expected_balance = json.loads(encoder.encode(self.test_tracker[receiver_wallet.verifying_key]))
@@ -114,11 +113,14 @@ class TestMultiNode(TestCase):
         print({'actual_balances': actual_balances})
 
         for actual_balance in actual_balances:
+            if actual_balance != expected_balance:
+                key = f'currency.balances:{receiver_wallet.verifying_key}'
+                print(f'currency.balances:{receiver_wallet.verifying_key}')
             self.assertEqual(actual_balance, expected_balance)
 
         # All nodes are at the proper block height
         for tn in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -150,7 +152,7 @@ class TestMultiNode(TestCase):
             self.test_tracker[to] = float(tx_info['payload']['kwargs']['amount']['__fixed__'])
 
         # wait till all nodes reach the required block height
-        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions)
+        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions + 1)
 
         # All state values reflect the result of the processed transactions
         for key, value in self.test_tracker.items():
@@ -160,12 +162,15 @@ class TestMultiNode(TestCase):
             ))
             print({'expected_balance': expected_balance})
             print({'actual_balances': actual_balances})
+
             for actual_balance in actual_balances:
+                if expected_balance != actual_balance:
+                    print({'key': key})
                 self.assertEqual(expected_balance, actual_balance)
 
         # All nodes are at the proper block height
         for tn in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
@@ -203,7 +208,7 @@ class TestMultiNode(TestCase):
                 self.test_tracker[to] += amount
 
         # wait till all nodes reach the required block height
-        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions)
+        self.local_node_network.await_all_nodes_done_processing(block_height=self.amount_of_transactions + 1)
 
         # All state values reflect the result of the processed transactions
         for key, value in self.test_tracker.items():
@@ -218,7 +223,7 @@ class TestMultiNode(TestCase):
 
         # All nodes are at the proper block height
         for tn in self.local_node_network.all_nodes:
-            self.assertEqual(self.amount_of_transactions, tn.node.blocks.total_blocks())
+            self.assertEqual(self.amount_of_transactions + 1, tn.node.blocks.total_blocks())
 
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]

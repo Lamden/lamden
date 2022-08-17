@@ -5,7 +5,7 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.encoder import encode
+from contracting.db.encoder import encode, decode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
@@ -116,6 +116,7 @@ class MockProcessed:
         }
 
         if internal_state is not None:
+            internal_state_decoded = decode(encode(internal_state))
             contract = self.transaction.payload.get('contract')
             function = self.transaction.payload.get('function')
             if contract == 'currency' and function == 'transfer':
@@ -129,13 +130,13 @@ class MockProcessed:
                 current_bal = internal_state.get(key)
 
                 if current_bal is None:
-                    internal_state[key] = ContractingDecimal(amount)
+                    internal_state_decoded[key] = ContractingDecimal(amount)
                 else:
-                    internal_state[key] += ContractingDecimal(amount)
+                    internal_state_decoded[key] += ContractingDecimal(amount)
 
                 self.state = [{
                     'key': key,
-                    'value': {'__fixed__': str(internal_state[key])}
+                    'value': {'__fixed__': str(internal_state_decoded[key])}
                 }]
 
                 print (self.state)
@@ -218,10 +219,6 @@ class MockGenesisBlock:
             previous_block_hash=self.previous
         )
 
-        create_genesis.main(self.founder_wallet.sk, '', self.bs, internal_state, self.contract_driver, self.contracting_client, db='test', collection='test')
-
-        return self.bs.get_block(0)
-
     def create_origin(self, signer_wallet: Wallet):
         state_changes_hash = hash_genesis_block_state_changes(state_changes=self.genesis)
         self.origin = {
@@ -236,14 +233,14 @@ class MockGenesisBlock:
             })
 
     def as_dict(self):
-        return dict({
-            'hash': self.hash,
-            'number': self.number,
-            'hlc_timestamp': self.hlc_timestamp,
-            'previous': self.previous,
-            'genesis': self.genesis,
-            'origin': self.origin
-        })
+        genesis_state_dict = {}
+        for state in self.genesis:
+            genesis_state_dict[state.get('key')] = state.get('value')
+
+        return create_genesis.build_block(
+            founder_sk=self.founder_wallet.signing_key,
+            additional_state=genesis_state_dict
+        )
 
 class TestMockGenesisBlock(TestCase):
     def setUp(self):
@@ -272,7 +269,7 @@ class TestMockGenesisBlock(TestCase):
             signature=signature
         ))
 
-        self.assertEqual(5, len(block_dict))
+        self.assertEqual(6, len(block_dict))
 
 class MockBlock:
     def __init__(self,

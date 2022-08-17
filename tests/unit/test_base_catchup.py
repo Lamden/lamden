@@ -71,8 +71,12 @@ class TestBaseNode_Catchup(TestCase):
 
         self.node_wallet = Wallet()
 
+        self.initial_members = {
+            'masternodes': [self.node_wallet.verifying_key]
+        }
+
         self.node = None
-        self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True, initial_members=[self.node_wallet.verifying_key])
+        self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True, initial_members=self.initial_members)
         self.catchup_peers: List[Peer] = []
 
     def tearDown(self):

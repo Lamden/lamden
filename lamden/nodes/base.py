@@ -385,6 +385,7 @@ class Node:
             self.log.info({"vk": vk, "ip": ip})
 
             self.network.refresh_approved_peers_in_cred_provider()
+            self.network.router.cred_provider.open_messages()
 
             if vk != self.wallet.verifying_key:
                 # connect to peer
@@ -412,6 +413,10 @@ class Node:
 
         # Start the validation queue so we start accepting block results
         self.start_validation_queue_task()
+
+        # Lock the router down and secure messages again
+        self.network.refresh_approved_peers_in_cred_provider()
+        self.network.router.cred_provider.secure_messages()
 
         self.driver.clear_pending_state()
 

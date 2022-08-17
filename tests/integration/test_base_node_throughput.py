@@ -7,7 +7,7 @@ from lamden.crypto.transaction import build_transaction
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db import encoder
 
-from tests.integration.mock.mock_data_structures import MockTransaction
+from tests.integration.mock.mock_data_structures import MockTransaction, MockBlocks
 
 import asyncio
 import uvloop
@@ -29,6 +29,16 @@ class TestNode(TestCase):
 
         self.amount_of_txn = 250
         self.nonces = {}
+        self.founder_wallet = Wallet()
+        self.node_wallet = Wallet()
+        self.blocks = MockBlocks(
+            num_of_blocks=1,
+            founder_wallet=self.founder_wallet,
+            initial_members={
+                'masternodes': [self.node_wallet.verifying_key]
+            }
+        )
+        self.genesis_block = self.blocks.get_block_by_index(index=0)
         self.tn: ThreadedNode = None
         self.tx_history = {}
         self.tx_accumulator ={}
@@ -51,7 +61,7 @@ class TestNode(TestCase):
         return self.tn.node
 
     def create_node(self):
-        self.tn = create_a_node()
+        self.tn = create_a_node(genesis_block=self.genesis_block, node_wallet=self.node_wallet)
 
     def start_node(self):
         self.tn.start()
@@ -168,7 +178,7 @@ class TestNode(TestCase):
 
     def await_all_processed(self):
         current_height = self.node.blocks.total_blocks()
-        while current_height != self.amount_of_txn:
+        while current_height != self.amount_of_txn + 1:
             current_height = self.node.blocks.total_blocks()
             self.async_sleep(1)
 
@@ -208,7 +218,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
+        self.assertEqual(self.amount_of_txn + 1, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
@@ -251,7 +261,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
+        self.assertEqual(self.amount_of_txn + 1, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_history:
@@ -307,7 +317,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
+        self.assertEqual(self.amount_of_txn + 1, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:
@@ -357,7 +367,7 @@ class TestNode(TestCase):
 
         # ___ VALIDATE TEST RESULTS ___
         # block height equals the amount of transactions processed
-        self.assertEqual(self.amount_of_txn, self.node.blocks.total_blocks())
+        self.assertEqual(self.amount_of_txn + 1, self.node.blocks.total_blocks())
 
         # All state values reflect the result of the processed transactions
         for key in self.tx_accumulator:

@@ -10,7 +10,6 @@ import random
 class TestNodeKick(TestCase):
     def setUp(self):
         self.network = LocalNodeNetwork(
-            genesis_path=Path(contracts.__path__[0]),
             num_of_masternodes=5
         )
 
