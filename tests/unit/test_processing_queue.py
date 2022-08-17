@@ -507,13 +507,3 @@ class TestProcessingQueue(TestCase):
             tx_result = processing_results.get('tx_result')
             self.assertGreater(len(tx_result['state']), 0)
             self.driver.soft_apply(tx.get('hlc_timestamp'))
-
-    def test_prune_history(self):
-        raise NotImplementedError
-
-    def test_prune_processing_results(self):
-        raise NotImplementedError
-
-    def test_prune_read_history(self):
-        raise NotImplementedError
-
