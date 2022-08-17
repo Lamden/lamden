@@ -6,25 +6,14 @@ import argparse
 
 def flush(args):
     if args.storage_type == 'blocks':
-        BlockStorage().drop_collections()
-        # print('All blocks deleted.')
+        BlockStorage().flush()
     elif args.storage_type == 'state':
         ContractDriver().flush()
-        # print('State deleted.')
     elif args.storage_type == 'all':
-        b = BlockStorage()
-        dbs = b.client.database_names()
-        for db in dbs:
-            if db == 'admin' or db == 'config':
-                continue
-            b.client.drop_database(db)
-
+        BlockStorage().flush()
         ContractDriver().flush()
-        # print('All blocks deleted.')
-        # print('State deleted.')
     else:
         print('Invalid option. < blocks | state | all >')
-
 
 def setup_cilparser(parser):
     # create parser for update commands
@@ -53,7 +42,6 @@ def setup_cilparser(parser):
 
     return True
 
-
 def main():
     parser = argparse.ArgumentParser(description="Lamden Commands", prog='cil')
     setup_cilparser(parser)
@@ -76,7 +64,6 @@ def main():
         client = ContractingClient()
         sync.flush_sys_contracts(client=client)
         sync.submit_from_genesis_json_file(client=client)
-
 
 if __name__ == '__main__':
     main()
