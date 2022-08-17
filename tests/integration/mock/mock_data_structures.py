@@ -175,10 +175,10 @@ class TestMockProcessed(TestCase):
         self.assertNotEqual(64 * '0', processed.hash)
 
 class MockGenesisBlock:
-    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: dict = {}):
+    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: list = []):
 
         self.founder_wallet = founder_wallet
-        internal_state.update({'masternodes.S:members': initial_members.get('masternodes', [])})
+        internal_state.update({'masternodes.S:members': initial_members})
         internal_state.update({f'currency.balances:{founder_wallet.verifying_key}': 100000000})
         self.block = create_genesis.build_block(
             founder_sk=founder_wallet.signing_key,
@@ -323,7 +323,7 @@ class TestMockBlock(TestCase):
         self.assertEqual([], block_dict.get('rewards'))
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: list = [],
                  founder_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()

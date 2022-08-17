@@ -85,3 +85,4 @@ ops
 .vscode/settings.json
 temp_network
 .coverage
+tests/integration/mock/fixtures/
