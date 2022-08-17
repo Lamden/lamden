@@ -59,14 +59,12 @@ def resolve_constitution(fp):
     j = json.load(f)
     f.close()
 
-    const = list(j.keys())
     formatted_bootnodes = {}
-
-    for vk, ip in j.items():
+    for vk, ip in j['masternodes'].items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
         formatted_bootnodes[vk] = f'tcp://{ip}'
 
-    return const, formatted_bootnodes
+    return formatted_bootnodes
 
 def resolve_genesis_block(fp):
     path = pathlib.PosixPath(fp).expanduser()
@@ -88,10 +86,9 @@ def start_node(args):
 
     logger.info({'node vk': wallet.verifying_key})
 
-    const, bootnodes = resolve_constitution(args.constitution)
+    bootnodes = resolve_constitution(args.constitution)
     genesis_block = resolve_genesis_block(args.genesis_block)
 
-    logger.info({'constitution': const})
     logger.info({'bootnodes': bootnodes})
 
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
@@ -117,7 +114,6 @@ def start_node(args):
         wallet=wallet,
         socket_base=socket_base,
         bootnodes=bootnodes,
-        constitution=const,
         bypass_catchup=args.bypass_catchup,
         genesis_block=genesis_block
     )
@@ -152,7 +148,6 @@ def join_network(args):
     n = Node(
         wallet=wallet,
         socket_base=socket_base,
-        constitution={},
         webserver_port=args.webserver_port,
         bootnodes=bootnodes,
         seed=mn_seed,
