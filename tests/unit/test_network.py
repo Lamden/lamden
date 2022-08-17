@@ -22,33 +22,25 @@ class MockNetworkMap:
     def __init__(self, network_map: dict = None):
         self.network_map = dict({
             'masternodes': {},
-            'delegates': {}
         })
 
         if network_map is None:
-            self.network_map['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19001"
-            self.network_map['masternodes'][Wallet().verifying_key] = "tcp://127.0.0.1:19002"
-            self.network_map['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19003"
-            self.network_map['delegates'][Wallet().verifying_key] = "tcp://127.0.0.1:19004"
+            for i in range(4):
+                self.network_map['masternodes'][Wallet().verifying_key] = f'tcp://127.0.0.1:1900{i}'
         else:
             self.network_map = network_map
 
     @property
     def all_nodes(self):
-        all_nodes = self.network_map.get('masternodes').copy()
-        all_nodes.update(self.network_map.get('delegates'))
-        return all_nodes
+        return self.network_map.get('masternodes').copy()
 
     def add_node(self, vk: str, ip: str, type: str):
         self.network_map[type][vk] = ip
 
     def make_constitution(self):
-        network_map = dict({
+        return dict({
             'masternodes': [vk for vk in self.network_map['masternodes'].keys()],
-            'delegates': [vk for vk in self.network_map['delegates'].keys()]
         })
-        return network_map
-
 
 class TestNetwork(TestCase):
     def setUp(self):
@@ -106,16 +98,12 @@ class TestNetwork(TestCase):
     def get_peer_list(self):
         return [network.wallet.verifying_key for network in self.networks]
 
-    def add_vk_to_smartcontract(self, node_type, network, vk):
-        if node_type == 'masternode':
-            current_vks = network.get_masternode_vk_list()
-        else:
-            current_vks = network.get_delegate_vk_list()
-
+    def add_vk_to_smartcontract(self, network, vk):
+        current_vks = network.get_node_list()
         current_vks.append(vk)
 
         network.driver.driver.set(
-            key=f"{node_type}s.S:members",
+            key="masternodes.S:members",
             value=current_vks
         )
 
@@ -531,7 +519,7 @@ class TestNetwork(TestCase):
         hello_msg = json.dumps({'action': ACTION_HELLO, 'ip': 'tcp://127.0.0.1:19000', 'challenge': 'testing'})
         wallet = Wallet()
         peer_vk = wallet.verifying_key
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(network_1.router_callback(ident_vk_string=peer_vk, msg=hello_msg))
@@ -707,7 +695,7 @@ class TestNetwork(TestCase):
         mock_network_map = MockNetworkMap()
 
         for vk, ip in mock_network_map.all_nodes.items():
-            self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=vk)
+            self.add_vk_to_smartcontract(network=network_1, vk=vk)
             network_1.create_peer(vk=vk, ip=ip)
 
         network_1.router.send_msg = self.mock_send_msg
@@ -743,41 +731,35 @@ class TestNetwork(TestCase):
             {
                 'vk': network_1.vk,
                 'ip': network_1.external_address,
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19001',
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19002',
-                'node_type': 'delegate'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19003',
-                'node_type': 'delegate'
             },
         ]
 
         for node in node_list:
             vk = node.get('vk')
 
-            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            self.add_vk_to_smartcontract(network=network_1, vk=vk)
             network_1.create_peer(vk=vk, ip=node.get('ip'))
 
         network_map = network_1.make_network_map()
 
-        self.assertEqual(2, len(network_map.get('masternodes')))
-        self.assertEqual(2, len(network_map.get('delegates')))
+        self.assertEqual(4, len(network_map.get('masternodes')))
 
         for node in node_list:
-            node_type = node.get('node_type')
             vk = node.get('vk')
             ip = node.get('ip')
-            self.assertEqual(ip, network_map[f'{node_type}s'][vk])
+            self.assertEqual(ip, network_map['masternodes'][vk])
 
     def test_METHOD_network_map_to_node_list(self):
         network_1 = self.create_network()
@@ -786,29 +768,25 @@ class TestNetwork(TestCase):
             {
                 'vk': network_1.vk,
                 'ip': network_1.external_address,
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19001',
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19002',
-                'node_type': 'delegate'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19003',
-                'node_type': 'delegate'
             },
         ]
 
         for node in node_list:
             vk = node.get('vk')
 
-            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            self.add_vk_to_smartcontract(network=network_1, vk=vk)
             network_1.create_peer(vk=vk, ip=node.get('ip'))
 
         network_map = network_1.make_network_map()
@@ -825,29 +803,25 @@ class TestNetwork(TestCase):
             {
                 'vk': network_1.vk,
                 'ip': network_1.external_address,
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19001',
-                'node_type': 'masternode'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19002',
-                'node_type': 'delegate'
             },
             {
                 'vk': Wallet().verifying_key,
                 'ip': 'tcp://127.0.0.1:19003',
-                'node_type': 'delegate'
             },
         ]
 
         for node in node_list:
             vk = node.get('vk')
 
-            self.add_vk_to_smartcontract(node_type=node.get('node_type'), network=network_1, vk=vk)
+            self.add_vk_to_smartcontract(network=network_1, vk=vk)
             network_1.create_peer(vk=vk, ip=node.get('ip'))
 
         network_map = network_1.make_network_map()
@@ -855,12 +829,10 @@ class TestNetwork(TestCase):
         constitution_from_network_map = network_1.network_map_to_constitution(network_map=network_map)
 
         for node in node_list:
-            node_type = node.get('node_type')
             vk = node.get('vk')
-            self.assertTrue( vk in constitution_from_network_map[f'{node_type}s'])
+            self.assertTrue(vk in constitution_from_network_map['masternodes'])
 
-        self.assertEqual(2, len(constitution_from_network_map['masternodes']))
-        self.assertEqual(2, len(constitution_from_network_map['delegates']))
+        self.assertEqual(4, len(constitution_from_network_map['masternodes']))
 
     def test_METHOD_connected_to_all_peers__task_completes_when_all_peers_are_connected(self):
         network_1 = self.create_network()
@@ -1043,7 +1015,7 @@ class TestNetwork(TestCase):
         peer.test_connection = self.mock_peer_test_connection
         peer.running = True
 
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         try:
             network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
@@ -1072,7 +1044,7 @@ class TestNetwork(TestCase):
         peer.test_connection = self.mock_peer_test_connection
         peer.running = True
 
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         try:
             network_1.connect_peer(ip='tcp://127.0.0.1:19002', vk=peer_vk)
@@ -1090,7 +1062,7 @@ class TestNetwork(TestCase):
         network_1 = self.create_network()
 
         peer_vk = Wallet().verifying_key
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         try:
             network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
@@ -1147,35 +1119,7 @@ class TestNetwork(TestCase):
         self.assertEqual("0", hello_obj.get("latest_hlc_timestamp"))
         self.assertEqual("", hello_obj.get("challenge_response"))
 
-    def test_METHOD_get_masternode_vks(self):
-        network_1 = self.create_network()
-
-        vks = [Wallet().verifying_key, Wallet().verifying_key]
-
-        network_1.driver.driver.set(
-            key="masternodes.S:members",
-            value=vks
-        )
-
-        masternode_vks = network_1.get_masternode_vk_list()
-
-        self.assertEqual(vks, masternode_vks)
-
-    def test_METHOD_get_delegate_vks(self):
-        network_1 = self.create_network()
-
-        vks = [Wallet().verifying_key, Wallet().verifying_key]
-
-        network_1.driver.driver.set(
-            key="delegates.S:members",
-            value=vks
-        )
-
-        masternode_vks = network_1.get_delegate_vk_list()
-
-        self.assertEqual(vks, masternode_vks)
-
-    def test_METHOD_get_masternode_and_delegate_vks(self):
+    def test_METHOD_get_node_list(self):
         network_1 = self.create_network()
 
         masternode_vks = [Wallet().verifying_key, Wallet().verifying_key]
@@ -1183,17 +1127,12 @@ class TestNetwork(TestCase):
 
         network_1.driver.driver.set(
             key="masternodes.S:members",
-            value=masternode_vks
+            value=masternode_vks + delegate_vks
         )
 
-        network_1.driver.driver.set(
-            key="delegates.S:members",
-            value=delegate_vks
-        )
+        node_list = network_1.get_node_list()
 
-        masternode_and_delegate_vks = network_1.get_masternode_and_delegate_vk_list()
-
-        self.assertEqual(masternode_and_delegate_vks, masternode_vks + delegate_vks)
+        self.assertEqual(node_list, masternode_vks + delegate_vks)
 
     def test_METHOD_map_vk_to_ip__creates_dict_with_correct_info(self):
         network_1 = self.create_network()
@@ -1225,12 +1164,7 @@ class TestNetwork(TestCase):
 
         network_1.driver.driver.set(
             key="masternodes.S:members",
-            value=masternode_vks
-        )
-
-        network_1.driver.driver.set(
-            key="delegates.S:members",
-            value=delegate_vks
+            value=masternode_vks + delegate_vks
         )
 
         network_1.create_peer(ip=masternode_1[0], vk=masternode_1[1])
@@ -1241,8 +1175,7 @@ class TestNetwork(TestCase):
 
         constitution = network_1.make_constitution()
 
-        self.assertEqual(3, len(constitution.get('masternodes')))
-        self.assertEqual(2, len(constitution.get('delegates')))
+        self.assertEqual(5, len(constitution.get('masternodes')))
 
     def test_METHOD_get_peers_for_consensus(self):
         network_1 = self.create_network()
@@ -1258,12 +1191,7 @@ class TestNetwork(TestCase):
 
         network_1.driver.driver.set(
             key="masternodes.S:members",
-            value=masternode_vks
-        )
-
-        network_1.driver.driver.set(
-            key="delegates.S:members",
-            value=delegate_vks
+            value=masternode_vks + delegate_vks
         )
 
         consensus_peers = network_1.get_peers_for_consensus()
@@ -1363,7 +1291,7 @@ class TestNetwork(TestCase):
         network_1 = self.create_network()
 
         peer_vk = Wallet().verifying_key
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         self.assertTrue(network_1.peer_is_voted_in(peer_vk))
 
@@ -1384,10 +1312,10 @@ class TestNetwork(TestCase):
 
         # Creates some new nodes that were voted in
         new_mn_wallet = Wallet()
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=new_mn_wallet.verifying_key)
+        self.add_vk_to_smartcontract(network=network_1, vk=new_mn_wallet.verifying_key)
 
         new_del_wallet = Wallet()
-        self.add_vk_to_smartcontract(node_type='delegate', network=network_1, vk=new_del_wallet.verifying_key)
+        self.add_vk_to_smartcontract(network=network_1, vk=new_del_wallet.verifying_key)
 
         # Refresh the cred provider
         network_1.refresh_approved_peers_in_cred_provider()
@@ -1430,7 +1358,7 @@ class TestNetwork(TestCase):
         network_1 = self.create_network()
         peer_wallet = Wallet()
         peer_vk = peer_wallet.verifying_key
-        self.add_vk_to_smartcontract(node_type='masternode', network=network_1, vk=peer_vk)
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
 
         network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
         self.async_sleep(0.1)
@@ -1452,8 +1380,8 @@ class TestNetwork(TestCase):
 
         self.assertListEqual(network_1.get_exiled_peers(), [network_1.vk, peer_vk])
 
-        self.add_vk_to_smartcontract('masternode', network_1, network_1.vk)
+        self.add_vk_to_smartcontract(network_1, network_1.vk)
         self.assertListEqual(network_1.get_exiled_peers(), [peer_vk])
 
-        self.add_vk_to_smartcontract('delegate', network_1, peer_vk)
+        self.add_vk_to_smartcontract(network_1, peer_vk)
         self.assertListEqual(network_1.get_exiled_peers(), [])

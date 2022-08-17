@@ -430,18 +430,27 @@ class Network:
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
     def make_network_map(self) -> dict:
-        return self.map_vk_to_ip(self.get_node_list())
+        return {
+            'masternodes': self.map_vk_to_ip(self.get_node_list())
+        }
+
+    def make_constitution(self) -> dict:
+        return {
+            'masternodes': self.get_node_list()
+        }
 
     def network_map_to_node_list(self, network_map: dict = dict({})) -> list:
         node_list = []
 
-        for vk, ip in network_map.items():
+        for vk, ip in network_map['masternodes'].items():
             node_list.append({'vk': vk, 'ip': ip})
 
         return node_list
 
     def network_map_to_constitution(self, network_map: dict = dict({})) -> list:
-        return list(network_map.keys())
+        return {
+            'masternodes': list(network_map['masternodes'].keys())
+        }
 
     def get_peers_for_consensus(self) -> list:
         all_peers = self.get_node_list()
