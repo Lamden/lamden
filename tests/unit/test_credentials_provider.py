@@ -5,7 +5,7 @@ from lamden.crypto.wallet import Wallet
 
 class TestCredentialsProvider(unittest.TestCase):
     def setUp(self) -> None:
-        self.credentials_provider = None
+        self.credentials_provider: CredentialsProvider = None
         self.all_peers = []
 
     def tearDown(self) -> None:
@@ -95,6 +95,31 @@ class TestCredentialsProvider(unittest.TestCase):
         self.create_credentials_provider()
 
         self.assertFalse(self.credentials_provider.callback(domain='', key=Wallet().curve_vk))
+
+    def test_METHOD_callback__return_TRUE_if_always_approve_is_TRUE(self):
+        self.create_credentials_provider()
+
+        wallet_1 = Wallet()
+
+        self.credentials_provider.accept_all = True
+
+        self.assertTrue(self.credentials_provider.callback(domain='', key=wallet_1.curve_vk))
+
+    def test_METHOD_open_messages__sets_approve_all_to_TRUE(self):
+        self.create_credentials_provider()
+
+        self.credentials_provider.accept_all = False
+        self.credentials_provider.open_messages()
+
+        self.assertTrue(self.credentials_provider.accept_all)
+
+    def test_METHOD_secure_messages__sets_approve_all_to_FALSE(self):
+        self.create_credentials_provider()
+
+        self.credentials_provider.accept_all = True
+        self.credentials_provider.secure_messages()
+
+        self.assertFalse(self.credentials_provider.accept_all)
 
 
 

@@ -10,6 +10,7 @@ from lamden.nodes.masternode.webserver import WebServer
 from lamden.storage import BlockStorage
 from multiprocessing import Process
 from tests.unit.helpers.mock_blocks import generate_blocks
+from tests.integration.mock.mock_data_structures import MockBlocks
 from unittest import TestCase
 import asyncio
 import copy
@@ -24,25 +25,38 @@ SAMPLE_TOPIC = 'new_block'
 
 class TestClassWebserver(TestCase):
     def setUp(self):
-        self.storage_root = pathlib.Path().cwd().joinpath('test_class_webserver')
-        if self.storage_root.is_dir():
-            shutil.rmtree(self.storage_root)
-        self.storage_root.mkdir()
+        self.node_wallet = Wallet()
 
-        self.w = Wallet()
-        self.blocks = BlockStorage(root=self.storage_root)
-        self.driver = ContractDriver(driver=FSDriver(root=self.storage_root.joinpath('state')))
+        self.initial_members = {
+            'masternodes': [self.node_wallet.verifying_key]
+        }
+
+        self.mock_blocks = MockBlocks(num_of_blocks=2, one_wallet=True,
+                                      initial_members=self.initial_members)
+
+        self.temp_storage = pathlib.Path().cwd().joinpath('temp_storage')
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
+        self.temp_storage.mkdir()
+
+        self.block_storage = BlockStorage(root=self.temp_storage)
+        self.block_storage.store_block(self.mock_blocks.get_block_by_index(0))
+        self.driver = ContractDriver(driver=FSDriver(root=self.temp_storage.joinpath('state')))
+
         self.ws = WebServer(
-            wallet=self.w,
+            wallet=self.node_wallet,
             contracting_client=ContractingClient(driver=self.driver),
-            blocks=self.blocks,
+            blocks=self.block_storage,
             driver=self.driver,
-            queue=FileQueue(root=self.storage_root),
-            nonces=storage.NonceStorage(nonce_collection=self.storage_root.joinpath('nonces'), pending_collection=self.storage_root.joinpath('pending_nonces'))
+            queue=FileQueue(root=self.temp_storage),
+            nonces=storage.NonceStorage(
+                nonce_collection=self.temp_storage.joinpath('nonces'),
+                pending_collection=self.temp_storage.joinpath('pending_nonces')
+            )
         )
 
     def tearDown(self):
-        shutil.rmtree(self.storage_root)
+        shutil.rmtree(self.temp_storage)
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -50,13 +64,13 @@ class TestClassWebserver(TestCase):
 
     def test_get_id(self):
         _, response = self.ws.app.test_client.get('/id')
-        self.assertDictEqual(response.json, {'verifying_key': self.w.verifying_key})
+        self.assertDictEqual(response.json, {'verifying_key': self.node_wallet.verifying_key})
 
     def test_get_nonce_pending_nonce_is_none_returns_0(self):
         w2 = Wallet()
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key))
 
-        expected = {'nonce': 0, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
+        expected = {'nonce': 0, 'processor': self.node_wallet.verifying_key, 'sender': w2.verifying_key}
 
         self.assertDictEqual(response.json, expected)
 
@@ -65,24 +79,24 @@ class TestClassWebserver(TestCase):
 
         self.ws.nonces.set_pending_nonce(
             sender=w2.verifying_key,
-            processor=self.w.verifying_key,
+            processor=self.node_wallet.verifying_key,
             value=123
         )
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key))
 
-        expected = {'nonce': 124, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
+        expected = {'nonce': 124, 'processor': self.node_wallet.verifying_key, 'sender': w2.verifying_key}
 
         self.assertDictEqual(expected, response.json)
 
     def test_get_nonce_pending_nonce_is_none_but_nonce_is_not_returns_nonce(self):
         w2 = Wallet()
 
-        self.ws.nonces.set_nonce(processor=self.w.verifying_key, sender=w2.verifying_key, value=555)
+        self.ws.nonces.set_nonce(processor=self.node_wallet.verifying_key, sender=w2.verifying_key, value=555)
 
         _, response = self.ws.app.test_client.get('/nonce/{}'.format(w2.verifying_key))
 
-        expected = {'nonce': 556, 'processor': self.w.verifying_key, 'sender': w2.verifying_key}
+        expected = {'nonce': 556, 'processor': self.node_wallet.verifying_key, 'sender': w2.verifying_key}
 
         self.assertDictEqual(response.json, expected)
 

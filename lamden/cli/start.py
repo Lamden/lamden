@@ -11,7 +11,7 @@ from lamden.nodes.masternode.masternode import Masternode
 from lamden.nodes.delegate.delegate import Delegate
 from lamden.logger.base import get_logger
 
-import time
+from contracting.db.encoder import decode
 
 
 def cfg_and_start_rsync_daemon():
@@ -78,6 +78,17 @@ def resolve_constitution(fp):
 
     return const, formatted_bootnodes
 
+def resolve_genesis_block(fp):
+    path = pathlib.PosixPath(fp).expanduser()
+
+    path.touch()
+
+    f = open(str(path), 'r')
+    genesis_block = decode(f.read())
+    f.close()
+
+    return genesis_block
+
 
 def resolve_raw_constitution(text):
     j = json.loads(text)
@@ -104,7 +115,7 @@ def start_node(args):
     logger.info({'node vk': wallet.verifying_key})
 
     const, bootnodes = resolve_constitution(args.constitution)
-
+    genesis_block = resolve_genesis_block(args.genesis_block)
 
     logger.info({'constitution': const})
     logger.info({'bootnodes': bootnodes})
@@ -136,7 +147,8 @@ def start_node(args):
             constitution=const,
             webserver_port=args.webserver_port,
             bypass_catchup=args.bypass_catchup,
-            node_type=args.node_type
+            node_type=args.node_type,
+            genesis_block=genesis_block
         )
     elif args.node_type == 'delegate':
         n = Delegate(
@@ -146,7 +158,8 @@ def start_node(args):
             bootnodes=bootnodes,
             constitution=const,
             bypass_catchup=args.bypass_catchup,
-            node_type=args.node_type
+            node_type=args.node_type,
+            genesis_block=genesis_block
         )
 
     loop = asyncio.get_event_loop()
@@ -187,8 +200,7 @@ def join_network(args):
             webserver_port=args.webserver_port,
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type,
-            should_seed=False
+            node_type=args.node_type
         )
     elif args.node_type == 'delegate':
         n = Delegate(
@@ -197,8 +209,7 @@ def join_network(args):
             constitution={},
             bootnodes=bootnodes,
             seed=mn_seed,
-            node_type=args.node_type,
-            should_seed=False
+            node_type=args.node_type
         )
 
     loop = asyncio.get_event_loop()

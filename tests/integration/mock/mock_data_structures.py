@@ -5,8 +5,9 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from contracting.db.encoder import encode, decode
 from lamden.crypto.transaction import build_transaction
-from lamden.utils import hlc
+from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
 
 class MockTransaction:
@@ -115,25 +116,27 @@ class MockProcessed:
         }
 
         if internal_state is not None:
+            internal_state_decoded = decode(encode(internal_state))
             contract = self.transaction.payload.get('contract')
             function = self.transaction.payload.get('function')
             if contract == 'currency' and function == 'transfer':
                 kwargs = self.transaction.payload.get('kwargs')
                 to = kwargs.get('to')
                 amount = kwargs.get('amount')
+                key = f'currency.balances:{to}'
                 if amount.get('__fixed__') is not None:
                     amount = amount.get('__fixed__')
 
-                current_bal = internal_state.get(to)
+                current_bal = internal_state.get(key)
 
                 if current_bal is None:
-                    internal_state[to] = ContractingDecimal(amount)
+                    internal_state_decoded[key] = ContractingDecimal(amount)
                 else:
-                    internal_state[to] += ContractingDecimal(amount)
+                    internal_state_decoded[key] += ContractingDecimal(amount)
 
                 self.state = [{
-                    'key': f'currency.balances:{to}',
-                    'value': {'__fixed__': str(internal_state[to]) }
+                    'key': key,
+                    'value': {'__fixed__': str(internal_state_decoded[key])}
                 }]
 
                 print (self.state)
@@ -175,8 +178,9 @@ class TestMockProcessed(TestCase):
 class MockGenesisBlock:
     def __init__(self,
             internal_state: dict = {},
-            founder_wallet: Wallet = Wallet()
-        ):
+            founder_wallet: Wallet = Wallet(),
+            initial_members: dict = {}
+            ):
 
         self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
         self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
@@ -188,6 +192,18 @@ class MockGenesisBlock:
         self.add_to_genesis(
             key=f'currency.balances:{self.founder_wallet.verifying_key}',
             value=100000000
+        )
+
+        initial_masternodes = initial_members.get('masternodes')
+        self.add_to_genesis(
+            key=f'masternodes.S:members',
+            value=initial_masternodes or []
+        )
+
+        initial_delegates = initial_members.get('delegates')
+        self.add_to_genesis(
+            key=f'delegates.S:members',
+            value=initial_delegates or []
         )
 
         for key, value in internal_state.items():
@@ -217,14 +233,14 @@ class MockGenesisBlock:
             })
 
     def as_dict(self):
-        return dict({
-            'hash': self.hash,
-            'number': self.number,
-            'hlc_timestamp': self.hlc_timestamp,
-            'previous': self.previous,
-            'genesis': self.genesis,
-            'origin': self.origin
-        })
+        genesis_state_dict = {}
+        for state in self.genesis:
+            genesis_state_dict[state.get('key')] = state.get('value')
+
+        return create_genesis.build_block(
+            founder_sk=self.founder_wallet.signing_key,
+            additional_state=genesis_state_dict
+        )
 
 class TestMockGenesisBlock(TestCase):
     def setUp(self):
@@ -253,7 +269,7 @@ class TestMockGenesisBlock(TestCase):
             signature=signature
         ))
 
-        self.assertEqual(5, len(block_dict))
+        self.assertEqual(6, len(block_dict))
 
 class MockBlock:
     def __init__(self,
@@ -355,10 +371,12 @@ class TestMockBlock(TestCase):
         self.assertEqual([], block_dict.get('rewards'))
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False):
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
+                 founder_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()
-        self.founder_wallet = Wallet()
+        self.founder_wallet = founder_wallet or Wallet()
+        self.initial_members = initial_members
 
         self.receiver_wallet = None
         if one_wallet:
@@ -414,7 +432,8 @@ class MockBlocks:
         if self.current_block_height == -1:
             new_block =  copy.deepcopy(MockGenesisBlock(
                 founder_wallet=self.founder_wallet,
-                internal_state=self.internal_state
+                internal_state=self.internal_state,
+                initial_members=self.initial_members
             ))
 
             for state_change in new_block.genesis:
@@ -431,8 +450,15 @@ class MockBlocks:
             for state_change in new_block.processed.get('state'):
                 self.internal_state[state_change.get('key')] = state_change.get('value')
 
-        block_dict = dict(new_block.as_dict())
-        self.blocks[new_block.number] = dict(new_block.as_dict())
+        block_dict = self.add_to_blocks_dict(block=new_block)
+        return block_dict
+
+    def add_to_blocks_dict(self, block):
+        block_dict = block
+        if not isinstance(block_dict, dict):
+            block_dict = dict(block.as_dict())
+
+        self.blocks[block.number] = dict(block.as_dict())
         return block_dict
 
     def add_blocks(self, num_of_blocks):

@@ -19,7 +19,8 @@ from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.network import Network
 from lamden.nodes import system_usage
-from lamden.nodes import processing_queue, validation_queue
+from lamden.nodes.processing_queue  import TxProcessingQueue
+from lamden.nodes.validation_queue  import ValidationQueue
 from lamden.nodes.processors import work, block_contender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
@@ -75,9 +76,13 @@ def ensure_in_constitution(verifying_key: str, constitution: dict):
 class Node:
     def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
-                 genesis_path=contracts.__path__[0], consensus_percent=None,
-                 nonces=None, parallelism=4, should_seed=True, metering=False, tx_queue=None,
-                 socket_ports=None, reconnect_attempts=60):
+                 consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
+                 tx_queue=None, socket_ports=None, reconnect_attempts=60):
+
+        self.main_processing_queue = None
+        self.validation_queue = None
+        self.check_main_processing_queue_task = None
+        self.check_validation_queue_task = None
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -124,21 +129,12 @@ class Node:
 
         self.system_monitor = system_usage.SystemUsage()
 
-        self.genesis_path = genesis_path
-
-        self.client = ContractingClient(
-            driver=self.driver,
-            submission_filename=genesis_path + '/submission.s.py'
-        )
+        self.last_minted_block = None
+        self.held_blocks = []
+        self.hold_blocks = False
 
         self.bootnodes = bootnodes
         self.constitution = constitution
-        self.should_seed = should_seed
-
-        if self.should_seed:
-            self.seed_genesis_contracts()
-
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
 
         self.network = Network(
             wallet=wallet,
@@ -147,12 +143,36 @@ class Node:
             block_storage=self.blocks
         )
 
-        # Number of core / processes we push to
-        self.parallelism = parallelism
+        self.validation_queue = ValidationQueue(
+            testing=self.testing,
+            driver=self.driver,
+            debug=self.debug,
+            blocks=self.blocks,
+            consensus_percent=lambda: self.consensus_percent,
+            get_block_by_hlc=self.get_block_by_hlc,
+            get_block_from_network=self.get_block_from_network,# Abstract
+            hard_apply_block=self.hard_apply_block,                                     # Abstract
+            wallet=self.wallet,
+            stop_node=self.stop
+        )
 
         self.new_block_processor = NewBlock(driver=self.driver)
 
-        self.main_processing_queue = processing_queue.TxProcessingQueue(
+        self.new_network_start = False
+        if genesis_block:
+            self.new_network_start = self.store_genesis_block(genesis_block=genesis_block)
+
+        self.client = ContractingClient(
+            driver=self.driver,
+            submission_filename=None
+        )
+
+        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
+
+        # Number of core / processes we push to
+        self.parallelism = parallelism
+
+        self.main_processing_queue = TxProcessingQueue(
             testing=self.testing,
             debug=self.debug,
             driver=self.driver,
@@ -167,19 +187,6 @@ class Node:
             check_if_already_has_consensus=self.check_if_already_has_consensus,         # Abstract
             pause_all_queues=self.pause_validation_queue,
             unpause_all_queues=self.unpause_all_queues
-        )
-
-        self.validation_queue = validation_queue.ValidationQueue(
-            testing=self.testing,
-            driver=self.driver,
-            debug=self.debug,
-            blocks=self.blocks,
-            consensus_percent=lambda: self.consensus_percent,
-            get_block_by_hlc=self.get_block_by_hlc,
-            get_block_from_network=self.get_block_from_network,# Abstract
-            hard_apply_block=self.hard_apply_block,                                     # Abstract
-            wallet=self.wallet,
-            stop_node=self.stop
         )
 
         self.total_processed = 0
@@ -211,22 +218,10 @@ class Node:
         self.started = False
         self.upgrade = False
 
-        self.last_minted_block = None
-        self.held_blocks = []
-        self.hold_blocks = False
-
         self.bypass_catchup = bypass_catchup
 
         self.reconnect_attempts = reconnect_attempts
 
-        self.check_main_processing_queue_task = None
-        self.check_validation_queue_task = None
-
-    ''' NAH
-    def __del__(self):
-        self.network.stop()
-        self.system_monitor.stop()
-    '''
     @property
     def vk(self) -> str:
         return self.wallet.verifying_key
@@ -251,15 +246,15 @@ class Node:
             self.network.start()
             await self.network.starting()
 
-            if self.should_seed:
+            if self.new_network_start:
                 await self.start_new_network()
-                print("STARTED NODE")
             else:
                 self.main_processing_queue.disable_append()
                 self.validation_queue.disable_append()
 
                 await self.join_existing_network()
-                print("STARTED NODE")
+
+            print("STARTED NODE")
 
         except Exception as err:
             self.running = False
@@ -376,10 +371,10 @@ class Node:
             raise Exception(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
 
         # Create a constitution file
-        self.constitution = self.network.network_map_to_constitution(network_map=network_map)
+        # self.constitution = self.network.network_map_to_constitution(network_map=network_map)
 
         # Create genesis contracts
-        self.seed_genesis_contracts()
+        # self.seed_genesis_contracts()
 
         # Connect to all nodes in the network
         for node_info in self.network.network_map_to_node_list(network_map=network_map):
@@ -390,6 +385,7 @@ class Node:
             self.log.info({"vk": vk, "ip": ip})
 
             self.network.refresh_approved_peers_in_cred_provider()
+            self.network.router.cred_provider.open_messages()
 
             if vk != self.wallet.verifying_key:
                 # connect to peer
@@ -417,6 +413,10 @@ class Node:
 
         # Start the validation queue so we start accepting block results
         self.start_validation_queue_task()
+
+        # Lock the router down and secure messages again
+        self.network.refresh_approved_peers_in_cred_provider()
+        self.network.router.cred_provider.secure_messages()
 
         self.driver.clear_pending_state()
 
@@ -603,15 +603,18 @@ class Node:
         self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
         self.log.debug(f'NODE RUNNING: {self.running}')
 
-        self.main_processing_queue.stop()
-        self.validation_queue.stop()
+        if isinstance(self.main_processing_queue, TxProcessingQueue):
+            self.main_processing_queue.stop()
+            while self.check_main_processing_queue_task and not self.check_main_processing_queue_task.done():
+                await asyncio.sleep(0)
 
-        while self.check_main_processing_queue_task and not self.check_main_processing_queue_task.done():
-            await asyncio.sleep(0)
         self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
 
-        while self.check_validation_queue_task and not self.check_validation_queue_task.done():
-            await asyncio.sleep(0)
+        if self.validation_queue is not None:
+            self.validation_queue.stop()
+            while self.check_validation_queue_task and not self.check_validation_queue_task.done():
+                await asyncio.sleep(0)
+
         self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
 
     async def pause_main_processing_queue(self):
@@ -1278,29 +1281,19 @@ class Node:
             'delegates': self.network.get_delegate_peers()
         }
 
-    def seed_genesis_contracts(self):
-        self.log.info('Setting up genesis contracts.')
+    def store_genesis_block(self, genesis_block: dict) -> bool:
+        self.log.info('Processing Genesis Block.')
 
-        self.log.info(f'Initial Masternodes: {self.constitution["masternodes"]}')
-        self.log.info(f'Initial Delegates: {self.constitution["delegates"]}')
+        if self.blocks.total_blocks() > 0:
+            self.log.warning('Genesis Block provided but this node already has blocks. Will try and join network...')
+            return False
 
-        sync.setup_genesis_contracts(
-            initial_masternodes=self.constitution['masternodes'],
-            initial_delegates=self.constitution['delegates'],
-            client=self.client,
-            filename=self.genesis_path + '/genesis.json',
-            root=self.genesis_path
-        )
+        self.driver.clear_pending_state()
 
-        self.driver.commit()
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.hard_apply_block(block=genesis_block))
 
-        masternodes = self.driver.get_var(contract='masternodes', variable='S', arguments=['members'])
-        delegates = self.driver.get_var(contract='delegates', variable='S', arguments=['members'])
-
-        self.log.info(f'Masternode Members: {masternodes}')
-        self.log.info(f'Delegate Members: {delegates}')
-
-        print('done')
+        return True
 
     def should_process(self, block):
         try:

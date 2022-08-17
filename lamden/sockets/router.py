@@ -24,6 +24,7 @@ class CredentialsProvider(object):
     def __init__(self, network_ip: str = None):
         self.approved_keys = {}
         self.network_ip = network_ip
+        self.accept_all = False
 
     def add_key(self, vk: str) -> None:
         self.approved_keys[vk] = z85_key(vk)
@@ -57,12 +58,18 @@ class CredentialsProvider(object):
         return curve_vk in self.approved_keys.values()
 
     def callback(self, domain: str, key: bytes) -> bool:
-        if self.key_is_approved(curve_vk=key):
+        if self.accept_all or self.key_is_approved(curve_vk=key):
             self.log('info', f'Authorizing: {domain}, {key}')
             return True
         else:
             self.log('warning', f'NOT Authorizing: {domain}, {key}')
             return False
+
+    def open_messages(self):
+        self.accept_all = True
+
+    def secure_messages(self):
+        self.accept_all = False
 
 class Router():
     def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,

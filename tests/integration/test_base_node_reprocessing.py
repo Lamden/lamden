@@ -6,7 +6,7 @@ from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from contracting.db.driver import InMemDriver, ContractDriver
 
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
-from tests.integration.mock.mock_data_structures import MockTransaction
+from tests.integration.mock.mock_data_structures import MockTransaction, MockBlocks
 
 import asyncio
 import uvloop
@@ -33,13 +33,16 @@ class TestNode(TestCase):
         self.archer_wallet = Wallet()
         self.oliver_wallet = Wallet()
 
-        self.b = masternode.BlockService(
-            blocks=self.blocks,
-            driver=self.driver
+        self.founder_wallet = Wallet()
+        self.node_wallet = Wallet()
+        self.blocks = MockBlocks(
+            num_of_blocks=1,
+            founder_wallet=self.founder_wallet,
+            initial_members={
+                'masternodes': [self.node_wallet.verifying_key]
+            }
         )
-
-        self.blocks.flush()
-        self.driver.flush()
+        self.genesis_block = self.blocks.get_block_by_index(index=0)
 
         self.tn: ThreadedNode = None
         self.nodes = list()
@@ -50,9 +53,6 @@ class TestNode(TestCase):
     def tearDown(self):
         if self.tn.node.running:
             self.await_async_process(self.tn.stop)
-
-        self.b.blocks.flush()
-        self.b.driver.flush()
 
         if not self.loop.is_closed():
             self.loop.stop()
@@ -67,7 +67,10 @@ class TestNode(TestCase):
         return self.tn.node
 
     def create_node(self):
-        self.tn = create_a_node()
+        self.tn = create_a_node(
+            node_wallet=self.node_wallet,
+            genesis_block=self.genesis_block,
+        )
 
         self.tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', 10000000)
 
