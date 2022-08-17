@@ -241,7 +241,8 @@ class Node:
 
                 await self.join_existing_network()
 
-            await self.check_tx_queue()
+            asyncio.ensure_future(self.check_tx_queue())
+            self.started = True
             print("STARTED NODE")
 
         except Exception as err:
@@ -294,8 +295,6 @@ class Node:
 
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
-
-        self.started = True
 
     async def join_existing_network(self):
         bootnode = None
@@ -409,8 +408,6 @@ class Node:
         # Start the processing queue
         self.main_processing_queue.enable_append()
         self.start_main_processing_queue_task()
-
-        self.started = True
 
     async def catchup(self):
         # Get the current latest block stored and the latest block of the network

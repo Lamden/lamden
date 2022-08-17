@@ -5,7 +5,7 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.encoder import encode
+from contracting.db.encoder import decode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
@@ -135,7 +135,7 @@ class MockProcessed:
 
                 self.state = [{
                     'key': key,
-                    'value': {'__fixed__': str(internal_state[key])}
+                    'value': internal_state[key]
                 }]
 
                 print (self.state)

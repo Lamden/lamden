@@ -9,7 +9,7 @@ from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.nodes.filequeue import FileQueue
 from lamden.utils import hlc
 from lamden.crypto.wallet import Wallet
-from lamden.cli.start import resolve_genesis_block
+from lamden.utils import create_genesis
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.unit.helpers.mock_transactions import get_processing_results, get_tx_message
@@ -61,7 +61,11 @@ class TestBaseNode_Catchup(TestCase):
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
 
-        self.genesis_block = resolve_genesis_block(Path(f'{self.current_path}/helpers/genesis_block.json'))
+        self.node_wallet = Wallet()
+        self.genesis_block = create_genesis.build_block(
+            founder_sk='beef' * 16,
+            additional_state={'masternodes.S:members': [self.node_wallet.verifying_key]}
+        )
 
         try:
             shutil.rmtree(self.temp_storage)
@@ -69,7 +73,6 @@ class TestBaseNode_Catchup(TestCase):
             pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
-        self.node_wallet = Wallet()
 
         self.node = None
         self.mock_blocks = MockBlocks(num_of_blocks=10, one_wallet=True, initial_members=[self.node_wallet.verifying_key])
@@ -93,8 +96,7 @@ class TestBaseNode_Catchup(TestCase):
         tx_queue = FileQueue(root=node_dir)
 
         constitution = {
-            'masternodes': {self.node_wallet.verifying_key: 'tcp://127.0.0.1:19000'},
-            'delegates': {},
+            'masternodes': {self.node_wallet.verifying_key: 'tcp://127.0.0.1:19000'}
         }
 
         if genesis_block:
@@ -115,10 +117,6 @@ class TestBaseNode_Catchup(TestCase):
             nonces=nonce_storage,
             genesis_block=genesis_block_data
         )
-
-    def start_node(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.start())
 
     def create_socket_ports(self, index=0):
         return {
@@ -151,10 +149,11 @@ class TestBaseNode_Catchup(TestCase):
     def test_can_start_node_instance(self):
         self.node = self.create_node_instance(genesis_block=True)
         try:
-            self.start_node()
+            self.node.start_node()
         except Exception:
             self.fail('Node should not throw exceptions on startup')
 
+        self.async_sleep(1)
         self.assertTrue(self.node.running)
 
     def test_catchup_get_blocks__gets_blocks_from_peers(self):
