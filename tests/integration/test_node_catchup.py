@@ -97,6 +97,4 @@ class TestNewNodeCatchup(TestCase):
             key = key_bytes.decode('utf-8')
             expected_value = existing_node.node.driver.get(key=key)
             value = new_node.node.driver.get(key=key)
-            if expected_value != value:
-                print({'key': key})
             self.assertEqual(expected_value, value)

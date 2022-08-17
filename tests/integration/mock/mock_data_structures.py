@@ -9,6 +9,7 @@ from contracting.db.encoder import encode, decode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
+from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER
 
 class MockTransaction:
     __sender_wallet = Wallet()
@@ -183,7 +184,7 @@ class MockGenesisBlock:
             ):
 
         self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
-        self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
+        self.number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp))
         self.previous = 64 * "0"
         self.origin = {}
         self.genesis = []
@@ -284,7 +285,7 @@ class MockBlock:
         if not hlc_timestamp:
             self.get_new_hlc()
 
-        self.number = hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp)
+        self.number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp))
         self.previous = previous
         self.proofs = proofs
 
@@ -404,8 +405,8 @@ class MockBlocks:
         k = list(self.blocks.keys())
         k.sort()
         try:
-            block = self.blocks.get(int(k[-1]))
-            return block.get('number')
+            block = self.blocks.get(k[-1])
+            return int(block.get('number'))
         except IndexError:
             return -1
 
@@ -414,7 +415,7 @@ class MockBlocks:
         k = list(self.blocks.keys())
         k.sort()
         try:
-            block = self.blocks.get(int(k[-1]))
+            block = self.blocks.get(k[-1])
             return block.get('hlc_timestamp')
         except IndexError:
             return ""
@@ -424,7 +425,7 @@ class MockBlocks:
         k = list(self.blocks.keys())
         k.sort()
         try:
-            return self.blocks.get(int(k[-1]))
+            return int(self.blocks.get(k[-1]))
         except IndexError:
             return None
 
@@ -466,8 +467,8 @@ class MockBlocks:
             block = self.add_block()
             print(block)
 
-    def get_block(self, num: int):
-        return self.blocks.get(num)
+    def get_block(self, num: str):
+        return self.blocks.get(str(num))
 
     def get_block_by_index(self, index: int):
         block_list = [self.get_block(num=block_num) for block_num in self.blocks.keys()]

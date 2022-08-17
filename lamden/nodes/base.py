@@ -476,7 +476,7 @@ class Node:
 
         self.held_blocks.sort(key=lambda x: x.get('number'))
         first_block_minted = self.held_blocks[0]
-        catchup_stop_block = first_block_minted.get('number')
+        catchup_stop_block = int(first_block_minted.get('number'))
 
         # if we have the block right before the block we just minted then return
 
@@ -484,7 +484,7 @@ class Node:
         catchup_peers_with_block = []
         while len(catchup_peers_with_block) == 0:
             await self.network.refresh_peer_block_info()
-            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= first_block_minted.get('number'), catchup_peers))
+            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= int(first_block_minted.get('number')), catchup_peers))
             await asyncio.sleep(10)
 
             self.log.warning(f"No peers at block {catchup_stop_block}. Waiting...")
@@ -497,23 +497,32 @@ class Node:
 
         if len(self.held_blocks) > 0:
             new_block = self.held_blocks.pop(0)
-            # Apply state to DB
-            self.apply_state_changes_from_block(block=new_block)
 
-            # Store the block in the block db
-            encoded_block = encode(new_block)
-            encoded_block = json.loads(encoded_block)
+            if int(new_block.get('number')) > self.get_current_height():
+                # Apply state to DB
+                self.apply_state_changes_from_block(block=new_block)
 
-            self.blocks.store_block(block=deepcopy(encoded_block))
+                # change to previous hash and recalculate the hash
+                self.blocks.set_previous_hash(block=new_block)
+                new_block = recalc_block_info(block=new_block)
 
-            # Set the current block hash and height
-            self.update_block_db(block=encoded_block)
+                # Store the block in the block db
+                encoded_block = encode(new_block)
+                encoded_block = json.loads(encoded_block)
 
-            # create New Block Event
-            self.event_writer.write_event(Event(
-                topics=[NEW_BLOCK_EVENT],
-                data=encoded_block
-            ))
+                self.blocks.store_block(block=deepcopy(encoded_block))
+
+                # Set the current block hash and height
+                self.update_block_db(block=encoded_block)
+
+                latest_block = self.get_current_height()
+                latest_block_hash = self.get_current_hash()
+
+                # create New Block Event
+                self.event_writer.write_event(Event(
+                    topics=[NEW_BLOCK_EVENT],
+                    data=encoded_block
+                ))
 
         self.hold_blocks = False
         self.held_blocks = []
@@ -558,9 +567,9 @@ class Node:
                         )
                         continue
 
-                new_block_number = new_block.get('number')
+                new_block_number = int(new_block.get('number'))
 
-                has_block = self.blocks.get_block(v=new_block_number)
+                has_block = self.blocks.get_block(v=int(new_block_number))
 
                 if has_block is None:
                     if len(self.held_blocks) > 0 and self.held_blocks[0].get('number') == new_block_number:
@@ -779,7 +788,7 @@ class Node:
 
     def update_block_db(self, block):
         # NOTE: write it directly to disk if it's greater then current
-        if block.get('number') > self.get_current_height():
+        if int(block.get('number')) >= self.get_current_height():
             self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
             self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
 
@@ -869,7 +878,7 @@ class Node:
     def hard_apply_has_later_blocks(self, later_blocks: list, processing_results: dict = None, block: dict = None):
         # Get the block number of the block right after where we want to put this tx this will be the block number
         # for our new block
-        next_block_num = later_blocks[0].get('number')
+        next_block_num = int(later_blocks[0].get('number'))
 
         # get the block currently previous to the next block
         prev_block = self.blocks.get_previous_block(v=next_block_num)
@@ -887,7 +896,6 @@ class Node:
             )
         else:
             new_block = block
-            hlc_timestamp = new_block.get('hlc_timestamp')
 
         for i in range(len(later_blocks)):
             if i is 0:
@@ -1266,14 +1274,15 @@ class Node:
             blocks = await asyncio.gather(*blocks)
         except Exception as err:
             self.log.error(err)
+
         return [
             block.get('block_info') for block in blocks
-            if block.get('success') and block.get('block_info') is not None and verify_block(block.get('block_info'))
+            if block and block.get('success') and block.get('block_info') is not None and verify_block(block.get('block_info'))
         ]
 
     # Put into 'super driver'
-    def get_block_by_number(self, block_number):
-        return self.blocks.get_block(v=block_number)
+    def get_block_by_number(self, block_number: str) -> dict:
+        return self.blocks.get_block(v=int(block_number))
 
     def make_constitution(self):
         return {

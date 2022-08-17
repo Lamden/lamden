@@ -127,7 +127,7 @@ class TestBaseNode_HardApply(TestCase):
         block = self.mock_blocks.get_block_by_index(1)
         self.node.hard_apply_store_block(block=block)
 
-        self.assertEqual(block.get('number'), self.node.get_current_height())
+        self.assertEqual((int(block.get('number'))), self.node.get_current_height())
         self.assertEqual(block.get('hash'), self.node.get_current_hash())
         self.assertEqual(2, self.node.blocks.total_blocks())
 
@@ -330,7 +330,7 @@ class TestBaseNode_HardApply(TestCase):
     def test_update_block_db__makes_driver_updates(self):
         block = self.mock_blocks.get_block_by_index(1)
 
-        block_num = block.get('number')
+        block_num = int(block.get('number'))
         block_hash = block.get('hash')
 
         self.node.update_block_db(block=block)
@@ -342,7 +342,7 @@ class TestBaseNode_HardApply(TestCase):
         block_1 = self.mock_blocks.get_block_by_index(1)
         block_2 = self.mock_blocks.get_block_by_index(2)
 
-        block_num = block_2.get('number')
+        block_num = int(block_2.get('number'))
         block_hash = block_2.get('hash')
 
         self.node.update_block_db(block=block_2)

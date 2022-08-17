@@ -250,7 +250,7 @@ class Peer:
             response_type = res.get('response')
             if response_type == 'hello':
                 self.store_latest_block_info(
-                    latest_block_num=res.get('latest_block_number'),
+                    latest_block_num=int(res.get('latest_block_number')),
                     latest_hlc_timestamp=res.get('latest_hlc_timestamp')
                 )
 
@@ -274,7 +274,7 @@ class Peer:
             return
 
         self.latest_block_info = dict({
-            'number': latest_block_num,
+            'number': int(latest_block_num),
             'hlc_timestamp': latest_hlc_timestamp
         })
 
@@ -418,18 +418,18 @@ class Peer:
         if isinstance(msg_json, dict):
             if msg_json.get('response') == ACTION_GET_LATEST_BLOCK:
                 self.set_latest_block_info(
-                    number=msg_json.get('latest_block_number'),
+                    number=int(msg_json.get('latest_block_number')),
                     hlc_timestamp=msg_json.get('latest_hlc_timestamp')
                 )
         return msg_json
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
-        msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': block_num, 'hlc_timestamp': hlc_timestamp}
+        msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num), 'hlc_timestamp': hlc_timestamp}
         msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
         return msg_json
 
     async def get_next_block(self, block_num: int) -> (dict, None):
-        msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': block_num}
+        msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': int(block_num)}
         msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
         return msg_json
 

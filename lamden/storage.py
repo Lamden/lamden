@@ -127,6 +127,24 @@ class BlockStorage:
         except:
             return False
 
+    def __remove_block_alias(self, block_hash: str):
+        file_path = os.path.join(self.blocks_alias_dir, block_hash)
+
+        if not os.path.isfile(file_path):
+            return
+
+        attempts = 0
+        while os.path.isfile(file_path) and attempts < 100:
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+
+            attempts += 1
+
+        if os.path.isfile(file_path):
+            self.log.error(f'Could not remove block alias {file_path}')
+
     def is_genesis_block(self, block):
         return block.get('genesis', None) is not None
 
@@ -244,6 +262,18 @@ class BlockStorage:
         later_blocks.sort()
         return [self.get_block(v=block_num) for block_num in later_blocks]
 
+    def set_previous_hash(self, block: dict):
+        current_previous_block_hash = block.get('previous')
+        previous_block = self.get_previous_block(v=int(block.get('number')))
+
+        new_previous_block_hash = previous_block.get('hash')
+        block['previous'] = new_previous_block_hash
+
+        block_exists = self.get_block(v=current_previous_block_hash)
+
+        if not block_exists:
+            self.__remove_block_alias(block_hash=current_previous_block_hash)
+
 
 # TODO: remove pending nonces if we end up getting rid of them.
 # TODO: move to component responsible for state maintenance.
@@ -333,11 +363,11 @@ def get_latest_block_height(driver: ContractDriver):
     if type(h) == ContractingDecimal:
         h = int(h._d)
 
-    return h
+    return int(h)
 
 # TODO: move to component responsible for state maintenance.
 def set_latest_block_height(h, driver: ContractDriver):
-    driver.set(LATEST_BLOCK_HEIGHT_KEY, h)
+    driver.set(LATEST_BLOCK_HEIGHT_KEY, int(h))
 
 # TODO: implement and move to component responsible for state maintenance.
 def update_state_with_transaction(tx, driver: ContractDriver, nonces: NonceStorage):

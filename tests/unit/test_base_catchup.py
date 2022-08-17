@@ -37,15 +37,15 @@ class Peer:
         self.blocks.sort(key=lambda x: x.get('number'))
 
         if self.return_bad_latest_block:
-            return self.blocks[-1].get('number') + 1
+            return int(self.blocks[-1].get('number')) + 1
         else:
             if self.hard_code_latest_block > 0:
                 return self.hard_code_latest_block
             else:
-                return self.blocks[-1].get('number')
+                return int(self.blocks[-1].get('number'))
 
     async def get_next_block(self, block_num: int):
-        later_blocks = list(filter(lambda x: x.get('number') > block_num, self.blocks))
+        later_blocks = list(filter(lambda x: int(x.get('number')) > int(block_num), self.blocks))
         later_blocks.sort(key=lambda x: x.get('number'))
         try:
             return self.wrap_response(block_info=later_blocks[0])
@@ -288,7 +288,7 @@ class TestBaseNode_Catchup(TestCase):
             loop.run_until_complete(
                 self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(i))
             )
-            self.assertEqual(block.get('number'), self.node.get_current_height())
+            self.assertEqual(int(block.get('number')), self.node.get_current_height())
         self.assertTrue(2, self.node.blocks.total_blocks())
 
         # Send some results to the validation queue

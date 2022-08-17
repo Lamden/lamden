@@ -330,7 +330,7 @@ class Network:
         latest_block = self.get_latest_block()
 
         return {
-                'number': latest_block.get('number', 0),
+                'number': int(latest_block.get('number', 0)),
                 'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
             }
     def get_highest_peer_block(self) -> int:
