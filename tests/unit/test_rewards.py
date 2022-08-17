@@ -81,14 +81,13 @@ class TestRewards(TestCase):
             value=[0.4, 0.2, 0.1, 0.1, 0.1]
         )
 
-        m, d, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
+        m, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
             client=self.client,
             contract=BLOCK['processed']['transaction']['payload'].get('contract'),
             total_stamps_to_split=BLOCK['processed'].get('stamps_used')
         )
 
         self.assertEqual(ContractingDecimal('133.33333333'), m)
-        self.assertEqual(ContractingDecimal('100'), d)
         self.assertEqual(ContractingDecimal('100'), f)
 
         for dev_name, dev_amount in developer_mapping.items():
@@ -130,24 +129,19 @@ class TestRewards(TestCase):
             value='stu2'
         )
 
-        m, d, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
+        m, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
             client=self.client,
             contract=BLOCK['processed']['transaction']['payload'].get('contract'),
             total_stamps_to_split=BLOCK['processed'].get('stamps_used')
         )
 
-        self.rewards.distribute_rewards(m, d, f, developer_mapping, client=self.client)
+        self.rewards.distribute_rewards(m, f, developer_mapping, client=self.client)
 
         masters = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
-        delegates = self.client.get_var(contract='delegates', variable='S', arguments=['members'])
 
         for mn in masters:
             current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[mn], mark=False)
             self.assertEqual(current_balance, m / 100)
-
-        for dl in delegates:
-            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dl], mark=False)
-            self.assertEqual(current_balance, d / 100)
 
         current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
         self.assertEqual(current_balance, f / 100)
