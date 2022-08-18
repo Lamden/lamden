@@ -177,71 +177,24 @@ class TestMockProcessed(TestCase):
         self.assertNotEqual(64 * '0', processed.hash)
 
 class MockGenesisBlock:
-    def __init__(self,
-            internal_state: dict = {},
-            founder_wallet: Wallet = Wallet(),
-            initial_members: dict = {}
-            ):
+    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: list = []):
 
-        self.hlc_timestamp = '0000-00-00T00:00:00.000000000Z_0'
-        self.number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp))
-        self.previous = 64 * "0"
-        self.origin = {}
-        self.genesis = []
         self.founder_wallet = founder_wallet
-
-        self.add_to_genesis(
-            key=f'currency.balances:{self.founder_wallet.verifying_key}',
-            value=100000000
+        internal_state.update({'masternodes.S:members': initial_members})
+        internal_state.update({f'currency.balances:{founder_wallet.verifying_key}': 100000000})
+        self.block = create_genesis.build_block(
+            founder_sk=founder_wallet.signing_key,
+            additional_state=internal_state
         )
 
-        initial_masternodes = initial_members.get('masternodes')
-        self.add_to_genesis(
-            key=f'masternodes.S:members',
-            value=initial_masternodes or []
-        )
-
-        initial_delegates = initial_members.get('delegates')
-        self.add_to_genesis(
-            key=f'delegates.S:members',
-            value=initial_delegates or []
-        )
-
-        for key, value in internal_state.items():
-            self.add_to_genesis(key=key, value=value)
-
-        self.genesis.sort(key=lambda x: x.get('key'))
-
-        self.create_origin(signer_wallet=self.founder_wallet)
-
-        self.hash = block_hash_from_block(
-            hlc_timestamp=self.hlc_timestamp,
-            block_number=self.number,
-            previous_block_hash=self.previous
-        )
-
-    def create_origin(self, signer_wallet: Wallet):
-        state_changes_hash = hash_genesis_block_state_changes(state_changes=self.genesis)
-        self.origin = {
-            'sender': signer_wallet.verifying_key,
-            'signature': signer_wallet.sign(msg=state_changes_hash)
-        }
-
-    def add_to_genesis(self, key: str, value: any):
-        self.genesis.append({
-                'key': key,
-                'value': value
-            })
+        self.hlc_timestamp = self.block['hlc_timestamp']
+        self.number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp))
+        self.previous = self.block['previous']
+        self.origin = self.block['origin']
+        self.genesis = self.block['genesis']
 
     def as_dict(self):
-        genesis_state_dict = {}
-        for state in self.genesis:
-            genesis_state_dict[state.get('key')] = state.get('value')
-
-        return create_genesis.build_block(
-            founder_sk=self.founder_wallet.signing_key,
-            additional_state=genesis_state_dict
-        )
+        return self.block
 
 class TestMockGenesisBlock(TestCase):
     def setUp(self):
@@ -254,7 +207,7 @@ class TestMockGenesisBlock(TestCase):
         mock_gen_block = MockGenesisBlock()
         block_dict = mock_gen_block.as_dict()
 
-        self.assertEqual(0, block_dict.get('number'))
+        self.assertEqual('0', block_dict.get('number'))
         self.assertEqual('0000-00-00T00:00:00.000000000Z_0', block_dict.get('hlc_timestamp'))
         self.assertEqual('0' * 64, block_dict.get('previous'))
 
