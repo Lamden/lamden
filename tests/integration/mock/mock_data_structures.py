@@ -5,7 +5,7 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.encoder import encode, decode
+from contracting.db.encoder import decode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
@@ -372,7 +372,7 @@ class TestMockBlock(TestCase):
         self.assertEqual([], block_dict.get('rewards'))
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: list = [],
                  founder_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()
@@ -437,7 +437,7 @@ class MockBlocks:
                 initial_members=self.initial_members
             ))
 
-            for state_change in new_block.genesis:
+            for state_change in new_block.block['genesis']:
                 self.internal_state[state_change.get('key')] = state_change.get('value')
         else:
             previous_block = self.get_block(num=self.current_block_height)
@@ -465,7 +465,6 @@ class MockBlocks:
     def add_blocks(self, num_of_blocks):
         for i in range(num_of_blocks):
             block = self.add_block()
-            print(block)
 
     def get_block(self, num: str):
         return self.blocks.get(str(num))

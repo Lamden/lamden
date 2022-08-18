@@ -7,8 +7,7 @@ import subprocess
 from subprocess import call
 
 from lamden.crypto.wallet import Wallet
-from lamden.nodes.masternode.masternode import Masternode
-from lamden.nodes.delegate.delegate import Delegate
+from lamden.nodes.base import Node
 from lamden.logger.base import get_logger
 
 from contracting.db.encoder import decode
@@ -60,23 +59,12 @@ def resolve_constitution(fp):
     j = json.load(f)
     f.close()
 
-    assert 'masternodes' in j.keys(), 'No masternodes section.'
-    assert 'delegates' in j.keys(), 'No delegates section.'
-
-    const = {
-        'masternodes': list(j['masternodes'].keys()),
-        'delegates': list(j['delegates'].keys())
-    }
-
-    bootnodes = {**j['masternodes'], **j['delegates']}
-
     formatted_bootnodes = {}
-
-    for vk, ip in bootnodes.items():
+    for vk, ip in j['masternodes'].items():
         assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
         formatted_bootnodes[vk] = f'tcp://{ip}'
 
-    return const, formatted_bootnodes
+    return formatted_bootnodes
 
 def resolve_genesis_block(fp):
     path = pathlib.PosixPath(fp).expanduser()
@@ -89,24 +77,8 @@ def resolve_genesis_block(fp):
 
     return genesis_block
 
-
-def resolve_raw_constitution(text):
-    j = json.loads(text)
-
-    assert 'masternodes' in j.keys(), 'No masternodes section.'
-    assert 'masternode_min_quorum' in j.keys(), 'No masternode_min_quorum section.'
-    assert 'delegates' in j.keys(), 'No delegates section.'
-    assert 'delegate_min_quorum' in j.keys(), 'No delegate_min_quorum section.'
-
-    return j
-
-
 def start_node(args):
     logger = get_logger('STARTUP')
-    logger.info({'node_type': args.node_type})
-
-    assert args.node_type == 'masternode' or args.node_type == 'delegate', \
-        'Provide node type as "masternode" or "delegate"'
 
     sk = bytes.fromhex(args.key)
 
@@ -114,10 +86,9 @@ def start_node(args):
 
     logger.info({'node vk': wallet.verifying_key})
 
-    const, bootnodes = resolve_constitution(args.constitution)
+    bootnodes = resolve_constitution(args.constitution)
     genesis_block = resolve_genesis_block(args.genesis_block)
 
-    logger.info({'constitution': const})
     logger.info({'bootnodes': bootnodes})
 
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
@@ -136,31 +107,16 @@ def start_node(args):
     if args.pid > -1:
         subprocess.check_call(['kill', '-15', str(args.pid)])
 
-    if args.node_type == 'masternode':
-        cfg_and_start_rsync_daemon()
+    cfg_and_start_rsync_daemon()
 
-        n = Masternode(
-            debug=args.debug,
-            wallet=wallet,
-            socket_base=socket_base,
-            bootnodes=bootnodes,
-            constitution=const,
-            webserver_port=args.webserver_port,
-            bypass_catchup=args.bypass_catchup,
-            node_type=args.node_type,
-            genesis_block=genesis_block
-        )
-    elif args.node_type == 'delegate':
-        n = Delegate(
-            debug=args.debug,
-            wallet=wallet,
-            socket_base=socket_base,
-            bootnodes=bootnodes,
-            constitution=const,
-            bypass_catchup=args.bypass_catchup,
-            node_type=args.node_type,
-            genesis_block=genesis_block
-        )
+    n = Node(
+        debug=args.debug,
+        wallet=wallet,
+        socket_base=socket_base,
+        bootnodes=bootnodes,
+        bypass_catchup=args.bypass_catchup,
+        genesis_block=genesis_block
+    )
 
     loop = asyncio.get_event_loop()
     asyncio.async(n.start())
@@ -168,9 +124,6 @@ def start_node(args):
 
 
 def join_network(args):
-    assert args.node_type == 'masternode' or args.node_type == 'delegate', \
-        'Provide node type as "masternode" or "delegate"'
-
     sk = bytes.fromhex(args.key)
 
     wallet = Wallet(seed=sk)
@@ -190,27 +143,15 @@ def join_network(args):
     os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
     os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
 
-    if args.node_type == 'masternode':
-        cfg_and_start_rsync_daemon()
+    cfg_and_start_rsync_daemon()
 
-        n = Masternode(
-            wallet=wallet,
-            socket_base=socket_base,
-            constitution={},
-            webserver_port=args.webserver_port,
-            bootnodes=bootnodes,
-            seed=mn_seed,
-            node_type=args.node_type
-        )
-    elif args.node_type == 'delegate':
-        n = Delegate(
-            wallet=wallet,
-            socket_base=socket_base,
-            constitution={},
-            bootnodes=bootnodes,
-            seed=mn_seed,
-            node_type=args.node_type
-        )
+    n = Node(
+        wallet=wallet,
+        socket_base=socket_base,
+        webserver_port=args.webserver_port,
+        bootnodes=bootnodes,
+        seed=mn_seed,
+    )
 
     loop = asyncio.get_event_loop()
     asyncio.async(n.start())

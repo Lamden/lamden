@@ -64,18 +64,9 @@ class NewBlock(router.Processor):
     def clean(self, height):
         self.q = [nbn for nbn in self.q if nbn['number'] > height]
 
-def ensure_in_constitution(verifying_key: str, constitution: dict):
-    masternodes = constitution['masternodes']
-    delegates = constitution['delegates']
-
-    is_masternode = verifying_key in masternodes.keys()
-    is_delegate = verifying_key in delegates.keys()
-
-    assert is_masternode or is_delegate, 'You are not in the constitution!'
-
 class Node:
-    def __init__(self, socket_base,  wallet, constitution: dict, bootnodes={}, blocks=None,
-                 driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False, node_type=None,
+    def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
+                 driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=60):
 
@@ -134,7 +125,6 @@ class Node:
         self.hold_blocks = False
 
         self.bootnodes = bootnodes
-        self.constitution = constitution
 
         self.network = Network(
             wallet=wallet,
@@ -167,7 +157,7 @@ class Node:
             submission_filename=None
         )
 
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet, node_type=node_type)
+        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet)
 
         # Number of core / processes we push to
         self.parallelism = parallelism
@@ -227,10 +217,6 @@ class Node:
         return self.wallet.verifying_key
 
     @property
-    def node_type(self) -> str:
-        return self.upgrade_manager.node_type
-
-    @property
     def is_running(self) -> bool:
         return self.running
 
@@ -254,6 +240,8 @@ class Node:
 
                 await self.join_existing_network()
 
+            asyncio.ensure_future(self.check_tx_queue())
+            self.started = True
             print("STARTED NODE")
 
         except Exception as err:
@@ -263,6 +251,9 @@ class Node:
 
             await asyncio.sleep(1)
             await self.stop()
+
+    def start_node(self):
+        asyncio.ensure_future(self.start())
 
     async def stop(self):
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
@@ -303,8 +294,6 @@ class Node:
 
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
-
-        self.started = True
 
     async def join_existing_network(self):
         bootnode = None
@@ -423,8 +412,6 @@ class Node:
         # Start the processing queue
         self.main_processing_queue.enable_append()
         self.start_main_processing_queue_task()
-
-        self.started = True
 
     async def catchup(self):
         # Get the current latest block stored and the latest block of the network
@@ -1007,7 +994,7 @@ class Node:
         exiled_peers = []
 
         for change in state_changes:
-            if change['key'] == 'masternodes.S:members' or change['key'] == 'delegates.S:members':
+            if change['key'] == 'masternodes.S:members':
                 exiled_peers = self.network.get_exiled_peers()
                 break
 
@@ -1285,10 +1272,7 @@ class Node:
         return self.blocks.get_block(v=int(block_number))
 
     def make_constitution(self):
-        return {
-            'masternodes': self.network.get_masternode_peers(),
-            'delegates': self.network.get_delegate_peers()
-        }
+        return self.network.make_constitution()
 
     def store_genesis_block(self, genesis_block: dict) -> bool:
         self.log.info('Processing Genesis Block.')

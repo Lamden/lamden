@@ -22,12 +22,11 @@ def reload_module(module_name: str):
 
 
 class UpgradeManager:
-    def __init__(self, client: ContractingClient, wallet=None, node_type=None, constitution_filename=None, webserver_port=18080, testing=False):
+    def __init__(self, client: ContractingClient, wallet=None, constitution_filename=None, webserver_port=18080, testing=False):
         self.client = client
         self.enabled = None
         self.log = get_logger('UPGRADE')
 
-        self.node_type = node_type
         self.constitution_filename = constitution_filename
         self.webserver_port = webserver_port
         self.wallet = wallet
@@ -130,13 +129,9 @@ class UpgradeManager:
         self.log.info('Reset upgrade contract variables.')
 
     def restart_node(self, constitution):
-        for k, v in constitution['masternodes'].items():
+        for k, v in constitution.items():
             v = v.split(':')[1].lstrip('//')
-            constitution['masternodes'][k] = v
-
-        for k, v in constitution['delegates'].items():
-            v = v.split(':')[1].lstrip('//')
-            constitution['delegates'][k] = v
+            constitution[k] = v
 
         # Write the constitution
         constitution_file = f'/tmp/{secrets.token_hex(32)}.json'
@@ -146,7 +141,7 @@ class UpgradeManager:
         self_pid = os.getpid()
 
         args = [
-            'cil', 'start', self.node_type, '-k', self.wallet.signing_key, '-c', constitution_file, '-wp',
+            'cil', 'start', '-k', self.wallet.signing_key, '-c', constitution_file, '-wp',
             str(self.webserver_port), '-p', str(self_pid), '-b', 'true'
         ]
 

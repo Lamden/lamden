@@ -544,20 +544,12 @@ def get():
             value=['1', '2', '3']
         )
 
-        self.ws.client.set_var(
-            contract='delegates',
-            variable='S',
-            arguments=['members'],
-            value=['4', '5', '6']
-        )
-
         self.ws.client.raw_driver.commit()
 
         _, response = self.ws.app.test_client.get('/constitution')
 
         self.assertDictEqual(response.json, {
-            'masternodes': ['1', '2', '3'],
-            'delegates': ['4', '5', '6'],
+            'masternodes': ['1', '2', '3']
         })
 
     def test_error_returned_if_tx_hash_not_provided(self):

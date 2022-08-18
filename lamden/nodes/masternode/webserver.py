@@ -449,15 +449,8 @@ class WebServer:
             arguments=['members']
         )
 
-        delegates = self.client.get_var(
-            contract='delegates',
-            variable='S',
-            arguments=['members']
-        )
-
         return response.json({
             'masternodes': masternodes,
-            'delegates': delegates
         }, headers={'Access-Control-Allow-Origin': '*'})
 
 

@@ -33,8 +33,8 @@ def build_genesis_contracts_changes():
         constitution = json.load(f)
 
     sync.setup_genesis_contracts(
-        initial_masternodes=[vk for vk in constitution['masternodes'].keys()] + [vk for vk in constitution['delegates'].keys()],
-        initial_delegates=[vk for vk in constitution['delegates'].keys()],
+        initial_masternodes=list(constitution['masternodes'].keys()) + list(constitution.get('delegates', {}).keys()),
+        initial_delegates=[],
         client=contracting_client,
         commit=False
     )
