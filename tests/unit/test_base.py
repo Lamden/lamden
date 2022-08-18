@@ -1,32 +1,14 @@
-import time
-
-from lamden import contracts
 from lamden.crypto.wallet import Wallet
-from lamden.nodes.base import Node, ensure_in_constitution
+from lamden.nodes.base import Node
 from lamden.nodes.hlc import HLC_Clock
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
 import json
-
 import uvloop
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-class TestMisc(TestCase):
-    def test_ensure_in_constitution_raises_if_not_in_constitution(self):
-        constitution = {'masternodes': {Wallet().verifying_key: "127.0.0.1"},
-            'delegates': {Wallet().verifying_key: "127.0.0.1"}}
-
-        with self.assertRaises(AssertionError):
-            ensure_in_constitution(Wallet().verifying_key, constitution=constitution)
-
-    def test_ensure_in_constitution_doesnt_raises_if_in_constitution(self):
-        vk = Wallet().verifying_key
-        constitution = {'masternodes': {vk: "127.0.0.1"},
-            'delegates': {Wallet().verifying_key: "127.0.0.1"}}
-
-        ensure_in_constitution(vk, constitution=constitution)
 
 class TestNode(TestCase):
     def setUp(self):
