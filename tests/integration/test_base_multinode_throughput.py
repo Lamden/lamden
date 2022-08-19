@@ -8,7 +8,6 @@
 
 from contracting.db import encoder
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from lamden import contracts
 from lamden.crypto.wallet import Wallet
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from unittest import TestCase
@@ -25,13 +24,11 @@ class TestMultiNode(TestCase):
 
         self.scenarios = {
             "high_nodes_low_tx_amount":{
-                'num_of_masternodes': 3,
-                'num_of_delegates': 3,
+                'num_of_masternodes': 10,
                 'amount_of_transactions': 25
             },
             "low_nodes_high_tx_amount":{
-                'num_of_masternodes': 2,
-                'num_of_delegates': 2,
+                'num_of_masternodes': 3,
                 'amount_of_transactions': 60
             }
         }
@@ -39,12 +36,11 @@ class TestMultiNode(TestCase):
     def tearDown(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-    def setup_nodes(self, num_of_masternodes, num_of_delegates, amount_of_transactions):
+    def setup_nodes(self, num_of_masternodes, amount_of_transactions):
         test_start = time.time()
 
         self.local_node_network = LocalNodeNetwork(
-            num_of_masternodes=num_of_masternodes,
-            num_of_delegates=num_of_delegates
+            num_of_masternodes=num_of_masternodes
         )
         for node in self.local_node_network.all_nodes:
             self.assertTrue(node.node_is_running)
