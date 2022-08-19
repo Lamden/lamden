@@ -12,6 +12,7 @@ from pathlib import Path
 from pymongo import MongoClient
 import json
 import sys
+import os
 
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
@@ -19,7 +20,7 @@ GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
 LOG = get_logger('GENESIS_BLOCK')
 
-def build_genesis_contracts_changes():
+def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_file_path: str = None):
     state_changes = {}
     contracting_client = ContractingClient(driver=ContractDriver(FSDriver(root=TMP_STATE_PATH)), submission_filename=sync.DEFAULT_SUBMISSION_PATH)
 
@@ -28,15 +29,26 @@ def build_genesis_contracts_changes():
 
     contracting_client.raw_driver.commit()
 
+    if constitution_file_path is not None:
+        constitution_file_path = os.path.join(constitution_file_path, 'constitution.json')
+        assert os.path.isfile(constitution_file_path), f"No constitution.json file found at: {constitution_file_path}"
+    else:
+        constitution_file_path = Path.home().joinpath('constitution.json')
+
     constitution = None
-    with open(Path.home().joinpath('constitution.json')) as f:
+    with open(constitution_file_path) as f:
         constitution = json.load(f)
 
+    if genesis_file_path is not None:
+        genesis_file_path = os.path.join(genesis_file_path, "genesis.json")
+        assert os.path.isfile(genesis_file_path), f"No genesis.json file found at: {genesis_file_path}"
+
     sync.setup_genesis_contracts(
-        initial_masternodes=list(constitution['masternodes'].keys()) + list(constitution.get('delegates', {}).keys()),
+        initial_masternodes=list(constitution['masternodes'].keys()),
         initial_delegates=[],
         client=contracting_client,
-        commit=False
+        commit=False,
+        filename=genesis_file_path
     )
 
     state_changes.update(contracting_client.raw_driver.pending_writes)
@@ -62,7 +74,7 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
 
     return state
 
-def build_block(founder_sk: str, additional_state: dict = {}):
+def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_path: str = None, genesis_file_path: str = None):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
         'number': GENESIS_BLOCK_NUMBER,
@@ -76,7 +88,10 @@ def build_block(founder_sk: str, additional_state: dict = {}):
     }
 
     LOG.info('Building genesis contracts state...')
-    state_changes = build_genesis_contracts_changes()
+    state_changes = build_genesis_contracts_changes(
+        constitution_file_path=constitution_file_path,
+        genesis_file_path=genesis_file_path
+    )
 
     LOG.info('Merging additional state...')
     state_changes.update(additional_state)
@@ -123,7 +138,11 @@ def main(
 
 if __name__ == '__main__':
     parser = ArgumentParser()
+    parser.add_argument('-b', '--build_only', type=str, required=False)
+    parser.add_argument('-o', '--output_path', type=str, required=False)
     parser.add_argument('-k', '--key', type=str, required=True)
+    parser.add_argument('-cp', '--constitution_path', type=str, required=False)
+    parser.add_argument('-gp', '--genesis_path', type=str, required=False)
     parser.add_argument('--migrate', default='none', choices=['mongo', 'filesystem'])
     parser.add_argument('--db', type=str)
     parser.add_argument('--collection', type=str)
@@ -133,4 +152,24 @@ if __name__ == '__main__':
     collection = args.collection if args.migrate == 'mongo' else ''
     filebased_state_path = FSDRIVER_HOME if args.migrate == 'filesystem' else None
 
-    main(founder_sk=args.key, migration_scheme=args.migrate, db=db, collection=collection, filebased_state_path=filebased_state_path)
+
+    if args.build_only:
+        genesis_block = build_block(
+            founder_sk=args.key,
+            constitution_file_path=args.constitution_path,
+            genesis_file_path=args.genesis_path
+        )
+
+        genesis_block_path = GENESIS_BLOCK_PATH
+
+        if args.output_path is not None:
+            LOG.info(args.output_path)
+            genesis_block_path = Path(args.output_path.strip()).joinpath('genesis_block.json')
+
+        if os.path.isfile(genesis_block_path):
+            os.remove(genesis_block_path)
+
+        with open(genesis_block_path, 'w') as f:
+            f.write(encode(genesis_block))
+    else:
+        main(founder_sk=args.key, migration_scheme=args.migrate, db=db, collection=collection, filebased_state_path=filebased_state_path)
