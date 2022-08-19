@@ -1,21 +1,16 @@
-from lamden.nodes.masternode import masternode
-
-from lamden import storage
-from lamden.crypto.wallet import Wallet
-from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from contracting.db.driver import InMemDriver, ContractDriver
-
+from lamden import storage
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
+from lamden.crypto.wallet import Wallet
+from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
-from tests.integration.mock.mock_data_structures import MockTransaction, MockBlocks
-
-import asyncio
-import uvloop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-import gc
-
-from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_tx_message, get_processing_results
-
+from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
+import asyncio
+import gc
+import uvloop
+
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestNode(TestCase):
     def setUp(self):
