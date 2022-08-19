@@ -36,7 +36,6 @@ class TestNodeKick(TestCase):
 
     def fund_founder(self):
         for node in self.network.all_nodes:
-            #self.assertTrue(node.node_is_running)
             node.set_smart_contract_value(
                 key=f'currency.balances:{self.network.founders_wallet.verifying_key}',
                 value=1000000
@@ -53,7 +52,7 @@ class TestNodeKick(TestCase):
             vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
-        self.network.await_all_nodes_done_processing(block_height=self.num_yays_needed + 1)
+        self.network.await_all_nodes_done_processing(block_height=self.num_yays_needed + 2)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
@@ -84,7 +83,7 @@ class TestNodeKick(TestCase):
         for node in self.network.all_nodes:
             while len(node.validation_queue) != num_tx_total:
                 self.await_async_process(asyncio.sleep, 0.1)
-            while node.blocks.total_blocks() != 2:
+            while node.blocks.total_blocks() != 3:
                 self.await_async_process(node.validation_queue.process_next)
 
         last_hlc = self.exile.validation_queue[-1]
@@ -93,7 +92,7 @@ class TestNodeKick(TestCase):
             self.assertIsNotNone(
                 node.validation_queue.validation_results[last_hlc]['solutions'].get(self.exile.wallet.verifying_key, None)
             )
-            while node.blocks.total_blocks() != num_tx_total - 1:
+            while node.blocks.total_blocks() != num_tx_total:
                 self.await_async_process(node.validation_queue.process_next)
             if node != self.exile:
                 # Assert last vote TX passed the motion thus removing older results from exile
@@ -102,7 +101,7 @@ class TestNodeKick(TestCase):
                 )
                 node.node.unpause_all_queues()
 
-        self.network.await_all_nodes_done_processing(block_height=num_tx_total, nodes=self.voters)
+        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
@@ -128,7 +127,7 @@ class TestNodeKick(TestCase):
         )
 
         num_tx_total = self.num_yays_needed + 1
-        self.network.await_all_nodes_done_processing(block_height=num_tx_total, nodes=self.voters)
+        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
