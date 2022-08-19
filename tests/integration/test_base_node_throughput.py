@@ -1,26 +1,18 @@
-import gc
-
-from lamden.nodes import base
-from lamden.crypto.wallet import Wallet
-from lamden.crypto.transaction import build_transaction
-
-from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db import encoder
-
+from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden.crypto.wallet import Wallet
 from tests.integration.mock.mock_data_structures import MockTransaction, MockBlocks
-
-import asyncio
-import uvloop
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-import random
-import json
-import time
-import pprint
-
-from unittest import TestCase
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
+from unittest import TestCase
+import asyncio
+import gc
+import json
+import pprint
+import random
+import time
+import uvloop
 
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestNode(TestCase):
     def setUp(self):
