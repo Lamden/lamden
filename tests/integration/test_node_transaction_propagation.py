@@ -1,10 +1,8 @@
-import time
-from unittest import TestCase
-from pathlib import Path
-
-from tests.integration.mock.local_node_network import LocalNodeNetwork
 from lamden.utils.hlc import nanos_from_hlc_timestamp
+from tests.integration.mock.local_node_network import LocalNodeNetwork
+from unittest import TestCase
 import asyncio
+import time
 import uvloop
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -44,8 +42,7 @@ class TestNewNodeCatchup(TestCase):
 
     def test_masternode_can_receive_tx_and_send_to_other_nodes(self):
         self.network.create_new_network(
-            num_of_masternodes=2,
-            num_of_delegates=2
+            num_of_masternodes=4
         )
 
         self.network.pause_all_queues()
@@ -62,8 +59,7 @@ class TestNewNodeCatchup(TestCase):
 
     def test_node_network_can_propagate_transaction_results(self):
         self.network.create_new_network(
-            num_of_masternodes=2,
-            num_of_delegates=1
+            num_of_masternodes=3
         )
 
         # wait for all publishers to register subscribers
@@ -85,8 +81,7 @@ class TestNewNodeCatchup(TestCase):
 
     def test_node_network_can_mint_blocks(self):
         self.network.create_new_network(
-            num_of_masternodes=2,
-            num_of_delegates=1
+            num_of_masternodes=3
         )
 
         # wait for all publishers to register subscribers
@@ -115,14 +110,3 @@ class TestNewNodeCatchup(TestCase):
         for tn in self.network.all_nodes:
             total_blocks = tn.node.blocks.total_blocks()
             self.assertEqual(2, total_blocks)
-
-
-
-
-
-
-
-
-
-
-
