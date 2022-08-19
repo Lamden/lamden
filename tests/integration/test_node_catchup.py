@@ -1,12 +1,11 @@
-from pathlib import Path
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.integration.mock.local_node_network import ThreadedNode
 from tests.integration.mock.mock_data_structures import MockBlocks
 from unittest import TestCase
 import asyncio
 import copy
-
 import uvloop
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestNewNodeCatchup(TestCase):
@@ -53,22 +52,15 @@ class TestNewNodeCatchup(TestCase):
 
     def test_new_peer_can_catchup_blocks_to_block_height_of_highest_node_block_height_and_state_is_correct(self):
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=1
+            num_of_masternodes=2
         )
-
-        # self.add_blocks_to_network(num_of_blocks=5)
 
         for i in range(5):
             self.network.send_tx_to_random_masternode()
             self.async_sleep(1)
 
-        self.network.add_new_node_to_network(
-            node_type="delegate"
-        )
-
-        existing_node:ThreadedNode = self.network.masternodes[0]
-        new_node:ThreadedNode = self.network.delegates[1]
+        new_node = self.network.add_new_node_to_network()
+        existing_nodes = self.network.masternodes[:2]
 
         self.assertFalse(new_node.node.started)
 
@@ -78,23 +70,27 @@ class TestNewNodeCatchup(TestCase):
         self.async_sleep(5)
 
         for i in range(3):
-            self.network.send_tx_to_random_masternode()
+            self.network.send_tx_to_masternode(existing_nodes[0].vk)
             self.async_sleep(3)
 
         while not new_node.node.started:
             self.async_sleep(1)
 
         # Let new node catchup
-        self.async_sleep(5)
+        self.async_sleep(7)
 
-        self.assertEqual(existing_node.node.get_current_height(), new_node.node.get_current_height())
+        for node in existing_nodes:
+            self.assertEqual(node.node.get_current_height(), new_node.node.get_current_height())
         self.assertTrue(new_node.node.started)
 
-        delegate_members = existing_node.get_smart_contract_value(key="delegates.S:members")
-        new_node.set_smart_contract_value(key="delegates.S:members", value=delegate_members)
+        # NOTE: in real world new_node vk would be added by catchup because it's voted in by other nodes
+        new_node.set_smart_contract_value(
+            key='masternodes.S:members',
+            value=new_node.get_smart_contract_value(key='masternodes.S:members') + [new_node.vk]
+        )
 
-        for key_bytes in existing_node.node.driver.driver.db:
-            key = key_bytes.decode('utf-8')
-            expected_value = existing_node.node.driver.get(key=key)
-            value = new_node.node.driver.get(key=key)
-            self.assertEqual(expected_value, value)
+        for node in existing_nodes:
+            for key in node.raw_driver.keys():
+                expected_value = node.get_smart_contract_value(key=key)
+                actual_value = new_node.get_smart_contract_value(key=key)
+                self.assertEqual(expected_value, actual_value)
