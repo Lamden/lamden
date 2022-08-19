@@ -56,7 +56,6 @@ class TestBaseGenesisBlock(TestCase):
 
         constitution = {
             'masternodes': [node_wallet.verifying_key],
-            'delegates': [],
         }
 
         return Node(
