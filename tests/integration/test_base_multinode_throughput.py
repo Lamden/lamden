@@ -28,7 +28,7 @@ class TestMultiNode(TestCase):
                 'amount_of_transactions': 25
             },
             "low_nodes_high_tx_amount":{
-                'num_of_masternodes': 3,
+                'num_of_masternodes': 4,
                 'amount_of_transactions': 60
             }
         }

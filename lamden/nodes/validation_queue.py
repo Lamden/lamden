@@ -128,13 +128,14 @@ class ValidationQueue(ProcessingQueue):
 
             # TODO This shouldn't be possible.
             if next_hlc_timestamp <= self.last_hlc_in_consensus:
-                    self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
-                    self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
-                    return
+                self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
+                self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
+                return
 
-            #self.check_one(hlc_timestamp=next_hlc_timestamp)
+            for hlc_timestamp in self.validation_results.keys():
+                self.check_one(hlc_timestamp=hlc_timestamp)
 
-            await self.check_all()
+            #await self.check_all()
 
             if self.hlc_has_consensus(next_hlc_timestamp):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing. Queue Length is {len(self.validation_results)} ')
