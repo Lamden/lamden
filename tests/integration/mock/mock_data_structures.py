@@ -409,7 +409,7 @@ class MockBlocks:
         if not isinstance(block_dict, dict):
             block_dict = dict(block.as_dict())
 
-        self.blocks[block.number] = dict(block.as_dict())
+        self.blocks[str(block.number)] = dict(block.as_dict())
         return block_dict
 
     def add_blocks(self, num_of_blocks):
@@ -451,7 +451,7 @@ class TestMockBlocks(TestCase):
         blocks.add_block()
 
         block_1 = blocks.get_block(num=0)
-        self.assertEqual(0, block_1.get('number'))
+        self.assertEqual('0', block_1.get('number'))
 
     def test_add_blocks(self):
         blocks = MockBlocks()
