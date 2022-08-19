@@ -28,9 +28,6 @@ class TestNode(TestCase):
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(task)
 
-    def test_node_type(self):
-        self.assertEqual(self.node.node.node_type, 'masternode')
-
     def test_start_new_network_no_bootnodes(self):
         while not self.node.node_started:
             self.await_async_process(asyncio.sleep, 0.1)
