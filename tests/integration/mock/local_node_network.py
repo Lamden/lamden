@@ -1,37 +1,30 @@
+from contracting.db.driver import FSDriver, InMemDriver
+from contracting.db.encoder import encode
+from lamden.crypto.wallet import Wallet
+from lamden.nodes.base import Node
+from lamden.nodes.filequeue import FileQueue
+from lamden.storage import BlockStorage, NonceStorage
+from pathlib import Path
+from tests.integration.mock.mock_data_structures import MockBlocks, MockBlock, MockTransaction
+from tests.integration.mock.threaded_node import ThreadedNode
+from typing import List
 import asyncio
+import copy
 import json
 import random
-import time
-from typing import List
-
-from tests.integration.mock.threaded_node import ThreadedNode
-from tests.integration.mock.mock_data_structures import MockBlocks, MockBlock, MockTransaction, MockGenesisBlock
-from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage, NonceStorage
-from lamden.nodes.base import Node
-from contracting.db.encoder import encode
-from contracting.db.driver import FSDriver, InMemDriver
-
-from pathlib import Path
 import shutil
-
+import time
 import unittest
 import uvloop
+
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-from typing import List
-import copy
-
-from lamden.nodes.filequeue import FileQueue
-from lamden.utils.create_genesis import main
-
 
 MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3a12'
 
 class LocalNodeNetwork:
         def __init__(self, constitution: dict = {}, genesis_block: dict = None, bootnodes: list = [],
-                     num_of_masternodes: int = 0, num_of_delegates: int = 0, delay=None):
+                     num_of_masternodes: int = 0, delay=None):
             self.masternodes: List[Node] = []
-            self.delegates: List[Node] = []
 
             self.constitution = dict(constitution)
             self.bootnodes = dict(bootnodes)
@@ -67,13 +60,12 @@ class LocalNodeNetwork:
             self.delay = delay
 
             self.create_new_network(
-                num_of_delegates=num_of_delegates,
                 num_of_masternodes=num_of_masternodes
             )
 
         @property
         def all_nodes(self) -> List[ThreadedNode]:
-            return self.masternodes + self.delegates
+            return self.masternodes
 
         @property
         def all_node_vks(self) -> List[str]:
@@ -107,13 +99,11 @@ class LocalNodeNetwork:
                 if tn.vk == vk:
                     return tn
 
-        def create_new_network(self, num_of_masternodes: int = 0, num_of_delegates: int = 0):
-            if num_of_masternodes + num_of_delegates == 0:
+        def create_new_network(self, num_of_masternodes: int = 0):
+            if num_of_masternodes == 0:
                 return
 
-            masternode_wallets = [("masternode", Wallet(), m) for m in range(num_of_masternodes)]
-            delegate_wallets = [("delegate", Wallet(), d + len(masternode_wallets)) for d in range(num_of_delegates)]
-            node_wallets = masternode_wallets + delegate_wallets
+            node_wallets = masternode_wallets = [("masternode", Wallet(), m) for m in range(num_of_masternodes)]
 
             self.constitution = self.create_constitution(
                 node_wallets=node_wallets
@@ -127,7 +117,6 @@ class LocalNodeNetwork:
             if genesis_block is None:
                 self.blocks.initial_members = {
                     'masternodes': [wallet[1].verifying_key for wallet in masternode_wallets],
-                    'delegates': [wallet[1].verifying_key for wallet in delegate_wallets]
                 }
                 self.blocks.add_blocks(num_of_blocks=1)
                 genesis_block = self.blocks.get_block_by_index(index=0)
@@ -136,7 +125,6 @@ class LocalNodeNetwork:
 
             for node_info in node_wallets:
                 tn = self.create_node(
-                    node_type=node_info[0],
                     node_wallet=node_info[1],
                     genesis_block=genesis_block,
                     index=node_info[2]
@@ -160,17 +148,13 @@ class LocalNodeNetwork:
 
             print('done')
 
-
         def create_constitution(self, node_wallets: list = []):
             return {
-                'masternodes': [m[1].verifying_key for m in node_wallets if m[0] == "masternode"],
-                'delegates': [d[1].verifying_key for d in node_wallets if d[0] == "delegate"],
+                'masternodes': [m[1].verifying_key for m in node_wallets if m[0] == "masternode"]
             }
 
-        def create_node(self, node_type, genesis_block: dict=None, index: int = None, node_wallet: Wallet = Wallet(),
+        def create_node(self, genesis_block: dict=None, index: int = None, node_wallet: Wallet = Wallet(),
                         node: ThreadedNode = None, reconnect_attempts=60):
-
-            assert node_type in ['masternode', 'delegate'], "node_type must be 'masternode' or 'delegate'"
 
             node_dir = Path(f'{self.temp_network_dir}/{node_wallet.verifying_key}')
             node_state_dir = Path(f'{node_dir}/state')
@@ -186,7 +170,6 @@ class LocalNodeNetwork:
             if not node:
                 node = ThreadedNode(
                     index=index or self.num_of_nodes,
-                    node_type=node_type,
                     wallet=node_wallet,
                     constitution=self.constitution,
                     bootnodes=self.bootnodes,
@@ -199,24 +182,17 @@ class LocalNodeNetwork:
                     delay=self.delay
                 )
 
-            if node.node_type == 'masternode':
-                self.masternodes.append(node)
-
-            if node.node_type == 'delegate':
-                self.delegates.append(node)
+            self.masternodes.append(node)
 
             return node
 
-        def add_new_node_to_network(self, node_type: str, genesis_block: dict = None, bootnodes: ThreadedNode = None,
-                                    reconnect_attempts=60):
+        def add_new_node_to_network(self, genesis_block: dict = None, bootnodes: ThreadedNode = None, reconnect_attempts=60):
             new_node_wallet = Wallet()
             new_node_vk = new_node_wallet.verifying_key
-            index = self.num_of_nodes
 
-            self.add_new_node_vk_to_network(node_type=node_type, vk=new_node_vk)
+            self.add_new_node_vk_to_network(vk=new_node_vk)
 
             node = self.create_node(
-                node_type=node_type,
                 node_wallet=new_node_wallet,
                 reconnect_attempts=reconnect_attempts,
                 genesis_block=genesis_block
@@ -227,26 +203,21 @@ class LocalNodeNetwork:
             else:
                 node.bootnodes = self.make_bootnode(self.masternodes[0])
                 if genesis_block:
-                    self.constitution[f'{node_type}s'].append(new_node_vk)
+                    self.constitution['masternodes'].append(new_node_vk)
 
             self.run_threaded_node(node)
 
             return node
 
         def add_masternode(self, genesis_block: dict=None, reconnect_attempts=60):
-            return self.add_new_node_to_network(node_type="masternode", genesis_block=genesis_block,
-                reconnect_attempts=reconnect_attempts)
+            return self.add_new_node_to_network(genesis_block=genesis_block, reconnect_attempts=reconnect_attempts)
 
-        def add_delegate(self):
-            return self.add_new_node_to_network(node_type="delegate")
-
-        def add_new_node_vk_to_network(self, node_type: str, vk: str):
-            node_list = getattr(self, f'{node_type}s')
-            node_vks = [tn.vk for tn in node_list]
+        def add_new_node_vk_to_network(self, vk: str):
+            node_vks = [tn.vk for tn in self.all_nodes]
             node_vks.append(vk)
             for tn in self.all_nodes:
                 tn.set_smart_contract_value(
-                    key=f'{node_type}s.S:members',
+                    key='masternodes.S:members',
                     value=node_vks
                 )
                 tn.network.refresh_approved_peers_in_cred_provider()
@@ -388,7 +359,7 @@ class LocalNodeNetwork:
 
             print(f'!!!!! ALL NODES AT BLOCK {block_height} !!!!!')
         
-        def get_var_from_one(self, key:str, tn:ThreadedNode):
+        def get_var_from_one(self, key:str, tn: ThreadedNode):
             return tn.raw_driver.get(key)
 
         def get_var_from_all(self, key=str):
@@ -429,8 +400,8 @@ class TestLocalNodeNetwork(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-    def create_and_start_threaded_node(self, node_type: str, node_wallet: Wallet, genesis_block: dict = None):
-        node = self.network.create_node(node_type=node_type, node_wallet=node_wallet, genesis_block=genesis_block)
+    def create_and_start_threaded_node(self, node_wallet: Wallet, genesis_block: dict = None):
+        node = self.network.create_node(node_wallet=node_wallet, genesis_block=genesis_block)
         self.network.run_threaded_node(node=node)
 
     def test_can_create_instance__raises_no_errors(self):
@@ -451,7 +422,7 @@ class TestLocalNodeNetwork(unittest.TestCase):
             }
         )
 
-        self.create_and_start_threaded_node(node_type='masternode', node_wallet=wallet)
+        self.create_and_start_threaded_node(node_wallet=wallet)
 
         self.assertEqual(1, self.network.num_of_nodes)
         self.async_sleep(2)
@@ -464,9 +435,8 @@ class TestLocalNodeNetwork(unittest.TestCase):
         wallet_del_2 = Wallet()
 
         constitution = {
-                'masternodes': [wallet_mn_1.verifying_key, wallet_mn_2.verifying_key],
-                'delegates': [wallet_del_1.verifying_key, wallet_del_2.verifying_key]
-            }
+            'masternodes': [wallet_mn_1.verifying_key, wallet_mn_2.verifying_key, wallet_del_1.verifying_key, wallet_del_2.verifying_key]
+        }
 
         self.network = LocalNodeNetwork(
             constitution=constitution
@@ -475,10 +445,10 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.network.blocks.add_blocks(num_of_blocks=1)
         genesis_block = self.network.blocks.get_block_by_index(index=0)
 
-        self.create_and_start_threaded_node(node_type='masternode', node_wallet=wallet_mn_1, genesis_block=genesis_block)
-        self.create_and_start_threaded_node(node_type='masternode', node_wallet=wallet_mn_2, genesis_block=genesis_block)
-        self.create_and_start_threaded_node(node_type='delegate', node_wallet=wallet_del_1, genesis_block=genesis_block)
-        self.create_and_start_threaded_node(node_type='delegate', node_wallet=wallet_del_2, genesis_block=genesis_block)
+        self.create_and_start_threaded_node(node_wallet=wallet_mn_1, genesis_block=genesis_block)
+        self.create_and_start_threaded_node(node_wallet=wallet_mn_2, genesis_block=genesis_block)
+        self.create_and_start_threaded_node(node_wallet=wallet_del_1, genesis_block=genesis_block)
+        self.create_and_start_threaded_node(node_wallet=wallet_del_2, genesis_block=genesis_block)
 
         self.assertEqual(4, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
@@ -486,15 +456,13 @@ class TestLocalNodeNetwork(unittest.TestCase):
     def test_3create_new_network__all_node_connect(self):
         self.network = LocalNodeNetwork()
 
-        num_of_masternodes = 1
-        num_of_delegates = 1
+        num_of_masternodes = 2
 
         self.network.create_new_network(
-            num_of_masternodes=num_of_masternodes,
-            num_of_delegates=num_of_delegates
+            num_of_masternodes=num_of_masternodes
         )
 
-        self.assertEqual(num_of_masternodes + num_of_delegates, self.network.num_of_nodes)
+        self.assertEqual(num_of_masternodes, self.network.num_of_nodes)
         self.assertTrue(self.network.all_nodes_started)
 
         # Threaded Nodes add all peers
@@ -518,26 +486,22 @@ class TestLocalNodeNetwork(unittest.TestCase):
 
         for tn in self.network.all_nodes:
             self.assertTrue(tn.node.network.connected_to_all_peers())
-
     def test_add_new_node_to_network__new_node_connects_and_all_existing_connect_back_to_it(self):
         self.network = LocalNodeNetwork()
 
-        num_of_masternodes = 1
-        num_of_delegates = 1
-        total_num_of_nodes = num_of_masternodes + num_of_delegates
+        num_of_masternodes = 2
 
         self.network.create_new_network(
-            num_of_masternodes=num_of_masternodes,
-            num_of_delegates=num_of_delegates
+            num_of_masternodes=num_of_masternodes
         )
 
-        self.assertEqual(total_num_of_nodes, self.network.num_of_nodes)
+        self.assertEqual(num_of_masternodes, self.network.num_of_nodes)
         self.async_sleep(2)
         self.assertTrue(self.network.all_nodes_started)
 
-        new_node = self.network.add_new_node_to_network(node_type='masternode')
+        new_node = self.network.add_new_node_to_network()
 
-        self.assertEqual(total_num_of_nodes + 1, self.network.num_of_nodes)
+        self.assertEqual(num_of_masternodes + 1, self.network.num_of_nodes)
 
         while not self.network.all_nodes_started:
             self.async_sleep(1)
@@ -552,28 +516,24 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.network = LocalNodeNetwork()
 
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
+            num_of_masternodes=1
         )
 
         self.async_sleep(0.5)
         self.assertTrue(self.network.all_nodes_started)
 
-
-        self.network.add_new_node_to_network(node_type='delegate')
+        self.network.add_new_node_to_network()
 
         existing_node =self.network.masternodes[0]
-        new_node = self.network.delegates[0]
+        new_node = self.network.masternodes[1]
 
-        while existing_node.latest_block_height != new_node.latest_block_height:
-            self.async_sleep(60)
+        self.assertEqual(existing_node.latest_block_height, new_node.latest_block_height)
 
     def test_testcase_can_preload_blocks(self):
         self.network = LocalNodeNetwork()
 
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
+            num_of_masternodes=1
         )
 
         self.network.add_blocks_to_network(num_of_blocks=5)
@@ -583,8 +543,7 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.network = LocalNodeNetwork()
 
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
+            num_of_masternodes=1
         )
 
         self.network.add_blocks_to_network(num_of_blocks=5)
@@ -593,16 +552,13 @@ class TestLocalNodeNetwork(unittest.TestCase):
         node = self.network.all_nodes[0]
 
         for key, value in self.network.blocks.internal_state.items():
-            node_state_value = json.loads(encode(node.get_smart_contract_value(key=key)))
-            self.assertEqual(value, node_state_value)
-
+            self.assertEqual(value, node.get_smart_contract_value(key=key))
 
     def test_1can_create_and_send_tx_to_masternode(self):
         self.network = LocalNodeNetwork()
 
         self.network.create_new_network(
-            num_of_masternodes=1,
-            num_of_delegates=0
+            num_of_masternodes=1
         )
 
         tn = self.network.masternodes[0]
@@ -613,5 +569,3 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.async_sleep(1)
 
         self.assertEqual(1, len(tn.node.tx_queue))
-
-

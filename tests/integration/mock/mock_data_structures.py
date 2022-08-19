@@ -5,7 +5,7 @@ from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_ch
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
-from contracting.db.encoder import decode
+from contracting.db.encoder import decode, encode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
@@ -117,7 +117,6 @@ class MockProcessed:
         }
 
         if internal_state is not None:
-            internal_state_decoded = decode(encode(internal_state))
             contract = self.transaction.payload.get('contract')
             function = self.transaction.payload.get('function')
             if contract == 'currency' and function == 'transfer':
@@ -131,16 +130,14 @@ class MockProcessed:
                 current_bal = internal_state.get(key)
 
                 if current_bal is None:
-                    internal_state_decoded[key] = ContractingDecimal(amount)
+                    internal_state[key] = ContractingDecimal(amount)
                 else:
-                    internal_state_decoded[key] += ContractingDecimal(amount)
+                    internal_state[key] += ContractingDecimal(amount)
 
                 self.state = [{
                     'key': key,
-                    'value': {'__fixed__': str(internal_state_decoded[key])}
+                    'value': internal_state[key]
                 }]
-
-                print (self.state)
 
     def as_dict(self):
         transaction = dict(self.transaction.__dict__)
@@ -177,10 +174,10 @@ class TestMockProcessed(TestCase):
         self.assertNotEqual(64 * '0', processed.hash)
 
 class MockGenesisBlock:
-    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: list = []):
+    def __init__(self, internal_state: dict = {}, founder_wallet: Wallet = Wallet(), initial_members: dict = {}):
 
         self.founder_wallet = founder_wallet
-        internal_state.update({'masternodes.S:members': initial_members})
+        internal_state.update({'masternodes.S:members': initial_members['masternodes']})
         internal_state.update({f'currency.balances:{founder_wallet.verifying_key}': 100000000})
         self.block = create_genesis.build_block(
             founder_sk=founder_wallet.signing_key,
