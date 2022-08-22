@@ -424,7 +424,7 @@ class Peer:
         return msg_json
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
-        msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num), 'hlc_timestamp': hlc_timestamp}
+        msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num) if block_num is not None else block_num, 'hlc_timestamp': hlc_timestamp}
         msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
         return msg_json
 
