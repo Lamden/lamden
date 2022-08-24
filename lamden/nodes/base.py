@@ -684,7 +684,7 @@ class Node:
                 #self.log.debug('[START] check_validation_queue')
                 self.validation_queue.start_processing()
                 # TODO Alter this method to process just the earliest HLC
-                await self.validation_queue.process_next()
+                await self.validation_queue.process_all()
                 self.validation_queue.stop_processing()
                 #self.log.debug('[END] check_validation_queue')
 
