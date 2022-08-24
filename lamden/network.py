@@ -555,7 +555,7 @@ class Network:
                 block_info = self.block_storage.get_block(v=block_num or hlc_timestamp)
                 if block_info is None:
                     block_info = self.block_storage.get_next_block(hlc_timestamp)
-                    self.log('error' f'NEXT BLOCK: {block_info}')
+                    self.log('error', f'NEXT BLOCK: {block_info}')
                 block_info = encode(block_info)
 
                 self.router.send_msg(
