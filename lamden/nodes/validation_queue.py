@@ -118,6 +118,22 @@ class ValidationQueue(ProcessingQueue):
             self.validation_results[hlc_timestamp]['result_lookup'][result_hash] = processing_results
 
     async def process_next(self):
+        if len(self.validation_results) > 0:
+            next_hlc_timestamp = self[0]
+
+            if next_hlc_timestamp <= self.last_hlc_in_consensus:
+                self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
+                self.log.error(f"{next_hlc_timestamp} <= {self.last_hlc_in_consensus}")
+                return
+
+            self.check_one(next_hlc_timestamp)
+
+            if self.hlc_has_consensus(next_hlc_timestamp):
+                self.log.info(f'{next_hlc_timestamp} is in consensus, processing. Queue Length is {len(self.validation_results)} ')
+                await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
+                self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
+
+    async def process_all(self):
         # 1) Sort validation results object to get the earlist HLC
         # 2) Run consensus on that HLC
         # 3) Process the earliest if in consensus
@@ -429,9 +445,9 @@ class ValidationQueue(ProcessingQueue):
             return
 
         self.set_last_hlc_in_consensus(hlc_timestamp=hlc_timestamp)
-        self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
-
-
+        hlcs = self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
+        if len(hlcs) > 0:
+            self.log.critical(f'Pruned {hlcs}')
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
@@ -468,9 +484,13 @@ class ValidationQueue(ProcessingQueue):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
     def prune_earlier_results(self, consensus_hlc_timestamp):
+        hlcs = []
         for hlc_timestamp in list(self.validation_results):
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
+                hlcs.append(hlc_timestamp)
+
+        return hlcs
 
     def clean_results_lookup(self, hlc_timestamp):
         validation_results = self.validation_results.get(hlc_timestamp)
