@@ -93,12 +93,12 @@ class WorkValidator(Processor):
         if not self.valid_signature(message=msg):
             self.log.error(f'Invalid signature received in transaction from master {msg["sender"][:8]}')
             print(f'[WORK] Invalid signature received in transaction from master {msg["sender"][:8]}')
-            #return
+            return
 
         if not self.sent_from_processor(message=msg):
             self.log.error(f'Transaction not sent from processor {msg["sender"][:8]}')
             print(f'[WORK] Invalid signature received in transaction from master {msg["sender"][:8]}')
-            #return
+            return
 
         if self.older_than_last_processed(msg=msg):
             self.log.error(f' {OLDER_HLC_RECEIVED}: {msg["hlc_timestamp"]} received AFTER {self.get_last_processed_hlc()} was processed!')
