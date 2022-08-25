@@ -1,4 +1,3 @@
-
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
@@ -159,7 +158,12 @@ class ValidationQueue(ProcessingQueue):
                 self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
             else:
                 if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
-                    blocks = await self.get_block_from_network(hlc_timestamp=next_hlc_timestamp)
+                    hlcs = list(validation_results.keys())
+                    hlcs.sort()
+                    for hlc in hlcs:
+                        blocks = await self.get_block_from_network(hlc_timestamp=hlc)
+                        if len(blocks) > 0:
+                            break
                     try:
                         block = self.get_consensus_block(blocks=blocks)
                     except Exception as err:

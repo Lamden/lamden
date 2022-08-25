@@ -553,9 +553,6 @@ class Network:
             hlc_timestamp = msg.get('hlc_timestamp', None)
             if isinstance(block_num, int) or hlc.is_hcl_timestamp(hlc_timestamp):
                 block_info = self.block_storage.get_block(v=block_num or hlc_timestamp)
-                if block_info is None:
-                    block_info = self.block_storage.get_next_block(hlc_timestamp)
-                    self.log('error', f'NEXT BLOCK: {block_info}')
                 block_info = encode(block_info)
 
                 self.router.send_msg(
