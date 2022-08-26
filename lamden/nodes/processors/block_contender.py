@@ -89,7 +89,7 @@ class Block_Contender(Processor):
         rewards = msg['rewards']
 
         if not self.sent_from_processor(message=msg):
-            self.log.error(f'Transaction not sent from processor {msg["sender"][:8]}')
+            self.log.error(f'Transaction not sent from processor {msg["tx_message"]["sender"][:8]}')
             return
 
         # Create a hash of the tx_result
