@@ -170,6 +170,8 @@ class ValidationQueue(ProcessingQueue):
                         print(err)
                     if block:
                         await self.commit_consensus_block(block=block)
+                    else:
+                        self.flush_hlc(next_hlc_timestamp)
 
     def check_one(self, hlc_timestamp):
         #self.log.debug('[START] check_one')

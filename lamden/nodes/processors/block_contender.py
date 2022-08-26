@@ -88,6 +88,10 @@ class Block_Contender(Processor):
         hlc_timestamp = msg['hlc_timestamp']
         rewards = msg['rewards']
 
+        if not self.sent_from_processor(message=msg):
+            self.log.error(f'Transaction not sent from processor {msg["sender"][:8]}')
+            return
+
         # Create a hash of the tx_result
         tx_result_hash = tx_result_hash_from_tx_result_object(
             tx_result=tx_result,
@@ -125,3 +129,6 @@ class Block_Contender(Processor):
             return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
         except Exception:
             return False
+
+    def sent_from_processor(self, message):
+        return message['tx_message']['sender'] == message['tx_result']['transaction']['payload']['processor']
