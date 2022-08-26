@@ -451,9 +451,7 @@ class ValidationQueue(ProcessingQueue):
             return
 
         self.set_last_hlc_in_consensus(hlc_timestamp=hlc_timestamp)
-        hlcs = self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
-        if len(hlcs) > 0:
-            self.log.critical(f'Pruned {hlcs}')
+        self.prune_earlier_results(consensus_hlc_timestamp=self.last_hlc_in_consensus)
 
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
@@ -490,13 +488,9 @@ class ValidationQueue(ProcessingQueue):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
     def prune_earlier_results(self, consensus_hlc_timestamp):
-        hlcs = []
         for hlc_timestamp in list(self.validation_results):
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
-                hlcs.append(hlc_timestamp)
-
-        return hlcs
 
     def clean_results_lookup(self, hlc_timestamp):
         validation_results = self.validation_results.get(hlc_timestamp)
