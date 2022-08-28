@@ -169,9 +169,10 @@ class ValidationQueue(ProcessingQueue):
                     except Exception as err:
                         print(err)
                     if block:
-                        await self.commit_consensus_block(block=block)
-                    else:
-                        self.flush_hlc(next_hlc_timestamp)
+                        if block['hlc_timestamp'] >= next_hlc_timestamp:
+                            await self.commit_consensus_block(block=block)
+                        else:
+                            self.flush_hlc(next_hlc_timestamp)
 
     def check_one(self, hlc_timestamp):
         #self.log.debug('[START] check_one')
