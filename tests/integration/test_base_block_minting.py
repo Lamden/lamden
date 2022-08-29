@@ -130,6 +130,7 @@ class TestNode(TestCase):
 
         for tx_message in tx_messages:
             tn.send_tx(json.dumps(tx_message).encode())
+            self.await_async_process(asyncio.sleep, 0.1)
 
         self.await_node_reaches_height(tn, 4)
 

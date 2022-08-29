@@ -14,8 +14,7 @@ REQUIRED_CONTRACTS = [
     'currency',
     'election_house',
     'foundation',
-    'masternodes',
-    'delegates'
+    'masternodes'
 ]
 DUST_EXPONENT = 8
 
@@ -34,22 +33,6 @@ class RewardManager:
                 log.error('Reward contracts not setup.')
                 return False
         return True
-
-    '''
-        NO LONGER USED
-    '''
-    # TODO Remove
-    @staticmethod
-    def stamps_in_block(block):
-        total = 0
-
-        for sb in block['subblocks']:
-            for tx in sb['transactions']:
-                total += tx['stamps_used']
-
-        # log.info(f'{total} stamps in block #{block["number"]} to issue as rewards.')
-
-        return total
 
     @staticmethod
     def add_to_balance(vk, amount, client: ContractingClient):
@@ -86,41 +69,11 @@ class RewardManager:
         rounded_reward = round(reward, DUST_EXPONENT)
         return rounded_reward
 
-    '''
-        NO LONGER USED
-    '''
-    # TODO Remove
-
-    @staticmethod
-    def calculate_all_rewards(block, client: ContractingClient):
-        total_stamps_to_split = RewardManager.stamps_in_block(block)
-
-        master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
-            client.get_var(contract='rewards', variable='S', arguments=['value'])
-
-        master_reward = RewardManager.calculate_participant_reward(
-            participant_ratio=master_ratio,
-            number_of_participants=len(client.get_var(contract='masternodes', variable='S', arguments=['members'])),
-            total_stamps_to_split=total_stamps_to_split
-        )
-
-        foundation_reward = RewardManager.calculate_participant_reward(
-            participant_ratio=foundation_ratio,
-            number_of_participants=1,
-            total_stamps_to_split=total_stamps_to_split
-        )
-
-        developer_mapping = RewardManager.create_to_send_map(block=block, client=client, developer_ratio=developer_ratio)
-
-        # burn does nothing, as the stamps are already deducted from supply
-
-        return master_reward, foundation_reward, developer_mapping
-
     @staticmethod
     def calculate_tx_output_rewards(total_stamps_to_split, contract, client: ContractingClient):
 
         try:
-            master_ratio, delegate_ratio, burn_ratio, foundation_ratio, developer_ratio = \
+            master_ratio, burn_ratio, foundation_ratio, developer_ratio = \
                 client.get_var(contract='rewards', variable='S', arguments=['value'])
         except TypeError:
             raise NotImplementedError("Driver could not get value for key rewards.S:value. Try setting up rewards.")
@@ -182,35 +135,3 @@ class RewardManager:
         # Remainder is BURNED
 
         return rewards
-
-
-    @staticmethod
-    def issue_rewards(block, client: ContractingClient):
-        rewards = RewardManager.calculate_all_rewards(
-            client=client,
-            block=block
-        )
-
-        RewardManager.distribute_rewards(*rewards, client=client)
-
-    @staticmethod
-    def create_to_send_map(block, developer_ratio, client: ContractingClient):
-        # Find all transactions and the developer of the contract.
-        # Count all stamps used by people and multiply it by the developer ratio
-        send_map = defaultdict(lambda: 0)
-
-        for sb in block['subblocks']:
-            for tx in sb['transactions']:
-                contract = tx['transaction']['payload']['contract']
-
-                recipient = client.get_var(
-                    contract=contract,
-                    variable='__developer__'
-                )
-
-                send_map[recipient] += (tx['stamps_used'] * developer_ratio)
-
-        for developer in send_map.keys():
-            send_map[developer] /= len(send_map)
-
-        return send_map

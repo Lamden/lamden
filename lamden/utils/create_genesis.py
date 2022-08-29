@@ -14,7 +14,7 @@ import json
 import sys
 import os
 
-GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'delegates', 'elect_masternodes', 'elect_delegates']
+GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
@@ -45,7 +45,6 @@ def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_
 
     sync.setup_genesis_contracts(
         initial_masternodes=list(constitution['masternodes'].keys()),
-        initial_delegates=[],
         client=contracting_client,
         commit=False,
         filename=genesis_file_path

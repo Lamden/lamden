@@ -27,7 +27,7 @@ class TestRewards(TestCase):
         self.client.flush()
 
     def sync(self):
-        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
+        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], client=self.client)
 
     def test_contract_exists_false_before_sync(self):
         self.assertFalse(self.rewards.contract_exists('stamp_cost', self.client))

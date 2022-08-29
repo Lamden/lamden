@@ -86,3 +86,4 @@ ops
 temp_network
 .coverage
 tests/integration/mock/fixtures/
+tests/integration/fixtures/

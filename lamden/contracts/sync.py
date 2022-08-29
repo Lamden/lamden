@@ -49,7 +49,7 @@ def flush_sys_contracts(client: ContractingClient, filename=DEFAULT_GENESIS_PATH
         client.raw_driver.commit()
 
 
-def setup_member_contracts(initial_masternodes, initial_delegates, client: ContractingClient, root=DEFAULT_PATH):
+def setup_member_contracts(initial_masternodes, client: ContractingClient, root=DEFAULT_PATH):
     members = root + '/genesis/members.s.py'
 
     with open(members) as f:
@@ -61,20 +61,12 @@ def setup_member_contracts(initial_masternodes, initial_delegates, client: Contr
             'candidate': 'elect_masternodes'
         })
 
-    if client.get_contract('delegates') is None:
-        client.submit(code, name='delegates', owner='election_house', constructor_args={
-            'initial_members': initial_delegates,
-            'candidate': 'elect_delegates'
-        })
-
-
 def register_policies(client: ContractingClient):
     # add to election house
     election_house = client.get_contract('election_house')
 
     policies_to_register = [
         'masternodes',
-        'delegates',
         'rewards',
         'stamp_cost'
     ]
@@ -88,7 +80,7 @@ def register_policies(client: ContractingClient):
             election_house.register_policy(contract=policy)
 
 
-def setup_member_election_contracts(client: ContractingClient, masternode_price=100_000, delegate_price=100_000, root=DEFAULT_PATH):
+def setup_member_election_contracts(client: ContractingClient, masternode_price=100_000, root=DEFAULT_PATH):
     elect_members = root + '/genesis/elect_members.s.py'
 
     with open(elect_members) as f:
@@ -100,14 +92,7 @@ def setup_member_election_contracts(client: ContractingClient, masternode_price=
             'cost': masternode_price,
         })
 
-    if client.get_contract('elect_delegates') is None:
-        client.submit(code, name='elect_delegates', constructor_args={
-            'policy': 'delegates',
-            'cost': delegate_price,
-        })
-
-
-def setup_genesis_contracts(initial_masternodes, initial_delegates, client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH, commit=True):
+def setup_genesis_contracts(initial_masternodes, client: ContractingClient, filename=DEFAULT_GENESIS_PATH, root=DEFAULT_PATH, commit=True):
     if filename is None:
         filename = DEFAULT_GENESIS_PATH
 
@@ -115,7 +100,6 @@ def setup_genesis_contracts(initial_masternodes, initial_delegates, client: Cont
 
     setup_member_contracts(
         initial_masternodes=initial_masternodes,
-        initial_delegates=initial_delegates,
         client=client
     )
 

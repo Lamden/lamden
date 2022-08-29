@@ -65,8 +65,7 @@ class TestCreateGenesisBlock(TestCase):
             constitution = json.load(f)
 
         sync.setup_genesis_contracts(
-            initial_masternodes=[vk for vk in constitution['masternodes'].keys()] + [vk for vk in constitution.get('delegates', {}).keys()],
-            initial_delegates=[],
+            initial_masternodes=[vk for vk in constitution['masternodes'].keys()],
             client=contracting_client,
             commit=False
         )

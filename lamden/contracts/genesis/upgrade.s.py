@@ -24,17 +24,13 @@ def start_vote(cilantro_branch_name: str, contracting_branch_name: str, pepper: 
 
     upgrade_state['votes'] = 0
 
-    upgrade_state['voters'] = len(election_house.current_value_for_policy('masternodes')) + \
-                              len(election_house.current_value_for_policy('delegates'))
+    upgrade_state['voters'] = len(election_house.current_value_for_policy('masternodes'))
 
     upgrade_state['started'] = now
 
 
 def is_valid_voter(address: str):
     if address in election_house.current_value_for_policy('masternodes'):
-        return True
-
-    elif address in election_house.current_value_for_policy('delegates'):
         return True
 
     return False
