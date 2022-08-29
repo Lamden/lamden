@@ -109,8 +109,7 @@ class TestProcessingQueue(TestCase):
         return None, None
 
     def sync(self):
-        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
-
+        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], client=self.client)
 
     def make_tx_message(self, tx, hlc=None):
         hlc_timestamp = hlc or self.hlc_clock.get_new_hlc_timestamp()
