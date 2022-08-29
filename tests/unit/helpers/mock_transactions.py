@@ -91,16 +91,16 @@ def get_vote_tx(policy, vote, wallet=None, nonce=None):
     )
     return json.loads(txb)
 
-def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None, hlc_timestamp=None):
+def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None, hlc_timestamp=None, processor=None):
     wallet = wallet or Wallet()
 
     if tx is None:
         tx = get_new_currency_tx(
             wallet=wallet,
             to=to,
-            amount=amount
+            amount=amount,
+            processor=processor
         )
-
 
     hlc_clock = HLC_Clock()
     hlc_timestamp = hlc_timestamp or hlc_clock.get_new_hlc_timestamp()

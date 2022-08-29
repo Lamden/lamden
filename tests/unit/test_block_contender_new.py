@@ -131,8 +131,6 @@ class TestBlockContenderProcessor(TestCase):
             network=network
         )
 
-        print("\n")
-
     def tearDown(self):
         pass
 
@@ -172,7 +170,7 @@ class TestBlockContenderProcessor(TestCase):
         self.assertEqual(1, len(self.validation_queue))
 
     def test_can_append_its_own_message(self):
-        tx_message = get_tx_message()
+        tx_message = get_tx_message(wallet=self.wallet, processor=self.wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.wallet)
 
         self.await_process_message(msg=processing_results)
@@ -199,7 +197,7 @@ class TestBlockContenderProcessor(TestCase):
     def test_does_not_append_invalid_signature(self):
         self.peers.append(self.stu_wallet.verifying_key)
 
-        tx_message = get_tx_message()
+        tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
         processing_results['proof']['signature'] = 'bad_sig'
@@ -233,7 +231,7 @@ class TestBlockContenderProcessor(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
         self.block_contender.network.authorize_peer(peer_vk=self.stu_wallet.verifying_key)
         self.driver.driver.set('masternodes.S:members', [self.stu_wallet.verifying_key])
-        tx_message = get_tx_message()
+        tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
         self.validation_queue.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
