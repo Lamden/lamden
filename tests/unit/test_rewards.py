@@ -78,7 +78,7 @@ class TestRewards(TestCase):
             contract='rewards',
             variable='S',
             arguments=['value'],
-            value=[0.4, 0.2, 0.1, 0.1, 0.1]
+            value=[0.4, 0.1, 0.1, 0.1]
         )
 
         m, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
@@ -108,7 +108,7 @@ class TestRewards(TestCase):
             contract='rewards',
             variable='S',
             arguments=['value'],
-            value=[0.4, 0.3, 0.1, 0.1, 0.1]
+            value=[0.7, 0.1, 0.1, 0.1]
         )
         self.client.set_var(
             contract='foundation',
