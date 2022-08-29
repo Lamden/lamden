@@ -186,7 +186,7 @@ class TestValidationQueue(TestCase):
     def process_next(self):
         # Run process next, no consensus should be met as ideal is still possible
         tasks = asyncio.gather(
-            self.validation_queue.process_next()
+            self.validation_queue.process_all()
         )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
