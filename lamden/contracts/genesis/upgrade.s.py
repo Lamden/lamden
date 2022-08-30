@@ -16,10 +16,10 @@ def seed():
     upgrade_state['voters'] = 0
 
 
-def start_vote(cilantro_branch_name: str, contracting_branch_name: str, pepper: str):
+def start_vote(lamden_branch_name: str, contracting_branch_name: str, pepper: str):
     upgrade_state['locked'] = True
     upgrade_state['pepper'] = pepper
-    upgrade_state['cilantro_branch_name'] = cilantro_branch_name
+    upgrade_state['lamden_branch_name'] = lamden_branch_name
     upgrade_state['contracting_branch_name'] = contracting_branch_name
 
     upgrade_state['votes'] = 0
