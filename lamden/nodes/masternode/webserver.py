@@ -1,6 +1,5 @@
 from sanic import Sanic
 from sanic import response
-from sanic.websocket import WebSocketProtocol
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -12,23 +11,18 @@ from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet
 
-import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
 import socketio
-import json
 
 from lamden.crypto import transaction
 import decimal
 
-import datetime
-# Instantiate the parser
 import argparse
-
-log = get_logger("MN-WebServer")
+from lamden.contracts import sync
 
 log = get_logger("MN-WebServer")
 
@@ -479,7 +473,7 @@ if __name__ == '__main__':
     topics = ["new_block", "block_reorg"]
 
     webserver = WebServer(
-        contracting_client=ContractingClient(),
+        contracting_client=ContractingClient(submission_filename=sync.DEFAULT_SUBMISSION_PATH),
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,
