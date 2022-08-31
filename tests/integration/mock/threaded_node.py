@@ -13,18 +13,17 @@ import shutil
 import threading
 import unittest
 
-def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None):
-    current_path = Path.cwd()
-    temp_network_dir = Path(f'{current_path}/temp_network')
+def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None, temp_storage_root=None):
+    temp_storage_root = temp_storage_root if temp_storage_root is not None else Path().cwd().joinpath('temp_network')
     try:
-        shutil.rmtree(temp_network_dir)
+        shutil.rmtree(temp_storage_root)
     except FileNotFoundError:
         pass
-    temp_network_dir.mkdir(exist_ok=True, parents=True)
+    temp_storage_root.mkdir(exist_ok=True, parents=True)
 
-    node_dir = Path(f'{temp_network_dir}/{node_wallet.verifying_key}')
+    node_dir = Path(f'{temp_storage_root}/{node_wallet.verifying_key}')
 
-    #raw_driver = FSDriver(node_state_dir)
+    #raw_driver = FSDriver(node_dir)
     raw_driver = InMemDriver()
     block_storage = BlockStorage(root=node_dir)
     nonce_storage = NonceStorage(root=node_dir)

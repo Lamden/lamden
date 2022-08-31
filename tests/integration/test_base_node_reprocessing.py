@@ -2,12 +2,14 @@ from contracting.db.driver import InMemDriver, ContractDriver
 from lamden import storage
 from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
 from lamden.crypto.wallet import Wallet
+from pathlib import Path
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
 import gc
+import shutil
 import uvloop
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -43,7 +45,9 @@ class TestNode(TestCase):
         self.nodes = list()
         self.sent_to_network = dict()
 
-        print("\n")
+        self.temp_storage_root = Path().cwd().joinpath('temp_network')
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
 
     def tearDown(self):
         if self.tn.node.running:
@@ -53,6 +57,8 @@ class TestNode(TestCase):
             self.loop.stop()
             self.loop.close()
 
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
         gc.collect()
 
     @property
@@ -65,6 +71,7 @@ class TestNode(TestCase):
         self.tn = create_a_node(
             node_wallet=self.node_wallet,
             genesis_block=self.genesis_block,
+            temp_storage_root=self.temp_storage_root
         )
 
         self.tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', 10000000)

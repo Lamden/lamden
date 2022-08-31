@@ -1,6 +1,7 @@
 from contracting.db import encoder
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.crypto.wallet import Wallet
+from pathlib import Path
 from tests.integration.mock.mock_data_structures import MockTransaction, MockBlocks
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
 from unittest import TestCase
@@ -9,6 +10,7 @@ import gc
 import json
 import pprint
 import random
+import shutil
 import time
 import uvloop
 
@@ -34,7 +36,10 @@ class TestNode(TestCase):
         self.tn: ThreadedNode = None
         self.tx_history = {}
         self.tx_accumulator ={}
-        print("\n")
+
+        self.temp_storage_root = Path().cwd().joinpath('temp_network')
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
 
     def tearDown(self):
         if self.node.running:
@@ -44,6 +49,8 @@ class TestNode(TestCase):
             self.loop.stop()
             self.loop.close()
 
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
         gc.collect()
 
     @property
@@ -53,7 +60,7 @@ class TestNode(TestCase):
         return self.tn.node
 
     def create_node(self):
-        self.tn = create_a_node(genesis_block=self.genesis_block, node_wallet=self.node_wallet)
+        self.tn = create_a_node(genesis_block=self.genesis_block, node_wallet=self.node_wallet, temp_storage_root=self.temp_storage_root)
 
     def start_node(self):
         self.tn.start()

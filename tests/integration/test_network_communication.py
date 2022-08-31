@@ -47,10 +47,9 @@ class TestNetwork(TestCase):
             self.loop.stop()
             self.loop.close()
 
-        try:
-            shutil.rmtree(self.nodes_fixtures_dir)
-        except:
-            pass
+        fixtures_dir = Path().cwd().joinpath('fixtures')
+        if fixtures_dir.is_dir():
+            shutil.rmtree(fixtures_dir)
 
         self.ctx = None
         self.loop = None

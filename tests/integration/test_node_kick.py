@@ -1,5 +1,3 @@
-from lamden import contracts
-from pathlib import Path
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.unit.helpers.mock_transactions import get_introduce_motion_tx, get_vote_tx, get_new_currency_tx
 from unittest import TestCase

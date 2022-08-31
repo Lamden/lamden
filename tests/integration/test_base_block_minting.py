@@ -1,10 +1,12 @@
 from lamden.crypto.wallet import Wallet
-from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
+from pathlib import Path
 from tests.integration.mock.mock_data_structures import MockBlocks
-from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
+from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
+from tests.unit.helpers.mock_transactions import get_new_currency_tx
 from unittest import TestCase
 import asyncio
 import json
+import shutil
 
 class TestNode(TestCase):
     def setUp(self):
@@ -28,15 +30,22 @@ class TestNode(TestCase):
 
         self.threaded_nodes = []
 
+        self.temp_storage_root = Path().cwd().joinpath('temp_network')
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
+
     def tearDown(self):
         for tn in self.threaded_nodes:
             self.await_async_process(tn.stop)
+        if self.temp_storage_root.is_dir():
+            shutil.rmtree(self.temp_storage_root)
 
     def create_node(self, index=0):
         tn = create_a_node(
             node_wallet=self.node_wallet,
             genesis_block=self.genesis_block,
-            index=index
+            index=index,
+            temp_storage_root=self.temp_storage_root
         )
         tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', value=1_000_000)
         self.threaded_nodes.append(tn)
