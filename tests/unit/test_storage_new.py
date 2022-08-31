@@ -105,21 +105,16 @@ SAMPLE_BLOCK = {
 class TestBlockStorage(TestCase):
     def setUp(self):
         self.temp_storage_dir = Path.cwd().joinpath('temp_storage')
-        try:
+        if self.temp_storage_dir.is_dir():
             shutil.rmtree(self.temp_storage_dir)
-        except FileNotFoundError:
-            pass
 
-        self.temp_storage_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            self.bs = BlockStorage(root=Path.cwd().joinpath('temp_storage'))
-        except Exception as err:
-            print(err)
+        self.bs = BlockStorage(root=self.temp_storage_dir)
 
         self.hlc_clock = HLC_Clock()
 
     def tearDown(self):
-        self.bs.flush()
+        if self.temp_storage_dir.is_dir():
+            shutil.rmtree(self.temp_storage_dir)
 
     def test_creates_directories(self):
         self.assertTrue(self.bs.blocks_dir.is_dir())

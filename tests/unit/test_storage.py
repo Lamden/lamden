@@ -199,16 +199,14 @@ block = {
 class TestStorage(TestCase):
     def setUp(self):
         self.temp_storage_dir = Path.cwd().joinpath('temp_storage')
-        try:
+        if self.temp_storage_dir.is_dir():
             shutil.rmtree(self.temp_storage_dir)
-        except FileNotFoundError:
-            pass
 
-        self.temp_storage_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            self.block_storage = BlockStorage(root=Path.cwd().joinpath('temp_storage'))
-        except Exception as err:
-            print(err)
+        self.block_storage = BlockStorage(root=self.temp_storage_dir)
+
+    def tearDown(self):
+        if self.temp_storage_dir.is_dir():
+            shutil.rmtree(self.temp_storage_dir)
 
     def test_PRIVATE_METHOD_cull_transaction__return_tx_and_hash(self):
         block = {

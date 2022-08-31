@@ -25,10 +25,8 @@ class TestBaseNode_HardApply(TestCase):
 
 
 
-        try:
+        if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
-        except FileNotFoundError:
-            pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
         self.node_wallet = Wallet()
@@ -49,6 +47,8 @@ class TestBaseNode_HardApply(TestCase):
         loop.run_until_complete(self.node.stop())
 
         del self.node
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def create_node_instance(self) -> Node:
         node_dir = Path(f'{self.temp_storage}/{self.node_wallet.verifying_key}')

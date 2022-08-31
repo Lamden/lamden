@@ -27,10 +27,8 @@ class TestBaseGenesisBlock(TestCase):
 
         self.genesis_block = resolve_genesis_block(Path(f'{self.current_path}/helpers/genesis_block.json'))
 
-        try:
+        if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
-        except FileNotFoundError:
-            pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
         self.node: Node = None
@@ -42,6 +40,8 @@ class TestBaseGenesisBlock(TestCase):
             loop.run_until_complete(self.node.stop())
 
             del self.node
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def create_node_instance(self, genesis=None) -> Node:
         node_wallet = Wallet()

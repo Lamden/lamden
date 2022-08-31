@@ -57,15 +57,12 @@ class TestNetwork(TestCase):
 
         self.driver = ContractDriver(driver=InMemDriver())
 
-        current_path = Path.cwd()
-        lamden_storage_directory = f'{current_path}/.lamden'
+        self.temp_storage = Path().cwd().joinpath('temp_storage')
 
-        try:
-            shutil.rmtree(lamden_storage_directory)
-        except:
-            pass
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
-        self.storage = BlockStorage(root=Path(lamden_storage_directory))
+        self.storage = BlockStorage(root=Path(self.temp_storage))
 
     def tearDown(self):
         for network in self.networks:
@@ -81,6 +78,8 @@ class TestNetwork(TestCase):
             loop.stop()
         if not loop.is_closed():
             loop.close()
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def create_network(self, index=0):
         network = Network(

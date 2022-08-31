@@ -13,6 +13,7 @@ from contracting.db.encoder import encode
 from lamden.utils.hlc import nanos_from_hlc_timestamp
 from pathlib import Path
 from lamden.storage import BlockStorage
+import shutil
 
 class TestValidationQueue(TestCase):
     def setUp(self):
@@ -23,8 +24,6 @@ class TestValidationQueue(TestCase):
             key='rewards.S:value',
             value=(0.44, 0.44, 0.01, 0.01, 0.01)
         )
-
-        print(self.driver.get(key='rewards.S:value'))
 
         self.hlc_clock = HLC_Clock()
 
@@ -41,10 +40,11 @@ class TestValidationQueue(TestCase):
 
         self.current_path = Path.cwd()
         self.temp_storage_dir = Path(f'{self.current_path}/temp_storage')
+        if self.temp_storage_dir.is_dir():
+            shutil.rmtree(self.temp_storage_dir)
 
         node_dir = Path(f'{self.temp_storage_dir}/{self.wallet.verifying_key}')
-        blocks_dir = Path(f'{node_dir}/blocks')
-        block_storage = BlockStorage(root=blocks_dir)
+        block_storage = BlockStorage(root=node_dir)
 
         self.validation_queue = validation_queue.ValidationQueue(
             driver=self.driver,
@@ -69,6 +69,8 @@ class TestValidationQueue(TestCase):
     def tearDown(self):
         self.validation_queue.stop()
         self.validation_queue.flush()
+        if self.temp_storage_dir.is_dir():
+            shutil.rmtree(self.temp_storage_dir)
 
     def stop(self):
         self.running = False

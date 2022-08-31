@@ -31,17 +31,15 @@ class LocalNodeNetwork:
             self.genesis_block = genesis_block
 
             self.current_path = Path.cwd()
-            self.temp_network_dir = Path(f'{self.current_path}/temp_network')
+            self.temp_network_dir = self.current_path.joinpath('temp_network')
 
             self.founders_wallet = Wallet(MOCK_FOUNDER_SK)
 
             self.blocks = MockBlocks(founder_wallet=self.founders_wallet)
 
             self.nonces = {}
-            try:
+            if self.temp_network_dir.is_dir():
                 shutil.rmtree(self.temp_network_dir)
-            except FileNotFoundError:
-                pass
 
             self.temp_network_dir.mkdir(parents=True, exist_ok=True)
 
@@ -62,6 +60,10 @@ class LocalNodeNetwork:
             self.create_new_network(
                 num_of_masternodes=num_of_masternodes
             )
+
+        def __del__(self):
+            if self.temp_network_dir.is_dir():
+                shutil.rmtree(self.temp_network_dir)
 
         @property
         def all_nodes(self) -> List[ThreadedNode]:
@@ -157,11 +159,8 @@ class LocalNodeNetwork:
                         node: ThreadedNode = None, reconnect_attempts=60):
 
             node_dir = Path(f'{self.temp_network_dir}/{node_wallet.verifying_key}')
-            node_state_dir = Path(f'{node_dir}/state')
 
-            node_state_dir.mkdir(parents=True, exist_ok=True)
-
-            #raw_driver = FSDriver(root=Path(node_state_dir))
+            #raw_driver = FSDriver(root=node_dir)
             raw_driver = InMemDriver()
             block_storage = BlockStorage(root=node_dir)
             nonce_storage = NonceStorage(root=node_dir)

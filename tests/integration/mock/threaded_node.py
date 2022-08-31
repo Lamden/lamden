@@ -256,24 +256,18 @@ class TestThreadedNode(unittest.TestCase):
         self.node_wallet = Wallet()
 
         self.current_path = Path.cwd()
-        self.test_fixture_dir = f'{self.current_path}/fixtures'
+        self.test_fixture_dir = self.current_path.joinpath('fixtures')
 
-        try:
+        if self.test_fixture_dir.is_dir():
             shutil.rmtree(self.test_fixture_dir)
-        except:
-            pass
 
-        self.node_dir = f'{self.test_fixture_dir}/nodes'
-        self.node_state_dir = Path(f'{self.node_dir}/{self.node_wallet.verifying_key}/state')
-        self.node_block_dir = Path(f'{self.node_dir}/{self.node_wallet.verifying_key}/blocks')
+        self.node_dir = self.test_fixture_dir.joinpath('nodes')
 
-        self.node_state_dir.mkdir(parents=True, exist_ok=True)
+        self.driver = ContractDriver(driver=FSDriver(root=self.node_dir))
+        self.block_storage = BlockStorage(root=self.node_dir)
+        self.nonce_storage = NonceStorage(root=self.node_dir)
 
-        self.driver = ContractDriver(driver=FSDriver(root=Path(self.node_state_dir)))
-        self.block_storage = BlockStorage(root=Path(self.node_block_dir))
-        self.nonce_storage = NonceStorage(root=Path(self.node_block_dir))
-
-        self.blocks = MockBlocks(num_of_blocks=1, initial_members=[self.node_wallet.verifying_key])
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={'masternodes': [self.node_wallet.verifying_key]})
 
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
@@ -294,6 +288,9 @@ class TestThreadedNode(unittest.TestCase):
             self.loop.close()
 
         self.tn = None
+
+        if self.test_fixture_dir.is_dir():
+            shutil.rmtree(self.test_fixture_dir)
 
     def stop_threaded_node(self, tn):
             task = asyncio.ensure_future(tn.stop())
@@ -362,7 +359,7 @@ class TestThreadedNode(unittest.TestCase):
             'masternodes': [wallet_mn.verifying_key, wallet_del.verifying_key]
         }
 
-        self.blocks = MockBlocks(num_of_blocks=1, initial_members=[wallet_mn.verifying_key, wallet_del.verifying_key])
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={'masternodes': [wallet_mn.verifying_key, wallet_del.verifying_key]})
 
         node_1 = ThreadedNode(
             constitution=constitution,
@@ -420,7 +417,7 @@ class TestThreadedNode(unittest.TestCase):
             wallet_del.verifying_key: 'tcp://127.0.0.1:19001'
         }
 
-        self.blocks = MockBlocks(num_of_blocks=1, initial_members=[wallet_mn.verifying_key, wallet_del.verifying_key])
+        self.blocks = MockBlocks(num_of_blocks=1, initial_members={'masternodes': [wallet_mn.verifying_key, wallet_del.verifying_key]})
 
         masternode = ThreadedNode(
             constitution=constitution,

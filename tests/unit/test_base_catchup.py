@@ -67,10 +67,8 @@ class TestBaseNode_Catchup(TestCase):
             additional_state={'masternodes.S:members': [self.node_wallet.verifying_key]}
         )
 
-        try:
+        if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
-        except FileNotFoundError:
-            pass
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
 
@@ -87,6 +85,8 @@ class TestBaseNode_Catchup(TestCase):
         loop.run_until_complete(self.node.stop())
 
         del self.node
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def create_node_instance(self, genesis_block=False) -> Node:
         node_wallet = Wallet()
