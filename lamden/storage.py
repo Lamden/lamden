@@ -281,6 +281,7 @@ NONCE_FILENAME = '__n'
 PENDING_NONCE_FILENAME = '__pn'
 class NonceStorage:
     def __init__(self, root=None):
+        root = root if root is not None else STORAGE_HOME
         self.driver = FSDriver(root=root)
 
     # Move this to transaction.py
