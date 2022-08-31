@@ -71,10 +71,7 @@ class MockNode:
         self.driver = ContractDriver(driver=FSDriver(root=self.node_dir))
         self.driver.flush()
 
-        self.nonces = storage.NonceStorage(
-            nonce_collection=f'{self.node_dir}/nonces',
-            pending_collection=f'{self.node_dir}/pending-nonces'
-        )
+        self.nonces = storage.NonceStorage(root=self.node_dir)
         self.nonces.flush()
 
         self.ctx = ctx

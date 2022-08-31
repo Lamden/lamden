@@ -20,7 +20,7 @@ class TestCreateGenesisBlock(TestCase):
     def setUp(self):
         self.founder_sk = 'beef' * 16
         self.earlier_time = Datetime(year=1, month=1, day=1)
-        self.fsdriver = FSDriver(root=Path('/tmp/temp_filebased_state'))
+        self.fsdriver = FSDriver(root=Path('/tmp'))
         self.db = 'test'
         self.collection = 'state'
         self.mongo_driver = Driver(db=self.db, collection=self.collection)

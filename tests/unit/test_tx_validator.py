@@ -101,7 +101,7 @@ class TestTransactionBuilder(TestCase):
 
 class TestValidator(TestCase):
     def setUp(self):
-        self.driver = storage.NonceStorage()
+        self.driver = storage.NonceStorage(root='/tmp')
         self.driver.flush()
 
     def tearDown(self):

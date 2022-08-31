@@ -27,7 +27,7 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
     #raw_driver = FSDriver(node_state_dir)
     raw_driver = InMemDriver()
     block_storage = BlockStorage(root=node_dir)
-    nonce_storage = NonceStorage(nonce_collection=Path(node_dir).joinpath('nonces'))
+    nonce_storage = NonceStorage(root=node_dir)
 
     tx_queue = FileQueue(root=node_dir)
 
@@ -271,7 +271,7 @@ class TestThreadedNode(unittest.TestCase):
 
         self.driver = ContractDriver(driver=FSDriver(root=Path(self.node_state_dir)))
         self.block_storage = BlockStorage(root=Path(self.node_block_dir))
-        self.nonce_storage = NonceStorage()
+        self.nonce_storage = NonceStorage(root=Path(self.node_block_dir))
 
         self.blocks = MockBlocks(num_of_blocks=1, initial_members=[self.node_wallet.verifying_key])
 
@@ -369,10 +369,7 @@ class TestThreadedNode(unittest.TestCase):
             raw_driver=ContractDriver(driver=FSDriver(root=Path(mn_state_dir))),
             block_storage=BlockStorage(root=Path(mn_dir)),
             wallet=wallet_mn,
-            nonce_storage=NonceStorage(
-                nonce_collection=mn_dir.joinpath('pending-nonces'),
-                pending_collection=mn_dir.joinpath('nonces'),
-            ),
+            nonce_storage=NonceStorage(root=Path(mn_dir)),
             genesis_block=self.blocks.get_block_by_index(index=0)
         )
         node_1.start()
@@ -385,10 +382,7 @@ class TestThreadedNode(unittest.TestCase):
             raw_driver=ContractDriver(driver=FSDriver(root=Path(del_state_dir))),
             block_storage=BlockStorage(root=Path(del_dir)),
             wallet=wallet_del,
-            nonce_storage=NonceStorage(
-                nonce_collection=del_dir.joinpath('pending-nonces'),
-                pending_collection=del_dir.joinpath('nonces'),
-            ),
+            nonce_storage=NonceStorage(root=Path(del_dir)),
             genesis_block=self.blocks.get_block_by_index(index=0),
             index=1
         )

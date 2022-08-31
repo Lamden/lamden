@@ -41,7 +41,7 @@ class TestClassWebserver(TestCase):
 
         self.block_storage = BlockStorage(root=self.temp_storage)
         self.block_storage.store_block(self.mock_blocks.get_block_by_index(0))
-        self.driver = ContractDriver(driver=FSDriver(root=self.temp_storage.joinpath('state')))
+        self.driver = ContractDriver(driver=FSDriver(root=self.temp_storage))
 
         self.ws = WebServer(
             wallet=self.node_wallet,
@@ -49,10 +49,7 @@ class TestClassWebserver(TestCase):
             blocks=self.block_storage,
             driver=self.driver,
             queue=FileQueue(root=self.temp_storage),
-            nonces=storage.NonceStorage(
-                nonce_collection=self.temp_storage.joinpath('nonces'),
-                pending_collection=self.temp_storage.joinpath('pending_nonces')
-            )
+            nonces=storage.NonceStorage(root=self.temp_storage)
         )
 
     def tearDown(self):

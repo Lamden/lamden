@@ -164,7 +164,7 @@ class LocalNodeNetwork:
             #raw_driver = FSDriver(root=Path(node_state_dir))
             raw_driver = InMemDriver()
             block_storage = BlockStorage(root=node_dir)
-            nonce_storage = NonceStorage(nonce_collection=node_dir.joinpath('nonces'))
+            nonce_storage = NonceStorage(root=node_dir)
             tx_queue = FileQueue(root=node_dir)
 
             if not node:

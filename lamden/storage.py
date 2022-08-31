@@ -277,41 +277,31 @@ class BlockStorage:
 
 # TODO: remove pending nonces if we end up getting rid of them.
 # TODO: move to component responsible for state maintenance.
-NONCE_KEY = '__n' # TODO: utilize
-PENDING_NONCE_KEY = '__pn' # TODO: utilize
+NONCE_FILENAME = '__n'
+PENDING_NONCE_FILENAME = '__pn'
 class NonceStorage:
-    def __init__(self, nonce_collection=STORAGE_HOME.joinpath('nonces'),
-                 pending_collection=STORAGE_HOME.joinpath('pending_nonces')):
-
-        if type(nonce_collection) is str:
-            nonce_collection = pathlib.Path().joinpath(nonce_collection)
-        self.nonces = FSDriver(root=nonce_collection)
-
-        if type(pending_collection) is str:
-            pending_collection = pathlib.Path().joinpath(pending_collection)
-        self.pending_nonces = FSDriver(root=pending_collection)
-
-    @staticmethod
-    def get_one(sender, processor, db: FSDriver):
-        return db.get(f'{processor}{config.INDEX_SEPARATOR}{sender}')
-
-    @staticmethod
-    def set_one(sender, processor, value, db: FSDriver):
-        return db.set(f'{processor}{config.INDEX_SEPARATOR}{sender}', value)
+    def __init__(self, root=None):
+        self.driver = FSDriver(root=root)
 
     # Move this to transaction.py
     def get_nonce(self, sender, processor):
-        return self.get_one(sender, processor, self.nonces)
+        return self.driver.get(NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor)
 
     # Move this to transaction.py
     def get_pending_nonce(self, sender, processor):
-        return self.get_one(sender, processor, self.pending_nonces)
+        return self.driver.get(PENDING_NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor)
 
     def set_nonce(self, sender, processor, value):
-        self.set_one(sender, processor, value, self.nonces)
+        self.driver.set(
+            NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor,
+            value
+        )
 
     def set_pending_nonce(self, sender, processor, value):
-        self.set_one(sender, processor, value, self.pending_nonces)
+        self.driver.set(
+            PENDING_NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor,
+            value
+        )
 
     # Move this to webserver.py
     def get_latest_nonce(self, sender, processor):
@@ -337,11 +327,11 @@ class NonceStorage:
         return current_nonce + 1
 
     def flush(self):
-        self.nonces.flush()
-        self.pending_nonces.flush()
+        self.driver.flush_file(NONCE_FILENAME)
+        self.driver.flush_file(PENDING_NONCE_FILENAME)
 
     def flush_pending(self):
-        self.pending_nonces.flush()
+        self.driver.flush_file(PENDING_NONCE_FILENAME)
 
 # TODO: move to component responsible for state maintenance.
 def get_latest_block_hash(driver: ContractDriver):

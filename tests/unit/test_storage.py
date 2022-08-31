@@ -13,7 +13,7 @@ from copy import deepcopy
 
 class TestNonce(TestCase):
     def setUp(self):
-        self.nonces = storage.NonceStorage()
+        self.nonces = storage.NonceStorage(root='/tmp')
         self.nonces.flush()
 
     def tearDown(self):

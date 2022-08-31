@@ -10,7 +10,7 @@ import shutil
 
 class TestNonce(TestCase):
     def setUp(self):
-        self.nonces = NonceStorage()
+        self.nonces = NonceStorage(root='/tmp')
 
     def tearDown(self):
         self.nonces.flush()

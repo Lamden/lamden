@@ -255,10 +255,7 @@ class MockNode:
         self.driver = ContractDriver(driver=InMemDriver())
         self.driver.flush()
 
-        self.nonces = storage.NonceStorage(
-            nonce_collection=f'./fixtures/nonces/{self.wallet.verifying_key}',
-            pending_collection=f'./fixtures/pending-nonces/{self.wallet.verifying_key}'
-        )
+        self.nonces = storage.NonceStorage(root='/tmp')
         self.nonces.flush()
 
         self.bootnodes = {}

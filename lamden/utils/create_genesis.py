@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from contracting.client import ContractingClient
-from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY, FSDRIVER_HOME
+from contracting.db.driver import FSDriver, ContractDriver, CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY, STORAGE_HOME
 from contracting.db.encoder import encode, decode
 from lamden.contracts import sync
 from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIMESTAMP, GENESIS_PREVIOUS_HASH
@@ -17,7 +17,7 @@ import os
 GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
-TMP_STATE_PATH = Path('/tmp/tmp_state')
+TMP_STATE_PATH = Path('/tmp')
 LOG = get_logger('GENESIS_BLOCK')
 
 def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_file_path: str = None):
@@ -149,8 +149,7 @@ if __name__ == '__main__':
 
     db = args.db if args.migrate == 'mongo' else ''
     collection = args.collection if args.migrate == 'mongo' else ''
-    filebased_state_path = FSDRIVER_HOME if args.migrate == 'filesystem' else None
-
+    filebased_state_path = STORAGE_HOME if args.migrate == 'filesystem' else None
 
     if args.build_only:
         genesis_block = build_block(
