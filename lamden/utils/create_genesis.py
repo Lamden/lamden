@@ -143,13 +143,16 @@ if __name__ == '__main__':
     parser.add_argument('-cp', '--constitution_path', type=str, required=False)
     parser.add_argument('-gp', '--genesis_path', type=str, required=False)
     parser.add_argument('--migrate', default='none', choices=['mongo', 'filesystem'])
+    parser.add_argument('--sp', '--state-path', type=str)
     parser.add_argument('--db', type=str)
     parser.add_argument('--collection', type=str)
     args = parser.parse_args()
 
     db = args.db if args.migrate == 'mongo' else ''
     collection = args.collection if args.migrate == 'mongo' else ''
-    filebased_state_path = STORAGE_HOME if args.migrate == 'filesystem' else None
+    filebased_state_path = None
+    if args.migrate == 'filesystem':
+        filebased_state_path = args.sp if args.sp is not None else STORAGE_HOME
 
     if args.build_only:
         genesis_block = build_block(
