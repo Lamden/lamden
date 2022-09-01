@@ -93,10 +93,10 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
     )
 
     LOG.info('Merging additional state...')
-    state_changes.update(additional_state)
+    additional_state.update(state_changes)
 
     LOG.info('Filling genesis block...')
-    for key, value in state_changes.items():
+    for key, value in additional_state.items():
         genesis_block['genesis'].append({
             'key': key,
             'value': value
