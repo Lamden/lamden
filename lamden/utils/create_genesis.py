@@ -16,7 +16,7 @@ import os
 import re
 import sys
 
-GENESIS_CONTRACTS = ['currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
+GENESIS_CONTRACTS = ['submission', 'currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
@@ -77,13 +77,7 @@ def fetch_filebased_state(filebased_state_path: Path, ignore_keys: list = []):
 def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
     state = {}
     client = MongoClient()
-    # TODO: fix filter
-    filter = {'$and':
-        [
-            {'_id': {'$not': {'$regex': re.compile('delegate')}}},
-            {'_id': {'$nin': ignore_keys}}
-        ]
-    }
+    filter = {} if len(ignore_keys) == 0 else {'$and': [{'_id': {'$not': re.compile(f'^{key}')}} for key in ignore_keys]}
     for record in client[db][collection].find(filter):
         state[record['_id']] = decode(record['v'])
 
