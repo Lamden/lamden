@@ -7,6 +7,7 @@ from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER, GENESIS_HLC_TIME
 from lamden.crypto.canonical import block_hash_from_block, hash_genesis_block_state_changes
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
+from lamden.storage import LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
 from lamden.utils.legacy import BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT
 from pathlib import Path
 from pymongo import MongoClient
@@ -132,7 +133,7 @@ def main(
 
     additional_state = {}
     if migration_scheme == 'filesystem':
-        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS)
+        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS + [LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY])
     elif migration_scheme == 'mongo':
         additional_state = fetch_mongo_state(db, collection, ignore_keys=GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT])
 
