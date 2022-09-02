@@ -58,11 +58,18 @@ def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_
 
     return {k: v for k, v in state_changes.items() if v is not None}
 
+def should_ignore(key, ignore_keys):
+    for ik in ignore_keys:
+        if key.startswith(ik):
+            return True
+
+    return False
+
 def fetch_filebased_state(filebased_state_path: Path, ignore_keys: list = []):
     state = {}
     driver = FSDriver(root=filebased_state_path)
     for key in driver.keys():
-        if key not in ignore_keys and not 'delegate' in key:
+        if not should_ignore(key, ignore_keys):
             state[key] = driver.get(key)
 
     return state
@@ -70,6 +77,7 @@ def fetch_filebased_state(filebased_state_path: Path, ignore_keys: list = []):
 def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
     state = {}
     client = MongoClient()
+    # TODO: fix filter
     filter = {'$and':
         [
             {'_id': {'$not': {'$regex': re.compile('delegate')}}},
@@ -101,10 +109,10 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
     )
 
     LOG.info('Merging additional state...')
-    additional_state.update(state_changes)
+    state_changes.update(additional_state)
 
     LOG.info('Filling genesis block...')
-    for key, value in additional_state.items():
+    for key, value in state_changes.items():
         genesis_block['genesis'].append({
             'key': key,
             'value': value
