@@ -61,7 +61,7 @@ def fetch_filebased_state(filebased_state_path: Path, ignore_keys: list = []):
     state = {}
     driver = FSDriver(root=filebased_state_path)
     for key in driver.keys():
-        if key not in ignore_keys and not (key.startswith('delegate') or key.startswith('elect_delegate')):
+        if key not in ignore_keys and not 'delegate' in key:
             state[key] = driver.get(key)
 
     return state
@@ -71,8 +71,7 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
     client = MongoClient()
     filter = {'$and':
         [
-            {'_id': {'$not': {'$regex': re.compile('^delegate')}}},
-            {'_id': {'$not': {'$regex': re.compile('^elect_delegate')}}},
+            {'_id': {'$not': {'$regex': re.compile('delegate')}}},
             {'_id': {'$nin': ignore_keys}}
         ]
     }

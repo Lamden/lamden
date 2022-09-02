@@ -198,6 +198,7 @@ class TestCreateGenesisBlock(TestCase):
         self.create_filebased_state()
         self.fsdriver.set('delegates.something', SAMPLE_VAL)
         self.fsdriver.set('elect_delegates.something', SAMPLE_VAL)
+        self.fsdriver.set('stamp_cost.S:delegate_contract', SAMPLE_VAL)
 
         create_genesis.main(self.founder_sk, migration_scheme='filesystem', filebased_state_path=self.fsdriver.root)
 
@@ -212,6 +213,7 @@ class TestCreateGenesisBlock(TestCase):
         expected_state_keys.sort()
         expected_state_keys.remove('delegates.something')
         expected_state_keys.remove('elect_delegates.something')
+        expected_state_keys.remove('stamp_cost.S:delegate_contract')
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
         self.assertTrue(validate_block_structure(genesis_block))
@@ -222,6 +224,7 @@ class TestCreateGenesisBlock(TestCase):
         self.create_mongo_state()
         self.mongo_driver.set('delegates.something', SAMPLE_VAL)
         self.mongo_driver.set('elect_delegates.something', SAMPLE_VAL)
+        self.mongo_driver.set('stamp_cost.S:delegate_contract', SAMPLE_VAL)
 
         create_genesis.main(self.founder_sk, migration_scheme='mongo', db='test', collection='state')
 
@@ -236,6 +239,7 @@ class TestCreateGenesisBlock(TestCase):
         expected_state_keys.sort()
         expected_state_keys.remove('delegates.something')
         expected_state_keys.remove('elect_delegates.something')
+        expected_state_keys.remove('stamp_cost.S:delegate_contract')
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
         self.assertTrue(validate_block_structure(genesis_block))
