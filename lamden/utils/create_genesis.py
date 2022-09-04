@@ -133,7 +133,7 @@ def main(
     collection: str = '',
     filebased_state_path: Path = None
 ):
-    output_path = output_path if output_path is not None else GENESIS_BLOCK_PATH
+    output_path = output_path.joinpath('genesis_block.json') if output_path is not None else GENESIS_BLOCK_PATH
     assert not output_path.is_file(), f'"{output_path}" already exist'
 
     additional_state = {}
