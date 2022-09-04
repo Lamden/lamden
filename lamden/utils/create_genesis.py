@@ -17,6 +17,7 @@ import re
 
 GENESIS_CONTRACTS = ['submission', 'currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
+MEMBERS_KEY = 'masternodes.S:members'
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
 LOG = get_logger('GENESIS_BLOCK')
@@ -139,11 +140,11 @@ def main(
     additional_state = {}
     if migration_scheme == 'filesystem':
         assert filebased_state_path is not None, 'invalid file-based state path provided'
-        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS + [LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY])
+        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS + [LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY, MEMBERS_KEY])
     elif migration_scheme == 'mongo':
         assert db is not None and db != '', 'invalid database name provided'
         assert collection is not None and collection != '', 'invalid collection name provided'
-        additional_state = fetch_mongo_state(db, collection, ignore_keys=GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT])
+        additional_state = fetch_mongo_state(db, collection, ignore_keys=GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT, MEMBERS_KEY])
 
     genesis_block = build_block(founder_sk, additional_state, constitution_file_path=constitution_path, genesis_file_path=genesis_path)
 
