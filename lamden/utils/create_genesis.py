@@ -154,9 +154,9 @@ def main(
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-k', '--key', type=str, required=True)
-    parser.add_argument('-o', '--output-path', type=str, required=False)
-    parser.add_argument('-cp', '--constitution-path', type=str, required=False)
-    parser.add_argument('-gp', '--genesis-path', type=str, required=False)
+    parser.add_argument('--output-path', type=str, required=False)
+    parser.add_argument('--constitution-path', type=str, required=False)
+    parser.add_argument('--genesis-path', type=str, required=False)
     parser.add_argument('--migrate', default='none', choices=['mongo', 'filesystem'])
     parser.add_argument('--db', type=str)
     parser.add_argument('--collection', type=str)
@@ -165,8 +165,8 @@ if __name__ == '__main__':
 
     main(founder_sk=args.key,
          output_path=Path(args.output_path) if args.output_path is not None else None,
-         constitution_path=Path(args.cp) if args.cp is not None else None,
-         genesis_path=Path(args.gp) if args.gp is not None else None,
+         constitution_path=Path(args.constitution_path) if args.constitution_path is not None else None,
+         genesis_path=Path(args.genesis_path) if args.genesis_path is not None else None,
          migration_scheme=args.migrate,
          db=args.db, collection=args.collection,
          filebased_state_path=Path(args.sp) if args.sp is not None else None)
