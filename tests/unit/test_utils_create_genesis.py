@@ -137,7 +137,7 @@ class TestCreateGenesisBlock(TestCase):
 
     def test_main_fails_if_genesis_block_file_exists(self):
         open(create_genesis.GENESIS_BLOCK_PATH, 'a').close()
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(AssertionError):
             create_genesis.main(self.founder_sk)
 
     def test_main_migration_scheme_none(self):
