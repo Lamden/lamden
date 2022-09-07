@@ -98,12 +98,14 @@ class TestCreateGenesisBlock(TestCase):
         expected_result = list(TestCreateGenesisBlock.genesis_contracts_state_changes.keys())
         expected_result.sort()
         actual_result = list(create_genesis.fetch_mongo_state(self.db, self.collection, ignore_keys=[SAMPLE_KEY]).keys())
+        actual_result.sort()
 
         self.assertListEqual(actual_result, expected_result)
 
         expected_result.append(SAMPLE_KEY)
         expected_result.sort()
         actual_result = list(create_genesis.fetch_mongo_state(self.db, self.collection).keys())
+        actual_result.sort()
 
         self.assertListEqual(actual_result, expected_result)
 
@@ -135,7 +137,7 @@ class TestCreateGenesisBlock(TestCase):
 
     def test_main_fails_if_genesis_block_file_exists(self):
         open(create_genesis.GENESIS_BLOCK_PATH, 'a').close()
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(AssertionError):
             create_genesis.main(self.founder_sk)
 
     def test_main_migration_scheme_none(self):
@@ -188,58 +190,6 @@ class TestCreateGenesisBlock(TestCase):
         actual_state_keys = [item['key'] for item in genesis_block['genesis']]
         expected_state_keys = self.mongo_driver.keys()
         expected_state_keys.sort()
-
-        self.assertListEqual(expected_state_keys, actual_state_keys)
-        self.assertTrue(validate_block_structure(genesis_block))
-        for contract in create_genesis.GENESIS_CONTRACTS:
-            self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)
-
-    def test_main_migration_scheme_filesystem_does_not_migrate_delegate_keys(self):
-        self.create_filebased_state()
-        self.fsdriver.set('delegates.something', SAMPLE_VAL)
-        self.fsdriver.set('elect_delegates.something', SAMPLE_VAL)
-        self.fsdriver.set('stamp_cost.S:delegate_contract', SAMPLE_VAL)
-
-        create_genesis.main(self.founder_sk, migration_scheme='filesystem', filebased_state_path=self.fsdriver.root)
-
-        self.assertTrue(create_genesis.GENESIS_BLOCK_PATH.is_file())
-        with open(create_genesis.GENESIS_BLOCK_PATH) as f:
-            genesis_block = decode(f.read())
-        self.assertIsNotNone(genesis_block.get('genesis', None))
-        self.assertGreater(len(genesis_block['genesis']), 0)
-
-        actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = self.fsdriver.keys()
-        expected_state_keys.sort()
-        expected_state_keys.remove('delegates.something')
-        expected_state_keys.remove('elect_delegates.something')
-        expected_state_keys.remove('stamp_cost.S:delegate_contract')
-
-        self.assertListEqual(expected_state_keys, actual_state_keys)
-        self.assertTrue(validate_block_structure(genesis_block))
-        for contract in create_genesis.GENESIS_CONTRACTS:
-            self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)
-
-    def test_main_migration_scheme_mongo_does_not_migrate_delegate_keys(self):
-        self.create_mongo_state()
-        self.mongo_driver.set('delegates.something', SAMPLE_VAL)
-        self.mongo_driver.set('elect_delegates.something', SAMPLE_VAL)
-        self.mongo_driver.set('stamp_cost.S:delegate_contract', SAMPLE_VAL)
-
-        create_genesis.main(self.founder_sk, migration_scheme='mongo', db='test', collection='state')
-
-        self.assertTrue(create_genesis.GENESIS_BLOCK_PATH.is_file())
-        with open(create_genesis.GENESIS_BLOCK_PATH) as f:
-            genesis_block = decode(f.read())
-        self.assertIsNotNone(genesis_block.get('genesis', None))
-        self.assertGreater(len(genesis_block['genesis']), 0)
-
-        actual_state_keys = [item['key'] for item in genesis_block['genesis']]
-        expected_state_keys = self.mongo_driver.keys()
-        expected_state_keys.sort()
-        expected_state_keys.remove('delegates.something')
-        expected_state_keys.remove('elect_delegates.something')
-        expected_state_keys.remove('stamp_cost.S:delegate_contract')
 
         self.assertListEqual(expected_state_keys, actual_state_keys)
         self.assertTrue(validate_block_structure(genesis_block))
