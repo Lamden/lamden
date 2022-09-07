@@ -181,7 +181,8 @@ class MockGenesisBlock:
         internal_state.update({f'currency.balances:{founder_wallet.verifying_key}': 100000000})
         self.block = create_genesis.build_block(
             founder_sk=founder_wallet.signing_key,
-            additional_state=internal_state
+            additional_state=internal_state,
+            initial_members=initial_members
         )
 
         self.hlc_timestamp = self.block['hlc_timestamp']

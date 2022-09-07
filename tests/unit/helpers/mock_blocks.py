@@ -2,6 +2,20 @@ import hashlib
 from lamden.nodes.hlc import HLC_Clock
 from lamden.utils import hlc
 
+GENESIS_BLOCK = {
+    'hash': '2bb4e112aca11805538842bd993470f18f337797ec3f2f6ab02c47385caf088e',
+    'number': "0",
+    'hlc_timestamp': '0000-00-00T00:00:00.000000000Z_0',
+    'previous': '0000000000000000000000000000000000000000000000000000000000000000',
+    'genesis': [
+        {'key': 'currency.balances:9fb2b57b1740e8d86ecebe5bb1d059628df02236b69ed74de38b5e9d71230286', 'value': 100000000}
+    ],
+    'origin': {
+        'sender': '9fb2b57b1740e8d86ecebe5bb1d059628df02236b69ed74de38b5e9d71230286',
+        'signature': '82beb173f13ecc239ac108789b45428110ff56a84a3d999c0a1251a22974ea9b426ef61b13e04819d19556657448ba49a2f37230b8450b4de28a1a3cc85a3504'
+    }
+}
+
 def generate_mock_block(prev_block_hlc, prev_block_hash):
     hlc_clock = HLC_Clock()
     hlc_clock.merge_hlc_timestamp(prev_block_hlc)
@@ -64,3 +78,5 @@ def generate_blocks(number_of_blocks, prev_block_hash, prev_block_hlc):
         blocks.append(block)
 
     return blocks
+
+

@@ -22,7 +22,7 @@ GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
 LOG = get_logger('GENESIS_BLOCK')
 
-def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_file_path: str = None):
+def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_file_path: str = None, initial_members: list = None):
     state_changes = {}
     contracting_client = ContractingClient(driver=ContractDriver(FSDriver(root=TMP_STATE_PATH)), submission_filename=sync.DEFAULT_SUBMISSION_PATH)
 
@@ -31,22 +31,25 @@ def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_
 
     contracting_client.raw_driver.commit()
 
-    if constitution_file_path is not None:
-        constitution_file_path = os.path.join(constitution_file_path, 'constitution.json')
-        assert os.path.isfile(constitution_file_path), f"No constitution.json file found at: {constitution_file_path}"
-    else:
-        constitution_file_path = Path.home().joinpath('constitution.json')
+    if initial_members is None:
+        if constitution_file_path is not None:
+            constitution_file_path = os.path.join(constitution_file_path, 'constitution.json')
+            assert os.path.isfile(constitution_file_path), f"No constitution.json file found at: {constitution_file_path}"
+        else:
+            constitution_file_path = Path.home().joinpath('constitution.json')
 
-    constitution = None
-    with open(constitution_file_path) as f:
-        constitution = json.load(f)
+        constitution = None
+        with open(constitution_file_path) as f:
+            constitution = json.load(f)
 
-    if genesis_file_path is not None:
-        genesis_file_path = os.path.join(genesis_file_path, "genesis.json")
-        assert os.path.isfile(genesis_file_path), f"No genesis.json file found at: {genesis_file_path}"
+        if genesis_file_path is not None:
+            genesis_file_path = os.path.join(genesis_file_path, "genesis.json")
+            assert os.path.isfile(genesis_file_path), f"No genesis.json file found at: {genesis_file_path}"
+
+        initial_members = list(constitution['masternodes'].keys())
 
     sync.setup_genesis_contracts(
-        initial_masternodes=list(constitution['masternodes'].keys()),
+        initial_masternodes=initial_members,
         client=contracting_client,
         commit=False,
         filename=genesis_file_path
@@ -81,7 +84,7 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
 
     return state
 
-def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_path: str = None, genesis_file_path: str = None):
+def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_path: str = None, genesis_file_path: str = None, initial_members: list = None):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
         'number': GENESIS_BLOCK_NUMBER,
@@ -97,7 +100,8 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
     LOG.info('Building genesis contracts state...')
     state_changes = build_genesis_contracts_changes(
         constitution_file_path=constitution_file_path,
-        genesis_file_path=genesis_file_path
+        genesis_file_path=genesis_file_path,
+        initial_members=initial_members
     )
 
     LOG.info('Merging additional state...')

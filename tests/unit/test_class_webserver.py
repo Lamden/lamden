@@ -1,6 +1,7 @@
 from contracting.client import ContractingClient
-from contracting.db.driver import ContractDriver, decode, encode, FSDriver
+from contracting.db.driver import ContractDriver, decode, encode, FSDriver, InMemDriver
 from lamden import storage
+from lamden.storage import LATEST_BLOCK_HEIGHT_KEY
 from lamden.crypto.transaction import build_transaction
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.events import EventWriter, Event, EventService
@@ -9,7 +10,7 @@ from lamden.nodes.hlc import HLC_Clock
 from lamden.nodes.masternode.webserver import WebServer
 from lamden.storage import BlockStorage
 from multiprocessing import Process
-from tests.unit.helpers.mock_blocks import generate_blocks
+from tests.unit.helpers.mock_blocks import generate_blocks, GENESIS_BLOCK
 from tests.integration.mock.mock_data_structures import MockBlocks
 from unittest import TestCase
 import asyncio
@@ -373,6 +374,41 @@ def get():
         _, response = self.ws.app.test_client.get(f'/blocks?hash={block["hash"]}')
         self.assertDictEqual(response.json, block)
 
+    def test_get_block_by_hash_returns_no_state_from_genesis_block(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+
+        _, response = self.ws.app.test_client.get(f'/blocks?hash={block["hash"]}')
+        self.assertEqual(response.json.get('genesis'), [])
+        self.assertIsNotNone(self.ws.CACHED_GENESIS_BLOCK)
+
+    def test_get_block_by_number_returns_no_state_from_genesis_block(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+
+        _, response = self.ws.app.test_client.get(f'/blocks?num={block["number"]}')
+        self.assertEqual(response.json.get('genesis'), [])
+        self.assertIsNotNone(self.ws.CACHED_GENESIS_BLOCK)
+
+    def test_get_block_returns_cached_genesis_block_after_calling_get_block_by_number_once(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+        self.ws.app.test_client.get(f'/blocks?num={block["number"]}')
+        self.ws.CACHED_GENESIS_BLOCK['cached'] = True
+
+        _, response = self.ws.app.test_client.get(f'/blocks?num={block["number"]}')
+        self.assertTrue(response.json.get('cached'))
+
+    def test_get_block_returns_cached_genesis_block_after_calling_get_block_by_hash_once(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+        self.ws.app.test_client.get(f'/blocks?hash={block["hash"]}')
+        self.ws.CACHED_GENESIS_BLOCK['cached'] = True
+
+        _, response = self.ws.app.test_client.get(f'/blocks?hash={block["hash"]}')
+        self.assertTrue(response.json.get('cached'))
+
+
     def test_get_block_by_hash_that_doesnt_exist_returns_error(self):
         _, response = self.ws.app.test_client.get('/blocks?hash=zzz')
         self.assertDictEqual(response.json, {'error': 'Block not found.'})
@@ -581,13 +617,34 @@ class TestWebserverWebsockets(TestCase):
         TestWebserverWebsockets.service_process.terminate()
 
     def setUp(self):
+        self.node_wallet = Wallet()
+
+        self.initial_members = {
+            'masternodes': [self.node_wallet.verifying_key]
+        }
+
+        self.mock_blocks = MockBlocks(num_of_blocks=2, one_wallet=True,
+                                      initial_members=self.initial_members)
+
+        self.temp_storage = pathlib.Path().cwd().joinpath('temp_storage')
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
+        self.temp_storage.mkdir()
+
+        self.block_storage = BlockStorage(root=self.temp_storage)
+        self.block_storage.store_block(self.mock_blocks.get_block_by_index(0))
+        self.driver = ContractDriver(driver=InMemDriver())
+
         self.ws = WebServer(
-            wallet=Wallet(),
-            contracting_client=ContractingClient(),
-            blocks=BlockStorage(),
-            driver=ContractDriver(),
+            wallet=self.node_wallet,
+            contracting_client=ContractingClient(driver=self.driver),
+            blocks=self.block_storage,
+            driver=self.driver,
+            queue=FileQueue(root=self.temp_storage),
+            nonces=storage.NonceStorage(root=self.temp_storage),
             topics=[SAMPLE_TOPIC]
         )
+
         asyncio.set_event_loop(asyncio.new_event_loop())
         self.loop = asyncio.get_event_loop()
         self.server = self.loop.run_until_complete(
@@ -617,6 +674,9 @@ class TestWebserverWebsockets(TestCase):
     async def ws_connect(self):
         self.websocket = await websockets.connect(f'ws://localhost:{self.ws.port}')
 
+    async def ws_disconnect(self):
+        self.await_async_task(self.websocket.close)
+
     async def ws_get_next_message(self):
         self.messages.append(json.loads(await self.websocket.recv()))
 
@@ -633,3 +693,40 @@ class TestWebserverWebsockets(TestCase):
         EventWriter().write_event(Event(topics=self.ws.topics, data={'number': 101, 'hash': 'xoxo'}))
         self.await_async_task(self.ws_get_next_message)
         self.assertDictEqual(self.messages[1], {'event': SAMPLE_TOPIC, 'data': {'number': 101, 'hash': 'xoxo'}})
+
+    def test_ws_returns_empty_genesis_block_if_its_latest_block(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))\
+
+        self.ws.driver.driver.set(key=LATEST_BLOCK_HEIGHT_KEY, value='0')
+
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
+
+        self.assertEqual(len(self.ws.ws_clients), 1)
+        self.assertEqual(self.messages[0]['event'], 'latest_block')
+
+        block = self.messages[0]['data']
+
+        self.assertEqual(block.get('genesis'), [])
+        self.assertIsNotNone(self.ws.CACHED_GENESIS_BLOCK)
+        self.assertEqual(self.ws.CACHED_GENESIS_BLOCK.get('genesis'), [])
+
+    def test_ws_returns_cached_genesis_block_if_not_first_connection(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+        block['genesis'] = []
+        self.ws.CACHED_GENESIS_BLOCK = block
+        self.ws.CACHED_GENESIS_BLOCK['cached'] = True
+
+        self.ws.driver.driver.set(key=LATEST_BLOCK_HEIGHT_KEY, value='0')
+
+        self.await_async_task(self.ws_connect)
+        self.await_async_task(self.ws_get_next_message)
+
+        self.assertEqual(len(self.ws.ws_clients), 1)
+        self.assertEqual(self.messages[0]['event'], 'latest_block')
+
+        block = self.messages[0]['data']
+
+        self.assertTrue(block.get('cached'))

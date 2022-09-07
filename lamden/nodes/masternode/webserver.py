@@ -69,6 +69,8 @@ class WebServer:
         })
         self.cors = None
 
+        self.CACHED_GENESIS_BLOCK = None
+
         # Initialize the backend data interfaces
         self.client = contracting_client
         self.driver = driver
@@ -172,12 +174,12 @@ class WebServer:
             # send the connecting socket the latest block
             num = storage.get_latest_block_height(self.driver)
 
-
-            if num == 0:
-                block = None
+            if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
+                block = self.CACHED_GENESIS_BLOCK
             else:
                 block = self.blocks.get_block(int(num))
 
+            self.cache_genesis_block(block)
 
             eventData = {
                 'event': 'latest_block',
@@ -410,9 +412,17 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = self.blocks.get_block(int(num))
+            if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
+                block = self.CACHED_GENESIS_BLOCK
+            else:
+                block = self.blocks.get_block(int(num))
+
         elif _hash is not None:
-            block = self.blocks.get_block(_hash)
+            if self.CACHED_GENESIS_BLOCK is not None and self.CACHED_GENESIS_BLOCK.get('hash') == _hash:
+                block = self.CACHED_GENESIS_BLOCK
+            else:
+                block = self.blocks.get_block(_hash)
+
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
@@ -421,6 +431,7 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
+        self.cache_genesis_block(block)
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
@@ -455,6 +466,14 @@ class WebServer:
         return response.json({
             'masternodes': masternodes,
         }, headers={'Access-Control-Allow-Origin': '*'})
+
+    def cache_genesis_block(self, block: dict):
+        if not block:
+            return
+
+        if int(block.get('number')) == 0 and self.CACHED_GENESIS_BLOCK is None:
+            block['genesis'] = []
+            self.CACHED_GENESIS_BLOCK = block
 
 
 if __name__ == '__main__':
