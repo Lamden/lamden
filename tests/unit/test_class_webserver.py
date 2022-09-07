@@ -54,7 +54,8 @@ class TestClassWebserver(TestCase):
         )
 
     def tearDown(self):
-        shutil.rmtree(self.temp_storage)
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def test_ping(self):
         _, response = self.ws.app.test_client.get('/ping')
@@ -663,6 +664,8 @@ class TestWebserverWebsockets(TestCase):
         self.server.close()
         self.loop.run_until_complete(self.server.wait_closed())
         self.loop.close()
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def await_async_task(self, task):
         tasks = asyncio.gather(
