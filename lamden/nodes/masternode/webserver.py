@@ -171,14 +171,23 @@ class WebServer:
 
             # send the connecting socket the latest block
             num = storage.get_latest_block_height(self.driver)
-            block = self.blocks.get_block(int(num))
+
+
+            if num == 0:
+                block = None
+            else:
+                block = self.blocks.get_block(int(num))
+
 
             eventData = {
                 'event': 'latest_block',
                 'data': block
             }
 
-            await ws.send(encode(eventData))
+            try:
+                await ws.send(encode(eventData))
+            except Exception as err:
+                print(err)
 
             async for message in ws:
                 pass
