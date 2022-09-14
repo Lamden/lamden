@@ -89,6 +89,11 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
 
     return state
 
+def repair_rewards(rewards_initial_split: list):
+    if len(rewards_initial_split) == 5:
+        rewards_initial_split.pop(0)
+        rewards_initial_split[0] *= 2
+
 def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_path: str = None, genesis_file_path: str = None, initial_members: list = None):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
@@ -114,6 +119,8 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
 
     LOG.info('Filling genesis block...')
     for key, value in state_changes.items():
+        if key == REWARDS_VALUE_KEY:
+            repair_rewards(value)
         genesis_block['genesis'].append({
             'key': key,
             'value': value
@@ -145,11 +152,11 @@ def main(
     additional_state = {}
     if migration_scheme == 'filesystem':
         assert filebased_state_path is not None, 'invalid file-based state path provided'
-        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS + [LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY, MEMBERS_KEY, REWARDS_VALUE_KEY])
+        additional_state = fetch_filebased_state(filebased_state_path, ignore_keys=GENESIS_CONTRACTS_KEYS + [LATEST_BLOCK_HEIGHT_KEY, LATEST_BLOCK_HASH_KEY, MEMBERS_KEY])
     elif migration_scheme == 'mongo':
         assert db is not None and db != '', 'invalid database name provided'
         assert collection is not None and collection != '', 'invalid collection name provided'
-        additional_state = fetch_mongo_state(db, collection, ignore_keys=GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT, MEMBERS_KEY, REWARDS_VALUE_KEY])
+        additional_state = fetch_mongo_state(db, collection, ignore_keys=GENESIS_CONTRACTS_KEYS + [BLOCK_HASH_KEY, BLOCK_NUM_HEIGHT, MEMBERS_KEY])
 
     genesis_block = build_block(founder_sk, additional_state, constitution_file_path=constitution_path, genesis_file_path=genesis_path)
 
