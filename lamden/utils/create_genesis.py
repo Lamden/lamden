@@ -18,6 +18,7 @@ import re
 GENESIS_CONTRACTS = ['submission', 'currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
 MEMBERS_KEY = 'masternodes.S:members'
+REWARDS_VALUE_KEY = 'rewards.S:value'
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
 LOG = get_logger('GENESIS_BLOCK')
@@ -88,6 +89,11 @@ def fetch_mongo_state(db: str, collection: str, ignore_keys: list = []):
 
     return state
 
+def repair_rewards(rewards_initial_split: list):
+    if len(rewards_initial_split) == 5:
+        rewards_initial_split.pop(0)
+        rewards_initial_split[0] *= 2
+
 def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_path: str = None, genesis_file_path: str = None, initial_members: list = None):
     genesis_block = {
         'hash': block_hash_from_block(GENESIS_HLC_TIMESTAMP, GENESIS_BLOCK_NUMBER, GENESIS_PREVIOUS_HASH),
@@ -113,6 +119,8 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
 
     LOG.info('Filling genesis block...')
     for key, value in state_changes.items():
+        if key == REWARDS_VALUE_KEY:
+            repair_rewards(value)
         genesis_block['genesis'].append({
             'key': key,
             'value': value
