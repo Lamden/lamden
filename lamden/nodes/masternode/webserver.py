@@ -151,6 +151,10 @@ class WebServer:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
+        async def connect_error():
+            print("CONNECTION FAILED!")
+
+        @self.sio.event
         async def event(data):
             for client in self.ws_clients:
                 await client.send(encode(data))
@@ -162,8 +166,9 @@ class WebServer:
             try:
                 await self.sio.connect(f'http://localhost:{self.event_service_port}')
                 await self.sio.wait()
-            except:
-                pass
+            except Exception as err:
+                print("ERROR ATTEMPTING TO CONNECT TO EVENT SERVER")
+                print(err)
 
     async def ws_handler(self, request, ws):
         self.ws_clients.add(ws)
