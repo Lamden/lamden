@@ -235,9 +235,6 @@ class Node:
             if self.new_network_start:
                 await self.start_new_network()
             else:
-                self.main_processing_queue.disable_append()
-                self.validation_queue.disable_append()
-
                 await self.join_existing_network()
 
             asyncio.ensure_future(self.check_tx_queue())
@@ -296,6 +293,9 @@ class Node:
         self.start_main_processing_queue_task()
 
     async def join_existing_network(self):
+        self.main_processing_queue.disable_append()
+        self.validation_queue.disable_append()
+
         bootnode = None
 
         # Connect to a node on the network using the bootnode list
@@ -402,6 +402,7 @@ class Node:
 
 
         # Start the validation queue so we start accepting block results
+        self.validation_queue.enable_append()
         self.start_validation_queue_task()
 
         # Lock the router down and secure messages again
