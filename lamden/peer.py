@@ -12,6 +12,8 @@ from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION
 from typing import Callable
 from urllib.parse import urlparse
 
+from contracting.db.encoder import decode
+
 SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
 
 ACTION_PING = "ping"
@@ -425,12 +427,12 @@ class Peer:
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
         msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num) if block_num is not None else block_num, 'hlc_timestamp': hlc_timestamp}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=10000)
         return msg_json
 
     async def get_next_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': int(block_num)}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=2500)
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=10000)
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
@@ -465,7 +467,7 @@ class Peer:
         if result.success:
             self.connected = True
             try:
-                msg_json = json.loads(result.response)
+                msg_json = decode(result.response)
                 msg_json['success'] = result.success
                 return msg_json
 

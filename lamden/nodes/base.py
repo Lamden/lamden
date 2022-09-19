@@ -537,7 +537,7 @@ class Node:
                     continue
 
                 new_block = response.get("block_info")
-                self.log.info(new_block)
+                #self.log.info(new_block)
 
                 if new_block is None or not verify_block(block=new_block):
                     self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')

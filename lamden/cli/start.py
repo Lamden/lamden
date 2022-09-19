@@ -148,7 +148,6 @@ def join_network(args):
     n = Node(
         wallet=wallet,
         socket_base=socket_base,
-        webserver_port=args.webserver_port,
         bootnodes=bootnodes,
         seed=mn_seed,
     )

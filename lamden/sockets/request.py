@@ -165,7 +165,7 @@ class Request():
 
                         response = await self.socket.recv()
 
-                        self.log('info', '%s received: %s' % (self.id, response))
+                        #self.log('info', '%s received: %s' % (self.id, response))
 
                         return Result(success=True, response=response)
 
