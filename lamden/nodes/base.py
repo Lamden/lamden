@@ -385,7 +385,8 @@ class Node:
 
         await self.network.connected_to_all_peers()
 
-        needs_catchup = self.network.get_highest_peer_block() > 0
+        highest_peer_block = self.network.get_highest_peer_block()
+        needs_catchup = highest_peer_block > 0 and self.get_current_height() < highest_peer_block
         if needs_catchup:
             # Run an initial catchup to get as many blocks as we can
             await self.catchup()
