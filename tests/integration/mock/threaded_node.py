@@ -196,7 +196,8 @@ class ThreadedNode(threading.Thread):
                 reconnect_attempts=self.reconnect_attempts,
                 testing=True,
                 delay=self.delay,
-                nonces=self.nonces
+                nonces=self.nonces,
+                join=self.genesis_block is None
             )
 
             self.node.network.set_to_local()

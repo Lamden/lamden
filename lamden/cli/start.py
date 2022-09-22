@@ -149,7 +149,7 @@ def join_network(args):
         wallet=wallet,
         socket_base=socket_base,
         bootnodes=bootnodes,
-        seed=mn_seed,
+        join=True
     )
 
     loop = asyncio.get_event_loop()

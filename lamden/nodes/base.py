@@ -66,9 +66,9 @@ class NewBlock(router.Processor):
 
 class Node:
     def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
-                 driver=None, delay=None, debug=True, testing=False, seed=None, bypass_catchup=False,
+                 driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
-                 tx_queue=None, socket_ports=None, reconnect_attempts=60):
+                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -87,8 +87,6 @@ class Node:
         self.driver = driver if driver is not None else ContractDriver()
         self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.event_writer = EventWriter()
-
-        self.seed = seed
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
 
@@ -148,9 +146,9 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
 
-        self.new_network_start = False
+        self.join = join
         if genesis_block:
-            self.new_network_start = self.store_genesis_block(genesis_block=genesis_block)
+            self.store_genesis_block(genesis_block=genesis_block)
 
         self.client = ContractingClient(
             driver=self.driver,
@@ -232,7 +230,7 @@ class Node:
             self.network.start()
             await self.network.starting()
 
-            if self.new_network_start:
+            if not self.join:
                 await self.start_new_network()
             else:
                 await self.join_existing_network()
@@ -1280,15 +1278,15 @@ class Node:
         self.log.info('Processing Genesis Block.')
 
         if self.blocks.total_blocks() > 0:
-            self.log.warning('Genesis Block provided but this node already has blocks. Will try and join network...')
-            return False
+            self.log.warning('Genesis Block provided but this node already has blocks, continuing startup process...')
+            return
 
         self.driver.clear_pending_state()
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.hard_apply_block(block=genesis_block))
 
-        return True
+        return
 
     def should_process(self, block):
         try:

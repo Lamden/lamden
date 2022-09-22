@@ -63,7 +63,7 @@ class TestNode(TestCase):
     def test_start_join_existing_network_no_bootnodes(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        self.node = Node(socket_base='', wallet=Wallet(), constitution={})
+        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, join=True)
         self.await_async_process(self.node.start)
 
         self.assertFalse(self.node.running)

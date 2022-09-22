@@ -104,14 +104,6 @@ class TestBaseGenesisBlock(TestCase):
         self.node = self.create_node_instance()
         self.assertIsNotNone(self.node)
 
-    def test_sets_start_new_network_to_TRUE_if_genesis_block_provided(self):
-        self.node = self.create_node_instance(genesis=self.genesis_block)
-        self.assertTrue(self.node.new_network_start)
-
-    def test_sets_start_new_network_to_FALSE_if_genesis_block_NOT_provided(self):
-        self.node = self.create_node_instance()
-        self.assertFalse(self.node.new_network_start)
-
     def test_processes_genesis_info_into_state(self):
         self.node = self.create_node_instance(genesis=self.genesis_block)
         genesis_state = self.genesis_block.get('genesis')
@@ -127,10 +119,12 @@ class TestBaseGenesisBlock(TestCase):
         for state_change in genesis_state:
             self.assertIsNotNone(self.node.driver.get(state_change.get('key')))
 
-    def test_store_genesis_block__returns_TRUE_if_successful(self):
+    def test_store_genesis_block(self):
         self.node = self.create_node_instance()
 
-        self.assertTrue(self.node.store_genesis_block(genesis_block=self.genesis_block))
+        self.node.store_genesis_block(genesis_block=self.genesis_block)
+
+        self.assertIsNotNone(self.node.blocks.get_block(0))
 
     def test_store_genesis_block__returns_FALSE_if_blocks_exist(self):
         self.node = self.create_node_instance()

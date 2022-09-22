@@ -52,6 +52,8 @@ class TestNodeKick(TestCase):
 
         self.network.await_all_nodes_done_processing(block_height=self.num_yays_needed + 2)
 
+        self.await_async_process(asyncio.sleep, 1)
+
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
             self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
@@ -100,6 +102,8 @@ class TestNodeKick(TestCase):
                 node.node.unpause_all_queues()
 
         self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
+
+        self.await_async_process(asyncio.sleep, 1)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
