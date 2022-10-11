@@ -296,13 +296,14 @@ class Node:
 
         bootnode = None
 
+        self.network.router.cred_provider.open_messages()
+
         # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
             print(f'Attempting to connect to bootnode "{vk}" @ {ip}')
             self.log.info(f'Attempting to connect to bootnode "{vk}" @ {ip}')
 
             if vk != self.wallet.verifying_key:
-                self.network.authorize_peer(peer_vk=vk)
                 try:
                     # Use it to boot up the network
                     self.network.connect_to_bootnode(
@@ -326,8 +327,6 @@ class Node:
 
                     if connection_attempts > self.reconnect_attempts:
                         bootnode = None
-                        self.network.revoke_peer_access(peer_vk=vk)
-                        self.network.remove_peer(peer_vk=vk)
 
                         break
 
@@ -357,11 +356,10 @@ class Node:
 
             raise Exception(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
 
-        # Create a constitution file
-        # self.constitution = self.network.network_map_to_constitution(network_map=network_map)
+        self.driver.driver.set('masternodes.S:members', list(network_map['masternodes'].keys()))
+        self.network.refresh_approved_peers_in_cred_provider()
 
-        # Create genesis contracts
-        # self.seed_genesis_contracts()
+        self.network.router.cred_provider.secure_messages()
 
         # Connect to all nodes in the network
         for node_info in self.network.network_map_to_node_list(network_map=network_map):
@@ -370,9 +368,6 @@ class Node:
 
             print({"vk": vk, "ip": ip})
             self.log.info({"vk": vk, "ip": ip})
-
-            self.network.refresh_approved_peers_in_cred_provider()
-            self.network.router.cred_provider.open_messages()
 
             if vk != self.wallet.verifying_key:
                 # connect to peer
@@ -402,10 +397,6 @@ class Node:
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
         self.start_validation_queue_task()
-
-        # Lock the router down and secure messages again
-        self.network.refresh_approved_peers_in_cred_provider()
-        self.network.router.cred_provider.secure_messages()
 
         self.driver.clear_pending_state()
 
@@ -537,7 +528,7 @@ class Node:
                 new_block = response.get("block_info")
                 #self.log.info(new_block)
 
-                if new_block is None or not verify_block(block=new_block):
+                if new_block is None: #or not verify_block(block=new_block):
                     self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')
                     block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
                     continue
@@ -999,6 +990,7 @@ class Node:
                 break
 
         if len(exiled_peers) == 0:
+            self.network.refresh_approved_peers_in_cred_provider()
             return
 
         if self.wallet.verifying_key in exiled_peers:

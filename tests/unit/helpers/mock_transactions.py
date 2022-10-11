@@ -61,7 +61,7 @@ def get_new_vote_tx(type, vk, sender):
     )
     return json.loads(txb)
 
-def get_introduce_motion_tx(policy, motion, vk, wallet=None, nonce=None):
+def get_introduce_motion_tx(policy, motion, vk='', wallet=None, nonce=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract='election_house',
@@ -90,6 +90,50 @@ def get_vote_tx(policy, vote, wallet=None, nonce=None):
         stamps=50
     )
     return json.loads(txb)
+
+def get_vote_candidate_tx(wallet, processor_vk, candidate, nonce=None):
+    txb = build_transaction(
+        wallet=wallet,
+        contract='elect_masternodes',
+        function='vote_candidate',
+        kwargs={
+            'address': candidate
+        },
+        nonce=nonce or 0,
+        processor=processor_vk,
+        stamps=50
+    )
+
+    return txb.encode()
+
+def get_register_tx(wallet, processor_vk, nonce=None):
+    txb = build_transaction(
+        wallet=wallet,
+        contract='elect_masternodes',
+        function='register',
+        kwargs={},
+        nonce=nonce or 0,
+        processor=processor_vk,
+        stamps=50
+    )
+
+    return txb.encode()
+
+def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None):
+    txb = build_transaction(
+        wallet=wallet,
+        contract='currency',
+        function='approve',
+        kwargs={
+            'amount': amount or 100000,
+            'to': to
+        },
+        nonce=nonce or 0,
+        processor=processor_vk,
+        stamps=50
+    )
+
+    return txb.encode()
 
 def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None, hlc_timestamp=None, processor=None):
     wallet = wallet or Wallet()

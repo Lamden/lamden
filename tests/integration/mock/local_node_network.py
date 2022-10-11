@@ -185,8 +185,8 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_new_node_to_network(self, genesis_block: dict = None, bootnodes: ThreadedNode = None, reconnect_attempts=60):
-            new_node_wallet = Wallet()
+        def add_new_node_to_network(self, genesis_block: dict = None, bootnodes: ThreadedNode = None, reconnect_attempts=60, wallet=None):
+            new_node_wallet = wallet if wallet is not None else Wallet()
             new_node_vk = new_node_wallet.verifying_key
 
             self.add_new_node_vk_to_network(vk=new_node_vk)
@@ -208,12 +208,13 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_masternode(self, genesis_block: dict=None, reconnect_attempts=60):
-            return self.add_new_node_to_network(genesis_block=genesis_block, reconnect_attempts=reconnect_attempts)
+        def add_masternode(self, genesis_block: dict=None, reconnect_attempts=60, wallet=None):
+            return self.add_new_node_to_network(genesis_block=genesis_block, reconnect_attempts=reconnect_attempts, wallet=wallet)
 
         def add_new_node_vk_to_network(self, vk: str):
             node_vks = [tn.vk for tn in self.all_nodes]
-            node_vks.append(vk)
+            if vk not in node_vks:
+                node_vks.append(vk)
             for tn in self.all_nodes:
                 tn.set_smart_contract_value(
                     key='masternodes.S:members',
