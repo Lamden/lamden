@@ -690,22 +690,22 @@ class Node:
             processing_results = await self.main_processing_queue.process_next()
 
             if processing_results and self.running:
-                hlc_timestamp = processing_results.get('hlc_timestamp')
-                self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
-
                 if self.testing:
                     self.debug_processing_results.append(processing_results)
 
-                if hlc_timestamp <= self.get_last_hlc_in_consensus():
-                    block = self.blocks.get_block(v=hlc_timestamp)
-                    my_result_hash = self.make_result_hash_from_processing_results(
-                        processing_results=processing_results
-                    )
-                    block_result_hash = block['processed']['hash']
+                #if hlc_timestamp <= self.get_last_hlc_in_consensus():
+                #    block = self.blocks.get_block(v=hlc_timestamp)
+                #    my_result_hash = self.make_result_hash_from_processing_results(
+                #        processing_results=processing_results
+                #    )
+                #    block_result_hash = block['processed']['hash']
 
-                    if my_result_hash != block_result_hash:
-                        await self.reprocess(tx=processing_results['tx_result']['transaction'])
-                else:
+                #    if my_result_hash != block_result_hash:
+                #        await self.reprocess(tx=processing_results['tx_result']['transaction'])
+                #else:
+                hlc_timestamp = processing_results.get('hlc_timestamp')
+                if hlc_timestamp > self.get_last_hlc_in_consensus():
+                    self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
         except Exception as err:
