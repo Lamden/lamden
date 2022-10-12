@@ -122,7 +122,7 @@ class TxProcessingQueue(ProcessingQueue):
         time_in_queue = time.time() - tx.get('timestamp')
 
         # get the amount of time this node should hold the transactions
-        time_delay = self.hold_time(tx=tx)
+        time_delay = 0#self.hold_time(tx=tx)
 
         # If the transaction has been held for enough time then process it.
         if time_in_queue > time_delay:
