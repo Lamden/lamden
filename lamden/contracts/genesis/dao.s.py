@@ -4,17 +4,21 @@ import election_house
 S = Hash()
 
 @construct
-def seed(election_period_length=datetime.DAYS * 1):
-    S['election_period_length'] = election_period_length
+def seed():
+    S['election_period_length'] = datetime.DAYS * 1
+    S['pass_motion_delay'] = datetime.DAYS * 1
+    S['pending_motions'] = []
     reset()
 
 @export
 def current_value():
-    return S
+    return S['pending_motions']
 
 @export
-def vote(voter_vk: str, obj: list):
-    assert voter_vk in election_house.current_value_for_policy('masternodes'), 'Not a member.'
+def vote(vk: str, obj: list):
+    finalize_pending_motions()
+
+    assert vk in election_house.current_value_for_policy('masternodes'), 'Not a member.'
     assert type(obj) == list, 'Pass a list!'
 
     if S['motion_start'] is None:
@@ -30,24 +34,34 @@ def vote(voter_vk: str, obj: list):
             return
 
         position, = obj
-        assert_vote_is_valid(voter_vk, position)
+        assert_vote_is_valid(vk, position)
 
-        S['positions', voter_vk] = position
-        if position is True:
+        S['positions', vk] = position
+        if position:
             S['yays'] += 1
         else:
             S['nays'] += 1
 
         total_members = len(election_house.current_value_for_policy('masternodes'))
-        if len(S['positions'].all()) >= (total_members * 3 // 5) + 1:
+        if len(S.all('positions')) >= (total_members * 3 // 5) + 1:
             if S['yays'] >= (total_members * 7 // 10) + 1:
                 pass_motion()
             elif S['nays'] >= (total_members * 7 // 10) + 1:
                 reset()
 
 def pass_motion():
-    currency.transfer(S['amount'], S['recipient_vk'])
+    S['pending_motions'] += [{
+        'motion_passed': now,
+        'recipient_vk': S['recipient_vk'],
+        'amount': S['amount']
+    }]
     reset()
+
+def finalize_pending_motions():
+    for motion in S['pending_motions']:
+        if now - motion['motion_passed'] >= S['pass_motion_delay']:
+            currency.transfer(motion['amount'], motion['recipient_vk'])
+            S['pending_motions'].remove(motion)
 
 def reset():
     S['yays'] = 0
@@ -67,6 +81,6 @@ def assert_recipient_vk_and_amount_is_valid(vk: str, amount: int):
     assert type(amount) == int, 'Amount is not an integer.'
     assert amount > 0, 'Amount is not greater than zero.'
 
-def assert_vote_is_valid(voter_vk: str, position: bool):
-    assert S['positions', voter_vk] is None, 'VK already voted.'
+def assert_vote_is_valid(vk: str, position: bool):
+    assert S['positions', vk] is None, 'VK already voted.'
     assert type(position) == bool, 'Invalid position.'
