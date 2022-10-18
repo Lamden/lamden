@@ -18,8 +18,11 @@ def current_value():
 def vote(vk: str, obj: list):
     finalize_pending_motions()
 
-    assert vk in election_house.current_value_for_policy('masternodes'), 'Not a member.'
     assert type(obj) == list, 'Pass a list!'
+    if len(obj) == 0:
+        return
+
+    assert vk in election_house.current_value_for_policy('masternodes'), 'Not a member.'
 
     if S['motion_start'] is None:
         recipient_vk, amount = obj
@@ -58,10 +61,12 @@ def pass_motion():
     reset()
 
 def finalize_pending_motions():
-    for motion in S['pending_motions']:
+    pending_motions = S['pending_motions']
+    for motion in pending_motions:
         if now - motion['motion_passed'] >= S['motion_delay']:
-            currency.transfer(motion['amount'], motion['recipient_vk'])
-            S['pending_motions'].remove(motion)
+            currency.transfer(amount=motion['amount'], to=motion['recipient_vk'])
+            pending_motions.remove(motion)
+    S['pending_motions'] = pending_motions
 
 def reset():
     S['yays'] = 0

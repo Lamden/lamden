@@ -160,8 +160,8 @@ class LocalNodeNetwork:
 
             node_dir = Path(f'{self.temp_network_dir}/{node_wallet.verifying_key}')
 
-            #raw_driver = FSDriver(root=node_dir)
-            raw_driver = InMemDriver()
+            raw_driver = FSDriver(root=node_dir)
+            #raw_driver = InMemDriver()
             block_storage = BlockStorage(root=node_dir)
             nonce_storage = NonceStorage(root=node_dir)
             tx_queue = FileQueue(root=node_dir)
