@@ -68,7 +68,8 @@ def register_policies(client: ContractingClient):
     policies_to_register = [
         'masternodes',
         'rewards',
-        'stamp_cost'
+        'stamp_cost',
+        'dao'
     ]
 
     for policy in policies_to_register:

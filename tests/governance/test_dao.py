@@ -17,11 +17,7 @@ class TestDAO(TestCase):
         sync.setup_genesis_contracts(initial_masternodes=[wallet.verifying_key for wallet in self.members],
                                      client=self.client)
 
-        with open(sync.DEFAULT_PATH + '/genesis/dao.s.py') as f:
-            self.client.submit(f.read(), name='dao', owner='election_house')
-
         self.election_house = self.client.get_contract(name='election_house')
-        self.election_house.register_policy(contract='dao')
         self.dao = self.client.get_contract('dao')
         self.currency = self.client.get_contract(name='currency')
 

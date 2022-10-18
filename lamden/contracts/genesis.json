@@ -37,6 +37,11 @@
 			"constructor_args": {
 				"vk": "0000803efd5df09c75c0c6670742db5074e5a011b829dfd8a0c50726d263a345"
 			}
-		}
+		},
+        {
+            "name": "dao",
+            "owner": "election_house",
+            "constructor_args": null
+        }
 	]
 }
