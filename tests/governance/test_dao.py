@@ -28,6 +28,9 @@ class TestDAO(TestCase):
         self.contract_driver.set(key='currency.balances:dao', value=100_000_000)
         self.contract_driver.commit()
 
+        self.total_votes_needed = (len(self.election_house.current_value_for_policy(policy='masternodes')) * 3 // 5) + 1
+        self.specific_votes_needed = self.total_votes_needed * 7 // 10 + 1
+
     def tearDown(self):
         self.client.flush()
 
@@ -39,8 +42,8 @@ class TestDAO(TestCase):
         self.assertIsNone(self.dao.quick_read('S', 'recipient_vk'))
         self.assertIsNone(self.dao.quick_read('S', 'amount'))
         self.assertIsNone(self.dao.quick_read('S', 'positions'))
-        self.assertEqual(self.dao.quick_read('S', 'election_period_length'), Timedelta(days=1))
-        self.assertEqual(self.dao.quick_read('S', 'pass_motion_delay'), Timedelta(days=1))
+        self.assertEqual(self.dao.quick_read('S', 'motion_period'), Timedelta(days=1))
+        self.assertEqual(self.dao.quick_read('S', 'motion_delay'), Timedelta(days=1))
 
     def test_vote_raises_if_not_called_from_election_house(self):
         with self.assertRaises(Exception):
@@ -105,15 +108,19 @@ class TestDAO(TestCase):
 
         self.election_house.vote(policy='dao', value=[recipient_vk, amount], signer=self.members[0].verifying_key)
 
-        yays_needed = (len(self.election_house.current_value_for_policy(policy='masternodes')) * 7 // 10) + 1
-        for i in range(yays_needed):
+        for i in range(self.specific_votes_needed):
             self.election_house.vote(policy='dao', value=[True], signer=self.members[i].verifying_key)
+        for i in range(self.specific_votes_needed, self.total_votes_needed):
+            self.election_house.vote(policy='dao', value=[False], signer=self.members[i].verifying_key)
 
         self.assertEqual(len(self.election_house.current_value_for_policy(policy='dao')), 1)
+        self.assertIsNotNone(self.dao.quick_read('S', 'pending_motions')[0]['motion_passed'])
+        self.assertEqual(self.dao.quick_read('S', 'pending_motions')[0]['recipient_vk'], recipient_vk)
+        self.assertEqual(self.dao.quick_read('S', 'pending_motions')[0]['amount'], amount)
 
-        env = {'now': Datetime._from_datetime(dt.today() + td(days=1))}
         try:
-            self.election_house.vote(policy='dao', value=[], environment=env)
+            self.election_house.vote(policy='dao', value=[],
+                environment={'now': Datetime._from_datetime(dt.today() + td(days=1))})
         except:
             pass
 
@@ -126,5 +133,74 @@ class TestDAO(TestCase):
         self.assertIsNone(self.dao.quick_read('S', 'recipient_vk'))
         self.assertIsNone(self.dao.quick_read('S', 'amount'))
         self.assertIsNone(self.dao.quick_read('S', 'positions'))
-        self.assertEqual(self.dao.quick_read('S', 'election_period_length'), Timedelta(days=1))
-        self.assertEqual(self.dao.quick_read('S', 'pass_motion_delay'), Timedelta(days=1))
+
+    def test_vote_skips_motion_if_enough_nays_and_menbers_voted(self):
+        recipient_vk = Wallet().verifying_key; amount = 100
+
+        self.election_house.vote(policy='dao', value=[recipient_vk, amount], signer=self.members[0].verifying_key)
+
+        for i in range(self.specific_votes_needed):
+            self.election_house.vote(policy='dao', value=[False], signer=self.members[i].verifying_key)
+        for i in range(self.specific_votes_needed, self.total_votes_needed):
+            self.election_house.vote(policy='dao', value=[True], signer=self.members[i].verifying_key)
+
+        self.assertIsNone(self.contract_driver.get(f'currency.balances:{recipient_vk}'))
+        self.assertEqual(self.contract_driver.get('currency.balances:dao'), 100_000_000)
+        self.assertListEqual(self.election_house.current_value_for_policy(policy='dao'), [])
+        self.assertEqual(self.dao.quick_read('S', 'yays'), 0)
+        self.assertEqual(self.dao.quick_read('S', 'nays'), 0)
+        self.assertIsNone(self.dao.quick_read('S', 'motion_start'))
+        self.assertIsNone(self.dao.quick_read('S', 'recipient_vk'))
+        self.assertIsNone(self.dao.quick_read('S', 'amount'))
+        self.assertIsNone(self.dao.quick_read('S', 'positions'))
+        self.assertEqual(self.dao.quick_read('S', 'motion_period'), Timedelta(days=1))
+        self.assertEqual(self.dao.quick_read('S', 'motion_delay'), Timedelta(days=1))
+
+    def test_vote_skips_motion_if_motion_expired(self):
+        recipient_vk = Wallet().verifying_key; amount = 100
+
+        self.election_house.vote(policy='dao', value=[recipient_vk, amount], signer=self.members[0].verifying_key)
+
+        self.election_house.vote(policy='dao', value=[True], signer=self.members[0].verifying_key,
+            environment={'now': Datetime._from_datetime(dt.today() + td(days=1))})
+
+        self.assertIsNone(self.contract_driver.get(f'currency.balances:{recipient_vk}'))
+        self.assertEqual(self.contract_driver.get('currency.balances:dao'), 100_000_000)
+        self.assertListEqual(self.election_house.current_value_for_policy(policy='dao'), [])
+        self.assertEqual(self.dao.quick_read('S', 'yays'), 0)
+        self.assertEqual(self.dao.quick_read('S', 'nays'), 0)
+        self.assertIsNone(self.dao.quick_read('S', 'motion_start'))
+        self.assertIsNone(self.dao.quick_read('S', 'recipient_vk'))
+        self.assertIsNone(self.dao.quick_read('S', 'amount'))
+        self.assertIsNone(self.dao.quick_read('S', 'positions'))
+        self.assertEqual(self.dao.quick_read('S', 'motion_period'), Timedelta(days=1))
+        self.assertEqual(self.dao.quick_read('S', 'motion_delay'), Timedelta(days=1))
+
+    def test_pass_motion(self):
+        self.dao.S['recipient_vk'] = Wallet().verifying_key
+        self.dao.S['amount'] = 100
+
+        self.dao.run_private_function(f='pass_motion', signer='election_house')
+
+        self.assertEqual(len(self.election_house.current_value_for_policy(policy='dao')), 1)
+        self.assertEqual(self.dao.quick_read('S', 'yays'), 0)
+        self.assertEqual(self.dao.quick_read('S', 'nays'), 0)
+        self.assertIsNone(self.dao.quick_read('S', 'motion_start'))
+        self.assertIsNone(self.dao.quick_read('S', 'recipient_vk'))
+        self.assertIsNone(self.dao.quick_read('S', 'amount'))
+        self.assertIsNone(self.dao.quick_read('S', 'positions'))
+        self.assertEqual(self.dao.quick_read('S', 'motion_period'), Timedelta(days=1))
+        self.assertEqual(self.dao.quick_read('S', 'motion_delay'), Timedelta(days=1))
+
+    def test_finalize_pending_motion(self):
+        recipient_vk = Wallet().verifying_key; amount = 100
+        self.dao.S['recipient_vk'] = recipient_vk
+        self.dao.S['amount'] = amount
+        self.dao.run_private_function(f='pass_motion', signer='election_house')
+
+        self.dao.run_private_function(f='finalize_pending_motions', signer='election_house',
+            environment={'now': Datetime._from_datetime(dt.today() + td(days=1))})
+
+        self.assertListEqual(self.election_house.current_value_for_policy(policy='dao'), [])
+        self.assertEqual(self.contract_driver.get(f'currency.balances:{recipient_vk}'), amount)
+        self.assertEqual(self.contract_driver.get('currency.balances:dao'), 100_000_000 - amount)

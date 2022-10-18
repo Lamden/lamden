@@ -5,8 +5,8 @@ S = Hash()
 
 @construct
 def seed():
-    S['election_period_length'] = datetime.DAYS * 1
-    S['pass_motion_delay'] = datetime.DAYS * 1
+    S['motion_period'] = datetime.DAYS * 1
+    S['motion_delay'] = datetime.DAYS * 1
     S['pending_motions'] = []
     reset()
 
@@ -29,7 +29,7 @@ def vote(vk: str, obj: list):
         S['amount'] = amount
         S['motion_start'] = now
     else:
-        if now - S['motion_start'] >= S['election_period_length']:
+        if now - S['motion_start'] >= S['motion_period']:
             reset()
             return
 
@@ -42,11 +42,11 @@ def vote(vk: str, obj: list):
         else:
             S['nays'] += 1
 
-        total_members = len(election_house.current_value_for_policy('masternodes'))
-        if len(S.all('positions')) >= (total_members * 3 // 5) + 1:
-            if S['yays'] >= (total_members * 7 // 10) + 1:
+        total_votes = S['yays'] + S['nays']
+        if total_votes >= len(election_house.current_value_for_policy('masternodes')) * 3 // 5 + 1:
+            if S['yays'] >= total_votes * 7 // 10 + 1:
                 pass_motion()
-            elif S['nays'] >= (total_members * 7 // 10) + 1:
+            elif S['nays'] >= total_votes * 7 // 10 + 1:
                 reset()
 
 def pass_motion():
@@ -59,7 +59,7 @@ def pass_motion():
 
 def finalize_pending_motions():
     for motion in S['pending_motions']:
-        if now - motion['motion_passed'] >= S['pass_motion_delay']:
+        if now - motion['motion_passed'] >= S['motion_delay']:
             currency.transfer(motion['amount'], motion['recipient_vk'])
             S['pending_motions'].remove(motion)
 
