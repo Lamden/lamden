@@ -236,7 +236,7 @@ class Network:
 
     def refresh_approved_peers_in_cred_provider(self):
         node_vk_list_from_smartcontracts = self.get_node_list()
-        print({'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
+        self.log('info', {'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
         # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
 

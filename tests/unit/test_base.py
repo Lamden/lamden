@@ -275,11 +275,11 @@ class TestNode(TestCase):
             self.node.node.soft_apply_current_state(processing_results.get('hlc_timestamp'))
 
     def test_check_peers_stops_self_if_kicked_out(self):
-        self.node.set_smart_contract_value('masternodes.S:members', [''])
+        self.node.set_smart_contract_value('masternodes.S:members', [])
         processing_results = {
             'tx_result': {
                 'state': [
-                    {'key': 'masternodes.S:members', 'value': ['']}
+                    {'key': 'masternodes.S:members', 'value': []}
                 ]
             }
         }
