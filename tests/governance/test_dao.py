@@ -45,14 +45,6 @@ class TestDAO(TestCase):
         with self.assertRaises(Exception):
             self.dao.vote(vk=self.members[0].verifying_key, obj=[])
 
-    def test_vote_raises_if_caller_not_member(self):
-        with self.assertRaises(AssertionError):
-            self.election_house.vote(policy='dao', value=[])
-
-    def test_vote_raises_if_args_list_invalid(self):
-        with self.assertRaises(ValueError):
-            self.election_house.vote(policy='dao', value=[], signer=self.members[0].verifying_key)
-
     def test_vote_raises_if_vk_is_invalid(self):
         with self.assertRaises(AssertionError):
             self.election_house.vote(policy='dao', value=['beef', 1], signer=self.members[0].verifying_key)
@@ -88,8 +80,6 @@ class TestDAO(TestCase):
         self.election_house.vote(policy='dao', value=[recipient_vk, amount], signer=self.members[0].verifying_key)
         with self.assertRaises(AssertionError):
             self.election_house.vote(policy='dao', value=['invalid_position'], signer=self.members[0].verifying_key)
-        with self.assertRaises(ValueError):
-            self.election_house.vote(policy='dao', value=[], signer=self.members[0].verifying_key)
 
         self.election_house.vote(policy='dao', value=[True], signer=self.members[0].verifying_key)
 

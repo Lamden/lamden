@@ -103,8 +103,7 @@ def get_vote_candidate_tx(wallet, processor_vk, candidate, nonce=None):
         processor=processor_vk,
         stamps=50
     )
-
-    return txb.encode()
+    return json.loads(txb)
 
 def get_register_tx(wallet, processor_vk, nonce=None):
     txb = build_transaction(
@@ -116,8 +115,7 @@ def get_register_tx(wallet, processor_vk, nonce=None):
         processor=processor_vk,
         stamps=50
     )
-
-    return txb.encode()
+    return json.loads(txb)
 
 def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None):
     txb = build_transaction(
@@ -132,8 +130,7 @@ def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None):
         processor=processor_vk,
         stamps=50
     )
-
-    return txb.encode()
+    return json.loads(txb)
 
 def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None, hlc_timestamp=None, processor=None):
     wallet = wallet or Wallet()
