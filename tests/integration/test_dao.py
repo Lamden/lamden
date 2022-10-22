@@ -1,3 +1,5 @@
+from contracting.stdlib.bridge.time import Datetime
+from datetime import datetime as dt, timedelta as td
 from lamden.crypto.wallet import Wallet
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.unit.helpers.mock_transactions import get_vote_tx
@@ -5,8 +7,6 @@ from unittest import TestCase
 import asyncio
 import json
 import random
-from contracting.stdlib.bridge.time import Datetime
-from datetime import datetime as dt, timedelta as td
 
 class TestDAO(TestCase):
     def setUp(self):
@@ -160,7 +160,7 @@ class TestDAO(TestCase):
             ).encode()
         ); self.num_blocks_total += 1
 
-        # Deprecate this motion
+        # Depreciate this motion
         for node in self.network.all_nodes:
             node.contract_driver.set(key='dao.S:motion_start', value=Datetime._from_datetime(dt.today() - td(days=2)))
             node.contract_driver.commit()
@@ -182,3 +182,78 @@ class TestDAO(TestCase):
             self.assertIsNone(node.get_smart_contract_value(key='dao.S:recipient_vk'))
             self.assertIsNone(node.get_smart_contract_value(key='dao.S:amount'))
             self.assertIsNone(node.get_smart_contract_value(key='dao.S:motion_start'))
+
+    def test_can_manage_and_pass_multiple_motions(self):
+        receiver_wallets = [Wallet() for i in range(5)]
+        nonce = 0
+        random_member = random.choice(self.network.masternodes)
+        for i, wallet in enumerate(receiver_wallets):
+            # Introduce motion
+            random_member.send_tx(
+                json.dumps(
+                    get_vote_tx(wallet=random_member.wallet, policy='dao', obj=[wallet.verifying_key, self.amount+i], nonce=nonce)
+                ).encode()
+            ); self.num_blocks_total += 1; nonce += 1
+            self.network.await_all_nodes_done_processing(self.num_blocks_total)
+
+            # Submit sufficient amount of specific votes. In this case: yays
+            for j in range(self.num_specific_votes_needed):
+                node = self.network.all_nodes[j]
+                node.send_tx(
+                    json.dumps(
+                        get_vote_tx(wallet=node.wallet, policy='dao', obj=[True], nonce=nonce)
+                    ).encode()
+                ); self.num_blocks_total += 1
+            nonce += 1
+
+            # Assert expected amount of yays
+            self.network.await_all_nodes_done_processing(self.num_blocks_total)
+            for node in self.network.all_nodes:
+                self.assertEqual(node.get_smart_contract_value(key='dao.S:yays'), self.num_specific_votes_needed)
+
+            # Submit rest of the needed votesd
+            for i in range(self.num_specific_votes_needed, self.num_votes_needed):
+                node = self.network.all_nodes[i]
+                node.send_tx(
+                    json.dumps(
+                        get_vote_tx(wallet=node.wallet, policy='dao', obj=[False], nonce=nonce)
+                    ).encode()
+                ); self.num_blocks_total += 1
+            nonce += 1
+
+            self.network.await_all_nodes_done_processing(self.num_blocks_total)
+
+        # Assert motion was passed meaning pending_motion entry was created
+        for node in self.network.all_nodes:
+            pending_motions = node.get_smart_contract_value('dao.S:pending_motions')
+            self.assertEqual(len(pending_motions), 5)
+            for i, wallet in enumerate(receiver_wallets):
+                self.assertIsNotNone(pending_motions[i]['motion_passed'])
+                self.assertEqual(pending_motions[i]['recipient_vk'], wallet.verifying_key)
+                self.assertEqual(pending_motions[i]['amount'], self.amount+i)
+
+                # Modify 'motion_passed' timestamp by hand so that it's finalized when next TX is sent
+                pending_motions[i]['motion_passed'] = Datetime._from_datetime(dt.today() - td(days=2))
+
+            node.contract_driver.set(key='dao.S:pending_motions', value=pending_motions)
+            node.contract_driver.commit()
+
+            # Fund dao balance so that transfer is successfull
+            node.set_smart_contract_value(key=f'currency.balances:dao', value=100_000_000)
+
+        # Send empty vote transaction which should finalize all motions
+        random_member.send_tx(
+            json.dumps(
+                get_vote_tx(wallet=Wallet(), policy='dao', obj=[], nonce=nonce, processor_vk=random_member.vk)
+            ).encode()
+        ); self.num_blocks_total += 1
+
+        self.network.await_all_nodes_done_processing(self.num_blocks_total)
+
+        # Assert all motions finalized
+        for node in self.network.all_nodes:
+            self.assertEqual(len(node.get_smart_contract_value('dao.S:pending_motions')), 0)
+            n = len(receiver_wallets) 
+            self.assertEqual(node.get_smart_contract_value(f'currency.balances:dao'), 100_000_000 - (self.amount * n + (n / 2) * (n - 1)))
+            for i, wallet in enumerate(receiver_wallets):
+                self.assertEqual(node.get_smart_contract_value(f'currency.balances:{wallet.verifying_key}'), self.amount+i)

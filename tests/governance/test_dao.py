@@ -120,7 +120,7 @@ class TestDAO(TestCase):
         self.assertIsNone(self.dao.quick_read('S', 'amount'))
         self.assertIsNone(self.dao.quick_read('S', 'positions'))
 
-    def test_vote_skips_motion_if_enough_nays_and_menbers_voted(self):
+    def test_vote_skips_motion_if_enough_nays_and_members_voted(self):
         recipient_vk = Wallet().verifying_key; amount = 100
 
         self.election_house.vote(policy='dao', value=[recipient_vk, amount], signer=self.members[0].verifying_key)

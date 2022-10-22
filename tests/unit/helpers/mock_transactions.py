@@ -76,7 +76,7 @@ def get_introduce_motion_tx(policy, motion, vk='', wallet=None, nonce=None):
     )
     return json.loads(txb)
 
-def get_vote_tx(policy, obj, wallet=None, nonce=None):
+def get_vote_tx(policy, obj, wallet=None, nonce=None, processor_vk=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract='election_house',
@@ -86,7 +86,7 @@ def get_vote_tx(policy, obj, wallet=None, nonce=None):
             'value': obj
         },
         nonce=nonce or 0,
-        processor=wallet.verifying_key or '0' * 64,
+        processor=processor_vk or wallet.verifying_key or '0' * 64,
         stamps=50
     )
     return json.loads(txb)
