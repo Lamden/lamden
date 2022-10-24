@@ -2,17 +2,18 @@ import currency
 import election_house
 
 S = Hash()
+pending_motions = Variable()
 
 @construct
 def seed():
     S['motion_period'] = datetime.DAYS * 1
     S['motion_delay'] = datetime.DAYS * 1
-    S['pending_motions'] = []
+    pending_motions.set({'pending_motions': []})
     reset()
 
 @export
 def current_value():
-    return S['pending_motions']
+    return pending_motions.get()['pending_motions']
 
 @export
 def vote(vk: str, obj: list):
@@ -53,27 +54,22 @@ def vote(vk: str, obj: list):
                 reset()
 
 def pass_motion():
-    S['pending_motions'] += [{
+    motions = pending_motions.get()['pending_motions']
+    motions += [{
         'motion_passed': now,
         'recipient_vk': S['recipient_vk'],
         'amount': S['amount']
     }]
+    pending_motions.set({'pending_motions': motions})
     reset()
 
 def finalize_pending_motions():
-    pending_motions = S['pending_motions']
-    for motion in pending_motions.copy():
-        # TODO(investigate): sometimes 'motion_passed' variable is not proprely decoded for some
-        # reason from dict to Datetime and we face an error substracting it from 'now'.
-        #
-        # For now using the fix below.
-        motion['motion_passed'] = datetime.datetime(*motion['motion_passed']['__time__']) \
-            if type(motion['motion_passed']) == dict else motion['motion_passed']
-
+    motions = pending_motions.get()['pending_motions']
+    for motion in motions[:]:
         if now - motion['motion_passed'] >= S['motion_delay']:
             currency.transfer(amount=motion['amount'], to=motion['recipient_vk'])
-            pending_motions.remove(motion)
-    S['pending_motions'] = pending_motions
+            motions.remove(motion)
+    pending_motions.set({'pending_motions': motions})
 
 def reset():
     S['yays'] = 0

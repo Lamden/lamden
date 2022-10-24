@@ -31,7 +31,7 @@ class TestDAO(TestCase):
         self.client.flush()
 
     def test_seed(self):
-        self.assertListEqual(self.dao.quick_read('S', 'pending_motions'), [])
+        self.assertListEqual(self.dao.quick_read('pending_motions')['pending_motions'], [])
         self.assertEqual(self.dao.quick_read('S', 'yays'), 0)
         self.assertEqual(self.dao.quick_read('S', 'nays'), 0)
         self.assertIsNone(self.dao.quick_read('S', 'motion_start'))
@@ -99,10 +99,11 @@ class TestDAO(TestCase):
         for i in range(self.specific_votes_needed, self.total_votes_needed):
             self.election_house.vote(policy='dao', value=[False], signer=self.members[i].verifying_key)
 
-        self.assertEqual(len(self.election_house.current_value_for_policy(policy='dao')), 1)
-        self.assertIsNotNone(self.dao.quick_read('S', 'pending_motions')[0]['motion_passed'])
-        self.assertEqual(self.dao.quick_read('S', 'pending_motions')[0]['recipient_vk'], recipient_vk)
-        self.assertEqual(self.dao.quick_read('S', 'pending_motions')[0]['amount'], amount)
+        pending_motions = self.election_house.current_value_for_policy(policy='dao')
+        self.assertEqual(len(pending_motions), 1)
+        self.assertIsNotNone(pending_motions[0]['motion_passed'])
+        self.assertEqual(pending_motions[0]['recipient_vk'], recipient_vk)
+        self.assertEqual(pending_motions[0]['amount'], amount)
 
         try:
             self.election_house.vote(policy='dao', value=[],
@@ -112,7 +113,7 @@ class TestDAO(TestCase):
 
         self.assertEqual(self.contract_driver.get(f'currency.balances:{recipient_vk}'), amount)
         self.assertEqual(self.contract_driver.get('currency.balances:dao'), 100_000_000 - amount)
-        self.assertListEqual(self.dao.quick_read('S', 'pending_motions'), [])
+        self.assertListEqual(self.dao.quick_read('pending_motions')['pending_motions'], [])
         self.assertEqual(self.dao.quick_read('S', 'yays'), 0)
         self.assertEqual(self.dao.quick_read('S', 'nays'), 0)
         self.assertIsNone(self.dao.quick_read('S', 'motion_start'))

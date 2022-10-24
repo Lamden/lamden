@@ -83,7 +83,7 @@ class TestDAO(TestCase):
 
         # Assert motion was passed meaning pending_motion entry was created
         for node in self.network.all_nodes:
-            pending_motions = node.get_smart_contract_value('dao.S:pending_motions')
+            pending_motions = node.get_smart_contract_value('dao.pending_motions')['pending_motions']
             self.assertEqual(len(pending_motions), 1)
             self.assertIsNotNone(pending_motions[0]['motion_passed'])
             self.assertEqual(pending_motions[0]['recipient_vk'], self.recipient_vk)
@@ -91,7 +91,7 @@ class TestDAO(TestCase):
 
             # Modify 'motion_passed' timestamp by hand so that it's finalized when next TX is sent
             pending_motions[0]['motion_passed'] = Datetime._from_datetime(dt.today() - td(days=2))
-            node.contract_driver.set(key='dao.S:pending_motions', value=pending_motions)
+            node.contract_driver.set(key='dao.pending_motions', value={'pending_motions': pending_motions})
             node.contract_driver.commit()
 
             # Fund dao balance so that transfer is successfull
@@ -108,7 +108,7 @@ class TestDAO(TestCase):
 
         # Assert motion was finalized
         for node in self.network.all_nodes:
-            self.assertEqual(len(node.get_smart_contract_value('dao.S:pending_motions')), 0)
+            self.assertEqual(len(node.get_smart_contract_value('dao.pending_motions')['pending_motions']), 0)
             self.assertEqual(node.get_smart_contract_value(f'currency.balances:{self.recipient_vk}'), self.amount)
             self.assertEqual(node.get_smart_contract_value(f'currency.balances:dao'), 100_000_000 - self.amount)
 
@@ -144,7 +144,7 @@ class TestDAO(TestCase):
 
         # Assert dao contract state was reset to zeros
         for node in self.network.all_nodes:
-            self.assertEqual(len(node.get_smart_contract_value('dao.S:pending_motions')), 0)
+            self.assertEqual(len(node.get_smart_contract_value('dao.pending_motions')['pending_motions']), 0)
             self.assertEqual(node.get_smart_contract_value(key='dao.S:yays'), 0)
             self.assertEqual(node.get_smart_contract_value(key='dao.S:nays'), 0)
             self.assertIsNone(node.get_smart_contract_value(key='dao.S:recipient_vk'))
@@ -176,7 +176,7 @@ class TestDAO(TestCase):
 
         # Assert dao contract state was reset to zeros
         for node in self.network.all_nodes:
-            self.assertEqual(len(node.get_smart_contract_value('dao.S:pending_motions')), 0)
+            self.assertEqual(len(node.get_smart_contract_value('dao.pending_motions')['pending_motions']), 0)
             self.assertEqual(node.get_smart_contract_value(key='dao.S:yays'), 0)
             self.assertEqual(node.get_smart_contract_value(key='dao.S:nays'), 0)
             self.assertIsNone(node.get_smart_contract_value(key='dao.S:recipient_vk'))
@@ -225,7 +225,7 @@ class TestDAO(TestCase):
 
         # Assert motion was passed meaning pending_motion entry was created
         for node in self.network.all_nodes:
-            pending_motions = node.get_smart_contract_value('dao.S:pending_motions')
+            pending_motions = node.get_smart_contract_value('dao.pending_motions')['pending_motions']
             self.assertEqual(len(pending_motions), 5)
             for i, wallet in enumerate(receiver_wallets):
                 self.assertIsNotNone(pending_motions[i]['motion_passed'])
@@ -235,7 +235,7 @@ class TestDAO(TestCase):
                 # Modify 'motion_passed' timestamp by hand so that it's finalized when next TX is sent
                 pending_motions[i]['motion_passed'] = Datetime._from_datetime(dt.today() - td(days=2))
 
-            node.contract_driver.set(key='dao.S:pending_motions', value=pending_motions)
+            node.contract_driver.set(key='dao.pending_motions', value={'pending_motions': pending_motions})
             node.contract_driver.commit()
 
             # Fund dao balance so that transfer is successfull
@@ -252,8 +252,8 @@ class TestDAO(TestCase):
 
         # Assert all motions finalized
         for node in self.network.all_nodes:
-            self.assertEqual(len(node.get_smart_contract_value('dao.S:pending_motions')), 0)
-            n = len(receiver_wallets) 
+            self.assertEqual(len(node.get_smart_contract_value('dao.pending_motions')['pending_motions']), 0)
+            n = len(receiver_wallets)
             self.assertEqual(node.get_smart_contract_value(f'currency.balances:dao'), 100_000_000 - (self.amount * n + (n / 2) * (n - 1)))
             for i, wallet in enumerate(receiver_wallets):
                 self.assertEqual(node.get_smart_contract_value(f'currency.balances:{wallet.verifying_key}'), self.amount+i)
