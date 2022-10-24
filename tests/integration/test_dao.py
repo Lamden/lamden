@@ -56,6 +56,8 @@ class TestDAO(TestCase):
             ).encode()
         ); self.num_blocks_total += 1
 
+        self.network.await_all_nodes_done_processing(self.num_blocks_total)
+
         # Submit sufficient amount of specific votes. In this case: yays
         for i in range(self.num_specific_votes_needed):
             node = self.network.all_nodes[i]; nonce = 0 if node.vk != random_member.vk else 1
@@ -119,6 +121,8 @@ class TestDAO(TestCase):
                 get_vote_tx(wallet=random_member.wallet, policy='dao', obj=[self.recipient_vk, self.amount])
             ).encode()
         ); self.num_blocks_total += 1
+
+        self.network.await_all_nodes_done_processing(self.num_blocks_total)
 
         for i in range(self.num_specific_votes_needed):
             node = self.network.all_nodes[i]; nonce = 0 if node.vk != random_member.vk else 1
