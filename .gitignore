@@ -23,8 +23,7 @@ __pycache__/
 *.dot
 *.ps
 
-cilantro_ee.egg-info/
-cilantro.egg-info/
+lamden.egg-info/
 capnproto-c++-0.7.0/
 capnproto/
 var/

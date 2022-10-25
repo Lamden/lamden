@@ -987,10 +987,10 @@ class Node:
         for change in state_changes:
             if change['key'] == 'masternodes.S:members':
                 exiled_peers = self.network.get_exiled_peers()
+                self.network.refresh_approved_peers_in_cred_provider()
                 break
 
         if len(exiled_peers) == 0:
-            self.network.refresh_approved_peers_in_cred_provider()
             return
 
         if self.wallet.verifying_key in exiled_peers:

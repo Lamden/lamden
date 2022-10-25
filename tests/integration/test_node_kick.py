@@ -47,7 +47,7 @@ class TestNodeKick(TestCase):
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
         for voter in self.voters[:self.num_yays_needed]:
-            vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
+            vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         self.network.await_all_nodes_done_processing(block_height=self.num_yays_needed + 2)
@@ -71,7 +71,7 @@ class TestNodeKick(TestCase):
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
         for voter in self.voters[:self.num_yays_needed]:
-            vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
+            vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         self.fund_founder()
@@ -119,7 +119,7 @@ class TestNodeKick(TestCase):
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
         for voter in self.voters[:self.num_yays_needed]:
-            vote_yay_tx = get_vote_tx(policy='masternodes', vote=True, wallet=voter.node.wallet, nonce=1)
+            vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         # This TX shouldn't eventually be processed since it is coming from exile.
