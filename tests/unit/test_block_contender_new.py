@@ -1,14 +1,13 @@
-from contracting.db.driver import ContractDriver
-from contracting.client import ContractingClient
-from lamden.contracts import sync
+from contracting.db.driver import ContractDriver, FSDriver
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network
 from lamden.nodes.hlc import HLC_Clock
 from lamden.nodes.processors.block_contender import Block_Contender, valid_message_payload
+from pathlib import Path
 from tests.unit.helpers.mock_transactions import get_tx_message, get_processing_results
 from unittest import TestCase
 import asyncio
-import lamden
+import shutil
 
 SAMPLE_MESSAGES = [
     {
@@ -62,7 +61,6 @@ SAMPLE_MESSAGES = [
     }
 ]
 
-
 def make_good_message():
     return {
         "tx_result": {
@@ -102,7 +100,15 @@ class TestBlockContenderProcessor(TestCase):
         self.wallet = Wallet()
         self.stu_wallet = Wallet()
 
-        self.driver = ContractDriver()
+        self.temp_storage = Path(f'{Path.cwd()}/temp_storage')
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
+
+        raw_driver = FSDriver(root=self.temp_storage)
+        self.driver = ContractDriver(driver=raw_driver)
+
+        self.driver.driver.set('masternodes.S:members', [self.stu_wallet.verifying_key, self.wallet.verifying_key])
+
         self.hlc_clock = HLC_Clock()
 
         self.peer_in_consensus = True
@@ -118,7 +124,7 @@ class TestBlockContenderProcessor(TestCase):
 
         self.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
 
-        network = Network()
+        network = Network(driver=self.driver)
 
         network.get_all_peers = self.get_all_peers
 
@@ -132,7 +138,8 @@ class TestBlockContenderProcessor(TestCase):
         )
 
     def tearDown(self):
-        pass
+        if self.temp_storage.is_dir():
+            shutil.rmtree(self.temp_storage)
 
     def await_process_message(self, msg):
         tasks = asyncio.gather(
@@ -153,18 +160,17 @@ class TestBlockContenderProcessor(TestCase):
     def get_block_by_hlc(self, hlc_timestamp):
         return self.blocks.get(hlc_timestamp, None)
 
-    def etest_can_append_valid_message_from_external_node(self):
+    def test_can_append_valid_message_from_external_node(self):
         # Add our wallet to the peer group
         self.peers.append(self.stu_wallet.verifying_key)
 
         # Create Tx and Results
         self.driver.driver.set(f'currency.balances:{self.wallet.verifying_key}', 1000)
-        tx_message = get_tx_message(wallet=self.wallet)
+        tx_message = get_tx_message(wallet=self.wallet, processor=self.wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
-
         # Await processing the message
-        self.await_processe_message(msg=processing_results)
+        self.await_process_message(msg=processing_results)
 
         # Validate test case results
         self.assertEqual(1, len(self.validation_queue))
@@ -202,7 +208,7 @@ class TestBlockContenderProcessor(TestCase):
 
         processing_results['proof']['signature'] = 'bad_sig'
 
-        with self.assertLogs(level='DEBUG') as log:
+        with self.assertLogs(level='ERROR') as log:
             self.await_process_message(msg=processing_results)
             self.assertIn(f"Could not verify message signature {processing_results['proof']}", log.output[0])
 
@@ -213,7 +219,7 @@ class TestBlockContenderProcessor(TestCase):
         # This logic isn't implemented from the node yet but the logic is in the block contender
         self.peers.append(self.stu_wallet.verifying_key)
 
-        tx_message = get_tx_message()
+        tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
@@ -226,11 +232,28 @@ class TestBlockContenderProcessor(TestCase):
         # Validate test case results
         self.assertEqual(0, len(self.validation_queue))
 
+    def test_does_not_append_if_proof_is_not_from_voted_in_node(self):
+        tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        self.driver.driver.set('masternodes.S:members', [])
+
+        with self.assertLogs(level='ERROR') as log:
+            self.await_process_message(msg=processing_results)
+            self.assertIn(f"{processing_results['proof']['signer'][:8]} is not in the consensus group. Ignoring solution!", log.output[0])
+            self.assertEqual(0, len(self.validation_queue))
+
+    def test_appends_if_proof_is_from_voted_in_node(self):
+        tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+
+        self.await_process_message(msg=processing_results)
+
+        self.assertEqual(1, len(self.validation_queue))
+
     def test_appends_message_if_hlc_earlier_but_does_not_have_consensus(self):
         # This logic isn't implemented from the node yet but the logic is in the block contender
         self.peers.append(self.stu_wallet.verifying_key)
         self.block_contender.network.authorize_peer(peer_vk=self.stu_wallet.verifying_key)
-        self.driver.driver.set('masternodes.S:members', [self.stu_wallet.verifying_key])
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
         processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
 

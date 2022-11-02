@@ -92,6 +92,10 @@ class Block_Contender(Processor):
             self.log.error(f'Transaction not sent from processor {msg["tx_message"]["sender"][:8]}')
             return
 
+        if not self.network.peer_is_voted_in(proof['signer']):
+            self.log.error(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
+            return
+
         # Create a hash of the tx_result
         tx_result_hash = tx_result_hash_from_tx_result_object(
             tx_result=tx_result,
@@ -100,19 +104,11 @@ class Block_Contender(Processor):
         )
 
         if not self.validate_message_signature(tx_result_hash=tx_result_hash, proof=proof):
-            self.log.debug(f"Could not verify message signature {msg['proof']}")
+            self.log.error(f"Could not verify message signature {msg['proof']}")
             return
 
         # tack on the tx_result_hash to the proof for this node
         msg['proof']['tx_result_hash'] = tx_result_hash
-
-        '''
-        if not self.network.check_peer_in_consensus(proof['signer']):
-            # TODO implement some logic to disconnect(blacklist) from the peer if they send consecutive bad solutions upto X number of times
-            # TODO ie, it's upto the peer to know they are out of consensus and attempt to resync and rejoin or be at risk of being blacklisted
-            self.log.info(f"{proof['signer'][:8]} is not in the consensus group. Ignoring solution!")
-            return
-        '''
 
         if hlc_timestamp < self.validation_queue.last_hlc_in_consensus:
             block = self.get_block_by_hlc(hlc_timestamp=hlc_timestamp)
