@@ -115,7 +115,8 @@ def start_node(args):
         socket_base=socket_base,
         bootnodes=bootnodes,
         bypass_catchup=args.bypass_catchup,
-        genesis_block=genesis_block
+        genesis_block=genesis_block,
+        metering=True
     )
 
     loop = asyncio.get_event_loop()
@@ -149,7 +150,8 @@ def join_network(args):
         wallet=wallet,
         socket_base=socket_base,
         bootnodes=bootnodes,
-        join=True
+        join=True,
+        metering=True
     )
 
     loop = asyncio.get_event_loop()
