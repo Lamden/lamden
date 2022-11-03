@@ -234,9 +234,9 @@ def validate_processed_transaction_structure(processed_transaction: dict) -> boo
         raise ProcessedTxStateInvalid(EXCEPTION_PROCESSED_STATE_INVALID)
 
     for state_entry in state:
-        key = state_entry.get('key')
-        value = state_entry.get('value')
-        if not isinstance(key, str) or not value:
+        if (not isinstance(state_entry, dict) or
+           not ('key' in state_entry and 'value' in state_entry) or
+           not isinstance(state_entry['key'], str)):
             raise ProcessedTxStateEntryInvalid(EXCEPTION_PROCESSED_STATE_ENTRY_INVALID)
 
     status = processed_transaction.get('status')
