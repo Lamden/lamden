@@ -170,7 +170,7 @@ class LocalNodeNetwork:
                 node = ThreadedNode(
                     index=index or self.num_of_nodes,
                     wallet=node_wallet,
-                    constitution=self.constitution,
+                    constitution_path=node_dir.joinpath('constitution.json'),
                     bootnodes=self.bootnodes,
                     raw_driver=raw_driver,
                     block_storage=block_storage,

@@ -1,18 +1,15 @@
-import subprocess
-
 from checksumdir import dirhash
 from contracting.client import ContractingClient
-
-from lamden.logger.base import get_logger
-import lamden
-import contracting
-import os
-import importlib
-import sys
-import secrets
-import json
-import hashlib
 from functools import partial
+from lamden.logger.base import get_logger
+import contracting
+import hashlib
+import importlib
+import json
+import lamden
+import os
+import subprocess
+import sys
 
 
 def reload_module(module_name: str):
@@ -22,12 +19,12 @@ def reload_module(module_name: str):
 
 
 class UpgradeManager:
-    def __init__(self, client: ContractingClient, wallet=None, constitution_filename=None, webserver_port=18080, testing=False):
+    def __init__(self, client: ContractingClient, wallet=None, constitution_path=None, webserver_port=18080, testing=False):
         self.client = client
         self.enabled = None
         self.log = get_logger('UPGRADE')
 
-        self.constitution_filename = constitution_filename
+        self.constitution_path = constitution_path
         self.webserver_port = webserver_port
         self.wallet = wallet
 
@@ -36,7 +33,7 @@ class UpgradeManager:
         self.locked = self.get(arguments=['locked'])
         self.consensus = self.get(arguments=['consensus'])
 
-        self.cilantro_branch_name = self.get(arguments=['cilantro_branch_name'])
+        self.lamden_branch_name = self.get(arguments=['lamden_branch_name'])
         self.contracting_branch_name = self.get(arguments=['contracting_branch_name'])
 
         self.pepper = self.get(arguments=['pepper'])
@@ -52,7 +49,7 @@ class UpgradeManager:
         self.locked = self.get(arguments=['locked'])
         self.consensus = self.get(arguments=['consensus'])
 
-        self.cilantro_branch_name = self.get(arguments=['cilantro_branch_name'])
+        self.lamden_branch_name = self.get(arguments=['lamden_branch_name'])
         self.contracting_branch_name = self.get(arguments=['contracting_branch_name'])
 
         self.pepper = self.get(arguments=['pepper'])
@@ -64,59 +61,34 @@ class UpgradeManager:
         if enabled:
             self.log.info(f'{self.votes}/{self.voters} nodes voted for the upgrade.')
 
-            # check for vote consensys
             if self.consensus:
                 if self.testing:
                     self.testing_flag = True
                     self.reset_contract_variables()
                     return
 
-                self.log.info(f'Rebooting Node with new verions: '
-                              f'CIL -> {self.cilantro_branch_name}, CON -> {self.contracting_branch_name}')
-
-                cil_path = os.path.dirname(lamden.__file__)
-
-                self.log.info(f'CIL_PATH={cil_path}')
+                self.log.info(f'BRANCHES: LAMDEN -> {self.lamden_branch_name}, CON -> {self.contracting_branch_name}')
+                lamden_path = os.path.dirname(lamden.__file__)
+                self.log.info(f'LAMDEN_PATH={lamden_path}')
                 self.log.info(f'CONTRACTING_PATH={os.path.dirname(contracting.__file__)}')
 
-                old_branch_name = get_version()
-                old_contract_name = get_version(os.path.join(os.path.dirname(contracting.__file__), '..'))
-                only_contract = self.cilantro_branch_name == old_branch_name
-                if self.contracting_branch_name == old_contract_name and self.cilantro_branch_name == old_branch_name:
-                    self.log.info(f'New verions is already installed')
-                else:
-                    self.log.info(f'Old CIL branch={old_branch_name}, '
-                                  f'Old contract branch={old_contract_name}, '
-                                  f' Only contract update={only_contract}')
-
-                    if version_reboot(self.cilantro_branch_name, self.contracting_branch_name, only_contract):
-                        p = build_pepper2()
-                        if self.pepper != p:
-                            self.log.error(f'peppers mismatch: {self.pepper} != {p}')
-                            self.log.error(f'Restore previous versions: {old_branch_name} -> {old_contract_name}')
-
-                            version_reboot(old_branch_name, old_contract_name, only_contract)
-                            self.reset_contract_variables()
-                        else:
-                            self.log.info('Pepper OK. restart new version')
-
-                            self.upgrade = True
-                            run_install(only_contract)
-
-                            self.reset_contract_variables()
-
-                            if not self.testing:
-                                self.restart_node(constitution=constitution)
-
-                            self.log.info(f'New branch {self.cilantro_branch_name} was reloaded OK.')
-                            self.upgrade = False
-
+                if version_reboot(self.lamden_branch_name, self.contracting_branch_name):
+                    p = build_pepper2()
+                    if self.pepper != p:
+                        self.log.error(f'peppers mismatch: {self.pepper} != {p}')
                     else:
-                        self.log.error(f'Update failed. Old branches restored.')
-                        version_reboot(old_branch_name, old_contract_name)
+                        self.log.info('Pepper OK. restart new version')
+
+                        self.upgrade = True
+                        run_install()
+
                         self.reset_contract_variables()
 
-                    # Restart goes here
+                        if not self.testing:
+                            self.restart_node(constitution=constitution)
+
+                        self.log.info(f'Restarted OK.')
+                        self.upgrade = False
 
                 self.reset_contract_variables()
 
@@ -129,20 +101,14 @@ class UpgradeManager:
         self.log.info('Reset upgrade contract variables.')
 
     def restart_node(self, constitution):
-        for k, v in constitution.items():
-            v = v.split(':')[1].lstrip('//')
-            constitution[k] = v
-
-        # Write the constitution
-        constitution_file = f'/tmp/{secrets.token_hex(32)}.json'
-        with open(constitution_file, 'w') as f:
+        with open(self.constitution_path, 'w') as f:
             json.dump(constitution, f)
 
         self_pid = os.getpid()
 
         args = [
-            'cil', 'start', '-k', self.wallet.signing_key, '-c', constitution_file, '-wp',
-            str(self.webserver_port), '-p', str(self_pid), '-b', 'true'
+            'lamden', 'start', '-k', self.wallet.signing_key, '-c', self.constitution_path,
+            '-wp', str(self.webserver_port), '-p', str(self_pid), '-d', 'True'
         ]
 
         subprocess.check_call(args)
@@ -161,15 +127,6 @@ def build_pepper2():
     path2 = build_pepper(os.path.dirname(contracting.__file__))
     pepper2 = hashlib.sha256((path1 + path2).encode('utf-8')).hexdigest()
     return pepper2
-
-
-def verify_cil_pkg(pkg_hash):
-    current_pepper = build_pepper2()
-
-    if current_pepper == pkg_hash:
-        return True
-    else:
-        return False
 
 
 def run(*args):

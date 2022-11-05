@@ -13,7 +13,7 @@ import shutil
 import threading
 import unittest
 
-def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None, temp_storage_root=None):
+def create_a_node(index=0, node_wallet=Wallet(), bootnodes=None, genesis_block=None, temp_storage_root=None):
     temp_storage_root = temp_storage_root if temp_storage_root is not None else Path().cwd().joinpath('temp_network')
     try:
         shutil.rmtree(temp_storage_root)
@@ -23,21 +23,19 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
 
     node_dir = Path(f'{temp_storage_root}/{node_wallet.verifying_key}')
 
-    #raw_driver = FSDriver(node_dir)
-    raw_driver = InMemDriver()
+    raw_driver = FSDriver(node_dir)
+    #raw_driver = InMemDriver()
     block_storage = BlockStorage(root=node_dir)
     nonce_storage = NonceStorage(root=node_dir)
 
     tx_queue = FileQueue(root=node_dir)
-
-    constitution = constitution or {'masternodes': {node_wallet.verifying_key: 'tcp://127.0.0.1:19000'}},
 
     bootnodes = bootnodes or {}
 
     return ThreadedNode(
         index=index,
         wallet=node_wallet,
-        constitution=constitution,
+        constitution_path=node_dir.joinpath('constitution.json'),
         bootnodes=bootnodes,
         raw_driver=raw_driver,
         block_storage=block_storage,
@@ -48,10 +46,10 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
 
 class ThreadedNode(threading.Thread):
     def __init__(self,
-                 constitution: dict,
                  block_storage: BlockStorage,
                  nonce_storage: NonceStorage,
                  raw_driver,
+                 constitution_path=None,
                  tx_queue: FileQueue = None,
                  index=0,
                  bootnodes={},
@@ -67,7 +65,7 @@ class ThreadedNode(threading.Thread):
         self.daemon = True
 
         self.index = index
-        self.constitution = constitution
+        self.constitution_path = constitution_path
         self.bootnodes = bootnodes
         self.genesis_block = genesis_block
 
@@ -184,7 +182,7 @@ class ThreadedNode(threading.Thread):
             asyncio.set_event_loop(self.loop)
 
             self.node = Node(
-                constitution=self.constitution,
+                constitution_path=self.constitution_path,
                 bootnodes=self.bootnodes,
                 socket_base="",
                 wallet=self.wallet,

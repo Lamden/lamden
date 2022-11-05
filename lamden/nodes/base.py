@@ -28,6 +28,7 @@ from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, reca
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
+from pathlib import Path
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -65,7 +66,7 @@ class NewBlock(router.Processor):
         self.q = [nbn for nbn in self.q if nbn['number'] > height]
 
 class Node:
-    def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
+    def __init__(self, socket_base,  wallet, constitution_path=None, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False):
@@ -146,16 +147,17 @@ class Node:
 
         self.new_block_processor = NewBlock(driver=self.driver)
 
-        self.join = join
-        if genesis_block:
-            self.store_genesis_block(genesis_block=genesis_block)
-
         self.client = ContractingClient(
             driver=self.driver,
             submission_filename=None
         )
 
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet)
+        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet,
+            constitution_path=constitution_path if constitution_path is not None else Path().home().joinpath('constitution.json'))
+
+        self.join = join
+        if genesis_block:
+            self.store_genesis_block(genesis_block=genesis_block)
 
         # Number of core / processes we push to
         self.parallelism = parallelism
@@ -979,6 +981,7 @@ class Node:
     def hard_apply_block_finish(self, block: dict):
         hlc_timestamp = block.get('hlc_timestamp')
         self.check_peers(state_changes=self.get_state_changes_from_block(block=block), hlc_timestamp=hlc_timestamp)
+        self.upgrade_manager.version_check(self.network.make_constitution())
         gc.collect()
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
