@@ -73,7 +73,7 @@ class TestUpgrade(TestCase):
     def test_upgrade(self):
         tn = self.create_and_start_node()
         tn.set_smart_contract_value(f'upgrade.upgrade_state:consensus', value=True)
-        tn.set_smart_contract_value(f'upgrade.upgrade_state:lamden_branch_name', value='dev-staging')
+        tn.set_smart_contract_value(f'upgrade.upgrade_state:lamden_branch_name', value='dev-upgrade')
         tn.set_smart_contract_value(f'upgrade.upgrade_state:contracting_branch_name', value='dev-staging')
         tn.set_smart_contract_value(f'upgrade.upgrade_state:pepper', value=build_pepper2())
 
