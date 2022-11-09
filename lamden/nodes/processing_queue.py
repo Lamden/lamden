@@ -190,8 +190,7 @@ class TxProcessingQueue(ProcessingQueue):
         )
         GLOBAL_LOCK.release()
 
-        if len(output['writes']) == 0:
-            self.log.error("TX HAD NO WRITES!")
+        self.driver.pending_writes.clear()
 
         # Process the result of the executor
         tx_result = self.process_tx_output(
@@ -275,6 +274,9 @@ class TxProcessingQueue(ProcessingQueue):
             stamp_cost=stamp_cost,
             tx_sender=transaction['payload']['sender']
         )
+
+        for write in writes:
+            self.driver.set(key=write['key'], value=write['value'])
 
         tx_output = {
             'hash': tx_hash,

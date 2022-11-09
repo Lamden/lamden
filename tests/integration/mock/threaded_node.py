@@ -13,7 +13,7 @@ import shutil
 import threading
 import unittest
 
-def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None, temp_storage_root=None):
+def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=None, genesis_block=None, temp_storage_root=None, metering=False):
     temp_storage_root = temp_storage_root if temp_storage_root is not None else Path().cwd().joinpath('temp_network')
     try:
         shutil.rmtree(temp_storage_root)
@@ -43,7 +43,8 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
         block_storage=block_storage,
         nonce_storage=nonce_storage,
         tx_queue=tx_queue,
-        genesis_block=genesis_block
+        genesis_block=genesis_block,
+        metering=metering
     )
 
 class ThreadedNode(threading.Thread):
@@ -197,7 +198,8 @@ class ThreadedNode(threading.Thread):
                 testing=True,
                 delay=self.delay,
                 nonces=self.nonces,
-                join=self.genesis_block is None
+                join=self.genesis_block is None,
+                metering=self.metering
             )
 
             self.node.network.set_to_local()

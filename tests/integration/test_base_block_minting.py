@@ -40,12 +40,13 @@ class TestNode(TestCase):
         if self.temp_storage_root.is_dir():
             shutil.rmtree(self.temp_storage_root)
 
-    def create_node(self, index=0):
+    def create_node(self, index=0, metering=False):
         tn = create_a_node(
             node_wallet=self.node_wallet,
             genesis_block=self.genesis_block,
             index=index,
-            temp_storage_root=self.temp_storage_root
+            temp_storage_root=self.temp_storage_root,
+            metering=metering
         )
         tn.set_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}', value=1_000_000)
         self.threaded_nodes.append(tn)
@@ -58,8 +59,8 @@ class TestNode(TestCase):
         while not tn.node or not tn.node.started or not tn.node.network.running:
             self.await_async_process(asyncio.sleep, 1)
 
-    def create_and_start_node(self, index=0) -> ThreadedNode:
-        tn = self.create_node(index=index)
+    def create_and_start_node(self, index=0, metering=False) -> ThreadedNode:
+        tn = self.create_node(index=index, metering=metering)
         self.start_node(tn)
 
         return tn
@@ -150,80 +151,34 @@ class TestNode(TestCase):
         self.assertEqual(0, tn.get_smart_contract_value(f'currency.balances:{self.archer_wallet.verifying_key}'))
         self.assertEqual(tx_amount, tn.get_smart_contract_value(f'currency.balances:{self.oliver_wallet.verifying_key}'))
 
-''' NOTE: Probably N\A anymore but let's see.
 
-    def test_hard_apply_block_multiple_nonconcurrent(self):
-        # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions that come
-        # in out of order
-        # have a node process the results correctly and then add them to another node out of order
+    def test_not_enough_stamps(self):
+        tn = self.create_and_start_node(metering=True)
 
-        # This node we will use for the testing
-        node_1 = self.create_and_start_node()
+        stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
 
-        # This node we will use to create the processing results which will be passed to node_1
-        node_2 = self.create_and_start_node(index=1)
-
-        stu_balance_before = node_2.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
-
-        # Create three transactions
         tx_amount = 200.1
-        # Send from Stu to Jeff
-        tx_message_1 = node_2.node.make_tx_message(tx=get_new_currency_tx(
-            to=self.jeff_wallet.verifying_key,
-            wallet=self.stu_wallet,
-            amount=tx_amount
-        ))
-        hlc_timestamp_1 = tx_message_1.get('hlc_timestamp')
 
-        # Send from Jeff to Archer
-        tx_message_2 = node_2.node.make_tx_message(tx=get_new_currency_tx(
-            to=self.archer_wallet.verifying_key,
-            wallet=self.jeff_wallet,
-            amount=tx_amount
-        ))
-        hlc_timestamp_2 = tx_message_2.get('hlc_timestamp')
+        tx_args = {
+            'to': self.jeff_wallet.verifying_key,
+            'wallet': self.stu_wallet,
+            'amount': tx_amount,
+            'processor': tn.wallet.verifying_key,
+            'stamps': 17
+        }
 
-        # Send from Archer to Oliver
-        tx_message_3 = node_2.node.make_tx_message(tx=get_new_currency_tx(
-            to=self.oliver_wallet.verifying_key,
-            wallet=self.archer_wallet,
-            amount=tx_amount
-        ))
-        hlc_timestamp_3 = tx_message_3.get('hlc_timestamp')
+        tn.send_tx(json.dumps(get_new_currency_tx(**tx_args)).encode())
 
-        ## Have node 2 process the transactions in order to generate the results
-        processing_results_1 = get_processing_results(tx_message_1, node=node_2)
-        processing_results_2 = get_processing_results(tx_message_2, node=node_2)
-        processing_results_3 = get_processing_results(tx_message_3, node=node_2)
+        self.await_node_reaches_height(tn, 2)
 
-        # Add results from TX2 and TX3
-        node_1.validation_queue.append(processing_results_2)
-        node_1.validation_queue.append(processing_results_3)
+        block = tn.blocks.get_block(v=tn.latest_block_height)
 
-        # Await processing and consensus
-        self.await_node_reaches_height(node_1, 2)
+        self.assertIsNotNone(block)
 
-        # Validate blocks are created
-        self.assertIsNotNone(node_1.blocks.get_block(v=1))
-        self.assertIsNotNone(node_1.blocks.get_block(v=2))
+        stamp_cost = tn.get_smart_contract_value('stamp_cost.S:value')
+        expected_balance = stu_balance_before - 17/stamp_cost
+        actual_balance = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
+        self.assertEqual(expected_balance, actual_balance)
+        self.assertIsNone(tn.get_cached_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
+        self.assertEqual(2, tn.blocks.total_blocks())
 
-        # Add results from TX1
-        node_1.validation_queue.append(processing_results_1)
-
-        # Await processing and consensus
-        self.await_node_reaches_height(node_1, 3)
-
-        # Validate the blocks are in hlc_timestamps order
-        block_1 = node_1.blocks.get_block(v=1)
-        block_2 = node_1.blocks.get_block(v=2)
-        block_3 = node_1.blocks.get_block(v=3)
-        self.assertEqual(hlc_timestamp_1, block_1.get('hlc_timestamp'))
-        self.assertEqual(hlc_timestamp_2, block_2.get('hlc_timestamp'))
-        self.assertEqual(hlc_timestamp_3, block_3.get('hlc_timestamp'))
-
-        self.assertEqual(stu_balance_before - tx_amount, node_1.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}'))
-        self.assertEqual(0, node_1.get_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
-        self.assertEqual(0, node_1.get_smart_contract_value(f'currency.balances:{self.archer_wallet.verifying_key}'))
-        self.assertEqual(tx_amount, node_1.get_smart_contract_value(f'currency.balances:{self.oliver_wallet.verifying_key}'))
-        self.assertEqual(3, node_1.current_height)
-'''
