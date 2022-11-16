@@ -61,7 +61,7 @@ def get_new_vote_tx(type, vk, sender):
     )
     return json.loads(txb)
 
-def get_introduce_motion_tx(policy, motion, vk='', wallet=None, nonce=None):
+def get_introduce_motion_tx(policy, motion, vk='', wallet=None, nonce=None, stamps=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract='election_house',
@@ -72,11 +72,11 @@ def get_introduce_motion_tx(policy, motion, vk='', wallet=None, nonce=None):
         },
         nonce=nonce or 0,
         processor=wallet.verifying_key or '0' * 64,
-        stamps=50
+        stamps=stamps if stamps is not None else 50
     )
     return json.loads(txb)
 
-def get_vote_tx(policy, obj, wallet=None, nonce=None, processor_vk=None):
+def get_vote_tx(policy, obj, wallet=None, nonce=None, processor_vk=None, stamps=None):
     txb = build_transaction(
         wallet=wallet or Wallet(),
         contract='election_house',
@@ -87,7 +87,7 @@ def get_vote_tx(policy, obj, wallet=None, nonce=None, processor_vk=None):
         },
         nonce=nonce or 0,
         processor=processor_vk or wallet.verifying_key or '0' * 64,
-        stamps=50
+        stamps=stamps if stamps is not None else 50
     )
     return json.loads(txb)
 
@@ -105,7 +105,7 @@ def get_vote_candidate_tx(wallet, processor_vk, candidate, nonce=None):
     )
     return json.loads(txb)
 
-def get_register_tx(wallet, processor_vk, nonce=None):
+def get_register_tx(wallet, processor_vk, nonce=None, stamps=None):
     txb = build_transaction(
         wallet=wallet,
         contract='elect_masternodes',
@@ -113,11 +113,11 @@ def get_register_tx(wallet, processor_vk, nonce=None):
         kwargs={},
         nonce=nonce or 0,
         processor=processor_vk,
-        stamps=50
+        stamps=stamps if stamps is not None else 50
     )
     return json.loads(txb)
 
-def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None):
+def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None, stamps=None):
     txb = build_transaction(
         wallet=wallet,
         contract='currency',
@@ -128,7 +128,7 @@ def get_approve_tx(wallet, processor_vk, to, nonce=None, amount=None):
         },
         nonce=nonce or 0,
         processor=processor_vk,
-        stamps=50
+        stamps=stamps if stamps is not None else 50
     )
     return json.loads(txb)
 
