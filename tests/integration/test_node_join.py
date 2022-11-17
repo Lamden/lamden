@@ -74,6 +74,59 @@ class TestSingleNodeElectionsWithMetering(TestCase):
         while self.threaded_node.block_storage.total_blocks() != 13:
             self.await_async_process(asyncio.sleep, 0.1)
 
+    def test_single_node_elections_with_metering_robust(self):
+        self.threaded_node.set_smart_contract_value(f'currency.balances:{self.node_wallet.verifying_key}', 1000000)
+        num_blocks_total = 1
+
+        cands = [Wallet() for i in range(5)]
+        new_mem = cands[0]
+        for i in range(2):
+            for c in cands:
+                self.threaded_node.set_smart_contract_value(f'currency.balances:{c.verifying_key}', 1000000)
+
+            for c in cands:
+                self.threaded_node.send_tx(json.dumps(get_approve_tx(wallet=c, processor_vk=self.threaded_node.vk, to='elect_masternodes', stamps=200)).encode())
+                self.await_async_process(asyncio.sleep, 1)
+                self.threaded_node.send_tx(json.dumps(get_register_tx(wallet=c, processor_vk=self.threaded_node.vk, nonce=1, stamps=200)).encode())
+
+            self.threaded_node.send_tx(json.dumps(get_introduce_motion_tx(policy='masternodes', motion=2, wallet=self.threaded_node.wallet, stamps=200)).encode())
+
+            num_blocks_total += 11
+            while self.threaded_node.block_storage.total_blocks() != num_blocks_total:
+                self.await_async_process(asyncio.sleep, 0.1)
+
+            self.threaded_node.send_tx(
+                json.dumps(
+                    get_vote_tx(
+                        policy='masternodes', obj=['vote_on_motion', True],
+                        wallet=self.node_wallet,
+                        nonce=2,
+                        stamps=200
+                    )
+                ).encode()
+            )
+            num_blocks_total += 1
+
+            while self.threaded_node.block_storage.total_blocks() != num_blocks_total:
+                self.await_async_process(asyncio.sleep, 0.1)
+
+            cands = [Wallet() for i in range(5)]
+
+        self.threaded_node.send_tx(
+            json.dumps(
+                get_vote_tx(
+                    policy='masternodes', obj=['vote_on_motion', True],
+                    wallet=new_mem,
+                    nonce=2,
+                    stamps=200
+                )
+            ).encode()
+        )
+        num_blocks_total += 1
+
+        while self.threaded_node.block_storage.total_blocks() != num_blocks_total:
+            self.await_async_process(asyncio.sleep, 0.1)
+
 class TestNodeVoteAndJoin(TestCase):
     def setUp(self):
         self.network = LocalNodeNetwork(
