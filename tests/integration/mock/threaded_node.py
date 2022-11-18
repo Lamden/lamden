@@ -23,8 +23,8 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
 
     node_dir = Path(f'{temp_storage_root}/{node_wallet.verifying_key}')
 
-    #raw_driver = FSDriver(node_dir)
-    raw_driver = InMemDriver()
+    raw_driver = FSDriver(node_dir)
+    #raw_driver = InMemDriver()
     block_storage = BlockStorage(root=node_dir)
     nonce_storage = NonceStorage(root=node_dir)
 
