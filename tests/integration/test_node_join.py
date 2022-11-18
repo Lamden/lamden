@@ -1,14 +1,14 @@
 from lamden.crypto.wallet import Wallet
 from tests.integration.mock.local_node_network import LocalNodeNetwork
+from tests.integration.mock.mock_data_structures import MockBlocks
+from tests.integration.mock.threaded_node import create_a_node
 from tests.unit.helpers.mock_transactions import get_introduce_motion_tx, get_vote_tx, get_register_tx, get_approve_tx, get_vote_candidate_tx
 from unittest import TestCase
 import asyncio
 import json
+import pathlib
 import random
 import shutil
-from tests.integration.mock.threaded_node import create_a_node
-import pathlib
-from tests.integration.mock.mock_data_structures import MockBlocks
 
 class TestSingleNodeElectionsWithMetering(TestCase):
     def setUp(self) -> None:
@@ -34,7 +34,7 @@ class TestSingleNodeElectionsWithMetering(TestCase):
 
     def tearDown(self) -> None:
         self.await_async_process(self.threaded_node.stop)
-        #shutil.rmtree(self.tmp_storage)
+        shutil.rmtree(self.tmp_storage)
 
     def await_async_process(self, process, *args, **kwargs):
         tasks = asyncio.gather(
