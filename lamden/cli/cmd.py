@@ -43,7 +43,7 @@ def setup_cilparser(parser):
     return True
 
 def main():
-    parser = argparse.ArgumentParser(description="Lamden Commands", prog='cil')
+    parser = argparse.ArgumentParser(description="Lamden Commands", prog='lamden')
     setup_cilparser(parser)
     args = parser.parse_args()
 
