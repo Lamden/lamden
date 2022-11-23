@@ -210,7 +210,7 @@ class Node:
 
         self.reconnect_attempts = reconnect_attempts
 
-        self.log.info(f'Pepper: {upgrade.build_pepper2()}')
+        #self.log.info(f'Pepper: {upgrade.build_pepper2()}')
 
     @property
     def vk(self) -> str:
@@ -724,17 +724,19 @@ class Node:
 
 
     def store_solution_and_send_to_network(self, processing_results):
-        self.send_solution_to_network(processing_results=processing_results)
+
 
         processing_results = json.loads(encode(processing_results))
 
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
         )
+        self.send_solution_to_network(processing_results=processing_results)
 
         self.validation_queue.append(
             processing_results=processing_results
         )
+
 
     def make_result_hash_from_processing_results(self, processing_results: dict) -> dict:
         return tx_result_hash_from_tx_result_object(
