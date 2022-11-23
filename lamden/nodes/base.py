@@ -210,6 +210,8 @@ class Node:
 
         self.reconnect_attempts = reconnect_attempts
 
+        self.log.info(f'Pepper: {upgrade.build_pepper2()}')
+
     @property
     def vk(self) -> str:
         return self.wallet.verifying_key
