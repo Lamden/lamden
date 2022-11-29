@@ -24,6 +24,8 @@ import decimal
 import argparse
 from lamden.contracts import sync
 
+import os
+
 log = get_logger("MN-WebServer")
 
 class NonceEncoder(_json.JSONEncoder):
@@ -484,13 +486,12 @@ class WebServer:
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
-    arg_parser.add_argument('-k', '--key', type=str, required=True)
     arg_parser.add_argument('-p', '--port', type=int, required=False)
     arg_parser.add_argument('-ep', '--event_port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
     port = args.port
     event_port = args.event_port
 
