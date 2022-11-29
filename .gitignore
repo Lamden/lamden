@@ -61,11 +61,6 @@ cilantro_ee/testnet_configs/testnet.ini
 #cilantro_ee/vmnet_configs/constitutions/test/testnet.ini
 tests/cloud/Dockerfile
 
-# Docker
-docker-compose.yml
-docker/redis.env
-src
-
 # Docs
 docs/sphinx/_build
 fsock

@@ -80,7 +80,7 @@ def resolve_genesis_block(fp):
 def start_node(args):
     logger = get_logger('STARTUP')
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
 
     wallet = Wallet(seed=sk)
 
@@ -97,11 +97,6 @@ def start_node(args):
     socket_base = f'tcp://{ip_str}:19000'
 
     logger.info(f'socket_base: {socket_base}')
-
-    # Setup Environment
-    CURR_DIR = pathlib.Path(os.getcwd())
-    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
-    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
 
     # Kill the
     if args.pid > -1:
@@ -125,7 +120,7 @@ def start_node(args):
 
 
 def join_network(args):
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
 
     wallet = Wallet(seed=sk)
 
@@ -138,11 +133,6 @@ def join_network(args):
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}:19000'
-
-    # Setup Environment
-    CURR_DIR = pathlib.Path(os.getcwd())
-    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
-    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
 
     cfg_and_start_rsync_daemon()
 
