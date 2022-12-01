@@ -137,6 +137,7 @@ def join_network(args):
     cfg_and_start_rsync_daemon()
 
     n = Node(
+        debug=args.debug,
         wallet=wallet,
         socket_base=socket_base,
         bootnodes=bootnodes,
