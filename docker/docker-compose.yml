@@ -1,37 +1,40 @@
 version: "3.7"
 services:
+  node:
+    build:
+      context: ./lamden/
+      args:
+        LAMDEN_BRANCH: "dev-docker"
+        CONTRACTING_BRANCH: "dev-staging"
+    image: lamden
+    working_dir: /lamden
+    command: sh -c "[ -z $LAMDEN_BOOTNODE ] && lamden start -d True || lamden join -m $LAMDEN_BOOTNODE -d True"
+    volumes:
+      - $HOME/constitution.json:/root/constitution.json
+      - $HOME/genesis_block.json:/root/genesis_block.json
+      - $HOME/.lamden:/root/.lamden
+    environment:
+      - LAMDEN_SK=$LAMDEN_SK
+    network_mode: host
+
   webserver:
-    image: lamden:latest
+    image: lamden
+    depends_on:
+      - node
     working_dir: /lamden/lamden/nodes/masternode
     command: sh -c "python webserver.py -p $LAMDEN_WS_PORT -ep $LAMDEN_ES_PORT"
     volumes:
       - $HOME/.lamden:/root/.lamden
-    ports:
-      - $LAMDEN_WS_PORT:$LAMDEN_WS_PORT
     network_mode: host
     environment:
       - LAMDEN_SK=$LAMDEN_SK
 
   event_service:
-    image: lamden:latest
+    image: lamden
+    depends_on:
+      - node
     working_dir: /lamden/lamden/nodes
     command: sh -c "python events.py -p $LAMDEN_ES_PORT"
     volumes:
       - $HOME/.lamden:/root/.lamden
-    ports:
-      - $LAMDEN_ES_PORT:$LAMDEN_ES_PORT
     network_mode: host
-
-  node:
-    image: lamden:latest
-    working_dir: /lamden
-    command: sh -c "[ -z $LAMDEN_BOOTNODE ] && python lamden/cli/cmd.py start -d True || python lamden/cli/cmd.py join -m $LAMDEN_BOOTNODE"
-    volumes:
-      - $HOME/constitution.json:/root/constitution.json
-      - $HOME/genesis_block.json:/root/genesis_block.json
-      - $HOME/.lamden:/root/.lamden
-    ports:
-      - 19000:19000
-      - 19080:19080
-    environment:
-      - LAMDEN_SK=$LAMDEN_SK
