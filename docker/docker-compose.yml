@@ -1,41 +1,43 @@
 version: "3.7"
 services:
   node:
+    container_name: lamden_node
     build:
       context: ./lamden/
       args:
-        LAMDEN_BRANCH: "dev-docker-upgrade-poc"
-        CONTRACTING_BRANCH: "dev-staging"
+        LAMDEN_BRANCH: ${LAMDEN_BRANCH?}
+        CONTRACTING_BRANCH: ${CONTRACTING_BRANCH?}
     image: lamden
     working_dir: /lamden
-    command: sh -c "[ -z $LAMDEN_BOOTNODE ] && lamden start -d True || lamden join -m $LAMDEN_BOOTNODE -d True"
+    command: sh -c "[ -z ${LAMDEN_BOOTNODE} ] && lamden start -d True || lamden join -m ${LAMDEN_BOOTNODE} -d True"
     volumes:
-      - $HOME/constitution.json:/root/constitution.json
-      - $HOME/genesis_block.json:/root/genesis_block.json
-      - $HOME/.lamden:/root/.lamden
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${HOME}/constitution.json:/root/constitution.json
+      - ${HOME}/genesis_block.json:/root/genesis_block.json
+      - ${HOME}/.lamden:/root/.lamden
     environment:
-      - LAMDEN_SK=$LAMDEN_SK
+      - LAMDEN_SK=${LAMDEN_SK?}
     network_mode: host
 
   webserver:
+    container_name: lamden_webserver
     image: lamden
     depends_on:
       - node
     working_dir: /lamden/lamden/nodes/masternode
-    command: sh -c "python webserver.py -p $LAMDEN_WS_PORT -ep $LAMDEN_ES_PORT"
+    command: sh -c "python webserver.py -p ${LAMDEN_WS_PORT} -ep ${LAMDEN_ES_PORT}"
     volumes:
-      - $HOME/.lamden:/root/.lamden
+      - ${HOME}/.lamden:/root/.lamden
     network_mode: host
     environment:
-      - LAMDEN_SK=$LAMDEN_SK
+      - LAMDEN_SK=${LAMDEN_SK?}
 
   event_service:
+    container_name: lamden_events
     image: lamden
     depends_on:
       - node
     working_dir: /lamden/lamden/nodes
-    command: sh -c "python events.py -p $LAMDEN_ES_PORT"
+    command: sh -c "python events.py -p ${LAMDEN_ES_PORT}"
     volumes:
-      - $HOME/.lamden:/root/.lamden
+      - ${HOME}/.lamden:/root/.lamden
     network_mode: host
