@@ -13,6 +13,7 @@ services:
       - $HOME/constitution.json:/root/constitution.json
       - $HOME/genesis_block.json:/root/genesis_block.json
       - $HOME/.lamden:/root/.lamden
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - LAMDEN_SK=$LAMDEN_SK
     network_mode: host
