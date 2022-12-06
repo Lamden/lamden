@@ -210,7 +210,7 @@ class Node:
 
         self.reconnect_attempts = reconnect_attempts
 
-        #self.log.info(f'Pepper: {upgrade.build_pepper2()}')
+        self.log.info('TESTING UPGRADE')
 
     @property
     def vk(self) -> str:
