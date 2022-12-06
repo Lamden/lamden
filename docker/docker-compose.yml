@@ -4,7 +4,7 @@ services:
     build:
       context: ./lamden/
       args:
-        LAMDEN_BRANCH: "dev-docker"
+        LAMDEN_BRANCH: "dev-docker-upgrade-poc"
         CONTRACTING_BRANCH: "dev-staging"
     image: lamden
     working_dir: /lamden
