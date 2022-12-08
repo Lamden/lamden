@@ -1,7 +1,7 @@
 from contracting.db.driver import FSDriver, InMemDriver
-from contracting.db.encoder import encode
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node
+from lamden.nodes.events import EventWriter
 from lamden.nodes.filequeue import FileQueue
 from lamden.storage import BlockStorage, NonceStorage
 from pathlib import Path
@@ -164,6 +164,7 @@ class LocalNodeNetwork:
             #raw_driver = InMemDriver()
             block_storage = BlockStorage(root=node_dir)
             nonce_storage = NonceStorage(root=node_dir)
+            event_writer = EventWriter(root=node_dir)
             tx_queue = FileQueue(root=node_dir)
 
             if not node:
@@ -178,7 +179,8 @@ class LocalNodeNetwork:
                     genesis_block=genesis_block,
                     tx_queue=tx_queue,
                     reconnect_attempts=reconnect_attempts,
-                    delay=self.delay
+                    delay=self.delay,
+                    event_writer=event_writer
                 )
 
             self.masternodes.append(node)

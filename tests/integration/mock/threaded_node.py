@@ -2,6 +2,7 @@ from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network
 from lamden.nodes.base import Node
+from lamden.nodes.events import EventWriter
 from lamden.nodes.filequeue import FileQueue
 from lamden.storage import BlockStorage, NonceStorage
 from pathlib import Path
@@ -27,6 +28,7 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
     #raw_driver = InMemDriver()
     block_storage = BlockStorage(root=node_dir)
     nonce_storage = NonceStorage(root=node_dir)
+    event_writer = EventWriter(root=node_dir)
 
     tx_queue = FileQueue(root=node_dir)
 
@@ -44,7 +46,8 @@ def create_a_node(index=0, node_wallet=Wallet(), constitution=None, bootnodes=No
         nonce_storage=nonce_storage,
         tx_queue=tx_queue,
         genesis_block=genesis_block,
-        metering=metering
+        metering=metering,
+        event_writer=event_writer
     )
 
 class ThreadedNode(threading.Thread):
@@ -61,7 +64,8 @@ class ThreadedNode(threading.Thread):
                  wallet: Wallet = None,
                  reconnect_attempts=60,
                  genesis_block=None,
-                 delay=None):
+                 delay=None,
+                 event_writer=None):
 
         threading.Thread.__init__(self)
 
@@ -79,6 +83,7 @@ class ThreadedNode(threading.Thread):
 
         self.class_path = os.path.abspath(inspect.getfile(self.__class__))
         self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
+        self.event_writer = event_writer if event_writer is not None else EventWriter()
 
         self.bypass_catchup = bypass_catchup
 
@@ -199,7 +204,8 @@ class ThreadedNode(threading.Thread):
                 delay=self.delay,
                 nonces=self.nonces,
                 join=self.genesis_block is None,
-                metering=self.metering
+                metering=self.metering,
+                event_writer=self.event_writer
             )
 
             self.node.network.set_to_local()

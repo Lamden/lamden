@@ -68,7 +68,7 @@ class Node:
     def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
-                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False):
+                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False, event_writer=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -86,7 +86,7 @@ class Node:
 
         self.driver = driver if driver is not None else ContractDriver()
         self.nonces = nonces if nonces is not None else storage.NonceStorage()
-        self.event_writer = EventWriter()
+        self.event_writer = event_writer if event_writer is not None else EventWriter()
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
 
