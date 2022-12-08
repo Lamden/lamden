@@ -452,12 +452,6 @@ class Network:
             'masternodes': list(network_map['masternodes'].keys())
         }
 
-    def get_peers_for_consensus(self) -> list:
-        all_peers = self.get_node_list()
-        if self.vk in all_peers:
-            all_peers.remove(self.vk)
-        return all_peers
-
     def map_vk_to_ip(self, vk_list: list) -> dict:
         vk_to_ip_map = dict()
 

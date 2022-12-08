@@ -512,14 +512,8 @@ class ValidationQueue(ProcessingQueue):
         if hlc_timestamp > self.max_hlc_in_consensus:
             self.max_hlc_in_consensus = hlc_timestamp
 
-    def get_node_list(self):
-        return self.driver.driver.get(f'masternodes.S:members') or []
-
     def get_peers_for_consensus(self):
-        all_peers = self.get_node_list()
-        if self.wallet.verifying_key in all_peers:
-            all_peers.remove(self.wallet.verifying_key)
-        return all_peers
+        return self.driver.driver.get(f'masternodes.S:members') or []
 
     def get_key_list(self):
         return [key for key in self.validation_results.keys()]
