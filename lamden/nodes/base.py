@@ -3,6 +3,7 @@ import copy
 import gc
 import hashlib
 import json
+import pathlib
 import random
 import time
 import uvloop
@@ -12,7 +13,7 @@ from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
 
-from lamden import storage, router, upgrade, contracts
+from lamden import storage, router, contracts
 from lamden.peer import Peer
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
@@ -155,8 +156,6 @@ class Node:
             submission_filename=None
         )
 
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet)
-
         # Number of core / processes we push to
         self.parallelism = parallelism
 
@@ -204,13 +203,10 @@ class Node:
 
         self.running = False
         self.started = False
-        self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
 
         self.reconnect_attempts = reconnect_attempts
-
-        #self.log.info(f'Pepper: {upgrade.build_pepper2()}')
 
     @property
     def vk(self) -> str:
@@ -239,6 +235,7 @@ class Node:
 
             asyncio.ensure_future(self.check_tx_queue())
             self.started = True
+            self.write_constitution()
             print("STARTED NODE")
 
         except Exception as err:
@@ -992,6 +989,7 @@ class Node:
             if change['key'] == 'masternodes.S:members':
                 exiled_peers = self.network.get_exiled_peers()
                 self.network.refresh_approved_peers_in_cred_provider()
+                self.write_constitution()
                 break
 
         if len(exiled_peers) == 0:
@@ -1267,8 +1265,9 @@ class Node:
     def get_block_by_number(self, block_number: str) -> dict:
         return self.blocks.get_block(v=int(block_number))
 
-    def make_constitution(self):
-        return self.network.make_constitution()
+    def write_constitution(self):
+        with open(pathlib.Path.home().joinpath('constitution.json'), 'w') as f:
+            json.dump(self.network.make_constitution(), f)
 
     def store_genesis_block(self, genesis_block: dict) -> bool:
         self.log.info('Processing Genesis Block.')

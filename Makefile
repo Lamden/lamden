@@ -1,4 +1,4 @@
-.PHONY: deploy up down login-node login-ws login-events
+.PHONY: deploy up down login-node login-ws login-events clean
 
 deploy:
 	@docker-compose -f docker/docker-compose.yml build --no-cache && \

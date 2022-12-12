@@ -16,9 +16,8 @@ def seed():
     upgrade_state['voters'] = 0
 
 
-def start_vote(lamden_branch_name: str, contracting_branch_name: str, pepper: str):
+def start_vote(lamden_branch_name: str, contracting_branch_name: str):
     upgrade_state['locked'] = True
-    upgrade_state['pepper'] = pepper
     upgrade_state['lamden_branch_name'] = lamden_branch_name
     upgrade_state['contracting_branch_name'] = contracting_branch_name
 
@@ -28,6 +27,7 @@ def start_vote(lamden_branch_name: str, contracting_branch_name: str, pepper: st
 
     upgrade_state['started'] = now
 
+    upgrade_state['node_index'] = 0
 
 def is_valid_voter(address: str):
     if address in election_house.current_value_for_policy('masternodes'):
@@ -58,3 +58,16 @@ def vote(**kwargs):
     else:
         upgrade_state['votes'] += 1
         has_voted[ctx.caller] = True
+
+@export
+def pass_the_baton():
+    assert upgrade_state['consensus'], 'Not in consensus!'
+    idx = upgrade_state['node_index']
+    nodes = election_house.current_value_for_policy('masternodes')
+    assert ctx.caller == nodes[idx], 'Invalid caller!'
+
+    idx += 1
+    if idx >= len(nodes):
+        upgrade_state.clear()
+    else:
+        upgrade_state['node_index'] = idx

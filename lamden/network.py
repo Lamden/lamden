@@ -436,7 +436,7 @@ class Network:
 
     def make_constitution(self) -> dict:
         return {
-            'masternodes': self.get_node_list()
+            'masternodes': self.map_vk_to_ip(self.get_node_list(), only_ip=True)
         }
 
     def network_map_to_node_list(self, network_map: dict = dict({})) -> list:
@@ -447,22 +447,17 @@ class Network:
 
         return node_list
 
-    def network_map_to_constitution(self, network_map: dict = dict({})) -> list:
-        return {
-            'masternodes': list(network_map['masternodes'].keys())
-        }
-
-    def map_vk_to_ip(self, vk_list: list) -> dict:
+    def map_vk_to_ip(self, vk_list: list, only_ip=False) -> dict:
         vk_to_ip_map = dict()
 
         for vk in vk_list:
             if vk == self.wallet.verifying_key:
-                vk_to_ip_map[vk] = self.external_address
+                vk_to_ip_map[vk] = self.external_address if not only_ip else self.external_ip
             else:
                 peer = self.get_peer(vk=vk)
                 if peer is not None:
                     if peer.ip is not None:
-                        vk_to_ip_map[vk] = peer.request_address
+                        vk_to_ip_map[vk] = peer.request_address if not only_ip else peer.ip
 
         return vk_to_ip_map
 
