@@ -1,4 +1,4 @@
-.PHONY: deploy up down login-node login-ws login-events clean
+.PHONY: start teardown upgrade login-node login-ws login-events clean
 
 start:
 	@docker-compose -f docker/docker-compose.yml build --no-cache && \
@@ -11,11 +11,7 @@ teardown:
 upgrade:
 	@docker-compose -f docker/docker-compose.yml build --no-cache && \
 	docker-compose -f docker/docker-compose.yml down && \
-	docker-compose -f docker/docker-compose.yml up -d \
-up:
-	@docker-compose -f docker/docker-compose.yml up -d
-down:
-	@docker-compose -f docker/docker-compose.yml down
+	docker-compose -f docker/docker-compose.yml up -d
 login-node:
 	@docker-compose -f docker/docker-compose.yml exec node /bin/bash
 login-ws:
