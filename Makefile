@@ -1,9 +1,17 @@
 .PHONY: deploy up down login-node login-ws login-events clean
 
-deploy:
+start:
 	@docker-compose -f docker/docker-compose.yml build --no-cache && \
 	docker-compose -f docker/docker-compose.yml down && \
-	docker-compose -f docker/docker-compose.yml up -d
+	docker-compose -f docker/docker-compose.yml up -d \
+	nohup python upgrade_manager.py > /var/log/uman.log &
+teardown:
+	@docker-compose -f docker/docker-compose.yml down && \
+	pkill -f upgrade_manager
+upgrade:
+	@docker-compose -f docker/docker-compose.yml build --no-cache && \
+	docker-compose -f docker/docker-compose.yml down && \
+	docker-compose -f docker/docker-compose.yml up -d \
 up:
 	@docker-compose -f docker/docker-compose.yml up -d
 down:
