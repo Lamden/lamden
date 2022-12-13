@@ -1,8 +1,10 @@
 from contracting.db.driver import FSDriver
+from lamden.crypto.transaction import build_transaction
 from lamden.crypto.wallet import Wallet
 import json
 import os
 import pathlib
+import requests
 import subprocess
 import time
 
@@ -27,10 +29,22 @@ while True:
             print(f'CONTRACTING_BRANCH: {os.environ["CONTRACTING_BRANCH"]}')
 
             subprocess.check_call(['make', 'upgrade'])
-
+            time.sleep(30)
+            print('Done upgrading, passing the baton...')
+            url = f'http://{os.environ["LAMDEN_BOOTNODE"]}:18080'
+            nonce = json.loads(requests.get(f'{url}/nonce/{w.verifying_key}').text)['nonce']
+            tx = build_transaction(
+                w,
+                contract='upgrade', function='pass_the_baton',
+                kwargs={},
+                nonce=nonce,
+                processor=bootnode,
+                stamps=500
+            )
+            print(requests.post(url, data=tx).json())
         else:
             print('Not my turn yet...')
-        time.sleep(30)
+            time.sleep(30)
     else:
         print('No consensus...')
         time.sleep(30)
