@@ -235,7 +235,7 @@ class Node:
 
             asyncio.ensure_future(self.check_tx_queue())
             self.started = True
-            self.write_constitution()
+            self.network.write_constitution()
             print("STARTED NODE")
 
         except Exception as err:
@@ -989,7 +989,7 @@ class Node:
             if change['key'] == 'masternodes.S:members':
                 exiled_peers = self.network.get_exiled_peers()
                 self.network.refresh_approved_peers_in_cred_provider()
-                self.write_constitution()
+                self.network.write_constitution()
                 break
 
         if len(exiled_peers) == 0:
@@ -1264,10 +1264,6 @@ class Node:
     # Put into 'super driver'
     def get_block_by_number(self, block_number: str) -> dict:
         return self.blocks.get_block(v=int(block_number))
-
-    def write_constitution(self):
-        with open(pathlib.Path.home().joinpath('constitution.json'), 'w') as f:
-            json.dump(self.network.make_constitution(), f)
 
     def store_genesis_block(self, genesis_block: dict) -> bool:
         self.log.info('Processing Genesis Block.')

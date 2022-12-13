@@ -3,6 +3,7 @@ import requests
 import zmq
 import zmq.asyncio
 import asyncio
+import pathlib
 import uvloop
 from typing import List
 
@@ -429,6 +430,10 @@ class Network:
 
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
+    def write_constitution(self):
+        with open(pathlib.Path.home().joinpath('constitution.json'), 'w') as f:
+            json.dump(self.make_constitution(), f, indent=2)
+
     def make_network_map(self) -> dict:
         return {
             'masternodes': self.map_vk_to_ip(self.get_node_list())
@@ -521,6 +526,7 @@ class Network:
             )
 
             self.connect_peer(vk=ident_vk_string, ip=ip)
+            self.write_constitution()
 
         if action == ACTION_GET_LATEST_BLOCK:
             self.log('warning', "ACTION_GET_LATEST_BLOCK")
