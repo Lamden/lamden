@@ -44,7 +44,6 @@ while True:
             print(requests.post(url, data=tx).json())
         else:
             print('Not my turn yet...')
-            time.sleep(30)
     else:
         print('No consensus...')
-        time.sleep(30)
+    time.sleep(60)
