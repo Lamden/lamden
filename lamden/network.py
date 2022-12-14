@@ -452,6 +452,17 @@ class Network:
 
         return node_list
 
+    def get_node_ip(self, vk):
+        if vk == self.wallet.verifying_key:
+            return self.external_ip
+        else:
+            peer = self.get_peer(vk=vk)
+            if peer is not None:
+                if peer.ip is not None:
+                    return peer.ip
+
+        return None
+
     def map_vk_to_ip(self, vk_list: list, only_ip=False) -> dict:
         vk_to_ip_map = dict()
 

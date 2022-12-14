@@ -234,6 +234,8 @@ class Node:
                 await self.join_existing_network()
 
             asyncio.ensure_future(self.check_tx_queue())
+            asyncio.ensure_future(self.check_upgrade())
+
             self.started = True
             self.network.write_constitution()
             print("STARTED NODE")
@@ -651,6 +653,26 @@ class Node:
 
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0)
+
+    async def check_upgrade(self):
+        while self.running:
+            if self.driver.driver.get('upgrade.upgrade_state:consensus'):
+                nodes = self.network.get_node_list()
+                idx = self.driver.driver('upgrade.upgrade_state:node_index')
+
+                if nodes[idx] == self.wallet.verifying_key:
+                    bootnode = nodes[(idx+1) % len(nodes)]
+                    self.event_writer.write_event(Event(
+                        topics=['upgrade'],
+                        data={
+                            'lamden_branch': self.driver.driver.get('upgrade.upgrade_state:lamden_branch_name'),
+                            'contracting_branch': self.driver.driver.get('upgrade.upgrade_state:contracting_branch_name'),
+                            'bootnode_vk': bootnode,
+                            'bootnode_ip': self.network.get_node_ip(bootnode)
+                        }
+                    ))
+                    await asyncio.sleep(600)
+            await asyncio.sleep(1)
 
     async def check_main_processing_queue(self):
         self.main_processing_queue.start()
