@@ -4,6 +4,7 @@ boot:
 	@docker compose -f docker/docker-compose.yml build --no-cache && \
 	docker compose -f docker/docker-compose.yml down && \
 	docker compose -f docker/docker-compose.yml up -d
+	sleep 5
 	nohup python upgrade_manager.py > /tmp/uman.log &
 teardown:
 	@docker compose -f docker/docker-compose.yml down
