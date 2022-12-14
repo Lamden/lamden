@@ -16,6 +16,7 @@ def validate_ip_address(ip_str):
 
 def on_message(ws, message):
     if message.get('event') == 'upgrade':
+        message = message.get('data')
         if not validate_ip_address(message.get('bootnode_ip')):
             raise AttributeError('Invalid ip')
         os.environ['LAMDEN_BOOTNODE'] = message.get('bootnode_ip')
