@@ -661,15 +661,15 @@ class Node:
 
                 if nodes[idx] == self.wallet.verifying_key:
                     bootnode = nodes[(idx+1) % len(nodes)]
-                    self.event_writer.write_event(Event(
-                        topics=['upgrade'],
-                        data={
-                            'lamden_branch': self.driver.driver.get('upgrade.upgrade_state:lamden_branch_name'),
-                            'contracting_branch': self.driver.driver.get('upgrade.upgrade_state:contracting_branch_name'),
-                            'bootnode_vk': bootnode,
-                            'bootnode_ip': self.network.get_node_ip(bootnode)
+                    e = Event(topics=['upgrade'], data={
+                        'lamden_branch': self.driver.driver.get('upgrade.upgrade_state:lamden_branch_name'),
+                        'contracting_branch': self.driver.driver.get('upgrade.upgrade_state:contracting_branch_name'),
+                        'bootnode_vk': bootnode,
+                        'bootnode_ip': self.network.get_node_ip(bootnode)
                         }
-                    ))
+                    )
+                    self.log.error(f'UPGRADE writing event {e.__dict__}')
+                    self.event_writer.write_event(e)
                     await asyncio.sleep(600)
             await asyncio.sleep(1)
 

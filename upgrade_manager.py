@@ -1,12 +1,15 @@
-from lamden.crypto.wallet import Wallet
 from lamden.crypto.transaction import build_transaction
+from lamden.crypto.wallet import Wallet
 import json
+import logging
 import os
 import re
 import requests
 import subprocess
 import time
 import websocket
+
+logging.basicConfig(filename='uman.log', level=logging.INFO)
 
 def validate_ip_address(ip_str):
     pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
@@ -15,6 +18,7 @@ def validate_ip_address(ip_str):
     return True if match else False
 
 def on_message(ws, message):
+    logging.info(f'received message: {message}')
     if message.get('event') == 'upgrade':
         message = message.get('data')
         if not validate_ip_address(message.get('bootnode_ip')):
@@ -40,12 +44,12 @@ def on_message(ws, message):
         requests.post(url, data=tx).json()
 
 def on_open(ws):
-    print('Connection opened!')
+    logging.info('Connection opened!')
     while True:
         pass
 
 def on_error(ws, error):
-    print(f'Connection error! Error: {error}')
+    logging.info(f'Connection error! Error: {error}')
 
 if __name__ == "__main__":
     ws = websocket.WebSocketApp("ws://localhost:18080/", on_open=on_open, on_message=on_message, on_error=on_error)
