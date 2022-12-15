@@ -19,6 +19,7 @@ def validate_ip_address(ip_str):
 
 def on_message(ws, message):
     log.info(f'received message: {message}')
+    message = json.loads(message)
     if message.get('event') == 'upgrade':
         message = message.get('data')
         if not validate_ip_address(message.get('bootnode_ip')):
@@ -43,14 +44,9 @@ def on_message(ws, message):
         )
         requests.post(url, data=tx).json()
 
-def on_open(ws):
-    log.info('Connection opened!')
-    while True:
-        pass
-
 def on_error(ws, error):
     log.info(f'Connection error! Error: {error}')
 
 if __name__ == "__main__":
-    ws = websocket.WebSocketApp("ws://localhost:18080/", on_open=on_open, on_message=on_message, on_error=on_error)
+    ws = websocket.WebSocketApp("ws://localhost:18080/", on_message=on_message, on_error=on_error)
     ws.run_forever()
