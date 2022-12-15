@@ -9,7 +9,7 @@ import subprocess
 import time
 import websocket
 
-logging.basicConfig(filename='uman.log', level=logging.INFO)
+log = logging.getLogger('UPGRADE')
 
 def validate_ip_address(ip_str):
     pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
@@ -18,7 +18,7 @@ def validate_ip_address(ip_str):
     return True if match else False
 
 def on_message(ws, message):
-    logging.info(f'received message: {message}')
+    log.info(f'received message: {message}')
     if message.get('event') == 'upgrade':
         message = message.get('data')
         if not validate_ip_address(message.get('bootnode_ip')):
@@ -44,12 +44,12 @@ def on_message(ws, message):
         requests.post(url, data=tx).json()
 
 def on_open(ws):
-    logging.info('Connection opened!')
+    log.info('Connection opened!')
     while True:
         pass
 
 def on_error(ws, error):
-    logging.info(f'Connection error! Error: {error}')
+    log.info(f'Connection error! Error: {error}')
 
 if __name__ == "__main__":
     ws = websocket.WebSocketApp("ws://localhost:18080/", on_open=on_open, on_message=on_message, on_error=on_error)
