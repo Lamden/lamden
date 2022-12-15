@@ -237,7 +237,6 @@ class Node:
             asyncio.ensure_future(self.check_upgrade())
 
             self.started = True
-            self.network.write_constitution()
             print("STARTED NODE")
 
         except Exception as err:
@@ -658,7 +657,7 @@ class Node:
         while self.running:
             if self.driver.driver.get('upgrade.upgrade_state:consensus'):
                 nodes = self.network.get_node_list()
-                idx = self.driver.driver('upgrade.upgrade_state:node_index')
+                idx = self.driver.driver.get('upgrade.upgrade_state:node_index')
 
                 if nodes[idx] == self.wallet.verifying_key:
                     bootnode = nodes[(idx+1) % len(nodes)]
@@ -1011,7 +1010,6 @@ class Node:
             if change['key'] == 'masternodes.S:members':
                 exiled_peers = self.network.get_exiled_peers()
                 self.network.refresh_approved_peers_in_cred_provider()
-                self.network.write_constitution()
                 break
 
         if len(exiled_peers) == 0:
