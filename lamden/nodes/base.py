@@ -654,6 +654,7 @@ class Node:
             await asyncio.sleep(0)
 
     async def check_upgrade(self):
+        await asyncio.sleep(60)
         while self.running:
             if self.driver.driver.get('upgrade.upgrade_state:consensus'):
                 nodes = self.network.get_node_list()

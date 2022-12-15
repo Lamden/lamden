@@ -49,4 +49,6 @@ def on_error(ws, error):
 
 if __name__ == "__main__":
     ws = websocket.WebSocketApp("ws://localhost:18080/", on_message=on_message, on_error=on_error)
-    ws.run_forever()
+    while True:
+        ws.run_forever()
+        time.sleep(5)
