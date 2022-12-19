@@ -1,15 +1,13 @@
-from lamden.crypto.transaction import build_transaction
-from lamden.crypto.wallet import Wallet
+from datetime import datetime
+from dateutil import parser
+import asyncio
 import json
-import logging
 import os
 import re
-import requests
+import socketio
 import subprocess
-import time
-import websocket
 
-log = logging.getLogger('UPGRADE')
+sio = socketio.AsyncClient(logger=True, engineio_logger=True)
 
 def validate_ip_address(ip_str):
     pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
@@ -17,38 +15,44 @@ def validate_ip_address(ip_str):
 
     return True if match else False
 
-def on_message(ws, message):
-    log.info(f'received message: {message}')
-    message = json.loads(message)
-    if message.get('event') == 'upgrade':
-        message = message.get('data')
-        if not validate_ip_address(message.get('bootnode_ip')):
-            raise AttributeError('Invalid ip')
-        os.environ['LAMDEN_BOOTNODE'] = message.get('bootnode_ip')
-        os.environ['LAMDEN_BRANCH'] = message.get('lamden_branch')
-        os.environ['CONTRACTING_BRANCH'] = message.get('contracting_branch')
+def parse_bootnodes(ips: list):
+    return ':'.join(list(filter(lambda ip: validate_ip_address(ip), ips)))
 
-        subprocess.check_call(['make', 'upgrade'])
-        time.sleep(30)
+@sio.event
+async def connect():
+    print('Connected to event service!')
+    await sio.emit('join', {'room': 'upgrade'})
 
-        url = f'http://{message.get("bootnode_ip")}:18080'
-        w = Wallet(seed=bytes.fromhex(os.environ['LAMDEN_SK']))
-        nonce = json.loads(requests.get(f'{url}/nonce/{w.verifying_key}').text)['nonce']
-        tx = build_transaction(
-            w,
-            contract='upgrade', function='pass_the_baton',
-            kwargs={},
-            nonce=nonce,
-            processor=message.get('bootnode_vk'),
-            stamps=500
-        )
-        requests.post(url, data=tx).json()
+@sio.event
+async def disconnect():
+    print('Disconnected from event service!')
+    await sio.emit('leave', {'room': 'upgrade'})
 
-def on_error(ws, error):
-    log.info(f'Connection error! Error: {error}')
+@sio.event
+async def event(data):
+    data = json.loads(data['data'])
+    print(f'Received data: {data}')
+
+    os.environ['LAMDEN_TAG'] = data['lamden_tag']
+    os.environ['CONTRACTING_TAG'] = data['contracting_tag']
+    os.environ['BOOTNODES'] = parse_bootnodes(data['bootnode_ips'])
+    utc_when = parser.parse(data['utc_when'])
+
+    subprocess.check_call(['make', 'build'])
+
+    while utc_when < datetime.utcnow():
+        asyncio.sleep(0.1)
+
+    subprocess.check_call(['make', 'restart'])
+
+async def main():
+    while True:
+        try:
+            await sio.connect(f'http://localhost:{os.environ["LAMDEN_ES_PORT"]}')
+            await sio.wait()
+        except Exception as e:
+            print(f'Failed connecting to event service: {e}')
+            await asyncio.sleep(5)
 
 if __name__ == "__main__":
-    ws = websocket.WebSocketApp("ws://localhost:18080/", on_message=on_message, on_error=on_error)
-    while True:
-        ws.run_forever()
-        time.sleep(5)
+    asyncio.get_event_loop().run_until_complete(main())

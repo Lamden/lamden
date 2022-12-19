@@ -9,6 +9,11 @@ boot:
 teardown:
 	@docker compose -f docker/docker-compose.yml down
 	pkill -f upgrade_manager
+build:
+	@docker compose -f docker/docker-compose.yml build --no-cache
+restart:
+	@docker compose -f docker/docker-compose.yml down && \
+	docker compose -f docker/docker-compose.yml up -d
 upgrade:
 	@docker compose -f docker/docker-compose.yml build --no-cache && \
 	docker compose -f docker/docker-compose.yml down && \
