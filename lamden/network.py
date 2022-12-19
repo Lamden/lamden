@@ -463,6 +463,14 @@ class Network:
 
         return None
 
+    def get_bootnode_ips(self):
+        ips = []
+        for vk in self.get_node_list():
+            if vk != self.wallet.verifying_key:
+                ips.append(self.get_node_ip(vk))
+
+        return ips
+
     def map_vk_to_ip(self, vk_list: list, only_ip=False) -> dict:
         vk_to_ip_map = dict()
 
