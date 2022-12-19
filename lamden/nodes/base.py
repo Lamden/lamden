@@ -3,6 +3,7 @@ import copy
 import gc
 import hashlib
 import json
+import os
 import pathlib
 import random
 import time
@@ -29,6 +30,9 @@ from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, reca
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
+
+from lamden.crypto.transaction import build_transaction
+from datetime import datetime, timedelta
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -234,7 +238,6 @@ class Node:
                 await self.join_existing_network()
 
             asyncio.ensure_future(self.check_tx_queue())
-            asyncio.ensure_future(self.check_upgrade())
 
             self.started = True
             print("STARTED NODE")
@@ -289,6 +292,17 @@ class Node:
 
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
+
+        startup_tx = build_transaction(
+            wallet=self.wallet,
+            contract='upgrade',
+            function='startup',
+            kwargs={'lamden_tag': os.environ['LAMDEN_TAG'], 'contracting_tag': os.environ['CONTRACTING_TAG']},
+            nonce=self.nonces.get_next_nonce(self.wallet.verifying_key, self.wallet.verifying_key),
+            processor=self.wallet.verifying_key,
+            stamps=500
+        )
+        self.tx_queue.append(startup_tx)
 
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
@@ -653,26 +667,6 @@ class Node:
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0)
 
-    async def check_upgrade(self):
-        await asyncio.sleep(60)
-        while self.running:
-            if self.driver.driver.get('upgrade.upgrade_state:consensus'):
-                nodes = self.network.get_node_list()
-                idx = self.driver.driver.get('upgrade.upgrade_state:node_index')
-
-                if nodes[idx] == self.wallet.verifying_key:
-                    bootnode = nodes[(idx+1) % len(nodes)]
-                    e = Event(topics=['upgrade'], data={
-                        'lamden_branch': self.driver.driver.get('upgrade.upgrade_state:lamden_branch_name'),
-                        'contracting_branch': self.driver.driver.get('upgrade.upgrade_state:contracting_branch_name'),
-                        'bootnode_vk': bootnode,
-                        'bootnode_ip': self.network.get_node_ip(bootnode)
-                        }
-                    )
-                    self.log.error(f'UPGRADE writing event {e.__dict__}')
-                    self.event_writer.write_event(e)
-                    await asyncio.sleep(600)
-            await asyncio.sleep(1)
 
     async def check_main_processing_queue(self):
         self.main_processing_queue.start()
@@ -1001,8 +995,35 @@ class Node:
 
     def hard_apply_block_finish(self, block: dict):
         hlc_timestamp = block.get('hlc_timestamp')
-        self.check_peers(state_changes=self.get_state_changes_from_block(block=block), hlc_timestamp=hlc_timestamp)
+        state_changes = self.get_state_changes_from_block(block=block)
+        self.check_peers(state_changes=state_changes, hlc_timestamp=hlc_timestamp)
+        self.check_upgrade(state_change=state_changes)
         gc.collect()
+
+    def check_upgrade(self, state_changes: list):
+        for change in state_changes:
+            if change['key'].startswith('upgrade.version_state:'):
+                self.produce_upgrade_event()
+                break
+
+    def produce_upgrade_event(self):
+        cur_lam_tag = os.environ.get('LAMDEN_TAG')
+        cur_con_tag = os.environ.get('CONTRACTING_TAG')
+        new_lam_tag = self.driver.driver.get('upgrade.version_state:lamden_tag') or ''
+        new_con_tag = self.driver.driver.get('upgrade.version_state:contracting_tag') or ''
+        should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
+
+        if not should_upgrade:
+            return
+
+        e = Event(topics=['upgrade'], data={
+            'lamden_tag': new_lam_tag if new_lam_tag != '' else cur_lam_tag,
+            'contracting_tag': new_con_tag if new_con_tag != '' else cur_con_tag,
+            'bootnode_ips': self.network.get_bootnode_ips(),
+            'utc_when': str(datetime.utcnow() + timedelta(minutes=self.network.get_node_list().index(self.wallet.verifying_key)+1))
+        })
+        self.event_writer.write_event(e)
+        self.log.error(f'Sent upgrade event: {e.__dict__}')
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []
