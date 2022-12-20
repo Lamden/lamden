@@ -1000,7 +1000,7 @@ class Node:
         hlc_timestamp = block.get('hlc_timestamp')
         state_changes = self.get_state_changes_from_block(block=block)
         self.check_peers(state_changes=state_changes, hlc_timestamp=hlc_timestamp)
-        self.check_upgrade(state_change=state_changes)
+        self.check_upgrade(state_changes=state_changes)
         gc.collect()
 
     def check_upgrade(self, state_changes: list):
