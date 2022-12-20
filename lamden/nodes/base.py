@@ -302,7 +302,7 @@ class Node:
             processor=self.wallet.verifying_key,
             stamps=500
         )
-        self.tx_queue.append(startup_tx)
+        self.tx_queue.append(startup_tx.encode())
 
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
