@@ -46,13 +46,8 @@ async def event(data):
     subprocess.check_call(['make', 'restart'])
 
 async def main():
-    while True:
-        try:
-            await sio.connect(f'http://localhost:{os.environ["LAMDEN_ES_PORT"]}')
-            await sio.wait()
-        except Exception as e:
-            print(f'Failed connecting to event service: {e}')
-            await asyncio.sleep(5)
+    await sio.connect(f'http://localhost:{os.environ["LAMDEN_ES_PORT"]}')
+    await sio.wait()
 
 if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main())
