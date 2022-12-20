@@ -13,9 +13,6 @@ from lamden.logger.base import get_logger
 from contracting.db.encoder import decode
 
 
-def cfg_and_start_rsync_daemon():
-    os.system('cp rsyncd.conf /etc/ && rsync --daemon > /dev/null 2>&1')
-
 def print_ascii_art():
     print('''
                 ##
@@ -102,8 +99,6 @@ def start_node(args):
     if args.pid > -1:
         subprocess.check_call(['kill', '-15', str(args.pid)])
 
-    cfg_and_start_rsync_daemon()
-
     n = Node(
         debug=args.debug,
         wallet=wallet,
@@ -124,17 +119,16 @@ def join_network(args):
 
     wallet = Wallet(seed=sk)
 
-    # REMOVED FOR LAMDEN 2.0. The constitution will be taken from a bootnode directly using ZMQ
-    mn_seed = f'tcp://{args.mn_seed}:19000'
-
-    mn_id_response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/id')
-
-    bootnodes = {mn_id_response.json()['verifying_key']: mn_seed}
+    bootnode_ips = os.environ['BOOTNODES'].split(':')
+    bootnodes = {}
+    for ip in bootnode_ips:
+        resp = requests.get(f'http://{ip}:18080/id').json()
+        vk = resp.get('verifying_key') 
+        if vk is not None:
+            bootnodes[vk] = f'tcp://{ip}:19000'
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}:19000'
-
-    cfg_and_start_rsync_daemon()
 
     n = Node(
         debug=args.debug,

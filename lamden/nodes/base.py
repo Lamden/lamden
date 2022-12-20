@@ -347,6 +347,9 @@ class Node:
                     self.log.info(f'Attempt {connection_attempts}/attempts failed to connect. Trying again in {sleep_for} seconds.')
                     await asyncio.sleep(sleep_for)
 
+            if bootnode is not None and bootnode.is_connected:
+                break
+
         if bootnode is None:
             print("Could not connect to any bootnodes!")
             print(self.bootnodes)
