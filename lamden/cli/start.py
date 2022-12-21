@@ -119,7 +119,7 @@ def join_network(args):
 
     wallet = Wallet(seed=sk)
 
-    bootnode_ips = os.environ['BOOTNODES'].split(':')
+    bootnode_ips = os.environ['LAMDEN_BOOTNODES'].split(':')
     bootnodes = {}
     for ip in bootnode_ips:
         resp = requests.get(f'http://{ip}:18080/id').json()
