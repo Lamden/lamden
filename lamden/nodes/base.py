@@ -1020,6 +1020,7 @@ class Node:
             return
 
         e = Event(topics=['upgrade'], data={
+            'node_vk': self.wallet.verifying_key,
             'lamden_tag': new_lam_tag if new_lam_tag != '' else cur_lam_tag,
             'contracting_tag': new_con_tag if new_con_tag != '' else cur_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
