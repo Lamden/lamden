@@ -8,6 +8,7 @@ import pathlib
 import random
 import time
 import uvloop
+import requests
 
 from copy import deepcopy
 from contracting.client import ContractingClient
@@ -378,6 +379,7 @@ class Node:
 
         self.network.router.cred_provider.secure_messages()
 
+        processor_vk = None
         # Connect to all nodes in the network
         for node_info in self.network.network_map_to_node_list(network_map=network_map):
             vk = node_info.get('vk')
@@ -392,6 +394,7 @@ class Node:
                     ip=ip,
                     vk=vk
                 )
+                processor_vk = vk
 
         await self.network.connected_to_all_peers()
 
@@ -406,6 +409,20 @@ class Node:
 
             # Start the validation queue so we start accepting block results
             self.validation_queue.enable_append()
+
+            processor_ip = self.network.get_node_ip(processor_vk)
+            nonce = json.loads(requests.get(f'http://{processor_ip}:18080/nonce/{self.wallet.verifying_key}').text)['nonce']
+            startup_tx = build_transaction(
+                wallet=self.wallet,
+                contract='upgrade',
+                function='startup',
+                kwargs={'lamden_tag': os.environ['LAMDEN_TAG'], 'contracting_tag': os.environ['CONTRACTING_TAG']},
+                nonce=nonce,
+                processor=processor_vk,
+                stamps=500
+            )
+            self.log.info(f'Sending startup transaction... Receiver vk: {processor_vk}, receiver ip: {processor_ip}')
+            self.log.info(requests.post(f'http://{processor_ip}:18080', data=startup_tx).json())
 
             # Now start catching up to minting of blocks from validation queue
             await self.catchup_to_validation_queue()
