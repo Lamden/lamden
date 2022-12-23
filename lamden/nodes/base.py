@@ -298,12 +298,15 @@ class Node:
             wallet=self.wallet,
             contract='upgrade',
             function='startup',
-            kwargs={'lamden_tag': os.environ['LAMDEN_TAG'], 'contracting_tag': os.environ['CONTRACTING_TAG']},
+            kwargs={'lamden_tag': os.getenv('LAMDEN_TAG', ''), 'contracting_tag': os.getenv('CONTRACTING_TAG', '')},
             nonce=self.nonces.get_next_nonce(self.wallet.verifying_key, self.wallet.verifying_key),
             processor=self.wallet.verifying_key,
             stamps=500
         )
-        self.tx_queue.append(startup_tx.encode())
+        try:
+            self.log.info(requests.post(f'http://{self.network.get_node_ip(self.wallet.verifying_key)}:18080', startup_tx).json())
+        except Exception as e:
+            self.log.error(e)
 
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
