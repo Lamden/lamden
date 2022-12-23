@@ -294,19 +294,7 @@ class Node:
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
 
-        startup_tx = build_transaction(
-            wallet=self.wallet,
-            contract='upgrade',
-            function='startup',
-            kwargs={'lamden_tag': os.getenv('LAMDEN_TAG', ''), 'contracting_tag': os.getenv('CONTRACTING_TAG', '')},
-            nonce=self.nonces.get_next_nonce(self.wallet.verifying_key, self.wallet.verifying_key),
-            processor=self.wallet.verifying_key,
-            stamps=500
-        )
-        try:
-            self.log.info(requests.post(f'http://{self.network.get_node_ip(self.wallet.verifying_key)}:18080', startup_tx).json())
-        except Exception as e:
-            self.log.error(e)
+        self.send_startup_transaction(self.wallet.verifying_key)
 
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
@@ -413,23 +401,13 @@ class Node:
             # Start the validation queue so we start accepting block results
             self.validation_queue.enable_append()
 
-            processor_ip = self.network.get_node_ip(processor_vk)
-            nonce = json.loads(requests.get(f'http://{processor_ip}:18080/nonce/{self.wallet.verifying_key}').text)['nonce']
-            startup_tx = build_transaction(
-                wallet=self.wallet,
-                contract='upgrade',
-                function='startup',
-                kwargs={'lamden_tag': os.environ['LAMDEN_TAG'], 'contracting_tag': os.environ['CONTRACTING_TAG']},
-                nonce=nonce,
-                processor=processor_vk,
-                stamps=500
-            )
-            self.log.info(f'Sending startup transaction... Receiver vk: {processor_vk}, receiver ip: {processor_ip}')
-            self.log.info(requests.post(f'http://{processor_ip}:18080', data=startup_tx).json())
+            self.send_startup_transaction(processor_vk)
 
             # Now start catching up to minting of blocks from validation queue
             await self.catchup_to_validation_queue()
 
+        else:
+            self.send_startup_transaction(processor_vk)
 
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
@@ -440,6 +418,24 @@ class Node:
         # Start the processing queue
         self.main_processing_queue.enable_append()
         self.start_main_processing_queue_task()
+
+    def send_startup_transaction(self, processor_vk):
+        ip = self.network.get_node_ip(processor_vk)
+        try:
+            nonce = json.loads(requests.get(f'http://{ip}:18080/nonce/{self.wallet.verifying_key}').text)['nonce']
+            startup_tx = build_transaction(
+                wallet=self.wallet,
+                contract='upgrade',
+                function='startup',
+                kwargs={'lamden_tag': os.getenv('LAMDEN_TAG'), 'contracting_tag': os.getenv('CONTRACTING_TAG')},
+                nonce=nonce,
+                processor=processor_vk,
+                stamps=500
+            )
+            self.log.info(f'Sending startup transaction... Receiver vk: {processor_vk}, receiver ip: {ip}')
+            self.log.info(requests.post(f'http://{ip}:18080', data=startup_tx).json())
+        except Exception as e:
+            self.log.error(f'An attempt to send startup transaction failed with error: {e}')
 
     async def catchup(self):
         # Get the current latest block stored and the latest block of the network
@@ -1030,12 +1026,12 @@ class Node:
                 break
 
     def produce_upgrade_event(self):
-        cur_lam_tag = os.environ.get('LAMDEN_TAG')
-        cur_con_tag = os.environ.get('CONTRACTING_TAG')
+        cur_lam_tag = os.getenv('LAMDEN_TAG', '')
+        cur_con_tag = os.getenv('CONTRACTING_TAG', '')
         new_lam_tag = self.driver.driver.get('upgrade.version_state:lamden_tag') or ''
         new_con_tag = self.driver.driver.get('upgrade.version_state:contracting_tag') or ''
-        should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
 
+        should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
         if not should_upgrade:
             return
 
@@ -1044,7 +1040,7 @@ class Node:
             'lamden_tag': new_lam_tag if new_lam_tag != '' else cur_lam_tag,
             'contracting_tag': new_con_tag if new_con_tag != '' else cur_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
-            'utc_when': str(datetime.utcnow() + timedelta(minutes=self.network.get_node_list().index(self.wallet.verifying_key)+1))
+            'utc_when': str(datetime.utcnow() + timedelta(minutes=self.network.get_node_list().index(self.wallet.verifying_key)+5))
         })
         self.event_writer.write_event(e)
         self.log.error(f'Sent upgrade event: {e.__dict__}')
