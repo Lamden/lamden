@@ -420,7 +420,7 @@ class Node:
         self.start_main_processing_queue_task()
 
     def send_startup_transaction(self, processor_vk):
-        ip = self.network.get_node_ip(processor_vk)
+        ip = 'lamden_webserver' if processor_vk == self.wallet.verifying_key else self.network.get_node_ip(processor_vk)
         try:
             nonce = json.loads(requests.get(f'http://{ip}:18080/nonce/{self.wallet.verifying_key}').text)['nonce']
             startup_tx = build_transaction(

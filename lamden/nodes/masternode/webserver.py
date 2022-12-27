@@ -164,9 +164,8 @@ class WebServer:
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
         async def connect_to_event_service(app, loop):
-            # TODO(nikita): what do we do in case event service is not running?
             try:
-                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.connect(f'lamden_events:{self.event_service_port}')
                 await self.sio.wait()
             except Exception as err:
                 print("ERROR ATTEMPTING TO CONNECT TO EVENT SERVER")
