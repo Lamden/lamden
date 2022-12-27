@@ -142,19 +142,19 @@ class WebServer:
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
-            print("CONNECTED TO EVENT SERVER")
+            log.debug("CONNECTED TO EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('join', {'room': topic})
 
         @self.sio.event
         async def disconnect():
-            print("DISCONNECTED FROM EVENT SERVER")
+            log.debug("DISCONNECTED FROM EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
-        async def connect_error():
-            print("CONNECTION FAILED!")
+        def connect_error(error):
+            log.error(f"Event Service error: {error}")
 
         @self.sio.event
         async def event(data):
@@ -165,11 +165,10 @@ class WebServer:
         @self.app.listener('after_server_start')
         async def connect_to_event_service(app, loop):
             try:
-                await self.sio.connect(f'lamden_events:{self.event_service_port}')
+                await self.sio.connect(f'http://lamden_events:{self.event_service_port}')
                 await self.sio.wait()
-            except Exception as err:
-                print("ERROR ATTEMPTING TO CONNECT TO EVENT SERVER")
-                print(err)
+            except:
+                pass
 
     async def ws_handler(self, request, ws):
         self.ws_clients.add(ws)
@@ -195,7 +194,7 @@ class WebServer:
             try:
                 await ws.send(encode(eventData))
             except Exception as err:
-                print(err)
+                log.error(err)
 
             async for message in ws:
                 pass
