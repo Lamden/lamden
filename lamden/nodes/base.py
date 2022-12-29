@@ -1013,23 +1013,23 @@ class Node:
             ))
 
     def hard_apply_block_finish(self, block: dict):
-        hlc_timestamp = block.get('hlc_timestamp')
         state_changes = self.get_state_changes_from_block(block=block)
-        self.check_peers(state_changes=state_changes, hlc_timestamp=hlc_timestamp)
-        self.check_upgrade(state_changes=state_changes)
+        self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
+        if int(block.get('number')) != 0:
+            self.check_upgrade(state_changes=state_changes)
         gc.collect()
 
     def check_upgrade(self, state_changes: list):
         for change in state_changes:
-            if change['key'].startswith('upgrade.version_state:'):
+            if change['key'] == 'upgrade.S:lamden_tag' or change['key'] == 'upgrade.S:contracting_tag':
                 self.produce_upgrade_event()
                 break
 
     def produce_upgrade_event(self):
         cur_lam_tag = os.getenv('LAMDEN_TAG', '')
         cur_con_tag = os.getenv('CONTRACTING_TAG', '')
-        new_lam_tag = self.driver.driver.get('upgrade.version_state:lamden_tag') or ''
-        new_con_tag = self.driver.driver.get('upgrade.version_state:contracting_tag') or ''
+        new_lam_tag = self.driver.driver.get('upgrade.S:lamden_tag') or ''
+        new_con_tag = self.driver.driver.get('upgrade.S:contracting_tag') or ''
 
         should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
         if not should_upgrade:
@@ -1037,13 +1037,13 @@ class Node:
 
         e = Event(topics=['upgrade'], data={
             'node_vk': self.wallet.verifying_key,
-            'lamden_tag': new_lam_tag if new_lam_tag != '' else cur_lam_tag,
-            'contracting_tag': new_con_tag if new_con_tag != '' else cur_con_tag,
+            'lamden_tag': new_lam_tag,
+            'contracting_tag': new_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
             'utc_when': str(datetime.utcnow() + timedelta(minutes=self.network.get_node_list().index(self.wallet.verifying_key)+5))
         })
         self.event_writer.write_event(e)
-        self.log.error(f'Sent upgrade event: {e.__dict__}')
+        self.log.debug(f'Sent upgrade event: {e.__dict__}')
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []

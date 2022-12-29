@@ -21,56 +21,71 @@ class TestUpgrade(TestCase):
         self.client.flush()
 
     def test_seed_sets_initial_values_correctly(self):
-        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.version_state:lamden_tag'))
-        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.version_state:contracting_tag'))
+        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.S:lamden_tag'))
+        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.S:contracting_tag'))
 
     def test_start_vote_updates_state_correctly(self):
         env = {'now': Datetime._from_datetime(dt.today())}
-        self.upgrade.run_private_function(
-            f='start_vote',
-            lamden_branch_name='main',
-            contracting_branch_name='main',
-            pepper='pepper',
+        self.upgrade.propose_upgrade(
+            signer='mn01',
+            lamden_tag='new',
+            contracting_tag='new',
             environment=env
         )
 
-        self.assertTrue(self.contract_driver.get('upgrade.upgrade_state:locked'))
-        self.assertEqual('pepper', self.contract_driver.get('upgrade.upgrade_state:pepper'))
-        self.assertEqual('main', self.contract_driver.get('upgrade.upgrade_state:lamden_branch_name'))
-        self.assertEqual('main', self.contract_driver.get('upgrade.upgrade_state:contracting_branch_name'))
-        self.assertEqual(0, self.contract_driver.get('upgrade.upgrade_state:votes'))
-        self.assertEqual(3, self.contract_driver.get('upgrade.upgrade_state:voters'))
-        self.assertEqual(env['now'], self.contract_driver.get('upgrade.upgrade_state:started'))
+        self.assertEqual('new', self.contract_driver.get('upgrade.vote_state:lamden_tag'))
+        self.assertEqual('new', self.contract_driver.get('upgrade.vote_state:contracting_tag'))
+        self.assertEqual(1, self.contract_driver.get('upgrade.vote_state:yays'))
+        self.assertEqual(0, self.contract_driver.get('upgrade.vote_state:nays'))
+        self.assertTrue(self.contract_driver.get('upgrade.vote_state:positions:mn01'))
+        self.assertEqual(env['now'], self.contract_driver.get('upgrade.vote_state:started'))
 
-    def test_is_valid_voter(self):
-        self.assertTrue(self.upgrade.run_private_function(f='is_valid_voter', address='mn01'))
-        self.assertFalse(self.upgrade.run_private_function(f='is_valid_voter', address='mn04'))
+    def test_propose_raises_if_invalid_voter(self):
+        with self.assertRaises(AssertionError):
+            self.upgrade.propose_upgrade(signer='mn04')
 
-    def test_vote_raises_if_invalid_voter(self):
+    def test_vote_raises_if_invalid_voter(self)dao:
         with self.assertRaises(AssertionError):
             self.upgrade.vote(signer='mn04')
 
     def test_vote_cannot_vote_twice(self):
-        self.upgrade.vote(
-            signer='mn01', lamden_branch_name='main', contracting_branch_name='main', pepper='pepper'
+        self.upgrade.propose_upgrade(
+            signer='mn01', lamden_tag='new', contracting_tag='new'
         )
 
         with self.assertRaises(AssertionError):
-            self.upgrade.vote(signer='mn01')
+            self.upgrade.vote(
+                signer='mn01', position=True
+            )
+
+    def test_cannot_propose_while_another_vote_in_progress(self):
+        self.upgrade.propose_upgrade(
+            signer='mn01', lamden_tag='new', contracting_tag='new'
+        )
+
+        with self.assertRaises(AssertionError):
+            self.upgrade.propose_upgrade(
+                signer='mn01', lamden_tag='new', contracting_tag='new'
+            )
 
     def test_vote_consensus_is_achieved(self):
-        self.upgrade.vote(
-            signer='mn01', lamden_branch_name='main', contracting_branch_name='main', pepper='pepper'
+        self.upgrade.propose_upgrade(
+            signer='mn01', lamden_tag='new', contracting_tag='new'
         )
-        self.upgrade.vote(signer='mn02')
 
-        self.assertTrue(self.contract_driver.get('upgrade.upgrade_state:consensus'))
+        self.upgrade.vote(signer='mn02', position=True)
+        self.upgrade.vote(signer='mn03', position=True)
 
-    def test_vote_raises_if_voting_when_consensus_is_already_achieved(self):
-        self.upgrade.vote(
-            signer='mn01', lamden_branch_name='main', contracting_branch_name='main', pepper='pepper'
+        self.assertEqual(self.contract_driver.get('upgrade.S:lamden_tag'), 'new')
+        self.assertEqual(self.contract_driver.get('upgrade.S:contracting_tag'), 'new')
+
+    def test_vote_dissent_consensus(self):
+        self.upgrade.propose_upgrade(
+            signer='mn01', lamden_tag='new', contracting_tag='new'
         )
-        self.upgrade.vote(signer='mn02')
-        
-        with self.assertRaises(AssertionError):
-            self.upgrade.vote(signer='mn03')
+
+        self.upgrade.vote(signer='mn02', position=True)
+        self.upgrade.vote(signer='mn03', position=False)
+
+        self.assertEqual(self.contract_driver.get('upgrade.S:lamden_tag'), 'v2.0.0')
+        self.assertEqual(self.contract_driver.get('upgrade.S:contracting_tag'), 'v2.0.0')
