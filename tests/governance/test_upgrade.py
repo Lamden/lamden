@@ -44,7 +44,7 @@ class TestUpgrade(TestCase):
         with self.assertRaises(AssertionError):
             self.upgrade.propose_upgrade(signer='mn04')
 
-    def test_vote_raises_if_invalid_voter(self)dao:
+    def test_vote_raises_if_invalid_voter(self):
         with self.assertRaises(AssertionError):
             self.upgrade.vote(signer='mn04')
 
