@@ -7,7 +7,7 @@ has_voted = Hash(default_value=False)
 vote_state = Hash()
 startup = Hash()
 
-@export
+@construct
 def seed(lamden_tag: str, contracting_tag: str):
     version_state['lamden_tag'] = lamden_tag
     version_state['contracting_tag'] = contracting_tag

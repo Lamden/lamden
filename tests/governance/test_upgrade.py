@@ -6,7 +6,7 @@ from lamden.contracts import sync
 from pathlib import Path
 from unittest import TestCase
 
-class TestCurrency(TestCase):
+class TestUpgrade(TestCase):
     def setUp(self):
         self.contract_driver = ContractDriver(driver=FSDriver(root=Path('/tmp/temp_filebased_state')))
         self.client = ContractingClient(driver=self.contract_driver)
@@ -21,10 +21,8 @@ class TestCurrency(TestCase):
         self.client.flush()
 
     def test_seed_sets_initial_values_correctly(self):
-        self.assertFalse(self.contract_driver.get('upgrade.upgrade_state:locked'))
-        self.assertFalse(self.contract_driver.get('upgrade.upgrade_state:consensus'))
-        self.assertEqual(0, self.contract_driver.get('upgrade.upgrade_state:votes'))
-        self.assertEqual(0, self.contract_driver.get('upgrade.upgrade_state:voters'))
+        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.version_state:lamden_tag'))
+        self.assertEqual('v2.0.0', self.contract_driver.get('upgrade.version_state:contracting_tag'))
 
     def test_start_vote_updates_state_correctly(self):
         env = {'now': Datetime._from_datetime(dt.today())}
