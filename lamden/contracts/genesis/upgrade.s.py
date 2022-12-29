@@ -8,10 +8,11 @@ vote_state = Hash()
 startup = Hash()
 
 @export
-def start_vote(lamden_tag: str, contracting_tag: str):
+def propose_upgrade(lamden_tag: str, contracting_tag: str):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Not a member!'
+    assert lamden_tag is not None and lamden_tag != '' and contracting_tag is not None and contracting_tag != '', 'Version string is not valid!'
 
-    if voting_expired():
+    if expired():
         vote_state.clear()
         has_voted.clear()
 
@@ -19,37 +20,51 @@ def start_vote(lamden_tag: str, contracting_tag: str):
 
     vote_state['lamden_tag'] = lamden_tag
     vote_state['contracting_tag'] = contracting_tag
-    vote_state['votes'] = 1
+    vote_state['yays'] = 1
+    vote_state['nays'] = 0
     vote_state['started'] = now
     has_voted[ctx.caller] = True
 
 @export
-def vote():
+def vote(position):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Invalid voter!'
-    assert vote_state['started'] is not None, 'No voting in progress!'
+    assert vote_state['started'] is not None, 'No open proposals!'
+    assert type(position) == bool, 'Position is not valid!'
 
-    if voting_expired():
+    if expired():
         vote_state.clear()
         has_voted.clear()
     else:
-        if has_consensus():
-            version_state['lamden_tag'] = vote_state['lamden_tag']
-            version_state['contracting_tag'] = vote_state['contracting_tag']
-            vote_state.clear()
-            has_voted.clear()
+        assert not has_voted[ctx.caller], 'Cannot vote twice!'
+        if position:
+            vote_state['yays'] += 1
         else:
-            assert not has_voted[ctx.caller], 'Cannot vote twice!'
-            vote_state['votes'] += 1
-            has_voted[ctx.caller] = True
+            vote_state['nays'] += 1
+        has_voted[ctx.caller] = True
+
+        check_consensus()
+
 @export
 def startup(lamden_tag: str, contracting_tag: str):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Not a member!'
+    assert lamden_tag is not None and lamden_tag != '' and contracting_tag is not None and contracting_tag != '', 'Tags are not valid!'
 
     startup[ctx.caller, 'lamden_tag'] = lamden_tag
     startup[ctx.caller, 'contracting_tag'] = contracting_tag
 
-def has_consensus():
-    return vote_state['votes'] >= (len(election_house.current_value_for_policy('masternodes')) * 2 // 3 + 1)
+def get_majority():
+    return len(election_house.current_value_for_policy('masternodes')) * 2 // 3 + 1
 
-def voting_expired():
+def check_consensus():
+    majority = get_majority()
+    if vote_state['yays'] >= majority:
+        version_state['lamden_tag'] = vote_state['lamden_tag']
+        version_state['contracting_tag'] = vote_state['contracting_tag']
+        vote_state.clear()
+        has_voted.clear()
+    elif vote_state['nays'] >= majority:
+        vote_state.clear()
+        has_voted.clear()
+
+def expired():
     return vote_state['started'] is not None and now - vote_state['started'] > ELECTION_WINDOW
