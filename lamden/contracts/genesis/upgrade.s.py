@@ -8,6 +8,11 @@ vote_state = Hash()
 startup = Hash()
 
 @export
+def seed(lamden_tag: str, contracting_tag: str):
+    version_state['lamden_tag'] = lamden_tag
+    version_state['contracting_tag'] = contracting_tag
+
+@export
 def propose_upgrade(lamden_tag: str, contracting_tag: str):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Not a member!'
     assert lamden_tag is not None and lamden_tag != '' and contracting_tag is not None and contracting_tag != '', 'Version string is not valid!'
@@ -26,7 +31,7 @@ def propose_upgrade(lamden_tag: str, contracting_tag: str):
     has_voted[ctx.caller] = True
 
 @export
-def vote(position):
+def vote(position: bool):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Invalid voter!'
     assert vote_state['started'] is not None, 'No open proposals!'
     assert type(position) == bool, 'Position is not valid!'
