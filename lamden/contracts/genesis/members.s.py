@@ -57,6 +57,10 @@ def vote(vk: str, obj: list):
 
     else:
         assert S['current_motion'] != NO_MOTION, 'No motion proposed.'
+
+        if now - S['motion_opened'] >= VOTING_PERIOD:
+            reset()
+
         assert S['positions', vk] is None, 'VK already voted.'
 
         if position is True:
@@ -71,9 +75,6 @@ def vote(vk: str, obj: list):
             reset()
 
         elif S['nays'] >= len(S['members']) // 2 + 1:
-            reset()
-
-        elif now - S['motion_opened'] >= VOTING_PERIOD:
             reset()
 
 

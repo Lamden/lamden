@@ -1040,7 +1040,7 @@ class Node:
             'lamden_tag': new_lam_tag,
             'contracting_tag': new_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
-            'utc_when': str(datetime.utcnow() + timedelta(minutes=5 + self.network.get_node_list().index(self.wallet.verifying_key) * 5))
+            'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 5))
         })
         self.event_writer.write_event(e)
         self.log.debug(f'Sent upgrade event: {e.__dict__}')
