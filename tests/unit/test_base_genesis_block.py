@@ -4,15 +4,15 @@ from pathlib import Path
 
 from lamden.nodes.base import Node
 
-from lamden.storage import BlockStorage, NonceStorage, set_latest_block_height
-from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
+from lamden.storage import BlockStorage, NonceStorage
+from lamden.nodes.events import EventWriter
+from contracting.db.driver import ContractDriver, InMemDriver
 from lamden.nodes.filequeue import FileQueue
 
 from lamden.crypto.wallet import Wallet
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 
-from typing import List
 from lamden.cli.start import resolve_genesis_block
 
 import asyncio
@@ -69,7 +69,8 @@ class TestBaseGenesisBlock(TestCase):
             genesis_block=genesis,
             tx_queue=tx_queue,
             testing=True,
-            nonces=nonce_storage
+            nonces=nonce_storage,
+            event_writer=EventWriter(root=node_dir)
         )
 
     def start_node(self):
