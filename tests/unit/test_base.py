@@ -1,11 +1,15 @@
+from contracting.db.driver import ContractDriver, FSDriver
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node
+from lamden.nodes.events import EventWriter
 from lamden.nodes.hlc import HLC_Clock
+from pathlib import Path
 from tests.integration.mock.local_node_network import LocalNodeNetwork
 from tests.unit.helpers.mock_transactions import get_new_currency_tx, get_processing_results
 from unittest import TestCase
 import asyncio
 import json
+import shutil
 import uvloop
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -63,7 +67,8 @@ class TestNode(TestCase):
     def test_start_join_existing_network_no_bootnodes(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, join=True)
+        path = Path().cwd().joinpath("temp_storage")
+        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, join=True, driver=ContractDriver(driver=FSDriver(root=path)), event_writer=EventWriter(root=path))
         self.await_async_process(self.node.start)
 
         self.assertFalse(self.node.running)
@@ -71,6 +76,8 @@ class TestNode(TestCase):
         self.assertFalse(self.node.main_processing_queue.running)
         self.assertFalse(self.node.validation_queue.running)
         self.assertFalse(self.node.system_monitor.running)
+
+        shutil.rmtree(path)
 
     def test_start_join_existing_network_bootnode_is_not_reachable(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
@@ -351,7 +358,8 @@ class TestNode(TestCase):
 
         processing_results = get_processing_results(
             tx_message=self.node.node.make_tx_message(tx=get_new_currency_tx(wallet=self.node.wallet)),
-            node_wallet=peer_wallet
+            node_wallet=peer_wallet,
+            driver=self.node.contract_driver
         )
         older_hlc = processing_results['hlc_timestamp']
 
