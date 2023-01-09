@@ -21,6 +21,8 @@ import asyncio
 import uvloop
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
+from lamden.nodes.events import EventWriter
+
 class Peer:
     def __init__(self, blocks: list):
         self.blocks = blocks
@@ -119,7 +121,8 @@ class TestBaseNode_Catchup(TestCase):
             tx_queue=tx_queue,
             testing=True,
             nonces=nonce_storage,
-            genesis_block=genesis_block_data
+            genesis_block=genesis_block_data,
+            event_writer=EventWriter(root=self.temp_storage)
         )
 
     def create_socket_ports(self, index=0):
@@ -251,13 +254,14 @@ class TestBaseNode_Catchup(TestCase):
         hlc_timestamp = self.mock_blocks.latest_hlc_timestamp
 
         tx_message = get_tx_message(
-            hlc_timestamp=hlc_timestamp
+            hlc_timestamp=hlc_timestamp,
+            processor=self.node.vk
         )
 
         self.node.driver.driver.set('masternodes.S:members', [tx_message['tx']['payload']['processor']])
 
-        processing_results_1 = get_processing_results(tx_message=tx_message)
-        processing_results_2 = get_processing_results(tx_message=tx_message)
+        processing_results_1 = get_processing_results(tx_message=tx_message, driver=self.node.driver)
+        processing_results_2 = get_processing_results(tx_message=tx_message, driver=self.node.driver)
 
         self.node.validation_queue.append(processing_results_1)
         self.node.validation_queue.append(processing_results_2)
@@ -295,13 +299,14 @@ class TestBaseNode_Catchup(TestCase):
 
         hlc_timestamp = last_block.get('hlc_timestamp')
         tx_message = get_tx_message(
-            hlc_timestamp=hlc_timestamp
+            hlc_timestamp=hlc_timestamp,
+            processor=self.node.vk
         )
         current_members = self.node.driver.driver.get(item='masternodes.S:members')
         current_members.append(tx_message['tx']['payload']['processor'])
         self.node.driver.driver.set('masternodes.S:members', current_members)
         for i in range(2):
-            processing_results = get_processing_results(tx_message=tx_message)
+            processing_results = get_processing_results(tx_message=tx_message, driver=self.node.driver)
             self.node.validation_queue.append(processing_results)
 
         # set the latest block higher for all the catchup peers to mimic them also processing these blocks
