@@ -13,9 +13,6 @@ from lamden.logger.base import get_logger
 from contracting.db.encoder import decode
 
 
-def cfg_and_start_rsync_daemon():
-    os.system('cp rsyncd.conf /etc/ && rsync --daemon > /dev/null 2>&1')
-
 def print_ascii_art():
     print('''
                 ##
@@ -80,7 +77,7 @@ def resolve_genesis_block(fp):
 def start_node(args):
     logger = get_logger('STARTUP')
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
 
     wallet = Wallet(seed=sk)
 
@@ -98,16 +95,9 @@ def start_node(args):
 
     logger.info(f'socket_base: {socket_base}')
 
-    # Setup Environment
-    CURR_DIR = pathlib.Path(os.getcwd())
-    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
-    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
-
     # Kill the
     if args.pid > -1:
         subprocess.check_call(['kill', '-15', str(args.pid)])
-
-    cfg_and_start_rsync_daemon()
 
     n = Node(
         debug=args.debug,
@@ -125,28 +115,23 @@ def start_node(args):
 
 
 def join_network(args):
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
 
     wallet = Wallet(seed=sk)
 
-    # REMOVED FOR LAMDEN 2.0. The constitution will be taken from a bootnode directly using ZMQ
-    mn_seed = f'tcp://{args.mn_seed}:19000'
-
-    mn_id_response = requests.get(f'http://{args.mn_seed}:{args.mn_seed_port}/id')
-
-    bootnodes = {mn_id_response.json()['verifying_key']: mn_seed}
+    bootnode_ips = os.environ['LAMDEN_BOOTNODES'].split(':')
+    bootnodes = {}
+    for ip in bootnode_ips:
+        resp = requests.get(f'http://{ip}:18080/id').json()
+        vk = resp.get('verifying_key') 
+        if vk is not None:
+            bootnodes[vk] = f'tcp://{ip}:19000'
 
     ip_str = requests.get('http://api.ipify.org').text
     socket_base = f'tcp://{ip_str}:19000'
 
-    # Setup Environment
-    CURR_DIR = pathlib.Path(os.getcwd())
-    os.environ['PKG_ROOT'] = str(CURR_DIR.parent)
-    os.environ['CIL_PATH'] = os.environ.get('PKG_ROOT') + '/lamden'
-
-    cfg_and_start_rsync_daemon()
-
     n = Node(
+        debug=args.debug,
         wallet=wallet,
         socket_base=socket_base,
         bootnodes=bootnodes,

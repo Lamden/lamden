@@ -29,7 +29,10 @@
 		{
 			"name": "upgrade",
 			"owner": null,
-			"constructor_args": null
+			"constructor_args": {
+                "lamden_tag": "v2.0.0",
+                "contracting_tag": "v2.0.0"
+            }
 		},
 		{
 			"name": "foundation",

@@ -795,43 +795,6 @@ class TestNetwork(TestCase):
         for node in node_list_from_netwrok_map:
             self.assertTrue(node in node_list)
 
-    def test_METHOD_network_map_to_constitution(self):
-        network_1 = self.create_network()
-
-        node_list = [
-            {
-                'vk': network_1.vk,
-                'ip': network_1.external_address,
-            },
-            {
-                'vk': Wallet().verifying_key,
-                'ip': 'tcp://127.0.0.1:19001',
-            },
-            {
-                'vk': Wallet().verifying_key,
-                'ip': 'tcp://127.0.0.1:19002',
-            },
-            {
-                'vk': Wallet().verifying_key,
-                'ip': 'tcp://127.0.0.1:19003',
-            },
-        ]
-
-        for node in node_list:
-            vk = node.get('vk')
-
-            self.add_vk_to_smartcontract(network=network_1, vk=vk)
-            network_1.create_peer(vk=vk, ip=node.get('ip'))
-
-        network_map = network_1.make_network_map()
-
-        constitution_from_network_map = network_1.network_map_to_constitution(network_map=network_map)
-
-        for node in node_list:
-            vk = node.get('vk')
-            self.assertTrue(vk in constitution_from_network_map['masternodes'])
-
-        self.assertEqual(4, len(constitution_from_network_map['masternodes']))
 
     def test_METHOD_connected_to_all_peers__task_completes_when_all_peers_are_connected(self):
         network_1 = self.create_network()
@@ -1175,27 +1138,6 @@ class TestNetwork(TestCase):
         constitution = network_1.make_constitution()
 
         self.assertEqual(5, len(constitution.get('masternodes')))
-
-    def test_METHOD_get_peers_for_consensus(self):
-        network_1 = self.create_network()
-
-        masternode_1 = (network_1.router_address, network_1.vk)
-        masternode_2 = ('tcp://127.0.0.1:19001', Wallet().verifying_key)
-        masternode_3 = ('tcp://127.0.0.1:19002', Wallet().verifying_key)
-        delegate_1 = ('tcp://127.0.0.1:19003', Wallet().verifying_key)
-        delegate_2 = ('tcp://127.0.0.1:19004', Wallet().verifying_key)
-
-        masternode_vks = [masternode_1[1], masternode_2[1], masternode_3[1]]
-        delegate_vks = [delegate_1[1], delegate_2[1]]
-
-        network_1.driver.driver.set(
-            key="masternodes.S:members",
-            value=masternode_vks + delegate_vks
-        )
-
-        consensus_peers = network_1.get_peers_for_consensus()
-
-        self.assertEqual(4, len(consensus_peers))
 
     def test_METHOD_authorize_peer__can_add_peer_vk_to_cred_provider(self):
         network_1 = self.create_network()

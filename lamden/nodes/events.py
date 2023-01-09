@@ -72,7 +72,7 @@ class EventService:
         self.__register_app_listeners()
 
     def run(self):
-        self.app.run(port=self.port)
+        self.app.run(host='0.0.0.0', port=self.port)
 
     async def __gather_and_send_events(self):
         while True:

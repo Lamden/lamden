@@ -5,6 +5,7 @@ from pathlib import Path
 from lamden.nodes.base import Node
 
 from lamden.storage import BlockStorage, NonceStorage, set_latest_block_height
+from lamden.nodes.events import EventWriter
 from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.nodes.filequeue import FileQueue
 from lamden.utils import hlc
@@ -77,6 +78,7 @@ class TestBaseNode_HardApply(TestCase):
             testing=True,
             nonces=nonce_storage,
             genesis_block=self.genesis_block,
+            event_writer=EventWriter(root=node_dir)
         )
 
     def start_node(self):
@@ -142,7 +144,7 @@ class TestBaseNode_HardApply(TestCase):
         self.assertEqual(1, len(self.node.held_blocks))
 
     def test_hard_apply_processing_results__mints_block_from_processing_results_object(self):
-        processing_results = get_processing_results()
+        processing_results = get_processing_results(driver=self.node.driver)
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
         expected_block_num = hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
@@ -178,7 +180,7 @@ class TestBaseNode_HardApply(TestCase):
         self.node.driver.hard_apply = mock_hard_apply.hard_apply
 
 
-        processing_results = get_processing_results()
+        processing_results = get_processing_results(driver=self.node.driver)
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
         self.node.validation_queue.validation_results[hlc_timestamp] = {}
@@ -202,7 +204,7 @@ class TestBaseNode_HardApply(TestCase):
         mock_hard_apply = HardApply()
         self.node.apply_state_changes_from_block = mock_hard_apply.apply_state_changes_from_block
 
-        processing_results = get_processing_results()
+        processing_results = get_processing_results(driver=self.node.driver)
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
         self.node.validation_queue.validation_results[hlc_timestamp] = {}

@@ -3,16 +3,19 @@ import copy
 import gc
 import hashlib
 import json
+import os
+import pathlib
 import random
 import time
 import uvloop
+import requests
 
 from copy import deepcopy
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
 
-from lamden import storage, router, upgrade, contracts
+from lamden import storage, router, contracts
 from lamden.peer import Peer
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
@@ -28,6 +31,9 @@ from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, reca
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
+
+from lamden.crypto.transaction import build_transaction
+from datetime import datetime, timedelta
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -68,7 +74,7 @@ class Node:
     def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
-                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False):
+                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False, event_writer=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -86,7 +92,7 @@ class Node:
 
         self.driver = driver if driver is not None else ContractDriver()
         self.nonces = nonces if nonces is not None else storage.NonceStorage()
-        self.event_writer = EventWriter()
+        self.event_writer = event_writer if event_writer is not None else EventWriter()
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
 
@@ -155,8 +161,6 @@ class Node:
             submission_filename=None
         )
 
-        self.upgrade_manager = upgrade.UpgradeManager(client=self.client, wallet=self.wallet)
-
         # Number of core / processes we push to
         self.parallelism = parallelism
 
@@ -204,13 +208,10 @@ class Node:
 
         self.running = False
         self.started = False
-        self.upgrade = False
 
         self.bypass_catchup = bypass_catchup
 
         self.reconnect_attempts = reconnect_attempts
-
-        #self.log.info(f'Pepper: {upgrade.build_pepper2()}')
 
     @property
     def vk(self) -> str:
@@ -238,6 +239,7 @@ class Node:
                 await self.join_existing_network()
 
             asyncio.ensure_future(self.check_tx_queue())
+
             self.started = True
             print("STARTED NODE")
 
@@ -292,6 +294,8 @@ class Node:
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
 
+        self.send_startup_transaction(self.wallet.verifying_key)
+
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
         self.validation_queue.disable_append()
@@ -335,6 +339,9 @@ class Node:
                     self.log.info(f'Attempt {connection_attempts}/attempts failed to connect. Trying again in {sleep_for} seconds.')
                     await asyncio.sleep(sleep_for)
 
+            if bootnode is not None and bootnode.is_connected:
+                break
+
         if bootnode is None:
             print("Could not connect to any bootnodes!")
             print(self.bootnodes)
@@ -363,6 +370,7 @@ class Node:
 
         self.network.router.cred_provider.secure_messages()
 
+        processor_vk = None
         # Connect to all nodes in the network
         for node_info in self.network.network_map_to_node_list(network_map=network_map):
             vk = node_info.get('vk')
@@ -377,6 +385,7 @@ class Node:
                     ip=ip,
                     vk=vk
                 )
+                processor_vk = vk
 
         await self.network.connected_to_all_peers()
 
@@ -392,9 +401,13 @@ class Node:
             # Start the validation queue so we start accepting block results
             self.validation_queue.enable_append()
 
+            self.send_startup_transaction(processor_vk)
+
             # Now start catching up to minting of blocks from validation queue
             await self.catchup_to_validation_queue()
 
+        else:
+            self.send_startup_transaction(processor_vk)
 
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
@@ -405,6 +418,24 @@ class Node:
         # Start the processing queue
         self.main_processing_queue.enable_append()
         self.start_main_processing_queue_task()
+
+    def send_startup_transaction(self, processor_vk):
+        ip = 'lamden_webserver' if processor_vk == self.wallet.verifying_key else self.network.get_node_ip(processor_vk)
+        try:
+            nonce = json.loads(requests.get(f'http://{ip}:18080/nonce/{self.wallet.verifying_key}', timeout=(10,10)).text)['nonce']
+            startup_tx = build_transaction(
+                wallet=self.wallet,
+                contract='upgrade',
+                function='startup',
+                kwargs={'lamden_tag': os.getenv('LAMDEN_TAG'), 'contracting_tag': os.getenv('CONTRACTING_TAG')},
+                nonce=nonce,
+                processor=processor_vk,
+                stamps=500
+            )
+            self.log.info(f'Sending startup transaction... Receiver vk: {processor_vk}, receiver ip: {ip}')
+            self.log.info(requests.post(f'http://{ip}:18080', data=startup_tx).json())
+        except Exception as e:
+            self.log.error(f'An attempt to send startup transaction failed with error: {e}')
 
     async def catchup(self):
         # Get the current latest block stored and the latest block of the network
@@ -654,6 +685,7 @@ class Node:
 
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0)
+
 
     async def check_main_processing_queue(self):
         self.main_processing_queue.start()
@@ -981,9 +1013,37 @@ class Node:
             ))
 
     def hard_apply_block_finish(self, block: dict):
-        hlc_timestamp = block.get('hlc_timestamp')
-        self.check_peers(state_changes=self.get_state_changes_from_block(block=block), hlc_timestamp=hlc_timestamp)
+        state_changes = self.get_state_changes_from_block(block=block)
+        self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
+        if int(block.get('number')) != 0:
+            self.check_upgrade(state_changes=state_changes)
         gc.collect()
+
+    def check_upgrade(self, state_changes: list):
+        for change in state_changes:
+            if change['key'] == 'upgrade.S:lamden_tag' or change['key'] == 'upgrade.S:contracting_tag':
+                self.produce_upgrade_event()
+                break
+
+    def produce_upgrade_event(self):
+        cur_lam_tag = os.getenv('LAMDEN_TAG', '')
+        cur_con_tag = os.getenv('CONTRACTING_TAG', '')
+        new_lam_tag = self.driver.driver.get('upgrade.S:lamden_tag') or ''
+        new_con_tag = self.driver.driver.get('upgrade.S:contracting_tag') or ''
+
+        should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
+        if not should_upgrade:
+            return
+
+        e = Event(topics=['upgrade'], data={
+            'node_vk': self.wallet.verifying_key,
+            'lamden_tag': new_lam_tag,
+            'contracting_tag': new_con_tag,
+            'bootnode_ips': self.network.get_bootnode_ips(),
+            'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 5))
+        })
+        self.event_writer.write_event(e)
+        self.log.debug(f'Sent upgrade event: {e.__dict__}')
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []
@@ -1266,9 +1326,6 @@ class Node:
     # Put into 'super driver'
     def get_block_by_number(self, block_number: str) -> dict:
         return self.blocks.get_block(v=int(block_number))
-
-    def make_constitution(self):
-        return self.network.make_constitution()
 
     def store_genesis_block(self, genesis_block: dict) -> bool:
         self.log.info('Processing Genesis Block.')

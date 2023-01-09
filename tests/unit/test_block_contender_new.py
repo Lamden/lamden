@@ -167,7 +167,7 @@ class TestBlockContenderProcessor(TestCase):
         # Create Tx and Results
         self.driver.driver.set(f'currency.balances:{self.wallet.verifying_key}', 1000)
         tx_message = get_tx_message(wallet=self.wallet, processor=self.wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         # Await processing the message
         self.await_process_message(msg=processing_results)
@@ -177,7 +177,7 @@ class TestBlockContenderProcessor(TestCase):
 
     def test_can_append_its_own_message(self):
         tx_message = get_tx_message(wallet=self.wallet, processor=self.wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.wallet, driver=self.driver)
 
         self.await_process_message(msg=processing_results)
 
@@ -188,7 +188,7 @@ class TestBlockContenderProcessor(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
 
         tx_message = get_tx_message()
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         processing_results.pop('proof')
 
@@ -204,7 +204,7 @@ class TestBlockContenderProcessor(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
 
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         processing_results['proof']['signature'] = 'bad_sig'
 
@@ -220,7 +220,7 @@ class TestBlockContenderProcessor(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
 
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         hlc_timestamp = processing_results.get('hlc_timestamp')
 
@@ -234,7 +234,7 @@ class TestBlockContenderProcessor(TestCase):
 
     def test_does_not_append_if_proof_is_not_from_voted_in_node(self):
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
         self.driver.driver.set('masternodes.S:members', [])
 
         with self.assertLogs(level='ERROR') as log:
@@ -244,7 +244,7 @@ class TestBlockContenderProcessor(TestCase):
 
     def test_appends_if_proof_is_from_voted_in_node(self):
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         self.await_process_message(msg=processing_results)
 
@@ -255,7 +255,7 @@ class TestBlockContenderProcessor(TestCase):
         self.peers.append(self.stu_wallet.verifying_key)
         self.block_contender.network.authorize_peer(peer_vk=self.stu_wallet.verifying_key)
         tx_message = get_tx_message(wallet=self.stu_wallet, processor=self.stu_wallet.verifying_key)
-        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet)
+        processing_results = get_processing_results(tx_message=tx_message, node_wallet=self.stu_wallet, driver=self.driver)
 
         self.validation_queue.last_hlc_in_consensus = self.hlc_clock.get_new_hlc_timestamp()
 

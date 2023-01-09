@@ -21,7 +21,6 @@ def setup_cilparser(parser):
                                       help='Shows set of update cmd options', dest='command')
 
     start_parser = subparser.add_parser('start')
-    start_parser.add_argument('-k', '--key', type=str)
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
     start_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
@@ -33,10 +32,10 @@ def setup_cilparser(parser):
     flush_parser.add_argument('storage_type', type=str)
 
     join_parser = subparser.add_parser('join')
-    join_parser.add_argument('-k', '--key', type=str)
     join_parser.add_argument('-m', '--mn_seed', type=str)
     join_parser.add_argument('-mp', '--mn_seed_port', type=int, default=18080)
     join_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
+    join_parser.add_argument('-d', '--debug', type=bool, default=False)
 
     sync_parser = subparser.add_parser('sync')
 

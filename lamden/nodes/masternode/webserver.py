@@ -24,6 +24,8 @@ import decimal
 import argparse
 from lamden.contracts import sync
 
+import os
+
 log = get_logger("MN-WebServer")
 
 class NonceEncoder(_json.JSONEncoder):
@@ -140,19 +142,19 @@ class WebServer:
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
-            print("CONNECTED TO EVENT SERVER")
+            log.debug("CONNECTED TO EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('join', {'room': topic})
 
         @self.sio.event
         async def disconnect():
-            print("DISCONNECTED FROM EVENT SERVER")
+            log.debug("DISCONNECTED FROM EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
-        async def connect_error():
-            print("CONNECTION FAILED!")
+        def connect_error(error):
+            log.error(f"Event Service error: {error}")
 
         @self.sio.event
         async def event(data):
@@ -162,13 +164,11 @@ class WebServer:
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
         async def connect_to_event_service(app, loop):
-            # TODO(nikita): what do we do in case event service is not running?
             try:
-                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.connect(f'http://lamden_events:{self.event_service_port}')
                 await self.sio.wait()
-            except Exception as err:
-                print("ERROR ATTEMPTING TO CONNECT TO EVENT SERVER")
-                print(err)
+            except:
+                pass
 
     async def ws_handler(self, request, ws):
         self.ws_clients.add(ws)
@@ -194,7 +194,7 @@ class WebServer:
             try:
                 await ws.send(encode(eventData))
             except Exception as err:
-                print(err)
+                log.error(err)
 
             async for message in ws:
                 pass
@@ -484,13 +484,12 @@ class WebServer:
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
-    arg_parser.add_argument('-k', '--key', type=str, required=True)
     arg_parser.add_argument('-p', '--port', type=int, required=False)
     arg_parser.add_argument('-ep', '--event_port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
     port = args.port
     event_port = args.event_port
 
@@ -503,7 +502,7 @@ if __name__ == '__main__':
     wallet = Wallet(seed=sk)
 
     # These will be the topics that are sent from the event server
-    topics = ["new_block", "block_reorg"]
+    topics = ["new_block", "block_reorg", "upgrade"]
 
     webserver = WebServer(
         contracting_client=ContractingClient(submission_filename=sync.DEFAULT_SUBMISSION_PATH),
