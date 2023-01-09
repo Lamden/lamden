@@ -275,11 +275,11 @@ class TestNode(TestCase):
 
         # Jeff has no balance
         jeff_balance_mid = self.tn.get_cached_smart_contract_value(key=f'currency.balances:{self.jeff_wallet.verifying_key}')
-        self.assertEqual(str(None), str(jeff_balance_mid))
+        self.assertEqual(0, jeff_balance_mid)
 
         # Archer has no balance
         archer_balance_mid = self.tn.get_cached_smart_contract_value(key=f'currency.balances:{self.archer_wallet.verifying_key}')
-        self.assertEqual(str(None), str(archer_balance_mid))
+        self.assertEqual(0, archer_balance_mid)
 
         # Process TX#1 which is an earlier HLC and should kick off reprocessing
         self.node.main_processing_queue.append(tx=tx_message_1)
