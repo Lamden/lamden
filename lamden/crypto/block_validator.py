@@ -4,13 +4,14 @@ from contracting.db.encoder import encode
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
 from lamden.utils import hlc
+from copy import deepcopy
 
 GENESIS_BLOCK_NUMBER = "0"
 GENESIS_HLC_TIMESTAMP = '0000-00-00T00:00:00.000000000Z_0'
 GENESIS_PREVIOUS_HASH = '0' * 64
 GENESIS_BLOCK_NUMBER_OF_KEYS = 6
 
-BLOCK_NUMBER_OF_KEYS = 8
+BLOCK_NUMBER_OF_KEYS = 9
 
 EXCEPTION_BLOCK_HASH_MALFORMED = "Block Hash is Malformed."
 EXCEPTION_BLOCK_PREVIOUS_HASH_MALFORMED = "Block Previous Hash is Malformed."
@@ -22,6 +23,8 @@ EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED = "Block Origin Signature is Malforme
 EXCEPTION_BLOCK_REWARDS_INVALID = "Block Rewards are Invalid."
 EXCEPTION_BLOCK_PROOFS_INVALID = "Block Proofs are Invalid."
 EXCEPTION_BLOCK_PROOF_MALFORMED = "Block Proof is Malformed."
+EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED = "Block Minter Signature is Malformed."
+EXCEPTION_BLOCK_MINTED_INVALID = "Block Minted is Invalid."
 EXCEPTION_BLOCK_PROCESSED_INVALID = "Block Processed is Invalid."
 EXCEPTION_BLOCK_KEYS_INVALID_NUMBER = f"Block should only have {BLOCK_NUMBER_OF_KEYS} keys."
 
@@ -77,6 +80,12 @@ class BlockProofsInvalid(Exception):
     pass
 
 class BlockProofMalformed(Exception):
+    pass
+
+class BlockMinterSignatureMalformed(Exception):
+    pass
+
+class BlockMintedInvalid(Exception):
     pass
 
 class BlockProcessedInvalid(Exception):
@@ -147,6 +156,10 @@ def validate_block_structure(block: dict) -> bool:
         processed_transaction = block.get('processed')
         if not isinstance(processed_transaction, dict):
             raise BlockProcessedInvalid(EXCEPTION_BLOCK_PROCESSED_INVALID)
+
+        minted = block.get('minted')
+        if not isinstance(minted, dict) or not minted.get('minter') or not minted.get('signature'):
+            raise BlockMintedInvalid(EXCEPTION_BLOCK_MINTED_INVALID)
 
         if len(block.keys()) != BLOCK_NUMBER_OF_KEYS:
             raise BlockKeysInvalidNumber(EXCEPTION_BLOCK_KEYS_INVALID_NUMBER)
@@ -408,7 +421,22 @@ def validate_all_signatures(block: dict) -> bool:
     if not verify_proofs(block=block):
         raise BlockProofMalformed(EXCEPTION_BLOCK_PROOF_MALFORMED)
 
+    if not verify_minter_signature(deepcopy(block)):
+        raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
+
     return True
+
+def verify_minter_signature(block):
+    try:
+        signature = block['minted']['signature']
+        minter = block['minted']['minter']
+        del block['minted']
+
+        valid = verify(vk=minter, msg=encode(block), signature=signature)
+        return valid
+    except Exception as err:
+        print(err)
+        return False
 
 def verify_transaction_signature(transaction: dict) -> bool:
     try:

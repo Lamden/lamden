@@ -906,7 +906,8 @@ class Node:
             new_block = block_from_tx_results(
                 processing_results=processing_results,
                 proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
-                prev_block_hash=prev_block.get('hash')
+                prev_block_hash=prev_block.get('hash'),
+                wallet=self.wallet
             )
         else:
             new_block = block
@@ -974,7 +975,8 @@ class Node:
         new_block = block_from_tx_results(
             processing_results=processing_results,
             proofs=self.validation_queue.get_proofs_from_results(hlc_timestamp=hlc_timestamp),
-            prev_block_hash=prev_block.get('hash')
+            prev_block_hash=prev_block.get('hash'),
+            wallet=self.wallet
         )
 
         consensus_matches_me = self.validation_queue.consensus_matches_me(hlc_timestamp=hlc_timestamp)

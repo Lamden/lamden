@@ -100,7 +100,7 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
 
     return block
 
-def block_from_tx_results(processing_results, proofs, prev_block_hash) -> dict:
+def block_from_tx_results(processing_results, proofs, prev_block_hash, wallet) -> dict:
     tx_result = processing_results.get('tx_result')
     hlc_timestamp = processing_results.get('hlc_timestamp')
 
@@ -122,6 +122,12 @@ def block_from_tx_results(processing_results, proofs, prev_block_hash) -> dict:
         'processed': tx_result,
         'rewards': processing_results.get('rewards'),
         'origin': processing_results.get('tx_message')
+    }
+
+    signature = wallet.sign(encode(deepcopy(block)))
+    block['minted'] = {
+        'minter': wallet.verifying_key,
+        'signature': signature
     }
 
     return block
