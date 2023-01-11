@@ -434,6 +434,38 @@ def get():
         _, response = self.ws.app.test_client.post('/', data=tx)
         self.assertDictEqual(response.json, {'error': 'Transaction processor does not match expected processor.'})
 
+    def test_tx_with_redundant_keys_is_not_accepted(self):
+        w = Wallet()
+        self.ws.client.set_var(
+            contract='currency',
+            variable='balances',
+            arguments=[w.verifying_key],
+            value=1_000_000
+        )
+        self.ws.client.set_var(
+            contract='stamp_cost',
+            variable='S',
+            arguments=['value'],
+            value=100
+        )
+
+        tx = decode(build_transaction(
+            wallet=w,
+            processor=self.ws.wallet.verifying_key,
+            stamps=6000,
+            nonce=0,
+            contract='contract',
+            function='function',
+            kwargs={}
+        ))
+        tx['payload']['something'] = 'something'
+        tx['metadata']['signature'] = w.sign(encode(copy.deepcopy(tx['payload'])))
+
+        tx = encode(tx)
+        _, response = self.ws.app.test_client.post('/', data=tx)
+
+        self.assertEqual(len(self.ws.queue), 0)
+
     def test_good_transaction_is_put_into_queue(self):
         self.assertEqual(len(self.ws.queue), 0)
 

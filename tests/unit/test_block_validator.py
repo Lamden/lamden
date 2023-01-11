@@ -1,10 +1,9 @@
-from unittest import TestCase
-
-from lamden.crypto import block_validator
-from lamden.crypto.wallet import Wallet
-from lamden.crypto.block_validator import BLOCK_EXCEPTIONS, PROCESSED_TX_EXCEPTIONS, PAYLOAD_EXCEPTIONS
-from lamden.crypto.canonical import format_dictionary
+from contracting.db.encoder import encode
 from copy import deepcopy
+from lamden.crypto import block_validator
+from lamden.crypto.block_validator import BLOCK_EXCEPTIONS, PROCESSED_TX_EXCEPTIONS, PAYLOAD_EXCEPTIONS
+from lamden.crypto.wallet import Wallet
+from unittest import TestCase
 
 TRANSACTION = dict({
       "metadata": {
@@ -171,6 +170,11 @@ class TestBlockValidator(TestCase):
     def setUp(self):
         self.block = deepcopy(BLOCK_V2)
         self.wallet = Wallet()
+        signature = self.wallet.sign(encode(self.block))
+        self.block['minted'] = {
+            'minter': self.wallet.verifying_key,
+            'signature': signature
+        }
 
     def test_verify_block__returns_TRUE_if_block_is_valid(self):
         self.assertTrue(block_validator.verify_block(
@@ -182,6 +186,11 @@ class TestBlockValidator(TestCase):
         self.assertFalse(block_validator.verify_block(
             block=self.block
         ))
+
+    def test_verify_block__returns_FALSE_if_minter_signature_is_malformed(self):
+        self.block['minted']['signature'] = 'abc'
+
+        self.assertFalse(block_validator.verify_block(block=self.block))
 
     def test_hash_is_sha256__retuns_TRUE_if_hash_is_valid(self):
         self.assertTrue(block_validator.hash_is_sha256(
@@ -219,6 +228,27 @@ class TestBlockValidator(TestCase):
 
     def test_validate_block_structure__raises_no_exceptions_if_block_is_valid(self):
         self.assertTrue(block_validator.validate_block_structure(block=self.block))
+
+    def test_validate_block_structure__raises_BlockMintedInvalid(self):
+        with self.assertRaises(block_validator.BlockMintedInvalid) as err:
+            self.block['minted'] = []
+            block_validator.validate_block_structure(block=self.block)
+
+        with self.assertRaises(block_validator.BlockMintedInvalid) as err:
+            self.block['minted'] = {}
+            block_validator.validate_block_structure(block=self.block)
+
+        with self.assertRaises(block_validator.BlockMintedInvalid) as err:
+            self.block['minted'] = {'something': 'something', 'something': 'something'}
+            block_validator.validate_block_structure(block=self.block)
+
+        with self.assertRaises(block_validator.BlockMintedInvalid) as err:
+            self.block['minted'] = {'minter': 'me', 'something': 'else'}
+            block_validator.validate_block_structure(block=self.block)
+
+        with self.assertRaises(block_validator.BlockMintedInvalid) as err:
+            self.block['minted'] = {'signature': 'abc', 'something': 'else'}
+            block_validator.validate_block_structure(block=self.block)
 
     def test_validate_block_structure__raises_BlockHashMalformed(self):
         with self.assertRaises(block_validator.BlockHashMalformed) as err:

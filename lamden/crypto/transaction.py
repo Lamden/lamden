@@ -116,10 +116,24 @@ def fixed_is_valid(f: dict):
         return False
     return True
 
+def check_tx_keys(tx):
+    metadata = tx.get('metadata') 
+    if not metadata or len(metadata.keys()) != 1:
+        return False
+
+    payload = tx.get('payload')
+    if not payload:
+        return False
+
+    keys = list(payload.keys())
+    keys_are_valid = list(map(lambda key: key in keys, list(rules.TRANSACTION_PAYLOAD_RULES.keys())))
+    
+    return all(keys_are_valid) and len(keys) == len(list(rules.TRANSACTION_PAYLOAD_RULES.keys()))
+
 
 def check_tx_formatting(tx: dict, expected_processor: str):
-    if not check_format(tx, rules.TRANSACTION_RULES):
-        raise TransactionFormattingError
+    if not check_tx_keys(tx) or not check_format(tx, rules.TRANSACTION_RULES):
+            raise TransactionFormattingError
 
     if not wallet.verify(
             tx['payload']['sender'],
@@ -253,17 +267,11 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
 # Run through all tests
 def transaction_is_valid(transaction, expected_processor, client: ContractingClient, nonces: storage.NonceStorage, strict=True,
                          tx_per_block=15, timeout=60):
-    # Check basic formatting so we can access via __getitem__ notation without errors
-    if not check_format(transaction, rules.TRANSACTION_RULES):
-        return TransactionFormattingError
-
-    #transaction_is_not_expired(transaction, timeout)
+    # Checks if correct processor and if signature is valid
+    check_tx_formatting(transaction, expected_processor)
 
     # Put in to variables for visual ease
     sender = transaction['payload']['sender']
-
-    # Checks if correct processor and if signature is valid
-    check_tx_formatting(transaction, expected_processor)
 
     # Check the Nonce is greater than the current nonce we have
     check_nonce(tx=transaction, nonces=nonces)

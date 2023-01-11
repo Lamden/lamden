@@ -250,8 +250,6 @@ class WebServer:
 
         # Check that the TX is correctly formatted
         try:
-            transaction.check_tx_formatting(tx, self.wallet.verifying_key)
-
             transaction.transaction_is_valid(
                 transaction=tx,
                 expected_processor=self.wallet.verifying_key,
