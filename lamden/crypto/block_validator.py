@@ -158,7 +158,7 @@ def validate_block_structure(block: dict) -> bool:
             raise BlockProcessedInvalid(EXCEPTION_BLOCK_PROCESSED_INVALID)
 
         minted = block.get('minted')
-        if not isinstance(minted, dict) or not minted.get('minter') or not minted.get('signature'):
+        if not isinstance(minted, dict) or len(minted.keys()) != 2 or not minted.get('minter') or not minted.get('signature'):
             raise BlockMintedInvalid(EXCEPTION_BLOCK_MINTED_INVALID)
 
         if len(block.keys()) != BLOCK_NUMBER_OF_KEYS:
