@@ -1,30 +1,6 @@
 {
     "apps": [
         {
-            "name": "lamden_events",
-            "script": "/root/lamden/lamden/nodes/events.py",
-            "args": [
-                "-p", 17080
-            ],
-            "instances": "1",
-            "wait_ready": true,
-            "interpreter" : "python3",
-            "watch": false
-        },
-        {
-            "name": "lamden_webserver_18080",
-            "script": "/root/lamden/lamden/nodes/masternode/webserver.py",
-            "args": [
-                "-k", "",
-                "-p", 18080,
-                "-ep", 17080
-            ],
-            "instances": "1",
-            "wait_ready": true,
-            "interpreter" : "python3",
-            "watch": false
-        },
-        {
             "name": "lamden_block_service",
             "script": "npm",
             "cwd": "/root/lamden_block_service",
