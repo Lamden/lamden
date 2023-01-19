@@ -75,7 +75,7 @@ class MultiProcessConsensus:
                 if time() - start_time > 0.1:
                     timeout = True
                 else:
-                    await asyncio.sleep(0)
+                    await asyncio.sleep(0.1)
 
     async def check_all(self, processes):
         tasks = [asyncio.ensure_future(self.check(process_info)) for process_info in processes]
@@ -141,7 +141,7 @@ async def check(parent_conn):
             print(f'received {res}')
             lst.append(res)
             done = True
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
             
 async def check_all(processes):
     tasks = [asyncio.ensure_future(check(process_info.get('parent_conn'))) for process_info in processes]

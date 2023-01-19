@@ -48,11 +48,11 @@ class ProcessingQueue:
 
     async def stopping(self):
         while self.currently_processing:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
     async def pausing(self):
         while self.currently_processing:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
     def flush(self):
         self.queue = []

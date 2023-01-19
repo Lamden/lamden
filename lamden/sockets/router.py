@@ -259,7 +259,7 @@ class Router():
                 if self.message_callback:
                     asyncio.ensure_future(self.message_callback(ident_vk_string, msg))
 
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
             else:
                 await asyncio.sleep(0.1)
                 # self.log('info', 'No Messages Found!')

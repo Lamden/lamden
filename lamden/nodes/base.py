@@ -59,7 +59,7 @@ class NewBlock(router.Processor):
 
     async def wait_for_next_nbn(self):
         while len(self.q) <= 0:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
         nbn = self.q.pop(0)
 
@@ -626,14 +626,14 @@ class Node:
         if isinstance(self.main_processing_queue, TxProcessingQueue):
             self.main_processing_queue.stop()
             while self.check_main_processing_queue_task and not self.check_main_processing_queue_task.done():
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
 
         self.log.info("!!!!!! main_processing_queue STOPPED !!!!!!")
 
         if self.validation_queue is not None:
             self.validation_queue.stop()
             while self.check_validation_queue_task and not self.check_validation_queue_task.done():
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
 
         self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
 
@@ -684,7 +684,7 @@ class Node:
                     self.main_processing_queue.append(tx=tx_message)
 
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
 
     async def check_main_processing_queue(self):
@@ -697,7 +697,7 @@ class Node:
                 self.main_processing_queue.stop_processing()
 
             self.debug_loop_counter['main'] = self.debug_loop_counter['main'] + 1
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
         self.log.info(f'Exited Check Main Processing Queue.')
 
@@ -714,7 +714,7 @@ class Node:
                 #self.log.debug('[END] check_validation_queue')
 
             self.debug_loop_counter['validation'] = self.debug_loop_counter['validation'] + 1
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
         self.log.info(f'Exited Check Validation Queue.')
 

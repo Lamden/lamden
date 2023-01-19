@@ -13,7 +13,7 @@ class Lock:
 
     async def __aenter__(self):
         while self.lock:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
 
         self.lock = True
 
@@ -187,7 +187,7 @@ class Request():
                 connection_attempts += 1
                 if socket is not None:
                     self.close_socket(socket=socket, pollin=pollin)
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
 
             if not error:
                 error = f'Request Socket Error: Failed to receive response after {attempts} attempts each waiting {timeout}ms'
