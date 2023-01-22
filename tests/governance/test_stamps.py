@@ -84,7 +84,7 @@ class TestStamps(TestCase):
             )
 
     def test_validate_vote_if_already_voted(self):
-        self.stamp_cost.quick_write(variable='S', args=['votes', 'a'], value=True)
+        self.stamp_cost.quick_write(variable='S', args=['has_voted', 'a'], value=True)
 
         with self.assertRaises(AssertionError):
             self.stamp_cost.run_private_function(

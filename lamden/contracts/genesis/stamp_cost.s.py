@@ -76,4 +76,4 @@ def validate_vote(vk: str, obj: int):
 
     assert S['value'] / 2 <= obj <= S['value'] * 2, 'Out of range!'
 
-    assert S['votes', vk] is None, 'Already voted!'
+    assert S['has_voted', vk] is None, 'Already voted!'
