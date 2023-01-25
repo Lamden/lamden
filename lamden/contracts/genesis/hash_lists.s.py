@@ -28,6 +28,50 @@ def get_list(list_name: str, from_con_name: str = None):
     return list(filter(not_deleted, l))
 
 @export
+def list_length(list_name: str, from_con_name: str = None):
+    assert_called_by_contract()
+
+    if from_con_name is None:
+        con_name = ctx.caller
+    else:
+        con_name = from_con_name
+
+    assert_list_exists(con_name, list_name)
+
+    limiter = lists[con_name, list_name, "limiter"]
+
+    max_index = limiter - 1
+
+    deletes_in_list = count_prev_deletes(con_name, list_name, index=max_index)
+
+    length = limiter - deletes_in_list
+
+    if length < 0:
+        length = 0
+
+    return length
+
+@export
+def is_in_list(list_name: str, value: Any, from_con_name: str = None):
+    assert_called_by_contract()
+
+    if from_con_name is None:
+        con_name = ctx.caller
+    else:
+        con_name = from_con_name
+
+    assert_list_exists(con_name, list_name)
+
+    limiter = lists[con_name, list_name, "limiter"]
+
+    for i in range(limiter):
+        if lists[con_name, list_name, str(i)] == value:
+            return True
+
+    return False
+
+
+@export
 def remove_by_index(list_name: str, index: int, from_con_name: str = None):
     assert_called_by_contract()
     con_name = get_con_name(from_con_name, list_name)
@@ -112,6 +156,7 @@ def store_list(list_name: str, list_data: list, from_con_name: str = None):
 
     lists[con_name, list_name, "limiter"] = limiter
 
+
 @export
 def approve(list_name: str, to: str):
     assert_called_by_contract()
@@ -134,7 +179,7 @@ def count_prev_deletes(con_name: str, list_name: str, index: int):
 
     for i in range(index + 1):
         if lists[con_name, list_name, str(i)] == "__del__":
-            dels = + 1
+            dels += 1
 
     return dels
 
@@ -146,10 +191,21 @@ def get_con_name(from_con_name: str, list_name: str):
         assert_permission(from_con_name, list_name)
         return from_con_name
     else:
-        return ctx.caller
+        entry_contract, entry_function = ctx.entry
+        if ctx.caller == 'sys' and entry_contract == 'submission' and entry_function == 'submit':
+
+        else:
+            return ctx.caller
 
 @export
 def assert_called_by_contract():
+    return
+    genesis_contracts = [
+        "currency", "masternodes", "foundation", "elect_members", "election_house", "rewards", "upgrade", "dao",
+        "stamp_cost", "members", "sys"
+    ]
+    if ctx.caller in genesis_contracts:
+        return
     assert ctx.caller[0:4] == "con_", "This method can only be called by contracts."
 
 @export

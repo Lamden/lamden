@@ -45,6 +45,12 @@ class TestCurrency(TestCase):
         except AssertionError:
             self.fail("A caller starting with con_ should pass")
 
+    def test_METHOD_assert_called_by_contract__is_called_by_genesis_contract(self):
+        try:
+            self.hash_lists.assert_called_by_contract( signer="masternodes")
+        except AssertionError:
+            self.fail("A genesis contract should pass")
+
     ###
     # ASSERT PERMISSION
     def test_METHOD_assert_permission__asserts_no_permission(self):
@@ -320,3 +326,47 @@ class TestCurrency(TestCase):
 
         self.assertEqual("You do not have permission to modify list con_valid:test_list.", str(err.exception))
 
+    ###
+    # LIST LENGTH
+    def test_METHOD_list_length__returns_length_no_deletes(self):
+        self.make_list("con_valid", "test_list", [1, 2, 3])
+
+        length = self.hash_lists.list_length(list_name="test_list", signer="con_valid")
+        self.assertEqual(3, length)
+
+    def test_METHOD_list_length__returns_length_no_deletes__from_con_name(self):
+        self.make_list("con_valid", "test_list", [1, 2, 3])
+
+        length = self.hash_lists.list_length(list_name="test_list", from_con_name="con_valid", signer="con_other")
+        self.assertEqual(3, length)
+
+    def test_METHOD_list_length__returns_length_has_deletes(self):
+        self.make_list("con_valid", "test_list", ["__del__", 1, 2, "__del__", 3, "__del__", "__del__"])
+
+        length = self.hash_lists.list_length(list_name="test_list", signer="con_valid")
+        self.assertEqual(3, length)
+
+    ###
+    # IS IN LIST
+    def test_METHOD_is_in_list__returns_True_if_in_list(self):
+        self.make_list("con_valid", "test_list", [1, 2, 3])
+
+        is_in_list = self.hash_lists.is_in_list(list_name="test_list", value=3, signer="con_valid")
+        self.assertEqual(True, is_in_list)
+
+    def test_METHOD_is_in_list__returns_True_if_in_list__from_con_name(self):
+        self.make_list("con_valid", "test_list", [1, 2, 3])
+
+        is_in_list = self.hash_lists.is_in_list(
+            list_name="test_list",
+            value=3,
+            from_con_name="con_valid",
+            signer="con_other"
+        )
+        self.assertEqual(True, is_in_list)
+
+    def test_METHOD_is_in_list__returns_False_if_not_in_list(self):
+        self.make_list("con_valid", "test_list", [1, 2, 3])
+
+        is_in_list = self.hash_lists.is_in_list(list_name="test_list", value=4, signer="con_valid")
+        self.assertEqual(False, is_in_list)

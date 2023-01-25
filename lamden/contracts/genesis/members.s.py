@@ -1,3 +1,5 @@
+import hash_lists
+
 # Actions
 INTRODUCE_MOTION = 'introduce_motion'
 VOTE_ON_MOTION = 'vote_on_motion'
@@ -16,7 +18,8 @@ candidate_contract = Variable()
 
 @construct
 def seed(initial_members: list, minimum: int=1, candidate: str='elect_members'):
-    S['members'] = initial_members
+    hash_lists.store_list(list_name="members", list_data=initial_members)
+
     minimum_nodes.set(minimum)
     candidate_contract.set(candidate)
 
@@ -28,7 +31,7 @@ def seed(initial_members: list, minimum: int=1, candidate: str='elect_members'):
 
 @export
 def quorum_max():
-    return int(len(S['members']) * 2 / 3) + 1
+    return (int(get_members_length()) * 2 / 3) + 1
 
 @export
 def quorum_min():
@@ -36,8 +39,7 @@ def quorum_min():
 
 @export
 def current_value():
-    return S['members']
-
+    return get_members()
 
 @export
 def vote(vk: str, obj: list):
@@ -70,16 +72,18 @@ def vote(vk: str, obj: list):
             S['nays'] += 1
             S['positions', vk] = position
 
-        if S['yays'] >= len(S['members']) // 2 + 1:
+        members_length = get_members_length()
+
+        if S['yays'] >= members_length // 2 + 1:
             pass_current_motion()
             reset()
 
-        elif S['nays'] >= len(S['members']) // 2 + 1:
+        elif S['nays'] >= members_length // 2 + 1:
             reset()
 
 
 def assert_vote_is_valid(vk: str, action: str, position: bool, arg: Any=None):
-    assert vk in S['members'], 'Not a member.'
+    assert member_in_list(vk), 'Not a member.'
 
     assert action in [INTRODUCE_MOTION, VOTE_ON_MOTION], 'Invalid action.'
 
@@ -105,8 +109,8 @@ def introduce_motion(position: int, arg: Any):
     # If remove member, must be a member that already exists
     assert position <= REMOVE_SEAT, 'Invalid position.'
     if position == REMOVE_MEMBER:
-        assert arg in S['members'], 'Member does not exist.'
-        assert len(S['members']) > minimum_nodes.get(), 'Cannot drop below current quorum.'
+        assert member_in_list(arg), 'Member does not exist.'
+        assert get_members_length() > minimum_nodes.get(), 'Cannot drop below current quorum.'
         S['member_in_question'] = arg
 
     S['current_motion'] = position
@@ -115,11 +119,13 @@ def introduce_motion(position: int, arg: Any):
 
 def pass_current_motion():
     current_motion = S['current_motion']
-    members = S['members']
 
     if current_motion == REMOVE_MEMBER:
-        members.remove(S['member_in_question'])
-
+        hash_lists.remove_by_value(
+            list_name="members",
+            value=S['member_in_question'],
+            remove_all=True
+        )
     elif current_motion == ADD_SEAT:
         # Get the top member
         member_candidates = importlib.import_module(candidate_contract.get())
@@ -127,7 +133,10 @@ def pass_current_motion():
 
         # Append it to the list, and remove it from pending
         if new_mem is not None:
-            members.append(new_mem)
+            hash_lists.add_to_list(
+                list_name="members",
+                value=new_mem
+            )
             member_candidates.pop_top()
 
     elif current_motion == REMOVE_SEAT:
@@ -137,11 +146,21 @@ def pass_current_motion():
 
         # Remove them from the list and pop them from deprecating
         if old_mem is not None:
-            members.remove(old_mem)
+            hash_lists.remove_by_value(
+                list_name="members",
+                value=old_mem,
+                remove_all=True
+            )
             member_candidates.pop_last()
 
-    S['members'] = members
+def get_members():
+    return hash_lists.get_list(list_name="members")
 
+def get_members_length():
+    return hash_lists.list_length(list_name="members")
+
+def member_in_list(vk: str):
+    return hash_lists.is_in_list(list_name="members", value=vk)
 
 def reset():
     S['current_motion'] = NO_MOTION

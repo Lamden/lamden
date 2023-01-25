@@ -12,6 +12,10 @@ class TestMembers(TestCase):
         self.client = ContractingClient(driver=self.contract_driver)
         self.client.flush()
 
+        f = open(sync.DEFAULT_PATH + '/genesis/hash_lists.s.py')
+        self.client.submit(f.read(), 'hash_lists')
+        f.close()
+
         f = open(sync.DEFAULT_PATH + '/genesis/currency.s.py')
         self.client.submit(f.read(), 'currency', constructor_args={'vk': 'test'})
         f.close()
@@ -49,8 +53,9 @@ class TestMembers(TestCase):
         })
 
         mn_contract = self.client.get_contract('masternodes')
-
-        self.assertEqual(mn_contract.current_value(signer='election_house'), [1, 2, 3])
+        #self.contract_driver.commit()
+        value = mn_contract.current_value(signer='election_house')
+        self.assertEqual(value, [1, 2, 3])
 
         self.assertEqual(mn_contract.S['yays'], 0)
         self.assertEqual(mn_contract.S['nays'], 0)
