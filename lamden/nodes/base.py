@@ -74,7 +74,7 @@ class Node:
     def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
                  driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
                  consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
-                 tx_queue=None, socket_ports=None, reconnect_attempts=60, join=False, event_writer=None):
+                 tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -326,7 +326,7 @@ class Node:
                 bootnode = self.network.get_peer(vk=vk)
 
                 connection_attempts = 0
-                sleep_for = 5
+                sleep_for = 2
 
                 while not bootnode.is_connected:
                     connection_attempts += 1
@@ -364,11 +364,6 @@ class Node:
             self.log.error(response)
 
             raise Exception(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
-
-        self.driver.driver.set('masternodes.S:members', list(network_map['masternodes'].keys()))
-        self.network.refresh_approved_peers_in_cred_provider()
-
-        self.network.router.cred_provider.secure_messages()
 
         processor_vk = None
         # Connect to all nodes in the network
@@ -408,6 +403,9 @@ class Node:
 
         else:
             self.send_startup_transaction(processor_vk)
+
+        self.network.refresh_approved_peers_in_cred_provider()
+        self.network.router.cred_provider.secure_messages()
 
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
@@ -1042,7 +1040,7 @@ class Node:
             'lamden_tag': new_lam_tag,
             'contracting_tag': new_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
-            'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 5))
+            'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 10))
         })
         self.event_writer.write_event(e)
         self.log.debug(f'Sent upgrade event: {e.__dict__}')

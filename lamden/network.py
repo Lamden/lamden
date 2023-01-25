@@ -223,6 +223,11 @@ class Network:
                 self.add_peer(ip=ip, peer_vk=vk)
             except Exception as err:
                 print(err)
+        elif self.router.cred_provider.accept_all:
+            try:
+                self.add_peer(ip=ip, peer_vk=vk)
+            except Exception as err:
+                print(err)
         else:
             self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
 
@@ -469,6 +474,7 @@ class Network:
             if vk != self.wallet.verifying_key:
                 ips.append(self.get_node_ip(vk))
 
+        ips.reverse()
         return ips
 
     def map_vk_to_ip(self, vk_list: list, only_ip=False) -> dict:
