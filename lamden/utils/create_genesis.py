@@ -121,6 +121,8 @@ def build_block(founder_sk: str, additional_state: dict = {}, constitution_file_
     for key, value in state_changes.items():
         if key == REWARDS_VALUE_KEY:
             repair_rewards(value)
+        if key.startswith('con_muhwah') or len(key.split('.')[0]) >= 255:
+            continue
         genesis_block['genesis'].append({
             'key': key,
             'value': value
