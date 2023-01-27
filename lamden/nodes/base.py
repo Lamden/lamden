@@ -825,7 +825,9 @@ class Node:
 
         hlc_timestamp = block.get('hlc_timestamp')
 
+        self.log.debug('SET STATE CHANGES')
         for s in state_changes:
+            self.log.debug(s)
             if type(s['value']) is dict:
                 s['value'] = convert_dict(s['value'])
 
@@ -837,6 +839,7 @@ class Node:
 
             self.driver.set(s['key'], s['value'])
 
+        self.log.debug('SOFTAPPLY')
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
         self.driver.hard_apply(hlc=hlc_timestamp)
@@ -849,6 +852,7 @@ class Node:
     async def hard_apply_block(self, processing_results: dict = None, block: dict = None):
         if block is not None:
             hlc_timestamp = block.get('hlc_timestamp')
+            self.log.debug(f'hlc_timestamp: {hlc_timestamp}')
 
             # Get any blocks that have been commited that are later than this hlc_timestamp
             later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
