@@ -829,10 +829,12 @@ class Node:
             self.log.debug('SET STATE CHANGES')
             for i, s in enumerate(state_changes):
                 self.log.debug(f'{i+1}/{len(state_changes)}, {s}')
+                if s['key'] == 'con_muhwahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahah.__code__':
+                    continue
                 if type(s['value']) is dict:
                     s['value'] = convert_dict(s['value'])
 
-                #self.driver.set(s['key'], s['value'])
+                self.driver.set(s['key'], s['value'])
         except Exception as e:
             self.log.debug(f'GOT ERROR: {e}')
 
