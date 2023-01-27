@@ -825,13 +825,16 @@ class Node:
 
         hlc_timestamp = block.get('hlc_timestamp')
 
-        self.log.debug('SET STATE CHANGES')
-        for s in state_changes:
-            self.log.debug(s)
-            if type(s['value']) is dict:
-                s['value'] = convert_dict(s['value'])
+        try:
+            self.log.debug('SET STATE CHANGES')
+            for s in state_changes:
+                self.log.debug(s)
+                if type(s['value']) is dict:
+                    s['value'] = convert_dict(s['value'])
 
-            self.driver.set(s['key'], s['value'])
+                self.driver.set(s['key'], s['value'])
+        except Exception as e:
+            self.log.debug(f'GOT ERROR: {e}')
 
         for s in rewards:
             if type(s['value']) is dict:
