@@ -829,7 +829,7 @@ class Node:
             self.log.debug('SET STATE CHANGES')
             for i, s in enumerate(state_changes):
                 self.log.debug(f'{i+1}/{len(state_changes)}, {s}')
-                if s['key'] == 'con_muhwahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahah.__code__':
+                if s['key'].startswith('con_muhwahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahahah'):
                     continue
                 if type(s['value']) is dict:
                     s['value'] = convert_dict(s['value'])
