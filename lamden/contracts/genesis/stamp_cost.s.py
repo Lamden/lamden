@@ -71,7 +71,7 @@ def tally_vote(vk: str, obj: int):
 def validate_vote(vk: str, obj: int):
     assert vk in election_house.current_value_for_policy(S['master_contract']), 'Not allowed to vote!'
 
-    assert type(obj) == int, 'Pass an int!'
+    assert isinstance(obj, int), 'Pass an int!'
     assert obj > 0, 'No negatives!'
 
     assert S['value'] / 2 <= obj <= S['value'] * 2, 'Out of range!'

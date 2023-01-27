@@ -89,7 +89,7 @@ def tally_vote(vk: str, obj: list):
 def validate_vote(vk: str, obj: list):
     assert vk in election_house.current_value_for_policy(S['master_contract']), 'Not allowed to vote!'
 
-    assert type(obj) == list, 'Pass a list!'
+    assert isinstance(obj, list), 'Pass a list!'
     assert len(obj) == 4, 'Must have 4 elements!'
 
     s = 0

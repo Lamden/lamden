@@ -31,7 +31,7 @@ def propose_upgrade(lamden_tag: str, contracting_tag: str):
 def vote(position: bool):
     assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Invalid voter!'
     assert vote_state['started'] is not None, 'No open proposals!'
-    assert type(position) == bool, 'Position is not valid!'
+    assert isinstance(position, bool), 'Position is not valid!'
 
     if expired():
         vote_state.clear()

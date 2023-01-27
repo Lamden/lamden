@@ -19,7 +19,7 @@ def current_value():
 def vote(vk: str, obj: list):
     finalize_pending_motions()
 
-    assert type(obj) == list, 'Pass a list!'
+    assert isinstance(obj, list), 'Pass a list!'
     if len(obj) == 0:
         return
 
@@ -81,14 +81,14 @@ def reset():
 
 def assert_recipient_vk_and_amount_is_valid(vk: str, amount: int):
     assert vk is not None, 'No recipient VK provided.'
-    assert type(vk) == str, 'Recipient VK is not a string.'
+    assert isinstance(vk, str), 'Recipient VK is not a string.'
     assert len(vk) == 64, 'Recipient VK is not 64 characters.'
     int(vk, 16)
 
     assert amount is not None, 'No amount provided.'
-    assert type(amount) == int, 'Amount is not an integer.'
+    assert isinstance(amount, int), 'Amount is not an integer.'
     assert amount > 0, 'Amount is not greater than zero.'
 
 def assert_vote_is_valid(vk: str, position: bool):
     assert S['positions', vk] is None, 'VK already voted.'
-    assert type(position) == bool, 'Invalid position.'
+    assert isinstance(position, bool), 'Invalid position.'

@@ -41,7 +41,7 @@ def current_value():
 
 @export
 def vote(vk: str, obj: list):
-    assert type(obj) == list, 'Pass a list!'
+    assert isinstance(obj, list), 'Pass a list!'
 
     arg = None
 
@@ -90,12 +90,12 @@ def assert_vote_is_valid(vk: str, action: str, position: bool, arg: Any=None):
             assert_vk_is_valid(arg)
 
     elif action == VOTE_ON_MOTION:
-        assert type(position) == bool, 'Invalid position'
+        assert isinstance(position, bool), 'Invalid position'
 
 
 def assert_vk_is_valid(vk: str):
     assert vk is not None, 'No VK provided.'
-    assert type(vk) == str, 'VK not a string.'
+    assert isinstance(vk, str), 'VK not a string.'
     assert len(vk) == 64, 'VK is not 64 characters.'
     # assert vk == ctx.signer, 'Signer has to be the one voting to remove themselves.'
     int(vk, 16)
