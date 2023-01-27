@@ -827,8 +827,8 @@ class Node:
 
         try:
             self.log.debug('SET STATE CHANGES')
-            for s in state_changes:
-                self.log.debug(s)
+            for i, s in enumerate(state_changes):
+                self.log.debug(f'{i+1}/{len(state_changes)}, {s}')
                 if type(s['value']) is dict:
                     s['value'] = convert_dict(s['value'])
 
