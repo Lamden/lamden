@@ -61,7 +61,6 @@ class TransactionStaleError(TransactionException):
 class TransactionInvalidTimestampError(TransactionException):
     pass
 
-
 EXCEPTION_MAP = {
     TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
     TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
@@ -74,7 +73,8 @@ EXCEPTION_MAP = {
     TransactionFormattingError: {'error': 'Transaction is not formatted properly.'},
     TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'},
     TransactionStaleError: {'error': 'Transaction timestamp is too old. Submit again.'},
-    TransactionInvalidTimestampError: {'error': 'Transaction timestamp is invalid.'}
+    TransactionInvalidTimestampError: {'error': 'Transaction timestamp is invalid.'},
+    TransactionContractNameInvalid: {'error': 'Transaction contract name is invalid.'}
 }
 
 
