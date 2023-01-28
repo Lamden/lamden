@@ -855,9 +855,7 @@ class Node:
 
         hlc_timestamp = block.get('hlc_timestamp')
 
-        changes_len = len(state_changes)
-        for i, s in enumerate(state_changes):
-            self.log.debug(f'writing changes into memory: {i}/{changes_len}')
+        for s in state_changes:
             if type(s['value']) is dict:
                 s['value'] = convert_dict(s['value'])
 
