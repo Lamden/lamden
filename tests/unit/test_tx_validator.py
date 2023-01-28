@@ -315,6 +315,13 @@ class TestValidator(TestCase):
                 name='co_hello'
             )
 
+    def test_contract_fails_if_name_is_too_long(self):
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction.contract_name_is_valid(
+                contract='submission',
+                function='submit_contract',
+                name='con_hello' * 32
+            )
     '''
     Timestamp is no longer used
     def test_transaction_is_not_expired_true_if_within_timeout(self):

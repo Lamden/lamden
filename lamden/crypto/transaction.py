@@ -214,7 +214,7 @@ def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, f
 
 
 def contract_name_is_valid(contract, function, name):
-    if contract == 'submission' and function == 'submit_contract' and not primatives.contract_name_is_formatted(name):
+    if contract == 'submission' and function == 'submit_contract' and (len(name) > 255 or not primatives.contract_name_is_formatted(name)):
         raise TransactionContractNameInvalid
 
 
