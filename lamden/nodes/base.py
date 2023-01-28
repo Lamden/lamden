@@ -28,6 +28,7 @@ from lamden.nodes.processors import work, block_contender
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.crypto.transaction import get_nonces
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
@@ -527,6 +528,10 @@ class Node:
                 latest_block = self.get_current_height()
                 latest_block_hash = self.get_current_hash()
 
+                if int(new_block.get('number')) != 0:
+                    # Save Nonce from block
+                    self.save_nonce_from_block(block=new_block)
+
                 # create New Block Event
                 self.event_writer.write_event(Event(
                     topics=[NEW_BLOCK_EVENT],
@@ -596,6 +601,10 @@ class Node:
                         # Set the current block hash and height
                         self.update_block_db(block=encoded_block)
 
+                        if new_block_number != 0:
+                            # Save Nonce from block
+                            self.save_nonce_from_block(block=new_block)
+
                         # create New Block Event
                         self.event_writer.write_event(Event(
                             topics=[NEW_BLOCK_EVENT],
@@ -608,6 +617,27 @@ class Node:
 
             if len(block_catchup_peers) == 0:
                 raise ConnectionError("Could not catchup from network.")
+
+    def save_nonce_from_block(self, block: dict):
+        self.log.info({'block': block})
+        payload = block['processed']['transaction']['payload']
+
+        nonce = self.nonces.get_nonce(
+            processor=payload['processor'],
+            sender=payload['sender']
+        )
+
+        if nonce is None:
+            nonce = 0
+
+        block_nonce = payload['nonce']
+
+        if block_nonce > nonce:
+            self.nonces.set_nonce(
+                sender=payload['sender'],
+                processor=payload['processor'],
+                value=payload['nonce']
+            )
 
     def start_main_processing_queue_task(self):
         self.log.info('STARTING MAIN PROCESSING QUEUE')
