@@ -71,7 +71,7 @@ class SocketMonitor:
                 if monitor_result:
                     self.print_event_message(socket=socket, monitor_result=monitor_result)
 
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0)
 
         self.log('info', "No longer checking for monitor events.")
 
@@ -116,7 +116,7 @@ class SocketMonitor:
 
     async def await_task_stopping(self) -> None:
         while not self.check_for_events_task_stopped:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0)
 
     async def stop(self) -> None:
         self.running = False
