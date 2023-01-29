@@ -261,7 +261,7 @@ class Router():
 
                 await asyncio.sleep(0)
             else:
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
                 # self.log('info', 'No Messages Found!')
 
         self.log('info', 'Stopped Checking for messages.')
