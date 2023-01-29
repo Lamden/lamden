@@ -15,7 +15,7 @@ from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
 from contracting.db.encoder import convert_dict, encode
 
-from lamden import storage, router, contracts
+from lamden import storage, contracts
 from lamden.peer import Peer
 from lamden.contracts import sync
 from lamden.crypto.wallet import Wallet
@@ -25,6 +25,7 @@ from lamden.nodes import system_usage
 from lamden.nodes.processing_queue  import TxProcessingQueue
 from lamden.nodes.validation_queue  import ValidationQueue
 from lamden.nodes.processors import work, block_contender
+from lamden.nodes.processors.processor import Processor
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
@@ -49,7 +50,7 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
-class NewBlock(router.Processor):
+class NewBlock(Processor):
     def __init__(self, driver: ContractDriver):
         self.q = []
         self.driver = driver

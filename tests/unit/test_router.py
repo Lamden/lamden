@@ -3,7 +3,7 @@ import asyncio
 import time
 import json
 
-from lamden.sockets.router import Router, EXCEPTION_PORT_NOT_TYPE_INT, EXCEPTION_IP_NOT_TYPE_STR, EXCEPTION_NO_SOCKET, EXCEPTION_NO_ADDRESS_SET, EXCEPTION_MSG_NOT_STRING, EXCEPTION_TO_VK_NOT_STRING
+from lamden.sockets.router import Router, EXCEPTION_IDENT_VK_BYTES_NOT_BYTES, EXCEPTION_PORT_NOT_TYPE_INT, EXCEPTION_IP_NOT_TYPE_STR, EXCEPTION_NO_SOCKET, EXCEPTION_NO_ADDRESS_SET, EXCEPTION_MSG_NOT_STRING, EXCEPTION_TO_VK_NOT_STRING
 from lamden.crypto.wallet import Wallet
 
 from tests.unit.helpers.mock_request import MockRequest
@@ -56,8 +56,8 @@ class TestRouter(unittest.TestCase):
     def get_all_peers(self):
         return self.all_peers
 
-    async def get_data(self, ident_vk_string, msg=None):
-        self.callback_data = (ident_vk_string, msg)
+    async def get_data(self, ident_vk_bytes, ident_vk_string, msg=None):
+        self.callback_data = (ident_vk_bytes, ident_vk_string, msg)
 
     def create_router(self):
         self.router = Router(
@@ -343,7 +343,7 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsNotNone(self.callback_data)
 
-        ident_vk_string, msg = self.callback_data
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
 
         self.assertIsInstance(ident_vk_string, str)
         self.assertEqual(self.request_wallet.verifying_key, ident_vk_string)
@@ -362,7 +362,7 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsNotNone(self.callback_data)
 
-        ident_vk_string, msg = self.callback_data
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
 
         self.assertIsNone(ident_vk_string)
 
@@ -379,7 +379,7 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsNotNone(self.callback_data)
 
-        ident_vk_string, msg = self.callback_data
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
 
         self.assertIsInstance(msg, bytes)
         self.assertEqual(msg_str, msg.decode('UTF-8'))
@@ -398,7 +398,7 @@ class TestRouter(unittest.TestCase):
 
         self.assertIsNotNone(self.callback_data)
 
-        ident_vk_string, msg = self.callback_data
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
 
         self.assertIsInstance(msg, bytes)
         self.assertEqual(msg_str, msg.decode('UTF-8'))
@@ -577,7 +577,7 @@ class TestRouter(unittest.TestCase):
         self.assertTrue(elapsed_time > timeout_sec)
         self.assertTrue(event == 0)
 
-    def test_METHOD_send_string(self):
+    def test_METHOD_send_msg(self):
         self.start_secure_router()
         self.create_secure_request()
         self.async_sleep(1)
@@ -591,7 +591,9 @@ class TestRouter(unittest.TestCase):
             loop.run_until_complete(asyncio.sleep(0.1))
 
         msg_str = "Test_Test"
-        self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
+        ident_vk_bytes=json.dumps(self.request_wallet.verifying_key).encode('utf-8')
+
+        self.router.send_msg(ident_vk_bytes=ident_vk_bytes, to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
 
         while not task.done():
             self.async_sleep(0.1)
@@ -601,27 +603,49 @@ class TestRouter(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertEqual(msg_str.encode('UTF-8'), result.response)
 
-    def test_METHOD_send_string__raise_AttributeError_if_to_vk_not_type_str(self):
+    def test_METHOD_send_msg__Handle_host_unreachable(self):
+        self.start_secure_router()
+        self.create_secure_request()
+        self.async_sleep(1)
+
+        msg_str = "Test_Test"
+        ident_vk_bytes=self.request_wallet.verifying_key.encode('utf-8')
+
+        try:
+            self.router.send_msg(ident_vk_bytes=ident_vk_bytes, to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
+        except Exception as err:
+            self.fail("Should not raise ZMQ Host unreachable error")
+
+
+    def test_METHOD_send_msg__raise_AttributeError_if_to_vk_not_type_str(self):
         self.create_secure_router()
 
         with self.assertRaises(AttributeError) as error:
-            self.router.send_msg(to_vk=self.request_wallet.curve_vk, msg_str="Test_Test")
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg', to_vk=self.request_wallet.curve_vk, msg_str="Test_Test")
 
         self.assertEqual(EXCEPTION_TO_VK_NOT_STRING, str(error.exception))
 
-    def test_METHOD_send_string__raise_AttributeError_if_msg_str_not_type_string(self):
+    def test_METHOD_send_msg__raise_AttributeError_if_ident_vk_bytes_not_type_bytes(self):
         self.create_secure_router()
 
         with self.assertRaises(AttributeError) as error:
-            self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str={"test": True})
+            self.router.send_msg(ident_vk_bytes="no", to_vk=self.request_wallet.verifying_key, msg_str="Test_Test")
+
+        self.assertEqual(EXCEPTION_IDENT_VK_BYTES_NOT_BYTES, str(error.exception))
+
+    def test_METHOD_send_msg__raise_AttributeError_if_msg_str_not_type_string(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg',to_vk=self.request_wallet.verifying_key, msg_str={"test": True})
 
         self.assertEqual(EXCEPTION_MSG_NOT_STRING, str(error.exception))
 
-    def test_METHOD_send_string__raise_AttributeError_if_socket_is_None(self):
+    def test_METHOD_send_msg__raise_AttributeError_if_socket_is_None(self):
         self.create_router()
 
         with self.assertRaises(AttributeError) as error:
-            self.router.send_msg(to_vk=self.request_wallet.verifying_key, msg_str="Test Test")
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg',to_vk=self.request_wallet.verifying_key, msg_str="Test Test")
 
         self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))
 

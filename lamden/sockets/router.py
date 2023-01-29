@@ -1,4 +1,6 @@
 import json
+import logging
+
 from zmq.auth.asyncio import AsyncioAuthenticator
 import zmq
 import zmq.asyncio
@@ -18,6 +20,7 @@ EXCEPTION_NO_SOCKET = "No socket created."
 EXCEPTION_IP_NOT_TYPE_STR = "ip must be type string."
 EXCEPTION_PORT_NOT_TYPE_INT = "port must be type int."
 EXCEPTION_TO_VK_NOT_STRING = "to_vk is not type str."
+EXCEPTION_IDENT_VK_BYTES_NOT_BYTES = "ident_vk_bytes is not type bytes"
 EXCEPTION_MSG_NOT_STRING = "msg_str is not type str."
 
 class CredentialsProvider(object):
@@ -257,7 +260,11 @@ class Router():
                     ident_vk_string = None
 
                 if self.message_callback:
-                    asyncio.ensure_future(self.message_callback(ident_vk_string, msg))
+                    asyncio.ensure_future(self.message_callback(
+                        ident_vk_bytes=ident_vk_bytes,
+                        ident_vk_string=ident_vk_string,
+                        msg=msg
+                    ))
 
                 await asyncio.sleep(0)
             else:
@@ -272,19 +279,32 @@ class Router():
             self.log('info', f'should check {self.should_check}, task_check_for_messages.done(): {self.task_check_for_messages.done()}')
             self.log('info', f'currently approved in cred manager: {self.cred_provider.approved_keys}')
 
-    def send_msg(self, to_vk: str, msg_str: str):
+    def send_msg(self, ident_vk_bytes: bytes, to_vk: str, msg_str: str):
         if not self.socket:
             raise AttributeError(EXCEPTION_NO_SOCKET)
 
         if not isinstance(to_vk, str):
             raise AttributeError(EXCEPTION_TO_VK_NOT_STRING)
 
+        if not isinstance(ident_vk_bytes, bytes):
+            raise AttributeError(EXCEPTION_IDENT_VK_BYTES_NOT_BYTES)
+
         if not isinstance(msg_str, str):
             raise AttributeError(EXCEPTION_MSG_NOT_STRING)
 
-        ident_vk_bytes = json.dumps(to_vk).encode('UTF-8')
+        asyncio.ensure_future(self.async_send(
+            ident_vk_bytes=ident_vk_bytes,
+            to_vk=to_vk,
+            msg_str=msg_str
+        ))
 
-        self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
+    async def async_send(self, ident_vk_bytes: bytes, to_vk: str, msg_str: str):
+        try:
+            await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
+        except Exception as err:
+            self.log('error', f'error sending multipart message back to {to_vk}. {ident_vk_bytes} {msg_str}')
+            self.log('error', err)
+
 
     def refresh_cred_provider_vks(self, vk_list: list = []) -> None:
         for vk in vk_list:

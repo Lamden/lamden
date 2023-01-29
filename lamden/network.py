@@ -524,9 +524,9 @@ class Network:
 
         return '{"response":"%s", "challenge_response": "%s","latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, hlc_timestamp)
 
-    async def router_callback(self, ident_vk_string: str, msg: str) -> None:
+    async def router_callback(self, ident_vk_bytes: bytes, ident_vk_string: str, msg: str) -> None:
         try:
-            self.log('info', {'ident_vk_string': ident_vk_string, 'msg': msg})
+            self.log('info', {'ident_vk_bytes': ident_vk_bytes, 'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = json.loads(msg)
             action = msg.get('action')
         except Exception as err:
@@ -535,6 +535,7 @@ class Network:
 
         if action == ACTION_PING:
             self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=json.dumps({"response": "ping", "from": ident_vk_string})
             )
@@ -546,6 +547,7 @@ class Network:
             self.log('info', f'Hello received challenge "{challenge}" from Peer "{ident_vk_string}" at {ip}')
 
             self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=self.hello_response(challenge=challenge)
             )
@@ -563,6 +565,7 @@ class Network:
             resp_msg = ('{"response": "%s", "latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp))
 
             self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=resp_msg
             )
@@ -575,6 +578,7 @@ class Network:
                 block_info = encode(block_info)
 
                 self.router.send_msg(
+                    ident_vk_bytes=ident_vk_bytes,
                     to_vk=ident_vk_string,
                     msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info))
                 )
@@ -593,6 +597,7 @@ class Network:
             block_info = encode(block_info)
 
             self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_NEXT_BLOCK, block_info))
             )
@@ -605,6 +610,7 @@ class Network:
             resp_msg = ('{"response": "%s", "network_map": %s}' % (ACTION_GET_NETWORK_MAP, node_list))
 
             self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=resp_msg
             )
