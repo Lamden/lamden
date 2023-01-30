@@ -517,10 +517,12 @@ class Network:
             self.publisher.publish_heart_beat()
 
     def hello_response(self, challenge: str = None) -> str:
-        latest_block_info = self.get_latest_block_info()
+        #latest_block_info = self.get_latest_block_info()
 
-        block_num = latest_block_info.get('number')
-        hlc_timestamp = latest_block_info.get("hlc_timestamp")
+        #block_num = latest_block_info.get('number')
+        block_num = 0
+        #hlc_timestamp = latest_block_info.get("hlc_timestamp")
+        hlc_timestamp =  "0000-00-00T00:00:00.000000000Z_0"
 
         try:
             challenge_response = self.wallet.sign(challenge)
