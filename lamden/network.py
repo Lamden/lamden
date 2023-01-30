@@ -265,9 +265,11 @@ class Network:
         peer = self.get_peer(vk=peer_vk)
 
         if peer:
+            self.log('info', f'request_address {peer.request_address}, ip {ip}')
+
             if peer.request_address != ip:
                 # if the ip is different from the one we have then switch to it
-                peer.update_ip(new_ip=ip)
+                asyncio.ensure_future(peer.update_ip(new_ip=ip))
             else:
                 # TODO This might be causing a feedback loop.  Remove for now.
                 # check that our connection to this node is okay

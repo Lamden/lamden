@@ -366,6 +366,10 @@ class Peer:
 
     async def update_ip(self, new_ip):
         verify_res = await self.verify_new_ip(new_ip=new_ip)
+
+        if verify_res is None:
+            return
+
         challenge = verify_res.get('challenge')
         challenge_response = verify_res.get('challenge_response')
 
