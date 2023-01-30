@@ -264,10 +264,9 @@ class Network:
         # Get a reference to this peer
         peer = self.get_peer(vk=peer_vk)
 
-        self.log('info', f'request_address {peer.request_address}, ip {ip}')
-
-
         if peer:
+            self.log('info', f'request_address {peer.request_address}, ip {ip}')
+
             if peer.request_address != ip:
                 # if the ip is different from the one we have then switch to it
                 asyncio.ensure_future(peer.update_ip(new_ip=ip))
