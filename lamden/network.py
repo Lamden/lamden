@@ -217,6 +217,9 @@ class Network:
             self.log('warning', f'Attempted connection to self "{vk}".')
             return
 
+        if self.get_peer(vk=vk):
+            return
+
         if self.peer_is_voted_in(peer_vk=vk):
             self.refresh_approved_peers_in_cred_provider()
             try:
@@ -554,7 +557,7 @@ class Network:
                 msg_str=self.hello_response(challenge=challenge)
             )
 
-            #self.connect_peer(vk=ident_vk_string, ip=ip)
+            self.connect_peer(vk=ident_vk_string, ip=ip)
 
         if action == ACTION_GET_LATEST_BLOCK:
             self.log('warning', "ACTION_GET_LATEST_BLOCK")
