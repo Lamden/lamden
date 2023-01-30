@@ -99,7 +99,7 @@ class Router():
         self.set_address()
 
         self.socket_monitor = SocketMonitor(socket_type='ROUTER')
-        self.socket_monitor.start()
+        #self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -172,7 +172,8 @@ class Router():
         if not self.ctx:
             self.ctx = zmq.asyncio.Context().instance()
         self.socket = self.ctx.socket(zmq.ROUTER)
-        self.socket_monitor.monitor(socket=self.socket)
+        if self.socket_monitor.running:
+            self.socket_monitor.monitor(socket=self.socket)
 
         # self.socket.set(zmq.HWM, 2)
         # self.socket.set(zmq.TCP_KEEPALIVE, 1)
@@ -317,7 +318,8 @@ class Router():
                 self.cred_provider.remove_key(vk=vk)
 
     async def close_socket(self):
-        self.socket_monitor.stop_monitoring(socket=self.socket)
+        if self.socket_monitor.running:
+            self.socket_monitor.stop_monitoring(socket=self.socket)
 
         if not self.socket_is_closed:
             self.socket.setsockopt(zmq.LINGER, 0)
@@ -354,7 +356,8 @@ class Router():
             await self.stop_checking_for_messages()
             await self.stop_auth()
             await self.close_socket()
-            await self.socket_monitor.stop()
+            if self.socket_monitor.running:
+                await self.socket_monitor.stop()
         except Exception as err:
             print(err)
 
