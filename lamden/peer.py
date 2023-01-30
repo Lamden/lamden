@@ -323,6 +323,9 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
+        self.log('info', 'Waiting 10 seconds before starting reconnect loop...')
+        await asyncio.sleep(10)
+
         if self.reconnecting or not self.running:
             return
 
