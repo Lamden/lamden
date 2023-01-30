@@ -488,8 +488,8 @@ class Peer:
 
             self.connected = False
 
-            if not self.reconnecting:
-                self.reconnect()
+            #if not self.reconnecting:
+            #    self.reconnect()
 
         return None
 
