@@ -323,6 +323,10 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
+        self.log('debug', 'Waiting 30 seconds before attempting reconnect')
+        await asyncio.sleep(30)
+        self.log('debug', f'self.reconnecting {self.reconnecting}, self.running {self.running}')
+
         if self.reconnecting or not self.running:
             return
 
@@ -340,7 +344,7 @@ class Peer:
                 # self.start_health_check()
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
-                await asyncio.sleep(1)
+                await asyncio.sleep(5)
 
         self.log('info', f'Reconnected to {self.request_address}!')
         self.reconnecting = False

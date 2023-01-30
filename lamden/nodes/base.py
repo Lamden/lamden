@@ -290,6 +290,7 @@ class Node:
 
         self.log.info("Attempting to connect to all peers in constitution...")
         await self.network.connected_to_all_peers()
+        return
 
         self.driver.clear_pending_state()
 
