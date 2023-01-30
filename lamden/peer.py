@@ -405,7 +405,7 @@ class Peer:
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
