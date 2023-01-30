@@ -222,12 +222,12 @@ class Network:
             try:
                 self.add_peer(ip=ip, peer_vk=vk)
             except Exception as err:
-                print(err)
+                self.log('error', str(err))
         elif self.router.cred_provider.accept_all:
             try:
                 self.add_peer(ip=ip, peer_vk=vk)
             except Exception as err:
-                print(err)
+                self.log('error', str(err))
         else:
             self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
 
@@ -267,7 +267,7 @@ class Network:
         self.log('info', f'request_address {peer.request_address}, ip {ip}')
 
 
-        if peer:
+        if peer is None:
             if peer.request_address != ip:
                 # if the ip is different from the one we have then switch to it
                 asyncio.ensure_future(peer.update_ip(new_ip=ip))
