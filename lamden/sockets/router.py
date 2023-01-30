@@ -248,7 +248,7 @@ class Router():
         while self.should_check:
             if await self.has_message(timeout_ms=self.poll_time_ms):
                 multi_message = await self.socket.recv_multipart()
-                self.log('info', f'multi_message: {multi_message}')
+                # self.log('info', f'multi_message: {multi_message}')
                 ident_vk_bytes, empty, msg = multi_message
 
                 self.log('info', f'Received request from {ident_vk_bytes}: {msg}')
@@ -301,6 +301,7 @@ class Router():
     async def async_send(self, ident_vk_bytes: bytes, to_vk: str, msg_str: str):
         try:
             await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
+            self.log('info', f'Sent Message Back to {to_vk}. {msg_str}')
         except Exception as err:
             self.log('error', f'error sending multipart message back to {to_vk}. {ident_vk_bytes} {msg_str}')
             self.log('error', err)
