@@ -296,8 +296,6 @@ class Node:
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
 
-        self.send_startup_transaction(self.wallet.verifying_key)
-
     async def join_existing_network(self):
         self.main_processing_queue.disable_append()
         self.validation_queue.disable_append()
