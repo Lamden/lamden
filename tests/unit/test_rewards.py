@@ -1,70 +1,21 @@
 from unittest import TestCase
-from lamden import rewards
+
 from contracting.client import ContractingClient
+from contracting.stdlib.bridge.decimal import ContractingDecimal
+
+from lamden import rewards
 from lamden.contracts import sync
-import lamden
 
 BLOCK = {
             'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 1000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 2000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_2'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 3000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_3'
-                                }
-                            }
-                        }
-                    ]
-                },
-
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 4500,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 1250,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 2750,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_2'
-                                }
-                            }
-                        }
-                    ]
+            'processed': {
+                'stamps_used': 1000,
+                'transaction': {
+                    'payload': {
+                        'contract': 'thing_1'
+                    }
                 }
-            ]
+            }
         }
 
 class TestRewards(TestCase):
@@ -76,7 +27,7 @@ class TestRewards(TestCase):
         self.client.flush()
 
     def sync(self):
-        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], ['tejas', 'alex2'], client=self.client)
+        sync.setup_genesis_contracts(['stu', 'raghu', 'steve'], client=self.client)
 
     def test_contract_exists_false_before_sync(self):
         self.assertFalse(self.rewards.contract_exists('stamp_cost', self.client))
@@ -93,12 +44,26 @@ class TestRewards(TestCase):
         self.sync()
         self.assertTrue(self.rewards.is_setup(self.client))
 
-    def test_add_to_balance_if_none_sets(self):
+    def test_METHOD_add_to_balance__returns_proper_balance_update_info(self):
+        self.client.set_var('currency', variable='balances', arguments=['stu'], value=100)
+        prev_bal = self.client.get_var('currency', variable='balances', arguments=['stu'])
+        res = self.rewards.add_to_balance('stu', 123, self.client)
+        new_bal = self.client.get_var('currency', variable='balances', arguments=['stu'])
+
+        self.assertIsInstance(res.get('key'), str)
+        self.assertIsInstance(res.get('value'), ContractingDecimal)
+        self.assertIsInstance(res.get('reward'), ContractingDecimal)
+
+        self.assertEqual('currency.balances:stu', res.get('key'))
+        self.assertEqual(new_bal, res.get('value'))
+        self.assertEqual(new_bal - prev_bal, res.get('reward'))
+
+    def test_METHOD_add_to_balance__set_if_previously_None(self):
         self.rewards.add_to_balance('stu', 123, self.client)
         bal = self.client.get_var('currency', variable='balances', arguments=['stu'])
-        self.assertEqual(bal, 123)
+        self.assertEqual(123, bal)
 
-    def test_add_to_balance_twice_sets_accordingly(self):
+    def test_METHOD_add_to_balance__twice_sets_accordingly(self):
         self.rewards.add_to_balance('stu', 123, self.client)
         bal = self.client.get_var('currency', variable='balances', arguments=['stu'])
         self.assertEqual(bal, 123)
@@ -107,20 +72,26 @@ class TestRewards(TestCase):
         bal = self.client.get_var('currency', variable='balances', arguments=['stu'])
         self.assertEqual(bal, 246)
 
-    def test_calculate_rewards_returns_accurate_amounts_per_participant_group(self):
+    def test_METHOD_calculate_tx_output_rewards__returns_accurate_amounts_per_participant_group(self):
         self.sync()
         self.client.set_var(
             contract='rewards',
             variable='S',
             arguments=['value'],
-            value=[0.4, 0.3, 0.1, 0.1, 0.1]
+            value=[0.4, 0.1, 0.1, 0.1]
         )
 
-        m, d, f, mapping = self.rewards.calculate_all_rewards(client=self.client, block=BLOCK)
+        m, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
+            client=self.client,
+            contract=BLOCK['processed']['transaction']['payload'].get('contract'),
+            total_stamps_to_split=BLOCK['processed'].get('stamps_used')
+        )
 
-        reconstructed = (m * 3) + (d * 2) + (f * 1) + (f * 1) + (f * 1)
+        self.assertEqual(ContractingDecimal('133.33333333'), m)
+        self.assertEqual(ContractingDecimal('100'), f)
 
-        self.assertAlmostEqual(reconstructed, self.rewards.stamps_in_block(BLOCK))
+        for dev_name, dev_amount in developer_mapping.items():
+            self.assertEqual(ContractingDecimal('100'), dev_amount)
 
     def test_calculate_participant_reward_shaves_off_dust(self):
         rounded_reward = self.rewards.calculate_participant_reward(
@@ -131,13 +102,13 @@ class TestRewards(TestCase):
 
         self.assertEqual(rounded_reward, 1)
 
-    def test_distribute_rewards_adds_to_all_wallets(self):
+    def test_METHOD_distribute_rewards__adds_to_all_wallets(self):
         self.sync()
         self.client.set_var(
             contract='rewards',
             variable='S',
             arguments=['value'],
-            value=[0.4, 0.3, 0.1, 0.1, 0.1]
+            value=[0.7, 0.1, 0.1, 0.1]
         )
         self.client.set_var(
             contract='foundation',
@@ -158,208 +129,19 @@ class TestRewards(TestCase):
             value='stu2'
         )
 
-        self.client.set_var(
-            contract='thing_2',
-            variable='__developer__',
-            value='jeff'
+        m, f, developer_mapping = self.rewards.calculate_tx_output_rewards(
+            client=self.client,
+            contract=BLOCK['processed']['transaction']['payload'].get('contract'),
+            total_stamps_to_split=BLOCK['processed'].get('stamps_used')
         )
 
-        self.client.set_var(
-            contract='thing_3',
-            variable='__developer__',
-            value='alex'
-        )
-
-        total_tau_to_split = 4900
-
-        m, d, f, mapping = self.rewards.calculate_all_rewards(client=self.client, block=BLOCK)
-
-        self.rewards.distribute_rewards(m, d, f, mapping, client=self.client)
+        self.rewards.distribute_rewards(m, f, developer_mapping, client=self.client)
 
         masters = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
-        delegates = self.client.get_var(contract='delegates', variable='S', arguments=['members'])
 
         for mn in masters:
             current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[mn], mark=False)
             self.assertEqual(current_balance, m / 100)
 
-        for dl in delegates:
-            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dl], mark=False)
-            self.assertEqual(current_balance, d / 100)
-
         current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
         self.assertEqual(current_balance, f / 100)
-
-    def test_stamps_in_block(self):
-        block = {
-            'number': 2,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 1000
-                        },
-                        {
-                            'stamps_used': 2000
-                        },
-                        {
-                            'stamps_used': 3000
-                        }
-                    ]
-                },
-
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 4500
-                        },
-                        {
-                            'stamps_used': 1250
-                        },
-                        {
-                            'stamps_used': 2750
-                        }
-                    ]
-                }
-            ]
-        }
-
-        self.assertEqual(self.rewards.stamps_in_block(block), 14500)
-
-    def test_issue_rewards_full_loop_works(self):
-        self.sync()
-        self.client.set_var(
-            contract='rewards',
-            variable='S',
-            arguments=['value'],
-            value=[0.4, 0.3, 0.1, 0.1, 0.1]
-        )
-        self.client.set_var(
-            contract='foundation',
-            variable='owner',
-            value='xxx'
-        )
-        self.client.set_var(
-            contract='stamp_cost',
-            variable='S',
-            arguments=['value'],
-            value=100
-        )
-
-        self.client.set_var(
-            contract='thing_1',
-            variable='__developer__',
-            value='stu2'
-        )
-
-        self.client.set_var(
-            contract='thing_2',
-            variable='__developer__',
-            value='jeff'
-        )
-
-        self.client.set_var(
-            contract='thing_3',
-            variable='__developer__',
-            value='alex'
-        )
-
-        block = {
-            'number': 1,
-            'subblocks': [
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 1000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 2000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_2'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 3000,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_3'
-                                }
-                            }
-                        }
-                    ]
-                },
-
-                {
-                    'transactions': [
-                        {
-                            'stamps_used': 4500,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 1250,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_1'
-                                }
-                            }
-                        },
-                        {
-                            'stamps_used': 2750,
-                            'transaction': {
-                                'payload': {
-                                    'contract': 'thing_2'
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-
-        # tau to distribute should be 145
-
-        stamps = self.rewards.stamps_in_block(block)
-
-        tau = stamps / 100
-
-        self.assertEqual(tau, 145)
-
-        self.rewards.issue_rewards(block, client=self.client)
-
-        # Stu is owed: 6750 stamps / 100 / 3 =
-        # Jeff is owed: 4750 stamps / 100 / 3= 47.5
-        # Alex is owed:
-
-        m, d, f, mapping = self.rewards.calculate_all_rewards(client=self.client, block=block)
-
-        masters = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
-        delegates = self.client.get_var(contract='delegates', variable='S', arguments=['members'])
-
-        for mn in masters:
-            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[mn], mark=False)
-            self.assertEqual(current_balance, m / 100)
-
-        for dl in delegates:
-            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dl], mark=False)
-            self.assertEqual(current_balance, d / 100)
-
-        current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
-        self.assertEqual(current_balance, f / 100)
-
-        for dev in mapping.keys():
-            current_balance = self.client.get_var(contract='currency', variable='balances', arguments=[dev],
-                                                  mark=False)
-
-            self.assertAlmostEqual(current_balance, mapping[dev] / 100)
-

@@ -1,6 +1,5 @@
 from sanic import Sanic
 from sanic import response
-from sanic.websocket import WebSocketProtocol
 from lamden.logger.base import get_logger
 import json as _json
 from contracting.client import ContractingClient
@@ -12,21 +11,20 @@ from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
 from lamden.crypto.wallet import Wallet
 
-import decimal
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
 
 import ssl
 import asyncio
 import socketio
-import json
 
 from lamden.crypto import transaction
 import decimal
 
-import datetime
-# Instantiate the parser
 import argparse
+from lamden.contracts import sync
+
+import os
 
 log = get_logger("MN-WebServer")
 
@@ -53,8 +51,9 @@ class NonceEncoder(_json.JSONEncoder):
 
 
 class WebServer:
-    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet, blocks: storage.BlockStorage,
-                 queue=FileQueue(),
+    def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
+                 blocks: storage.BlockStorage, nonces: storage.NonceStorage=None,
+                 queue=None,
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
                  ssl_key_file='~/.ssh/server.key',
@@ -62,6 +61,7 @@ class WebServer:
                  max_queue_len=10_000,
                  event_service_port=8000,
                  topics=[]):
+
         # Setup base Sanic class and CORS
         self.app = Sanic(__name__)
         self.app.config.update({
@@ -71,16 +71,18 @@ class WebServer:
         })
         self.cors = None
 
+        self.CACHED_GENESIS_BLOCK = None
+
         # Initialize the backend data interfaces
         self.client = contracting_client
         self.driver = driver
-        self.nonces = storage.NonceStorage()
+        self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.blocks = blocks
 
         self.static_headers = {}
 
         self.wallet = wallet
-        self.queue = queue
+        self.queue = queue if queue is not None else FileQueue()
         self.max_queue_len = max_queue_len
 
         self.port = port
@@ -140,27 +142,30 @@ class WebServer:
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
-            print("CONNECTED TO EVENT SERVER")
+            log.debug("CONNECTED TO EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('join', {'room': topic})
 
         @self.sio.event
         async def disconnect():
-            print("DISCONNECTED FROM EVENT SERVER")
+            log.debug("DISCONNECTED FROM EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('leave', {'room': topic})
 
         @self.sio.event
+        def connect_error(error):
+            log.error(f"Event Service error: {error}")
+
+        @self.sio.event
         async def event(data):
             for client in self.ws_clients:
-                await client.send(json.dumps(data))
+                await client.send(encode(data))
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
         async def connect_to_event_service(app, loop):
-            # TODO(nikita): what do we do in case event service is not running?
             try:
-                await self.sio.connect(f'http://localhost:{self.event_service_port}')
+                await self.sio.connect(f'http://lamden_events:{self.event_service_port}')
                 await self.sio.wait()
             except:
                 pass
@@ -173,14 +178,23 @@ class WebServer:
 
             # send the connecting socket the latest block
             num = storage.get_latest_block_height(self.driver)
-            block = self.blocks.get_block(int(num))
+
+            if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
+                block = self.CACHED_GENESIS_BLOCK
+            else:
+                block = self.blocks.get_block(int(num))
+
+            self.cache_genesis_block(block)
 
             eventData = {
                 'event': 'latest_block',
                 'data': block
             }
 
-            await ws.send(json.dumps(eventData))
+            try:
+                await ws.send(encode(eventData))
+            except Exception as err:
+                log.error(err)
 
             async for message in ws:
                 pass
@@ -226,17 +240,16 @@ class WebServer:
             return response.json({'error': "Queue full. Resubmit shortly."}, status=503,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        tx_raw = _json.loads(request.body)
-        log.error(tx_raw)
         # Check that the payload is valid JSON
         tx = decode(request.body)
         if tx is None:
             return response.json({'error': 'Malformed request body.'}, headers={'Access-Control-Allow-Origin': '*'})
 
+        tx_raw = _json.loads(request.body)
+        log.error(tx_raw)
+
         # Check that the TX is correctly formatted
         try:
-            transaction.check_tx_formatting(tx, self.wallet.verifying_key)
-
             transaction.transaction_is_valid(
                 transaction=tx,
                 expected_processor=self.wallet.verifying_key,
@@ -244,29 +257,18 @@ class WebServer:
                 nonces=self.nonces
             )
 
-            nonce, pending_nonce = transaction.get_nonces(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                driver=self.nonces
-            )
-
-            pending_nonce = transaction.get_new_pending_nonce(
-                tx_nonce=tx['payload']['nonce'],
-                nonce=nonce,
-                pending_nonce=pending_nonce
-            )
-
-            self.nonces.set_pending_nonce(
-                sender=tx['payload']['sender'],
-                processor=tx['payload']['processor'],
-                value=pending_nonce
-            )
         except TransactionException as e:
             log.error(f'Tx has error: {type(e)}')
             log.error(tx)
             return response.json(
                 transaction.EXCEPTION_MAP[type(e)], headers={'Access-Control-Allow-Origin': '*'}
             )
+
+        self.nonces.set_nonce(
+            sender=tx['payload']['sender'],
+            processor=tx['payload']['processor'],
+            value=tx['payload']['nonce']
+        )
 
         # Add TX to the processing queue
         self.queue.append(request.body)
@@ -290,15 +292,15 @@ class WebServer:
 
     # Get the Nonce of a VK
     async def get_nonce(self, request, vk):
-        latest_nonce = self.nonces.get_latest_nonce(sender=vk, processor=self.wallet.verifying_key)
+        next_nonce = self.nonces.get_next_nonce(sender=vk, processor=self.wallet.verifying_key)
 
         try:
-            latest_nonce = int(latest_nonce)
+            next_nonce = int(next_nonce)
         except:
             pass
 
         return response.json({
-            'nonce': latest_nonce,
+            'nonce': next_nonce,
             'processor': self.wallet.verifying_key,
             'sender': vk
         }, headers={'Access-Control-Allow-Origin': '*'})
@@ -393,7 +395,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
         self.driver.clear_pending_state()
@@ -413,9 +415,17 @@ class WebServer:
         _hash = request.args.get('hash')
 
         if num is not None:
-            block = self.blocks.get_block(int(num))
+            if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
+                block = self.CACHED_GENESIS_BLOCK
+            else:
+                block = self.blocks.get_block(int(num))
+
         elif _hash is not None:
-            block = self.blocks.get_block(_hash)
+            if self.CACHED_GENESIS_BLOCK is not None and self.CACHED_GENESIS_BLOCK.get('hash') == _hash:
+                block = self.CACHED_GENESIS_BLOCK
+            else:
+                block = self.blocks.get_block(_hash)
+
         else:
             return response.json({'error': 'No number or hash provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
@@ -424,7 +434,8 @@ class WebServer:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(block, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        self.cache_genesis_block(block)
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
         _hash = request.args.get('hash')
@@ -444,7 +455,7 @@ class WebServer:
             return response.json({'error': 'Transaction not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        return response.json(tx, dumps=NonceEncoder().encode, headers={'Access-Control-Allow-Origin': '*'})
+        return response.json(tx, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_constitution(self, request):
         self.client.raw_driver.clear_pending_state()
@@ -455,28 +466,28 @@ class WebServer:
             arguments=['members']
         )
 
-        delegates = self.client.get_var(
-            contract='delegates',
-            variable='S',
-            arguments=['members']
-        )
-
         return response.json({
             'masternodes': masternodes,
-            'delegates': delegates
         }, headers={'Access-Control-Allow-Origin': '*'})
+
+    def cache_genesis_block(self, block: dict):
+        if not block:
+            return
+
+        if int(block.get('number')) == 0 and self.CACHED_GENESIS_BLOCK is None:
+            block['genesis'] = []
+            self.CACHED_GENESIS_BLOCK = block
 
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
 
-    arg_parser.add_argument('-k', '--key', type=str, required=True)
     arg_parser.add_argument('-p', '--port', type=int, required=False)
     arg_parser.add_argument('-ep', '--event_port', type=int, required=False)
 
     args = arg_parser.parse_args()
 
-    sk = bytes.fromhex(args.key)
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
     port = args.port
     event_port = args.event_port
 
@@ -489,10 +500,10 @@ if __name__ == '__main__':
     wallet = Wallet(seed=sk)
 
     # These will be the topics that are sent from the event server
-    topics = ["new_block"]
+    topics = ["new_block", "block_reorg", "upgrade"]
 
     webserver = WebServer(
-        contracting_client=ContractingClient(),
+        contracting_client=ContractingClient(submission_filename=sync.DEFAULT_SUBMISSION_PATH),
         driver=storage.ContractDriver(),
         blocks=storage.BlockStorage(),
         wallet=wallet,

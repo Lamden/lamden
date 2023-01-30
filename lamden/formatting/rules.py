@@ -11,8 +11,7 @@ TRANSACTION_PAYLOAD_RULES = {
 }
 
 TRANSACTION_METADATA_RULES = {
-    'signature': signature_is_formatted,
-    'timestamp': number_is_formatted
+    'signature': signature_is_formatted
 }
 
 TRANSACTION_RULES = {

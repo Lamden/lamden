@@ -1,590 +1,688 @@
-from unittest import TestCase
-
-from lamden import router, authentication
-
-from lamden.crypto.wallet import Wallet
-import zmq.asyncio
+import unittest
 import asyncio
-from contracting.db.encoder import encode, decode
-from contracting.client import ContractingClient
+import time
+import json
 
+from lamden.sockets.router import Router, EXCEPTION_IDENT_VK_BYTES_NOT_BYTES, EXCEPTION_PORT_NOT_TYPE_INT, EXCEPTION_IP_NOT_TYPE_STR, EXCEPTION_NO_SOCKET, EXCEPTION_NO_ADDRESS_SET, EXCEPTION_MSG_NOT_STRING, EXCEPTION_TO_VK_NOT_STRING
+from lamden.crypto.wallet import Wallet
 
-async def stop_server(s, timeout):
-    await asyncio.sleep(timeout)
-    s.stop()
+from tests.unit.helpers.mock_request import MockRequest
+from tests.unit.helpers.mock_reply import MockReply
+from contracting.db.encoder import encode
 
+import zmq.asyncio
 
-class TestRouter(TestCase):
-    def setUp(self):
+import uvloop
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+class TestRouter(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.router_wallet = Wallet()
+        cls.request_wallet = Wallet()
+
+    def setUp(self) -> None:
         self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
-    def tearDown(self):
-        self.ctx.destroy()
-        self.loop.close()
+        self.wallet = self.__class__.router_wallet
+        self.request_wallet = self.__class__.request_wallet
+        self.router = None
+        self.request = None
 
-    def test_add_service(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
-        q = router.QueueProcessor()
+        self.callback_data = None
 
-        r.add_service('test', q)
+        self.all_peers = list([])
 
-        self.assertEqual(r.services['test'], q)
+        self.responses = dict()
 
-    def test_inbox_none_returns_default_message(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
+    def tearDown(self) -> None:
+        if self.router:
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
+            del self.router
+        if self.request:
+            self.request.stop()
+            del self.request
 
-        async def request(msg):
-            msg = encode(msg).encode()
+        self.ctx.destroy(linger=0)
 
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/router')
+        loop = asyncio.get_event_loop()
+        loop.stop()
+        loop.close()
 
-            await socket.send(msg)
+    def get_all_peers(self):
+        return self.all_peers
 
-            resp = await socket.recv()
+    async def get_data(self, ident_vk_bytes, ident_vk_string, msg=None):
+        self.callback_data = (ident_vk_bytes, ident_vk_string, msg)
 
-            resp = decode(resp)
+    def create_router(self):
+        self.router = Router(
+            wallet=self.router_wallet,
+            message_callback=self.get_data,
+            ctx=self.ctx
+        )
 
-            return resp
+    def create_secure_router(self):
+        self.router = Router(
+            wallet=self.router_wallet,
+            message_callback=self.get_data,
+            ctx=self.ctx
+        )
+        self.router.setup_socket()
+        self.router.setup_auth()
+        self.router.register_poller()
+        self.router.setup_auth_keys()
 
-        bad_message = {
-            'blah': 123
-        }
+    def start_router(self):
+        self.create_router()
+        self.router.run_open_server()
+        while not self.router.running:
+            self.async_sleep(0.1)
 
+    def start_secure_router(self):
+        self.create_router()
+        self.router.run_curve_server()
+        self.router.cred_provider.add_key(vk=self.request_wallet.verifying_key)
+        while not self.router.running:
+            self.async_sleep(0.1)
+
+    def create_request(self):
+        self.request = MockRequest(
+            local_wallet=self.request_wallet,
+            ctx=self.ctx
+        )
+
+    def create_secure_request(self):
+        self.request = MockRequest(
+            local_wallet=self.request_wallet,
+            server_curve_vk=self.router_wallet.curve_vk,
+            ctx=self.ctx
+        )
+
+    def async_sleep(self, delay):
         tasks = asyncio.gather(
-            r.serve(),
-            request(bad_message),
-            stop_server(r, 1),
+            asyncio.sleep(delay)
         )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], router.OK)
-
-    def test_request_none_returns_default_message(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
-
-        async def request(msg):
-            msg = encode(msg).encode()
-
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/router')
-
-            await socket.send(msg)
-
-            resp = await socket.recv()
-
-            resp = decode(resp)
-
-            return resp
-
-        bad_message = {
-            'service': 'hello',
-            'blah': 123
-        }
-
-        tasks = asyncio.gather(
-            r.serve(),
-            request(bad_message),
-            stop_server(r, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], router.OK)
-
-    def test_no_processor_returns_default_message(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
-
-        async def request(msg):
-            msg = encode(msg).encode()
-
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/router')
-
-            await socket.send(msg)
-
-            resp = await socket.recv()
-
-            resp = decode(resp)
-
-            return resp
-
-        bad_message = {
-            'service': 'hello',
-            'msg': {
-                'hello': 123
-            }
-        }
-
-        tasks = asyncio.gather(
-            r.serve(),
-            request(bad_message),
-            stop_server(r, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], router.OK)
-
-    def test_queue_processor_returns_default_message(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
-        q = router.QueueProcessor()
-
-        r.add_service('test', q)
-
-        async def request(msg):
-            msg = encode(msg).encode()
-
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/router')
-
-            await socket.send(msg)
-
-            resp = await socket.recv()
-
-            resp = decode(resp)
-
-            return resp
-
-        message = {
-            'service': 'test',
-            'msg': {
-                'howdy': 'there'
-            }
-        }
-
-        expected_q = [{
-                'howdy': 'there'
-            }]
-
-        tasks = asyncio.gather(
-            r.serve(),
-            request(message),
-            stop_server(r, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], router.OK)
-        self.assertListEqual(expected_q, q.q)
-
-    def test_mock_processor_returns_custom_message(self):
-        r = router.Router(socket_id='ipc:///tmp/router', ctx=self.ctx, linger=50)
-
-        class MockProcessor(router.Processor):
-            async def process_message(self, msg):
-                return {
-                    'whats': 'good'
-                }
-
-        q = MockProcessor()
-
-        r.add_service('test', q)
-
-        async def request(msg):
-            msg = encode(msg).encode()
-
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('ipc:///tmp/router')
-
-            await socket.send(msg)
-
-            resp = await socket.recv()
-
-            resp = decode(resp)
-
-            return resp
-
-        message = {
-            'service': 'test',
-            'msg': {
-                'howdy': 'there'
-            }
-        }
-
-        expected_msg = {
-                    'whats': 'good'
-                }
-
-        tasks = asyncio.gather(
-            r.serve(),
-            request(message),
-            stop_server(r, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertDictEqual(res[1], expected_msg)
-
-
-class TestAsyncServer(TestCase):
-    def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-    def tearDown(self):
-        self.ctx.destroy()
-        self.loop.close()
-
-    def test_init(self):
-        w = Wallet()
-        router.AsyncInbox('tcp://127.0.0.1:10000', self.ctx)
-
-    def test_sockets_are_initially_none(self):
-        w = Wallet()
-        m = router.AsyncInbox('tcp://127.0.0.1:10000', self.ctx)
-
-        self.assertIsNone(m.socket)
-
-    def test_setup_frontend_creates_socket(self):
-        w = Wallet()
-        m = router.AsyncInbox('tcp://127.0.0.1:10000', self.ctx)
-        m.setup_socket()
-
-        self.assertEqual(m.socket.type, zmq.ROUTER)
-        self.assertEqual(m.socket.getsockopt(zmq.LINGER), m.linger)
-
-    def test_sending_message_returns_it(self):
-        w = Wallet()
-        m = router.AsyncInbox('tcp://127.0.0.1:10000', self.ctx, linger=500, poll_timeout=500)
-
-        async def get(msg):
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
-
-            await socket.send(msg)
-
-            res = await socket.recv()
-
-            return res
-
-        tasks = asyncio.gather(
-            m.serve(),
-            get(b'howdy'),
-            stop_server(m, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], b'howdy')
-
-
-class TestJSONAsyncInbox(TestCase):
-    def setUp(self):
-        self.ctx = zmq.asyncio.Context()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-    def tearDown(self):
-        self.ctx.destroy()
-        self.loop.close()
-
-    def test_init(self):
-        router.JSONAsyncInbox(socket_id='tcp://127.0.0.1:10000', ctx=self.ctx)
-
-    def test_sockets_are_initially_none(self):
-        m = router.JSONAsyncInbox(socket_id='tcp://127.0.0.1:10000', ctx=self.ctx)
-
-        self.assertIsNone(m.socket)
-
-    def test_setup_frontend_creates_socket(self):
-        m = router.JSONAsyncInbox(socket_id='tcp://127.0.0.1:10000', ctx=self.ctx)
-        m.setup_socket()
-
-        self.assertEqual(m.socket.type, zmq.ROUTER)
-        self.assertEqual(m.socket.getsockopt(zmq.LINGER), m.linger)
-
-    def test_sending_message_returns_it(self):
-        m = router.JSONAsyncInbox(socket_id='tcp://127.0.0.1:10000', ctx=self.ctx, linger=2000, poll_timeout=50)
-
-        async def get(msg):
-            socket = self.ctx.socket(zmq.DEALER)
-            socket.connect('tcp://127.0.0.1:10000')
-
-            await socket.send(msg)
-
-            res = await socket.recv()
-
-            return res
-
-        tasks = asyncio.gather(
-            m.serve(),
-            get(b'{"howdy":"abc"}'),
-            stop_server(m, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertEqual(res[1], b'{"howdy":"abc"}')
-
-    def test_secure_request_sends_as_service(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
-
-        w = Wallet()
-        w2 = Wallet()
-
-        authenticator.add_verifying_key(w.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.configure()
-
-        m = router.JSONAsyncInbox(
-            socket_id='tcp://127.0.0.1:10000',
-            ctx=self.ctx,
-            linger=2000,
-            poll_timeout=50,
-            secure=True,
-            wallet=w
-        )
-
-        async def get():
-            r = await router.secure_request(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w2,
-                vk=w.verifying_key,
-                ip='tcp://127.0.0.1:10000',
-                ctx=self.ctx
-            )
-
-            return r
-
-        tasks = asyncio.gather(
-            m.serve(),
-            get(),
-            stop_server(m, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertDictEqual(res[1], {'service': 'something', 'msg': {'hello': 'there'}})
-
-    def test_secure_request_returns_result(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
-
-        w = Wallet()
-        w2 = Wallet()
-
-        authenticator.add_verifying_key(w.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.configure()
-
-        class MockProcessor(router.Processor):
-            async def process_message(self, msg):
-                return {
-                    'whats': 'good'
-                }
-
-        m = router.Router(
-            socket_id='tcp://127.0.0.1:10000',
-            ctx=self.ctx,
-            linger=2000,
-            poll_timeout=50,
-            secure=True,
-            wallet=w
-        )
-
-        m.add_service('something', MockProcessor())
-
-        async def get():
-            r = await router.secure_request(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w2,
-                vk=w.verifying_key,
-                ip='tcp://127.0.0.1:10000',
-                ctx=self.ctx
-            )
-
-            return r
-
-        tasks = asyncio.gather(
-            m.serve(),
-            get(),
-            stop_server(m, 1),
-        )
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
-
-        self.assertDictEqual(res[1], {'whats': 'good'})
-
-        authenticator.authenticator.stop()
-
-    def test_secure_request_cannot_connect_returns_none(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
-
-        w = Wallet()
-        w2 = Wallet()
-
-        authenticator.add_verifying_key(w.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.configure()
-
-        async def get():
-            r = await router.secure_request(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w2,
-                vk=w.verifying_key,
-                ip='tcp://x',
-                ctx=self.ctx
-            )
-
-            return r
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(get())
-
-        self.assertEqual(res, None)
-
-        authenticator.authenticator.stop()
-
-    def test_secure_sec_cannot_connect_returns_none(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
-
-        w = Wallet()
-        w2 = Wallet()
-
-        authenticator.add_verifying_key(w.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.configure()
-
-        async def get():
-            r = await router.secure_send(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w2,
-                vk=w.verifying_key,
-                ip='tcp://x',
-                ctx=self.ctx
-            )
-
-            return r
-
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(get())
-
-        self.assertEqual(res, None)
-
-        authenticator.authenticator.stop()
-
-    def test_secure_send_receives_messages(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
-
-        w = Wallet()
-        w2 = Wallet()
-
-        authenticator.add_verifying_key(w.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.configure()
-
-        m = router.Router(
-            socket_id='tcp://127.0.0.1:10000',
-            ctx=self.ctx,
-            linger=2000,
-            poll_timeout=50,
-            secure=True,
-            wallet=w
-        )
-
-        q = router.QueueProcessor()
-        m.add_service('something', q)
-
-        async def get():
-            await router.secure_send(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w2,
-                vk=w.verifying_key,
-                ip='tcp://127.0.0.1:10000',
-                ctx=self.ctx
-            )
-
-        tasks = asyncio.gather(
-            m.serve(),
-            get(),
-            stop_server(m, 1),
-        )
-
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertEqual(q.q[0], {'hello': 'there'})
+    def test_can_create_instance(self):
+        self.create_router()
+        self.assertIsNotNone(self.router)
 
-        authenticator.authenticator.stop()
+    def test_PROPERTY_socket_is_bound__return_TRUE(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.set_address(ip='*', port=19000)
 
-    def test_multicast_sends_to_multiple(self):
-        authenticator = authentication.SocketAuthenticator(client=ContractingClient(), ctx=self.ctx)
+        self.assertFalse(self.router.socket_is_bound)
+        self.router.connect_socket()
+        self.assertTrue(self.router.socket_is_bound)
 
-        w1 = Wallet()
-        w2 = Wallet()
-        w3 = Wallet()
+    def test_PROPERTY_socket_is_bound__return_FALSE(self):
+        self.create_router()
+        self.router.setup_socket()
 
-        authenticator.add_verifying_key(w1.verifying_key)
-        authenticator.add_verifying_key(w2.verifying_key)
-        authenticator.add_verifying_key(w3.verifying_key)
-        authenticator.configure()
+        self.assertFalse(self.router.socket_is_bound)
 
-        m1 = router.Router(
-            socket_id='tcp://127.0.0.1:10000',
-            ctx=self.ctx,
-            linger=2000,
-            poll_timeout=50,
-            secure=True,
-            wallet=w1
-        )
+    def test_PROPERTY_auth_is_stopped__return_TRUE_if_auth_STOP_method_called(self):
+        self.start_secure_router()
+        self.async_sleep(0.1)
+        self.router.auth.stop()
+        self.async_sleep(0.1)
+        self.assertTrue(self.router.auth_is_stopped)
 
-        q1 = router.QueueProcessor()
-        m1.add_service('something', q1)
+    def test_PROPERTY_auth_is_stopped__return_TRUE_if_auth_is_None(self):
+        self.start_router()
+        self.assertTrue(self.router.auth_is_stopped)
 
-        m2 = router.Router(
-            socket_id='tcp://127.0.0.1:10001',
-            ctx=self.ctx,
-            linger=2000,
-            poll_timeout=50,
-            secure=True,
-            wallet=w2
-        )
+    def test_PROPERTY_auth_is_stopped__return_FALSE_if_auth_is_started(self):
+        self.start_secure_router()
+        self.async_sleep(0.1)
+        self.assertFalse(self.router.auth_is_stopped)
 
-        q2 = router.QueueProcessor()
-        m2.add_service('something', q2)
+    def test_PROPERTY_auth_is_stopped__return_FALSE(self):
+        self.create_router()
+        self.router.setup_socket()
 
-        async def get():
-            peers = {
-                w1.verifying_key: 'tcp://127.0.0.1:10000',
-                w2.verifying_key: 'tcp://127.0.0.1:10001'
-            }
+        self.assertFalse(self.router.socket_is_bound)
 
-            await router.secure_multicast(
-                msg={'hello': 'there'},
-                service='something',
-                wallet=w3,
-                peer_map=peers,
-                ctx=self.ctx
-            )
+    def test_PROPERTY_socket_is_closed__return_TRUE(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.socket.close()
 
-        tasks = asyncio.gather(
-            m1.serve(),
-            m2.serve(),
-            get(),
-            stop_server(m1, 1),
-            stop_server(m2, 1),
-        )
+        self.assertTrue(self.router.socket_is_closed)
+
+    def test_PROPERTY_socket_is_closed__return_FALSE(self):
+        self.create_router()
+        self.router.setup_socket()
+
+        self.assertFalse(self.router.socket_is_closed)
+
+    def test_PROPERTY_is_checking__return_TRUE_if_task_is_not_done(self):
+        self.start_router()
+        self.async_sleep(0.1)
+
+        self.assertFalse(self.router.task_check_for_messages.done())
+        self.assertTrue(self.router.is_checking)
+
+    def test_PROPERTY_is_checking__return_FALSE_if_task_is_None(self):
+        self.create_router()
+
+        self.assertIsNone(self.router.task_check_for_messages)
+        self.assertFalse(self.router.is_checking)
+
+    def test_PROPERTY_is_checking__return_FALSE_if_task_is_done(self):
+        self.start_router()
+        self.async_sleep(1)
+        self.router.should_check = False
+        self.async_sleep(1)
+
+        self.assertTrue(self.router.task_check_for_messages.done())
+        self.assertFalse(self.router.is_checking)
+
+    def test_PROPERTY_curve_server_setup__return_TRUE(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.setup_auth_keys()
+
+        self.assertTrue(self.router.curve_server_setup)
+
+    def test_PROPERTY_curve_server_setup__return_FALSE(self):
+        self.create_router()
+        self.router.setup_socket()
+
+        self.assertFalse(self.router.curve_server_setup)
+
+    def test_PROPERTY_curve_server_setup__return_FALSE_is_AttributeError(self):
+        self.create_router()
+        self.assertFalse(self.router.curve_server_setup)
+
+    def test_METHOD_connect_socket(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.set_address()
+        self.router.connect_socket()
+
+        self.assertTrue(len(self.router.socket.LAST_ENDPOINT) > 0)
+
+    def test_METHOD_connect_socket__raises_AttributeError_if_no_address_set(self):
+        self.create_router()
+        self.router.address = None
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.connect_socket()
+
+        self.assertEqual(EXCEPTION_NO_ADDRESS_SET, str(error.exception))
+
+    def test_METHOD_connect_socket__raises_AttributeError_if_socket_is_none(self):
+        self.create_router()
+        self.router.set_address(ip='*', port=19000)
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.connect_socket()
+
+        self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))
+
+    def test_METHOD_register_poller(self):
+        self.create_router()
+        self.router.setup_socket()
+
+        self.assertEqual([], self.router.poller.sockets)
+        self.router.register_poller()
+        self.assertEqual([(self.router.socket,1)], self.router.poller.sockets)
+
+    def test_METHOD_register_poller__raises_AttributeError_if_socket_not_setup(self):
+        self.create_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.register_poller()
+
+        self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))
+
+    def test_METHOD_set_address__sets_default_values(self):
+        self.create_router()
+        self.router.address = 'testing'
+        self.router.set_address()
+
+        self.assertEqual('tcp://*:19000', self.router.address)
+
+    def test_METHOD_set_address__sets_specified_value(self):
+        self.create_router()
+        self.router.address = 'testing'
+        self.router.set_address(ip="127.0.0.1", port=1200)
+
+        self.assertEqual('tcp://127.0.0.1:1200', self.router.address)
+
+    def test_METHOD_set_address__port_not_int_raises_TypeError(self):
+        self.create_router()
+        with self.assertRaises(TypeError) as error:
+            self.router.set_address(port='1200')
+
+        self.assertEqual(EXCEPTION_PORT_NOT_TYPE_INT, str(error.exception))
+
+    def test_METHOD_set_address__ip_not_str_raises_TypeError(self):
+        self.create_router()
+        with self.assertRaises(TypeError) as error:
+            self.router.set_address(ip=1200)
+
+        self.assertEqual(EXCEPTION_IP_NOT_TYPE_STR, str(error.exception))
+
+    def test_METHOD_run_secure_server__can_start_router(self):
+        try:
+            self.start_secure_router()
+        except:
+            self.fail("Calling start method should not raise errors.")
+
+        self.assertTrue(self.router.running)
+        self.assertTrue(self.router.curve_server_setup)
+
+    def test_METHOD_stop__router_can_stop_if_NOT_started(self):
+        self.create_router()
+
+        try:
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
+        except:
+            self.fail("Calling stop method should not raise errors.")
+
+        self.assertTrue(self.router.socket_is_closed)
+        self.assertTrue(self.router.auth_is_stopped)
+        self.assertFalse(self.router.is_checking)
+        self.assertFalse(self.router.is_running)
+
+
+    def test_METHOD_stop__secure_router_can_stop_if_started(self):
+        self.start_secure_router()
+
+        try:
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
+        except:
+            self.fail("Calling stop method should not raise errors.")
+
+        self.assertTrue(self.router.socket_is_closed)
+        self.assertTrue(self.router.auth_is_stopped)
+        self.assertFalse(self.router.is_checking)
+        self.assertFalse(self.router.is_running)
+
+    def test_METHOD_stop__unsecure_router_can_stop_if_started(self):
+        self.start_router()
+
+        try:
+            task = asyncio.ensure_future(self.router.stop())
+            while not task.done():
+                self.async_sleep(0.1)
+        except:
+            self.fail("Calling stop method should not raise errors.")
+
+        self.assertTrue(self.router.socket_is_closed)
+        self.assertTrue(self.router.auth_is_stopped)
+        self.assertFalse(self.router.is_checking)
+        self.assertFalse(self.router.is_running)
+
+
+    def test_METHOD_check_for_messages__secure_server_can_decode_ident_and_pass_to_callback(self):
+        self.create_secure_request()
+        self.start_secure_router()
+
+
+        to_address = 'tcp://127.0.0.1:19000'
+        msg_str = "Testing"
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str=msg_str))
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.callback_data)
+
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
+
+        self.assertIsInstance(ident_vk_string, str)
+        self.assertEqual(self.request_wallet.verifying_key, ident_vk_string)
+
+    def test_METHOD_check_for_messages__unsecured_server_passes_NONE_for_ident_to_callback(self):
+        self.create_request()
+        self.start_router()
+
+
+        to_address = 'tcp://127.0.0.1:19000'
+        msg_str = "Testing"
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str=msg_str))
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.callback_data)
+
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
+
+        self.assertIsNone(ident_vk_string)
+
+    def test_METHOD_check_for_messages__unsecured_server_passes_msg_as_bytes_to_callback(self):
+        self.create_request()
+        self.start_router()
+
+        to_address = 'tcp://127.0.0.1:19000'
+        msg_str = "Testing"
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str=msg_str))
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.callback_data)
+
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
+
+        self.assertIsInstance(msg, bytes)
+        self.assertEqual(msg_str, msg.decode('UTF-8'))
+
+    def test_METHOD_check_for_messages__secure_server_passes_msg_as_bytes_to_callback(self):
+        self.create_secure_request()
+        self.start_secure_router()
+
+
+        to_address = 'tcp://127.0.0.1:19000'
+        msg_str = "Testing"
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str=msg_str))
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.callback_data)
+
+        ident_vk_bytes, ident_vk_string, msg = self.callback_data
+
+        self.assertIsInstance(msg, bytes)
+        self.assertEqual(msg_str, msg.decode('UTF-8'))
+
+    def test_METHOD_check_for_messages__secure_server_ignores_unsecure_requests(self):
+        self.create_request()
+        self.start_secure_router()
+
+        self.router.cred_provider.approved_keys = {}
+        to_address = 'tcp://127.0.0.1:19000'
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str="Testing"))
+
+        self.async_sleep(1)
+
+        self.assertIsNone(self.callback_data)
+
+    def test_METHOD_check_for_messages__secure_server_ignores_secure_request_if_no_key(self):
+        self.create_secure_request()
+        self.start_secure_router()
+        self.router.cred_provider.remove_key(self.request_wallet.verifying_key)
+
+        to_address = 'tcp://127.0.0.1:19000'
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str="Testing"))
+
+        self.async_sleep(1)
+
+        self.assertIsNone(self.callback_data)
+
+    def test_METHOD_check_for_messages__unsecure_server_can_return_data_to_callback(self):
+        self.create_request()
+        self.request.server_curve_vk = None
+
+        self.start_router()
+
+        to_address = 'tcp://127.0.0.1:19000'
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.request.send(to_address=to_address, msg_str="Testing"))
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.callback_data)
+
+    def test_METHOD_wait_for_socket_to_close__returns_when_socket_is_closed(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.connect_socket()
+
+        self.assertTrue(self.router.socket_is_bound)
+
+        task = asyncio.ensure_future(self.router.wait_for_socket_to_close())
+        self.async_sleep(0.1)
+
+        self.assertFalse(task.done())
+        self.router.socket.close()
+        self.async_sleep(0.1)
+
+        self.assertTrue(task.done())
+
+    def test_METHOD_stop_checking_for_messages__returns_when_stopped_checking(self):
+        self.start_router()
+        self.async_sleep(0.1)
+
+        self.assertTrue(self.router.is_checking)
+
+        task = asyncio.ensure_future(self.router.stop_checking_for_messages())
+        self.async_sleep(1)
+
+        self.assertTrue(task.done())
+        self.assertFalse(self.router.is_checking)
+
+    def test_METHOD_stop_auth__returns_when_auth_is_stopped(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.setup_auth()
+
+        self.async_sleep(0.1)
+
+        self.assertFalse(self.router.auth_is_stopped)
+
+        task = asyncio.ensure_future(self.router.stop_auth())
+        self.async_sleep(1)
+
+        self.assertTrue(task.done())
+        self.assertTrue(self.router.auth_is_stopped)
+
+    def test_METHOD_stop_auth__returns_if_auth_not_started(self):
+        self.create_router()
+        self.router.setup_socket()
+
+        self.assertTrue(self.router.auth_is_stopped)
+
+        task = asyncio.ensure_future(self.router.stop_auth())
+        self.async_sleep(0.5)
+
+        self.assertTrue(task.done())
+        self.assertTrue(self.router.auth_is_stopped)
+
+    def test_METHOD_close_socket(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.connect_socket()
+        self.async_sleep(0.1)
+
+        self.assertFalse(self.router.socket_is_closed)
+        self.assertTrue(self.router.socket_is_bound)
+        task = asyncio.ensure_future(self.router.close_socket())
+
+        while not task.done():
+            self.async_sleep(0.1)
+
+        self.assertTrue(self.router.socket_is_closed)
+        self.assertFalse(self.router.socket_is_bound)
+
+    def test_METHOD_has_messages__unsecured_messages_return_TRUE(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.register_poller()
+        self.router.connect_socket()
+        self.async_sleep(1)
+
+        self.create_request()
+
+        to_address = 'tcp://127.0.0.1:19000'
+        loop = asyncio.get_event_loop()
+
+        event = False
+        while not event:
+            asyncio.ensure_future(self.request.send(to_address=to_address, msg_str="Testing"))
+            event = loop.run_until_complete(self.router.has_message(timeout_ms=500))
+
+        self.assertTrue(event == 1)
+
+    def test_METHOD_has_messages__secured_messages_return_TRUE(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.setup_auth()
+        self.router.cred_provider.add_key(vk=self.request_wallet.verifying_key)
+        self.router.register_poller()
+        self.router.setup_auth_keys()
+        self.router.connect_socket()
+
+        self.async_sleep(1)
+
+        self.create_secure_request()
+
+        to_address = 'tcp://127.0.0.1:19000'
+        loop = asyncio.get_event_loop()
+
+        event = False
+        while not event:
+            asyncio.ensure_future(self.request.send(to_address=to_address, msg_str="Testing"))
+            event = loop.run_until_complete(self.router.has_message(timeout_ms=500))
+
+        self.assertTrue(event == 1)
+
+    def test_METHOD_has_messages__no_messages_return_FALSE_after_timout(self):
+        self.create_router()
+        self.router.setup_socket()
+        self.router.setup_auth()
+        self.router.register_poller()
+        self.router.setup_auth_keys()
+        self.router.connect_socket()
+
+        self.async_sleep(1)
+
+        start_time = time.time()
+        timeout_ms = 1000
+        timeout_sec = timeout_ms / 1000
+        loop = asyncio.get_event_loop()
+        event = loop.run_until_complete(self.router.has_message(timeout_ms=timeout_ms))
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        self.assertTrue(elapsed_time > timeout_sec)
+        self.assertTrue(event == 0)
+
+    def test_METHOD_send_msg(self):
+        self.start_secure_router()
+        self.create_secure_request()
+        self.async_sleep(1)
 
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
 
-        self.assertEqual(q1.q[0], {'hello': 'there'})
-        self.assertEqual(q2.q[0], {'hello': 'there'})
+        to_address = 'tcp://127.0.0.1:19000'
+        task = asyncio.ensure_future(self.request.send(to_address=to_address, msg_str="Testing", timeout_ms=1000))
+
+        while self.callback_data is None:
+            loop.run_until_complete(asyncio.sleep(0.1))
+
+        msg_str = "Test_Test"
+        ident_vk_bytes=json.dumps(self.request_wallet.verifying_key).encode('utf-8')
+
+        self.router.send_msg(ident_vk_bytes=ident_vk_bytes, to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
+
+        while not task.done():
+            self.async_sleep(0.1)
+
+        result = loop.run_until_complete(task)
+
+        self.assertTrue(result.success)
+        self.assertEqual(msg_str.encode('UTF-8'), result.response)
+
+    def test_METHOD_send_msg__Handle_host_unreachable(self):
+        self.start_secure_router()
+        self.create_secure_request()
+        self.async_sleep(1)
+
+        msg_str = "Test_Test"
+        ident_vk_bytes=self.request_wallet.verifying_key.encode('utf-8')
+
+        try:
+            self.router.send_msg(ident_vk_bytes=ident_vk_bytes, to_vk=self.request_wallet.verifying_key, msg_str=msg_str)
+        except Exception as err:
+            self.fail("Should not raise ZMQ Host unreachable error")
+
+
+    def test_METHOD_send_msg__raise_AttributeError_if_to_vk_not_type_str(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg', to_vk=self.request_wallet.curve_vk, msg_str="Test_Test")
+
+        self.assertEqual(EXCEPTION_TO_VK_NOT_STRING, str(error.exception))
+
+    def test_METHOD_send_msg__raise_AttributeError_if_ident_vk_bytes_not_type_bytes(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(ident_vk_bytes="no", to_vk=self.request_wallet.verifying_key, msg_str="Test_Test")
+
+        self.assertEqual(EXCEPTION_IDENT_VK_BYTES_NOT_BYTES, str(error.exception))
+
+    def test_METHOD_send_msg__raise_AttributeError_if_msg_str_not_type_string(self):
+        self.create_secure_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg',to_vk=self.request_wallet.verifying_key, msg_str={"test": True})
+
+        self.assertEqual(EXCEPTION_MSG_NOT_STRING, str(error.exception))
+
+    def test_METHOD_send_msg__raise_AttributeError_if_socket_is_None(self):
+        self.create_router()
+
+        with self.assertRaises(AttributeError) as error:
+            self.router.send_msg(ident_vk_bytes=b'\x00k\x8bEg',to_vk=self.request_wallet.verifying_key, msg_str="Test Test")
+
+        self.assertEqual(EXCEPTION_NO_SOCKET, str(error.exception))
+
+    def test_METHOD__refresh_cred_provider_vks__adds_missing_vks(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        new_vk = Wallet().verifying_key
+        self.router.refresh_cred_provider_vks(vk_list=[new_vk, existing_vk])
+
+        self.assertIsNotNone(self.router.cred_provider.approved_keys.get(new_vk))
+        self.assertIsNotNone(self.router.cred_provider.approved_keys.get(existing_vk))
+
+        self.assertEqual(2, len(self.router.cred_provider.approved_keys.keys()))
+
+    def test_METHOD__refresh_cred_provider_vks__removes_exiting_vks_not_in_list(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        new_vk = Wallet().verifying_key
+        self.router.refresh_cred_provider_vks(vk_list=[new_vk])
+
+        self.assertIsNone(self.router.cred_provider.approved_keys.get(existing_vk))
+        self.assertEqual(1, len(self.router.cred_provider.approved_keys.keys()))
+
+    def test_METHOD__refresh_cred_provider_vks__blank_list_removes_all_keys(self):
+        self.create_router()
+
+        existing_vk = Wallet().verifying_key
+        self.router.cred_provider.add_key(vk=existing_vk)
+
+        self.router.refresh_cred_provider_vks(vk_list=[])
+
+        self.assertIsNone(self.router.cred_provider.approved_keys.get(existing_vk))
+        self.assertEqual(0, len(self.router.cred_provider.approved_keys.keys()))

@@ -1,6 +1,7 @@
 #Virtual Python Environments
 /venv
 venv
+.python-version
 
 #Integrated Development Environments
 /.idea
@@ -22,8 +23,7 @@ __pycache__/
 *.dot
 *.ps
 
-cilantro_ee.egg-info/
-cilantro.egg-info/
+lamden.egg-info/
 capnproto-c++-0.7.0/
 capnproto/
 var/
@@ -61,11 +61,6 @@ cilantro_ee/testnet_configs/testnet.ini
 #cilantro_ee/vmnet_configs/constitutions/test/testnet.ini
 tests/cloud/Dockerfile
 
-# Docker
-docker-compose.yml
-docker/redis.env
-src
-
 # Docs
 docs/sphinx/_build
 fsock
@@ -74,3 +69,15 @@ fsock
 build
 dist
 ops
+/tests/integration/fixtures/block_storage/*
+/tests/integration/mock/temp_network
+/tests/integration/temp_network
+/tests/integration/fixtures/file_queue/*
+/tests/unit/.lamden/
+/tests/unit/temp_network/
+/tests/unit/temp_storage/
+.vscode/settings.json
+temp_network
+.coverage
+tests/integration/mock/fixtures/
+tests/integration/fixtures/

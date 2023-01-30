@@ -6,6 +6,8 @@ from contracting.db.encoder import encode, decode
 from lamden import storage
 from lamden.crypto import wallet
 from contracting.client import ContractingClient
+from lamden.logger.base import get_logger
+log = get_logger('TRANSACTION')
 import json
 
 class TransactionException(Exception):
@@ -59,7 +61,6 @@ class TransactionStaleError(TransactionException):
 class TransactionInvalidTimestampError(TransactionException):
     pass
 
-
 EXCEPTION_MAP = {
     TransactionNonceInvalid: {'error': 'Transaction nonce is invalid.'},
     TransactionProcessorInvalid: {'error': 'Transaction processor does not match expected processor.'},
@@ -72,7 +73,8 @@ EXCEPTION_MAP = {
     TransactionFormattingError: {'error': 'Transaction is not formatted properly.'},
     TransactionTrailingZerosFixedError: {'error': 'Transaction contains illegal trailing zeros in a Fixed object.'},
     TransactionStaleError: {'error': 'Transaction timestamp is too old. Submit again.'},
-    TransactionInvalidTimestampError: {'error': 'Transaction timestamp is invalid.'}
+    TransactionInvalidTimestampError: {'error': 'Transaction timestamp is invalid.'},
+    TransactionContractNameInvalid: {'error': 'Transaction contract name is invalid.'}
 }
 
 
@@ -114,10 +116,24 @@ def fixed_is_valid(f: dict):
         return False
     return True
 
+def check_tx_keys(tx):
+    metadata = tx.get('metadata') 
+    if not metadata or len(metadata.keys()) != 1:
+        return False
+
+    payload = tx.get('payload')
+    if not payload:
+        return False
+
+    keys = list(payload.keys())
+    keys_are_valid = list(map(lambda key: key in keys, list(rules.TRANSACTION_PAYLOAD_RULES.keys())))
+    
+    return all(keys_are_valid) and len(keys) == len(list(rules.TRANSACTION_PAYLOAD_RULES.keys()))
+
 
 def check_tx_formatting(tx: dict, expected_processor: str):
-    if not check_format(tx, rules.TRANSACTION_RULES):
-        raise TransactionFormattingError
+    if not check_tx_keys(tx) or not check_format(tx, rules.TRANSACTION_RULES):
+            raise TransactionFormattingError
 
     if not wallet.verify(
             tx['payload']['sender'],
@@ -168,6 +184,22 @@ def get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=True, tx_per_bl
 
     return expected_nonce
 
+def check_nonce(tx: dict, nonces: storage.NonceStorage):
+    tx_nonce = tx['payload']['nonce']
+    tx_processor = tx['payload']['processor']
+    tx_sender = tx['payload']['sender']
+
+    current_nonce = nonces.get_nonce(
+        sender=tx_sender,
+        processor=tx_processor
+    )
+
+    valid = current_nonce is None or tx_nonce > current_nonce
+
+    if not valid:
+        raise TransactionNonceInvalid
+
+    return valid
 
 def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, function=None, amount=0):
     if balance * stamps_per_tau < stamps_supplied:
@@ -182,7 +214,7 @@ def has_enough_stamps(balance, stamps_per_tau, stamps_supplied, contract=None, f
 
 
 def contract_name_is_valid(contract, function, name):
-    if contract == 'submission' and function == 'submit_contract' and not primatives.contract_name_is_formatted(name):
+    if contract == 'submission' and function == 'submit_contract' and (len(name) > 255 or not primatives.contract_name_is_formatted(name)):
         raise TransactionContractNameInvalid
 
 
@@ -221,8 +253,7 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
     signature = wallet.sign(true_payload)
 
     metadata = {
-        'signature': signature,
-        'timestamp': int(time.time())
+        'signature': signature
     }
 
     tx = {
@@ -236,28 +267,14 @@ def build_transaction(wallet, contract: str, function: str, kwargs: dict, nonce:
 # Run through all tests
 def transaction_is_valid(transaction, expected_processor, client: ContractingClient, nonces: storage.NonceStorage, strict=True,
                          tx_per_block=15, timeout=60):
-    # Check basic formatting so we can access via __getitem__ notation without errors
-    if not check_format(transaction, rules.TRANSACTION_RULES):
-        return TransactionFormattingError
-
-    transaction_is_not_expired(transaction, timeout)
-
-    # Put in to variables for visual ease
-    processor = transaction['payload']['processor']
-    sender = transaction['payload']['sender']
-
     # Checks if correct processor and if signature is valid
     check_tx_formatting(transaction, expected_processor)
 
-    # Gets the expected nonces
-    nonce, pending_nonce = get_nonces(sender, processor, nonces)
+    # Put in to variables for visual ease
+    sender = transaction['payload']['sender']
 
-    # Get the provided nonce
-    tx_nonce = transaction['payload']['nonce']
-
-    # Check to see if the provided nonce is valid to what we expect and
-    # if there are less than the max pending txs in the block
-    get_new_pending_nonce(tx_nonce, nonce, pending_nonce, strict=strict, tx_per_block=tx_per_block)
+    # Check the Nonce is greater than the current nonce we have
+    check_nonce(tx=transaction, nonces=nonces)
 
     # Get the senders balance and the current stamp rate
     balance = client.get_var(contract='currency', variable='balances', arguments=[sender], mark=False)
@@ -279,6 +296,7 @@ def transaction_is_valid(transaction, expected_processor, client: ContractingCli
     amount = transaction['payload']['kwargs'].get('amount')
     if amount is None:
         amount = 0
+
 
     # Check if they have enough stamps for the operation
     has_enough_stamps(balance, stamp_rate, stamps_supplied, contract=contract, function=func, amount=amount)

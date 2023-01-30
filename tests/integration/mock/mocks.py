@@ -27,7 +27,7 @@ class MockNode:
         self.driver = ContractDriver(driver=self.raw_driver)
         self.driver.flush()
 
-        self.nonces = storage.NonceStorage(nonce_collection=f'nonces-{self.index}', pending_collection=f'pending-{self.index}')
+        self.nonces = storage.NonceStorage(root='/tmp')
         self.nonces.flush()
 
         self.ctx = ctx

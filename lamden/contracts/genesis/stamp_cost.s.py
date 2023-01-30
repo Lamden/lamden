@@ -5,12 +5,10 @@ S = Hash()
 @construct
 def seed(initial_rate: int=100,
          master_contract='masternodes',
-         delegate_contract='delegates',
          election_max_length=datetime.DAYS * 1):
 
     S['value'] = initial_rate
     S['master_contract'] = master_contract
-    S['delegate_contract'] = delegate_contract
     S['election_max_length'] = election_max_length
 
     S['vote_count'] = 1
@@ -29,8 +27,7 @@ def current_value():
 def vote(vk: str, obj: int):
     # Start a new election
     if S['election_start'] is None:
-        total_nodes = len(election_house.current_value_for_policy(S['master_contract'])) + \
-                      len(election_house.current_value_for_policy(S['delegate_contract']))
+        total_nodes = len(election_house.current_value_for_policy(S['master_contract']))
 
         S['vote_count'] = 1
         S['min_votes_required'] = (total_nodes * 2 // 3) + 1
@@ -72,12 +69,11 @@ def tally_vote(vk: str, obj: int):
 
 
 def validate_vote(vk: str, obj: int):
-    assert vk in election_house.current_value_for_policy(S['master_contract']) or \
-           vk in election_house.current_value_for_policy(S['delegate_contract']), 'Not allowed to vote!'
+    assert vk in election_house.current_value_for_policy(S['master_contract']), 'Not allowed to vote!'
 
-    assert type(obj) == int, 'Pass an int!'
+    assert isinstance(obj, int), 'Pass an int!'
     assert obj > 0, 'No negatives!'
 
     assert S['value'] / 2 <= obj <= S['value'] * 2, 'Out of range!'
 
-    assert S['votes', vk] is None, 'Already voted!'
+    assert S['has_voted', vk] is None, 'Already voted!'

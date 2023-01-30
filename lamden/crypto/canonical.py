@@ -7,6 +7,8 @@ from contracting.db.encoder import encode
 
 from lamden.logger.base import get_logger
 
+from lamden.utils.hlc import nanos_from_hlc_timestamp
+
 log = get_logger('CANON')
 
 
@@ -29,6 +31,12 @@ def tx_hash_from_tx(tx):
     h = hashlib.sha3_256()
     tx_dict = format_dictionary(tx)
     encoded_tx = encode(tx_dict).encode()
+    h.update(encoded_tx)
+    return h.hexdigest()
+
+def hash_from_results(formatted_results):
+    h = hashlib.sha3_256()
+    encoded_tx = encode(formatted_results).encode()
     h.update(encoded_tx)
     return h.hexdigest()
 
@@ -64,7 +72,7 @@ def verify_merkle_tree(leaves, expected_root):
 
 def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
     block_hasher = hashlib.sha3_256()
-    block_hasher.update(bytes.fromhex(previous_hash))
+    # block_hasher.update(bytes.fromhex(previous_hash))
 
     deserialized_subblocks = []
 
@@ -91,3 +99,81 @@ def block_from_subblocks(subblocks, previous_hash: str, block_num: int) -> dict:
     }
 
     return block
+
+def block_from_tx_results(processing_results, proofs, prev_block_hash, wallet) -> dict:
+    tx_result = processing_results.get('tx_result')
+    hlc_timestamp = processing_results.get('hlc_timestamp')
+
+    block_num = nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+
+    pruned_proofs = remove_result_hash_from_proofs(proofs)
+    block_hash = block_hash_from_block(
+        hlc_timestamp=hlc_timestamp,
+        block_number=str(block_num),
+        previous_block_hash=prev_block_hash
+    )
+
+    block = {
+        'hash': block_hash,
+        'number': str(block_num),
+        'hlc_timestamp': hlc_timestamp,
+        'previous': prev_block_hash,
+        'proofs': pruned_proofs,
+        'processed': tx_result,
+        'rewards': processing_results.get('rewards'),
+        'origin': processing_results.get('tx_message')
+    }
+
+    signature = wallet.sign(encode(deepcopy(block)))
+    block['minted'] = {
+        'minter': wallet.verifying_key,
+        'signature': signature
+    }
+
+    return block
+
+def block_hash_from_block(hlc_timestamp: str, block_number: str, previous_block_hash: str) -> str:
+    h = hashlib.sha3_256()
+    h.update('{}{}{}'.format(hlc_timestamp, block_number, previous_block_hash).encode())
+    return h.hexdigest()
+
+def recalc_block_info(block: dict, new_prev_hash: str = None) -> dict:
+    if new_prev_hash is None:
+        new_prev_hash = block.get('previous')
+
+    hlc_timestamp = block.get('hlc_timestamp')
+
+    block_num = nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
+    block_num = str(block_num)
+
+    h = hashlib.sha3_256()
+
+    h.update('{}{}{}'.format(hlc_timestamp, block_num, new_prev_hash).encode())
+
+    block['hash'] = h.hexdigest()
+    block['previous'] = new_prev_hash
+    block['number'] = block_num
+
+    return block
+
+def remove_result_hash_from_proofs(proofs) -> list:
+    for proof in proofs:
+        try:
+            del proof['tx_result_hash']
+        except KeyError:
+            pass
+
+    return proofs
+
+def tx_result_hash_from_tx_result_object(tx_result, hlc_timestamp, rewards):
+    h = hashlib.sha3_256()
+    h.update('{}'.format(encode(tx_result).encode()).encode())
+    h.update('{}'.format(encode(rewards).encode()).encode())
+    h.update('{}'.format(hlc_timestamp).encode())
+    return h.hexdigest()
+
+def hash_genesis_block_state_changes(state_changes: list) -> str:
+    state_changes.sort(key=lambda x: x.get('key'))
+    h = hashlib.sha3_256()
+    h.update('{}'.format(encode(state_changes).encode()).encode())
+    return h.hexdigest()

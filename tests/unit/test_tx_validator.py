@@ -101,7 +101,7 @@ class TestTransactionBuilder(TestCase):
 
 class TestValidator(TestCase):
     def setUp(self):
-        self.driver = storage.NonceStorage()
+        self.driver = storage.NonceStorage(root='/tmp')
         self.driver.flush()
 
     def tearDown(self):
@@ -315,6 +315,15 @@ class TestValidator(TestCase):
                 name='co_hello'
             )
 
+    def test_contract_fails_if_name_is_too_long(self):
+        with self.assertRaises(transaction.TransactionContractNameInvalid):
+            transaction.contract_name_is_valid(
+                contract='submission',
+                function='submit_contract',
+                name='con_hello' * 32
+            )
+    '''
+    Timestamp is no longer used
     def test_transaction_is_not_expired_true_if_within_timeout(self):
         w = Wallet()
 
@@ -333,6 +342,10 @@ class TestValidator(TestCase):
 
         decoded = decode(tx)
         transaction.transaction_is_not_expired(decoded)
+    '''
+
+    '''
+    Timestamp is no longer used
 
     def test_transaction_is_expired_false_if_outside_timeout(self):
         w = Wallet()
@@ -355,7 +368,10 @@ class TestValidator(TestCase):
 
         with self.assertRaises(transaction.TransactionStaleError):
             transaction.transaction_is_not_expired(decoded)
+    '''
 
+    '''
+    Timestamp is no longer used
     def test_future_transactions_raise_error_if_beyond_expiry(self):
         w = Wallet()
 
@@ -377,7 +393,10 @@ class TestValidator(TestCase):
 
         with self.assertRaises(transaction.TransactionInvalidTimestampError):
             transaction.transaction_is_not_expired(decoded)
+    '''
 
+    '''
+    Timestamp is no longer used
     def test_future_transactions_fine_if_in_expiry(self):
         w = Wallet()
 
@@ -398,6 +417,7 @@ class TestValidator(TestCase):
         decoded['metadata']['timestamp'] += 4
 
         transaction.transaction_is_not_expired(decoded)
+    '''
 
     def test_transaction_is_valid_complete_test_passes(self):
         w = Wallet()

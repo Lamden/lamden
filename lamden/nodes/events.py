@@ -51,8 +51,7 @@ class EventListener:
             with open(file, 'r') as f:
                 try:
                     e = json.load(f)
-                    event = Event(e['topics'], e['data'])
-                    events.append(event)
+                    events.append(Event(e['topics'], e['data']))
                 except:
                     # TODO(nikita): proper handling
                     print('failed to load event')
@@ -73,7 +72,7 @@ class EventService:
         self.__register_app_listeners()
 
     def run(self):
-        self.app.run(port=self.port)
+        self.app.run(host='0.0.0.0', port=self.port)
 
     async def __gather_and_send_events(self):
         while True:

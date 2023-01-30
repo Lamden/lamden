@@ -1,64 +1,69 @@
 import election_house
 
-
 ELECTION_WINDOW = datetime.WEEKS * 1
 
-upgrade_state = Hash()                  # Main storage
-has_voted = Hash(default_value=False)   # Address -> Votes hash
-
+S = Hash()
+vote_state = Hash()
 
 @construct
-def seed():
-    upgrade_state['locked'] = False
-    upgrade_state['consensus'] = False
-
-    upgrade_state['votes'] = 0
-    upgrade_state['voters'] = 0
-
-
-def start_vote(cilantro_branch_name: str, contracting_branch_name: str, pepper: str):
-    upgrade_state['locked'] = True
-    upgrade_state['pepper'] = pepper
-    upgrade_state['cilantro_branch_name'] = cilantro_branch_name
-    upgrade_state['contracting_branch_name'] = contracting_branch_name
-
-    upgrade_state['votes'] = 0
-
-    upgrade_state['voters'] = len(election_house.current_value_for_policy('masternodes')) + \
-                              len(election_house.current_value_for_policy('delegates'))
-
-    upgrade_state['started'] = now
-
-
-def is_valid_voter(address: str):
-    if address in election_house.current_value_for_policy('masternodes'):
-        return True
-
-    elif address in election_house.current_value_for_policy('delegates'):
-        return True
-
-    return False
-
+def seed(lamden_tag: str, contracting_tag: str):
+    S['lamden_tag'] = lamden_tag
+    S['contracting_tag'] = contracting_tag
 
 @export
-def vote(**kwargs):
-    assert not has_voted[ctx.caller], 'Cannot vote twice!'
-    assert is_valid_voter(ctx.caller), 'Invalid voter!'
-    assert not upgrade_state['consensus'], 'Consensus already achieved!'
+def propose_upgrade(lamden_tag: str, contracting_tag: str):
+    assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Not a member!'
+    assert lamden_tag is not None and lamden_tag != '' and contracting_tag is not None and contracting_tag != '', 'Version string is not valid!'
 
-    if upgrade_state['started'] is not None and now - upgrade_state['started'] > ELECTION_WINDOW:
-        upgrade_state.clear()
-        has_voted.clear()
+    if expired():
+        vote_state.clear()
 
-    if not upgrade_state['locked']:
-        start_vote(**kwargs)
-        upgrade_state['votes'] += 1
-        has_voted[ctx.caller] = True
+    assert vote_state['started'] is None, 'Another voting in progress!'
 
-    elif upgrade_state['votes'] + 1 >= (upgrade_state['voters'] * 2 // 3):
-        upgrade_state['consensus'] = True
-        has_voted.clear()
+    vote_state['lamden_tag'] = lamden_tag
+    vote_state['contracting_tag'] = contracting_tag
+    vote_state['yays'] = 1
+    vote_state['nays'] = 0
+    vote_state['started'] = now
+    vote_state['positions', ctx.caller] = True
 
+@export
+def vote(position: bool):
+    assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Invalid voter!'
+    assert vote_state['started'] is not None, 'No open proposals!'
+    assert isinstance(position, bool), 'Position is not valid!'
+
+    if expired():
+        vote_state.clear()
     else:
-        upgrade_state['votes'] += 1
-        has_voted[ctx.caller] = True
+        assert vote_state['positions', ctx.caller] is None, 'Cannot vote twice!'
+        if position:
+            vote_state['yays'] += 1
+        else:
+            vote_state['nays'] += 1
+        vote_state['positions', ctx.caller] = True
+
+        check_consensus()
+
+@export
+def startup(lamden_tag: str, contracting_tag: str):
+    assert ctx.caller in election_house.current_value_for_policy('masternodes'), 'Not a member!'
+    assert lamden_tag is not None and lamden_tag != '' and contracting_tag is not None and contracting_tag != '', 'Tags are not valid!'
+
+    S[ctx.caller, 'lamden_tag'] = lamden_tag
+    S[ctx.caller, 'contracting_tag'] = contracting_tag
+
+def get_majority():
+    return len(election_house.current_value_for_policy('masternodes')) * 2 // 3 + 1
+
+def check_consensus():
+    majority = get_majority()
+    if vote_state['yays'] >= majority:
+        S['lamden_tag'] = vote_state['lamden_tag']
+        S['contracting_tag'] = vote_state['contracting_tag']
+        vote_state.clear()
+    elif vote_state['nays'] >= majority or vote_state['yays'] + vote_state['nays'] == len(election_house.current_value_for_policy('masternodes')):
+        vote_state.clear()
+
+def expired():
+    return vote_state['started'] is not None and now - vote_state['started'] > ELECTION_WINDOW
