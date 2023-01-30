@@ -554,7 +554,7 @@ class Network:
                 msg_str=self.hello_response(challenge=challenge)
             )
 
-            self.connect_peer(vk=ident_vk_string, ip=ip)
+            #self.connect_peer(vk=ident_vk_string, ip=ip)
 
         if action == ACTION_GET_LATEST_BLOCK:
             self.log('warning', "ACTION_GET_LATEST_BLOCK")
