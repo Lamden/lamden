@@ -399,7 +399,7 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': ACTION_PING}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
@@ -413,14 +413,14 @@ class Peer:
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_LATEST_BLOCK}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
         if isinstance(msg_json, dict):
             if msg_json.get('response') == ACTION_GET_LATEST_BLOCK:
                 self.set_latest_block_info(
@@ -441,7 +441,7 @@ class Peer:
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=2500, attempts=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=5)
         return msg_json
 
     async def send_request(self, msg_obj: dict, timeout: int = 200,
