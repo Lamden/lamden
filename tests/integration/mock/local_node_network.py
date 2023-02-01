@@ -355,6 +355,8 @@ class LocalNodeNetwork:
                     print(f'{__name__} TIMED OUT')
                     break
                 results = [tn.node.blocks.total_blocks() == block_height for tn in (nodes if nodes is not None else self.all_nodes)]
+                print([tn.node.blocks.total_blocks() for tn in (nodes if nodes is not None else self.all_nodes)])
+                print([tn.err for tn in (nodes if nodes is not None else self.all_nodes)])
                 done = all(results)
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(asyncio.sleep(1))

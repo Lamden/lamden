@@ -868,7 +868,9 @@ class Node:
 
         self.soft_apply_current_state(hlc_timestamp=hlc_timestamp)
 
-        self.driver.hard_apply(hlc=hlc_timestamp)
+        pending_delta = self.driver.hard_apply_one(hlc=hlc_timestamp)
+        self.driver.bust_cache(writes=pending_delta.get('writes'))
+        #self.driver.hard_apply(hlc=hlc_timestamp)
 
 
     # TODO: move to state manager in the future.
@@ -1010,7 +1012,10 @@ class Node:
 
         # Hard apply this hlc_timestamps state changes
         if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
-            self.driver.hard_apply(hlc_timestamp)
+            pending_delta = self.driver.hard_apply_one(hlc=hlc_timestamp)
+            self.driver.bust_cache(writes=pending_delta.get('writes'))
+
+            #self.driver.hard_apply(hlc=hlc_timestamp)
         else:
             self.apply_state_changes_from_block(new_block)
 
