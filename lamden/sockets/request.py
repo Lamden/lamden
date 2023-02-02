@@ -52,7 +52,7 @@ class Request():
             socket_type="REQUEST",
             parent_ip=self.local_ip
         )
-        self.socket_monitor.start()
+        # self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -135,7 +135,7 @@ class Request():
 
         self.create_socket()
 
-        self.socket_monitor.monitor(socket=self.socket)
+        # self.socket_monitor.monitor(socket=self.socket)
 
         if self.secure_socket:
             self.setup_secure_socket()
@@ -203,7 +203,7 @@ class Request():
     def reconnect_socket(self):
         self.close_socket()
         self.create_socket()
-        self.socket_monitor.monitor(socket=self.socket)
+        # self.socket_monitor.monitor(socket=self.socket)
         if self.secure_socket:
             self.setup_secure_socket()
 
@@ -214,7 +214,7 @@ class Request():
         self.connect_socket()
 
     def close_socket(self) -> None:
-        self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
+        # self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
 
         if self.socket:
             try:
@@ -232,8 +232,8 @@ class Request():
     async def stop(self) -> None:
         self.log('info', 'Stopping.')
 
-        if self.socket_monitor.running:
-            await self.socket_monitor.stop()
+        # if self.socket_monitor.running:
+        #     await self.socket_monitor.stop()
 
         if self.running:
             self.close_socket()
