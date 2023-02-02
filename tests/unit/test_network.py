@@ -322,10 +322,9 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
+        peer = network_1.create_peer(ip='1.1.1.1', vk=peer_vk)
 
-        self.assertEqual(1, len(network_1.peer_list))
-        self.assertIsInstance(network_1.peers[peer_vk], Peer)
+        self.assertIsInstance(peer, Peer)
 
     def test_METHOD_start_peer__can_start_a_peer(self):
         network_1 = self.create_network()

@@ -212,7 +212,7 @@ class Peer:
         self.socket_ports['publisher'] = 19080 + (self.socket_ports['router'] - 19000)
         self.socket_ports['webserver'] = 18080 + (self.socket_ports['router'] - 19000)
 
-    def start(self) -> None:
+    def start(self, verify: bool = True) -> None:
         if self.running:
             self.log('warning', 'Already running.')
             return
@@ -222,7 +222,8 @@ class Peer:
 
         self.running = True
 
-        self.start_verify_peer_loop()
+        if verify:
+            self.start_verify_peer_loop()
 
     def start_verify_peer_loop(self) -> None:
         if self.is_verifying:

@@ -210,7 +210,7 @@ class Network:
             self.log('warning', f'Attempted connection to self "{vk}".')
             return
 
-        self.add_peer(ip=ip, peer_vk=vk)
+        return self.create_peer(ip=ip, vk=vk)
 
     def connect_peer(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
@@ -279,11 +279,12 @@ class Network:
         else:
             # Add this peer to our peer group
             self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
-            self.create_peer(ip=ip, vk=peer_vk)
+            peer = self.create_peer(ip=ip, vk=peer_vk)
+            self.peers[peer_vk] = peer
             self.start_peer(vk=peer_vk)
 
     def create_peer(self, ip: str, vk: str) -> None:
-        self.peers[vk] = Peer(
+        return Peer(
             get_network_ip=lambda: self.external_address,
             ip=ip,
             server_vk=vk,

@@ -300,72 +300,42 @@ class Node:
         self.main_processing_queue.disable_append()
         self.validation_queue.disable_append()
 
-        bootnode = None
-
         self.network.router.cred_provider.open_messages()
 
         # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
-            print(f'Attempting to connect to bootnode "{vk}" @ {ip}')
+            bootnode = self.network.connect_to_bootnode(ip=ip, vk=vk)
+
+            if not bootnode:
+                continue
+
+            bootnode.start(verify=False)
+
             self.log.info(f'Attempting to connect to bootnode "{vk}" @ {ip}')
+            await asyncio.sleep(5)
 
-            if vk != self.wallet.verifying_key:
-                try:
-                    # Use it to boot up the network
-                    self.network.connect_to_bootnode(
-                        ip=ip,
-                        vk=vk
-                    )
-                except Exception as err:
-                    print(f'Exception raised while attempting connection to "{vk}" @ {ip}')
-                    print(err)
-                    self.log.error(f'Exception raised while attempting connection to "{vk}" @ {ip}')
-                    self.log.error(err)
+            if not bootnode.request.is_running:
+                self.log.error(f"Bootnode {vk} @ {ip} did not start")
+                await bootnode.stop()
+                bootnode = None
+                continue
 
+            self.log.info(f'Bootnode started')
 
-                bootnode = self.network.get_peer(vk=vk)
+            # Get the rest of the nodes from our bootnode
+            response = await bootnode.get_network_map()
 
-                connection_attempts = 0
-                sleep_for = 2
-
-                while not bootnode.is_connected:
-                    connection_attempts += 1
-
-                    if connection_attempts > self.reconnect_attempts:
-                        bootnode = None
-
-                        break
-
-                    self.log.info(f'Attempt {connection_attempts}/attempts failed to connect. Trying again in {sleep_for} seconds.')
-                    await asyncio.sleep(sleep_for)
-
-            if bootnode is not None and bootnode.is_connected:
-                break
-
-        if bootnode is None:
-            print("Could not connect to any bootnodes!")
-            print(self.bootnodes)
-            self.log.error("Could not connect to any bootnodes!")
-            self.log.error(self.bootnodes)
-
-            raise Exception("Could not connect to any bootnodes!")
-
-        # Get the rest of the nodes from our bootnode
-        response = await bootnode.get_network_map()
-
-        try:
             network_map = response.get('network_map')
             if not network_map:
-                raise AttributeError()
-        except:
-            print(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
-            print(response)
-            self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
-            self.log.error(response)
+                self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
+                continue
 
-            raise Exception(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
+        assert network_map, "Failed to get a network map from any bootnode."
+
+        await bootnode.stop()
 
         processor_vk = None
+
         # Connect to all nodes in the network
         for node_info in self.network.network_map_to_node_list(network_map=network_map):
             vk = node_info.get('vk')

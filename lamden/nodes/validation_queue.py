@@ -488,6 +488,7 @@ class ValidationQueue(ProcessingQueue):
         self.queue = list(filter((hlc_timestamp).__ne__, self.queue))
 
     def prune_earlier_results(self, consensus_hlc_timestamp):
+        # TODO Prune pending delta
         for hlc_timestamp in list(self.validation_results):
             if hlc_timestamp < consensus_hlc_timestamp:
                 self.validation_results.pop(hlc_timestamp, None)
