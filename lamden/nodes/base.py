@@ -328,7 +328,10 @@ class Node:
             network_map = response.get('network_map')
             if not network_map:
                 self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
+                await bootnode.stop()
                 continue
+            else:
+                break
 
         assert network_map, "Failed to get a network map from any bootnode."
 
