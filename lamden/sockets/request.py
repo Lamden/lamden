@@ -52,7 +52,7 @@ class Request():
             socket_type="REQUEST",
             parent_ip=self.local_ip
         )
-        self.socket_monitor.start()
+        #self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:

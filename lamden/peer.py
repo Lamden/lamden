@@ -231,14 +231,16 @@ class Peer:
         self.verify_task = asyncio.ensure_future(self.verify_peer_loop())
 
     async def verify_peer_loop(self) -> None:
-        self.verified = False
+        #self.verified = False
 
         while not self.verified and self.running:
             # wait till peer is available
-            await self.reconnect_loop()
+            res = await self.ping()
+            #await self.reconnect_loop()
 
-            if self.running:
+            #if self.running:
                 # Validate peer is correct
+            if res:
                 await self.verify_peer()
 
                 await asyncio.sleep(1)
@@ -248,7 +250,7 @@ class Peer:
 
         res = await self.hello()
 
-        if res is not None and res.get('success') and self.running:
+        if res is not None and res.get('success'):
             response_type = res.get('response')
             if response_type == 'hello':
                 self.store_latest_block_info(
@@ -323,27 +325,27 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
-        self.log('info', 'Waiting 10 seconds before starting reconnect loop...')
-        await asyncio.sleep(10)
+        #self.log('info', 'Waiting 10 seconds before starting reconnect loop...')
+        #await asyncio.sleep(10)
 
-        if self.reconnecting or not self.running:
-            return
+        #if self.reconnecting or not self.running:
+        #    return
 
-        self.reconnecting = True
+        #self.reconnecting = True
 
-        while not self.connected:
-            if not self.running:
-                self.reconnecting = False
-                return
+        #while not self.connected:
+        #    if not self.running:
+        #        self.reconnecting = False
+        #        return
 
-            res = await self.ping()
+        res = await self.ping()
 
-            if res:
-                self.connected = True
-                # self.start_health_check()
-            else:
-                self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
-                await asyncio.sleep(1)
+        if res:
+            self.connected = True
+            # self.start_health_check()
+        else:
+            self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
+            #await asyncio.sleep(1)
 
         self.log('info', f'Reconnected to {self.request_address}!')
         self.reconnecting = False
@@ -487,8 +489,8 @@ class Peer:
 
             self.connected = False
 
-            if not self.reconnecting:
-                self.reconnect()
+            #if not self.reconnecting:
+            #    self.reconnect()
 
         return None
 

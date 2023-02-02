@@ -369,7 +369,6 @@ class TestNetwork(TestCase):
             ip=network_2.n.local_address,
             vk=network_2.vk
         )
-
         self.async_sleep(1)
 
         peer_2 = network_1.n.get_peer(vk=network_2.vk)
@@ -396,11 +395,9 @@ class TestNetwork(TestCase):
 
         bad_peer.verified = True
         bad_peer.start()
-        self.async_sleep(1)
 
         # Have network #1 ping the bad peer which will await on a response for 10 seconds.
         ping_bad_peer_task = asyncio.ensure_future(bad_peer.ping())
-        self.async_sleep(1)
 
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(peer_1.ping())
