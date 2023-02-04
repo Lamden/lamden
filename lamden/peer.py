@@ -1,4 +1,3 @@
-import json
 from lamden.logger.base import get_logger
 import asyncio
 import zmq
@@ -12,7 +11,7 @@ from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION
 from typing import Callable
 from urllib.parse import urlparse
 
-from contracting.db.encoder import decode
+from contracting.db.encoder import decode, encode
 
 SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
 
@@ -293,7 +292,7 @@ class Peer:
             return
 
         try:
-            msg_str = json.loads(msg)
+            msg_str = decode(msg)
             topic_str = topic.decode("utf-8")
 
         except Exception as err:
@@ -458,7 +457,7 @@ class Peer:
             return None
 
         try:
-            str_msg = json.dumps(msg_obj)
+            str_msg = encode(msg_obj)
         except Exception as err:
             self.log('error', f'{err}')
             self.log('info', f'Failed to encode message {msg_obj} to bytes.')

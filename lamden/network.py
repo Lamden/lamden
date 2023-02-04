@@ -15,7 +15,7 @@ from lamden.storage import BlockStorage, get_latest_block_height
 
 from lamden.logger.base import get_logger
 
-from contracting.db.encoder import encode
+from contracting.db.encoder import encode, decode
 from contracting.db.driver import ContractDriver
 
 from lamden.sockets.publisher import Publisher
@@ -530,7 +530,7 @@ class Network:
     async def router_callback(self, ident_vk_bytes: bytes, ident_vk_string: str, msg: str) -> None:
         try:
             self.log('info', {'ident_vk_bytes': ident_vk_bytes, 'ident_vk_string': ident_vk_string, 'msg': msg})
-            msg = json.loads(msg)
+            msg = decode(msg)
             action = msg.get('action')
         except Exception as err:
             self.log('error', str(err))
@@ -540,7 +540,7 @@ class Network:
             self.router.send_msg(
                 ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
-                msg_str=json.dumps({"response": "ping", "from": ident_vk_string})
+                msg_str=encode({"response": "ping", "from": ident_vk_string})
             )
 
         if action == ACTION_HELLO:
@@ -608,7 +608,7 @@ class Network:
             self.log('warning', f'sent block num {block_num}')
 
         if action == ACTION_GET_NETWORK_MAP:
-            node_list = json.dumps(self.make_network_map())
+            node_list = encode(self.make_network_map())
 
             resp_msg = ('{"response": "%s", "network_map": %s}' % (ACTION_GET_NETWORK_MAP, node_list))
 

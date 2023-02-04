@@ -18,6 +18,7 @@ class TestNodeKick(TestCase):
         self.exile = self.network.masternodes[-1]
         self.voters = self.network.masternodes[:-1]
         self.num_yays_needed = len(self.network.all_nodes) // 2 + 1
+        self.fund_founder()
 
     def tearDown(self):
         task = asyncio.ensure_future(self.network.stop_all_nodes())
@@ -46,13 +47,13 @@ class TestNodeKick(TestCase):
         )
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
+        self.network.await_all_nodes_done_processing(block_height=2)
+
         for voter in self.voters[:self.num_yays_needed]:
             vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         self.network.await_all_nodes_done_processing(block_height=self.num_yays_needed + 2)
-
-        self.await_async_process(asyncio.sleep, 1)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
@@ -70,11 +71,13 @@ class TestNodeKick(TestCase):
         )
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
+        self.await_async_process(asyncio.sleep, 1)
+
         for voter in self.voters[:self.num_yays_needed]:
             vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
+            self.await_async_process(asyncio.sleep, 1)
 
-        self.fund_founder()
         random_voter.send_tx(
             json.dumps(get_new_currency_tx(wallet=self.network.founders_wallet, processor=random_voter.vk, nonce=2)).encode()
         )
@@ -83,7 +86,7 @@ class TestNodeKick(TestCase):
         for node in self.network.all_nodes:
             while len(node.validation_queue) != num_tx_total:
                 self.await_async_process(asyncio.sleep, 0.1)
-            while node.blocks.total_blocks() != 3:
+            while node.blocks.total_blocks() != num_tx_total - 1:
                 self.await_async_process(node.validation_queue.process_next)
 
         last_hlc = self.exile.validation_queue[-1]
@@ -103,8 +106,6 @@ class TestNodeKick(TestCase):
 
         self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
 
-        self.await_async_process(asyncio.sleep, 1)
-
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
             self.assertListEqual(voter.get_smart_contract_value('masternodes.S:members'), expected_members)
@@ -118,18 +119,19 @@ class TestNodeKick(TestCase):
         )
         random_voter.send_tx(json.dumps(introduce_motion_remove_member_tx).encode())
 
+        self.network.await_all_nodes_done_processing(block_height=2)
+
         for voter in self.voters[:self.num_yays_needed]:
             vote_yay_tx = get_vote_tx(policy='masternodes', obj=['vote_on_motion', True], wallet=voter.node.wallet, nonce=1)
             voter.send_tx(json.dumps(vote_yay_tx).encode())
 
         # This TX shouldn't eventually be processed since it is coming from exile.
-        self.fund_founder()
         self.exile.send_tx(
             json.dumps(get_new_currency_tx(wallet=self.network.founders_wallet, processor=self.exile.vk)).encode()
         )
 
         num_tx_total = self.num_yays_needed + 1
-        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
+        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 2, nodes=self.voters)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
