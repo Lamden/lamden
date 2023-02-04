@@ -131,7 +131,7 @@ class TestNodeKick(TestCase):
         )
 
         num_tx_total = self.num_yays_needed + 1
-        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 1, nodes=self.voters)
+        self.network.await_all_nodes_done_processing(block_height=num_tx_total + 2, nodes=self.voters)
 
         expected_members = [voter.vk for voter in self.voters]
         for voter in self.voters:
