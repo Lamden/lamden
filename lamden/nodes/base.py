@@ -839,7 +839,6 @@ class Node:
 
         pending_delta = self.driver.hard_apply_one(hlc=hlc_timestamp)
         self.driver.bust_cache(writes=pending_delta.get('writes'))
-        #self.driver.hard_apply(hlc=hlc_timestamp)
 
 
     # TODO: move to state manager in the future.
@@ -983,8 +982,6 @@ class Node:
         if hlc_timestamp in self.driver.pending_deltas and consensus_matches_me:
             pending_delta = self.driver.hard_apply_one(hlc=hlc_timestamp)
             self.driver.bust_cache(writes=pending_delta.get('writes'))
-
-            #self.driver.hard_apply(hlc=hlc_timestamp)
         else:
             self.apply_state_changes_from_block(new_block)
 
