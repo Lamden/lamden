@@ -1,5 +1,5 @@
-## Lamden Development Platform
-Lamden is an open-source blockchain development platform designed to help developers create new blockchain applications and networks quickly and easily. With Lamden, developers can leverage the power of blockchain technology to create secure and decentralized applications.
+# Lamden Blockchain
+Lamden is an open-source Python-based blockchain development platform designed to help developers create new blockchain applications and networks quickly and easily. With Lamden, developers can leverage the power of blockchain technology to create secure and decentralized applications.
 
 ### Features
 - Quick and easy setup: Lamden provides a suite of tools and infrastructure to help developers get started with blockchain development quickly and easily.
