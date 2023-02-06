@@ -3,13 +3,8 @@ Events are things emitted across websockets that correspond with things that hav
 
 To create an event, a piece of data is written to a new file in events directory.
 
-These events are consumed by a listener and sent across websockets to other computers who are listening to event updates
+These events are consumed by a listener and sent across websockets to other computers who are listening to event updates.
 
-Directory scheme:
-
-/events
---- event_1.e
---- event_2.e
 '''
 import pathlib
 import uuid
@@ -48,14 +43,13 @@ class EventListener:
         files = sorted(self.root.iterdir(), key=os.path.getmtime)
         events = []
         for file in files:
-            with open(file, 'r') as f:
-                try:
+            try:
+                with open(file, 'r') as f:
                     e = json.load(f)
                     events.append(Event(e['topics'], e['data']))
-                except:
-                    # TODO(nikita): proper handling
-                    print('failed to load event')
-                os.remove(file)
+            except:
+                pass
+            os.remove(file)
 
         return events
 

@@ -243,12 +243,11 @@ class Node:
             asyncio.ensure_future(self.check_tx_queue())
 
             self.started = True
-            print("STARTED NODE")
+            self.log.info('Node has been successfully started!')
 
         except Exception as err:
             self.running = False
             self.log.error(err)
-            print(err)
 
             await asyncio.sleep(1)
             await self.stop()
@@ -279,7 +278,6 @@ class Node:
             self.log.info({"vk": vk, "ip": ip})
 
             if vk != self.wallet.verifying_key:
-                print(f'Attempting to connect to peer "{vk}" @ {ip}')
                 self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
 
                 # Use it to boot up the network
@@ -344,7 +342,6 @@ class Node:
             vk = node_info.get('vk')
             ip = node_info.get('ip')
 
-            print({"vk": vk, "ip": ip})
             self.log.info({"vk": vk, "ip": ip})
 
             if vk != self.wallet.verifying_key:
@@ -504,11 +501,14 @@ class Node:
                     # Save Nonce from block
                     self.save_nonce_from_block(block=new_block)
 
-                # create New Block Event
-                self.event_writer.write_event(Event(
-                    topics=[NEW_BLOCK_EVENT],
-                    data=encoded_block
-                ))
+                try:
+                    # create New Block Event
+                    self.event_writer.write_event(Event(
+                        topics=[NEW_BLOCK_EVENT],
+                        data=encoded_block
+                    ))
+                except Exception as e:
+                    self.log.error(f'Failed to write "{NEW_BLOCK_EVENT}" event: {e}')
 
         self.hold_blocks = False
         self.held_blocks = []
@@ -577,11 +577,14 @@ class Node:
                             # Save Nonce from block
                             self.save_nonce_from_block(block=new_block)
 
-                        # create New Block Event
-                        self.event_writer.write_event(Event(
-                            topics=[NEW_BLOCK_EVENT],
-                            data=encoded_block
-                        ))
+                        try:
+                            # create New Block Event
+                            self.event_writer.write_event(Event(
+                                topics=[NEW_BLOCK_EVENT],
+                                data=encoded_block
+                            ))
+                        except Exception as e:
+                            self.log.error(f'Failed to write "{NEW_BLOCK_EVENT}" event: {e}')
 
                 # Exit from loop when the block receive is greater than the catchup_stop_block
                 if new_block_number >= catchup_stop_block:
@@ -931,11 +934,13 @@ class Node:
         # create a NEW_BLOCK_REORG_EVENT
         encoded_block = encode(new_block)
         encoded_block = json.loads(encoded_block)
-
-        self.event_writer.write_event(Event(
-            topics=[NEW_BLOCK_REORG_EVENT],
-            data=encoded_block
-        ))
+        try:
+            self.event_writer.write_event(Event(
+                topics=[NEW_BLOCK_REORG_EVENT],
+                data=encoded_block
+            ))
+        except Exception as e:
+            self.log.error(f'Failed to write "{NEW_BLOCK_REORG_EVENT}" event: {e}')
 
         # reapply the state changes in the later blocks and re-save them
         for block in later_blocks:
@@ -951,11 +956,13 @@ class Node:
                 # create a NEW_BLOCK_REORG_EVENT
                 encoded_block = encode(block)
                 encoded_block = json.loads(encoded_block)
-
-                self.event_writer.write_event(Event(
-                    topics=[NEW_BLOCK_REORG_EVENT],
-                    data=encoded_block
-                ))
+                try:
+                    self.event_writer.write_event(Event(
+                        topics=[NEW_BLOCK_REORG_EVENT],
+                        data=encoded_block
+                    ))
+                except Exception as e:
+                    self.log.error(f'Failed to write "{NEW_BLOCK_REORG_EVENT}" event: {e}')
 
         self.hard_apply_block_finish(block=new_block)
 
@@ -1006,11 +1013,14 @@ class Node:
             # Set the current block hash and height
             self.update_block_db(block=encoded_block)
 
-            # create New Block Event
-            self.event_writer.write_event(Event(
-                topics=[NEW_BLOCK_EVENT],
-                data=encoded_block
-            ))
+            try:
+                # create New Block Event
+                self.event_writer.write_event(Event(
+                    topics=[NEW_BLOCK_EVENT],
+                    data=encoded_block
+                ))
+            except Exception as e:
+                self.log.error(f'Failed to write "{NEW_BLOCK_EVENT}" event: {e}')
 
     def hard_apply_block_finish(self, block: dict):
         state_changes = self.get_state_changes_from_block(block=block)
@@ -1042,8 +1052,11 @@ class Node:
             'bootnode_ips': self.network.get_bootnode_ips(),
             'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 10))
         })
-        self.event_writer.write_event(e)
-        self.log.debug(f'Sent upgrade event: {e.__dict__}')
+        try:
+            self.event_writer.write_event(e)
+            self.log.debug(f'Sent upgrade event: {e.__dict__}')
+        except Exception as err:
+            self.log.error(f'Failed to "upgrade" event: {err}')
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []
