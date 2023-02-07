@@ -70,7 +70,6 @@ class Peer:
 
         self.verify_task = None
         self.reconnect_task = None
-        self.heath_check_task = None
 
         self.setup_event_loop()
 
@@ -319,7 +318,6 @@ class Peer:
         if self.reconnecting:
             return
 
-        self.stop_heath_check()
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
@@ -340,32 +338,12 @@ class Peer:
 
             if res:
                 self.connected = True
-                # self.start_health_check()
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
                 await asyncio.sleep(1)
 
         self.log('info', f'Reconnected to {self.request_address}!')
         self.reconnecting = False
-
-    def start_health_check(self):
-        self.stop_heath_check()
-        self.heath_check_task = asyncio.ensure_future(self.heath_check())
-
-    def stop_heath_check(self):
-        if self.heath_check_task is not None:
-            self.heath_check_task.cancel()
-
-    async def heath_check(self):
-        while self.running:
-            await asyncio.sleep(120)
-            res = await self.ping()
-            if not res:
-                self.log('info', f'Health Check: Cannot ping Ping {self.local_vk}, reconnecting...')
-                self.reconnect()
-                break
-            else:
-                self.log('info', f'Health Check: Peer {self.local_vk} Okay.')
 
     async def update_ip(self, new_ip):
         verify_res = await self.verify_new_ip(new_ip=new_ip)
