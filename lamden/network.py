@@ -88,8 +88,6 @@ class Network:
         self.setup_publisher()
         self.setup_router()
 
-        self.heath_check_task = None
-
         self.running = False
 
     @property
@@ -190,8 +188,6 @@ class Network:
             self.publisher.start()
             self.router.run_curve_server()
 
-            # self.start_health_check()
-
             asyncio.ensure_future(self.starting())
 
         except Exception as err:
@@ -261,23 +257,13 @@ class Network:
         self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
-        # Get a reference to this peer
         peer = self.get_peer(vk=peer_vk)
 
         if peer:
             self.log('info', f'request_address {peer.request_address}, ip {ip}')
-
             if peer.request_address != ip:
-                # if the ip is different from the one we have then switch to it
                 asyncio.ensure_future(peer.update_ip(new_ip=ip))
-            else:
-                # TODO This might be causing a feedback loop.  Remove for now.
-                # check that our connection to this node is okay
-                # asyncio.ensure_future(peer.test_connection())
-                pass
-
         else:
-            # Add this peer to our peer group
             self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
             peer = self.create_peer(ip=ip, vk=peer_vk)
             self.peers[peer_vk] = peer
@@ -438,18 +424,9 @@ class Network:
 
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
 
-    def write_constitution(self):
-        with open(pathlib.Path.home().joinpath('constitution.json'), 'w') as f:
-            json.dump(self.make_constitution(), f, indent=2)
-
     def make_network_map(self) -> dict:
         return {
             'masternodes': self.map_vk_to_ip(self.get_node_list())
-        }
-
-    def make_constitution(self) -> dict:
-        return {
-            'masternodes': self.map_vk_to_ip(self.get_node_list(), only_ip=True)
         }
 
     def network_map_to_node_list(self, network_map: dict = dict({})) -> list:
@@ -496,23 +473,6 @@ class Network:
 
     def get_node_list(self) -> list:
         return self.driver.driver.get('masternodes.S:members') or []
-
-    def start_health_check(self):
-        self.stop_health_check()
-
-        asyncio.ensure_future(self.heath_check())
-
-    def stop_health_check(self):
-        if self.heath_check_task is not None:
-            self.heath_check_task.cancel()
-
-    async def heath_check(self):
-        while not self.publisher or not self.publisher.is_running:
-            await asyncio.sleep(1)
-
-        while True:
-            await asyncio.sleep(120)
-            self.publisher.publish_heart_beat()
 
     def hello_response(self, challenge: str = None) -> str:
         latest_block_info = self.get_latest_block_info()
@@ -620,7 +580,6 @@ class Network:
 
     async def stop(self):
         self.running = False
-        self.stop_health_check()
 
         tasks = []
         for peer in self.peers.values():
