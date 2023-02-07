@@ -3,7 +3,7 @@ import requests
 import zmq
 import zmq.asyncio
 import asyncio
-import pathlib
+import random
 import uvloop
 from typing import List
 
@@ -251,6 +251,18 @@ class Network:
                 exiles.append(peer_vk)
 
         return exiles
+
+    async def check_connectivity(self):
+        if len(self.peers) == 0:
+            return True
+
+        peers = list(self.peers.values())
+        random.shuffle(peers)
+        for peer in peers:
+            if await peer.ping():
+                return True
+
+        return False
 
     def revoke_access_and_remove_peer(self, peer_vk):
         self.revoke_peer_access(peer_vk=peer_vk)
