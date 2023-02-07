@@ -6,15 +6,14 @@ To create an event, a piece of data is written to a new file in events directory
 These events are consumed by a listener and sent across websockets to other computers who are listening to event updates.
 
 '''
-import pathlib
-import uuid
-from typing import List, Union
-import os
-import asyncio
-import socketio
 from sanic import Sanic
-import json
+from typing import List
 import argparse
+import json
+import os
+import pathlib
+import socketio
+import uuid
 
 EVENTS_HOME = pathlib.Path().home().joinpath('.lamden').joinpath('events')
 EXTENSION = '.e'
@@ -40,7 +39,7 @@ class EventListener:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def get_events(self) -> List[Event]:
-        files = sorted(self.root.iterdir(), key=os.path.getmtime)
+        files = sorted([f for f in self.root.iterdir() if f.is_file()], key=os.path.getmtime)
         events = []
         for file in files:
             try:
