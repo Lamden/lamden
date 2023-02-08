@@ -323,6 +323,9 @@ class Node:
             # Get the rest of the nodes from our bootnode
             response = await bootnode.get_network_map()
 
+            if response is None:
+                continue
+
             network_map = response.get('network_map')
             if not network_map:
                 self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
