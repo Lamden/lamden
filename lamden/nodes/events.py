@@ -6,7 +6,6 @@ To create an event, a piece of data is written to a new file in events directory
 These events are consumed by a listener and sent across websockets to other computers who are listening to event updates.
 
 '''
-import asyncio
 from sanic import Sanic
 from typing import List
 import argparse
