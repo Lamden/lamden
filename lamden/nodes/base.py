@@ -215,7 +215,7 @@ class Node:
 
         self.reconnect_attempts = reconnect_attempts
 
-        self.network_connectivity_check_timeout = 5
+        self.network_connectivity_check_timeout = 60
 
     @property
     def vk(self) -> str:
