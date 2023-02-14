@@ -258,6 +258,11 @@ class Node:
     def start_node(self):
         asyncio.ensure_future(self.start())
 
+    async def delayed_stop(self, delay):
+        self.log.info(f'Stopping the node in {delay} seconds...')
+        await asyncio.sleep(delay)
+        await self.stop()
+
     async def stop(self):
         self.log.error("!!!!!! STOPPING NODE !!!!!!")
 
@@ -697,6 +702,8 @@ class Node:
             await asyncio.sleep(self.network_connectivity_check_timeout)
 
             if not await self.network.check_connectivity():
+                await self.stop()
+
                 e = Event(topics=['network_error'], data={
                     'node_vk': self.wallet.verifying_key,
                     'bootnode_ips': self.network.get_bootnode_ips()
@@ -1063,16 +1070,20 @@ class Node:
         if not should_upgrade:
             return
 
+        utc_when = str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 10))
         e = Event(topics=['upgrade'], data={
             'node_vk': self.wallet.verifying_key,
             'lamden_tag': new_lam_tag,
             'contracting_tag': new_con_tag,
             'bootnode_ips': self.network.get_bootnode_ips(),
-            'utc_when': str(datetime.utcnow() + timedelta(minutes=10 + self.network.get_node_list().index(self.wallet.verifying_key) * 10))
+            'utc_when': utc_when
         })
         try:
             self.event_writer.write_event(e)
             self.log.debug(f'Successfully sent "upgrade" event: {e.__dict__}')
+
+            delay = (utc_when - datetime.utcnow()).total_seconds() - 10
+            asyncio.ensure_future(self.delayed_stop(delay))
         except Exception as err:
             self.log.error(f'Failed to write "upgrade" event: {err}')
 
