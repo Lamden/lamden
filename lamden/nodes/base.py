@@ -9,6 +9,7 @@ import random
 import time
 import uvloop
 import requests
+import signal
 
 from copy import deepcopy
 from contracting.client import ContractingClient
@@ -244,6 +245,10 @@ class Node:
 
             asyncio.ensure_future(self.check_tx_queue())
             asyncio.ensure_future(self.connectivity_check())
+
+            loop = asyncio.get_running_loop()
+            loop.add_signal_handler(signal.SIGINT, self.stop)
+            loop.add_signal_handler(signal.SIGTERM, self.stop)
 
             self.started = True
             self.log.info('Node has been successfully started!')
