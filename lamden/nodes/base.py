@@ -218,9 +218,8 @@ class Node:
 
         self.network_connectivity_check_timeout = 120
 
-        loop = asyncio.get_event_loop()
         for signame in ('SIGINT', 'SIGTERM'):
-            loop.add_signal_handler(getattr(signal, signame), lambda: asyncio.ensure_future(self.stop()))
+            signal.signal(getattr(signal, signame), lambda: asyncio.ensure_future(self.stop()))
 
     @property
     def vk(self) -> str:
