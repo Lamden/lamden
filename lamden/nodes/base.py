@@ -9,7 +9,6 @@ import random
 import time
 import uvloop
 import requests
-import signal
 
 from copy import deepcopy
 from contracting.client import ContractingClient
@@ -217,9 +216,6 @@ class Node:
         self.reconnect_attempts = reconnect_attempts
 
         self.network_connectivity_check_timeout = 120
-
-        for signame in ('SIGINT', 'SIGTERM'):
-            signal.signal(getattr(signal, signame), lambda: asyncio.ensure_future(self.stop()))
 
     @property
     def vk(self) -> str:
