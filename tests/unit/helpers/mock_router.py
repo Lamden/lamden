@@ -13,8 +13,6 @@ from contracting.db.encoder import encode
 
 from lamden.crypto.wallet import Wallet
 
-from lamden.sockets.monitor import SocketMonitor
-
 class MockCredentialsProvider(object):
     def __init__(self, valid_peers=[]):
         self.valid_peers = list(valid_peers)
@@ -45,16 +43,12 @@ class MockRouter(threading.Thread):
         self.checking = False
         self.loop = None
 
-        #self.socket_monitor = SocketMonitor(socket_type='ROUTER')
-        #self.socket_monitor.start()
-
         self.check_for_messages_task = None
         self.start()
 
     def setup_socket(self):
         self.ctx = zmq.asyncio.Context()
         self.socket = self.ctx.socket(zmq.ROUTER)
-        #self.socket_monitor.monitor(socket=self.socket)
 
         self.setup_socket_opts()
 
@@ -179,7 +173,6 @@ class MockRouter(threading.Thread):
             self.socket.setsockopt(zmq.LINGER, 0)
             self.socket.close()
 
-            #loop.run_until_complete(self.socket_monitor.stop())
             loop.run_until_complete(self.stopping())
 
         self.ctx.destroy(linger=0)

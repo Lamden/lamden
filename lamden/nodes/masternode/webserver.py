@@ -500,7 +500,7 @@ if __name__ == '__main__':
     wallet = Wallet(seed=sk)
 
     # These will be the topics that are sent from the event server
-    topics = ["new_block", "block_reorg", "upgrade"]
+    topics = ["new_block", "block_reorg", "upgrade", "network_error"]
 
     webserver = WebServer(
         contracting_client=ContractingClient(submission_filename=sync.DEFAULT_SUBMISSION_PATH),

@@ -5,7 +5,6 @@ import zmq.asyncio
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import Wallet
 from contracting.db.encoder import encode
-from lamden.sockets.monitor import SocketMonitor
 from typing import Callable
 
 ATTRIBUTE_ERROR_TO_ADDRESS_NOT_NONE = "to_address property cannot be none."
@@ -47,12 +46,6 @@ class Request():
         self.socket = None
         self.pollin = None
         self.lock = Lock()
-
-        self.socket_monitor = SocketMonitor(
-            socket_type="REQUEST",
-            parent_ip=self.local_ip
-        )
-        # self.socket_monitor.start()
 
     @property
     def is_running(self) -> bool:
@@ -135,8 +128,6 @@ class Request():
 
         self.create_socket()
 
-        # self.socket_monitor.monitor(socket=self.socket)
-
         if self.secure_socket:
             self.setup_secure_socket()
 
@@ -203,7 +194,6 @@ class Request():
     def reconnect_socket(self):
         self.close_socket()
         self.create_socket()
-        # self.socket_monitor.monitor(socket=self.socket)
         if self.secure_socket:
             self.setup_secure_socket()
 
@@ -214,8 +204,6 @@ class Request():
         self.connect_socket()
 
     def close_socket(self) -> None:
-        # self.socket_monitor.unregister_socket_from_poller(socket=self.socket)
-
         if self.socket:
             try:
                 self.socket.setsockopt(zmq.LINGER, 0)
@@ -231,9 +219,6 @@ class Request():
 
     async def stop(self) -> None:
         self.log('info', 'Stopping.')
-
-        # if self.socket_monitor.running:
-        #     await self.socket_monitor.stop()
 
         if self.running:
             self.close_socket()

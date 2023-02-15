@@ -9,6 +9,7 @@ import random
 import time
 import uvloop
 import requests
+import signal
 
 from copy import deepcopy
 from contracting.client import ContractingClient
@@ -215,6 +216,12 @@ class Node:
 
         self.reconnect_attempts = reconnect_attempts
 
+        self.network_connectivity_check_timeout = 120
+
+        loop = asyncio.get_event_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, lambda: asyncio.ensure_future(self.stop()))
+
     @property
     def vk(self) -> str:
         return self.wallet.verifying_key
@@ -241,6 +248,7 @@ class Node:
                 await self.join_existing_network()
 
             asyncio.ensure_future(self.check_tx_queue())
+            asyncio.ensure_future(self.connectivity_check())
 
             self.started = True
             self.log.info('Node has been successfully started!')
@@ -692,6 +700,21 @@ class Node:
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0.1)
 
+    async def connectivity_check(self):
+        while self.running:
+            await asyncio.sleep(self.network_connectivity_check_timeout)
+
+            if not await self.network.check_connectivity():
+                e = Event(topics=['network_error'], data={
+                    'node_vk': self.wallet.verifying_key,
+                    'bootnode_ips': self.network.get_bootnode_ips()
+                })
+                try:
+                    self.event_writer.write_event(e)
+                    self.log.info(f'Successfully sent "network_error" event: {e.__dict__}')
+                    break
+                except Exception as err:
+                    self.log.error(f'Failed to write "network_error" event: {err}')
 
     async def check_main_processing_queue(self):
         self.main_processing_queue.start()
@@ -1057,9 +1080,9 @@ class Node:
         })
         try:
             self.event_writer.write_event(e)
-            self.log.debug(f'Sent upgrade event: {e.__dict__}')
+            self.log.debug(f'Successfully sent "upgrade" event: {e.__dict__}')
         except Exception as err:
-            self.log.error(f'Failed to "upgrade" event: {err}')
+            self.log.error(f'Failed to write "upgrade" event: {err}')
 
     def check_peers(self, hlc_timestamp: str, state_changes: list):
         exiled_peers = []

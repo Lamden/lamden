@@ -9,7 +9,6 @@ from tests.unit.helpers.mock_reply import MockReply
 import unittest
 
 from lamden.sockets.request import Request, ATTRIBUTE_ERROR_TO_ADDRESS_NOT_NONE
-from lamden.sockets.request_disp import Request as DisposableRequest
 
 
 class TestRequestSocket(unittest.TestCase):

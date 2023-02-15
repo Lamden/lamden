@@ -1111,33 +1111,6 @@ class TestNetwork(TestCase):
         self.assertEqual(peer_1[0], vk_to_ip_map[peer_1[1]])
         self.assertEqual(peer_2[0], vk_to_ip_map[peer_2[1]])
 
-    def test_METHOD_make_constitution(self):
-        network_1 = self.create_network()
-
-        masternode_1 = (network_1.router_address, network_1.vk)
-        masternode_2 = ('tcp://127.0.0.1:19001', Wallet().verifying_key)
-        masternode_3 = ('tcp://127.0.0.1:19002', Wallet().verifying_key)
-        delegate_1 = ('tcp://127.0.0.1:19003', Wallet().verifying_key)
-        delegate_2 = ('tcp://127.0.0.1:19004', Wallet().verifying_key)
-
-        masternode_vks = [masternode_1[1], masternode_2[1], masternode_3[1]]
-        delegate_vks = [delegate_1[1], delegate_2[1]]
-
-        network_1.driver.driver.set(
-            key="masternodes.S:members",
-            value=masternode_vks + delegate_vks
-        )
-
-        network_1.create_peer(ip=masternode_1[0], vk=masternode_1[1])
-        network_1.create_peer(ip=masternode_2[0], vk=masternode_2[1])
-        network_1.create_peer(ip=masternode_3[0], vk=masternode_3[1])
-        network_1.create_peer(ip=delegate_1[0], vk=delegate_1[1])
-        network_1.create_peer(ip=delegate_2[0], vk=delegate_2[1])
-
-        constitution = network_1.make_constitution()
-
-        self.assertEqual(5, len(constitution.get('masternodes')))
-
     def test_METHOD_authorize_peer__can_add_peer_vk_to_cred_provider(self):
         network_1 = self.create_network()
 

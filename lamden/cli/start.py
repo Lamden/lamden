@@ -110,7 +110,7 @@ def start_node(args):
     )
 
     loop = asyncio.get_event_loop()
-    asyncio.async(n.start())
+    asyncio.ensure_future(n.start())
     loop.run_forever()
 
 
@@ -140,5 +140,5 @@ def join_network(args):
     )
 
     loop = asyncio.get_event_loop()
-    asyncio.async(n.start())
+    asyncio.ensure_future(n.start())
     loop.run_forever()
