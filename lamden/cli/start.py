@@ -4,6 +4,7 @@ import json
 import os
 import asyncio
 import subprocess
+import signal
 from subprocess import call
 
 from lamden.crypto.wallet import Wallet
@@ -74,6 +75,10 @@ def resolve_genesis_block(fp):
 
     return genesis_block
 
+def setup_node_signal_handler(node, loop):
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda: asyncio.ensure_future(node.stop()))
+
 def start_node(args):
     logger = get_logger('STARTUP')
 
@@ -110,6 +115,7 @@ def start_node(args):
     )
 
     loop = asyncio.get_event_loop()
+    setup_node_signal_handler(n, loop)
     asyncio.ensure_future(n.start())
     loop.run_forever()
 
@@ -140,5 +146,6 @@ def join_network(args):
     )
 
     loop = asyncio.get_event_loop()
+    setup_node_signal_handler(n, loop)
     asyncio.ensure_future(n.start())
     loop.run_forever()
