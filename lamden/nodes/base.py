@@ -283,12 +283,8 @@ class Node:
         '''
 
         for vk, ip in self.bootnodes.items():
-            self.log.info({"vk": vk, "ip": ip})
-
             if vk != self.wallet.verifying_key:
                 self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
-
-                # Use it to boot up the network
                 self.network.connect_peer(
                     ip=ip,
                     vk=vk
@@ -308,6 +304,7 @@ class Node:
 
         self.network.router.cred_provider.open_messages()
 
+        startup_tx_processor_vk = None
         # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
             bootnode = self.network.connect_to_bootnode(ip=ip, vk=vk)
@@ -340,28 +337,15 @@ class Node:
                 await bootnode.stop()
                 continue
             else:
+                startup_tx_processor_vk = vk
                 break
 
         assert network_map, "Failed to get a network map from any bootnode."
 
         await bootnode.stop()
 
-        processor_vk = None
-
-        # Connect to all nodes in the network
-        for node_info in self.network.network_map_to_node_list(network_map=network_map):
-            vk = node_info.get('vk')
-            ip = node_info.get('ip')
-
-            self.log.info({"vk": vk, "ip": ip})
-
-            if vk != self.wallet.verifying_key:
-                # connect to peer
-                self.network.connect_peer(
-                    ip=ip,
-                    vk=vk
-                )
-                processor_vk = vk
+        for node in self.network.network_map_to_node_list(network_map=network_map):
+            self.network.connect_peer(ip=node['ip'], vk=node['vk'])
 
         await self.network.connected_to_all_peers()
 
@@ -377,13 +361,13 @@ class Node:
             # Start the validation queue so we start accepting block results
             self.validation_queue.enable_append()
 
-            self.send_startup_transaction(processor_vk)
+            self.send_startup_transaction(startup_tx_processor_vk)
 
             # Now start catching up to minting of blocks from validation queue
             await self.catchup_to_validation_queue()
 
         else:
-            self.send_startup_transaction(processor_vk)
+            self.send_startup_transaction(startup_tx_processor_vk)
 
         self.network.refresh_approved_peers_in_cred_provider()
         self.network.router.cred_provider.secure_messages()
@@ -1378,7 +1362,7 @@ class Node:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.hard_apply_block(block=genesis_block))
 
-        return
+        self.network.refresh_approved_peers_in_cred_provider()
 
     def should_process(self, block):
         try:

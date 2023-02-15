@@ -50,6 +50,13 @@ class NewPeerProcessor(Processor):
     async def process_message(self, msg):
         self.new_peer_callback(msg=msg)
 
+class PeerShutdownProcessor(Processor):
+    def __init__(self, callback):
+        self.shutdown_peer_callback = callback
+
+    async def process_message(self, msg):
+        self.shutdown_peer_callback(msg=msg)
+
 class Network:
     def __init__(self, wallet: Wallet = Wallet(), driver: ContractDriver = ContractDriver(),
                  block_storage: BlockStorage = None, socket_ports: dict = None, local: bool = False):
@@ -79,6 +86,7 @@ class Network:
             self.external_ip = requests.get('http://api.ipify.org').text
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
+        self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
 
         self.ctx = zmq.asyncio.Context()
 
@@ -213,17 +221,12 @@ class Network:
             self.log('warning', f'Attempted connection to self "{vk}".')
             return
 
-        if self.peer_is_voted_in(peer_vk=vk):
-            self.refresh_approved_peers_in_cred_provider()
-            try:
-                self.add_peer(ip=ip, peer_vk=vk)
-            except Exception as err:
-                print(err)
-        elif self.router.cred_provider.accept_all:
-            try:
-                self.add_peer(ip=ip, peer_vk=vk)
-            except Exception as err:
-                print(err)
+        if self.peers.get(vk):
+            self.log('warning', f'Attempted to add an existing peer, vk: "{vk}",ip: {ip}')
+            return
+
+        if self.peer_is_voted_in(peer_vk=vk) or self.router.cred_provider.accept_all:
+            self.add_peer(ip=ip, peer_vk=vk)
         else:
             self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
 
@@ -269,17 +272,10 @@ class Network:
         self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
-        peer = self.get_peer(vk=peer_vk)
-
-        if peer:
-            self.log('info', f'request_address {peer.request_address}, ip {ip}')
-            if peer.request_address != ip:
-                asyncio.ensure_future(peer.update_ip(new_ip=ip))
-        else:
-            self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
-            peer = self.create_peer(ip=ip, vk=peer_vk)
-            self.peers[peer_vk] = peer
-            self.start_peer(vk=peer_vk)
+        self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
+        peer = self.create_peer(ip=ip, vk=peer_vk)
+        self.peers[peer_vk] = peer
+        self.start_peer(vk=peer_vk)
 
     def create_peer(self, ip: str, vk: str) -> None:
         return Peer(
@@ -382,6 +378,7 @@ class Network:
         await peer.stop()
 
         self.delete_peer(peer_vk=peer_vk)
+        self.log('info', f'Stopped and removed peer: "{peer_vk}"')
 
     def start_peer(self, vk: str) -> None:
         self.peers[vk].start()
@@ -415,6 +412,11 @@ class Network:
                 return
 
             self.connect_peer(ip=peer_ip, vk=peer_vk)
+
+    def peer_shutdown_service(self, msg: dict):
+        if not msg:
+            return
+        self.remove_peer(msg.get('vk'))
 
     async def connected_to_all_peers(self) -> bool:
         self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
@@ -591,6 +593,7 @@ class Network:
             )
 
     async def stop(self):
+        self.publisher.announce_shutdown(vk=self.wallet.verifying_key)
         self.running = False
 
         tasks = []
