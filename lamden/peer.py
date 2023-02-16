@@ -6,14 +6,14 @@ from lamden.crypto.z85 import z85_key
 from lamden.crypto.challenges import create_challenge, verify_challenge
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
-from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION
+from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTDOWN
 
 from typing import Callable
 from urllib.parse import urlparse
 
 from contracting.db.encoder import decode, encode
 
-SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, "contenders", "health"]
+SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTDOWN, "contenders", "health"]
 
 ACTION_PING = "ping"
 ACTION_HELLO = "hello"

@@ -13,6 +13,7 @@ EXCEPTION_TOPIC_BYTES_NOT_BYTES = "argument 'topic_bytes' should be type bytes."
 EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
 TOPIC_NEW_PEER_CONNECTION = "new_peer_connection"
+TOPIC_PEER_SHUTDOWN = "peer_shutdown"
 
 class Publisher():
     def __init__(self, ctx: zmq.Context = None, network_ip: str = None):
@@ -142,6 +143,9 @@ class Publisher():
                 'ip': ip
             }
         )
+
+    def announce_shutdown(self, vk: str):
+        self.publish(topic_str=TOPIC_PEER_SHUTDOWN, msg_dict={'vk': vk})
 
     def stop(self) -> None:
         if self.running:
