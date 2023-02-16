@@ -1048,6 +1048,7 @@ class Node:
 
         should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
         if not should_upgrade:
+            self.log.info(f'Ignored upgrade proposal: lamden ({cur_lam_tag}->{new_lam_tag}), contracting ({cur_con_tag}->{new_con_tag})')
             return
 
         e = Event(topics=['upgrade'], data={
@@ -1059,7 +1060,7 @@ class Node:
         })
         try:
             self.event_writer.write_event(e)
-            self.log.debug(f'Successfully sent "upgrade" event: {e.__dict__}')
+            self.log.info(f'Successfully sent "upgrade" event: {e.__dict__}')
         except Exception as err:
             self.log.error(f'Failed to write "upgrade" event: {err}')
 
