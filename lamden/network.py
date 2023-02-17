@@ -182,14 +182,8 @@ class Network:
         self.router.set_address(port=self.socket_ports.get('router'))
 
     def start(self) -> None:
-        try:
-            self.publisher.start()
-            self.router.run_curve_server()
-
-            asyncio.ensure_future(self.starting())
-
-        except Exception as err:
-            print (err)
+        self.publisher.start()
+        self.router.run_curve_server()
 
     async def starting(self) -> None:
         while not self.publisher.is_running or not self.router.is_running:

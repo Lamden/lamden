@@ -202,7 +202,6 @@ class Node:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
             self.network.start()
-            await self.network.starting()
 
             if not self.join:
                 await self.start_new_network()
