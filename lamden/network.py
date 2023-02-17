@@ -231,8 +231,8 @@ class Network:
 
     def refresh_approved_peers_in_cred_provider(self):
         node_vk_list_from_smartcontracts = self.get_node_list()
-        self.log('info', f'Refreshed approved peers in credentials provider: {node_vk_list_from_smartcontracts}')
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
+        self.log('info', f'Refreshed approved peers in credentials provider: {node_vk_list_from_smartcontracts}')
 
     def get_exiled_peers(self):
         exiles = []

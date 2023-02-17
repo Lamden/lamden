@@ -98,7 +98,6 @@ class Node:
         self.last_printed_loop_counter = time.time()
 
         self.log.propagate = debug
-        self.socket_base = socket_base
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
 
