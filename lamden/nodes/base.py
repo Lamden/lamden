@@ -262,6 +262,7 @@ class Node:
                 self.log.error(f'Bootnode "{vk[:8]}"@{ip} failed to provide a valid network map...')
                 continue
             else:
+                self.log.info(f'Received network map: {network_map}')
                 startup_tx_processor_vk = vk
                 break
 
@@ -510,7 +511,6 @@ class Node:
                 raise ConnectionError("Could not catchup from network.")
 
     def save_nonce_from_block(self, block: dict):
-        self.log.info({'block': block})
         payload = block['processed']['transaction']['payload']
 
         nonce = self.nonces.get_nonce(
