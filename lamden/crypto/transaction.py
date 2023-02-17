@@ -133,7 +133,7 @@ def check_tx_keys(tx):
 
 def check_tx_formatting(tx: dict, expected_processor: str):
     if not check_tx_keys(tx) or not check_format(tx, rules.TRANSACTION_RULES):
-            raise TransactionFormattingError
+        raise TransactionFormattingError
 
     if not wallet.verify(
             tx['payload']['sender'],

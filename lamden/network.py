@@ -373,8 +373,6 @@ class Network:
         if not peer:
             return
 
-        self.log('info', f'New peer connected: "{peer.local_vk[:8]}" @ {peer.request_address}')
-
         ip = peer.request_address
 
         self.publisher.announce_new_peer_connection(ip=ip, vk=peer_vk)
