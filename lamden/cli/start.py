@@ -79,37 +79,25 @@ def setup_node_signal_handler(node, loop):
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: asyncio.ensure_future(node.stop()))
 
+logger = get_logger('STARTUP')
+
 def start_node(args):
-    logger = get_logger('STARTUP')
-
     sk = bytes.fromhex(os.environ['LAMDEN_SK'])
-
     wallet = Wallet(seed=sk)
 
-    logger.info({'node vk': wallet.verifying_key})
+    logger.info(f'Node vk: {wallet.verifying_key}, ip: {requests.get("http://api.ipify.org").text}')
 
-    bootnodes = resolve_constitution(args.constitution)
-    genesis_block = resolve_genesis_block(args.genesis_block)
-
-    logger.info({'bootnodes': bootnodes})
-
+    constitution = resolve_constitution(args.constitution)
+    constitution.pop(wallet.verifying_key, None)
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
+    logger.info(f'Constitution: {constitution}')
 
-    ip_str = requests.get('http://api.ipify.org').text
-    socket_base = f'tcp://{ip_str}:19000'
-
-    logger.info(f'socket_base: {socket_base}')
-
-    # Kill the
-    if args.pid > -1:
-        subprocess.check_call(['kill', '-15', str(args.pid)])
+    genesis_block = resolve_genesis_block(args.genesis_block)
 
     n = Node(
         debug=args.debug,
         wallet=wallet,
-        socket_base=socket_base,
-        bootnodes=bootnodes,
-        bypass_catchup=args.bypass_catchup,
+        bootnodes=constitution,
         genesis_block=genesis_block,
         metering=True
     )
@@ -122,8 +110,9 @@ def start_node(args):
 
 def join_network(args):
     sk = bytes.fromhex(os.environ['LAMDEN_SK'])
-
     wallet = Wallet(seed=sk)
+
+    logger.info(f'Node vk: {wallet.verifying_key}, ip: {requests.get("http://api.ipify.org").text}')
 
     bootnode_ips = os.environ['LAMDEN_BOOTNODES'].split(':')
     bootnodes = {}
@@ -132,14 +121,12 @@ def join_network(args):
         vk = resp.get('verifying_key') 
         if vk is not None:
             bootnodes[vk] = f'tcp://{ip}:19000'
-
-    ip_str = requests.get('http://api.ipify.org').text
-    socket_base = f'tcp://{ip_str}:19000'
+    assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
+    logger.info(f'Bootnodes: {bootnodes}')
 
     n = Node(
         debug=args.debug,
         wallet=wallet,
-        socket_base=socket_base,
         bootnodes=bootnodes,
         join=True,
         metering=True

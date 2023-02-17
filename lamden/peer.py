@@ -255,10 +255,7 @@ class Peer:
                     latest_hlc_timestamp=res.get('latest_hlc_timestamp')
                 )
 
-                self.log('info', 'Received response from authorized node with pub info.')
-
                 if not self.subscriber:
-                    self.log('info', f'Setting up Subscriber to {self.subscriber_address}')
                     self.setup_subscriber()
 
                     if self.connected_callback is not None:
@@ -266,7 +263,7 @@ class Peer:
 
                 self.verified = True
         else:
-            self.log('error', f'Failed to validate {self.server_vk} at ({self.request_address})')
+            self.log('error', f'Failed to verify {self.server_vk[8:]} @ ({self.request_address})')
 
     def store_latest_block_info(self, latest_block_num: int, latest_hlc_timestamp: str) -> None:
         if not isinstance(latest_block_num, int) or not isinstance(latest_hlc_timestamp, str):
@@ -321,9 +318,6 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
-        #self.log('info', 'Waiting 10 seconds before starting reconnect loop...')
-        await asyncio.sleep(2)
-
         if self.reconnecting or not self.running:
             return
 
@@ -340,9 +334,8 @@ class Peer:
                 self.connected = True
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
-                await asyncio.sleep(1)
 
-        self.log('info', f'Reconnected to {self.request_address}!')
+        self.log('info', f'Connected to {self.request_address}!')
         self.reconnecting = False
 
     async def update_ip(self, new_ip):
