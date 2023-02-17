@@ -7,7 +7,7 @@ Lamden is an open-source Python-based blockchain development platform designed t
 - Secure and decentralized: Lamden is built on the principles of security and decentralization, so applications developed with Lamden are secure and decentralized by default.
 
 ### Getting Started
-Getting started with Lamden is easy. Our team has produced a great documentation which you can checkout [here](https://arko.lamden.io).
+Getting started with Lamden is easy. Our team has produced a great documentation which you can check out [here](https://arko.lamden.io).
 
 ### Community
 Join the Lamden community to connect with other developers and get help and support. You can find us on:

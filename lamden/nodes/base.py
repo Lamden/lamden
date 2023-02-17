@@ -1350,6 +1350,7 @@ class Node:
         self.log.info('Processing Genesis Block.')
 
         if self.blocks.total_blocks() > 0:
+            self.network.refresh_approved_peers_in_cred_provider()
             self.log.warning('Genesis Block provided but this node already has blocks, continuing startup process...')
             return
 
