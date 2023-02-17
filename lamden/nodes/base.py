@@ -249,8 +249,6 @@ class Node:
 
         await self.network.connected_to_all_peers()
 
-        self.driver.clear_pending_state()
-
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
 
@@ -303,8 +301,6 @@ class Node:
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
         self.start_validation_queue_task()
-
-        self.driver.clear_pending_state()
 
         # Start the processing queue
         self.main_processing_queue.enable_append()
