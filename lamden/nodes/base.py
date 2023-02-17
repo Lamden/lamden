@@ -215,17 +215,14 @@ class Node:
             self.log.info('Node has been successfully started!')
 
         except Exception as err:
-            self.running = False
             self.log.error(err)
-
-            await asyncio.sleep(1)
             await self.stop()
 
     def start_node(self):
         asyncio.ensure_future(self.start())
 
     async def stop(self):
-        self.log.error("!!!!!! STOPPING NODE !!!!!!")
+        self.log.info("!!!!!! STOPPING NODE !!!!!!")
 
         self.running = False
         await self.cancel_checking_all_queues()
@@ -236,7 +233,7 @@ class Node:
 
         self.started = False
 
-        self.log.error("!!!!!! STOPPED NODE !!!!!!")
+        self.log.info("!!!!!! STOPPED NODE !!!!!!")
 
     async def start_new_network(self):
         self.log.info("Attempting to connect to all peers in constitution...")
