@@ -324,7 +324,6 @@ class Node:
             await self.catchup_to_validation_queue()
 
         else:
-            await asyncio.sleep(5)
             self.send_startup_transaction(startup_tx_processor_vk)
 
         self.network.refresh_approved_peers_in_cred_provider()
