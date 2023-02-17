@@ -89,8 +89,8 @@ def start_node(args):
 
     constitution = resolve_constitution(args.constitution)
     constitution.pop(wallet.verifying_key, None)
-    assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
-    logger.info(f'Constitution: {constitution}')
+    if len(constitution) > 0:
+        logger.info(f'Constitution: {constitution}')
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
