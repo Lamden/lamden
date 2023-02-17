@@ -193,12 +193,13 @@ class Network:
 
         self.log('info', 'Started.')
 
-    def connect_to_bootnode(self, ip: str, vk: str) -> [bool, None]:
-        if vk == self.vk:
-            self.log('warning', f'Attempted connection to self "{vk[:8]}".')
-            return
+    async def get_network_map_from_bootnode(self, ip: str, vk: str):
+        peer = self.create_peer(ip=ip, vk=vk)
+        peer.start(verify=False)
+        network_map = await peer.get_network_map().get('network_map')
+        await peer.stop()
 
-        return self.create_peer(ip=ip, vk=vk)
+        return network_map
 
     def connect_peer(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:

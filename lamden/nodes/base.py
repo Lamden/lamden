@@ -261,44 +261,16 @@ class Node:
         self.network.router.cred_provider.open_messages()
 
         startup_tx_processor_vk = None
-        # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
-            bootnode = self.network.connect_to_bootnode(ip=ip, vk=vk)
-
-            if not bootnode:
-                continue
-
-            bootnode.start(verify=False)
-
-            self.log.info(f'Attempting to connect to bootnode "{vk}" @ {ip}')
-            await asyncio.sleep(5)
-
-            if not bootnode.request.is_running:
-                self.log.error(f"Bootnode {vk} @ {ip} did not start")
-                await bootnode.stop()
-                bootnode = None
-                continue
-
-            self.log.info(f'Bootnode started')
-
-            # Get the rest of the nodes from our bootnode
-            response = await bootnode.get_network_map()
-
-            if response is None:
-                continue
-
-            network_map = response.get('network_map')
+            network_map = await self.network.get_network_map_from_bootnode(vk=vk, ip=ip)
             if not network_map:
-                self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
-                await bootnode.stop()
+                self.log.error(f'Bootnode "{vk[:8]}"@{ip} failed to provide a valid network map...')
                 continue
             else:
                 startup_tx_processor_vk = vk
                 break
 
         assert network_map, "Failed to get a network map from any bootnode."
-
-        await bootnode.stop()
 
         for node in self.network.network_map_to_node_list(network_map=network_map):
             self.network.connect_peer(ip=node['ip'], vk=node['vk'])

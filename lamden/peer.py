@@ -415,7 +415,7 @@ class Peer:
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=3)
         return msg_json
 
     async def send_request(self, msg_obj: dict, timeout: int = 200,
