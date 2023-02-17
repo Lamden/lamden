@@ -251,7 +251,7 @@ class Router():
                     self.log('error', err)
                     ident_vk_string = None
 
-                self.log('info', f'Received request from {ident_vk_string[8:]}: {msg}')
+                self.log('info', f'Received request from {ident_vk_string[:8]}: {msg}')
                 asyncio.ensure_future(self.message_callback(
                     ident_vk_bytes=ident_vk_bytes,
                     ident_vk_string=ident_vk_string,
@@ -290,9 +290,9 @@ class Router():
     async def async_send(self, ident_vk_bytes: bytes, to_vk: str, msg_str: str):
         try:
             await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
-            self.log('info', f'Sent Message Back to {to_vk}. {msg_str}')
+            self.log('info', f'Sent message back to {to_vk[:8]}. {msg_str}')
         except Exception as err:
-            self.log('error', f'error sending multipart message back to {to_vk}. {ident_vk_bytes} {msg_str}')
+            self.log('error', f'error sending multipart message back to {to_vk[:8]}. {ident_vk_bytes} {msg_str}')
             self.log('error', err)
 
 
