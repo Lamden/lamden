@@ -196,10 +196,10 @@ class Network:
     async def get_network_map_from_bootnode(self, ip: str, vk: str):
         peer = self.create_peer(ip=ip, vk=vk)
         peer.start(verify=False)
-        network_map = await peer.get_network_map().get('network_map')
+        response = await peer.get_network_map()
         await peer.stop()
 
-        return network_map
+        return response.get('network_map') if response else None
 
     def connect_peer(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
