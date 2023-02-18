@@ -184,14 +184,11 @@ class Network:
     def start(self) -> None:
         self.publisher.start()
         self.router.run_curve_server()
+        self.running = True
 
     async def starting(self) -> None:
         while not self.publisher.is_running or not self.router.is_running:
             await asyncio.sleep(0.1)
-
-        self.running = True
-
-        self.log('info', 'Started.')
 
     async def get_network_map_from_bootnode(self, ip: str, vk: str):
         peer = self.create_peer(ip=ip, vk=vk)
