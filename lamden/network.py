@@ -384,7 +384,7 @@ class Network:
         if peer_vk is None:
             return
 
-        if peer_vk != self.vk:
+        if peer_vk != self.vk and not self.peers.get(peer_vk):
             peer_ip = msg.get('ip')
 
             if peer_ip is None:
@@ -505,7 +505,8 @@ class Network:
                 msg_str=self.hello_response(challenge=challenge)
             )
 
-            self.connect_peer(vk=ident_vk_string, ip=ip)
+            if not self.peers.get(ident_vk_string):
+                self.connect_peer(vk=ident_vk_string, ip=ip)
 
         if action == ACTION_GET_LATEST_BLOCK:
             latest_block_info = self.get_latest_block_info()
