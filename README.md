@@ -18,4 +18,4 @@ Join the Lamden community to connect with other developers and get help and supp
 - [Reddit](https://www.reddit.com/r/lamden/)
 
 ### Contributions
-Lamden is an open-source project, and contributions are welcome. If you're interested in contributing, check out our [contribution guidelines](docs/CONTRIBUTING.md) to get started.
+Lamden is an open-source project, and contributions are welcome. If you're interested in contributing, check out our [contribution guidelines](CONTRIBUTING.md) to get started.
