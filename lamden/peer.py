@@ -231,20 +231,10 @@ class Peer:
 
     async def verify_peer_loop(self) -> None:
         self.verified = False
-
         while not self.verified and self.running:
-            # wait till peer is available
-            await self.reconnect_loop()
-
-            if self.running:
-                # Validate peer is correct
-                await self.verify_peer()
-
-                await asyncio.sleep(1)
+            await self.verify_peer()
 
     async def verify_peer(self):
-        self.verified = False
-
         res = await self.hello()
 
         if res is not None and res.get('success') and self.running:
@@ -418,40 +408,22 @@ class Peer:
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=3)
         return msg_json
 
-    async def send_request(self, msg_obj: dict, timeout: int = 200,
-                           attempts: int = 3) -> (dict, None):
-
-        if not self.request:
-            raise AttributeError("Request socket not setup.")
-
-        if msg_obj is None:
-            return None
-
+    async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):
         try:
             str_msg = encode(msg_obj)
-        except Exception as err:
-            self.log('error', f'{err}')
-            self.log('info', f'Failed to encode message {msg_obj} to bytes.')
-
-            return None
-
-        try:
             result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
+
             return self.handle_result(result=result)
         except Exception as error:
-            print(error)
+            self.log('error', f'{error}')
 
     def handle_result(self, result: Result) -> (dict, None):
         if result.success:
             self.connected = True
-            try:
-                msg_json = decode(result.response)
-                msg_json['success'] = result.success
-                return msg_json
+            msg_json = decode(result.response)
+            msg_json['success'] = result.success
 
-            except Exception as err:
-                self.log('error', f'{err}')
-                self.log('info', f'Failed to decode json from {self.request_address}: {result.__dict__}')
+            return msg_json
         else:
             if result.error:
                 self.log('error', f'Result Error: {result.error}')
