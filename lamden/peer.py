@@ -231,20 +231,10 @@ class Peer:
 
     async def verify_peer_loop(self) -> None:
         self.verified = False
-
         while not self.verified and self.running:
-            # wait till peer is available
-            await self.reconnect_loop()
-
-            if self.running:
-                # Validate peer is correct
-                await self.verify_peer()
-
-                await asyncio.sleep(1)
+            await self.verify_peer()
 
     async def verify_peer(self):
-        self.verified = False
-
         res = await self.hello()
 
         if res is not None and res.get('success') and self.running:
@@ -255,10 +245,7 @@ class Peer:
                     latest_hlc_timestamp=res.get('latest_hlc_timestamp')
                 )
 
-                self.log('info', 'Received response from authorized node with pub info.')
-
                 if not self.subscriber:
-                    self.log('info', f'Setting up Subscriber to {self.subscriber_address}')
                     self.setup_subscriber()
 
                     if self.connected_callback is not None:
@@ -266,7 +253,7 @@ class Peer:
 
                 self.verified = True
         else:
-            self.log('error', f'Failed to validate {self.server_vk} at ({self.request_address})')
+            self.log('error', f'Failed to verify {self.server_vk[8:]} @ ({self.request_address})')
 
     def store_latest_block_info(self, latest_block_num: int, latest_hlc_timestamp: str) -> None:
         if not isinstance(latest_block_num, int) or not isinstance(latest_hlc_timestamp, str):
@@ -321,9 +308,6 @@ class Peer:
         self.reconnect_task = asyncio.ensure_future(self.reconnect_loop())
 
     async def reconnect_loop(self) -> None:
-        #self.log('info', 'Waiting 10 seconds before starting reconnect loop...')
-        await asyncio.sleep(2)
-
         if self.reconnecting or not self.running:
             return
 
@@ -340,9 +324,8 @@ class Peer:
                 self.connected = True
             else:
                 self.log('info', f'Could not ping {self.request_address}. Attempting to reconnect...')
-                await asyncio.sleep(1)
 
-        self.log('info', f'Reconnected to {self.request_address}!')
+        self.log('info', f'Connected to {self.request_address}!')
         self.reconnecting = False
 
     async def update_ip(self, new_ip):
@@ -422,43 +405,25 @@ class Peer:
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=5)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=3)
         return msg_json
 
-    async def send_request(self, msg_obj: dict, timeout: int = 200,
-                           attempts: int = 3) -> (dict, None):
-
-        if not self.request:
-            raise AttributeError("Request socket not setup.")
-
-        if msg_obj is None:
-            return None
-
+    async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):
         try:
             str_msg = encode(msg_obj)
-        except Exception as err:
-            self.log('error', f'{err}')
-            self.log('info', f'Failed to encode message {msg_obj} to bytes.')
-
-            return None
-
-        try:
             result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
+
             return self.handle_result(result=result)
         except Exception as error:
-            print(error)
+            self.log('error', f'{error}')
 
     def handle_result(self, result: Result) -> (dict, None):
         if result.success:
             self.connected = True
-            try:
-                msg_json = decode(result.response)
-                msg_json['success'] = result.success
-                return msg_json
+            msg_json = decode(result.response)
+            msg_json['success'] = result.success
 
-            except Exception as err:
-                self.log('error', f'{err}')
-                self.log('info', f'Failed to decode json from {self.request_address}: {result.__dict__}')
+            return msg_json
         else:
             if result.error:
                 self.log('error', f'Result Error: {result.error}')

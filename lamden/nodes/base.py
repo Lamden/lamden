@@ -50,32 +50,10 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
-class NewBlock(Processor):
-    def __init__(self, driver: ContractDriver):
-        self.q = []
-        self.driver = driver
-        self.log = get_logger('NBN')
-
-    async def process_message(self, msg):
-        self.q.append(msg)
-
-    async def wait_for_next_nbn(self):
-        while len(self.q) <= 0:
-            await asyncio.sleep(0.1)
-
-        nbn = self.q.pop(0)
-
-        self.q.clear()
-
-        return nbn
-
-    def clean(self, height):
-        self.q = [nbn for nbn in self.q if nbn['number'] > height]
-
 class Node:
-    def __init__(self, socket_base,  wallet, constitution={}, bootnodes={}, blocks=None,
-                 driver=None, delay=None, debug=True, testing=False, bypass_catchup=False,
-                 consensus_percent=None, nonces=None, parallelism=4, genesis_block=None, metering=False,
+    def __init__(self, wallet, bootnodes={}, blocks=None,
+                 driver=None, delay=None, debug=True, testing=False,
+                 consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None):
 
         self.main_processing_queue = None
@@ -88,7 +66,7 @@ class Node:
             'base': 1,
             'self': 0.5
         }
-        # amount of consecutive out of consensus solutions we will tolerate from out of consensus nodes
+
         self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
         self.pause_tx_queue_checking = False
 
@@ -120,7 +98,6 @@ class Node:
         self.last_printed_loop_counter = time.time()
 
         self.log.propagate = debug
-        self.socket_base = socket_base
         self.wallet = wallet
         self.hlc_clock = HLC_Clock()
 
@@ -152,8 +129,6 @@ class Node:
             stop_node=self.stop
         )
 
-        self.new_block_processor = NewBlock(driver=self.driver)
-
         self.join = join
         if genesis_block:
             self.store_genesis_block(genesis_block=genesis_block)
@@ -162,9 +137,6 @@ class Node:
             driver=self.driver,
             submission_filename=None
         )
-
-        # Number of core / processes we push to
-        self.parallelism = parallelism
 
         self.main_processing_queue = TxProcessingQueue(
             testing=self.testing,
@@ -184,7 +156,6 @@ class Node:
         )
 
         self.total_processed = 0
-        # how long to hold items in queue before processing
 
         self.work_validator = work.WorkValidator(
             wallet=wallet,
@@ -211,8 +182,6 @@ class Node:
         self.running = False
         self.started = False
 
-        self.bypass_catchup = bypass_catchup
-
         self.reconnect_attempts = reconnect_attempts
 
         self.network_connectivity_check_timeout = 120
@@ -227,15 +196,12 @@ class Node:
 
     async def start(self):
         try:
-            # Start running
             self.running = True
 
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
-                # asyncio.ensure_future(self.debug_print_loop_counter())
 
             self.network.start()
-            await self.network.starting()
 
             if not self.join:
                 await self.start_new_network()
@@ -249,17 +215,14 @@ class Node:
             self.log.info('Node has been successfully started!')
 
         except Exception as err:
-            self.running = False
             self.log.error(err)
-
-            await asyncio.sleep(1)
             await self.stop()
 
     def start_node(self):
         asyncio.ensure_future(self.start())
 
     async def stop(self):
-        self.log.error("!!!!!! STOPPING NODE !!!!!!")
+        self.log.info("!!!!!! STOPPING NODE !!!!!!")
 
         self.running = False
         await self.cancel_checking_all_queues()
@@ -270,25 +233,18 @@ class Node:
 
         self.started = False
 
-        self.log.error("!!!!!! STOPPED NODE !!!!!!")
+        self.log.info("!!!!!! STOPPED NODE !!!!!!")
 
     async def start_new_network(self):
-        '''
-            self.bootnodes is a {vk:ip} dict
-        '''
-
-        for vk, ip in self.bootnodes.items():
-            if vk != self.wallet.verifying_key:
-                self.log.info(f'Attempting to connect to peer "{vk}" @ {ip}')
-                self.network.connect_peer(
-                    ip=ip,
-                    vk=vk
-                )
-
         self.log.info("Attempting to connect to all peers in constitution...")
-        await self.network.connected_to_all_peers()
+        for vk, ip in self.bootnodes.items():
+            self.log.info(f'Attempting to connect to peer "{vk[:8]}" @ {ip}')
+            self.network.connect_peer(
+                ip=ip,
+                vk=vk
+            )
 
-        self.driver.clear_pending_state()
+        await self.network.connected_to_all_peers()
 
         self.start_validation_queue_task()
         self.start_main_processing_queue_task()
@@ -300,44 +256,17 @@ class Node:
         self.network.router.cred_provider.open_messages()
 
         startup_tx_processor_vk = None
-        # Connect to a node on the network using the bootnode list
         for vk, ip in self.bootnodes.items():
-            bootnode = self.network.connect_to_bootnode(ip=ip, vk=vk)
-
-            if not bootnode:
-                continue
-
-            bootnode.start(verify=False)
-
-            self.log.info(f'Attempting to connect to bootnode "{vk}" @ {ip}')
-            await asyncio.sleep(5)
-
-            if not bootnode.request.is_running:
-                self.log.error(f"Bootnode {vk} @ {ip} did not start")
-                await bootnode.stop()
-                bootnode = None
-                continue
-
-            self.log.info(f'Bootnode started')
-
-            # Get the rest of the nodes from our bootnode
-            response = await bootnode.get_network_map()
-
-            if response is None:
-                continue
-
-            network_map = response.get('network_map')
+            network_map = await self.network.get_network_map_from_bootnode(vk=vk, ip=ip)
             if not network_map:
-                self.log.error(f"Node {bootnode.get('vk')} failed to provided a node list! Exiting..")
-                await bootnode.stop()
+                self.log.error(f'Bootnode "{vk[:8]}"@{ip} failed to provide a valid network map...')
                 continue
             else:
+                self.log.info(f'Received network map: {network_map}')
                 startup_tx_processor_vk = vk
                 break
 
         assert network_map, "Failed to get a network map from any bootnode."
-
-        await bootnode.stop()
 
         for node in self.network.network_map_to_node_list(network_map=network_map):
             self.network.connect_peer(ip=node['ip'], vk=node['vk'])
@@ -370,8 +299,6 @@ class Node:
         # Start the validation queue so we start accepting block results
         self.validation_queue.enable_append()
         self.start_validation_queue_task()
-
-        self.driver.clear_pending_state()
 
         # Start the processing queue
         self.main_processing_queue.enable_append()
@@ -584,7 +511,6 @@ class Node:
                 raise ConnectionError("Could not catchup from network.")
 
     def save_nonce_from_block(self, block: dict):
-        self.log.info({'block': block})
         payload = block['processed']['transaction']['payload']
 
         nonce = self.nonces.get_nonce(
@@ -753,16 +679,6 @@ class Node:
         except Exception as err:
             self.log.error(err)
 
-    async def debug_print_loop_counter(self):
-        while True:
-            elapsed_secs = time.time() - self.last_printed_loop_counter
-            if elapsed_secs > 1:
-                self.log.debug({'debug_loop_counter': self.debug_loop_counter})
-                self.last_printed_loop_counter = time.time()
-
-            await asyncio.sleep(5)
-
-
     def store_solution_and_send_to_network(self, processing_results):
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
@@ -809,8 +725,6 @@ class Node:
         if int(block.get('number')) >= self.get_current_height():
             self.driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
             self.driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
-
-            self.new_block_processor.clean(self.get_current_height())
 
     def get_state_changes_from_block(self, block):
         try:

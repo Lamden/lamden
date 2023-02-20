@@ -13,7 +13,7 @@ from lamden.crypto.wallet import Wallet
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 
-from lamden.cli.start import resolve_genesis_block
+from lamden.cli.cmd import resolve_genesis_block
 
 import asyncio
 import uvloop

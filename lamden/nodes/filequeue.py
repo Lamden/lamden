@@ -19,7 +19,6 @@ class FileQueue:
         self.temp_txq = self.root.joinpath('temp_txq')
 
         self.__build_directories()
-        self.log.debug(f'Created TX queue at \'{self.root}\'')
 
     def append(self, tx):
         if tx is None:

@@ -10,7 +10,6 @@ import unittest
 import sys
 from datetime import datetime
 
-from lamden.sockets.dealer import Dealer
 from lamden.sockets.request import Request
 from lamden.sockets.router import Router
 

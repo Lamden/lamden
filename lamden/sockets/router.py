@@ -230,7 +230,7 @@ class Router():
 
         self.running = True
 
-        self.log('info', f'Started. on {self.address}')
+        self.log('info', f'Started on {self.address}')
 
     async def has_message(self, timeout_ms: int = 10) -> bool:
         # self.log('info', 'Checking for messages!')
@@ -243,10 +243,7 @@ class Router():
         while self.should_check:
             if await self.has_message(timeout_ms=self.poll_time_ms):
                 multi_message = await self.socket.recv_multipart()
-                self.log('info', f'multi_message: {multi_message}')
                 ident_vk_bytes, empty, msg = multi_message
-
-                self.log('info', f'Received request from {ident_vk_bytes}: {msg}')
 
                 try:
                     ident_vk_string = json.loads(ident_vk_bytes.decode('UTF-8'))
@@ -254,17 +251,14 @@ class Router():
                     self.log('error', err)
                     ident_vk_string = None
 
-                if self.message_callback:
-                    asyncio.ensure_future(self.message_callback(
-                        ident_vk_bytes=ident_vk_bytes,
-                        ident_vk_string=ident_vk_string,
-                        msg=msg
-                    ))
-
-                await asyncio.sleep(0)
+                self.log('info', f'Received request from {ident_vk_string[:8]}: {msg}')
+                asyncio.ensure_future(self.message_callback(
+                    ident_vk_bytes=ident_vk_bytes,
+                    ident_vk_string=ident_vk_string,
+                    msg=msg
+                ))
             else:
                 await asyncio.sleep(0.1)
-                # self.log('info', 'No Messages Found!')
 
         self.log('info', 'Stopped Checking for messages.')
 
@@ -296,9 +290,9 @@ class Router():
     async def async_send(self, ident_vk_bytes: bytes, to_vk: str, msg_str: str):
         try:
             await self.socket.send_multipart([ident_vk_bytes, b'', msg_str.encode("UTF-8")])
-            self.log('info', f'Sent Message Back to {to_vk}. {msg_str}')
+            self.log('info', f'Sent message back to {to_vk[:8]}. {msg_str}')
         except Exception as err:
-            self.log('error', f'error sending multipart message back to {to_vk}. {ident_vk_bytes} {msg_str}')
+            self.log('error', f'error sending multipart message back to {to_vk[:8]}. {ident_vk_bytes} {msg_str}')
             self.log('error', err)
 
 

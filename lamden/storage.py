@@ -74,7 +74,7 @@ class BlockStorage:
         self.txs_dir = self.blocks_dir.joinpath('txs')
 
         self.__build_directories()
-        self.log.debug(f'Created block & tx storage at \'{self.root}\'')
+        self.log.info(f'Initialized block & tx storage at \'{self.root}\', {self.total_blocks()} existing blocks found.')
 
     def __build_directories(self):
         self.root.mkdir(exist_ok=True, parents=True)

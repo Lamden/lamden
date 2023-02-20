@@ -36,13 +36,6 @@ class Processor:
         raise NotImplementedError
 
 
-class QueueProcessor(Processor):
-    def __init__(self):
-        self.q = []
-
-    async def process_message(self, msg):
-        self.q.append(msg)
-
 class NewPeerProcessor(Processor):
     def __init__(self, callback):
         self.new_peer_callback = callback
@@ -189,40 +182,29 @@ class Network:
         self.router.set_address(port=self.socket_ports.get('router'))
 
     def start(self) -> None:
-        try:
-            self.log('info', f'Publisher Address {self.publisher_address}')
-            self.log('info', f'Router Address {self.router_address}')
-
-            self.publisher.start()
-            self.router.run_curve_server()
-
-            asyncio.ensure_future(self.starting())
-
-        except Exception as err:
-            print (err)
+        self.publisher.start()
+        self.router.run_curve_server()
+        self.running = True
 
     async def starting(self) -> None:
         while not self.publisher.is_running or not self.router.is_running:
             await asyncio.sleep(0.1)
 
-        self.running = True
+    async def get_network_map_from_bootnode(self, ip: str, vk: str):
+        peer = self.create_peer(ip=ip, vk=vk)
+        peer.start(verify=False)
+        response = await peer.get_network_map()
+        await peer.stop()
 
-        self.log('info', 'Started.')
-
-    def connect_to_bootnode(self, ip: str, vk: str) -> [bool, None]:
-        if vk == self.vk:
-            self.log('warning', f'Attempted connection to self "{vk}".')
-            return
-
-        return self.create_peer(ip=ip, vk=vk)
+        return response.get('network_map') if response else None
 
     def connect_peer(self, ip: str, vk: str) -> [bool, None]:
         if vk == self.vk:
-            self.log('warning', f'Attempted connection to self "{vk}".')
+            self.log('warning', f'Attempted connection to self "{vk[:8]}".')
             return
 
         if self.peers.get(vk):
-            self.log('warning', f'Attempted to add an existing peer, vk: "{vk}",ip: {ip}')
+            self.log('warning', f'Attempted to add an existing peer, vk: "{vk[:8]}" @ ip: {ip}')
             return
 
         if self.peer_is_voted_in(peer_vk=vk) or self.router.cred_provider.accept_all:
@@ -241,9 +223,8 @@ class Network:
 
     def refresh_approved_peers_in_cred_provider(self):
         node_vk_list_from_smartcontracts = self.get_node_list()
-        self.log('info', {'node_vk_list_from_smartcontracts': node_vk_list_from_smartcontracts})
-        # Refresh credentials provider with approved nodes from state
         self.router.refresh_cred_provider_vks(vk_list=node_vk_list_from_smartcontracts)
+        self.log('info', f'Refreshed approved peers in credentials provider: {node_vk_list_from_smartcontracts}')
 
     def get_exiled_peers(self):
         exiles = []
@@ -272,7 +253,7 @@ class Network:
         self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
-        self.log('info', f'Adding New Peer "{peer_vk}" at {ip}')
+        self.log('info', f'Adding new peer "{peer_vk[:8]}" @ {ip}')
         peer = self.create_peer(ip=ip, vk=peer_vk)
         self.peers[peer_vk] = peer
         self.start_peer(vk=peer_vk)
@@ -389,8 +370,6 @@ class Network:
         if not peer:
             return
 
-        print(f'[{self.external_address}][NEW PEER CONNECTED] "{peer.local_vk}" at {peer.request_address}')
-
         ip = peer.request_address
 
         self.publisher.announce_new_peer_connection(ip=ip, vk=peer_vk)
@@ -405,7 +384,7 @@ class Network:
         if peer_vk is None:
             return
 
-        if peer_vk != self.vk:
+        if peer_vk != self.vk and not self.peers.get(peer_vk):
             peer_ip = msg.get('ip')
 
             if peer_ip is None:
@@ -503,7 +482,6 @@ class Network:
 
     async def router_callback(self, ident_vk_bytes: bytes, ident_vk_string: str, msg: str) -> None:
         try:
-            self.log('info', {'ident_vk_bytes': ident_vk_bytes, 'ident_vk_string': ident_vk_string, 'msg': msg})
             msg = decode(msg)
             action = msg.get('action')
         except Exception as err:
@@ -521,21 +499,17 @@ class Network:
             ip = msg.get('ip')
             challenge = msg.get('challenge')
 
-            self.log('info', f'Hello received challenge "{challenge}" from Peer "{ident_vk_string}" at {ip}')
-
             self.router.send_msg(
                 ident_vk_bytes=ident_vk_bytes,
                 to_vk=ident_vk_string,
                 msg_str=self.hello_response(challenge=challenge)
             )
 
-            self.connect_peer(vk=ident_vk_string, ip=ip)
+            if not self.peers.get(ident_vk_string):
+                self.connect_peer(vk=ident_vk_string, ip=ip)
 
         if action == ACTION_GET_LATEST_BLOCK:
-            self.log('warning', "ACTION_GET_LATEST_BLOCK")
             latest_block_info = self.get_latest_block_info()
-            self.log('info', latest_block_info)
-
             block_num = latest_block_info.get('number')
             hlc_timestamp = latest_block_info.get("hlc_timestamp")
 
@@ -546,6 +520,7 @@ class Network:
                 to_vk=ident_vk_string,
                 msg_str=resp_msg
             )
+            self.log('info', f'Sent back latest block info: {latest_block_info}')
 
         if action == ACTION_GET_BLOCK:
             block_num = msg.get('block_num', None)

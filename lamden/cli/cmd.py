@@ -1,68 +1,155 @@
-from contracting.client import ContractDriver, ContractingClient
-from lamden.cli.start import start_node, join_network
-from lamden.contracts import sync
-from lamden.storage import BlockStorage
+from contracting.db.encoder import decode
+from lamden.crypto.wallet import Wallet
+from lamden.logger.base import get_logger
+from lamden.nodes.base import Node
 import argparse
+import asyncio
+import json
+import os
+import pathlib
+import requests
+import signal
 
-def flush(args):
-    if args.storage_type == 'blocks':
-        BlockStorage().flush()
-    elif args.storage_type == 'state':
-        ContractDriver().flush()
-    elif args.storage_type == 'all':
-        BlockStorage().flush()
-        ContractDriver().flush()
-    else:
-        print('Invalid option. < blocks | state | all >')
+logger = get_logger('STARTUP')
 
-def setup_cilparser(parser):
-    # create parser for update commands
-    subparser = parser.add_subparsers(title='subcommands', description='Network update commands',
-                                      help='Shows set of update cmd options', dest='command')
+logger.info('''
+            ##
+          ######
+        ####  ####
+      ####      ####
+    ####          ####
+  ####              ####
+#### ~ L A M D E N ~ ####
+  ####             ####
+    ####          ####
+      ####      ####
+        ####  ####
+          ######
+            ##
+''')
+
+def is_valid_ip(s):
+    components = s.split('.')
+    if len(components) != 4:
+        return False
+
+    for component in components:
+        if int(component) > 255:
+            return False
+
+    return True
+
+def resolve_constitution(fp):
+    path = pathlib.PosixPath(fp).expanduser()
+
+    path.touch()
+
+    f = open(str(path), 'r')
+    j = json.load(f)
+    f.close()
+
+    formatted_bootnodes = {}
+    for vk, ip in j['masternodes'].items():
+        assert is_valid_ip(ip), 'Invalid IP string provided to boot node argument.'
+        formatted_bootnodes[vk] = f'tcp://{ip}'
+
+    return formatted_bootnodes
+
+def resolve_genesis_block(fp):
+    path = pathlib.PosixPath(fp).expanduser()
+
+    path.touch()
+
+    f = open(str(path), 'r')
+    genesis_block = decode(f.read())
+    f.close()
+
+    return genesis_block
+
+def setup_node_signal_handler(node, loop):
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda: asyncio.ensure_future(node.stop()))
+
+def start_node(args):
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
+    wallet = Wallet(seed=sk)
+
+    logger.info(f'Node vk: {wallet.verifying_key}, ip: {requests.get("http://api.ipify.org").text}')
+
+    constitution = resolve_constitution(args.constitution)
+    constitution.pop(wallet.verifying_key, None)
+    if len(constitution) > 0:
+        logger.info(f'Constitution: {constitution}')
+
+    genesis_block = resolve_genesis_block(args.genesis_block)
+
+    n = Node(
+        debug=args.debug,
+        wallet=wallet,
+        bootnodes=constitution,
+        genesis_block=genesis_block,
+        metering=True
+    )
+
+    loop = asyncio.get_event_loop()
+    setup_node_signal_handler(n, loop)
+    asyncio.ensure_future(n.start())
+    loop.run_forever()
+
+
+def join_network(args):
+    sk = bytes.fromhex(os.environ['LAMDEN_SK'])
+    wallet = Wallet(seed=sk)
+
+    logger.info(f'Node vk: {wallet.verifying_key}, ip: {requests.get("http://api.ipify.org").text}')
+
+    bootnode_ips = os.environ['LAMDEN_BOOTNODES'].split(':')
+    bootnodes = {}
+    for ip in bootnode_ips:
+        resp = requests.get(f'http://{ip}:18080/id').json()
+        vk = resp.get('verifying_key')
+        if vk is not None:
+            bootnodes[vk] = f'tcp://{ip}:19000'
+    assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
+    logger.info(f'Bootnodes: {bootnodes}')
+
+    n = Node(
+        debug=args.debug,
+        wallet=wallet,
+        bootnodes=bootnodes,
+        join=True,
+        metering=True
+    )
+
+    loop = asyncio.get_event_loop()
+    setup_node_signal_handler(n, loop)
+    asyncio.ensure_future(n.start())
+    loop.run_forever()
+
+def setup_lamden_parser(parser):
+    subparser = parser.add_subparsers(title='subcommands', description='Lamden commands',
+                                      help='Shows set of commands', dest='command')
 
     start_parser = subparser.add_parser('start')
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
-    start_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
-    start_parser.add_argument('-p', '--pid', type=int, default=-1)
-    start_parser.add_argument('-b', '--bypass_catchup', type=bool, default=False)
     start_parser.add_argument('-d', '--debug', type=bool, default=False)
 
-    flush_parser = subparser.add_parser('flush')
-    flush_parser.add_argument('storage_type', type=str)
-
     join_parser = subparser.add_parser('join')
-    join_parser.add_argument('-m', '--mn_seed', type=str)
-    join_parser.add_argument('-mp', '--mn_seed_port', type=int, default=18080)
-    join_parser.add_argument('-wp', '--webserver_port', type=int, default=18080)
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
-
-    sync_parser = subparser.add_parser('sync')
-
-    return True
 
 def main():
     parser = argparse.ArgumentParser(description="Lamden Commands", prog='lamden')
-    setup_cilparser(parser)
+    setup_lamden_parser(parser)
     args = parser.parse_args()
 
-    # implementation
     if vars(args).get('command') is None:
         return
 
     if args.command == 'start':
         start_node(args)
-
-    elif args.command == 'flush':
-        flush(args)
-
     elif args.command == 'join':
         join_network(args)
-
-    elif args.command == 'sync':
-        client = ContractingClient()
-        sync.flush_sys_contracts(client=client)
-        sync.submit_from_genesis_json_file(client=client)
 
 if __name__ == '__main__':
     main()
