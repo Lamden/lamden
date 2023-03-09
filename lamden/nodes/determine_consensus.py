@@ -63,7 +63,7 @@ class DetermineConsensus:
 
         solutions_missing = num_of_participants - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
-        # print({'tally_info':tally_info})
+        print({'tally_info': tally_info})
 
         '''
         self.log.debug({

@@ -240,6 +240,7 @@ class ValidationQueue(ProcessingQueue):
         if consensus_result is None:
             #self.log.debug('[STOP] add_consensus_result - consensus_result is None')
             return
+        self.log.debug({'consensus_result': consensus_result})
 
         has_consensus = consensus_result.get('has_consensus')
         if has_consensus is not None and has_consensus:
