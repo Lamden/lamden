@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: contracting
+Version: 1.1.6
+Summary: Python-based smart contract language and interpreter.
+Home-page: https://github.com/Lamden/contracting
+Author: Lamden
+Author-email: team@lamden.io
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3.6
+License-File: LICENSE.txt
+
+UNKNOWN
+
