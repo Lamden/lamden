@@ -123,6 +123,7 @@ class WebServer:
 
         # General Block Route
         self.app.add_route(self.get_block, '/blocks', methods=['GET'])
+        self.app.add_route(self.get_previous_block, '/prev_block', methods=['GET'])
 
         # TX Route
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
@@ -435,6 +436,26 @@ class WebServer:
                                  headers={'Access-Control-Allow-Origin': '*'})
 
         self.cache_genesis_block(block)
+        return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
+
+    async def get_previous_block(self, request):
+        try:
+            num = int(request.args.get('num'))
+        except Exception:
+            return response.json({'error': 'No block number provided.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
+
+        block = self.blocks.get_previous_block(num)
+
+        if block is None:
+            return response.json({'error': 'Block not found.'}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
+
+        if (int(block.get('number')) == 0):
+            if not self.CACHED_GENESIS_BLOCK:
+                self.cache_genesis_block(block)
+            block = self.CACHED_GENESIS_BLOCK
+
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_tx(self, request):
