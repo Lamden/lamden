@@ -418,6 +418,49 @@ def get():
         _, response = self.ws.app.test_client.get('/blocks')
         self.assertDictEqual(response.json, {'error': 'No number or hash provided.'})
 
+    def test_get_prev_block_by_num_that_exists(self):
+        blocks = generate_blocks(
+            number_of_blocks=2,
+            prev_block_hash='0'*64,
+            prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.ws.blocks.store_block(copy.deepcopy(block))
+
+        block_num = blocks[1].get('number')
+        prev_block_number = blocks[0].get('number')
+
+        _, response = self.ws.app.test_client.get(f'/prev_block?num={block_num}')
+
+        response_block_number = response.json.get('number')
+        self.assertEqual(response_block_number, prev_block_number)
+
+        self.assertDictEqual(response.json, blocks[0])
+
+    def test_get_prev_block_returns_cached_gen_block(self):
+        block = copy.deepcopy(GENESIS_BLOCK)
+        self.ws.blocks.store_block(copy.deepcopy(block))
+
+        _, response = self.ws.app.test_client.get(f'/prev_block?num=1')
+        self.assertEqual(response.json.get('genesis'), [])
+        self.assertIsNotNone(self.ws.CACHED_GENESIS_BLOCK)
+
+    def test_get_prev_block_by_num_that_doesnt_exist_returns_error(self):
+        _, response = self.ws.app.test_client.get('/prev_block?num=0')
+
+        self.assertDictEqual(response.json, {'error': 'Block not found.'})
+
+    def test_get_prev_block_num_not_provided(self):
+        _, response = self.ws.app.test_client.get('/prev_block')
+
+        self.assertDictEqual(response.json, {'error': 'No block number provided.'})
+
+    def test_get_prev_block_num_not_int(self):
+        _, response = self.ws.app.test_client.get('/prev_block?num=abc')
+
+        self.assertDictEqual(response.json, {'error': 'No block number provided.'})
+
     def test_bad_transaction_returns_a_TransactionException(self):
         tx = build_transaction(
             wallet=Wallet(),

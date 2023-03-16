@@ -26,6 +26,8 @@ def generate_mock_block(prev_block_hlc, prev_block_hash):
 
     h.update('{}{}{}'.format(hlc_timestamp, block_num, prev_block_hash).encode())
 
+    hash = hashlib.sha3_256()
+    hash.update('{}'.format(hlc_timestamp).encode())
     return  {
         "hash": h.hexdigest(),
         "number": block_num,
@@ -38,7 +40,7 @@ def generate_mock_block(prev_block_hlc, prev_block_hash):
             },
         ],
         'processed': {
-            "hash": "mock_aa7304d6bc9871ba0ef530e5e8b6dd7331f6c3ae7a58fa3e482c77275f3",
+            "hash": "mock_" + hash.hexdigest(),
             "hlc_timestamp": hlc_timestamp,
             "result": "None",
             "stamps_used": 18,
