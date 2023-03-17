@@ -410,6 +410,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
+        block = json.loads(encode(block))
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
@@ -448,6 +449,8 @@ class WebServer:
         if block is None:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
+        else:
+            block = json.loads(encode(block))
 
         self.cache_genesis_block(block)
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
@@ -517,7 +520,7 @@ class WebServer:
 
         self.cache_genesis_block(block)
 
-        return block
+        return json.loads(encode(block))
 
     def get_prev_block_from_storage(self, block_number):
         block = self.blocks.get_previous_block(block_number)
@@ -530,7 +533,7 @@ class WebServer:
                     self.cache_genesis_block(block)
                 block = self.CACHED_GENESIS_BLOCK
 
-        return block
+        return json.loads(encode(block))
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
