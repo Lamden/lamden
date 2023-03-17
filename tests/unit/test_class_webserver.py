@@ -742,15 +742,23 @@ class TestWebserverWebsockets(TestCase):
         if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
 
-    def await_async_task(self, task):
-        tasks = asyncio.gather(
-            task()
-        )
+    def await_async_task(self, task, data=None):
+        if data:
+            tasks = asyncio.gather(
+                task(data)
+            )
+        else:
+            tasks = asyncio.gather(
+                task()
+            )
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
     async def ws_connect(self):
         self.websocket = await websockets.connect(f'ws://localhost:{self.ws.port}')
+
+    async def ws_connect_actions(self):
+        self.websocket = await websockets.connect(f'ws://localhost:{self.ws.port}/actions')
 
     async def ws_disconnect(self):
         self.await_async_task(self.websocket.close)
@@ -808,3 +816,77 @@ class TestWebserverWebsockets(TestCase):
         block = self.messages[0]['data']
 
         self.assertTrue(block.get('cached'))
+
+    def test_ws_can_connect_to_actions_websocket(self):
+        self.await_async_task(self.ws_connect_actions)
+        self.assertTrue(self.websocket.open)
+
+    def test_ws_can_get_prev_block_from_actions_websocket(self):
+        blocks = generate_blocks(
+            number_of_blocks=2,
+            prev_block_hash='0'*64,
+            prev_block_hlc=HLC_Clock().get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.ws.blocks.store_block(copy.deepcopy(block))
+
+        block_num = blocks[1].get('number')
+        prev_block_number = blocks[0].get('number')
+
+        self.await_async_task(self.ws_connect_actions)
+
+        data = json.dumps({
+            "action": "prev_block",
+            "payload": block_num
+        })
+
+        self.await_async_task(self.websocket.send, data)
+
+        self.await_async_task(self.ws_get_next_message)
+
+        prev_block = self.messages[0]
+
+        self.assertEqual(prev_block.get("number"), prev_block_number)
+
+    def test_ws_actions_returns_error_on_invalid_action(self):
+        self.await_async_task(self.ws_connect_actions)
+
+        data = json.dumps({
+            "action": "nope",
+            "payload": 100
+        })
+
+        self.await_async_task(self.websocket.send, data)
+        self.await_async_task(self.ws_get_next_message)
+
+        res = self.messages[0]
+
+        self.assertEqual(res, {"error": "Invalid action or payload"})
+
+    def test_ws_actions_returns_error_on_invalid_payload_for_prev_block(self):
+        self.await_async_task(self.ws_connect_actions)
+
+        data = json.dumps({
+            "action": "prev_block",
+            "payload": "nope"
+        })
+
+        self.await_async_task(self.websocket.send, data)
+        self.await_async_task(self.ws_get_next_message)
+
+        res = self.messages[0]
+
+        self.assertEqual(res, {"error": "Invalid action or payload"})
+
+    def test_ws_actions_returns_error_on_non_json_data(self):
+        self.await_async_task(self.ws_connect_actions)
+
+        data = "nope"
+
+        self.await_async_task(self.websocket.send, data)
+        self.await_async_task(self.ws_get_next_message)
+
+        res = self.messages[0]
+
+        self.assertEqual(res, {"error": "Invalid action or payload"})
