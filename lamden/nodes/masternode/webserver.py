@@ -205,8 +205,9 @@ class WebServer:
                 action = data.get("action")
                 payload = data.get("payload")
 
-                if action == "prev_block" and isinstance(payload, int):
-                    res = self.get_prev_block_from_storage(payload)
+                if action == "prev_block" and isinstance(payload, str):
+                    block_num = int(payload)
+                    res = self.get_prev_block_from_storage(block_num)
 
             except Exception as err:
                 print(err)

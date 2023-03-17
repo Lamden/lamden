@@ -838,7 +838,7 @@ class TestWebserverWebsockets(TestCase):
 
         data = json.dumps({
             "action": "prev_block",
-            "payload": block_num
+            "payload": str(block_num)
         })
 
         self.await_async_task(self.websocket.send, data)
@@ -854,7 +854,7 @@ class TestWebserverWebsockets(TestCase):
 
         data = json.dumps({
             "action": "nope",
-            "payload": 100
+            "payload": "100"
         })
 
         self.await_async_task(self.websocket.send, data)
