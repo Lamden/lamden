@@ -17,6 +17,7 @@ from lamden.nodes.base import FileQueue
 import ssl
 import asyncio
 import socketio
+import json
 
 from lamden.crypto import transaction
 import decimal
@@ -139,6 +140,7 @@ class WebServer:
 
         self.ws_clients = set()
         self.app.add_websocket_route(self.ws_handler, '/')
+        self.app.add_websocket_route(self.ws_actions_handler, '/actions')
     
     def __setup_sio_event_handlers(self):
         @self.sio.event
@@ -175,17 +177,7 @@ class WebServer:
         self.ws_clients.add(ws)
 
         try:
-            self.driver.clear_pending_state()
-
-            # send the connecting socket the latest block
-            num = storage.get_latest_block_height(self.driver)
-
-            if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
-                block = self.CACHED_GENESIS_BLOCK
-            else:
-                block = self.blocks.get_block(int(num))
-
-            self.cache_genesis_block(block)
+            block = self.get_latest_block_from_storage()
 
             eventData = {
                 'event': 'latest_block',
@@ -201,6 +193,35 @@ class WebServer:
                 pass
         finally:
             self.ws_clients.remove(ws)
+
+    async def ws_actions_handler(self, request, ws):
+        while True:
+            resp = {}
+            try:
+                received = await ws.recv()
+
+                data = json.loads(received)
+                action = data.get("action")
+                payload = data.get("payload")
+
+                resp = {
+                    "action": action,
+                    "payload": payload
+                }
+
+                if action == "prev_block" and isinstance(payload, str):
+                    print("here")
+                    block_num = int(payload)
+
+                    resp["result"] = self.get_prev_block_from_storage(block_num)
+
+            except Exception as err:
+                print(err)
+
+            if resp.get("result") is None:
+                resp["error"] = {"error": "Invalid action or payload"}
+
+            await ws.send(json.dumps(resp))
 
     async def start(self):
         # Start server with SSL enabled or not
@@ -396,6 +417,7 @@ class WebServer:
 
         num = storage.get_latest_block_height(self.driver)
         block = self.blocks.get_block(int(num))
+        block = json.loads(encode(block))
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
@@ -434,6 +456,8 @@ class WebServer:
         if block is None:
             return response.json({'error': 'Block not found.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
+        else:
+            block = json.loads(encode(block))
 
         self.cache_genesis_block(block)
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
@@ -445,16 +469,7 @@ class WebServer:
             return response.json({'error': 'No block number provided.'}, status=400,
                                  headers={'Access-Control-Allow-Origin': '*'})
 
-        block = self.blocks.get_previous_block(num)
-
-        if block is None:
-            return response.json({'error': 'Block not found.'}, status=400,
-                                 headers={'Access-Control-Allow-Origin': '*'})
-
-        if (int(block.get('number')) == 0):
-            if not self.CACHED_GENESIS_BLOCK:
-                self.cache_genesis_block(block)
-            block = self.CACHED_GENESIS_BLOCK
+        block = self.get_prev_block_from_storage(num)
 
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
@@ -499,6 +514,33 @@ class WebServer:
             block['genesis'] = []
             self.CACHED_GENESIS_BLOCK = block
 
+    def get_latest_block_from_storage(self):
+        self.driver.clear_pending_state()
+
+        # send the connecting socket the latest block
+        num = storage.get_latest_block_height(self.driver)
+
+        if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
+            block = self.CACHED_GENESIS_BLOCK
+        else:
+            block = self.blocks.get_block(int(num))
+
+        self.cache_genesis_block(block)
+
+        return json.loads(encode(block))
+
+    def get_prev_block_from_storage(self, block_number):
+        block = self.blocks.get_previous_block(block_number)
+
+        if block is None:
+            return {'error': 'Block not found.'}
+        else:
+            if (int(block.get('number')) == 0):
+                if not self.CACHED_GENESIS_BLOCK:
+                    self.cache_genesis_block(block)
+                block = self.CACHED_GENESIS_BLOCK
+
+        return json.loads(encode(block))
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Standard Lamden HTTP Webserver')
