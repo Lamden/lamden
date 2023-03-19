@@ -835,49 +835,61 @@ class TestWebserverWebsockets(TestCase):
         prev_block_number = blocks[0].get('number')
 
         self.await_async_task(self.ws_connect_actions)
-
+        action = "prev_block"
+        payload = str(block_num)
         data = json.dumps({
-            "action": "prev_block",
-            "payload": str(block_num)
+            "action": action,
+            "payload": payload
         })
 
         self.await_async_task(self.websocket.send, data)
 
         self.await_async_task(self.ws_get_next_message)
 
-        prev_block = self.messages[0]
+        prev_block = self.messages[0].get("result")
+
 
         self.assertEqual(prev_block.get("number"), prev_block_number)
+        self.assertEqual(self.messages[0].get("action"), action)
+        self.assertEqual(self.messages[0].get("payload"), payload)
 
     def test_ws_actions_returns_error_on_invalid_action(self):
         self.await_async_task(self.ws_connect_actions)
 
+        action = "prev_block"
+        payload = 100
         data = json.dumps({
-            "action": "nope",
-            "payload": "100"
+            "action": action,
+            "payload": payload
         })
 
         self.await_async_task(self.websocket.send, data)
         self.await_async_task(self.ws_get_next_message)
 
-        res = self.messages[0]
+        error = self.messages[0].get("error")
 
-        self.assertEqual(res, {"error": "Invalid action or payload"})
+        self.assertEqual(error, {"error": "Invalid action or payload"})
+        self.assertEqual(self.messages[0].get("action"), action)
+        self.assertEqual(self.messages[0].get("payload"), payload)
 
     def test_ws_actions_returns_error_on_invalid_payload_for_prev_block(self):
         self.await_async_task(self.ws_connect_actions)
 
+        action = "prev_block"
+        payload = "nope"
         data = json.dumps({
-            "action": "prev_block",
-            "payload": "nope"
+            "action": action,
+            "payload": payload
         })
 
         self.await_async_task(self.websocket.send, data)
         self.await_async_task(self.ws_get_next_message)
 
-        res = self.messages[0]
+        error = self.messages[0].get("error")
 
-        self.assertEqual(res, {"error": "Invalid action or payload"})
+        self.assertEqual(error, {"error": "Invalid action or payload"})
+        self.assertEqual(self.messages[0].get("action"), action)
+        self.assertEqual(self.messages[0].get("payload"), payload)
 
     def test_ws_actions_returns_error_on_non_json_data(self):
         self.await_async_task(self.ws_connect_actions)
@@ -887,6 +899,6 @@ class TestWebserverWebsockets(TestCase):
         self.await_async_task(self.websocket.send, data)
         self.await_async_task(self.ws_get_next_message)
 
-        res = self.messages[0]
+        error = self.messages[0].get("error")
 
-        self.assertEqual(res, {"error": "Invalid action or payload"})
+        self.assertEqual(error, {"error": "Invalid action or payload"})

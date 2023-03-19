@@ -196,8 +196,7 @@ class WebServer:
 
     async def ws_actions_handler(self, request, ws):
         while True:
-            res = None
-
+            resp = {}
             try:
                 received = await ws.recv()
 
@@ -205,17 +204,24 @@ class WebServer:
                 action = data.get("action")
                 payload = data.get("payload")
 
+                resp = {
+                    "action": action,
+                    "payload": payload
+                }
+
                 if action == "prev_block" and isinstance(payload, str):
+                    print("here")
                     block_num = int(payload)
-                    res = self.get_prev_block_from_storage(block_num)
+
+                    resp["result"] = self.get_prev_block_from_storage(block_num)
 
             except Exception as err:
                 print(err)
 
-            if res is None:
-                res = {"error": "Invalid action or payload"}
+            if resp.get("result") is None:
+                resp["error"] = {"error": "Invalid action or payload"}
 
-            await ws.send(json.dumps(res))
+            await ws.send(json.dumps(resp))
 
     async def start(self):
         # Start server with SSL enabled or not
