@@ -316,7 +316,12 @@ class TxProcessingQueue(ProcessingQueue):
                 'value': new_bal
             }]
 
-        return writes
+        try:
+            return writes.sort(key=lambda x: x['key'])
+        except Exception as err:
+            print("Unable to sort state writes by 'key'.")
+            print(err)
+            return writes
 
     def distribute_rewards(self, total_stamps_to_split, contract_name: str) -> dict:
 

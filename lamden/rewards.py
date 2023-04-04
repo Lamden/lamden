@@ -134,4 +134,9 @@ class RewardManager:
 
         # Remainder is BURNED
 
-        return rewards
+        try:
+            return rewards.sort(key=lambda x: x['key'])
+        except Exception as err:
+            print("Unable to sort rewards by 'key'.")
+            print(err)
+            return rewards
