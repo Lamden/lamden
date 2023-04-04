@@ -680,6 +680,7 @@ class Node:
             self.log.error(err)
 
     def store_solution_and_send_to_network(self, processing_results):
+        processing_results = json.loads(encode(processing_results))
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
         )
