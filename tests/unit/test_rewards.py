@@ -20,7 +20,9 @@ BLOCK = {
 
 class TestRewards(TestCase):
     def setUp(self):
-        self.client = ContractingClient()
+        self.client = ContractingClient(
+            submission_filename='./helpers/submission.py'
+        )
         self.rewards = rewards.RewardManager()
 
     def tearDown(self):
@@ -135,7 +137,7 @@ class TestRewards(TestCase):
             total_stamps_to_split=BLOCK['processed'].get('stamps_used')
         )
 
-        self.rewards.distribute_rewards(m, f, developer_mapping, client=self.client)
+        rewards = self.rewards.distribute_rewards(m, f, developer_mapping, client=self.client)
 
         masters = self.client.get_var(contract='masternodes', variable='S', arguments=['members'])
 
@@ -145,3 +147,5 @@ class TestRewards(TestCase):
 
         current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
         self.assertEqual(current_balance, f / 100)
+
+        self.assertEqual(rewards, rewards.sort(key=lambda x: x['key']))

@@ -113,7 +113,7 @@ class RewardManager:
         return send_map
 
     @staticmethod
-    def distribute_rewards(master_reward, foundation_reward, developer_mapping, client: ContractingClient) -> dict:
+    def distribute_rewards(master_reward, foundation_reward, developer_mapping, client: ContractingClient) -> list:
         stamp_cost = client.get_var(contract='stamp_cost', variable='S', arguments=['value'])
 
         master_reward /= stamp_cost
@@ -135,8 +135,9 @@ class RewardManager:
         # Remainder is BURNED
 
         try:
-            return rewards.sort(key=lambda x: x['key'])
+            rewards.sort(key=lambda x: x['key'])
         except Exception as err:
             print("Unable to sort rewards by 'key'.")
             print(err)
-            return rewards
+
+        return rewards

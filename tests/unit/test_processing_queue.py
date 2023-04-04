@@ -47,7 +47,8 @@ class TestProcessingQueue(TestCase):
     def setUp(self):
         self.driver = ContractDriver(driver=InMemDriver())
         self.client = ContractingClient(
-            driver=self.driver
+            driver=self.driver,
+            submission_filename='./helpers/submission.py'
         )
         self.wallet = Wallet()
 
