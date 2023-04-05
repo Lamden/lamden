@@ -14,6 +14,7 @@ from lamden.crypto.wallet import Wallet
 from tests.integration.mock.mock_data_structures import MockBlocks
 
 from lamden.cli.cmd import resolve_genesis_block
+from contracting.client import ContractingClient
 
 import asyncio
 import uvloop
@@ -59,13 +60,12 @@ class TestBaseGenesisBlock(TestCase):
         }
 
         return Node(
-            constitution=constitution,
             bootnodes={},
-            socket_base="",
             wallet=node_wallet,
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
             blocks=block_storage,
+            client=ContractingClient(driver=contract_driver, submission_filename='./helpers/submission.py'),
             genesis_block=genesis,
             tx_queue=tx_queue,
             testing=True,

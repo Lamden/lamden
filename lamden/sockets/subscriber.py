@@ -154,9 +154,8 @@ class Subscriber():
         self.checking = False
 
     async def stop_checking_for_messages(self):
-        self.running = False
-
         while self.is_checking_for_messages:
+            self.running = False
             await asyncio.sleep(0)
 
     def close_socket(self) -> None:

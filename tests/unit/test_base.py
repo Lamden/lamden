@@ -19,6 +19,8 @@ class TestNode(TestCase):
         self.local_node_network = LocalNodeNetwork(num_of_masternodes=1)
         self.node = self.local_node_network.masternodes[0]
 
+        self.loop = asyncio.get_event_loop()
+
         while not self.node.node.started or not self.node.network.is_running:
             self.loop.run_until_complete(asyncio.sleep(1))
 
@@ -68,7 +70,7 @@ class TestNode(TestCase):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
         path = Path().cwd().joinpath("temp_storage")
-        self.node = Node(socket_base='', wallet=Wallet(), constitution={}, join=True, driver=ContractDriver(driver=FSDriver(root=path)), event_writer=EventWriter(root=path))
+        self.node = Node(wallet=Wallet(), join=True, driver=ContractDriver(driver=FSDriver(root=path)), event_writer=EventWriter(root=path))
         self.await_async_process(self.node.start)
 
         self.assertFalse(self.node.running)
@@ -309,6 +311,13 @@ class TestNode(TestCase):
 
         self.await_async_process(asyncio.sleep, 1)
         self.assertEqual(self.node.network.num_of_peers(), 1)
+
+        while not self.await_async_process(other_node.network.connected_to_all_peers):
+            self.await_async_process(asyncio.sleep, 1)
+
+        while not self.await_async_process(self.node.network.connected_to_all_peers):
+            self.await_async_process(asyncio.sleep, 1)
+
 
         self.node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])
         other_node.set_smart_contract_value('masternodes.S:members', [self.node.wallet.verifying_key])

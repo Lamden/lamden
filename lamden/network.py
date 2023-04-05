@@ -258,7 +258,7 @@ class Network:
         self.peers[peer_vk] = peer
         self.start_peer(vk=peer_vk)
 
-    def create_peer(self, ip: str, vk: str) -> None:
+    def create_peer(self, ip: str, vk: str) -> Peer:
         return Peer(
             get_network_ip=lambda: self.external_address,
             ip=ip,

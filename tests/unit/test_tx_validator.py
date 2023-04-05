@@ -437,7 +437,7 @@ class TestValidator(TestCase):
 
         decoded = decode(tx)
 
-        client = ContractingClient()
+        client = ContractingClient(submission_filename='./helpers/submission.py')
         client.flush()
 
         client.set_var(
@@ -481,7 +481,7 @@ class TestValidator(TestCase):
 
         decoded = decode(tx)
 
-        client = ContractingClient()
+        client = ContractingClient(submission_filename='./helpers/submission.py')
         client.flush()
 
         client.set_var(
@@ -525,7 +525,7 @@ class TestValidator(TestCase):
 
         decoded = decode(tx)
 
-        client = ContractingClient()
+        client = ContractingClient(submission_filename='./helpers/submission.py')
         client.flush()
 
         client.set_var(
