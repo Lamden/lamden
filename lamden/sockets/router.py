@@ -251,14 +251,14 @@ class Router():
                     self.log('error', err)
                     ident_vk_string = None
 
-                self.log('info', f'Received request from {ident_vk_string[:8]}: {msg}')
+                self.log('info', f'Received request from {ident_vk_string}: {msg}')
                 asyncio.ensure_future(self.message_callback(
                     ident_vk_bytes=ident_vk_bytes,
                     ident_vk_string=ident_vk_string,
                     msg=msg
                 ))
             else:
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.01)
 
         self.log('info', 'Stopped Checking for messages.')
 
@@ -313,8 +313,8 @@ class Router():
 
     async def stop_checking_for_messages(self):
         try:
-            self.should_check = False
             while self.is_checking:
+                self.should_check = False
                 await asyncio.sleep(self.poll_time_ms / 1000)
         except Exception as err:
             print(err)

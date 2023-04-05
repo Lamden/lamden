@@ -75,7 +75,7 @@ class TestPeer(unittest.TestCase):
             cls.remote_peer.stop()
             cls.remote_peer.join()
 
-    def disable_send_string(self, send_str):
+    def disable_send_string(self, str_msg):
         pass
 
     def connected_callback(self, peer_vk):

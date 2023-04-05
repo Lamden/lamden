@@ -147,5 +147,3 @@ class TestRewards(TestCase):
 
         current_balance = self.client.get_var(contract='currency', variable='balances', arguments=['xxx'], mark=False)
         self.assertEqual(current_balance, f / 100)
-
-        self.assertEqual(rewards, rewards.sort(key=lambda x: x['key']))

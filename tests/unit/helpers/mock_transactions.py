@@ -11,6 +11,7 @@ from contracting.client import ContractingClient
 from contracting.execution.executor import Executor
 from lamden import rewards
 from lamden.contracts import sync
+import os, inspect
 
 def generate_blocks(number_of_blocks):
     previous_hash = '0' * 64
@@ -162,8 +163,9 @@ def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:
+        class_path = os.path.abspath(inspect.getfile(inspect.currentframe()))
         driver = driver or ContractDriver()
-        client = ContractingClient(driver=driver)
+        client = ContractingClient(driver=driver, submission_filename=os.path.dirname(class_path) + '/submission.py')
 
         sync.submit_from_genesis_json_file(client=client)
 

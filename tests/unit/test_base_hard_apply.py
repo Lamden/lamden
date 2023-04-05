@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 from lamden.nodes.base import Node
+from contracting.client import ContractingClient
 
 from lamden.storage import BlockStorage, NonceStorage, set_latest_block_height
 from lamden.nodes.events import EventWriter
@@ -67,12 +68,11 @@ class TestBaseNode_HardApply(TestCase):
         }
 
         return Node(
-            constitution=constitution,
             bootnodes={},
-            socket_base="",
             wallet=self.node_wallet,
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
+            client=ContractingClient(driver=contract_driver, submission_filename='./helpers/submission.py'),
             blocks=block_storage,
             tx_queue=tx_queue,
             testing=True,
@@ -168,16 +168,16 @@ class TestBaseNode_HardApply(TestCase):
             self.assertEqual(value, driver_value)
 
     def test_hard_apply_processing_results__hard_applies_state_from_driver_if_consensus_matches_me(self):
-        class HardApply:
+        class StoreBlock:
             def __init__(self):
                 self.was_called = False
 
-            def hard_apply(self, hlc):
-                self.was_called = hlc
+            def store_block(self, block):
+                self.was_called = block.get('hlc_timestamp')
 
 
-        mock_hard_apply = HardApply()
-        self.node.driver.hard_apply = mock_hard_apply.hard_apply
+        mock_store_block = StoreBlock()
+        self.node.blocks.store_block = mock_store_block.store_block
 
 
         processing_results = get_processing_results(driver=self.node.driver)
@@ -185,12 +185,13 @@ class TestBaseNode_HardApply(TestCase):
 
         self.node.validation_queue.validation_results[hlc_timestamp] = {}
         self.node.validation_queue.validation_results[hlc_timestamp]['solutions'] = {}
+        self.node.validation_queue.validation_results[hlc_timestamp]['last_check_info'] = {'solution': processing_results['tx_result']['hash']}
         self.node.validation_queue.validation_results[hlc_timestamp]['solutions'][self.node.wallet.verifying_key] = \
             processing_results['tx_result']['hash']
 
         self.node.hard_apply_processing_results(processing_results=processing_results)
 
-        self.assertEqual(hlc_timestamp, mock_hard_apply.was_called)
+        self.assertEqual(hlc_timestamp, mock_store_block.was_called)
 
     def test_hard_apply_processing_results__hard_applies_state_from_block_if_not_matches_me(self):
         class HardApply:

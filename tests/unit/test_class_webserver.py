@@ -46,7 +46,9 @@ class TestClassWebserver(TestCase):
 
         self.ws = WebServer(
             wallet=self.node_wallet,
-            contracting_client=ContractingClient(driver=self.driver),
+            contracting_client=ContractingClient(
+                driver=self.driver,
+                submission_filename='./helpers/submission.py'),
             blocks=self.block_storage,
             driver=self.driver,
             queue=FileQueue(root=self.temp_storage),
@@ -713,7 +715,10 @@ class TestWebserverWebsockets(TestCase):
 
         self.ws = WebServer(
             wallet=self.node_wallet,
-            contracting_client=ContractingClient(driver=self.driver),
+            contracting_client=ContractingClient(
+                driver=self.driver,
+                submission_filename='./helpers/submission.py'
+            ),
             blocks=self.block_storage,
             driver=self.driver,
             queue=FileQueue(root=self.temp_storage),
