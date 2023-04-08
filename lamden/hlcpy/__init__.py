@@ -5,6 +5,7 @@ import math
 from datetime import datetime, timezone
 from iso8601 import parse_date
 
+VERSION = 1.0
 
 def synchronized(fn):
     """Synchronization for object methods using self.lock"""

@@ -243,6 +243,7 @@ class TestNode(TestCase):
 
     def test_soft_apply_current_state(self):
         hlc = HLC_Clock().get_new_hlc_timestamp()
+        self.node.node.driver.commit()
         self.node.node.driver.set('key', 'sample_value')
 
         self.node.node.soft_apply_current_state(hlc)
