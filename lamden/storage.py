@@ -7,6 +7,7 @@ from lamden.utils import hlc
 import os
 import pathlib
 import shutil
+import json
 
 # NOTE: move state related stuff out of here. see TODO's below.
 
@@ -66,9 +67,10 @@ BLOCK_0 = {
 }
 
 class BlockStorage:
-    def __init__(self, root=None):
+    def __init__(self, root=None, block_diver=None):
         self.log = get_logger('BlockStorage')
         self.root = pathlib.Path(root) if root is not None else STORAGE_HOME
+        self.block_driver = block_diver or LayeredDirectoryDriver(root=self.root)
         self.blocks_dir = self.root.joinpath('blocks')
         self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
         self.txs_dir = self.blocks_dir.joinpath('txs')
@@ -392,3 +394,111 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
     #if set_hash_and_height:
     #    set_latest_block_hash(block['hash'], driver=driver)
     #    set_latest_block_height(block['number'], driver=driver)
+
+class BlockDriver:
+    def find_blocks(self):
+        # This method will take a block number and return that block and the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_previous_block(self, block_num: str):
+        # This method will take a block number and return the previous block
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_next_block(self, block_num: str):
+        # This method will take a block number and return the next block
+        raise NotImplementedError("Subclasses must implement this method.")
+
+# This driver stores the blocks in directories determined by a time structure based on the block number because
+# Block numbers are a nanosecond representation of am HLC timestamp.
+# This storage method scales the time required to search for "next" or "previous" blocks and doesn't require reading
+# in all current blocks to do so.
+class LayeredDirectoryDriver(BlockDriver):
+    def __init__(self, root):
+        self.root = root
+        self.minute = 60_000_000_000
+        self.hour = 3_600_000_000_000
+        self.day = 86_400_000_000_000
+        self.week = 604_800_000_000_000
+        self.month = 2_592_000_000_000_000
+        self.year = 31_536_000_000_000_000
+
+    def _find_directories(self, block_num: int):
+        dir_levels = [self.year, self.month, self.week, self.day, self.hour, self.minute]
+        directories = []
+        for level in dir_levels:
+            lower_bound = (block_num // level) * level
+            upper_bound = lower_bound + level - 1
+            dir_name = "{}_{}".format(lower_bound, upper_bound)
+            directories.append(dir_name)
+            block_num %= level
+        return directories
+
+    def get_file_path(self, block_num: str):
+        input_number = int(block_num)
+        current_dirs = self._find_directories(input_number)
+        file_path = os.path.join(self.root, *current_dirs, block_num)
+        return file_path
+
+    def write_block(self, block: dict):
+        block_num = block.get('number')
+        file_path = self.get_file_path(block_num)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+        with open(file_path, 'w') as f:
+            json.dump(block, f)
+
+    def move_block(self, src_file, block_num: str):
+        src_path = str(src_file)
+        dst_path = self.get_file_path(block_num)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        shutil.move(src_path, dst_path)
+
+    def find_previous_block(self, block_num: str):
+        input_number = int(block_num)
+        current_dirs = self._find_directories(input_number)
+        search_dir = os.path.join(self.root, *current_dirs)
+
+        files_in_dir = os.listdir(search_dir)
+        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
+
+        previous_file = None
+        for file in numeric_files:
+            if file < input_number:
+                previous_file = file
+            else:
+                break
+
+        return str(previous_file) if previous_file is not None else None
+
+    def find_next_block(self, block_num: str):
+        input_number = int(block_num)
+        current_dirs = self._find_directories(input_number)
+        search_dir = os.path.join(self.root, *current_dirs)
+
+        files_in_dir = os.listdir(search_dir)
+        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
+
+        next_file = None
+        for file in numeric_files:
+            if file > input_number:
+                next_file = file
+                break
+
+        return str(next_file) if next_file is not None else None
+
+    def find_blocks(self, block_num, amount_of_block):
+        input_number = int(block_num)
+        current_dirs = self._find_directories(input_number)
+        search_dir = os.path.join(self.root, *current_dirs)
+
+        files_in_dir = os.listdir(search_dir)
+        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
+
+        result_files = []
+        for file in numeric_files:
+            if file > input_number:
+                result_files.append(str(file))
+                if len(result_files) == amount_of_block:
+                    break
+
+        return result_files
