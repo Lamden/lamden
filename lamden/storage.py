@@ -9,55 +9,6 @@ import pathlib
 import shutil
 import json
 
-# NOTE: move state related stuff out of here. see TODO's below.
-
-'''                             Block Format
-
-{
-    "hash": "hashed(hlc_timestamp + number + previous_hash)",
-    "number": number,
-    "hlc_timestamp": "some hlc_timestamp",
-    "previous": "0000000000000000000000000000000000000000000000000000000000000000",
-    "proofs": [
-        {
-            'signature': "node_1_sig",
-            'signer': "node_1_vk"
-        },
-        {
-            'signature': "node_5_sig",
-            'signer': "node_5_vk"
-        },
-        {
-            'signature': "node_25_sig",
-            'signer': "node_25_vk"
-        }
-    ],
-    'processed': {
-        "hash": "467ebaa7304d6bc9871ba0ef530e5e8b6dd7331f6c3ae7a58fa3e482c77275f3",
-        "hlc_timestamp": hlc_timestamp,
-        "result": "None",
-        "stamps_used": 18,
-        "state": [
-              {
-                "key": "lets",
-                "value": "go"
-              },
-              {
-                "key": "blue",
-                "value": "jays"
-              }
-        ],
-        "status": 0,
-        "transaction": {
-            "metadata":{
-                "signature": "some sig"
-            },
-            "payload" : { LAMDEN PAYLOAD OBJ }
-        }
-      }
-  }        
-'''
-
 LATEST_BLOCK_HASH_KEY = '__latest_block.hash'
 LATEST_BLOCK_HEIGHT_KEY = '__latest_block.height'
 STORAGE_HOME = pathlib.Path().home().joinpath('.lamden')
@@ -66,14 +17,19 @@ BLOCK_0 = {
     'hash': '0' * 64
 }
 
+
 class BlockStorage:
     def __init__(self, root=None, block_diver=None):
         self.log = get_logger('BlockStorage')
         self.root = pathlib.Path(root) if root is not None else STORAGE_HOME
-        self.block_driver = block_diver or LayeredDirectoryDriver(root=self.root)
+
         self.blocks_dir = self.root.joinpath('blocks')
-        self.blocks_alias_dir = self.blocks_dir.joinpath('alias')
-        self.txs_dir = self.blocks_dir.joinpath('txs')
+        self.blocks_alias_dir = self.root.joinpath('block_alias')
+        self.txs_dir = self.root.joinpath('txs')
+
+        self.block_driver = block_diver or FSBlockDriver(root=self.blocks_dir)
+        self.block_alias_driver = FSHashStorageDriver(root=self.blocks_alias_dir)
+        self.tx_driver = FSHashStorageDriver(root=self.txs_dir)
 
         self.__build_directories()
         self.log.info(f'Initialized block & tx storage at \'{self.root}\', {self.total_blocks()} existing blocks found.')
@@ -93,30 +49,20 @@ class BlockStorage:
 
         return tx, tx_hash
 
-    def __write_block(self, block):
-        num = block.get('number')
-
-        if type(num) == dict:
-            num = num.get('__fixed__')
-            block['number'] = num
-
-        name = str(num).zfill(64)
-
+    def __write_block(self, block: dict):
+        block_num = block.get('number')
         hash_symlink_name = block.get('hash')
 
-        encoded_block = encode(block)
-        with open(self.blocks_dir.joinpath(name), 'w') as f:
-            f.write(encoded_block)
-
-        try:
-            os.symlink(self.blocks_dir.joinpath(name), self.blocks_alias_dir.joinpath(hash_symlink_name))
-        except FileExistsError as err:
-            self.log.debug(err)
+        self.block_driver.write_block(block=block)
+        file_path = self.block_driver.get_file_path(block_num=str(block_num))
+        self.block_alias_driver.write_symlink(
+            hash_str=hash_symlink_name,
+            link_to=os.path.join(file_path, str(block_num))
+        )
 
     def __write_tx(self, tx_hash, tx):
-        with open(self.txs_dir.joinpath(tx_hash), 'w') as f:
-            encoded_tx = encode(tx)
-            f.write(encoded_tx)
+        encoded_tx = encode(tx)
+        self.tx_driver.write_file(hash_str=tx_hash, data=encoded_tx)
 
     def __fill_block(self, block):
         tx_hash = block.get('processed')
@@ -183,24 +129,18 @@ class BlockStorage:
         if isinstance(v, str) and hlc.is_hcl_timestamp(hlc_timestamp=v):
             nanos = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
             if nanos > 0:
-                v = nanos
+                v = str(nanos)
 
-        try:
-            if isinstance(v, int):
-                f = open(self.blocks_dir.joinpath(str(v).zfill(64)))
-            else:
-                f = open(self.blocks_alias_dir.joinpath(v))
-        except Exception as err:
-            self.log.error(f'Block \'{v}\' was not found: {err}')
+        encoded_block = self.block_driver.find_block(block_num=v)
+
+        if encoded_block is None:
+            self.log.error(f'Block \'{v}\' was not found in storage.')
             return None
 
-        encoded_block = f.read()
         block = decode(encoded_block)
 
         if not self.is_genesis_block(block=block):
             self.__fill_block(block)
-
-        f.close()
 
         return block
 
@@ -214,16 +154,9 @@ class BlockStorage:
             if not isinstance(v, int) or v < 0:
                 return None
 
-        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
-        earlier_blocks = list(filter(lambda block_num: block_num < v, all_blocks))
-
-        if len(earlier_blocks) == 0:
-            return None
-
-        earlier_blocks.sort()
-        prev_block = earlier_blocks[-1]
-
-        return self.get_block(v=prev_block)
+        encoded_block = self.block_driver.find_previous_block(block_num=str(v))
+        block = decode(encoded_block)
+        return block
 
     def get_next_block(self, v):
         if hlc.is_hcl_timestamp(hlc_timestamp=v):
@@ -244,25 +177,27 @@ class BlockStorage:
         return self.get_block(v=next_block)
 
     def get_tx(self, h):
-        try:
-            f = open(self.txs_dir.joinpath(h))
-            encoded_tx = f.read()
-
-            tx = decode(encoded_tx)
-
-            f.close()
-        except FileNotFoundError as err:
-            self.log.error(err)
-            tx = None
-
+        encoded_tx = self.tx_driver.get_file(hash_str=h)
+        tx = decode(encoded_tx)
         return tx
 
     def get_later_blocks(self, hlc_timestamp):
-        starting_block_num = hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
-        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
-        later_blocks = list(filter(lambda block_num: block_num > starting_block_num, all_blocks))
-        later_blocks.sort()
-        return [self.get_block(v=block_num) for block_num in later_blocks]
+        later_block_numbers = []
+        while True:
+            if len(later_block_numbers) == 0:
+                block_num = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
+            else:
+                block_num = later_block_numbers[-1]
+
+            encoded_block = self.block_driver.find_next_block(block_num=str(block_num))
+            block = decode(encoded_block)
+            if block is None:
+                break
+
+            later_block_numbers.append(int(block.get('number')))
+
+        later_block_numbers.sort()
+        return later_block_numbers
 
     def set_previous_hash(self, block: dict):
         current_previous_block_hash = block.get('previous')
@@ -358,6 +293,230 @@ def get_latest_block_height(driver: ContractDriver):
 
     return int(h)
 
+class BlockDriver:
+    def find_block(self):
+        # This method will take a block number and return that block and the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def write_block(self):
+        # This method will take a block number and return that block and the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def write_blocks(self):
+        # This method will take a block number and return that block and the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_previous_block(self, block_num: str):
+        # This method will take a block number and return the previous block
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_next_block(self, block_num: str):
+        # This method will take a block number and return the next block
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_next_blocks(self):
+        # This method will take a block number and return that block and the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+class FSBlockDriver(BlockDriver):
+
+    def __init__(self, root: str):
+        self.root = os.path.abspath(root)
+        self.minute = 60_000_000_000
+        self.hour = 3_600_000_000_000
+        self.day = 86_400_000_000_000
+        self.year = 31_536_000_000_000_000
+
+    def _find_directories(self, block_num: int) -> list:
+        dir_levels = [self.year, self.day, self.hour, self.minute]
+        directories = []
+        for level in dir_levels:
+            lower_bound = (block_num // level) * level
+            upper_bound = lower_bound + level - 1
+            dir_name = "{}_{}".format(lower_bound, upper_bound)
+            directories.append(dir_name)
+            block_num %= level
+        return directories
+
+    def _get_file_content(self, file_path: str) -> dict:
+        try:
+            with open(file_path) as file:
+                return json.loads(file.read())
+        except FileNotFoundError:
+            return None
+
+    def _traverse_up(self, current_directory: str, direction: str) -> str:
+        while True:
+            parent_directory = os.path.dirname(current_directory)
+            subdirectories = sorted(os.listdir(parent_directory), key=lambda x: int(x.split('_')[0]))
+
+            parent_directory_abs = os.path.abspath(parent_directory)
+
+            current_directory_name = os.path.basename(current_directory)
+            index = subdirectories.index(current_directory_name)
+
+            if (direction == 'previous' and index > 0) or (direction == 'next' and index < len(subdirectories) - 1):
+                return os.path.join(parent_directory, subdirectories[index - 1 if direction == 'previous' else index + 1])
+
+            if parent_directory_abs == self.root and ((direction == 'previous' and index == 0) or (direction == 'next' and index == len(subdirectories) - 1)):
+                return None
+
+            current_directory = parent_directory
+
+    def _traverse_down(self, directory: str, direction: str) -> dict:
+        while os.path.isdir(directory):
+            sub_items = sorted(os.listdir(directory), key=lambda x: int(x.split('_')[0]), reverse=(direction == 'previous'))
+            directory = os.path.join(directory, sub_items[0])
+
+            if os.path.isfile(directory):
+                return self._get_file_content(file_path=directory)
+
+        return None
+
+    def get_file_path(self, block_num: str) -> str:
+        input_number = int(block_num)
+        current_dirs = self._find_directories(input_number)
+        file_path = os.path.join(self.root, *current_dirs, block_num)
+        return file_path
+
+    def write_block(self, block: dict) -> None:
+        block_num = str(block.get('number')).zfill(64)
+        file_path = self.get_file_path(block_num)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        encoded_block = encode(block)
+        with open(file_path, 'w') as f:
+            json.dump(encoded_block, f)
+
+    def write_blocks(self, block_list: list) -> None:
+        for block in block_list:
+            self.write_block(block=block)
+
+    def move_block(self, src_file, block_num: str) -> None:
+        src_path = str(src_file)
+        dst_path = self.get_file_path(block_num)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        shutil.move(src_path, dst_path)
+
+    def find_block(self, block_num: str) -> dict:
+        path_to_file = self.get_file_path(block_num=str(block_num).zfill(64))
+        block = self._get_file_content(file_path=path_to_file)
+        return block
+
+    def find_blocks(self, block_list: list) -> list:
+        return [self.find_block(block_num=block_num) for block_num in block_list if self.find_block(block_num=block_num)]
+
+    def find_next_block(self, block_num: str) -> dict:
+        block_num_filled = str(block_num).zfill(64)
+        block_path = self.get_file_path(block_num_filled)
+        current_directory = os.path.dirname(block_path)
+
+        try:
+            files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
+        except FileNotFoundError:
+            return None
+
+        try:
+            index = files.index(block_num_filled)
+        except ValueError:
+            files.append(block_num_filled)
+            files.sort()
+            index = files.index(block_num_filled)
+
+        if index < len(files) - 1:
+            return self._get_file_content(file_path=os.path.join(current_directory, files[index + 1]))
+
+        next_directory = self._traverse_up(current_directory, 'next')
+        if next_directory:
+            return self._traverse_down(next_directory, 'next')
+
+        return None
+
+    def find_previous_block(self, block_num: str) -> dict:
+        block_num_filled = str(block_num).zfill(64)
+        block_path = self.get_file_path(block_num_filled)
+        current_directory = os.path.dirname(block_path)
+
+        try:
+            files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
+        except FileNotFoundError:
+            return None
+
+        try:
+            index = files.index(block_num_filled)
+        except ValueError:
+            files.append(block_num_filled)
+            files.sort()
+            index = files.index(block_num_filled)
+
+        if index > 0:
+            return self._get_file_content(file_path=os.path.join(current_directory, files[index - 1]))
+
+
+        previous_directory = self._traverse_up(current_directory, 'previous')
+        if previous_directory:
+            return self._traverse_down(previous_directory, 'previous')
+
+        return None
+
+    def find_next_blocks(self, block_num: str, amount_of_blocks: int) -> list:
+        blocks = [self.find_block(block_num=block_num)]
+        for _ in range(amount_of_blocks):
+            next_block = self.find_next_block(blocks[-1].get('number'))
+            if next_block is None:
+                break
+            blocks.append(next_block)
+        return blocks
+
+    def find_previous_blocks(self, block_num: str, amount_of_blocks: int) -> list:
+        blocks = [self.find_block(block_num=block_num)]
+        for _ in range(amount_of_blocks):
+            previous_block = self.find_previous_block(blocks[-1].get('number'))
+            if previous_block is None:
+                break
+            blocks.append(previous_block)
+        return blocks
+
+class FSHashStorageDriver:
+    def __init__(self, root: str):
+        assert root is not None, "Must provide a root directory for storage"
+        self.root_dir = root
+
+    def get_directory(self, hash_str: str) -> str:
+        return os.path.join(self.root_dir, hash_str[:2], hash_str[2:4], hash_str[4:6])
+
+    def write_file(self, hash_str: str, data: dict) -> None:
+        dir_path = self.get_directory(hash_str)
+        os.makedirs(dir_path, exist_ok=True)
+
+        file_path = os.path.join(dir_path, hash_str)
+        with open(file_path, "w") as f:
+            f.write(json.dumps(data))
+
+    def write_symlink(self, hash_str: str, link_to: str) -> None:
+        dir_path = self.get_directory(hash_str)
+        os.makedirs(dir_path, exist_ok=True)
+
+        file_path = os.path.join(dir_path, hash_str)
+        dest_path = os.path.abspath(link_to)
+
+        if os.path.islink(file_path):
+            os.unlink(file_path)
+
+        os.symlink(dest_path, file_path)
+
+    def get_file(self, hash_str: str) -> dict:
+        dir_path = self.get_directory(hash_str)
+        file_path = os.path.join(dir_path, hash_str)
+
+        if not os.path.exists(file_path):
+            return None
+
+        if os.path.islink(file_path):
+            file_path = os.readlink(file_path)
+
+        with open(file_path, "r") as f:
+            return json.loads(f.read())
+
 # TODO: move to component responsible for state maintenance.
 def set_latest_block_height(h, driver: ContractDriver):
     driver.set(LATEST_BLOCK_HEIGHT_KEY, int(h))
@@ -394,111 +553,3 @@ def update_state_with_block(block, driver: ContractDriver, nonces: NonceStorage,
     #if set_hash_and_height:
     #    set_latest_block_hash(block['hash'], driver=driver)
     #    set_latest_block_height(block['number'], driver=driver)
-
-class BlockDriver:
-    def find_blocks(self):
-        # This method will take a block number and return that block and the next x amount of blocks
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    def find_previous_block(self, block_num: str):
-        # This method will take a block number and return the previous block
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    def find_next_block(self, block_num: str):
-        # This method will take a block number and return the next block
-        raise NotImplementedError("Subclasses must implement this method.")
-
-# This driver stores the blocks in directories determined by a time structure based on the block number because
-# Block numbers are a nanosecond representation of am HLC timestamp.
-# This storage method scales the time required to search for "next" or "previous" blocks and doesn't require reading
-# in all current blocks to do so.
-class LayeredDirectoryDriver(BlockDriver):
-    def __init__(self, root):
-        self.root = root
-        self.minute = 60_000_000_000
-        self.hour = 3_600_000_000_000
-        self.day = 86_400_000_000_000
-        self.week = 604_800_000_000_000
-        self.month = 2_592_000_000_000_000
-        self.year = 31_536_000_000_000_000
-
-    def _find_directories(self, block_num: int):
-        dir_levels = [self.year, self.month, self.week, self.day, self.hour, self.minute]
-        directories = []
-        for level in dir_levels:
-            lower_bound = (block_num // level) * level
-            upper_bound = lower_bound + level - 1
-            dir_name = "{}_{}".format(lower_bound, upper_bound)
-            directories.append(dir_name)
-            block_num %= level
-        return directories
-
-    def get_file_path(self, block_num: str):
-        input_number = int(block_num)
-        current_dirs = self._find_directories(input_number)
-        file_path = os.path.join(self.root, *current_dirs, block_num)
-        return file_path
-
-    def write_block(self, block: dict):
-        block_num = block.get('number')
-        file_path = self.get_file_path(block_num)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        with open(file_path, 'w') as f:
-            json.dump(block, f)
-
-    def move_block(self, src_file, block_num: str):
-        src_path = str(src_file)
-        dst_path = self.get_file_path(block_num)
-        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-        shutil.move(src_path, dst_path)
-
-    def find_previous_block(self, block_num: str):
-        input_number = int(block_num)
-        current_dirs = self._find_directories(input_number)
-        search_dir = os.path.join(self.root, *current_dirs)
-
-        files_in_dir = os.listdir(search_dir)
-        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
-
-        previous_file = None
-        for file in numeric_files:
-            if file < input_number:
-                previous_file = file
-            else:
-                break
-
-        return str(previous_file) if previous_file is not None else None
-
-    def find_next_block(self, block_num: str):
-        input_number = int(block_num)
-        current_dirs = self._find_directories(input_number)
-        search_dir = os.path.join(self.root, *current_dirs)
-
-        files_in_dir = os.listdir(search_dir)
-        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
-
-        next_file = None
-        for file in numeric_files:
-            if file > input_number:
-                next_file = file
-                break
-
-        return str(next_file) if next_file is not None else None
-
-    def find_blocks(self, block_num, amount_of_block):
-        input_number = int(block_num)
-        current_dirs = self._find_directories(input_number)
-        search_dir = os.path.join(self.root, *current_dirs)
-
-        files_in_dir = os.listdir(search_dir)
-        numeric_files = sorted([int(file) for file in files_in_dir if file.isdigit()])
-
-        result_files = []
-        for file in numeric_files:
-            if file > input_number:
-                result_files.append(str(file))
-                if len(result_files) == amount_of_block:
-                    break
-
-        return result_files
