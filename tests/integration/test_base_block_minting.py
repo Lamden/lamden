@@ -10,6 +10,9 @@ import shutil
 
 class TestNode(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.stu_wallet = Wallet()
         self.jeff_wallet = Wallet()
         self.oliver_wallet = Wallet()
@@ -39,6 +42,12 @@ class TestNode(TestCase):
             self.await_async_process(tn.stop)
         if self.temp_storage_root.is_dir():
             shutil.rmtree(self.temp_storage_root)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def create_node(self, index=0, metering=False):
         tn = create_a_node(

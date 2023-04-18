@@ -1,6 +1,6 @@
 import os
 import sys
-from lamden.storage import LayeredDirectoryDriver
+from lamden.storage import FSBlockDriver
 
 
 class MigrateFiles:
@@ -11,7 +11,7 @@ class MigrateFiles:
         self.migrated_files: list = []
 
     def start(self):
-        block_driver = LayeredDirectoryDriver(root=self.dest_path)
+        block_driver = FSBlockDriver(root=self.dest_path)
 
         for root, _, files in os.walk(self.src_path):
             for file in files:

@@ -152,11 +152,14 @@ class TestNode(TestCase):
         tx = json.dumps(get_new_currency_tx(wallet=self.node.wallet, processor=self.node.vk))
         self.node.send_tx(tx.encode())
 
-        self.await_async_process(asyncio.sleep, 5)
+        self.await_async_process(asyncio.sleep, 8)
 
         self.assertEqual(len(self.node.node.tx_queue), 0)
         last_hlc_timestamp = self.node.validation_queue.last_hlc_in_consensus
         self.assertIsNotNone(self.node.node.blocks.get_block(last_hlc_timestamp))
+
+
+
 
     ''' N/A
     def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):

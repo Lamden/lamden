@@ -1,7 +1,7 @@
 from lamden.nodes.hlc import HLC_Clock
 from lamden.utils import hlc
 from lamden.storage import BlockStorage, NonceStorage, FSBlockDriver, FSHashStorageDriver
-from tests.unit.helpers.mock_blocks import generate_blocks
+from tests.unit.helpers.mock_blocks import generate_blocks, GENESIS_BLOCK
 from unittest import TestCase
 
 from pathlib import Path
@@ -150,6 +150,15 @@ class TestBlockStorage(TestCase):
         block_res = self.bs.get_block(block_number)
 
         self.assertIsNotNone(block_res)
+
+    def test_has_genesis_True(self):
+        self.bs.store_block(copy.deepcopy(GENESIS_BLOCK))
+
+        self.assertTrue(self.bs.has_genesis())
+
+    def test_has_genesis_False(self):
+
+        self.assertFalse(self.bs.has_genesis())
 
     def test_store_block_raises_if_no_or_malformed_tx(self):
         block = copy.deepcopy(SAMPLE_BLOCK)
@@ -324,32 +333,15 @@ class TestBlockStorage(TestCase):
 
         self.assertEqual(prev_hash, next_block.get('previous'))
 
-    def test_remove_block_alias(self):
-        blocks = generate_blocks(
-            number_of_blocks=1,
-            prev_block_hash='0' * 64,
-            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
-        )
-
-        for block in blocks:
-            block_hash = block.get('hash')
-            self.bs.store_block(block)
-
-        self.bs._BlockStorage__remove_block_alias(block_hash=block_hash)
-
-        file_path = os.path.join(self.bs.blocks_alias_dir, block_hash)
-
-        self.assertFalse(os.path.isfile(file_path))
-
 class TestFSBlockDriver(TestCase):
     def setUp(self):
         self.test_dir = './.lamden'
         self.blocks_dir = 'blocks'
         self.blocks_path = os.path.join(self.test_dir, self.blocks_dir)
 
-        self.block_driver = FSBlockDriver(root=self.blocks_path)
-
         self.create_directories()
+
+        self.block_driver = FSBlockDriver(root=self.blocks_path)
 
     def tearDown(self):
         pass
@@ -394,6 +386,20 @@ class TestFSBlockDriver(TestCase):
         except:
             return False
 
+    def test_INSTANCE_total_files__keeps_track_of_total_files(self):
+        block_list = self.create_block_list(amount=5)
+        self.block_driver.write_blocks(block_list=block_list)
+
+        self.assertEqual(5, self.block_driver.total_files)
+
+        block_list = self.create_block_list(amount=5)
+        self.block_driver.write_blocks(block_list=block_list)
+
+        self.assertEqual(10, self.block_driver.total_files)
+
+    def test_INSTANCE_initialized__sets_initialized_on_startup(self):
+        self.assertTrue(self.block_driver.initialized)
+
     def test_METHOD_get_file_path__can_retrieve_the_file_path_of_a_block(self):
         block_num = self.create_block_num()
         self.block_driver.write_block({
@@ -414,7 +420,7 @@ class TestFSBlockDriver(TestCase):
             'number': block_num
         })
 
-        block = json.loads(self.block_driver.find_block(block_num=block_num))
+        block = self.block_driver.find_block(block_num=block_num)
 
         self.assertEqual(int(block.get('number')), int(block_num))
 
@@ -441,7 +447,7 @@ class TestFSBlockDriver(TestCase):
 
 
         for block_num in random_block_numbers:
-            list_of_found_block_numbers = [json.loads(block).get('number') for block in blocks]
+            list_of_found_block_numbers = [block.get('number') for block in blocks]
             self.assertTrue(block_num in list_of_found_block_numbers)
 
     def test_METHOD_find_next_block__returns_next_block(self):
@@ -456,7 +462,7 @@ class TestFSBlockDriver(TestCase):
             if index + 1 == amount_of_blocks:
                 break
 
-            next_block = json.loads(self.block_driver.find_next_block(block_num=block_list[index].get('number')))
+            next_block = self.block_driver.find_next_block(block_num=block_list[index].get('number'))
 
             expected_block_number = block_list[index + 1].get('number')
 
@@ -474,7 +480,7 @@ class TestFSBlockDriver(TestCase):
             if index + 1 == amount_of_blocks:
                 break
 
-            next_block = json.loads(self.block_driver.find_next_block(block_num=block_list[index].get('number')))
+            next_block = self.block_driver.find_next_block(block_num=block_list[index].get('number'))
 
             expected_block_number = block_list[index + 1].get('number')
 
@@ -497,7 +503,7 @@ class TestFSBlockDriver(TestCase):
                 print({'start_time': start_time, 'end_time': end_time })
                 break
 
-            prev_block = json.loads(self.block_driver.find_previous_block(block_num=block.get('number')))
+            prev_block = self.block_driver.find_previous_block(block_num=block.get('number'))
 
 
             expected_block_number = reversed_block_list[index + 1].get('number')
@@ -516,11 +522,55 @@ class TestFSBlockDriver(TestCase):
             if index + 1 == amount_of_blocks:
                 break
 
-            previous_block = json.loads(self.block_driver.find_next_block(block_num=block_list[index].get('number')))
+            previous_block = self.block_driver.find_next_block(block_num=block_list[index].get('number'))
 
             expected_block_number = block_list[index + 1].get('number')
 
             self.assertEqual(int(expected_block_number), int(previous_block.get('number')))
+
+    def test_METHOD_get_total_blocks__returns_proper_amount_of_blocks(self):
+        amount_of_blocks = 5
+        block_list = self.create_block_list(amount=amount_of_blocks)
+
+        self.block_driver.write_blocks(block_list=block_list)
+        start_time = time.time()
+        num_of_blocks = self.block_driver.get_total_blocks()
+        end_time = time.time()
+
+        total_time = end_time - start_time
+
+        print({'start_time': start_time, 'end_time': end_time, 'total_time': total_time})
+
+        self.assertEqual(amount_of_blocks, num_of_blocks)
+
+    def test_METHOD_block_exists__returns_False_if_no_block(self):
+        block_exists = self.block_driver.block_exists(block_num=25)
+
+        self.assertFalse(block_exists)
+
+    def test_METHOD_block_exists__returns_False_if_no_block(self):
+        amount_of_blocks = 1
+        block_list = self.create_block_list(amount=amount_of_blocks)
+        block = block_list[0]
+        self.block_driver.write_block(block=block)
+
+        block_exists = self.block_driver.block_exists(block_num=block.get('number'))
+
+        self.assertTrue(block_exists)
+
+    def test_METHOD_find_next_block__returns_genesis_if_provided_neg_one(self):
+        self.block_driver.write_block(block=GENESIS_BLOCK)
+
+        genesis_block = self.block_driver.find_next_block(block_num=-1)
+
+        self.assertEqual(0, int(genesis_block.get("number")))
+
+    def test_METHOD_find_next_block__returns_prev_block_if_provided_out_of_high_range(self):
+        self.block_driver.write_block(block=GENESIS_BLOCK)
+
+        genesis_block = self.block_driver.find_previous_block(block_num="9999999999999999999999999999")
+
+        self.assertEqual(0, int(genesis_block.get("number")))
 
     def test_read_speed_vs_legacy(self):
         print(" ")
@@ -543,7 +593,7 @@ class TestFSBlockDriver(TestCase):
                 })
                 break
 
-            next_block = json.loads(self.block_driver.find_next_block(block_num=block_list[index].get('number')))
+            next_block = self.block_driver.find_next_block(block_num=block_list[index].get('number'))
 
             expected_block_number = block_list[index + 1].get('number')
 
@@ -726,3 +776,46 @@ class TestFSHashStorageDriver(TestCase):
         tx_file = self.alias_driver.get_file(hash_str=alias_hash)
 
         self.assertIsNotNone(tx_file)
+
+    def test_METHOD_is_syslink_valid__True(self):
+        tx_hash = 'ffe2f8ef7664c12804739a5a4b8ede34aa61a99111eae760c5a114e26774711c'
+        alias_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
+
+        self.transactions_driver.write_file(hash_str=tx_hash, data={})
+        tx_path = os.path.join(self.transactions_driver.get_directory(hash_str=tx_hash), tx_hash)
+
+        self.alias_driver.write_symlink(hash_str=alias_hash, link_to=tx_path)
+
+        valid = self.alias_driver.is_symlink_valid(hash_str=alias_hash)
+
+        self.assertTrue(valid)
+
+    def test_METHOD_is_syslink_valid__False(self):
+        tx_hash = 'ffe2f8ef7664c12804739a5a4b8ede34aa61a99111eae760c5a114e26774711c'
+        alias_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
+
+        tx_path = os.path.join(self.transactions_driver.get_directory(hash_str=tx_hash), tx_hash)
+
+        self.alias_driver.write_symlink(hash_str=alias_hash, link_to=tx_path)
+
+        valid = self.alias_driver.is_symlink_valid(hash_str=alias_hash)
+
+        self.assertFalse(valid)
+
+    def test_METHOD_remove_syslink(self):
+        tx_hash = 'ffe2f8ef7664c12804739a5a4b8ede34aa61a99111eae760c5a114e26774711c'
+        alias_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
+
+        self.transactions_driver.write_file(hash_str=tx_hash, data={})
+        tx_path = os.path.join(self.transactions_driver.get_directory(hash_str=tx_hash), tx_hash)
+
+        self.alias_driver.write_symlink(hash_str=alias_hash, link_to=tx_path)
+
+        self.alias_driver.remove_symlink(hash_str=alias_hash)
+        link_dir = os.path.join(self.alias_driver.get_directory(hash_str=alias_hash), alias_hash)
+
+        self.assertFalse(os.path.exists(link_dir))
+
+    def test_METHOD_remove_syslink__returns_if_not_exists(self):
+        alias_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
+        self.alias_driver.remove_symlink(hash_str=alias_hash)

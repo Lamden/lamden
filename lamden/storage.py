@@ -27,11 +27,13 @@ class BlockStorage:
         self.blocks_alias_dir = self.root.joinpath('block_alias')
         self.txs_dir = self.root.joinpath('txs')
 
+        self.__build_directories()
+
         self.block_driver = block_diver or FSBlockDriver(root=self.blocks_dir)
         self.block_alias_driver = FSHashStorageDriver(root=self.blocks_alias_dir)
         self.tx_driver = FSHashStorageDriver(root=self.txs_dir)
 
-        self.__build_directories()
+
         self.log.info(f'Initialized block & tx storage at \'{self.root}\', {self.total_blocks()} existing blocks found.')
 
     def __build_directories(self):
@@ -50,19 +52,17 @@ class BlockStorage:
         return tx, tx_hash
 
     def __write_block(self, block: dict):
-        block_num = block.get('number')
         hash_symlink_name = block.get('hash')
 
-        self.block_driver.write_block(block=block)
-        file_path = self.block_driver.get_file_path(block_num=str(block_num))
+        filename = self.block_driver.write_block(block=block)
+        file_path = self.block_driver.get_file_path(block_num=filename)
         self.block_alias_driver.write_symlink(
             hash_str=hash_symlink_name,
-            link_to=os.path.join(file_path, str(block_num))
+            link_to=file_path
         )
 
     def __write_tx(self, tx_hash, tx):
-        encoded_tx = encode(tx)
-        self.tx_driver.write_file(hash_str=tx_hash, data=encoded_tx)
+        self.tx_driver.write_file(hash_str=tx_hash, data=tx)
 
     def __fill_block(self, block):
         tx_hash = block.get('processed')
@@ -75,29 +75,14 @@ class BlockStorage:
         except:
             return False
 
-    def __remove_block_alias(self, block_hash: str):
-        file_path = os.path.join(self.blocks_alias_dir, block_hash)
-
-        if not os.path.isfile(file_path):
-            return
-
-        attempts = 0
-        while os.path.isfile(file_path) and attempts < 100:
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
-
-            attempts += 1
-
-        if os.path.isfile(file_path):
-            self.log.error(f'Could not remove block alias {file_path}')
-
     def is_genesis_block(self, block):
         return block.get('genesis', None) is not None
 
     def total_blocks(self):
-        return len([name for name in os.listdir(self.blocks_dir) if os.path.isfile(os.path.join(self.blocks_dir, name))])
+        return self.block_driver.total_files
+
+    def has_genesis(self):
+        return self.block_driver.block_exists(block_num=0)
 
     def flush(self):
         if self.blocks_dir.is_dir():
@@ -111,7 +96,11 @@ class BlockStorage:
         self.log.debug(f'Flushed block & tx storage at \'{self.root}\'')
 
     def store_block(self, block):
+        encoded_block = encode(block)
+        block = json.loads(encoded_block)
+
         if not self.is_genesis_block(block=block):
+
             tx, tx_hash = self.__cull_tx(block)
 
             if tx is None or tx_hash is None:
@@ -131,13 +120,15 @@ class BlockStorage:
             if nanos > 0:
                 v = str(nanos)
 
-        encoded_block = self.block_driver.find_block(block_num=v)
+        try:
+            int(v)
+            block = self.block_driver.find_block(block_num=v)
+        except ValueError:
+            block = self.block_alias_driver.get_file(hash_str=v)
 
-        if encoded_block is None:
+        if block is None:
             self.log.error(f'Block \'{v}\' was not found in storage.')
             return None
-
-        block = decode(encoded_block)
 
         if not self.is_genesis_block(block=block):
             self.__fill_block(block)
@@ -145,7 +136,7 @@ class BlockStorage:
         return block
 
     def get_previous_block(self, v):
-        if not v:
+        if v is None:
             return None
 
         if hlc.is_hcl_timestamp(hlc_timestamp=v):
@@ -154,62 +145,68 @@ class BlockStorage:
             if not isinstance(v, int) or v < 0:
                 return None
 
-        encoded_block = self.block_driver.find_previous_block(block_num=str(v))
-        block = decode(encoded_block)
+        block = self.block_driver.find_previous_block(block_num=str(v))
+
+        if not block:
+            return None
+
+        if not self.is_genesis_block(block=block):
+            self.__fill_block(block)
+
         return block
 
     def get_next_block(self, v):
+        if v is None:
+            return None
+
         if hlc.is_hcl_timestamp(hlc_timestamp=v):
             v = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
         else:
             if not isinstance(v, int):
-                v = -1
+                return None
 
-        all_blocks = [int(name) for name in os.listdir(self.blocks_dir) if self.__is_block_file(name)]
-        later_blocks = list(filter(lambda block_num: block_num > v, all_blocks))
+        block = self.block_driver.find_next_block(block_num=str(v))
 
-        if len(later_blocks) == 0:
+        if not block:
             return None
 
-        later_blocks.sort()
-        next_block = later_blocks[0]
+        if not self.is_genesis_block(block=block):
+            self.__fill_block(block)
 
-        return self.get_block(v=next_block)
+        return block
 
     def get_tx(self, h):
-        encoded_tx = self.tx_driver.get_file(hash_str=h)
-        tx = decode(encoded_tx)
+        tx = self.tx_driver.get_file(hash_str=h)
         return tx
 
     def get_later_blocks(self, hlc_timestamp):
-        later_block_numbers = []
+        later_blocks = []
         while True:
-            if len(later_block_numbers) == 0:
+            if len(later_blocks) == 0:
                 block_num = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp))
             else:
-                block_num = later_block_numbers[-1]
+                block_num = later_blocks[-1].get('number')
 
-            encoded_block = self.block_driver.find_next_block(block_num=str(block_num))
-            block = decode(encoded_block)
+            block = self.block_driver.find_next_block(block_num=str(block_num))
+
             if block is None:
                 break
 
-            later_block_numbers.append(int(block.get('number')))
+            self.__fill_block(block=block)
+            later_blocks.append(block)
 
-        later_block_numbers.sort()
-        return later_block_numbers
+        later_blocks = sorted(later_blocks, key=lambda x: x['number'])
+        return later_blocks
 
     def set_previous_hash(self, block: dict):
-        current_previous_block_hash = block.get('previous')
-        previous_block = self.get_previous_block(v=int(block.get('number')))
+        old_previous_hash = block.get('previous')
+        previous_block = self.block_driver.find_previous_block(block_num=block.get('number'))
 
         new_previous_block_hash = previous_block.get('hash')
         block['previous'] = new_previous_block_hash
 
-        block_exists = self.get_block(v=current_previous_block_hash)
-
-        if not block_exists:
-            self.__remove_block_alias(block_hash=current_previous_block_hash)
+        if not self.block_alias_driver.is_symlink_valid(hash_str=old_previous_hash):
+            self.block_alias_driver.remove_symlink(hash_str=old_previous_hash)
 
 
 # TODO: remove pending nonces if we end up getting rid of them.
@@ -294,38 +291,65 @@ def get_latest_block_height(driver: ContractDriver):
     return int(h)
 
 class BlockDriver:
-    def find_block(self):
+    # The BlockStorage class will handle encoding and decoding. Store and return blocks as JSON strings.
+
+    def find_block(self, block_num: str) -> dict:
         # This method will take a block number and return that block and the next x amount of blocks
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def write_block(self):
-        # This method will take a block number and return that block and the next x amount of blocks
+    def find_blocks(self, block_list: list) -> list:
+        # This method will take a list of blocks and return the block content for each
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def write_blocks(self):
-        # This method will take a block number and return that block and the next x amount of blocks
+    def write_block(self, block: dict) -> None:
+        # Writes the content of a block dict to storage
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def find_previous_block(self, block_num: str):
+    def write_blocks(self, block_list: list) -> None:
+        # Writes a list of block dicts to storage
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_previous_block(self, block_num: str) -> dict:
         # This method will take a block number and return the previous block
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def find_next_block(self, block_num: str):
+    def find_previous_blocks(self, block_num: str, amount_of_blocks: int) -> list:
+        # This method will take a block number and return the previous x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def find_next_block(self, block_num: str) -> dict:
         # This method will take a block number and return the next block
         raise NotImplementedError("Subclasses must implement this method.")
 
-    def find_next_blocks(self):
-        # This method will take a block number and return that block and the next x amount of blocks
+    def find_next_blocks(self, block_num: str, amount_of_blocks: int) -> list:
+        # This method will take a block number and return the next x amount of blocks
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def block_exists(self, block_num: str) -> bool:
+        # Checks if a block exists, returns Bool
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def get_total_blocks(self) -> int:
+        # Returns the total current block count
         raise NotImplementedError("Subclasses must implement this method.")
 
 class FSBlockDriver(BlockDriver):
 
     def __init__(self, root: str):
         self.root = os.path.abspath(root)
+        self.total_files = 0
+        self.initialized = False
+
         self.minute = 60_000_000_000
         self.hour = 3_600_000_000_000
         self.day = 86_400_000_000_000
         self.year = 31_536_000_000_000_000
+
+        self._initialize()
+
+    def _initialize(self):
+        self.total_files = self.get_total_blocks()
+        self.initialized = True
 
     def _find_directories(self, block_num: int) -> list:
         dir_levels = [self.year, self.day, self.hour, self.minute]
@@ -345,21 +369,39 @@ class FSBlockDriver(BlockDriver):
         except FileNotFoundError:
             return None
 
+    def _iterate_files(self, path: str):
+        with os.scandir(path) as entries:
+            for entry in entries:
+                if entry.is_file():
+                    yield entry
+                elif entry.is_dir():
+                    yield from self._iterate_files(entry.path)
+
     def _traverse_up(self, current_directory: str, direction: str) -> str:
         while True:
             parent_directory = os.path.dirname(current_directory)
-            subdirectories = sorted(os.listdir(parent_directory), key=lambda x: int(x.split('_')[0]))
-
             parent_directory_abs = os.path.abspath(parent_directory)
+            try:
+                subdirectories = sorted(os.listdir(parent_directory), key=lambda x: int(x.split('_')[0]))
 
-            current_directory_name = os.path.basename(current_directory)
-            index = subdirectories.index(current_directory_name)
+                parent_directory_abs = os.path.abspath(parent_directory)
 
-            if (direction == 'previous' and index > 0) or (direction == 'next' and index < len(subdirectories) - 1):
-                return os.path.join(parent_directory, subdirectories[index - 1 if direction == 'previous' else index + 1])
+                current_directory_name = os.path.basename(current_directory)
+                try:
+                    index = subdirectories.index(current_directory_name)
+                except Exception:
+                    subdirectories.append(current_directory_name)
+                    subdirectories = sorted(subdirectories, key=lambda x: int(x.split('_')[0]))
+                    index = subdirectories.index(current_directory_name)
 
-            if parent_directory_abs == self.root and ((direction == 'previous' and index == 0) or (direction == 'next' and index == len(subdirectories) - 1)):
-                return None
+                if (direction == 'previous' and index > 0) or (direction == 'next' and index < len(subdirectories) - 1):
+                    return os.path.join(parent_directory, subdirectories[index - 1 if direction == 'previous' else index + 1])
+
+                if parent_directory_abs == self.root and ((direction == 'previous' and index == 0) or (direction == 'next' and index == len(subdirectories) - 1)):
+                    return None
+            except (FileNotFoundError, ValueError) as e:
+                if parent_directory_abs == self.root:
+                    return None
 
             current_directory = parent_directory
 
@@ -379,13 +421,22 @@ class FSBlockDriver(BlockDriver):
         file_path = os.path.join(self.root, *current_dirs, block_num)
         return file_path
 
-    def write_block(self, block: dict) -> None:
+    def write_block(self, block: dict) -> str:
         block_num = str(block.get('number')).zfill(64)
         file_path = self.get_file_path(block_num)
+
+        if not os.path.exists(file_path):
+            self.total_files += 1
+
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        encoded_block = encode(block)
+
         with open(file_path, 'w') as f:
-            json.dump(encoded_block, f)
+            try:
+                json.dump(block, f)
+            except Exception as err:
+                print(err)
+
+        return block_num
 
     def write_blocks(self, block_list: list) -> None:
         for block in block_list:
@@ -410,20 +461,21 @@ class FSBlockDriver(BlockDriver):
         block_path = self.get_file_path(block_num_filled)
         current_directory = os.path.dirname(block_path)
 
-        try:
-            files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
-        except FileNotFoundError:
-            return None
+        if os.path.exists(current_directory):
+            try:
+                files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
+            except FileNotFoundError:
+                return None
 
-        try:
-            index = files.index(block_num_filled)
-        except ValueError:
-            files.append(block_num_filled)
-            files.sort()
-            index = files.index(block_num_filled)
+            try:
+                index = files.index(block_num_filled)
+            except ValueError:
+                files.append(block_num_filled)
+                files.sort()
+                index = files.index(block_num_filled)
 
-        if index < len(files) - 1:
-            return self._get_file_content(file_path=os.path.join(current_directory, files[index + 1]))
+            if index < len(files) - 1:
+                return self._get_file_content(file_path=os.path.join(current_directory, files[index + 1]))
 
         next_directory = self._traverse_up(current_directory, 'next')
         if next_directory:
@@ -436,21 +488,21 @@ class FSBlockDriver(BlockDriver):
         block_path = self.get_file_path(block_num_filled)
         current_directory = os.path.dirname(block_path)
 
-        try:
-            files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
-        except FileNotFoundError:
-            return None
+        if os.path.exists(current_directory):
+            try:
+                files = sorted(os.listdir(current_directory), key=lambda x: int(x.split('_')[0]))
+            except FileNotFoundError:
+                return None
 
-        try:
-            index = files.index(block_num_filled)
-        except ValueError:
-            files.append(block_num_filled)
-            files.sort()
-            index = files.index(block_num_filled)
+            try:
+                index = files.index(block_num_filled)
+            except ValueError:
+                files.append(block_num_filled)
+                files.sort()
+                index = files.index(block_num_filled)
 
-        if index > 0:
-            return self._get_file_content(file_path=os.path.join(current_directory, files[index - 1]))
-
+            if index > 0:
+                return self._get_file_content(file_path=os.path.join(current_directory, files[index - 1]))
 
         previous_directory = self._traverse_up(current_directory, 'previous')
         if previous_directory:
@@ -476,6 +528,17 @@ class FSBlockDriver(BlockDriver):
             blocks.append(previous_block)
         return blocks
 
+    def get_total_blocks(self) -> int:
+        count = 0
+        for _ in self._iterate_files(self.root):
+            count += 1
+        return count
+
+    def block_exists(self, block_num: str) -> bool:
+        block_num_filled = str(block_num).zfill(64)
+        block_file_path = self.get_file_path(block_num_filled)
+        return os.path.exists(block_file_path)
+
 class FSHashStorageDriver:
     def __init__(self, root: str):
         assert root is not None, "Must provide a root directory for storage"
@@ -490,7 +553,7 @@ class FSHashStorageDriver:
 
         file_path = os.path.join(dir_path, hash_str)
         with open(file_path, "w") as f:
-            f.write(json.dumps(data))
+            json.dump(data, f)
 
     def write_symlink(self, hash_str: str, link_to: str) -> None:
         dir_path = self.get_directory(hash_str)
@@ -504,11 +567,18 @@ class FSHashStorageDriver:
 
         os.symlink(dest_path, file_path)
 
+    def remove_symlink(self, hash_str: str) -> None:
+        dir_path = self.get_directory(hash_str)
+        file_path = os.path.join(dir_path, hash_str)
+
+        if os.path.islink(file_path):
+            os.unlink(file_path)
+
     def get_file(self, hash_str: str) -> dict:
         dir_path = self.get_directory(hash_str)
         file_path = os.path.join(dir_path, hash_str)
 
-        if not os.path.exists(file_path):
+        if not os.path.exists(dir_path):
             return None
 
         if os.path.islink(file_path):
@@ -516,6 +586,16 @@ class FSHashStorageDriver:
 
         with open(file_path, "r") as f:
             return json.loads(f.read())
+
+    def is_symlink_valid(self, hash_str: str) -> bool:
+        dir_path = self.get_directory(hash_str)
+        file_path = os.path.join(dir_path, hash_str)
+
+        if not os.path.islink(file_path):
+            return False
+
+        link_target = os.readlink(file_path)
+        return os.path.exists(link_target)
 
 # TODO: move to component responsible for state maintenance.
 def set_latest_block_height(h, driver: ContractDriver):

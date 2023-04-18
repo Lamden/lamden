@@ -11,9 +11,11 @@ class TestNodeKick(TestCase):
             num_of_masternodes=5
         )
 
-        loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         while not self.network.all_nodes_started:
-            loop.run_until_complete(asyncio.sleep(1))
+            self.loop.run_until_complete(asyncio.sleep(1))
 
         self.exile = self.network.masternodes[-1]
         self.voters = self.network.masternodes[:-1]
@@ -22,9 +24,15 @@ class TestNodeKick(TestCase):
 
     def tearDown(self):
         task = asyncio.ensure_future(self.network.stop_all_nodes())
-        loop = asyncio.get_event_loop()
+
         while not task.done():
-            loop.run_until_complete(asyncio.sleep(0.1))
+            self.loop.run_until_complete(asyncio.sleep(0.1))
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def await_async_process(self, process, *args, **kwargs):
         tasks = asyncio.gather(

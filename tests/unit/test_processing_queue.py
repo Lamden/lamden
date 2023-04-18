@@ -45,6 +45,9 @@ def get_new_tx():
 
 class TestProcessingQueue(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.driver = ContractDriver(driver=InMemDriver())
         self.client = ContractingClient(
             driver=self.driver,
@@ -88,6 +91,12 @@ class TestProcessingQueue(TestCase):
     def tearDown(self):
         self.main_processing_queue.stop()
         self.main_processing_queue.flush()
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     async def pause_all_queues(self):
         return

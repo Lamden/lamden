@@ -29,9 +29,11 @@ class TestNewNodeCatchup(TestCase):
         while not task.done():
             self.loop.run_until_complete(asyncio.sleep(0.1))
 
-        if not self.loop.is_closed():
-            self.loop.stop()
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
             self.loop.close()
+        except RuntimeError:
+            pass
 
     def async_sleep(self, delay):
         tasks = asyncio.gather(

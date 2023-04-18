@@ -12,6 +12,9 @@ from tests.unit.helpers.mock_processing_results import ValidationResults
 
 class TestMultiProcessConsensus(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.wallet = Wallet()
         self.consensus_percent = 51
 
@@ -29,16 +32,34 @@ class TestMultiProcessConsensus(TestCase):
     def tearDown(self):
         self.validation_results = {}
 
+        try:
+            self.loop.run_until_complete(self.multiprocess_consensus.wait_for_done())
+            self.loop.run_until_complete(asyncio.sleep(10))
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError as e:
+            print(e)
+        except Exception as e:
+            print(e)
+
+        print("done teardown")
+
+
     def await_multiprocess_consensus(self, validation_results):
         tasks = asyncio.gather(
             self.multiprocess_consensus.start(
                 validation_results=validation_results
             )
         )
-        loop = asyncio.get_event_loop()
-        res = loop.run_until_complete(tasks)
+        res = self.loop.run_until_complete(tasks)
 
         return res[0]
+
+    def await_multiprocess_done(self):
+        tasks = asyncio.gather(
+            self.multiprocess_consensus.wait_for_done()
+        )
+        self.loop.run_until_complete(tasks)
 
     def test_start_includes_me(self):
         self.validation_results = ValidationResults(my_wallet=self.wallet)
@@ -58,6 +79,8 @@ class TestMultiProcessConsensus(TestCase):
         all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
+
+        self.await_multiprocess_done()
 
         self.assertIsNotNone(all_consensus_results)
 
@@ -86,6 +109,7 @@ class TestMultiProcessConsensus(TestCase):
         all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
+        self.await_multiprocess_done()
 
         self.assertIsNotNone(all_consensus_results)
 
@@ -123,6 +147,7 @@ class TestMultiProcessConsensus(TestCase):
         all_consensus_results = self.await_multiprocess_consensus(
             validation_results=self.validation_results.get_results()
         )
+        self.await_multiprocess_done()
 
         done_running_consensus = time.time()
 

@@ -43,9 +43,12 @@ class TestNetwork(TestCase):
         self.ctx.destroy(linger=0)
 
         self.loop.run_until_complete(asyncio.sleep(5))
-        if not self.loop.is_closed():
-            self.loop.stop()
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
             self.loop.close()
+        except RuntimeError:
+            pass
 
         fixtures_dir = Path().cwd().joinpath('fixtures')
         if fixtures_dir.is_dir():

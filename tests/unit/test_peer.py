@@ -39,6 +39,9 @@ class TestPeer(unittest.TestCase):
 
 
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.ctx = zmq.asyncio.Context()
 
         self.remote_peer = self.__class__.remote_peer
@@ -63,17 +66,25 @@ class TestPeer(unittest.TestCase):
         self.service_callback_data = None
 
     def tearDown(self) -> None:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.peer.stop())
+        self.loop.run_until_complete(self.peer.stop())
 
         #self.peer.ctx.destroy(linger=0)
         self.ctx.destroy(linger=0)
 
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
+
     @classmethod
     def tearDownClass(cls) -> None:
         if cls.remote_peer and cls.remote_peer.running:
-            cls.remote_peer.stop()
-            cls.remote_peer.join()
+            try:
+                cls.remote_peer.stop()
+                cls.remote_peer.join()
+            except RuntimeError:
+                pass
 
     def disable_send_string(self, str_msg):
         pass
@@ -299,6 +310,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_is_available__returns_FALSE_request_cannot_ping(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['ping'] = 500
 
         is_available = self.peer.is_available()
         self.assertFalse(is_available)
@@ -318,6 +330,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_ping__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['ping'] = 500
 
         msg = self.await_sending_request(self.peer.ping)
 
@@ -344,6 +357,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_hello__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['ping'] = 500
 
         msg = self.await_sending_request(self.peer.ping)
 
@@ -371,6 +385,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_get_latest_block_info__does_not_set_peer_latest_block_info_after_unsuccessful_call(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['get_latest_block_info'] = 500
 
         msg = self.await_sending_request(self.peer.get_latest_block_info)
         self.assertIsNone(msg)
@@ -381,6 +396,8 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_get_latest_block_info__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+
+        self.peer.timeouts['get_latest_block_info'] = 500
 
         msg = self.await_sending_request(self.peer.get_latest_block_info)
 
@@ -396,7 +413,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_get_block__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
-
+        self.peer.timeouts['get_block'] = 500
         msg = self.await_sending_request(process=self.peer.get_block, args={'block_num': 100})
 
         self.assertIsNone(msg)
@@ -418,6 +435,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_get_next_block__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['get_next_block'] = 500
 
         msg = self.await_sending_request(process=self.peer.get_next_block, args={'block_num': 101})
 
@@ -433,6 +451,7 @@ class TestPeer(unittest.TestCase):
     def test_METHOD_get_network_map__returns_NONE_if_peer_unavailable(self):
         self.peer.socket_ports['router'] = 1000
         self.peer.setup_request()
+        self.peer.timeouts['get_network_map'] = 500
 
         msg = self.await_sending_request(self.peer.get_network_map)
 
@@ -505,11 +524,9 @@ class TestPeer(unittest.TestCase):
         self.assertIsNone(msg)
 
     def test_METHOD_send_request__raises_error_if_request_not_initialized(self):
-        msg = None
         with self.assertRaises(AttributeError) as error:
-            msg = self.await_sending_request(process=self.peer.send_request, args={'msg_obj': {}})
+            self.await_sending_request(process=self.peer.send_request, args={'msg_obj': {}})
 
-        self.assertIsNone(msg)
         self.assertEqual("Request socket not setup.", str(error.exception))
 
     def test_METHOD_send_resquest__returns_None_if_mesage_not_json_serializable(self):
@@ -578,6 +595,7 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_reconnect_loop__loops_until_peer_is_available(self):
         self.peer.setup_request()
+        self.peer.timeouts['ping'] = 5000
         self.peer.running = True
 
         def send_string_disabled(str_msg: str):
@@ -618,15 +636,15 @@ class TestPeer(unittest.TestCase):
 
     def test_METHOD_reconnect_loop__loop_exits_if_peer_set_to_running_FALSE(self):
         self.peer.socket_ports['router'] = 1000
+        self.peer.timeouts['ping'] = 2000
         self.peer.setup_request()
         self.peer.running = True
-
 
         asyncio.ensure_future(self.peer.reconnect_loop())
 
         self.async_sleep(1)
         self.peer.running = False
-        self.async_sleep(11)
+        self.async_sleep(5)
 
         self.assertFalse(self.peer.reconnecting)
         self.assertFalse(self.peer.connected)

@@ -1,5 +1,5 @@
 from lamden.utils.migrate_blocks_dir import MigrateFiles
-from lamden.storage import LayeredDirectoryDriver
+from lamden.storage import FSBlockDriver
 
 import os
 import shutil
@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest import TestCase
 import random
 import time
+import json
 
 
 class TestMigrateBlocksDir(TestCase):
@@ -17,9 +18,9 @@ class TestMigrateBlocksDir(TestCase):
         self.dest_dir = 'migrated'
         self.dest_path = os.path.join(self.test_dir, self.dest_dir)
 
-        self.block_driver = LayeredDirectoryDriver(root=self.dest_path)
-
         self.create_directories()
+        self.block_driver = FSBlockDriver(root=self.dest_path)
+
 
     def tearDown(self):
         pass
@@ -30,15 +31,17 @@ class TestMigrateBlocksDir(TestCase):
 
         os.makedirs(Path(self.test_dir))
         os.makedirs(self.src_path)
+        os.makedirs(self.dest_path)
 
     def create_block_files(self, num_files):
-        zeros_pad_pre = '0' * 36
-        zeros_pad_post = '0' * 9
         for i in range(num_files):
-            rand_int = random.randint(int(time.time()) - 2 * 365 * 24 * 60 * 60, int(time.time()))
-            timestamp = f'{zeros_pad_pre}{rand_int}{zeros_pad_post}'
-            file_path = os.path.join(self.test_dir, 'blocks', f"{timestamp}")
-            open(file_path, 'w').close()
+            rand_int = random.randint(int(time.time()) - 2 * 365 * 24 * 60 * 60, int(time.time())) * 1000000000
+            timestamp = str(rand_int).zfill(64)
+            file_path = os.path.join(self.test_dir, 'blocks', timestamp)
+
+            with open(file_path, 'w') as f:
+                json.dump({'number': timestamp}, f)
+
 
     def test_migrate_blocks_dir_works(self):
         self.create_block_files(10)
@@ -50,11 +53,11 @@ class TestMigrateBlocksDir(TestCase):
 
         block_migration.start()
 
-        for file in block_migration.migrated_files:
+        for filename in block_migration.migrated_files:
             migrated_file = self.block_driver.find_block(
-                block_num=file
+                block_num=filename
             )
-            self.assertEqual(int(file), int(migrated_file))
+            self.assertDictEqual({'number': filename}, migrated_file)
 
 
 

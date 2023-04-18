@@ -18,6 +18,9 @@ import time
 
 class TestMultiNode(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        
         self.test_tracker = {}
         self.amount_of_transactions = None
         self.local_node_network = None
@@ -35,6 +38,12 @@ class TestMultiNode(TestCase):
 
     def tearDown(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def setup_nodes(self, num_of_masternodes, amount_of_transactions):
         test_start = time.time()

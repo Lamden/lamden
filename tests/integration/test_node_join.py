@@ -12,6 +12,9 @@ import shutil
 
 class TestSingleNodeElectionsWithMetering(TestCase):
     def setUp(self) -> None:
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.node_wallet = Wallet()
         self.tmp_storage = pathlib.Path().cwd().joinpath('temp_storage')
 
@@ -35,6 +38,12 @@ class TestSingleNodeElectionsWithMetering(TestCase):
     def tearDown(self) -> None:
         self.await_async_process(self.threaded_node.stop)
         shutil.rmtree(self.tmp_storage)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def await_async_process(self, process, *args, **kwargs):
         tasks = asyncio.gather(
