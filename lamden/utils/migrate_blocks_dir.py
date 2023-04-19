@@ -1,24 +1,57 @@
 import os
 import sys
-from lamden.storage import FSBlockDriver
+import json
+from lamden.storage import FSBlockDriver, FSHashStorageDriver
+import shutil
 
 
 class MigrateFiles:
-    def __init__(self, src_path, dest_path):
-        self.src_path = src_path
-        self.dest_path = dest_path
+    def __init__(self, src_path, dest_path, testing=False):
+        self.testing = testing
+
+        self.blocks_path_src = src_path
+        self.block_alias_path_src = os.path.join(self.blocks_path_src, 'alias')
+        self.txs_path_src = os.path.join(self.blocks_path_src, 'txs')
+
+        self.blocks_path_dest = os.path.abspath(dest_path)
+        self.block_alias_path_dest = os.path.abspath(os.path.join(os.path.dirname(self.blocks_path_dest), 'block_alias'))
+        self.txs_path_dest = os.path.abspath(os.path.join(os.path.dirname(self.blocks_path_dest), 'txs'))
 
         self.migrated_files: list = []
 
     def start(self):
-        block_driver = FSBlockDriver(root=self.dest_path)
+        block_driver = FSBlockDriver(root=self.blocks_path_dest)
+        block_alias_driver = FSHashStorageDriver(root=self.block_alias_path_dest)
+        tx_driver = FSHashStorageDriver(root=self.txs_path_dest)
 
-        for root, _, files in os.walk(self.src_path):
-            for file in files:
-                if file.isdigit():
-                    src_file = os.path.join(root, file)
-                    block_driver.move_block(src_file, file)
-                    self.migrated_files.append(file)
+        for root, _, files in os.walk(self.blocks_path_src):
+            for filename in files:
+                if filename.isdigit():
+                    src_file = os.path.join(root, filename)
+
+                    moved_to = block_driver.move_block(src_file, filename)
+
+                    block = block_driver.find_block(block_num=filename)
+                    block_hash = block.get('hash')
+                    block_alias_driver.write_symlink(
+                        hash_str=block_hash,
+                        link_to=moved_to
+                    )
+
+                    if int(filename) != 0:
+                        tx_hash = block['processed'].get('hash')
+                        with open(os.path.join(self.txs_path_src, tx_hash)) as file:
+                            data = json.loads(file.read())
+                            tx_driver.write_file(
+                                hash_str=tx_hash,
+                                data=data
+                            )
+
+                    if self.testing:
+                        self.migrated_files.append(filename)
+
+        shutil.rmtree(self.blocks_path_src)
+        os.rename(self.blocks_path_dest, self.blocks_path_src)
 
 
 if __name__ == '__main__':

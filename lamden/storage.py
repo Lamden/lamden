@@ -448,6 +448,8 @@ class FSBlockDriver(BlockDriver):
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         shutil.move(src_path, dst_path)
 
+        return dst_path
+
     def find_block(self, block_num: str) -> dict:
         path_to_file = self.get_file_path(block_num=str(block_num).zfill(64))
         block = self._get_file_content(file_path=path_to_file)
