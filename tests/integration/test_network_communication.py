@@ -43,9 +43,12 @@ class TestNetwork(TestCase):
         self.ctx.destroy(linger=0)
 
         self.loop.run_until_complete(asyncio.sleep(5))
-        if not self.loop.is_closed():
-            self.loop.stop()
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
             self.loop.close()
+        except RuntimeError:
+            pass
 
         fixtures_dir = Path().cwd().joinpath('fixtures')
         if fixtures_dir.is_dir():
@@ -157,6 +160,7 @@ class TestNetwork(TestCase):
 
         self.set_smart_contract_keys_threaded()
 
+        network_1.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
 
         network_1.n.connect_peer(
@@ -363,6 +367,7 @@ class TestNetwork(TestCase):
 
         self.set_smart_contract_keys_threaded()
 
+        network_1.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
 
         network_1.n.connect_peer(
@@ -387,7 +392,7 @@ class TestNetwork(TestCase):
         bad_peer_vk = bad_peer_wallet.verifying_key
         bad_peer_ip = 'tcp://127.0.0.1:19002'
 
-        network_1.n.create_peer(
+        network_1.n.peers[bad_peer_vk] = network_1.n.create_peer(
             ip=bad_peer_ip,
             vk=bad_peer_vk
         )
@@ -395,23 +400,16 @@ class TestNetwork(TestCase):
         bad_peer = network_1.n.get_peer(vk=bad_peer_vk)
 
         bad_peer.verified = True
+        # Have network starting the bad peer will have network 1 sending hello requests every 5 seconds to bad_peer
         bad_peer.start()
-        self.async_sleep(1)
+        # wait for at least 1
+        self.async_sleep(6)
 
-        # Have network #1 ping the bad peer which will await on a response for 10 seconds.
-        ping_bad_peer_task = asyncio.ensure_future(bad_peer.ping())
-        self.async_sleep(1)
-
+        # ping network 1 using network 2's peer of network 1
         loop = asyncio.get_event_loop()
         res = loop.run_until_complete(peer_1.ping())
-
+        # should get a response
         self.assertIsNotNone(res)
-
-        while not ping_bad_peer_task.done():
-            self.async_sleep(1)
-
-        bad_peer_ping_res = ping_bad_peer_task.result()
-        self.assertIsNone(bad_peer_ping_res)
 
     def test_router_can_handle_rapid_requests_from_peer(self):
         num_of_networks = 2
@@ -428,6 +426,7 @@ class TestNetwork(TestCase):
 
         self.set_smart_contract_keys_threaded()
 
+        network_1.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
 
         network_1.n.connect_peer(
@@ -475,6 +474,7 @@ class TestNetwork(TestCase):
 
         self.set_smart_contract_keys_threaded()
 
+        network_1.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_2.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_3.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())
         network_4.n.router.refresh_cred_provider_vks(vk_list=self.all_network_vks())

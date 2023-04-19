@@ -53,9 +53,11 @@ class TestNode(TestCase):
         if self.tn.node.running:
             self.await_async_process(self.tn.stop)
 
-        if not self.loop.is_closed():
-            self.loop.stop()
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
             self.loop.close()
+        except RuntimeError:
+            pass
 
         if self.temp_storage_root.is_dir():
             shutil.rmtree(self.temp_storage_root)

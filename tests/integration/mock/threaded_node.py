@@ -1,4 +1,5 @@
 from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
+from contracting.client import ContractingClient
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network
 from lamden.nodes.base import Node
@@ -72,11 +73,16 @@ class ThreadedNode(threading.Thread):
         self.genesis_block = genesis_block
 
         self.raw_driver = raw_driver
+
         self.contract_driver = ContractDriver(driver=self.raw_driver)
         self.block_storage = block_storage
         self.nonces = nonce_storage
 
         self.class_path = os.path.abspath(inspect.getfile(self.__class__))
+        self.client = ContractingClient(
+            driver=self.contract_driver,
+            submission_filename=os.path.dirname(self.class_path) + '/submission.py'
+        )
         self.tx_queue = tx_queue if tx_queue is not None else FileQueue()
         self.event_writer = event_writer if event_writer is not None else EventWriter()
 
@@ -189,6 +195,7 @@ class ThreadedNode(threading.Thread):
                 wallet=self.wallet,
                 socket_ports=self.create_socket_ports(index=self.index),
                 driver=self.contract_driver,
+                client=self.client,
                 blocks=self.block_storage,
                 genesis_block=self.genesis_block,
                 tx_queue=self.tx_queue,

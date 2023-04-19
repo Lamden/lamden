@@ -17,6 +17,9 @@ import shutil
 
 class TestValidationQueue(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.wallet = Wallet()
 
         self.driver = ContractDriver(driver=InMemDriver())
@@ -71,6 +74,12 @@ class TestValidationQueue(TestCase):
         self.validation_queue.flush()
         if self.temp_storage_dir.is_dir():
             shutil.rmtree(self.temp_storage_dir)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def stop(self):
         self.running = False

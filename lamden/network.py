@@ -76,7 +76,8 @@ class Network:
         if self.local:
             self.external_ip = '127.0.0.1'
         else:
-            self.external_ip = requests.get('http://api.ipify.org').text
+            #self.external_ip = requests.get('http://api.ipify.org').text
+            self.external_ip = requests.get('https://ipv4.icanhazip.com').text
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
         self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
@@ -258,7 +259,7 @@ class Network:
         self.peers[peer_vk] = peer
         self.start_peer(vk=peer_vk)
 
-    def create_peer(self, ip: str, vk: str) -> None:
+    def create_peer(self, ip: str, vk: str) -> Peer:
         return Peer(
             get_network_ip=lambda: self.external_address,
             ip=ip,

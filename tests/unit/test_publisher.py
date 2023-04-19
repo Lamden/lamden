@@ -12,6 +12,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestPublisherSocket(unittest.TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.ctx = zmq.asyncio.Context()
 
         self.publisher = None
@@ -28,6 +31,12 @@ class TestPublisherSocket(unittest.TestCase):
             del self.subscriber
 
         self.ctx.destroy(linger=0)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def async_sleep(self, delay):
         tasks = asyncio.gather(

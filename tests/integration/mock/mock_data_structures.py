@@ -9,6 +9,7 @@ from contracting.db.encoder import decode, encode
 from lamden.crypto.transaction import build_transaction
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
+from copy import deepcopy
 from lamden.crypto.block_validator import GENESIS_BLOCK_NUMBER
 
 class MockTransaction:
@@ -295,6 +296,9 @@ class MockBlock:
             }
             self.proofs.append(proof)
 
+    def add_minted_property(self, minted):
+        self.minted = minted
+
     def as_dict(self):
         d = dict(self.__dict__)
         return d
@@ -324,10 +328,11 @@ class TestMockBlock(TestCase):
 
 class MockBlocks:
     def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
-                 founder_wallet: Wallet = None):
+                 founder_wallet: Wallet = None, masternode_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()
         self.founder_wallet = founder_wallet or Wallet()
+        self.masternode_wallet = masternode_wallet or Wallet()
         self.initial_members = initial_members
 
         self.receiver_wallet = None
@@ -398,9 +403,11 @@ class MockBlocks:
                 internal_state=self.internal_state
             ))
             new_block.add_proofs(amount_to_add=3)
+            new_block.add_minted_property(minted=self.create_minted(block=new_block))
 
             for state_change in new_block.processed.get('state'):
                 self.internal_state[state_change.get('key')] = state_change.get('value')
+
 
         block_dict = self.add_to_blocks_dict(block=new_block)
         return block_dict
@@ -432,6 +439,13 @@ class MockBlocks:
         blocks = [value for key, value in self.blocks.items()]
         blocks.sort(key=lambda x: x.get('number'))
         return blocks
+
+    def create_minted(self, block):
+        signature = self.masternode_wallet.sign(encode(deepcopy(block.as_dict())))
+        return {
+            'minter': self.masternode_wallet.verifying_key,
+            'signature': signature
+        }
 
 class TestMockBlocks(TestCase):
     def setUp(self):

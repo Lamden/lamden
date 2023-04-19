@@ -1,3 +1,5 @@
+import os.path
+
 from lamden import storage
 from contracting.db.driver import ContractDriver, InMemDriver
 from unittest import TestCase
@@ -210,79 +212,92 @@ class TestStorage(TestCase):
 
     def test_PRIVATE_METHOD_cull_transaction__return_tx_and_hash(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         tx, hash = self.block_storage._BlockStorage__cull_tx(block)
 
-        self.assertEqual({'hash': 'XXX', 'foo': 'bar'}, tx)
-        self.assertEqual(hash, 'XXX')
+        self.assertEqual({'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77', 'foo': 'bar'}, tx)
+        self.assertEqual(hash, '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77')
 
     def test_PRIVATE_METHOD_cull_transaction__replaces_processed_with_hash(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         self.block_storage._BlockStorage__cull_tx(block)
 
-        self.assertEqual('XXX', block.get('processed'))
+        self.assertEqual('5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77', block.get('processed'))
 
 
     def test_PRIVATE_METHOD_write_block__stores_block_by_num(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         self.block_storage._BlockStorage__write_block(block)
 
-        filename = ('0' * 45) + '1658163894967101696'
+        filename = '1658163894967101696'.zfill(64)
 
-        with open(self.block_storage.blocks_dir.joinpath(filename)) as f:
-            b = json.load(f)
+        block_path = self.block_storage.block_driver.get_file_path(
+            block_num=filename
+        )
+
+        with open(block_path) as f:
+            b = json.loads(f.read())
 
         self.assertEqual(block, b)
 
     def test_PRIVATE_METHOD_write_block__stores_hash_symlink(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         self.block_storage._BlockStorage__write_block(block)
 
-        with open(self.block_storage.blocks_alias_dir.joinpath(block.get('hash'))) as f:
-            b = json.load(f)
+        alias_dir = self.block_storage.block_alias_driver.get_directory(
+            hash_str='78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4'
+        )
 
-        self.assertEqual(block, b)
+        alias_path = os.path.join(alias_dir, '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4')
+
+        alias_link = os.readlink(alias_path)
+
+        with open(alias_link) as f:
+            ab = json.loads(f.read())
+
+        self.assertEqual(ab, block)
+
 
     def test_PRIVATE_METHOD_write_txs__stores_transactions_by_hash_and_payload(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
@@ -291,53 +306,78 @@ class TestStorage(TestCase):
 
         self.block_storage._BlockStorage__write_tx(tx_hash=tx_hash, tx=tx)
 
-        with open(self.block_storage.txs_dir.joinpath('XXX')) as f:
-            t = json.load(f)
+        # Check transaction file
+        tx_path = self.block_storage.tx_driver.get_directory(
+            hash_str='5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77'
+        )
+
+        with open(os.path.join(tx_path, '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77')) as f:
+            t = json.loads(f.read())
 
         self.assertEqual(tx, t)
 
     def test_METHOD_store_block__stores_block_and_aliases(self):
+
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         self.block_storage.store_block(block)
 
-        with open(self.block_storage.txs_dir.joinpath('XXX')) as f:
-            t = json.load(f)
+        # Check transaction file
+        tx_path = self.block_storage.tx_driver.get_directory(
+            hash_str='5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77'
+        )
+
+        with open(os.path.join(tx_path, '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77')) as f:
+            t = json.loads(f.read())
 
         _t = {
-            'hash': 'XXX',
+            'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             'foo': 'bar'
         }
 
         self.assertEqual(t, _t)
 
-        filename = ('0' * 45) + '1658163894967101696'
-        with open(self.block_storage.blocks_dir.joinpath(filename)) as f:
-            b = json.load(f)
+        # Check Block Files
+        block_path = self.block_storage.block_driver.get_file_path(
+            block_num='1658163894967101696'.zfill(64)
+        )
 
+        with open(block_path) as f:
+            b = json.loads(f.read())
+
+        block['processed'] = '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77'
         self.assertEqual(b, block)
 
-        with open(self.block_storage.blocks_alias_dir.joinpath('a')) as f:
-            bb = json.load(f)
+        # Check Alias File
+        alias_dir = self.block_storage.block_alias_driver.get_directory(
+            hash_str='78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4'
+        )
 
-        self.assertEqual(bb, block)
+        alias_path = os.path.join(alias_dir, '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4')
+
+        alias_link = os.readlink(alias_path)
+
+        with open(alias_link) as f:
+            ab = json.loads(f.read())
+
+        self.assertEqual(ab, block)
 
 
     def test_METHOD_get_block__returns_block_by_block_number(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
@@ -350,28 +390,28 @@ class TestStorage(TestCase):
 
     def test_METHOD_get_block__returns_block_by_block_hash(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
 
         self.block_storage.store_block(deepcopy(block))
 
-        got_block = self.block_storage.get_block('a')
+        got_block = self.block_storage.get_block('78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4')
 
         self.assertEqual(block, got_block)
 
     def test_METHOD_get_block__returns_block_by_hlc_timestamp(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
@@ -384,11 +424,11 @@ class TestStorage(TestCase):
 
     def test_METHOD_get_block__cannot_find_hash_returns_None_block(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
@@ -401,11 +441,11 @@ class TestStorage(TestCase):
 
     def test_METHOD_get_block__cannot_find_hlc_timestamp_returns_None_block(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
@@ -423,40 +463,40 @@ class TestStorage(TestCase):
 
     def test_METHOD_get_tx__returns_tx(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX'
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
             },
             'data': 'woop'
         }
 
         self.block_storage.store_block(block)
 
-        tx_got = self.block_storage.get_tx('XXX')
+        tx_got = self.block_storage.get_tx('5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77')
 
         self.assertIsNotNone(tx_got)
-        self.assertEqual('XXX', tx_got.get('hash'))
+        self.assertEqual('5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77', tx_got.get('hash'))
 
 
     def test_METHOD_store_block__stores_txs_and_block(self):
         block = {
-            'hash': 'a',
-            'number': 1658163894967101696,
+            'hash': '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4',
+            'number': '1658163894967101696',
             'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
             'processed': {
-                'hash': 'XXX',
+                'hash': '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77',
                 'foo': 'bar'
             }
         }
 
         self.block_storage.store_block(deepcopy(block))
 
-        self.assertDictEqual(block.get('processed'), self.block_storage.get_tx(h='XXX'))
+        self.assertDictEqual(block.get('processed'), self.block_storage.get_tx(h='5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77'))
 
+        self.assertDictEqual(block, self.block_storage.get_block('78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4'))
         self.assertDictEqual(block, self.block_storage.get_block(1658163894967101696))
-        self.assertDictEqual(block, self.block_storage.get_block('a'))
         self.assertDictEqual(block, self.block_storage.get_block("2022-07-18T17:04:54.967101696Z_0"))
 
     def test_get_block_v_none_returns_none(self):

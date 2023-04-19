@@ -10,6 +10,7 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.utils import hlc
 from lamden.crypto.wallet import Wallet
 from lamden.utils import create_genesis
+from contracting.client import ContractingClient
 
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.unit.helpers.mock_transactions import get_processing_results, get_tx_message
@@ -111,12 +112,11 @@ class TestBaseNode_Catchup(TestCase):
             genesis_block_data = None
 
         return Node(
-            constitution=constitution,
             bootnodes={},
-            socket_base="",
             wallet=self.node_wallet,
             socket_ports=self.create_socket_ports(index=0),
             driver=contract_driver,
+            client=ContractingClient(driver=contract_driver, submission_filename='./helpers/submission.py'),
             blocks=block_storage,
             tx_queue=tx_queue,
             testing=True,

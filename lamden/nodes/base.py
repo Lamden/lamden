@@ -52,7 +52,7 @@ CONTENDER_SERVICE = 'contenders'
 
 class Node:
     def __init__(self, wallet, bootnodes={}, blocks=None,
-                 driver=None, delay=None, debug=True, testing=False,
+                 driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None):
 
@@ -133,7 +133,7 @@ class Node:
         if genesis_block:
             self.store_genesis_block(genesis_block=genesis_block)
 
-        self.client = ContractingClient(
+        self.client = client or ContractingClient(
             driver=self.driver,
             submission_filename=None
         )
@@ -256,6 +256,7 @@ class Node:
         self.network.router.cred_provider.open_messages()
 
         startup_tx_processor_vk = None
+        network_map = {}
         for vk, ip in self.bootnodes.items():
             network_map = await self.network.get_network_map_from_bootnode(vk=vk, ip=ip)
             if not network_map:
@@ -455,6 +456,7 @@ class Node:
 
                 if new_block is None or not verify_block(block=new_block):
                     self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')
+                    verify_block(block=new_block)
                     block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
                     continue
 
@@ -680,6 +682,7 @@ class Node:
             self.log.error(err)
 
     def store_solution_and_send_to_network(self, processing_results):
+        processing_results = json.loads(encode(processing_results))
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
         )
@@ -739,7 +742,10 @@ class Node:
         if self.blocks.is_genesis_block(block):
             state_changes = block.get('genesis', [])
         else:
-            state_changes = block['processed'].get('state', [])
+            try:
+                state_changes = block['processed'].get('state', [])
+            except Exception as err:
+                print(err)
 
         rewards = block.get('rewards', [])
 

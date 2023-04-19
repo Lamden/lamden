@@ -20,7 +20,12 @@ class MultiProcessConsensus:
 
         self.all_consensus_results = {}
 
+        self.running = False
+
+
     async def start(self, validation_results):
+        self.running = True
+
         try:
             self.all_consensus_results = {}
             processes = []
@@ -57,6 +62,8 @@ class MultiProcessConsensus:
             self.log.error(err)
             print(err)
             return {}
+        finally:
+            self.running = False
 
     async def check(self, process_info):
         hlc_timestamp = process_info.get('hlc_timestamp')
@@ -75,13 +82,16 @@ class MultiProcessConsensus:
                 if time() - start_time > 0.1:
                     timeout = True
                 else:
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.01)
 
     async def check_all(self, processes):
         tasks = [asyncio.ensure_future(self.check(process_info)) for process_info in processes]
         await asyncio.wait(tasks)
 
     def run_it(self, results, num_of_peers, child_conn):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+
         solutions = results.get('solutions')
         last_check_info = results.get('last_check_info')
         consensus_results = self.determine_consensus.check_consensus(
@@ -91,68 +101,12 @@ class MultiProcessConsensus:
         )
         child_conn.send(consensus_results)
 
+        try:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+        except RuntimeError as e:
+            print(e)
 
-
-'''
-
-import asyncio
-import time
-import multiprocessing
-
-processes = []
-lst = []
-wait_times = [4,3,2,1]
-
-def run_it(wait_time, child_conn):
-    print(f'{wait_time} started')
-
-    policy = asyncio.get_event_loop_policy()
-    policy.set_event_loop(policy.new_event_loop())
-
-    tasks = asyncio.gather(
-        asyncio.sleep(wait_time)
-    )
-    
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(tasks)
-    print(f'done {wait_time}')
-    
-    child_conn.send(wait_time)
-    
-for wait_time in wait_times:
-    parent_conn, child_conn = multiprocessing.Pipe()
-    p = multiprocessing.Process(target=run_it, args=[wait_time, child_conn])
-    processes.append({
-        'parent_conn': parent_conn,
-        'child_conn': child_conn,
-        'process': p,
-        'wait_time': wait_time
-    })
-    
-for process_info in processes:
-    process = process_info.get('process')
-    process.start()
-
-async def check(parent_conn):
-    done = False
-    while not done:
-        if parent_conn.poll():
-            res = parent_conn.recv()
-            print(f'received {res}')
-            lst.append(res)
-            done = True
-        await asyncio.sleep(0.1)
-            
-async def check_all(processes):
-    tasks = [asyncio.ensure_future(check(process_info.get('parent_conn'))) for process_info in processes]
-    await asyncio.wait(tasks)
-    
-tasks = asyncio.gather(
-    check_all(processes)
-)
-loop = asyncio.get_event_loop()
-loop.run_until_complete(tasks)
-
-print(lst)
-
-'''
+    async def wait_for_done(self):
+        while self.running:
+            await asyncio.sleep(0.5)

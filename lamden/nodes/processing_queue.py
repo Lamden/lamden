@@ -308,13 +308,23 @@ class TxProcessingQueue(ProcessingQueue):
             new_bal = 0
             try:
                 new_bal = sender_balance - to_deduct
+                assert new_bal > 0
             except TypeError:
                 pass
+            except AssertionError:
+                new_bal = 0
+
 
             writes = [{
                 'key': 'currency.balances:{}'.format(tx_sender),
                 'value': new_bal
             }]
+
+        try:
+            writes.sort(key=lambda x: x['key'])
+        except Exception as err:
+            print("Unable to sort state writes by 'key'.")
+            print(err)
 
         return writes
 
