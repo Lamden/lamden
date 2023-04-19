@@ -456,6 +456,7 @@ class Node:
 
                 if new_block is None or not verify_block(block=new_block):
                     self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')
+                    verify_block(block=new_block)
                     block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
                     continue
 
@@ -741,7 +742,10 @@ class Node:
         if self.blocks.is_genesis_block(block):
             state_changes = block.get('genesis', [])
         else:
-            state_changes = block['processed'].get('state', [])
+            try:
+                state_changes = block['processed'].get('state', [])
+            except Exception as err:
+                print(err)
 
         rewards = block.get('rewards', [])
 

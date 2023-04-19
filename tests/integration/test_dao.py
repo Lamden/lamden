@@ -14,9 +14,11 @@ class TestDAO(TestCase):
             num_of_masternodes=5
         )
 
-        loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         while not self.network.all_nodes_started:
-            loop.run_until_complete(asyncio.sleep(1))
+            self.loop.run_until_complete(asyncio.sleep(1))
 
         self.num_votes_needed = len(self.network.all_nodes) * 3 // 5 + 1
         self.num_specific_votes_needed = self.num_votes_needed * 7 // 10 + 1
@@ -30,6 +32,12 @@ class TestDAO(TestCase):
         loop = asyncio.get_event_loop()
         while not task.done():
             loop.run_until_complete(asyncio.sleep(0.1))
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def test_can_introduce_motion(self):
         random_member = random.choice(self.network.masternodes)

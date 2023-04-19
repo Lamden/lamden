@@ -1,3 +1,5 @@
+import json
+
 from lamden.logger.base import get_logger
 import asyncio
 import zmq
@@ -72,6 +74,18 @@ class Peer:
         self.reconnect_task = None
 
         self.setup_event_loop()
+
+        self.timeouts = {
+            'ping': 15000,
+            'hello': 5000,
+            'verify_new_ip': 15000,
+            'get_latest_block_info': 15000,
+            'get_block': 15000,
+            'get_next_block': 15000,
+            'get_network_map': 15000
+
+
+        }
 
         try:
             self.loop = asyncio.get_event_loop()
@@ -363,13 +377,13 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': ACTION_PING}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('ping'), attempts=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=5000, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('hello'), attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
@@ -377,14 +391,14 @@ class Peer:
     async def verify_new_ip(self, new_ip) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('verify_new_ip'), attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
 
     async def get_latest_block_info(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_LATEST_BLOCK}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('get_latest_block_info'), attempts=1)
         if isinstance(msg_json, dict):
             if msg_json.get('response') == ACTION_GET_LATEST_BLOCK:
                 self.set_latest_block_info(
@@ -395,43 +409,54 @@ class Peer:
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
         msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num) if block_num is not None else block_num, 'hlc_timestamp': hlc_timestamp}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=15000)
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get('get_block'))
         return msg_json
 
     async def get_next_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': int(block_num)}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=15000)
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get('get_next_block'))
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=15000, attempts=3)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('get_network_map'), attempts=3)
         return msg_json
 
     async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):
-        try:
-            str_msg = encode(msg_obj)
-            result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
+        if self.request is None:
+            raise AttributeError("Request socket not setup.")
 
-            return self.handle_result(result=result)
-        except Exception as error:
-            self.log('error', f'{error}')
+        try:
+            json.dumps(msg_obj)
+            str_msg = encode(msg_obj)
+        except Exception:
+            return None
+
+        result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
+
+        return self.handle_result(result=result)
+
+
 
     def handle_result(self, result: Result) -> (dict, None):
-        if result.success:
-            self.connected = True
-            msg_json = decode(result.response)
-            msg_json['success'] = result.success
+        if isinstance(result.response, bytes):
+            if result.success:
+                self.connected = True
+                msg_json = decode(result.response)
 
-            return msg_json
-        else:
-            if result.error:
-                self.log('error', f'Result Error: {result.error}')
+                if msg_json is None:
+                    return None
+                else:
+                    msg_json['success'] = result.success
+                    return msg_json
+            else:
+                if result.error:
+                    self.log('error', f'Result Error: {result.error}')
 
-            self.connected = False
+                self.connected = False
 
-            if not self.reconnecting:
-                self.reconnect()
+                if not self.reconnecting:
+                    self.reconnect()
 
         return None
 

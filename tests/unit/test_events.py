@@ -90,11 +90,20 @@ class TestEventService(TestCase):
 
     def setUp(self):
         self.client = MockSIOClient()
-        self.loop = asyncio.get_event_loop()
+
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.loop.run_until_complete(self.client.sio.connect(f'http://localhost:{EVENT_SERVICE_PORT}'))
 
     def tearDown(self):
         self.loop.run_until_complete(self.client.sio.disconnect())
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def test_service_is_reachable_by_clients(self):
         self.assertTrue(self.client.is_connected)

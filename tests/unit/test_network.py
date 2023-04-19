@@ -44,8 +44,8 @@ class MockNetworkMap:
 
 class TestNetwork(TestCase):
     def setUp(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
         self.networks = []
         self.router_msg = None
@@ -73,11 +73,12 @@ class TestNetwork(TestCase):
 
         del self.networks
 
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.stop()
-        if not loop.is_closed():
-            loop.close()
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
+
         if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
 
@@ -322,9 +323,9 @@ class TestNetwork(TestCase):
         wallet = Wallet()
         peer_vk = wallet.verifying_key
 
-        peer = network_1.add_peer(ip='1.1.1.1', vk=peer_vk)
+        network_1.add_peer(ip='1.1.1.1', peer_vk=peer_vk)
 
-        self.assertIsInstance(peer, Peer)
+        self.assertIsInstance(network_1.peers.get(peer_vk), Peer)
 
     def test_METHOD_start_peer__can_start_a_peer(self):
         network_1 = self.create_network()
