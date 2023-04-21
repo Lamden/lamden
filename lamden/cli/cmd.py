@@ -191,8 +191,6 @@ def main():
 
     migrate_storage()
 
-    exit()
-
     if args.command == 'start':
         start_node(args)
     elif args.command == 'join':
