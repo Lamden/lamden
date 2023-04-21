@@ -5,6 +5,7 @@ import zmq.asyncio
 import asyncio
 import random
 import uvloop
+import socket
 from typing import List
 
 from lamden.utils import hlc
@@ -75,9 +76,11 @@ class Network:
 
         if self.local:
             self.external_ip = '127.0.0.1'
+            self.share_ip = self.get_local_ip()
         else:
             #self.external_ip = requests.get('http://api.ipify.org').text
             self.external_ip = requests.get('https://ipv4.icanhazip.com').text
+            self.share_ip = self.external_ip
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
         self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
@@ -145,6 +148,17 @@ class Network:
         if log_type == 'warning':
             logger.warning(named_message)
 
+    def get_local_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))  # Use Google's public DNS server as an example
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except Exception as e:
+            print("Error:", e)
+            return None
+
     def setup_event_loop(self):
         try:
             self.loop = asyncio.get_event_loop()
@@ -162,6 +176,7 @@ class Network:
     def set_to_local(self) -> None:
         self.local = True
         self.external_ip = '127.0.0.1'
+        self.share_ip = self.get_local_ip()
         self.router.network_ip = self.external_address
         self.router.cred_provider.network_ip = self.external_address
         self.publisher.network_ip = self.external_address
@@ -433,7 +448,7 @@ class Network:
 
     def get_node_ip(self, vk):
         if vk == self.wallet.verifying_key:
-            return self.external_ip
+            return self.share_ip
         else:
             peer = self.get_peer(vk=vk)
             if peer is not None:
@@ -456,7 +471,7 @@ class Network:
 
         for vk in vk_list:
             if vk == self.wallet.verifying_key:
-                vk_to_ip_map[vk] = self.external_address if not only_ip else self.external_ip
+                vk_to_ip_map[vk] = self.external_address if not only_ip else self.share_ip
             else:
                 peer = self.get_peer(vk=vk)
                 if peer is not None:

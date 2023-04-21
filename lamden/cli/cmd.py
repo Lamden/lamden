@@ -93,7 +93,8 @@ def start_node(args):
         wallet=wallet,
         bootnodes=constitution,
         genesis_block=genesis_block,
-        metering=True
+        metering=True,
+        local_network=os.environ['LAMDEN_LOCAL_NETWORK'] or False
     )
 
     loop = asyncio.get_event_loop()
@@ -123,7 +124,8 @@ def join_network(args):
         wallet=wallet,
         bootnodes=bootnodes,
         join=True,
-        metering=True
+        metering=True,
+        local_network=os.environ['LAMDEN_LOCAL_NETWORK'] or False
     )
 
     loop = asyncio.get_event_loop()
@@ -139,6 +141,7 @@ def setup_lamden_parser(parser):
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
     start_parser.add_argument('-d', '--debug', type=bool, default=False)
+    start_parser.add_argument('-ln', '--local_network', type=bool, default=False)
 
     join_parser = subparser.add_parser('join')
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
