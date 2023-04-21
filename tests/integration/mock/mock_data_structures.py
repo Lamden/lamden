@@ -357,6 +357,12 @@ class MockBlocks:
         return len(k)
 
     @property
+    def block_numbers_list(self):
+        block_numbers = [block_num for block_num in self.blocks.keys()]
+        block_numbers.sort()
+        return block_numbers
+
+    @property
     def latest_block_num(self):
         k = list(self.blocks.keys())
         k.sort()

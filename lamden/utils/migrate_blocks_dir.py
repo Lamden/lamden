@@ -19,7 +19,15 @@ class MigrateFiles:
 
         self.migrated_files: list = []
 
+    def _create_directories(self):
+        if os.path.exists(self.blocks_path_dest):
+            shutil.rmtree(self.blocks_path_dest)
+
+        os.makedirs(self.blocks_path_dest)
+
     def start(self):
+        self._create_directories()
+
         block_driver = FSBlockDriver(root=self.blocks_path_dest)
         block_alias_driver = FSHashStorageDriver(root=self.block_alias_path_dest)
         tx_driver = FSHashStorageDriver(root=self.txs_path_dest)
@@ -32,6 +40,10 @@ class MigrateFiles:
                     moved_to = block_driver.move_block(src_file, filename)
 
                     block = block_driver.find_block(block_num=filename)
+
+                    # if isinstance(block, str):
+                    #    block = json.loads(block)
+
                     block_hash = block.get('hash')
                     block_alias_driver.write_symlink(
                         hash_str=block_hash,
@@ -39,7 +51,7 @@ class MigrateFiles:
                     )
 
                     if int(filename) != 0:
-                        tx_hash = block['processed'].get('hash')
+                        tx_hash = block['processed']
                         with open(os.path.join(self.txs_path_src, tx_hash)) as file:
                             data = json.loads(file.read())
                             tx_driver.write_file(
