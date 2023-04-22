@@ -88,13 +88,15 @@ def start_node(args):
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
+    local_network = bool(os.environ.get('LAMDEN_LOCAL_NETWORK', False))
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=constitution,
         genesis_block=genesis_block,
         metering=True,
-        local_network=os.environ['LAMDEN_LOCAL_NETWORK'] or False
+        local_network=local_network
     )
 
     loop = asyncio.get_event_loop()
@@ -119,13 +121,15 @@ def join_network(args):
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
     logger.info(f'Bootnodes: {bootnodes}')
 
+    local_network = bool(os.environ.get('LAMDEN_LOCAL_NETWORK', False))
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=bootnodes,
         join=True,
         metering=True,
-        local_network=os.environ['LAMDEN_LOCAL_NETWORK'] or False
+        local_network=local_network
     )
 
     loop = asyncio.get_event_loop()
