@@ -75,6 +75,7 @@ class Network:
         self.services = {}
 
         if self.local:
+            self.log('warning', 'Setting Network to Local Network.')
             self.external_ip = '127.0.0.1'
             self.share_ip = self.get_local_ip()
         else:
