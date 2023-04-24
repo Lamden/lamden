@@ -150,19 +150,11 @@ def setup_lamden_parser(parser):
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
 
 def migrate_storage():
-    blocks_alias_dir_new = os.path.join(STORAGE_HOME, 'blocks_alias')
-    txs_dir_new = os.path.join(STORAGE_HOME, 'txs')
-
     blocks_dir = os.path.join(STORAGE_HOME, 'blocks')
     blocks_alias_dir_old = os.path.join(blocks_dir, 'alias')
     txs_dir_old = os.path.join(blocks_dir, 'txs')
 
-    if (
-            not os.path.exists(blocks_alias_dir_new)
-            and not os.path.exists(txs_dir_new)
-            and os.path.exists(blocks_alias_dir_old)
-            and os.path.exists(txs_dir_old)
-    ):
+    if (os.path.exists(blocks_alias_dir_old) and os.path.exists(txs_dir_old)):
         logger.warning("Migrating Old Storage to New Storage...")
 
         migrate_from = os.path.join(STORAGE_HOME, 'blocks')
@@ -180,11 +172,6 @@ def migrate_storage():
 
         logger.info("Completed Adding Block Numbers to State! \n")
 
-
-
-
-# do nothing if the directory doesn't exist
-
 def main():
     parser = argparse.ArgumentParser(description="Lamden Commands", prog='lamden')
     setup_lamden_parser(parser)
@@ -195,6 +182,7 @@ def main():
     if vars(args).get('command') is None:
         return
 
+    logger.info("Checking if Block Storage needs Migration...")
     migrate_storage()
 
     if args.command == 'start':
