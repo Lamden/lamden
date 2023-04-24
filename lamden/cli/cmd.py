@@ -121,7 +121,7 @@ def join_network(args):
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
     logger.info(f'Bootnodes: {bootnodes}')
 
-    local_network = bool(os.environ.get('LAMDEN_LOCAL_NETWORK', False))
+    private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
 
     n = Node(
         debug=args.debug,
@@ -129,7 +129,7 @@ def join_network(args):
         bootnodes=bootnodes,
         join=True,
         metering=True,
-        local_network=local_network
+        private_network=private_network
     )
 
     loop = asyncio.get_event_loop()
@@ -145,7 +145,6 @@ def setup_lamden_parser(parser):
     start_parser.add_argument('-c', '--constitution', type=str, default='~/constitution.json')
     start_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
     start_parser.add_argument('-d', '--debug', type=bool, default=False)
-    start_parser.add_argument('-ln', '--local_network', type=bool, default=False)
 
     join_parser = subparser.add_parser('join')
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
