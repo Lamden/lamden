@@ -88,7 +88,7 @@ def start_node(args):
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
-    local_network = bool(os.environ.get('LAMDEN_LOCAL_NETWORK', False))
+    private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
 
     n = Node(
         debug=args.debug,
@@ -96,7 +96,7 @@ def start_node(args):
         bootnodes=constitution,
         genesis_block=genesis_block,
         metering=True,
-        local_network=local_network
+        private_network=private_network
     )
 
     loop = asyncio.get_event_loop()
