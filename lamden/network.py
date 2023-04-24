@@ -91,8 +91,10 @@ class Network:
             ip_fetcher = IPFetcher()
             if self.private_network:
                 self.external_ip = ip_fetcher.get_ip_local_system()
+                self.log('warning', f'Started Private Network Node with IP: {self.external_ip}')
             else:
                 self.external_ip = self.loop.run_until_complete(ip_fetcher.get_ip_external())
+                self.log('warning', f'Started Network with IP: {self.external_ip}')
 
         self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
         self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
@@ -472,7 +474,8 @@ class Network:
                 if peer is not None:
                     if peer.ip is not None:
                         vk_to_ip_map[vk] = peer.request_address if not only_ip else peer.ip
-
+        self.log('warning', 'Created Network Map.')
+        self.log('warning', f'{vk_to_ip_map}')
         return vk_to_ip_map
 
     def get_node_list(self) -> list:

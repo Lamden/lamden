@@ -90,6 +90,8 @@ def start_node(args):
 
     private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
 
+    logger.warning(f'Starting New Private Network: {private_network}')
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
@@ -122,6 +124,8 @@ def join_network(args):
     logger.info(f'Bootnodes: {bootnodes}')
 
     private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
+
+    logger.warning(f'Joining Private Network: {private_network}')
 
     n = Node(
         debug=args.debug,
