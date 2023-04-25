@@ -90,7 +90,7 @@ class Network:
         else:
             ip_fetcher = IPFetcher()
             if self.private_network:
-                self.external_ip = ip_fetcher.get_ip_local_system()
+                self.external_ip = private_network
                 self.log('warning', f'Started Private Network Node with IP: {self.external_ip}')
             else:
                 self.external_ip = self.loop.run_until_complete(ip_fetcher.get_ip_external())

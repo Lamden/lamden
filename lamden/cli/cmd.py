@@ -44,6 +44,15 @@ def is_valid_ip(s):
 
     return True
 
+def get_private_network_ip():
+    env_value = os.environ.get('LAMDEN_PRIVATE_NETWORK', 'False')
+
+    if is_valid_ip(env_value):
+        logger.warning(f'Private Network IP: {env_value}')
+        return env_value
+
+    return False
+
 def resolve_constitution(fp):
     path = pathlib.PosixPath(fp).expanduser()
 
@@ -88,17 +97,13 @@ def start_node(args):
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
-    private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
-
-    logger.warning(f'Starting New Private Network: {private_network}')
-
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=constitution,
         genesis_block=genesis_block,
         metering=True,
-        private_network=private_network
+        private_network=get_private_network_ip()
     )
 
     loop = asyncio.get_event_loop()
@@ -123,17 +128,13 @@ def join_network(args):
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
     logger.info(f'Bootnodes: {bootnodes}')
 
-    private_network = bool(os.environ.get('LAMDEN_PRIVATE_NETWORK', False))
-
-    logger.warning(f'Joining Private Network: {private_network}')
-
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=bootnodes,
         join=True,
         metering=True,
-        private_network=private_network
+        private_network=get_private_network_ip()
     )
 
     loop = asyncio.get_event_loop()
