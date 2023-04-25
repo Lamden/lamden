@@ -952,12 +952,20 @@ class Node:
     def hard_apply_block_finish(self, block: dict):
         state_changes = self.get_state_changes_from_block(block=block)
         self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
+        self.log.info(int(block.get('number')) != 0)
         if int(block.get('number')) != 0:
+            self.log.warning("Checking if Upgrade needed...")
             self.check_upgrade(state_changes=state_changes)
         gc.collect()
 
     def check_upgrade(self, state_changes: list):
+
         for change in state_changes:
+
+            self.log.info(change['key'])
+            self.log.info(change['key'] == 'upgrade.S:lamden_tag')
+            self.log.info(change['key'] == 'upgrade.S:contracting_tag')
+            self.log.info(change['key'] == 'upgrade.S:lamden_tag' or change['key'] == 'upgrade.S:contracting_tag')
             if change['key'] == 'upgrade.S:lamden_tag' or change['key'] == 'upgrade.S:contracting_tag':
                 self.produce_upgrade_event()
                 break
@@ -969,6 +977,15 @@ class Node:
         new_con_tag = self.driver.driver.get('upgrade.S:contracting_tag') or ''
 
         should_upgrade = (new_lam_tag != '' and new_lam_tag != cur_lam_tag) or (new_con_tag != '' and new_con_tag != cur_con_tag)
+
+        self.log.info({
+            'cur_lam_tag': cur_lam_tag,
+            'cur_con_tag': cur_con_tag,
+            'new_lam_tag': new_lam_tag,
+            'new_con_tag': new_con_tag,
+            'should_upgrade': should_upgrade
+        })
+
         if not should_upgrade:
             self.log.info(f'Ignored upgrade proposal: lamden ({cur_lam_tag}->{new_lam_tag}), contracting ({cur_con_tag}->{new_con_tag})')
             return
