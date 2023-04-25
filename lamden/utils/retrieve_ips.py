@@ -48,12 +48,25 @@ class IPFetcher:
 
         return None
 
-
     def get_ip_local_system(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))  # Use Google's public DNS server as an example
-        local_ip = s.getsockname()[0]
-        s.close()
+        local_ip = None
+
+        try:
+            # Try Docker's default internal host IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("172.17.0.1", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            # Fallback to Google's public DNS server if not in a Docker container
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                s.close()
+            except Exception as e:
+                print(f"Error: {e}")
+
         return local_ip
 
     async def get_ip_from_url(self, url):

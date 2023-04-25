@@ -38,6 +38,7 @@ class TestMigrateBlocksDir(TestCase):
 
     def test_METHOD_get_ip_local_system__can_get_local_system_ip(self):
         local_ip = self.ip_fetcher.get_ip_local_system()
+        print({'local_ip': local_ip})
         self.assertTrue(self.ip_fetcher.is_valid_ip(local_ip))
 
 
