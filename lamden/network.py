@@ -1,13 +1,13 @@
-import json
-import requests
 import zmq
 import zmq.asyncio
 import asyncio
 import random
 import uvloop
+
 from typing import List
 
 from lamden.utils import hlc
+from lamden.utils.retrieve_ips import IPFetcher
 from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
 
 from lamden.crypto.wallet import Wallet
@@ -52,18 +52,25 @@ class PeerShutdownProcessor(Processor):
 
 class Network:
     def __init__(self, wallet: Wallet = Wallet(), driver: ContractDriver = ContractDriver(),
-                 block_storage: BlockStorage = None, socket_ports: dict = None, local: bool = False):
+                 block_storage: BlockStorage = None, socket_ports: dict = None, local: bool = False,
+                 private_network=False):
+
+        # Private Network will force the node to report its IP address as the local IP as opposed to "internet" IP of
+        # the network
+
+        # Local is used for testing when you want to have multiple nodes running on one machine.
 
         self.wallet = wallet
         self.driver = driver
         self.block_storage = block_storage if block_storage is not None else BlockStorage()
 
         self.local = local
+        self.private_network = private_network
 
         try:
             self.socket_ports = dict(socket_ports)
         except TypeError:
-            self.socket_ports =  dict({
+            self.socket_ports = dict({
                 'router': 19000,
                 'publisher': 19080,
                 'webserver': 18080
@@ -73,19 +80,24 @@ class Network:
         self.subscriptions = []
         self.services = {}
 
-        if self.local:
-            self.external_ip = '127.0.0.1'
-        else:
-            #self.external_ip = requests.get('http://api.ipify.org').text
-            self.external_ip = requests.get('https://ipv4.icanhazip.com').text
-
-        self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
-        self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
-
         self.ctx = zmq.asyncio.Context()
 
         self.loop = None
         self.setup_event_loop()
+
+        if self.local:
+            self.external_ip = '127.0.0.1'
+        else:
+            ip_fetcher = IPFetcher()
+            if self.private_network:
+                self.external_ip = private_network
+                self.log('warning', f'Started Private Network Node with IP: {self.external_ip}')
+            else:
+                self.external_ip = self.loop.run_until_complete(ip_fetcher.get_ip_external())
+                self.log('warning', f'Started Network with IP: {self.external_ip}')
+
+        self.add_service("new_peer_connection", NewPeerProcessor(callback=self.new_peer_connection_service))
+        self.add_service("peer_shutdown", PeerShutdownProcessor(callback=self.peer_shutdown_service))
 
         self.setup_publisher()
         self.setup_router()
@@ -462,7 +474,8 @@ class Network:
                 if peer is not None:
                     if peer.ip is not None:
                         vk_to_ip_map[vk] = peer.request_address if not only_ip else peer.ip
-
+        self.log('warning', 'Created Network Map.')
+        self.log('warning', f'{vk_to_ip_map}')
         return vk_to_ip_map
 
     def get_node_list(self) -> list:

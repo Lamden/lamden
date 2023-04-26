@@ -2,6 +2,11 @@ from contracting.db.encoder import decode
 from lamden.crypto.wallet import Wallet
 from lamden.logger.base import get_logger
 from lamden.nodes.base import Node
+from lamden.storage import STORAGE_HOME
+
+from lamden.utils.add_block_num_to_state import AddBlockNum
+from lamden.utils.migrate_blocks_dir import MigrateFiles
+
 import argparse
 import asyncio
 import json
@@ -38,6 +43,15 @@ def is_valid_ip(s):
             return False
 
     return True
+
+def get_private_network_ip():
+    env_value = os.environ.get('LAMDEN_PRIVATE_NETWORK', 'False')
+
+    if is_valid_ip(env_value):
+        logger.warning(f'Private Network IP: {env_value}')
+        return env_value
+
+    return False
 
 def resolve_constitution(fp):
     path = pathlib.PosixPath(fp).expanduser()
@@ -88,7 +102,8 @@ def start_node(args):
         wallet=wallet,
         bootnodes=constitution,
         genesis_block=genesis_block,
-        metering=True
+        metering=True,
+        private_network=get_private_network_ip()
     )
 
     loop = asyncio.get_event_loop()
@@ -118,7 +133,8 @@ def join_network(args):
         wallet=wallet,
         bootnodes=bootnodes,
         join=True,
-        metering=True
+        metering=True,
+        private_network=get_private_network_ip()
     )
 
     loop = asyncio.get_event_loop()
@@ -138,13 +154,41 @@ def setup_lamden_parser(parser):
     join_parser = subparser.add_parser('join')
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
 
+def migrate_storage():
+    blocks_dir = os.path.join(STORAGE_HOME, 'blocks')
+    blocks_alias_dir_old = os.path.join(blocks_dir, 'alias')
+    txs_dir_old = os.path.join(blocks_dir, 'txs')
+
+    if (os.path.exists(blocks_alias_dir_old) and os.path.exists(txs_dir_old)):
+        logger.warning("Migrating Old Storage to New Storage...")
+
+        migrate_from = os.path.join(STORAGE_HOME, 'blocks')
+        migrate_temp = os.path.join(STORAGE_HOME, 'migrating')
+
+        storage_migration = MigrateFiles(src_path=migrate_from, dest_path=migrate_temp)
+        storage_migration.start()
+
+        logger.info("Completed Block Migration! \n")
+
+        logger.warning("Adding Block Numbers to state....")
+
+        block_num_adder = AddBlockNum(lamden_root=STORAGE_HOME)
+        block_num_adder.start()
+
+        logger.info("Completed Adding Block Numbers to State! \n")
+
 def main():
     parser = argparse.ArgumentParser(description="Lamden Commands", prog='lamden')
     setup_lamden_parser(parser)
     args = parser.parse_args()
 
+    print(args)
+
     if vars(args).get('command') is None:
         return
+
+    logger.info("Checking if Block Storage needs Migration...")
+    migrate_storage()
 
     if args.command == 'start':
         start_node(args)

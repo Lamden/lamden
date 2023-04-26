@@ -54,7 +54,8 @@ class Node:
     def __init__(self, wallet, bootnodes={}, blocks=None,
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
-                 tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None):
+                 tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
+                 private_network=False):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -113,7 +114,8 @@ class Node:
             wallet=wallet,
             socket_ports=socket_ports,
             driver=self.driver,
-            block_storage=self.blocks
+            block_storage=self.blocks,
+            private_network=private_network
         )
 
         self.validation_queue = ValidationQueue(

@@ -83,13 +83,16 @@ class TestMigrateBlocksDir(TestCase):
 
             block_data = self.create_block(block_num=block_num)
 
+            tx_data = block_data.get('processed')
+            block_data['processed'] = tx_hash
+
             # create block file
             with open(block_path, 'w') as f:
                 json.dump(block_data, f)
 
             # create tx file
             with open(tx_path, 'w') as f:
-                json.dump(block_data.get('processed'), f)
+                json.dump(tx_data, f)
 
             # create tx_hash link to block file
             os.symlink(block_path, alias_path)
