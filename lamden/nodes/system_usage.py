@@ -3,10 +3,12 @@ import asyncio
 import json
 from lamden.logger.base import get_logger
 from datetime import datetime
+import threading
 
 class SystemUsage:
     def __init__(self):
-        self.log = get_logger("SYSTEM USAGE")
+        self.current_thread = threading.current_thread()
+        self.log = get_logger(f"[{self.current_thread.name}][SYSTEM USAGE]")
 
         self.running = False
 
@@ -15,6 +17,7 @@ class SystemUsage:
         self.print_task = None
 
     async def start(self, delay_sec):
+        self.log.info("Starting System Monitor...")
         self.running = True
         self.print_delay = delay_sec
 
@@ -23,10 +26,12 @@ class SystemUsage:
 
     async def print_loop(self):
         while self.running:
+            self.log.info("Started System Monitor.")
             self.print_usage()
             await asyncio.sleep(self.print_delay)
 
     def stop(self):
+        self.log.warning("Stopping System Monitor...")
         self.running = False
 
     async def stopping(self):
@@ -35,6 +40,8 @@ class SystemUsage:
         self.print_task.cancel()
         while not self.print_task.done():
             await asyncio.sleep(0.1)
+
+        self.log.info("Stopped System Monitor.")
 
     def print_usage(self):
         now = datetime.now()

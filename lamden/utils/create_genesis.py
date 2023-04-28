@@ -14,6 +14,7 @@ from pymongo import MongoClient
 import json
 import os
 import re
+import threading
 
 GENESIS_CONTRACTS = ['submission', 'currency', 'election_house', 'stamp_cost', 'rewards', 'upgrade', 'foundation', 'masternodes', 'elect_masternodes']
 GENESIS_CONTRACTS_KEYS = [contract + '.' + key for key in [CODE_KEY, COMPILED_KEY, OWNER_KEY, TIME_KEY, DEVELOPER_KEY] for contract in GENESIS_CONTRACTS]
@@ -21,7 +22,9 @@ MEMBERS_KEY = 'masternodes.S:members'
 REWARDS_VALUE_KEY = 'rewards.S:value'
 GENESIS_BLOCK_PATH = Path().home().joinpath('genesis_block.json')
 TMP_STATE_PATH = Path('/tmp/tmp_state')
-LOG = get_logger('GENESIS_BLOCK')
+
+thread = threading.current_thread()
+LOG = get_logger(f"[{thread.name}][GENESIS_BLOCK]")
 
 def build_genesis_contracts_changes(constitution_file_path: str = None, genesis_file_path: str = None, initial_members: list = None):
     state_changes = {}

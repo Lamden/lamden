@@ -49,7 +49,8 @@ class TestMultiNode(TestCase):
         test_start = time.time()
 
         self.local_node_network = LocalNodeNetwork(
-            num_of_masternodes=num_of_masternodes
+            num_of_masternodes=num_of_masternodes,
+            network_await_connect_all_timeout=2
         )
         for node in self.local_node_network.all_nodes:
             self.assertTrue(node.node_is_running)

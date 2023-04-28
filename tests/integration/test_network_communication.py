@@ -99,7 +99,8 @@ class TestNetwork(TestCase):
         network = ThreadedNetwork(
             wallet=Wallet(),
             socket_ports=self.create_socket_ports(index),
-            driver=ContractDriver(driver=FSDriver(root=network_dir))
+            driver=ContractDriver(driver=FSDriver(root=network_dir)),
+            network_await_connect_all_timeout=2
         )
 
         self.networks.append(network)

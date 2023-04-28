@@ -10,6 +10,9 @@ import time
 import uvloop
 import requests
 
+import threading
+import psutil
+
 from copy import deepcopy
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver
@@ -33,6 +36,7 @@ from lamden.crypto.transaction import get_nonces
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
+from lamden.nodes.catchup import CatchupHandler
 
 from lamden.crypto.transaction import build_transaction
 from datetime import datetime, timedelta
@@ -61,6 +65,8 @@ class Node:
         self.validation_queue = None
         self.check_main_processing_queue_task = None
         self.check_validation_queue_task = None
+        self.connectivity_check_task = None
+        self.check_for_tx_task = None
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -76,8 +82,11 @@ class Node:
         self.event_writer = event_writer if event_writer is not None else EventWriter()
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
+        self.genesis_block = genesis_block
 
-        self.log = get_logger('Base')
+        self.current_thread = threading.current_thread()
+
+        self.log = get_logger(f'[{self.current_thread.name}]Base')
         self.debug = debug
         self.testing = testing
 
@@ -132,8 +141,6 @@ class Node:
         )
 
         self.join = join
-        if genesis_block:
-            self.store_genesis_block(genesis_block=genesis_block)
 
         self.client = client or ContractingClient(
             driver=self.driver,
@@ -178,6 +185,13 @@ class Node:
             network=self.network
         )
 
+        self.catchup_handler = CatchupHandler(
+            network=self.network,
+            contract_driver=self.driver,
+            block_storage=self.blocks,
+            nonce_storage=self.nonces
+        )
+
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
@@ -197,21 +211,54 @@ class Node:
         return self.running
 
     async def start(self):
+        if self.running:
+            return
+
+        self.log.warning('Running Node Start Process...')
+        # self.print_debug_info()
+        # self.log.warning('------------------------------')
         try:
             self.running = True
 
+            # Start the system usage monitor
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
+            # Start the network and wait till it's up
             self.network.start()
+            await self.network.starting()
 
+            # Get the genesis block if we don't have it
+            if not self.blocks.has_genesis():
+                if self.genesis_block is None:
+                    self.log.error("Cannot start node without genesis_block. Check documentaion to obtain block.")
+                    await self.stop()
+
+                await self.store_genesis_block(genesis_block=self.genesis_block)
+
+            # remove the genesis block from memory
+            self.genesis_block = None
+
+            # Connect to all nodes
             if not self.join:
                 await self.start_new_network()
             else:
                 await self.join_existing_network()
 
-            asyncio.ensure_future(self.check_tx_queue())
-            asyncio.ensure_future(self.connectivity_check())
+            # will till connected to everyone
+            await self.network.connected_to_all_peers()
+
+            # Start all queues and services
+            self.start_validation_queue_task()
+            self.start_main_processing_queue_task()
+
+            loop = asyncio.get_event_loop()
+            self.check_for_tx_task = loop.create_task(self.check_tx_queue())
+            self.connectivity_check_task = loop.create_task(self.connectivity_check())
+
+            # Run catchup
+            catchup_task = asyncio.ensure_future(self.catchup_handler.run())
+            catchup_task.add_done_callback(self.handle_catchup_result)
 
             self.started = True
             self.log.info('Node has been successfully started!')
@@ -223,11 +270,23 @@ class Node:
     def start_node(self):
         asyncio.ensure_future(self.start())
 
+    def handle_catchup_result(self, future):
+        try:
+            future.result()
+        except Exception as error:
+            self.log.error(f"An error occurred during catchup: {error}")
+            asyncio.ensure_future(self.stop())
+
+
     async def stop(self):
         self.log.info("!!!!!! STOPPING NODE !!!!!!")
 
         self.running = False
+
+
         await self.cancel_checking_all_queues()
+
+        await self.stop_connectivity_check()
 
         await self.network.stop()
         self.system_monitor.stop()
@@ -238,6 +297,8 @@ class Node:
         self.log.info("!!!!!! STOPPED NODE !!!!!!")
 
     async def start_new_network(self):
+        self.network.router.refresh_cred_provider_vks(vk_list=[key for key in self.bootnodes])
+
         self.log.info("Attempting to connect to all peers in constitution...")
         for vk, ip in self.bootnodes.items():
             self.log.info(f'Attempting to connect to peer "{vk[:8]}" @ {ip}')
@@ -246,18 +307,9 @@ class Node:
                 vk=vk
             )
 
-        await self.network.connected_to_all_peers()
-
-        self.start_validation_queue_task()
-        self.start_main_processing_queue_task()
-
     async def join_existing_network(self):
-        self.main_processing_queue.disable_append()
-        self.validation_queue.disable_append()
-
         self.network.router.cred_provider.open_messages()
 
-        startup_tx_processor_vk = None
         network_map = {}
         for vk, ip in self.bootnodes.items():
             network_map = await self.network.get_network_map_from_bootnode(vk=vk, ip=ip)
@@ -266,46 +318,18 @@ class Node:
                 continue
             else:
                 self.log.info(f'Received network map: {network_map}')
-                startup_tx_processor_vk = vk
                 break
 
         assert network_map, "Failed to get a network map from any bootnode."
 
-        for node in self.network.network_map_to_node_list(network_map=network_map):
+        peer_list = self.network.network_map_to_node_list(network_map=network_map)
+        vk_list = [peer.get('vk') for peer in peer_list]
+
+        self.network.router.refresh_cred_provider_vks(vk_list=vk_list)
+
+        for node in peer_list:
             self.network.connect_peer(ip=node['ip'], vk=node['vk'])
 
-        await self.network.connected_to_all_peers()
-
-        highest_peer_block = self.network.get_highest_peer_block()
-        needs_catchup = highest_peer_block > 0 and self.get_current_height() < highest_peer_block
-        if needs_catchup:
-            # Run an initial catchup to get as many blocks as we can
-            await self.catchup()
-
-            # Run a continuous catchup to get any blocks that have been minted during the initial catchup.
-            await self.catchup_continuous()
-
-            # Start the validation queue so we start accepting block results
-            self.validation_queue.enable_append()
-
-            self.send_startup_transaction(startup_tx_processor_vk)
-
-            # Now start catching up to minting of blocks from validation queue
-            await self.catchup_to_validation_queue()
-
-        else:
-            self.send_startup_transaction(startup_tx_processor_vk)
-
-        self.network.refresh_approved_peers_in_cred_provider()
-        self.network.router.cred_provider.secure_messages()
-
-        # Start the validation queue so we start accepting block results
-        self.validation_queue.enable_append()
-        self.start_validation_queue_task()
-
-        # Start the processing queue
-        self.main_processing_queue.enable_append()
-        self.start_main_processing_queue_task()
 
     def send_startup_transaction(self, processor_vk):
         ip = 'lamden_webserver' if processor_vk == self.wallet.verifying_key else self.network.get_node_ip(processor_vk)
@@ -325,194 +349,6 @@ class Node:
         except Exception as e:
             self.log.error(f'An attempt to send startup transaction failed with error: {e}')
 
-    async def catchup(self):
-        # Get the current latest block stored and the latest block of the network
-        self.log.info('Running catchup.')
-
-        catchup_peers = self.network.get_all_connected_peers()
-
-        if len(catchup_peers) == 0:
-            raise ValueError(f'No peers available for catchup!')
-        else:
-            highest_peer_block = self.network.get_highest_peer_block()
-            await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
-
-    async def catchup_continuous(self, block_threshold: int = 300000000000):
-        '''
-            This will run till the node has caught up within the block_threshold number of blocks by time.
-            Default is a block number difference of 300000000000 which equates to 5 minutes.
-            After each iteration of catchup_blocks we will see the new block height of each peer and if we are not
-            within the supplied block_threshold we run it again.
-        '''
-        await self.network.refresh_peer_block_info()
-        highest_peer_block = self.network.get_highest_peer_block()
-
-        while (highest_peer_block - self.get_current_height()) > block_threshold:
-            await self.network.refresh_peer_block_info()
-            catchup_peers = self.network.get_all_connected_peers()
-
-            if len(catchup_peers) == 0:
-                raise ValueError('No peers available for catchup!')
-            else:
-                highest_peer_block = self.network.get_highest_peer_block()
-                await self.catchup_get_blocks(catchup_peers=catchup_peers, catchup_stop_block=highest_peer_block)
-
-
-    async def catchup_to_validation_queue(self) -> None:
-        '''
-            This will get blocks upto the point that we don't need them because we are producing them from the
-            validation queue
-        '''
-
-        self.log.info('Waiting for new block to be minted from validation queue.')
-
-        # This will hold the blocks we mint off the validation queue so we can apply their state after catchup
-        self.hold_blocks = True
-
-        while self.validation_queue.last_hlc_in_consensus == "":
-            await self.validation_queue.process_next()
-            await asyncio.sleep(1)
-
-        self.held_blocks.sort(key=lambda x: x.get('number'))
-        first_block_minted = self.held_blocks[0]
-        catchup_stop_block = int(first_block_minted.get('number'))
-
-        # if we have the block right before the block we just minted then return
-
-        catchup_peers = self.network.get_all_connected_peers()
-        catchup_peers_with_block = []
-        while len(catchup_peers_with_block) == 0:
-            await self.network.refresh_peer_block_info()
-            catchup_peers_with_block = list(filter(lambda x: x.latest_block_number >= int(first_block_minted.get('number')), catchup_peers))
-            await asyncio.sleep(10)
-
-            self.log.warning(f"No peers at block {catchup_stop_block}. Waiting...")
-
-
-        await self.catchup_get_blocks(
-            catchup_peers=catchup_peers_with_block,
-            catchup_stop_block=catchup_stop_block - 1
-        )
-
-        if len(self.held_blocks) > 0:
-            new_block = self.held_blocks.pop(0)
-
-            if int(new_block.get('number')) > self.get_current_height():
-                # Apply state to DB
-                self.apply_state_changes_from_block(block=new_block)
-
-                # change to previous hash and recalculate the hash
-                self.blocks.set_previous_hash(block=new_block)
-                new_block = recalc_block_info(block=new_block)
-
-                # Store the block in the block db
-                encoded_block = encode(new_block)
-                encoded_block = json.loads(encoded_block)
-
-                self.blocks.store_block(block=deepcopy(encoded_block))
-
-                # Set the current block hash and height
-                self.update_block_db(block=encoded_block)
-
-                latest_block = self.get_current_height()
-                latest_block_hash = self.get_current_hash()
-
-                if int(new_block.get('number')) != 0:
-                    # Save Nonce from block
-                    self.save_nonce_from_block(block=new_block)
-
-                try:
-                    # create New Block Event
-                    self.event_writer.write_event(Event(
-                        topics=[NEW_BLOCK_EVENT],
-                        data=encoded_block
-                    ))
-                except Exception as e:
-                    self.log.error(f'Failed to write "{NEW_BLOCK_EVENT}" event: {e}')
-
-        self.hold_blocks = False
-        self.held_blocks = []
-
-    async def catchup_get_blocks(self, catchup_peers: List[Peer], catchup_stop_block: int):
-        run_catchup = True
-
-        while run_catchup:
-            catchup_peers = list(filter(lambda x: x.latest_block_number >= catchup_stop_block, catchup_peers))
-            block_catchup_peers = copy.copy(catchup_peers)
-
-            while len(block_catchup_peers) > 0:
-                def remove_peer(block_catchup_peers, peer_vk):
-                    return list(filter(lambda x: x.server_vk != peer_vk, block_catchup_peers))
-
-                current_height = self.get_current_height()
-                catchup_peer = random.choice(block_catchup_peers)
-
-                response = await catchup_peer.get_next_block(block_num=current_height)
-
-                if not isinstance(response, dict):
-                    block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
-                    continue
-
-                new_block = response.get("block_info")
-                #self.log.info(new_block)
-
-                if new_block is None or not verify_block(block=new_block):
-                    self.log.warning(f'Block received from peer {catchup_peer.server_vk} did not pass verify.')
-                    verify_block(block=new_block)
-                    block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
-                    continue
-
-                if current_height > 0:
-                    current_block = self.blocks.get_block(v=self.get_current_height())
-                    expected_previous_block_hash = current_block.get('hash')
-                    previous_block_hash = new_block.get('previous')
-                    if expected_previous_block_hash != previous_block_hash:
-                        block_catchup_peers = remove_peer(block_catchup_peers, catchup_peer.server_vk)
-                        self.log.warning(
-                            f'Block received from peer {catchup_peer.server_vk} was out of order.  '
-                            + f'Expected previous block hash of {expected_previous_block_hash} but got {previous_block_hash}.'
-                        )
-                        continue
-
-                new_block_number = int(new_block.get('number'))
-
-                has_block = self.blocks.get_block(v=int(new_block_number))
-
-                if has_block is None:
-                    if len(self.held_blocks) > 0 and self.held_blocks[0].get('number') == new_block_number:
-                        pass
-                    else:
-                        # Apply state to DB
-                        self.apply_state_changes_from_block(block=new_block)
-
-                        # Store the block in the block db
-                        encoded_block = encode(new_block)
-                        encoded_block = json.loads(encoded_block)
-
-                        self.blocks.store_block(block=deepcopy(encoded_block))
-
-                        # Set the current block hash and height
-                        self.update_block_db(block=encoded_block)
-
-                        if new_block_number != 0:
-                            # Save Nonce from block
-                            self.save_nonce_from_block(block=new_block)
-
-                        try:
-                            # create New Block Event
-                            self.event_writer.write_event(Event(
-                                topics=[NEW_BLOCK_EVENT],
-                                data=encoded_block
-                            ))
-                        except Exception as e:
-                            self.log.error(f'Failed to write "{NEW_BLOCK_EVENT}" event: {e}')
-
-                # Exit from loop when the block receive is greater than the catchup_stop_block
-                if new_block_number >= catchup_stop_block:
-                    return
-
-            if len(block_catchup_peers) == 0:
-                raise ConnectionError("Could not catchup from network.")
 
     def save_nonce_from_block(self, block: dict):
         payload = block['processed']['transaction']['payload']
@@ -544,7 +380,11 @@ class Node:
 
     async def cancel_checking_all_queues(self):
         self.log.info("!!!!!! STOPPING ALL QUEUES !!!!!!")
+
         self.log.debug(f'NODE RUNNING: {self.running}')
+
+        await self.stop_connectivity_check()
+        self.log.info("!!!!!! check_tx_queue STOPPED !!!!!!")
 
         if isinstance(self.main_processing_queue, TxProcessingQueue):
             self.main_processing_queue.stop()
@@ -559,6 +399,8 @@ class Node:
                 await asyncio.sleep(0.1)
 
         self.log.info("!!!!!! validation_queue STOPPED !!!!!!")
+
+        self.log.info("!!!!!! STOPPED ALL QUEUES !!!!!!")
 
     async def pause_main_processing_queue(self):
         self.log.info("!!!!!! PAUSING main_processing_queue !!!!!!")
@@ -609,6 +451,20 @@ class Node:
             self.debug_loop_counter['file_check'] = self.debug_loop_counter['file_check'] + 1
             await asyncio.sleep(0.1)
 
+    async def stop_check_tx_queue_task(self):
+        if self.check_for_tx_task is not None:
+            self.check_for_tx_task.cancel()
+
+            try:
+                await asyncio.gather(self.check_for_tx_task, return_exceptions=True)
+            except asyncio.CancelledError:
+                print("connectivity_check_task was cancelled")
+            except Exception as e:
+                print(f"Unexpected exception: {e}")
+
+        self.check_for_tx_task = None
+
+
     async def connectivity_check(self):
         while self.running:
             await asyncio.sleep(self.network_connectivity_check_timeout)
@@ -624,6 +480,19 @@ class Node:
                     break
                 except Exception as err:
                     self.log.error(f'Failed to write "network_error" event: {err}')
+
+    async def stop_connectivity_check(self):
+        if self.connectivity_check_task is not None:
+            self.connectivity_check_task.cancel()
+
+            try:
+                await asyncio.gather(self.connectivity_check_task, return_exceptions=True)
+            except asyncio.CancelledError:
+                print("connectivity_check_task was cancelled")
+            except Exception as e:
+                print(f"Unexpected exception: {e}")
+
+        self.connectivity_check_task = None
 
     async def check_main_processing_queue(self):
         self.main_processing_queue.start()
@@ -951,9 +820,10 @@ class Node:
 
     def hard_apply_block_finish(self, block: dict):
         state_changes = self.get_state_changes_from_block(block=block)
-        self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
-        if int(block.get('number')) != 0:
+        if not self.blocks.is_genesis_block(block=block):
+            self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
             self.check_upgrade(state_changes=state_changes)
+
         gc.collect()
 
     def check_upgrade(self, state_changes: list):
@@ -1268,7 +1138,7 @@ class Node:
     def get_block_by_number(self, block_number: str) -> dict:
         return self.blocks.get_block(v=int(block_number))
 
-    def store_genesis_block(self, genesis_block: dict) -> bool:
+    async def store_genesis_block(self, genesis_block: dict) -> bool:
         self.log.info('Processing Genesis Block.')
 
         if self.blocks.total_blocks() > 0:
@@ -1278,8 +1148,7 @@ class Node:
 
         self.driver.clear_pending_state()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.hard_apply_block(block=genesis_block))
+        await self.hard_apply_block(block=genesis_block)
 
     def should_process(self, block):
         try:
@@ -1329,3 +1198,33 @@ class Node:
 
     def check_if_already_has_consensus(self, hlc_timestamp):
         return self.validation_queue.hlc_has_consensus(hlc_timestamp=hlc_timestamp)
+
+    def print_debug_info(self):
+        # Get the process information
+        process = psutil.Process(os.getpid())
+        process_info = {
+            "pid": process.pid,
+            "name": process.name(),
+            "exe": process.exe(),
+            "create_time": process.create_time(),
+            "status": process.status(),
+            "memory_info": process.memory_info(),
+            "cpu_percent": process.cpu_percent(),
+        }
+
+        # Get the thread information
+        thread = threading.current_thread()
+        thread_info = {
+            "tid": thread.ident,
+            "name": thread.name,
+            "is_alive": thread.is_alive(),
+        }
+
+        # Print the process and thread information
+        self.log.debug("Process Information:")
+        for key, value in process_info.items():
+            self.log.debug(f"{key}: {value}")
+
+        self.log.debug("\nThread Information:")
+        for key, value in thread_info.items():
+            self.log.debug(f"{key}: {value}")

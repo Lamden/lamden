@@ -3,7 +3,7 @@ import zmq.asyncio
 import asyncio
 from lamden.logger.base import get_logger
 from contracting.db.encoder import encode
-import json
+import threading
 
 EXCEPTION_NO_ADDRESS_INFO = "Publisher has no address information."
 
@@ -17,6 +17,8 @@ TOPIC_PEER_SHUTDOWN = "peer_shutdown"
 
 class Publisher():
     def __init__(self, ctx: zmq.Context = None, network_ip: str = None):
+        self.current_thread = threading.current_thread()
+
         # Configure the listening socket
         self.network_ip = network_ip
         self.address = None
@@ -57,10 +59,11 @@ class Publisher():
     def log(self, log_type: str, message: str) -> None:
         if self.network_ip:
             named_message = f'[PUBLISHER] {message}'
+            logger_name = f'[{self.current_thread.name}][{self.network_ip}]'
         else:
             named_message = message
+            logger_name = 'PUBLISHER'
 
-        logger_name = self.network_ip or 'PUBLISHER'
         logger = get_logger(logger_name)
         if log_type == 'info':
             logger.info(named_message)

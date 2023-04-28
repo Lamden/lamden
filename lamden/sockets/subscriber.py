@@ -1,6 +1,7 @@
 import asyncio
 import zmq
 import zmq.asyncio
+import threading
 
 from lamden.logger.base import get_logger
 
@@ -12,6 +13,7 @@ EXCEPTION_NO_SOCKET = "No socket created."
 class Subscriber():
     def __init__(self, address: str, callback: Callable = None, topics: list=[], ctx: zmq.Context = None,
                 local_ip: str = None, local: bool = False):
+        self.current_thread = threading.current_thread()
 
         self.running = False
         self.checking = False
@@ -56,7 +58,7 @@ class Subscriber():
     def log(self, log_type: str, message: str) -> None:
         if self.local_ip:
             named_message = f'[SUBSCRIBER] {message}'
-            logger = get_logger(f'{self.local_ip}')
+            logger = get_logger(f'[{self.current_thread.name}][{self.local_ip}]')
         else:
             named_message = message
             logger = get_logger(f'SUBSCRIBER')

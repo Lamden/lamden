@@ -11,7 +11,8 @@ import random
 class TestDAO(TestCase):
     def setUp(self):
         self.network = LocalNodeNetwork(
-            num_of_masternodes=5
+            num_of_masternodes=5,
+            network_await_connect_all_timeout=2
         )
 
         self.loop = asyncio.get_event_loop()

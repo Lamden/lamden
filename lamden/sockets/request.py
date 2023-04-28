@@ -1,4 +1,5 @@
 import asyncio
+import threading
 
 import zmq
 import zmq.asyncio
@@ -32,6 +33,8 @@ class Result:
 class Request():
     def __init__(self, to_address: str, server_curve_vk: int = None, local_wallet: Wallet = None, ctx: zmq.Context = None,
                  local_ip: str = None, reconnect_callback: Callable = None):
+        self.current_thread = threading.current_thread()
+
         self.ctx = ctx or zmq.asyncio.Context().instance()
 
         self.to_address = to_address
@@ -62,7 +65,7 @@ class Request():
     def log(self, log_type: str, message: str) -> None:
         if self.local_ip:
             named_message = f'[REQUEST] {message}'
-            logger = get_logger(self.local_ip)
+            logger = get_logger(f'[{self.current_thread.name}][{self.local_ip}]')
         else:
             named_message = message
             logger = get_logger(f'REQUEST')

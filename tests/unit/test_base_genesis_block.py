@@ -22,6 +22,9 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 class TestBaseGenesisBlock(TestCase):
     def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
         self.current_path = Path.cwd()
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
@@ -37,12 +40,17 @@ class TestBaseGenesisBlock(TestCase):
 
     def tearDown(self):
         if self.node:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self.node.stop())
+            self.loop.run_until_complete(self.node.stop())
 
             del self.node
         if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
+
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
 
     def create_node_instance(self, genesis=None) -> Node:
         node_wallet = Wallet()
@@ -98,8 +106,7 @@ class TestBaseGenesisBlock(TestCase):
         tasks = asyncio.gather(
             asyncio.sleep(delay)
         )
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(tasks)
+        self.loop.run_until_complete(tasks)
 
     def test_can_create_node_instance(self):
         self.node = self.create_node_instance()
@@ -107,6 +114,10 @@ class TestBaseGenesisBlock(TestCase):
 
     def test_processes_genesis_info_into_state(self):
         self.node = self.create_node_instance(genesis=self.genesis_block)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete( self.node.store_genesis_block(genesis_block=self.node.genesis_block))
+
         genesis_state = self.genesis_block.get('genesis')
 
         for state_change in genesis_state:
@@ -116,14 +127,14 @@ class TestBaseGenesisBlock(TestCase):
         self.node = self.create_node_instance()
         genesis_state = self.genesis_block.get('genesis')
 
-        self.node.store_genesis_block(genesis_block=self.genesis_block)
+        self.loop.run_until_complete(self.node.store_genesis_block(genesis_block=self.genesis_block))
         for state_change in genesis_state:
             self.assertIsNotNone(self.node.driver.get(state_change.get('key')))
 
     def test_store_genesis_block(self):
         self.node = self.create_node_instance()
 
-        self.node.store_genesis_block(genesis_block=self.genesis_block)
+        self.loop.run_until_complete(self.node.store_genesis_block(genesis_block=self.genesis_block))
 
         self.assertIsNotNone(self.node.blocks.get_block(0))
 
@@ -132,7 +143,7 @@ class TestBaseGenesisBlock(TestCase):
 
         blocks = MockBlocks(num_of_blocks=1)
         block = blocks.get_block(num=0)
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.hard_apply_block(block=block))
 
-        self.assertFalse(self.node.store_genesis_block(genesis_block=self.genesis_block))
+        self.loop.run_until_complete(self.node.hard_apply_block(block=block))
+        res = self.loop.run_until_complete(self.node.store_genesis_block(genesis_block=self.genesis_block))
+        self.assertFalse(res)

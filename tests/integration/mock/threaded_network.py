@@ -5,10 +5,12 @@ from lamden.network import Network
 from lamden.crypto.wallet import Wallet
 
 class ThreadedNetwork(threading.Thread):
-    def __init__(self, driver, socket_ports: dict, wallet: Wallet = None ):
+    def __init__(self, driver, socket_ports: dict, wallet: Wallet = None, network_await_connect_all_timeout=None ):
         threading.Thread.__init__(self)
 
         self.daemon = True
+
+        self.network_await_connect_all_timeout = network_await_connect_all_timeout
 
         self.driver = driver
         self.socket_ports = socket_ports
@@ -41,6 +43,9 @@ class ThreadedNetwork(threading.Thread):
             driver=self.driver,
             local=True
         )
+
+        if isinstance(self.network_await_connect_all_timeout, int):
+            self.n.connect_to_all_peers_wait_sec = self.network_await_connect_all_timeout
 
         self.n.start()
 

@@ -1,5 +1,5 @@
 import json
-import logging
+import threading
 
 from zmq.auth.asyncio import AsyncioAuthenticator
 import zmq
@@ -24,6 +24,8 @@ EXCEPTION_MSG_NOT_STRING = "msg_str is not type str."
 
 class CredentialsProvider(object):
     def __init__(self, network_ip: str = None):
+        self.current_thread = threading.current_thread()
+
         self.approved_keys = {}
         self.network_ip = network_ip
         self.accept_all = False
@@ -42,12 +44,13 @@ class CredentialsProvider(object):
     def log(self, log_type: str, message: str) -> None:
         if self.network_ip:
             named_message = f'[CREDENTIALS PROVIDER] {message}'
-            print(f'[{self.network_ip}]{named_message}\n')
+            # print(f'[{self.network_ip}]{named_message}\n')
+            logger_name = f'[{self.current_thread.name}][{self.network_ip}]'
         else:
             named_message = message
-            print(f'[CREDENTIALS PROVIDER] {named_message}\n')
+            # print(f'[CREDENTIALS PROVIDER] {named_message}\n')
+            logger_name = 'CREDENTIALS PROVIDER'
 
-        logger_name = self.network_ip or 'CREDENTIALS PROVIDER'
         logger = get_logger(logger_name)
         if log_type == 'info':
             logger.info(named_message)
@@ -76,6 +79,8 @@ class CredentialsProvider(object):
 class Router():
     def __init__(self, wallet: Wallet = Wallet(), message_callback: Callable = None, ctx: zmq.Context = None,
                  network_ip: str = None):
+        self.current_thread = threading.current_thread()
+
         self.wallet = wallet
         self.message_callback = message_callback
 
@@ -142,10 +147,10 @@ class Router():
     def log(self, log_type: str, message: str) -> None:
         if self.network_ip:
             named_message = f'[ROUTER] {message}'
+            logger_name = f'[{self.current_thread.name}][{self.network_ip}]'
         else:
             named_message = message
-
-        logger_name = self.network_ip or 'ROUTER'
+            logger_name = 'ROUTER'
 
         logger = get_logger(logger_name)
         if log_type == 'info':

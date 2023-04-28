@@ -387,7 +387,18 @@ class MockBlocks:
         k = list(self.blocks.keys())
         k.sort()
         try:
-            return int(self.blocks.get(k[-1]))
+            last_item = k[-1]
+            block = self.blocks.get(last_item)
+            return block
+        except IndexError:
+            return None
+
+    @property
+    def latest_block_number(self):
+        k = list(self.blocks.keys())
+        k.sort()
+        try:
+            return k[-1]
         except IndexError:
             return None
 

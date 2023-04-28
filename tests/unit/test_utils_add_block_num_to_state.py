@@ -9,7 +9,7 @@ import shutil
 from unittest import TestCase
 
 
-class TestMigrateBlocksDir(TestCase):
+class TestAddBlockNum(TestCase):
     def setUp(self):
         self.test_dir = './.lamden'
         self.test_path = os.path.abspath(self.test_dir)
