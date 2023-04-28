@@ -12,6 +12,7 @@ from contracting.execution.executor import Executor
 from lamden import rewards
 from lamden.contracts import sync
 import os, inspect
+from copy import deepcopy
 
 def generate_blocks(number_of_blocks):
     previous_hash = '0' * 64
@@ -163,11 +164,20 @@ def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
     else:
+        hlc_clock = HLC_Clock()
         class_path = os.path.abspath(inspect.getfile(inspect.currentframe()))
         driver = driver or ContractDriver()
         client = ContractingClient(driver=driver, submission_filename=os.path.dirname(class_path) + '/submission.py')
 
         sync.submit_from_genesis_json_file(client=client)
+
+        # Hard apply genesis block
+        temp_hlc = hlc_clock.get_new_hlc_timestamp()
+
+        writes = deepcopy(driver.pending_writes)
+        driver.soft_apply(hcl=temp_hlc)
+        driver.hard_apply_one(hlc=temp_hlc)
+        driver.bust_cache(writes=writes)
 
         main_processing_queue = TxProcessingQueue(
             testing=True,
@@ -175,7 +185,7 @@ def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=
             driver=driver,
             client=client,
             wallet=node_wallet or Wallet(),
-            hlc_clock=HLC_Clock(),
+            hlc_clock=hlc_clock,
             processing_delay=lambda: 0,
             get_last_hlc_in_consensus=lambda: "0",
             stop_node=lambda: True,

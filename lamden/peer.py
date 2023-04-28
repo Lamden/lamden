@@ -12,6 +12,7 @@ from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTD
 
 from typing import Callable
 from urllib.parse import urlparse
+import threading
 
 from contracting.db.encoder import decode, encode
 
@@ -22,12 +23,15 @@ ACTION_HELLO = "hello"
 ACTION_GET_LATEST_BLOCK = 'get_latest_block'
 ACTION_GET_BLOCK = "get_block"
 ACTION_GET_NEXT_BLOCK = "get_next_block"
+ACTION_GET_PREV_BLOCK = "get_previous_block"
 ACTION_GET_NETWORK_MAP = "get_network_map"
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
                  services: Callable = None, connected_callback: Callable = None, socket_ports: dict = None,
                  ctx: zmq.Context = None, local: bool = False):
+
+        self.current_thread = threading.current_thread()
 
         self.ctx = ctx
         self.server_vk = server_vk
@@ -140,7 +144,7 @@ class Peer:
     def log(self, log_type: str, message: str) -> None:
         named_message = f'[PEER] {message}'
 
-        logger = get_logger(f'{self.get_network_ip()}')
+        logger = get_logger(f'[{self.current_thread.name}]{self.get_network_ip()}')
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
@@ -377,13 +381,13 @@ class Peer:
 
     async def ping(self) -> dict:
         msg_obj = {'action': ACTION_PING}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('ping'), attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_PING), attempts=1)
         return msg_json
 
     async def hello(self) -> (dict, None):
         challenge = create_challenge()
         msg_obj = {'action': ACTION_HELLO, 'ip': self.get_network_ip(), 'challenge': challenge}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('hello'), attempts=1)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_HELLO), attempts=1)
         if msg_json:
             msg_json['challenge'] = challenge
         return msg_json
@@ -409,17 +413,22 @@ class Peer:
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):
         msg_obj = {'action': ACTION_GET_BLOCK, 'block_num': int(block_num) if block_num is not None else block_num, 'hlc_timestamp': hlc_timestamp}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get('get_block'))
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get(ACTION_GET_BLOCK))
         return msg_json
 
     async def get_next_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NEXT_BLOCK, 'block_num': int(block_num)}
-        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get('get_next_block'))
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get(ACTION_GET_NEXT_BLOCK))
+        return msg_json
+
+    async def get_previous_block(self, block_num: int) -> (dict, None):
+        msg_obj = {'action': ACTION_GET_PREV_BLOCK, 'block_num': int(block_num)}
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get(ACTION_GET_PREV_BLOCK))
         return msg_json
 
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get('get_network_map'), attempts=3)
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_GET_NETWORK_MAP), attempts=3)
         return msg_json
 
     async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):

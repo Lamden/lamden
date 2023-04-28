@@ -797,7 +797,7 @@ class TestNetwork(TestCase):
 
     def test_METHOD_connected_to_all_peers__task_completes_when_all_peers_are_connected(self):
         network_1 = self.create_network()
-
+        network_1.connect_to_all_peers_wait_sec = 1
         peer_vk_1 = Wallet().verifying_key
         peer_vk_2 = Wallet().verifying_key
 
@@ -812,7 +812,7 @@ class TestNetwork(TestCase):
         for peer in network_1.peers.values():
             peer.connected = True
 
-        self.async_sleep(10)
+        self.async_sleep(2)
 
         self.assertTrue(task.done())
 

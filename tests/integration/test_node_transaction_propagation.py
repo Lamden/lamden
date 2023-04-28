@@ -43,8 +43,10 @@ class TestNewNodeCatchup(TestCase):
         loop.run_until_complete(tasks)
 
     def test_masternode_can_receive_tx_and_send_to_other_nodes(self):
+        self.network.wait_for_all_connected_timeout_sec = 5
         self.network.create_new_network(
-            num_of_masternodes=4
+            num_of_masternodes=4,
+            network_await_connect_all_timeout=1
         )
 
         self.network.pause_all_queues()
@@ -61,7 +63,8 @@ class TestNewNodeCatchup(TestCase):
 
     def test_node_network_can_propagate_transaction_results(self):
         self.network.create_new_network(
-            num_of_masternodes=3
+            num_of_masternodes=3,
+            network_await_connect_all_timeout=2
         )
 
         # wait for all publishers to register subscribers

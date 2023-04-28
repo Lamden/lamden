@@ -3,12 +3,13 @@ import zmq.asyncio
 import asyncio
 import random
 import uvloop
+import threading
 
 from typing import List
 
 from lamden.utils import hlc
 from lamden.utils.retrieve_ips import IPFetcher
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP
 
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
@@ -59,6 +60,7 @@ class Network:
         # the network
 
         # Local is used for testing when you want to have multiple nodes running on one machine.
+        self.current_thread = threading.current_thread()
 
         self.wallet = wallet
         self.driver = driver
@@ -75,6 +77,8 @@ class Network:
                 'publisher': 19080,
                 'webserver': 18080
             })
+
+        self.connect_to_all_peers_wait_sec = 30
 
         self.peers = {}
         self.subscriptions = []
@@ -103,6 +107,7 @@ class Network:
         self.setup_router()
 
         self.running = False
+        self.stopping = False
 
     @property
     def is_running(self):
@@ -147,9 +152,11 @@ class Network:
         return list(self.peers.values())
 
     def log(self, log_type: str, message: str) -> None:
+        thread = threading.current_thread()
+
         named_message = f'[NETWORK] {message}'
 
-        logger = get_logger(f'{self.external_address}')
+        logger = get_logger(f'[{self.current_thread.name}]{self.external_address}')
         if log_type == 'info':
             logger.info(named_message)
         if log_type == 'error':
@@ -195,13 +202,17 @@ class Network:
         self.router.set_address(port=self.socket_ports.get('router'))
 
     def start(self) -> None:
+        self.log('info', "Starting Node Network...")
         self.publisher.start()
         self.router.run_curve_server()
+        self.stopping = False
         self.running = True
 
     async def starting(self) -> None:
         while not self.publisher.is_running or not self.router.is_running:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.01)
+
+        self.log('info', "Started Node Network.")
 
     async def get_network_map_from_bootnode(self, ip: str, vk: str):
         peer = self.create_peer(ip=ip, vk=vk)
@@ -266,6 +277,7 @@ class Network:
         self.remove_peer(peer_vk=peer_vk)
 
     def add_peer(self, ip: str, peer_vk: str):
+        self.log('info', f"Network is {self.running}")
         self.log('info', f'Adding new peer "{peer_vk[:8]}" @ {ip}')
         peer = self.create_peer(ip=ip, vk=peer_vk)
         self.peers[peer_vk] = peer
@@ -371,7 +383,11 @@ class Network:
 
         await peer.stop()
 
-        self.delete_peer(peer_vk=peer_vk)
+        try:
+            self.delete_peer(peer_vk=peer_vk)
+        except KeyError:
+            self.log('info', f'Peer already deleted.')
+
         self.log('info', f'Stopped and removed peer: "{peer_vk}"')
 
     def start_peer(self, vk: str) -> None:
@@ -413,8 +429,10 @@ class Network:
     async def connected_to_all_peers(self) -> bool:
         self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
 
-        while self.num_of_peers_connected() < self.num_of_peers():
-            await asyncio.sleep(1)
+        while (self.num_of_peers_connected() < self.num_of_peers()):
+            if self.stopping:
+                self.log('warning', f'Aborting Connecting to all peers, network shutting down.')
+                return
 
             peers_connected = list()
             peers_not_connected = list()
@@ -428,7 +446,11 @@ class Network:
             self.log('info', f'Connected to: {peers_connected}')
             self.log('warning', f'Awaiting connection to: {peers_not_connected}')
 
+            self.log('info', f'Sleeping for {self.connect_to_all_peers_wait_sec} seconds before trying again.!')
+            await asyncio.sleep(self.connect_to_all_peers_wait_sec)
+
         self.log('info', f'Connected to all {self.num_of_peers()} peers!')
+        return True
 
     def make_network_map(self) -> dict:
         return {
@@ -497,7 +519,7 @@ class Network:
     async def router_callback(self, ident_vk_bytes: bytes, ident_vk_string: str, msg: str) -> None:
         try:
             msg = decode(msg)
-            action = msg.get('action')
+            action: str = msg.get('action')
         except Exception as err:
             self.log('error', str(err))
             return
@@ -536,39 +558,36 @@ class Network:
             )
             self.log('info', f'Sent back latest block info: {latest_block_info}')
 
-        if action == ACTION_GET_BLOCK:
+        if action == ACTION_GET_NEXT_BLOCK or action == ACTION_GET_PREV_BLOCK or action == ACTION_GET_BLOCK:
             block_num = msg.get('block_num', None)
             hlc_timestamp = msg.get('hlc_timestamp', None)
+
             if isinstance(block_num, int) or hlc.is_hcl_timestamp(hlc_timestamp):
-                block_info = self.block_storage.get_block(v=block_num or hlc_timestamp)
-                block_info = encode(block_info)
+
+                if action == ACTION_GET_NEXT_BLOCK:
+                    block_info = self.block_storage.get_next_block(v=block_num or hlc_timestamp)
+                if action == ACTION_GET_PREV_BLOCK:
+                    block_info = self.block_storage.get_previous_block(v=block_num or hlc_timestamp)
+                if action == ACTION_GET_BLOCK:
+                    block_info = self.block_storage.get_block(v=block_num or hlc_timestamp)
+
+                if block_info is None:
+                    self.log('warning', f'NO {action}: sent NONE to {ident_vk_string[0:8]}')
+                else:
+                    if self.block_storage.is_genesis_block(block=block_info):
+                        self.log('warning', f'Returning Genesis Block with no genesis state to {ident_vk_string[0:8]}')
+                        block_info['genesis'] = []
+
+                    block_num = block_info.get('number')
+                    self.log('info', f'{action}: sent block num {block_num} to {ident_vk_string[0:8]}')
+
+                encoded_block_info = encode(block_info)
 
                 self.router.send_msg(
                     ident_vk_bytes=ident_vk_bytes,
                     to_vk=ident_vk_string,
-                    msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_BLOCK, block_info))
+                    msg_str=('{"response": "%s", "block_info": %s}' % (action, encoded_block_info))
                 )
-
-        if action == ACTION_GET_NEXT_BLOCK:
-            block_num = msg.get('block_num')
-            hlc_timestamp = msg.get('hlc_timestamp')
-            v = block_num
-            if not isinstance(block_num, int):
-                if hlc.is_hcl_timestamp(hlc_timestamp):
-                    v = hlc_timestamp
-                else:
-                    return
-
-            block_info = self.block_storage.get_next_block(v=v)
-            block_info = encode(block_info)
-
-            self.router.send_msg(
-                ident_vk_bytes=ident_vk_bytes,
-                to_vk=ident_vk_string,
-                msg_str=('{"response": "%s", "block_info": %s}' % (ACTION_GET_NEXT_BLOCK, block_info))
-            )
-
-            self.log('warning', f'sent block num {block_num}')
 
         if action == ACTION_GET_NETWORK_MAP:
             node_list = encode(self.make_network_map())
@@ -584,6 +603,7 @@ class Network:
     async def stop(self):
         self.publisher.announce_shutdown(vk=self.wallet.verifying_key)
         self.running = False
+        self.stopping = True
 
         tasks = []
         for peer in self.peers.values():
@@ -596,5 +616,4 @@ class Network:
         await self.router.stop()
 
         self.ctx.destroy(linger=0)
-
         self.log('info', 'Stopped.')

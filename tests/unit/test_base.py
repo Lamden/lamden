@@ -11,6 +11,7 @@ import asyncio
 import json
 import shutil
 import uvloop
+import time
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -56,7 +57,7 @@ class TestNode(TestCase):
         self.assertTrue(new_node.system_monitor.running)
 
     def test_start_join_existing_network_bootnode_exists(self):
-        new_node = self.local_node_network.add_masternode()
+        new_node = self.local_node_network.join_masternode()
         while not new_node.node_started:
             self.await_async_process(asyncio.sleep, 0.1)
 
@@ -84,7 +85,8 @@ class TestNode(TestCase):
     def test_start_join_existing_network_bootnode_is_not_reachable(self):
         self.await_async_process(self.local_node_network.stop_all_nodes)
 
-        new_node = self.local_node_network.add_masternode(reconnect_attempts=1)
+        new_node = self.local_node_network.join_masternode(reconnect_attempts=1)
+
         while new_node.node_is_running:
             self.await_async_process(asyncio.sleep, 0.1)
 
@@ -310,7 +312,7 @@ class TestNode(TestCase):
         self.assertFalse(self.node.system_monitor.running)
 
     def test_check_peers_stops_peer_if_kicked_out(self):
-        other_node = self.local_node_network.add_masternode()
+        other_node = self.local_node_network.join_masternode()
 
         self.await_async_process(asyncio.sleep, 1)
         self.assertEqual(self.node.network.num_of_peers(), 1)
@@ -342,7 +344,7 @@ class TestNode(TestCase):
             hlc_timestamp=processing_results.get('hlc_timestamap')
         )
 
-        self.await_async_process(asyncio.sleep, 3)
+        self.await_async_process(asyncio.sleep, 5)
 
         # node
         self.assertEqual(self.node.network.num_of_peers(), 0)
@@ -352,9 +354,15 @@ class TestNode(TestCase):
         self.assertTrue(self.node.validation_queue.running)
         self.assertTrue(self.node.system_monitor.running)
 
+        started_check = time.time()
+        while other_node.node_is_running:
+            self.assertLess(time.time() - started_check, 10, msg="Hit timeout waiting for network to start.")
+            self.await_async_process(asyncio.sleep, 0.5)
+
         # other_node
         self.assertFalse(other_node.node_is_running)
         self.assertFalse(other_node.network.running)
+        print("[TEST CASE] Checking self.node.main_processing_queue.running")
         self.assertFalse(other_node.main_processing_queue.running)
         self.assertFalse(other_node.validation_queue.running)
         self.assertFalse(other_node.system_monitor.running)

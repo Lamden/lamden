@@ -23,7 +23,8 @@ MOCK_FOUNDER_SK = '016afd234c03229b44cfb3a067aa6d9ec3cd050774c6eff73aeb0b40cc8e3
 
 class LocalNodeNetwork:
         def __init__(self, constitution: dict = {}, genesis_block: dict = None, bootnodes: list = [],
-                     num_of_masternodes: int = 0, delay=None):
+                     num_of_masternodes: int = 0, delay=None, network_await_connect_all_timeout=None):
+
             self.masternodes: List[Node] = []
 
             self.constitution = dict(constitution)
@@ -56,9 +57,11 @@ class LocalNodeNetwork:
                     asyncio.set_event_loop(self.loop)
 
             self.delay = delay
+            self.wait_for_all_connected_timeout_sec = 20
 
             self.create_new_network(
-                num_of_masternodes=num_of_masternodes
+                num_of_masternodes=num_of_masternodes,
+                network_await_connect_all_timeout=network_await_connect_all_timeout
             )
 
         def __del__(self):
@@ -101,7 +104,7 @@ class LocalNodeNetwork:
                 if tn.vk == vk:
                     return tn
 
-        def create_new_network(self, num_of_masternodes: int = 0):
+        def create_new_network(self, num_of_masternodes: int = 0, network_await_connect_all_timeout=None):
             if num_of_masternodes == 0:
                 return
 
@@ -129,21 +132,22 @@ class LocalNodeNetwork:
                 tn = self.create_node(
                     node_wallet=node_info[1],
                     genesis_block=genesis_block,
-                    index=node_info[2]
+                    index=node_info[2],
+                    network_await_connect_all_timeout=network_await_connect_all_timeout
                 )
+
                 tn.start()
                 while tn.node is None:
                     self.loop.run_until_complete(asyncio.sleep(0.1))
 
-            timeout = 20
             start_time = time.time()
 
             print("NETWORK ASYNC SLEEPING TO WAIT FOR ALL NODES TO START")
             while not self.all_nodes_started:
                 curr_time = time.time()
                 elapsed = curr_time - start_time
-                if elapsed > timeout:
-                    print (f"Hit {timeout} second timeout waiting for all nodes to connect!")
+                if elapsed > self.wait_for_all_connected_timeout_sec:
+                    print (f"Hit {self.wait_for_all_connected_timeout_sec} second timeout waiting for all nodes to connect!")
                     break
                 else:
                     time.sleep(1)
@@ -156,7 +160,8 @@ class LocalNodeNetwork:
             }
 
         def create_node(self, genesis_block: dict=None, index: int = None, node_wallet: Wallet = Wallet(),
-                        node: ThreadedNode = None, reconnect_attempts=60):
+                        node: ThreadedNode = None, reconnect_attempts=60, join=False,
+                        network_await_connect_all_timeout=None):
 
             node_dir = Path(f'{self.temp_network_dir}/{node_wallet.verifying_key}')
 
@@ -179,23 +184,32 @@ class LocalNodeNetwork:
                     tx_queue=tx_queue,
                     reconnect_attempts=reconnect_attempts,
                     delay=self.delay,
-                    event_writer=event_writer
+                    event_writer=event_writer,
+                    join=join,
+                    network_await_connect_all_timeout=network_await_connect_all_timeout
+
                 )
 
             self.masternodes.append(node)
 
             return node
 
-        def add_new_node_to_network(self, genesis_block: dict = None, bootnodes: ThreadedNode = None, reconnect_attempts=60, wallet=None):
+        def add_new_node_to_network(self, genesis_block: dict = None, bootnodes: ThreadedNode = None, reconnect_attempts=60,
+                                    wallet=None, join=False, network_await_connect_all_timeout=None):
             new_node_wallet = wallet if wallet is not None else Wallet()
             new_node_vk = new_node_wallet.verifying_key
 
             self.add_new_node_vk_to_network(vk=new_node_vk)
 
+            if genesis_block is None:
+                genesis_block = self.blocks.get_block_by_index(index=0)
+
             node = self.create_node(
                 node_wallet=new_node_wallet,
                 reconnect_attempts=reconnect_attempts,
-                genesis_block=genesis_block
+                genesis_block=genesis_block,
+                join=join,
+                network_await_connect_all_timeout=network_await_connect_all_timeout
             )
 
             if bootnodes:
@@ -209,8 +223,24 @@ class LocalNodeNetwork:
 
             return node
 
-        def add_masternode(self, genesis_block: dict=None, reconnect_attempts=60, wallet=None):
-            return self.add_new_node_to_network(genesis_block=genesis_block, reconnect_attempts=reconnect_attempts, wallet=wallet)
+        def add_masternode(self, genesis_block: dict=None, reconnect_attempts=60, wallet=None,
+                           network_await_connect_all_timeout=None):
+            return self.add_new_node_to_network(
+                genesis_block=genesis_block,
+                reconnect_attempts=reconnect_attempts,
+                wallet=wallet,
+                network_await_connect_all_timeout=network_await_connect_all_timeout
+            )
+
+        def join_masternode(self, genesis_block: dict=None, reconnect_attempts=60, wallet=None,
+                            network_await_connect_all_timeout=None):
+            return self.add_new_node_to_network(
+                genesis_block=genesis_block,
+                reconnect_attempts=reconnect_attempts,
+                wallet=wallet,
+                join=True,
+                network_await_connect_all_timeout=network_await_connect_all_timeout
+            )
 
         def add_new_node_vk_to_network(self, vk: str):
             node_vks = [tn.vk for tn in self.all_nodes]
@@ -454,6 +484,11 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.create_and_start_threaded_node(node_wallet=wallet_del_2, genesis_block=genesis_block)
 
         self.assertEqual(4, self.network.num_of_nodes)
+
+        started_check = time.time()
+        while not self.network.all_nodes_started:
+            self.assertLess(time.time() - started_check, 5, msg="Hit timeout waiting for network to start.")
+
         self.assertTrue(self.network.all_nodes_started)
 
     def test_3create_new_network__all_node_connect(self):
@@ -488,7 +523,10 @@ class TestLocalNodeNetwork(unittest.TestCase):
                     self.async_sleep(5)
 
         for tn in self.network.all_nodes:
-            self.assertTrue(tn.node.network.connected_to_all_peers())
+            task = asyncio.gather(tn.node.network.connected_to_all_peers())
+            res = self.loop.run_until_complete(task)
+            self.assertTrue(res[0])
+
     def test_add_new_node_to_network__new_node_connects_and_all_existing_connect_back_to_it(self):
         self.network = LocalNodeNetwork()
 

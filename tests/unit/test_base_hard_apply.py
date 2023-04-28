@@ -10,6 +10,7 @@ from lamden.nodes.events import EventWriter
 from contracting.db.driver import ContractDriver, FSDriver, InMemDriver
 from lamden.nodes.filequeue import FileQueue
 from lamden.utils import hlc
+from lamden.nodes.hlc import HLC_Clock
 from lamden.crypto.wallet import Wallet
 
 from tests.integration.mock.mock_data_structures import MockBlocks
@@ -36,6 +37,9 @@ class TestBaseNode_HardApply(TestCase):
         self.initial_members = {
             'masternodes': [self.node_wallet.verifying_key]
         }
+
+        hlc_clock = HLC_Clock()
+        self.early_hlc = hlc_clock.get_new_hlc_timestamp()
 
         self.mock_blocks = MockBlocks(num_of_blocks=5, one_wallet=True,
                                       initial_members=self.initial_members)
@@ -131,17 +135,8 @@ class TestBaseNode_HardApply(TestCase):
 
         self.assertEqual((int(block.get('number'))), self.node.get_current_height())
         self.assertEqual(block.get('hash'), self.node.get_current_hash())
-        self.assertEqual(2, self.node.blocks.total_blocks())
-
-    def test_hard_apply_store_block__stores_in_holding_during_catchup(self):
-        self.node.hold_blocks = True
-        block = self.mock_blocks.get_block_by_index(1)
-        self.node.hard_apply_store_block(block=block)
-
-        self.assertEqual(0, self.node.get_current_height())
         self.assertEqual(1, self.node.blocks.total_blocks())
 
-        self.assertEqual(1, len(self.node.held_blocks))
 
     def test_hard_apply_processing_results__mints_block_from_processing_results_object(self):
         processing_results = get_processing_results(driver=self.node.driver)
@@ -155,7 +150,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.assertIsNotNone(new_block)
         self.assertEqual(expected_block_num, self.node.get_current_height())
-        self.assertEqual(2, self.node.blocks.total_blocks())
+        self.assertEqual(1, self.node.blocks.total_blocks())
 
 
         # Validate the state was hard applied
@@ -221,7 +216,7 @@ class TestBaseNode_HardApply(TestCase):
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
-        self.assertEqual(4, self.node.blocks.total_blocks())
+        self.assertEqual(3, self.node.blocks.total_blocks())
 
         early_block = self.mock_blocks.get_block_by_index(1)
 
@@ -236,7 +231,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.node.hard_apply_has_later_blocks(later_blocks=later_blocks, block=early_block)
 
-        self.assertEqual(5, self.node.blocks.total_blocks())
+        self.assertEqual(4, self.node.blocks.total_blocks())
 
         receiver_amount = self.node.driver.get(f'currency.balances:{self.mock_blocks.receiver_wallet.verifying_key}')
         expected_amount = 10.5 * 4
@@ -248,7 +243,7 @@ class TestBaseNode_HardApply(TestCase):
             to=self.mock_blocks.receiver_wallet.verifying_key,
             amount=tx_amount,
             wallet=self.mock_blocks.founder_wallet,
-            hlc_timestamp='1970-01-01T01:01:01.000000000Z_0'
+            hlc_timestamp=self.early_hlc
         )
 
         self.node.driver.driver.set(
@@ -258,17 +253,16 @@ class TestBaseNode_HardApply(TestCase):
         )
 
         processing_results = get_processing_results(tx_message=tx_message, driver=self.node.driver)
-        early_processing_results_hlc_timestamp = processing_results.get('hlc_timestamp')
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
-        self.assertEqual(4, self.node.blocks.total_blocks())
+        self.assertEqual(3, self.node.blocks.total_blocks())
 
         # Get any blocks that have been committed that are later than this hlc_timestamp
-        later_blocks = self.node.blocks.get_later_blocks(hlc_timestamp=early_processing_results_hlc_timestamp)
+        later_blocks = self.node.blocks.get_later_blocks(hlc_timestamp=self.early_hlc)
 
         self.assertEqual(3, len(later_blocks))
 
@@ -276,7 +270,7 @@ class TestBaseNode_HardApply(TestCase):
 
         self.node.hard_apply_has_later_blocks(later_blocks=later_blocks, processing_results=processing_results)
 
-        self.assertEqual(5, self.node.blocks.total_blocks())
+        self.assertEqual(4, self.node.blocks.total_blocks())
 
         receiver_amount = self.node.driver.get(f'currency.balances:{self.mock_blocks.receiver_wallet.verifying_key}')
         expected_amount = 10.5 * 4

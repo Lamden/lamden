@@ -59,6 +59,46 @@ class TestNonce(TestCase):
 
         self.assertEqual(n, 2)
 
+    def test_safe_set__does_not_overwrite_higher_nonce_value(self):
+        self.nonces.safe_set_nonce(
+            sender='test',
+            processor='test2',
+            value=2
+        )
+
+        self.nonces.safe_set_nonce(
+            sender='test',
+            processor='test2',
+            value=1
+        )
+
+        n = self.nonces.get_nonce(
+            sender='test',
+            processor='test2'
+        )
+
+        self.assertEqual(n, 2)
+
+    def test_safe_set__sets_higher_nonce_value(self):
+        self.nonces.safe_set_nonce(
+            sender='test',
+            processor='test2',
+            value=2
+        )
+
+        self.nonces.safe_set_nonce(
+            sender='test',
+            processor='test2',
+            value=3
+        )
+
+        n = self.nonces.get_nonce(
+            sender='test',
+            processor='test2'
+        )
+
+        self.assertEqual(n, 3)
+
     def test_get_latest_nonce_zero_if_none_set(self):
         n = self.nonces.get_latest_nonce(
             sender='test',

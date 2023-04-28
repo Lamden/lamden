@@ -69,14 +69,14 @@ def resolve_constitution(fp):
 
     return formatted_bootnodes
 
-def resolve_genesis_block(fp):
-    path = pathlib.PosixPath(fp).expanduser()
+def resolve_genesis_block(genesis_file_path):
+    path = pathlib.PosixPath(genesis_file_path).expanduser()
 
-    path.touch()
+    if not path.exists():
+        return None
 
-    f = open(str(path), 'r')
-    genesis_block = decode(f.read())
-    f.close()
+    with open(str(path), 'r') as f:
+        genesis_block = decode(f.read())
 
     return genesis_block
 

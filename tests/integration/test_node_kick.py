@@ -8,7 +8,8 @@ import random
 class TestNodeKick(TestCase):
     def setUp(self):
         self.network = LocalNodeNetwork(
-            num_of_masternodes=5
+            num_of_masternodes=5,
+            network_await_connect_all_timeout=2
         )
 
         self.loop = asyncio.new_event_loop()

@@ -8,6 +8,7 @@ import os
 import pathlib
 import shutil
 import json
+import threading
 
 LATEST_BLOCK_HASH_KEY = '__latest_block.hash'
 LATEST_BLOCK_HEIGHT_KEY = '__latest_block.height'
@@ -20,7 +21,8 @@ BLOCK_0 = {
 
 class BlockStorage:
     def __init__(self, root=None, block_diver=None):
-        self.log = get_logger('BlockStorage')
+        self.current_thread = threading.current_thread()
+        self.log = get_logger(f'[{self.current_thread.name}][BlockStorage]')
         self.root = pathlib.Path(root) if root is not None else STORAGE_HOME
 
         self.blocks_dir = self.root.joinpath('blocks')
@@ -147,7 +149,7 @@ class BlockStorage:
 
         block = self.block_driver.find_previous_block(block_num=str(v))
 
-        if not block:
+        if block is None:
             return None
 
         if not self.is_genesis_block(block=block):
@@ -231,6 +233,18 @@ class NonceStorage:
             NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor,
             value
         )
+
+    def safe_set_nonce(self, sender, processor, value):
+        current_nonce = self.get_nonce(sender=sender, processor=processor)
+
+        if current_nonce is None:
+            current_nonce = -1
+
+        if value > current_nonce:
+            self.driver.set(
+                NONCE_FILENAME + config.INDEX_SEPARATOR + sender + config.DELIMITER + processor,
+                value
+            )
 
     def set_pending_nonce(self, sender, processor, value):
         self.driver.set(

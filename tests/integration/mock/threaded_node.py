@@ -15,8 +15,11 @@ import shutil
 import threading
 import unittest
 
-def create_a_node(index=0, node_wallet=Wallet(), bootnodes=None, genesis_block=None, temp_storage_root=None, metering=False):
+def create_a_node(index=0, node_wallet=Wallet(), bootnodes=None, genesis_block=None, temp_storage_root=None,
+                  metering=False, network_await_connect_all_timeout=None):
+
     temp_storage_root = temp_storage_root if temp_storage_root is not None else Path().cwd().joinpath('temp_network')
+
     try:
         shutil.rmtree(temp_storage_root)
     except FileNotFoundError:
@@ -45,7 +48,8 @@ def create_a_node(index=0, node_wallet=Wallet(), bootnodes=None, genesis_block=N
         tx_queue=tx_queue,
         genesis_block=genesis_block,
         metering=metering,
-        event_writer=event_writer
+        event_writer=event_writer,
+        network_await_connect_all_timeout=network_await_connect_all_timeout
     )
 
 class ThreadedNode(threading.Thread):
@@ -62,7 +66,9 @@ class ThreadedNode(threading.Thread):
                  reconnect_attempts=60,
                  genesis_block=None,
                  delay=None,
-                 event_writer=None):
+                 event_writer=None,
+                 join=False,
+                 network_await_connect_all_timeout=None):
 
         threading.Thread.__init__(self)
 
@@ -95,10 +101,12 @@ class ThreadedNode(threading.Thread):
         self.running = False
         self.loop = None
         self.node: Node = None
+        self.join_network = join
 
         self.err = None
 
         self.reconnect_attempts = reconnect_attempts
+        self.network_await_connect_all_timeout = network_await_connect_all_timeout
         self.delay = delay
 
     @property
@@ -203,12 +211,15 @@ class ThreadedNode(threading.Thread):
                 testing=True,
                 delay=self.delay,
                 nonces=self.nonces,
-                join=self.genesis_block is None,
+                join=self.join_network,
                 metering=self.metering,
-                event_writer=self.event_writer
+                event_writer=self.event_writer,
             )
 
             self.node.network.set_to_local()
+            if isinstance(self.network_await_connect_all_timeout, int):
+                self.node.network.connect_to_all_peers_wait_sec = self.network_await_connect_all_timeout
+
             self.node.start_node()
 
             self.running = True

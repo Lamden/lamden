@@ -29,7 +29,13 @@ class TestSingleNodeElectionsWithMetering(TestCase):
         )
         self.genesis_block = self.blocks.get_block_by_index(index=0)
 
-        self.threaded_node = create_a_node(node_wallet=self.node_wallet, genesis_block=self.genesis_block, metering=True, temp_storage_root=self.tmp_storage)
+        self.threaded_node = create_a_node(
+            node_wallet=self.node_wallet,
+            genesis_block=self.genesis_block,
+            metering=True,
+            temp_storage_root=self.tmp_storage,
+            network_await_connect_all_timeout=2
+        )
 
         self.threaded_node.start()
         while not self.threaded_node.node or not self.threaded_node.node.started or not self.threaded_node.node.network.running:
@@ -86,7 +92,8 @@ class TestSingleNodeElectionsWithMetering(TestCase):
 class TestNodeVoteAndJoin(TestCase):
     def setUp(self):
         self.network = LocalNodeNetwork(
-            num_of_masternodes=5
+            num_of_masternodes=5,
+            network_await_connect_all_timeout=2
         )
 
         loop = asyncio.get_event_loop()
@@ -206,7 +213,7 @@ class TestNodeVoteAndJoin(TestCase):
             self.assertIn(new_members_wallet.verifying_key, node.get_smart_contract_value('masternodes.S:members'))
             self.assertNotIn(candidate_wallet.verifying_key, node.get_smart_contract_value('masternodes.S:members'))
 
-        self.network.add_masternode(wallet=new_members_wallet)
+        self.network.join_masternode(wallet=new_members_wallet)
         self.network.await_all_nodes_done_processing(block_height=self.num_blocks_total)
 
         self.network.send_tx_to_masternode(random_master.vk); self.num_blocks_total += 1
