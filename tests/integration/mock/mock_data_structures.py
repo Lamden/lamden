@@ -363,6 +363,12 @@ class MockBlocks:
         return block_numbers
 
     @property
+    def block_list(self):
+        blocks = [block for block in list(self.blocks.values())]
+        blocks = sorted(blocks, key=lambda x: int(x['number']))
+        return blocks
+
+    @property
     def latest_block_num(self):
         k = list(self.blocks.keys())
         k.sort()
