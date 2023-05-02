@@ -654,8 +654,7 @@ class FSHashStorageDriver:
 
         if os.path.islink(file_path):
             os.unlink(file_path)
-
-        self._remove_empty_dirs(starting_dir=dir_path)
+            self._remove_empty_dirs(starting_dir=dir_path)
 
     def get_file(self, hash_str: str) -> dict:
         dir_path = self.get_directory(hash_str)

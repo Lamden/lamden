@@ -20,21 +20,6 @@ class Network:
     def __init__(self):
         self.peers = []
 
-    def get_highest_peer_block(self) -> int:
-        current_highest_block = 0
-
-        for peer in self.peers:
-            block_list = list(peer.blocks.keys())
-            block_list.sort()
-
-            if len(block_list) > 0:
-                latest_block_number = int(block_list[-1])
-
-            if latest_block_number > current_highest_block:
-                current_highest_block = latest_block_number
-
-        return current_highest_block
-
     def get_all_connected_peers(self):
         return self.peers
 
@@ -45,9 +30,6 @@ class Network:
         for peer in self.peers:
             if peer.server_vk == vk:
                 return peer
-
-    def refresh_approved_peers_in_cred_provider(self):
-        pass
 
 class MockPeer:
     def __init__(self, blocks={}):
@@ -67,20 +49,6 @@ class MockPeer:
 
         return {'block_info': block}
 
-    async def get_previous_block(self, block_num: int) -> (dict, None):
-        block_list = list(self.blocks.keys())
-        block_list.sort()
-
-        try:
-            index = block_list.index(str(block_num))
-            if index == 0:
-                return {'block_info': None}
-
-            block = self.find_block(block_list[index - 1])
-            block = json.loads(encode(block))
-            return {'block_info': block}
-        except ValueError:
-            return {'block_info': None}
 
 class TestMissingBlocksHandler(TestCase):
     def setUp(self):
@@ -379,10 +347,6 @@ class TestMissingBlocksHandler(TestCase):
         self.assertIsNotNone(saved_block)
         self.assertDictEqual(block, saved_block)
 
-
-    def test_METHOD_process_block__adds_block_to_storage_and_recalcs_hashes(self):
-        raise NotImplementedError("write test case")
-
     def test_PRIVATE_METHOD_source_block_from_peers__can_get_block_from_peer(self):
         mock_blocks = MockBlocks(num_of_blocks=5)
         latest_block_number = mock_blocks.latest_block_number
@@ -558,3 +522,7 @@ class TestMissingBlocksHandler(TestCase):
             self.assertEqual(block.get('hash'), stored_block.get('hash'))
             self.assertEqual(block.get('previous'), stored_block.get('previous'))
             self.assertDictEqual(block.get('minted'), stored_block.get('minted'))
+
+        # events were created
+        events = os.listdir(self.missing_blocks_handler.event_writer.root)
+        self.assertEqual(3, len(events))

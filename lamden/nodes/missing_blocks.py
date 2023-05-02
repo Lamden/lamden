@@ -1,5 +1,4 @@
 from lamden import storage
-from lamden.nodes.base import NEW_BLOCK_REORG_EVENT
 from contracting.db.encoder import convert_dict, encode
 from copy import deepcopy
 from lamden.crypto.block_validator import verify_block
@@ -17,6 +16,7 @@ import json
 import asyncio
 import threading
 
+NEW_BLOCK_REORG_EVENT = 'block_reorg'
 
 
 class MissingBlocksHandler:
@@ -162,7 +162,7 @@ class MissingBlocksHandler:
         vk = choice(vk_list)
         return self.network.get_peer(vk=vk)
 
-    def run(self):
+    async def run(self):
         missing_block_numbers_list = self.get_missing_blocks_list()
 
         if len(missing_block_numbers_list) > 0:

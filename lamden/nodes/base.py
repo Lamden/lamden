@@ -37,6 +37,7 @@ from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
 from typing import List
 from lamden.nodes.catchup import CatchupHandler
+from lamden.nodes.missing_blocks import MissingBlocksHandler
 
 from lamden.crypto.transaction import build_transaction
 from datetime import datetime, timedelta
@@ -190,6 +191,15 @@ class Node:
             contract_driver=self.driver,
             block_storage=self.blocks,
             nonce_storage=self.nonces
+        )
+
+        self.missing_blocks_handler = MissingBlocksHandler(
+            network=self.network,
+            contract_driver=self.driver,
+            block_storage=self.blocks,
+            nonce_storage=self.nonces,
+            wallet=self.wallet,
+            event_writer=self.event_writer
         )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
@@ -825,6 +835,9 @@ class Node:
             self.check_upgrade(state_changes=state_changes)
 
         gc.collect()
+
+        # check to see if we need to process any missing blocks.
+        asyncio.ensure_future(self.missing_blocks_handler.run())
 
     def check_upgrade(self, state_changes: list):
         for change in state_changes:

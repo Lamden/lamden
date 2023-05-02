@@ -66,7 +66,14 @@ class LocalNodeNetwork:
 
         def __del__(self):
             if self.temp_network_dir.is_dir():
-                shutil.rmtree(self.temp_network_dir)
+                try:
+                    shutil.rmtree(self.temp_network_dir)
+                except OSError:
+                    tasks = asyncio.gather(
+                        asyncio.sleep(10)
+                    )
+                    self.loop.run_until_complete(tasks)
+                    self.__del__()
 
         @property
         def all_nodes(self) -> List[ThreadedNode]:
