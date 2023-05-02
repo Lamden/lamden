@@ -15,6 +15,7 @@ import os
 import json
 import asyncio
 import threading
+from typing import List, Optional, Union
 
 NEW_BLOCK_REORG_EVENT = 'block_reorg'
 
@@ -25,12 +26,13 @@ class MissingBlocksHandler:
                  root=None):
         if root is None:
             root = os.path.expanduser(".lamden")
+
         self.root = os.path.abspath(root)
 
-        self.current_thread = threading.current_thread()
-
-        self.missing_blocks_dir = os.path.join(self.root, "missing")
+        self.missing_blocks_dir = os.path.join(self.root, "missing_blocks")
         self._init_missing_blocks_dir()
+
+        self.current_thread = threading.current_thread()
 
         self.block_storage = block_storage
         self.nonce_storage = nonce_storage
@@ -271,3 +273,44 @@ class MissingBlocksHandler:
         self.log.info("Done recalculating block hashes.")
 
 
+class MissingBlocksWriter:
+    def __init__(self, root: Optional[str] = None) -> None:
+        if root is None:
+            root = os.path.expanduser(".lamden/missing_blocks")
+
+        self.root = os.path.abspath(root)
+        self.missing_blocks_dir = os.path.join(self.root, 'missing_blocks')
+        self.missing_blocks_filename = "missing_blocks.json"
+        self.filename_path = os.path.join(self.missing_blocks_dir, self.missing_blocks_filename)
+
+        if not os.path.exists(self.missing_blocks_dir):
+            os.makedirs(self.missing_blocks_dir)
+
+    def _validate_blocks_list(self, blocks_list: Optional[List[str]]) -> None:
+        if blocks_list is None:
+            raise ValueError("The provided list is None")
+
+        if not isinstance(blocks_list, list):
+            raise ValueError("The provided blocks is not a list")
+
+        if len(blocks_list) == 0:
+            raise ValueError("The provided list is empty")
+
+    def _validate_block_strings(self, blocks_list: List[str]) -> None:
+        for block_num in blocks_list:
+            if not isinstance(block_num, str):
+                raise ValueError("The provided list must contain only strings")
+
+    def _check_file_exists(self, path: str) -> None:
+        if os.path.exists(path):
+            raise FileExistsError("missing_blocks.json already exists in the specified directory")
+
+    def write_missing_blocks(self, blocks_list: List[str], force: bool = False) -> None:
+        self._validate_blocks_list(blocks_list=blocks_list)
+        self._validate_block_strings(blocks_list)
+
+        if not force:
+            self._check_file_exists(self.filename_path)
+
+        with open(self.filename_path, "w") as f:
+            json.dump(blocks_list, f)

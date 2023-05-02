@@ -2,7 +2,7 @@ from unittest import TestCase
 from lamden.storage import BlockStorage, NonceStorage, LATEST_BLOCK_HASH_KEY, LATEST_BLOCK_HEIGHT_KEY
 from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver, FSDriver
-from lamden.nodes.missing_blocks import MissingBlocksHandler
+from lamden.nodes.missing_blocks import MissingBlocksHandler, MissingBlocksWriter
 from tests.integration.mock.mock_data_structures import MockBlocks
 from contracting.db.encoder import encode
 from lamden.nodes.events import Event, EventWriter
@@ -56,7 +56,7 @@ class TestMissingBlocksHandler(TestCase):
         asyncio.set_event_loop(self.loop)
 
         self.test_dir = os.path.abspath('./.lamden')
-        self.missing_blocks_dir = os.path.join(self.test_dir, "missing")
+        self.missing_blocks_dir = os.path.join(self.test_dir, "missing_blocks")
         self.missing_blocks_filename = "missing_blocks.json"
 
         self.full_filename_path = os.path.join(self.missing_blocks_dir, self.missing_blocks_filename)
@@ -87,7 +87,8 @@ class TestMissingBlocksHandler(TestCase):
             contract_driver=self.contract_driver,
             network=self.mock_network,
             wallet=self.wallet,
-            event_writer=self.event_writer
+            event_writer=self.event_writer,
+            root=self.test_dir
         )
 
     def create_directories(self):
@@ -526,3 +527,166 @@ class TestMissingBlocksHandler(TestCase):
         # events were created
         events = os.listdir(self.missing_blocks_handler.event_writer.root)
         self.assertEqual(3, len(events))
+
+
+class TestMissingBlocksWriter(TestCase):
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        self.test_dir = os.path.abspath('./.lamden')
+        self.missing_blocks_dir = os.path.join(self.test_dir, "missing_blocks")
+        self.missing_blocks_filename = "missing_blocks.json"
+
+        self.full_filename_path = os.path.join(self.missing_blocks_dir, self.missing_blocks_filename)
+
+        self.create_directories()
+
+        self.missing_blocks_writer: MissingBlocksWriter = None
+
+    def tearDown(self):
+        try:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
+        except RuntimeError:
+            pass
+
+    def create_missing_blocks_writer(self):
+        self.missing_blocks_writer = MissingBlocksWriter(
+            root=self.test_dir
+        )
+
+    def create_directories(self):
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir)
+
+        os.makedirs(self.test_dir)
+
+    def test_INSTANCE_init__creates_all_properties(self):
+        # if the missing blocks directory exists, remove it so we can test it gets created
+        if os.path.exists(self.missing_blocks_dir):
+            shutil.rmtree(self.missing_blocks_dir)
+
+        self.create_missing_blocks_writer()
+
+        # root dir is stored as passed
+        self.assertEqual(self.test_dir, self.missing_blocks_writer.root)
+
+        # directories are created as they should
+        self.assertEqual(self.missing_blocks_dir, self.missing_blocks_writer.missing_blocks_dir)
+        self.assertEqual(self.full_filename_path, self.missing_blocks_writer.filename_path)
+
+        # missing_blocks directory is created
+        self.assertTrue(os.path.exists(self.missing_blocks_dir))
+
+    def test_PRIVATE_METHOD_validate_blocks_list__raises_ValueError_if_blocks_list_is_None(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = None
+
+        with self.assertRaises(ValueError) as err:
+            self.missing_blocks_writer._validate_blocks_list(blocks_list=blocks_list)
+            self.assertEqual("The provided list is None", str(err))
+
+    def test_PRIVATE_METHOD_validate_blocks_list__raises_ValueError_if_blocks_list_no_list_instance(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = {}
+
+        with self.assertRaises(ValueError) as err:
+            self.missing_blocks_writer._validate_blocks_list(blocks_list=blocks_list)
+            self.assertEqual("The provided blocks is not a list", str(err))
+
+    def test_PRIVATE_METHOD_validate_blocks_list__raises_ValueError_if_blocks_list_is_empty(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = []
+
+        with self.assertRaises(ValueError) as err:
+            self.missing_blocks_writer._validate_blocks_list(blocks_list=blocks_list)
+            self.assertEqual("The provided list is empty", str(err))
+
+    def test_PRIVATE_METHOD_validate_blocks_list__rasies_NO_errors_if_list_has_items(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        try:
+            self.missing_blocks_writer._validate_blocks_list(blocks_list=blocks_list)
+        except Exception:
+            self.fail("This should not cause an exception.")
+
+    def test_PRIVATE_METHOD_validate_block_strings__raises_ValueError_if_list_item_not_string(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", 8520679865965181957]
+
+        with self.assertRaises(ValueError) as err:
+            self.missing_blocks_writer._validate_block_strings(blocks_list=blocks_list)
+            self.assertEqual("The provided list must contain only strings", str(err))
+
+    def test_PRIVATE_METHOD_validate_block_strings__raises_No_errors_if_list_items_all_string(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        try:
+            self.missing_blocks_writer._validate_block_strings(blocks_list=blocks_list)
+        except Exception:
+            self.fail("This should not cause an exception.")
+
+    def test_PRIVATE_METHOD_check_file_exists__raises_FileExistsError_if_file_exists(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        with open(self.missing_blocks_writer.filename_path, "w") as f:
+            json.dump(blocks_list, f)
+
+        with self.assertRaises(FileExistsError) as err:
+            self.missing_blocks_writer._check_file_exists(path=self.missing_blocks_writer.filename_path)
+            self.assertEqual("missing_blocks.json already exists in the specified directory", str(err))
+
+    def test_PRIVATE_METHOD_check_file_exists__raises_FileExistsError_if_file_exists(self):
+        self.create_missing_blocks_writer()
+
+        try:
+            self.missing_blocks_writer._check_file_exists(path=self.missing_blocks_writer.filename_path)
+        except FileExistsError:
+            self.fail("This should not cause an exception.")
+
+    def test_METHOD_write_missing_blocks__writes_file(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list)
+
+        self.assertTrue(os.path.exists(self.missing_blocks_writer.filename_path))
+
+    def test_METHOD_write_missing_blocks__force_causes_no_FileExistsError_error(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        with open(self.missing_blocks_writer.filename_path, "w") as f:
+            json.dump(blocks_list, f)
+
+        try:
+            self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list, force=True)
+        except FileExistsError:
+            self.fail("This should not cause an exception.")
+
+        self.assertTrue(os.path.exists(self.missing_blocks_writer.filename_path))
+
+    def test_METHOD_write_missing_blocks__raises_FileExistsError_exception_if_no_force_and_file_exists(self):
+        self.create_missing_blocks_writer()
+
+        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+
+        with open(self.missing_blocks_writer.filename_path, "w") as f:
+            json.dump(blocks_list, f)
+
+        with self.assertRaises(FileExistsError) as err:
+            self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list)
+            self.assertEqual("missing_blocks.json already exists in the specified directory", str(err))
