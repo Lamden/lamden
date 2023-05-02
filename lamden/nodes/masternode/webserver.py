@@ -9,10 +9,11 @@ from contracting.compilation import parser
 from lamden import storage
 from lamden.crypto.canonical import tx_hash_from_tx
 from lamden.crypto.transaction import TransactionException
-from lamden.crypto.wallet import Wallet
+from lamden.crypto.wallet import Wallet, verify
 
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from lamden.nodes.base import FileQueue
+from lamden.nodes.missing_blocks import MissingBlocksWriter
 
 import ssl
 import asyncio
@@ -54,6 +55,7 @@ class NonceEncoder(_json.JSONEncoder):
 class WebServer:
     def __init__(self, contracting_client: ContractingClient, driver: ContractDriver, wallet,
                  blocks: storage.BlockStorage, nonces: storage.NonceStorage=None,
+                 missing_blocks_writer: MissingBlocksWriter = None,
                  queue=None,
                  port=8080, ssl_port=443, ssl_enabled=False,
                  ssl_cert_file='~/.ssh/server.csr',
@@ -79,6 +81,7 @@ class WebServer:
         self.driver = driver
         self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.blocks = blocks
+        self.missing_blocks_writer = missing_blocks_writer or MissingBlocksWriter()
 
         self.static_headers = {}
 
@@ -128,6 +131,9 @@ class WebServer:
 
         # TX Route
         self.app.add_route(self.get_tx, '/tx', methods=['GET'])
+
+        # Missing Blocks Route
+        self.app.add_route(self.report_missing_blocks, '/report_missing_blocks', methods=['POST', 'OPTIONS'])
 
         self.coroutine = None
 
@@ -505,6 +511,42 @@ class WebServer:
         return response.json({
             'masternodes': masternodes,
         }, headers={'Access-Control-Allow-Origin': '*'})
+
+    async def report_missing_blocks(self, request):
+        if request.method == "OPTIONS":
+            return response.text("",headers={
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': "origin, content-type"
+            })
+
+        try:
+            body = request.json
+
+            if body is None:
+                raise ValueError("Invalid JSON Body.")
+
+            signature = body.get('signature')
+            missing_blocks = body.get('missing_blocks')
+            force = body.get('force', False)
+
+            if not verify(
+                signature=signature,
+                vk=self.wallet.verifying_key,
+                msg=json.dumps(missing_blocks)
+            ):
+                raise ValueError("Invalid Signature.")
+
+            self.missing_blocks_writer.write_missing_blocks(
+                blocks_list=missing_blocks,
+                force=force
+            )
+
+        except Exception as err:
+            return response.json({'error': str(err)}, status=400,
+                                 headers={'Access-Control-Allow-Origin': '*'})
+
+
+        return response.text('ok', status=200,  headers={'Access-Control-Allow-Origin': '*'})
 
     def cache_genesis_block(self, block: dict):
         if not block:

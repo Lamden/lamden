@@ -207,8 +207,7 @@ class TestStorage(TestCase):
         self.block_storage = BlockStorage(root=self.temp_storage_dir)
 
     def tearDown(self):
-        if self.temp_storage_dir.is_dir():
-            shutil.rmtree(self.temp_storage_dir)
+        pass
 
     def test_PRIVATE_METHOD_cull_transaction__return_tx_and_hash(self):
         block = {
@@ -501,4 +500,36 @@ class TestStorage(TestCase):
 
     def test_get_block_v_none_returns_none(self):
         self.assertIsNone(self.block_storage.get_block())
+
+    def test_METHOD_remove_block__removes_block_and_block_alias_and_tx(self):
+        block_number = '1658163894967101696'
+        block_hash = '78238403271a8dcd3c1031b144ace7dfdbe760108f2953b85d40c763fc79e4d4'
+        tx_hash = '5a5bbc6c0388b5f76d9da11b39ed4df8c47b9d4c231c72bb09b1b5e689699e77'
+        block = {
+            'hash': block_hash,
+            'number': block_number,
+            'hlc_timestamp': "2022-07-18T17:04:54.967101696Z_0",
+            'processed': {
+                'hash': tx_hash,
+                'foo': 'bar'
+            }
+        }
+        self.block_storage.store_block(deepcopy(block))
+
+        block_path = self.block_storage.block_driver.get_file_path(block_num=block_number.zfill(64))
+        block_alias_path = os.path.join(self.block_storage.block_alias_driver.get_directory(hash_str=block_hash), block_hash)
+        tx_path = os.path.join(self.block_storage.tx_driver.get_directory(hash_str=tx_hash), tx_hash)
+
+        # Assert the block was saved properly so we can validate they were removed later
+        self.assertTrue(os.path.exists(block_path))
+        self.assertTrue(os.path.exists(block_alias_path))
+        self.assertTrue(os.path.exists(tx_path))
+
+        # Remove block
+        self.block_storage.remove_block(v=int(block_number))
+
+        # Assert files are gone
+        self.assertFalse(os.path.exists(block_path))
+        self.assertFalse(os.path.exists(block_alias_path))
+        self.assertFalse(os.path.exists(tx_path))
 

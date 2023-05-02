@@ -1,3 +1,5 @@
+import os.path
+
 from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, decode, encode, FSDriver, InMemDriver
 from lamden import storage
@@ -9,6 +11,7 @@ from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
 from lamden.nodes.masternode.webserver import WebServer
 from lamden.storage import BlockStorage
+from lamden.nodes.missing_blocks import MissingBlocksWriter
 from multiprocessing import Process
 from tests.unit.helpers.mock_blocks import generate_blocks, GENESIS_BLOCK
 from tests.integration.mock.mock_data_structures import MockBlocks
@@ -43,6 +46,7 @@ class TestClassWebserver(TestCase):
         self.block_storage = BlockStorage(root=self.temp_storage)
         self.block_storage.store_block(self.mock_blocks.get_block_by_index(0))
         self.driver = ContractDriver(driver=FSDriver(root=self.temp_storage))
+        self.missing_blocks_writer = MissingBlocksWriter(root=self.temp_storage)
 
         self.ws = WebServer(
             wallet=self.node_wallet,
@@ -52,7 +56,8 @@ class TestClassWebserver(TestCase):
             blocks=self.block_storage,
             driver=self.driver,
             queue=FileQueue(root=self.temp_storage),
-            nonces=storage.NonceStorage(root=self.temp_storage)
+            nonces=storage.NonceStorage(root=self.temp_storage),
+            missing_blocks_writer=self.missing_blocks_writer
         )
 
     def tearDown(self):
@@ -681,6 +686,86 @@ def get():
     def test_js_encoded_tx_works(self):
         pass
 
+    def test_ROUTE_report_missing_blocks__writes_the_missing_block_json_file(self):
+        missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        missing_blocks_json = json.dumps(missing_blocks)
+
+        signature = self.ws.wallet.sign(missing_blocks_json)
+
+        data = json.dumps({
+            'signature': signature,
+            'missing_blocks': missing_blocks,
+        })
+
+        _, response = self.ws.app.test_client.post('/report_missing_blocks', data=data)
+
+        # response is ok
+        self.assertEqual('ok', response.text)
+
+        # file was created
+        self.assertTrue(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+
+        # file content matches request
+        with open(self.ws.missing_blocks_writer.filename_path, "r") as f:
+            file_content = json.loads(f.read())
+            self.assertEqual(missing_blocks, file_content)
+
+    def test_ROUTE_report_missing_blocks__response_errors_with_invalid_signature(self):
+        missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        missing_blocks_json = json.dumps(missing_blocks)
+
+        wallet = Wallet()
+        signature = wallet.sign(missing_blocks_json)
+
+        data = json.dumps({
+            'signature': signature,
+            'missing_blocks': missing_blocks,
+        })
+
+        _, response = self.ws.app.test_client.post('/report_missing_blocks', data=data)
+
+        # response is proper error
+        self.assertDictEqual({'error': "Invalid Signature."}, response.json)
+
+        # file was not created
+        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+
+
+    def test_ROUTE_report_missing_blocks__response_errors_with_invalid_json_body(self):
+        missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        missing_blocks_json = json.dumps(missing_blocks)
+
+        signature = self.ws.wallet.sign(missing_blocks_json)
+
+        _, response = self.ws.app.test_client.post('/report_missing_blocks', data=None)
+
+        # response is proper error
+        self.assertDictEqual({'error': "Invalid JSON Body."}, response.json)
+
+        # file was not created
+        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+
+
+    def test_ROUTE_report_missing_blocks__response_forwards_errors_from_missing_blocks_writer(self):
+        missing_blocks = [1682939321560636160]
+        missing_blocks_json = json.dumps(missing_blocks)
+
+        signature = self.ws.wallet.sign(missing_blocks_json)
+
+        data = json.dumps({
+            'signature': signature,
+            'missing_blocks': missing_blocks,
+        })
+
+        _, response = self.ws.app.test_client.post('/report_missing_blocks', data=data)
+
+        # response is proper error
+        self.assertDictEqual({'error': "The provided list must contain only strings"}, response.json)
+
+        # file was not created
+        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+
+
 class TestWebserverWebsockets(TestCase):
     service_process = None
 
@@ -907,3 +992,5 @@ class TestWebserverWebsockets(TestCase):
         error = self.messages[0].get("error")
 
         self.assertEqual(error, {"error": "Invalid action or payload"})
+
+

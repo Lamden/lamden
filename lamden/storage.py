@@ -112,6 +112,28 @@ class BlockStorage:
 
         self.__write_block(block)
 
+    def remove_block(self, v=None):
+        if v is None:
+            return None
+
+        if isinstance(v, str) and hlc.is_hcl_timestamp(hlc_timestamp=v):
+            nanos = hlc.nanos_from_hlc_timestamp(hlc_timestamp=v)
+            if nanos > 0:
+                v = str(nanos)
+
+        block_num = str(v)
+        block = self.block_driver.find_block(block_num=block_num)
+
+        if block is None or self.is_genesis_block(block=block):
+            return
+
+        block_hash = block.get('hash')
+        tx_hash = block.get('processed')
+
+        self.block_driver.delete_block(block_num=block_num)
+        self.block_alias_driver.remove_symlink(hash_str=block_hash)
+        self.tx_driver.delete_file(hash_str=tx_hash)
+
 
     def get_block(self, v=None):
         if v is None:
@@ -323,6 +345,14 @@ class BlockDriver:
         # Writes a list of block dicts to storage
         raise NotImplementedError("Subclasses must implement this method.")
 
+    def delete_block(self, block_num: str) -> None:
+        # Deletes a block from storage
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def delete_blocks(self, block_list: list) -> None:
+        # Deletes a list of block numbers from storage
+        raise NotImplementedError("Subclasses must implement this method.")
+
     def find_previous_block(self, block_num: str) -> dict:
         # This method will take a block number and return the previous block
         raise NotImplementedError("Subclasses must implement this method.")
@@ -429,6 +459,14 @@ class FSBlockDriver(BlockDriver):
 
         return None
 
+    def _remove_empty_dirs(self, starting_dir: str):
+        while pathlib.Path(starting_dir) != pathlib.Path(self.root):
+            if not os.listdir(starting_dir):
+                os.rmdir(starting_dir)
+                starting_dir = os.path.dirname(starting_dir)
+            else:
+                break
+
     def get_file_path(self, block_num: str) -> str:
         input_number = int(block_num)
         current_dirs = self._find_directories(input_number)
@@ -463,6 +501,17 @@ class FSBlockDriver(BlockDriver):
         shutil.move(src_path, dst_path)
 
         return dst_path
+
+    def delete_block(self, block_num: str) -> None:
+        file_path = self.get_file_path(block_num.zfill(64))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        self._remove_empty_dirs(starting_dir=os.path.dirname(file_path))
+
+    def delete_blocks(self, block_list: list) -> None:
+        for block_num in block_list:
+            self.delete_block(block_num=block_num)
 
     def find_block(self, block_num: str) -> dict:
         path_to_file = self.get_file_path(block_num=str(block_num).zfill(64))
@@ -563,6 +612,14 @@ class FSHashStorageDriver:
     def get_directory(self, hash_str: str) -> str:
         return os.path.join(self.root_dir, hash_str[:2], hash_str[2:4], hash_str[4:6])
 
+    def _remove_empty_dirs(self, starting_dir: str):
+        while pathlib.Path(starting_dir) != pathlib.Path(self.root_dir):
+            if not os.listdir(starting_dir):
+                os.rmdir(starting_dir)
+                starting_dir = os.path.dirname(starting_dir)
+            else:
+                break
+
     def write_file(self, hash_str: str, data: dict) -> None:
         dir_path = self.get_directory(hash_str)
         os.makedirs(dir_path, exist_ok=True)
@@ -570,6 +627,14 @@ class FSHashStorageDriver:
         file_path = os.path.join(dir_path, hash_str)
         with open(file_path, "w") as f:
             json.dump(data, f)
+
+    def delete_file(self, hash_str: str) -> None:
+        dir_path = self.get_directory(hash_str=hash_str)
+        file_path = os.path.join(dir_path, hash_str)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        self._remove_empty_dirs(starting_dir=dir_path)
 
     def write_symlink(self, hash_str: str, link_to: str) -> None:
         dir_path = self.get_directory(hash_str)
@@ -589,6 +654,7 @@ class FSHashStorageDriver:
 
         if os.path.islink(file_path):
             os.unlink(file_path)
+            self._remove_empty_dirs(starting_dir=dir_path)
 
     def get_file(self, hash_str: str) -> dict:
         dir_path = self.get_directory(hash_str)

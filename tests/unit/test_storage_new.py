@@ -707,6 +707,101 @@ class TestFSBlockDriver(TestCase):
 
         self.assertIsNone(dir)
 
+    def test_METHOD_delete_block__removes_a_block_file(self):
+        block_num = self.create_block_num().zfill(64)
+
+        self.block_driver.write_block({
+            'number': block_num
+        })
+
+        file_path = self.block_driver.get_file_path(block_num=block_num)
+
+        self.assertTrue(os.path.exists(file_path))
+
+        self.block_driver.delete_block(block_num=block_num)
+
+        self.assertFalse(os.path.exists(file_path))
+
+    def test_METHOD_delete_block__removes_file_dir_remains_if_other_files_exist_in_same_dir(self):
+        block_num = self.create_block_num()
+        block_num_2 = str(int(block_num) + 1).zfill(64)
+        block_num_1 = block_num.zfill(64)
+
+        # Write block 1
+        self.block_driver.write_block({
+            'number': block_num_1
+        })
+        file_path_1 = self.block_driver.get_file_path(block_num=block_num_1)
+        self.assertTrue(os.path.exists(file_path_1))
+
+        # Write block 2
+        self.block_driver.write_block({
+            'number': block_num_2
+        })
+        file_path_2 = self.block_driver.get_file_path(block_num=block_num_2)
+        self.assertTrue(os.path.exists(file_path_2))
+
+        # Delete block 1
+        self.block_driver.delete_block(block_num=block_num_1)
+
+        # Assert block 1 gone
+        self.assertFalse(os.path.exists(file_path_1))
+
+        # Assert block 2 exists
+        self.assertTrue(os.path.exists(file_path_2))
+
+    def test_PROVATE_METHOD_remove_empty_dirs__removed_a_dir_tree_to_root(self):
+        block_num = self.create_block_num().zfill(64)
+        file_path = self.block_driver.get_file_path(block_num=block_num)
+        starting_path = os.path.dirname(file_path)
+
+        # Create directory structure
+        os.makedirs(starting_path)
+        self.assertTrue(os.path.exists(starting_path))
+
+        self.block_driver._remove_empty_dirs(starting_dir=starting_path)
+
+        # Removed all the way to root
+        top_level = starting_path
+        for i in range(3):
+            top_level = os.path.dirname(top_level)
+            self.assertFalse(os.path.exists(top_level))
+
+    def test_PROVATE_METHOD_remove_empty_dirs__removes_no_directories_if_files_exist(self):
+        block_num = self.create_block_num().zfill(64)
+        self.block_driver.write_block({
+            'number': block_num
+        })
+
+        file_path = self.block_driver.get_file_path(block_num=block_num)
+        starting_path = os.path.dirname(file_path)
+
+        self.assertTrue(os.path.exists(starting_path))
+
+        self.block_driver._remove_empty_dirs(starting_dir=starting_path)
+
+        # Removed all the way to root
+        self.assertTrue(os.path.exists(file_path))
+
+    def test_PROVATE_METHOD_remove_empty_dirs__stop_when_multiple_sub_dirs_exist(self):
+        block_num = self.create_block_num().zfill(64)
+        file_path = self.block_driver.get_file_path(block_num=block_num)
+        starting_path = os.path.dirname(file_path)
+
+        # Create directory structure
+        os.makedirs(starting_path)
+        self.assertTrue(os.path.exists(starting_path))
+
+        # Add another sub directory into the tree
+        new_dir = os.path.join(os.path.dirname(file_path), "testing")
+        os.makedirs(new_dir)
+        self.assertTrue(os.path.exists(new_dir))
+
+        self.block_driver._remove_empty_dirs(starting_dir=starting_path)
+
+        # Removed all the way to root
+        self.assertTrue(os.path.exists(new_dir))
+
 class TestFSHashStorageDriver(TestCase):
     def setUp(self):
         self.test_dir = './.lamden'
@@ -859,3 +954,21 @@ class TestFSHashStorageDriver(TestCase):
     def test_METHOD_remove_syslink__returns_if_not_exists(self):
         alias_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
         self.alias_driver.remove_symlink(hash_str=alias_hash)
+
+    def test_PRIVATE_METHOD_remove_empty_dirs_to_root(self):
+        tx_hash = 'ffe2f8ef7664c12804739a5a4b8ede34aa61a99111eae760c5a114e26774711c'
+        dir_path = self.transactions_driver.get_directory(hash_str=tx_hash)
+
+        os.makedirs(dir_path)
+
+        self.assertTrue(os.path.exists(dir_path))
+        self.transactions_driver.delete_file(hash_str=tx_hash)
+
+        check_dir = dir_path
+        for i in range(3):
+            self.assertFalse(os.path.exists(check_dir))
+            check_dir = os.path.dirname(check_dir)
+
+        # root still exists
+        self.assertTrue(os.path.exists(check_dir))
+
