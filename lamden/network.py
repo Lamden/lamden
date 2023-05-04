@@ -649,7 +649,7 @@ class Network:
             )
 
     async def stop(self):
-        self.publisher.announce_shutdown(vk=self.wallet.verifying_key)
+        self.publisher.announce_shutdown()
         self.running = False
         self.stopping = True
 

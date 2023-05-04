@@ -303,6 +303,9 @@ class Peer:
             self.log('error', f'ERROR decoding message parts: {err}')
             return
 
+        if topic_str == TOPIC_PEER_SHUTDOWN:
+            msg_str['vk'] = self.server_vk
+
         services = self.services()
 
         processor = services.get(topic_str)

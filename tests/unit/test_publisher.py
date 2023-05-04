@@ -4,7 +4,7 @@ import asyncio
 
 import zmq.asyncio
 
-from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING
+from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING, TOPIC_PEER_SHUTDOWN
 from tests.unit.helpers.mock_subscriber import MockSubscriber
 
 import uvloop
@@ -378,6 +378,24 @@ class TestPublisherSocket(unittest.TestCase):
         return_message =  json.loads(self.data[1])
         self.assertEqual(vk, return_message.get('vk'))
         self.assertEqual(ip, return_message.get('ip'))
+
+    def test_METHOD_announce_new_peer_connection__sends_ip_and_vk(self):
+        self.create_publisher()
+        self.publisher.set_address(ip="127.0.0.1")
+        self.publisher.start()
+
+        self.start_subscriber()
+
+        self.publisher.announce_shutdown()
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.data)
+        self.assertEqual(TOPIC_PEER_SHUTDOWN, self.data[0].decode('UTF-8'))
+
+        return_message = json.loads(self.data[1])
+        self.assertDictEqual({}, return_message)
+
 
 
 

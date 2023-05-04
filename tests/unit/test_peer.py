@@ -1,6 +1,6 @@
 import json
 
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK, TOPIC_PEER_SHUTDOWN
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
 from lamden.crypto.wallet import Wallet
@@ -907,6 +907,20 @@ class TestPeer(unittest.TestCase):
         loop.run_until_complete(tasks)
 
         self.assertEqual(data, self.service_callback_data)
+
+    def test_METHOD_process_subscription__calls_appropriate_service_based_on_topic(self):
+
+        self.services = {}
+        self.services[TOPIC_PEER_SHUTDOWN] = MockService(callback=self.service_callback)
+        data = {}
+
+        tasks = asyncio.gather(
+            self.peer.process_subscription(data=[f'{TOPIC_PEER_SHUTDOWN}'.encode('UTF-8'), json.dumps(data).encode('UTF-8')])
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        self.assertEqual(data, {'vk': self.peer.server_vk})
 
     def test_METHOD_process_subscription__does_nothing_if_service_does_not_exist(self):
         data = {'testing': True}

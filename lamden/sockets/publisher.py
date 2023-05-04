@@ -147,8 +147,8 @@ class Publisher():
             }
         )
 
-    def announce_shutdown(self, vk: str):
-        self.publish(topic_str=TOPIC_PEER_SHUTDOWN, msg_dict={'vk': vk})
+    def announce_shutdown(self):
+        self.publish(topic_str=TOPIC_PEER_SHUTDOWN, msg_dict={})
 
     def stop(self) -> None:
         if self.running:
