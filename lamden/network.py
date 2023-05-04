@@ -4,12 +4,13 @@ import asyncio
 import random
 import uvloop
 import threading
+import math
 
 from typing import List
 
 from lamden.utils import hlc
 from lamden.utils.retrieve_ips import IPFetcher
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
 
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, get_latest_block_height
@@ -259,6 +260,31 @@ class Network:
                 exiles.append(peer_vk)
 
         return exiles
+
+    def get_gossip_group(self) -> List[Peer]:
+        peer_list = self.get_all_connected_peers()
+
+        # Up until 25 nodes you need to gossip with all of them to keep 99% probability of getting a proper answer
+        if len(peer_list) < 26:
+            return peer_list
+
+        # Calculate the adjusted target probability based on the network size
+        adjusted_target_probability = 1 - (1 - 0.99) ** (100 / len(peer_list))
+
+        # If the adjusted target probability is very close to 1, set the gossip group size to the total number of nodes
+        if 1 - adjusted_target_probability < 1e-15:
+            return peer_list
+
+        # Calculate the number of nodes to gossip with for the adjusted target probability
+        k = math.ceil(math.log(1 - adjusted_target_probability) / math.log(1 - 0.51))
+
+        # Make sure k is not greater than the number of nodes
+        k = min(k, len(peer_list))
+
+        # Randomly select k nodes
+        selected_nodes = random.sample(peer_list, k)
+
+        return selected_nodes
 
     async def check_connectivity(self):
         if len(self.peers) == 0:
@@ -593,6 +619,28 @@ class Network:
             node_list = encode(self.make_network_map())
 
             resp_msg = ('{"response": "%s", "network_map": %s}' % (ACTION_GET_NETWORK_MAP, node_list))
+
+            self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
+                to_vk=ident_vk_string,
+                msg_str=resp_msg
+            )
+
+        if action == ACTION_GOSSIP_NEW_BLOCK:
+            message_block_num = msg.get('block_num', None)
+            message_previous_block_num = msg.get('previous_block_num', None)
+
+            if message_block_num is None or message_previous_block_num is None:
+                return
+
+            my_previous_block = self.block_storage.get_previous_block(v=int(message_block_num))
+            my_previous_block_number = my_previous_block.get('number')
+            missing_block = "null"
+
+            if int(my_previous_block_number) != int(message_previous_block_num):
+                missing_block = my_previous_block_number
+
+            resp_msg = ('{"response": "%s", "missing_block": %s}' % (ACTION_GOSSIP_NEW_BLOCK, missing_block))
 
             self.router.send_msg(
                 ident_vk_bytes=ident_vk_bytes,

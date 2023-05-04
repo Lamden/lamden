@@ -46,7 +46,7 @@ class TestClassWebserver(TestCase):
         self.block_storage = BlockStorage(root=self.temp_storage)
         self.block_storage.store_block(self.mock_blocks.get_block_by_index(0))
         self.driver = ContractDriver(driver=FSDriver(root=self.temp_storage))
-        self.missing_blocks_writer = MissingBlocksWriter(root=self.temp_storage)
+        self.missing_blocks_writer = MissingBlocksWriter(root=self.temp_storage, block_storage=self.block_storage)
 
         self.ws = WebServer(
             wallet=self.node_wallet,
@@ -686,7 +686,7 @@ def get():
     def test_js_encoded_tx_works(self):
         pass
 
-    def test_ROUTE_report_missing_blocks__writes_the_missing_block_json_file(self):
+    def test_ROUTE_report_missing_blocks__writes_the_missing_block_files(self):
         missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
         missing_blocks_json = json.dumps(missing_blocks)
 
@@ -702,13 +702,10 @@ def get():
         # response is ok
         self.assertEqual('ok', response.text)
 
-        # file was created
-        self.assertTrue(os.path.exists(self.ws.missing_blocks_writer.filename_path))
-
-        # file content matches request
-        with open(self.ws.missing_blocks_writer.filename_path, "r") as f:
-            file_content = json.loads(f.read())
-            self.assertEqual(missing_blocks, file_content)
+        # files were created
+        for block_num in missing_blocks:
+            full_file_path = os.path.join(self.ws.missing_blocks_writer.missing_blocks_dir, block_num)
+            self.assertTrue(os.path.exists(full_file_path))
 
     def test_ROUTE_report_missing_blocks__response_errors_with_invalid_signature(self):
         missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
@@ -727,23 +724,25 @@ def get():
         # response is proper error
         self.assertDictEqual({'error': "Invalid Signature."}, response.json)
 
-        # file was not created
-        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+        # files were not created
+        for block_num in missing_blocks:
+            full_file_path = os.path.join(self.ws.missing_blocks_writer.missing_blocks_dir, block_num)
+            self.assertFalse(os.path.exists(full_file_path))
 
 
     def test_ROUTE_report_missing_blocks__response_errors_with_invalid_json_body(self):
         missing_blocks = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
         missing_blocks_json = json.dumps(missing_blocks)
 
-        signature = self.ws.wallet.sign(missing_blocks_json)
-
         _, response = self.ws.app.test_client.post('/report_missing_blocks', data=None)
 
         # response is proper error
         self.assertDictEqual({'error': "Invalid JSON Body."}, response.json)
 
-        # file was not created
-        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+        # files were not created
+        for block_num in missing_blocks:
+            full_file_path = os.path.join(self.ws.missing_blocks_writer.missing_blocks_dir, block_num)
+            self.assertFalse(os.path.exists(full_file_path))
 
 
     def test_ROUTE_report_missing_blocks__response_forwards_errors_from_missing_blocks_writer(self):
@@ -762,8 +761,10 @@ def get():
         # response is proper error
         self.assertDictEqual({'error': "The provided list must contain only strings"}, response.json)
 
-        # file was not created
-        self.assertFalse(os.path.exists(self.ws.missing_blocks_writer.filename_path))
+        # files were not created
+        for block_num in missing_blocks:
+            full_file_path = os.path.join(self.ws.missing_blocks_writer.missing_blocks_dir, str(block_num))
+            self.assertFalse(os.path.exists(full_file_path))
 
 
 class TestWebserverWebsockets(TestCase):

@@ -64,6 +64,7 @@ class LocalNodeNetwork:
                 network_await_connect_all_timeout=network_await_connect_all_timeout
             )
 
+        '''
         def __del__(self):
             if self.temp_network_dir.is_dir():
                 try:
@@ -74,6 +75,7 @@ class LocalNodeNetwork:
                     )
                     self.loop.run_until_complete(tasks)
                     self.__del__()
+        '''
 
         @property
         def all_nodes(self) -> List[ThreadedNode]:

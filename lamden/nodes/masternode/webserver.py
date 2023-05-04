@@ -81,7 +81,7 @@ class WebServer:
         self.driver = driver
         self.nonces = nonces if nonces is not None else storage.NonceStorage()
         self.blocks = blocks
-        self.missing_blocks_writer = missing_blocks_writer or MissingBlocksWriter()
+        self.missing_blocks_writer = missing_blocks_writer or MissingBlocksWriter(block_storage=self.blocks)
 
         self.static_headers = {}
 
@@ -527,7 +527,6 @@ class WebServer:
 
             signature = body.get('signature')
             missing_blocks = body.get('missing_blocks')
-            force = body.get('force', False)
 
             if not verify(
                 signature=signature,
@@ -537,8 +536,7 @@ class WebServer:
                 raise ValueError("Invalid Signature.")
 
             self.missing_blocks_writer.write_missing_blocks(
-                blocks_list=missing_blocks,
-                force=force
+                blocks_list=missing_blocks
             )
 
         except Exception as err:

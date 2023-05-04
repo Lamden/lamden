@@ -71,11 +71,8 @@ class BlockStorage:
         tx = self.get_tx(tx_hash)
         block['processed'] = tx
 
-    def __is_block_file(self, filename):
-        try:
-            return os.path.isfile(os.path.join(self.blocks_dir, filename)) and isinstance(int(filename), int)
-        except:
-            return False
+    def block_exists(self, block_num: str) -> bool:
+        return self.block_driver.block_exists(block_num=str(block_num))
 
     def is_genesis_block(self, block):
         return block.get('genesis', None) is not None
@@ -190,6 +187,17 @@ class BlockStorage:
                 return None
 
         block = self.block_driver.find_next_block(block_num=str(v))
+
+        if not block:
+            return None
+
+        if not self.is_genesis_block(block=block):
+            self.__fill_block(block)
+
+        return block
+
+    def get_latest_block(self):
+        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
 
         if not block:
             return None

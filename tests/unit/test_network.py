@@ -2,7 +2,7 @@ import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 from lamden.storage import BlockStorage
@@ -722,6 +722,115 @@ class TestNetwork(TestCase):
         for vk, ip in mock_network_map.all_nodes.items():
             self.assertEqual(ip, mock_network_map.all_nodes[vk])
 
+    def test_METHOD_router_callback__gossip_new_block_creates_proper_response_is_prev_block_matches(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        block_num = '1682939321560636160'
+        previous_block_num = '1582939321560636160'
+
+        latest_block_info_msg = json.dumps({
+            'action': ACTION_GOSSIP_NEW_BLOCK,
+            'block_num': int(block_num),
+            'previous_block_num': int(previous_block_num)
+        })
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        network_1.block_storage.store_block(block={
+            'number': previous_block_num,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '1',
+            'processed': {
+                'hash': 'testing_1'
+            }
+        })
+
+        network_1.block_storage.store_block(block={
+            'number': block_num,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '2',
+            'processed': {
+                'hash': 'testing_2'
+            }
+        })
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(
+            ident_vk_string=peer_vk,
+            ident_vk_bytes=peer_vk.encode(),
+            msg=latest_block_info_msg
+        ))
+
+        self.assertIsNotNone(self.router_msg)
+        to_vk, msg = self.router_msg
+
+
+        self.assertIsInstance(to_vk, str)
+        self.assertIsInstance(msg, str)
+
+        msg_obj = json.loads(msg)
+        self.assertIsNotNone(msg_obj)
+
+        self.assertEqual(ACTION_GOSSIP_NEW_BLOCK, msg_obj.get("response"))
+        self.assertEqual(None, msg_obj.get("missing_block"))
+
+    def test_METHOD_router_callback__gossip_new_block_provides_missing_block_if_previous_not_match(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        block_num = '1682939321560636160'
+        missing_block = '1582939321560636160'
+        previous_block_num = '1482939321560636160'
+
+        latest_block_info_msg = json.dumps({
+            'action': ACTION_GOSSIP_NEW_BLOCK,
+            'block_num': int(block_num),
+            'previous_block_num': int(previous_block_num)
+        })
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        # This is the block we are missing and the network peer will return it to us
+        network_1.block_storage.store_block(block={
+            'number': missing_block,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '1',
+            'processed': {
+                'hash': 'testing_1'
+            }
+        })
+
+        network_1.block_storage.store_block(block={
+            'number': block_num,
+            'hash': "1a2b3c",
+            'hlc_timestamp': '2',
+            'processed': {
+                'hash': 'testing_2'
+            }
+        })
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(
+            ident_vk_string=peer_vk,
+            ident_vk_bytes=peer_vk.encode(),
+            msg=latest_block_info_msg
+        ))
+
+        self.assertIsNotNone(self.router_msg)
+        to_vk, msg = self.router_msg
+
+
+        self.assertIsInstance(to_vk, str)
+        self.assertIsInstance(msg, str)
+
+        msg_obj = json.loads(msg)
+        self.assertIsNotNone(msg_obj)
+
+        self.assertEqual(ACTION_GOSSIP_NEW_BLOCK, msg_obj.get("response"))
+        self.assertEqual(int(missing_block), msg_obj.get("missing_block"))
+
+
     def test_METHOD_make_network_map(self):
         network_1 = self.create_network()
 
@@ -1289,3 +1398,27 @@ class TestNetwork(TestCase):
 
         self.add_vk_to_smartcontract(network_1, peer_vk)
         self.assertListEqual(network_1.get_exiled_peers(), [])
+
+    def test_METHOD_get_gossip_group__returns_expected_number_of_nodes(self):
+        network_1 = self.create_network()
+
+        # Should be a smaller number of nodes needed as the peer group increases
+        for i in range(99):
+            peer_wallet = Wallet()
+            peer_vk = peer_wallet.verifying_key
+            peer = network_1.create_peer(ip=f'tcp://127.0.0.1:{str(19000 + i)}', vk=peer_vk)
+            peer.connected = True
+            network_1.peers[peer_vk] = peer
+
+            if i == 24:
+                gossip_group = network_1.get_gossip_group()
+                self.assertEqual(25, len(gossip_group))
+
+            if i == 49:
+                gossip_group = network_1.get_gossip_group()
+                self.assertEqual(13, len(gossip_group))
+
+            if i == 99:
+                gossip_group = network_1.get_gossip_group()
+                self.assertEqual(6, len(gossip_group))
+

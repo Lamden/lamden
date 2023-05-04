@@ -186,14 +186,15 @@ class Node:
             network=self.network
         )
 
-        self.catchup_handler = CatchupHandler(
+        self.catchup_handler: CatchupHandler = CatchupHandler(
             network=self.network,
             contract_driver=self.driver,
             block_storage=self.blocks,
             nonce_storage=self.nonces
         )
 
-        self.missing_blocks_handler = MissingBlocksHandler(
+        self.missing_blocks_handler: MissingBlocksHandler = MissingBlocksHandler(
+            root=self.blocks.root,
             network=self.network,
             contract_driver=self.driver,
             block_storage=self.blocks,
@@ -836,8 +837,38 @@ class Node:
 
         gc.collect()
 
+        # gossip to see if we are missing a block
+        asyncio.ensure_future(self.gossip_about_new_block(block=block))
+
         # check to see if we need to process any missing blocks.
         asyncio.ensure_future(self.missing_blocks_handler.run())
+
+    async def gossip_about_new_block(self, block: dict) -> None:
+        block_num = block.get('number')
+        if int(block_num) > 0:
+            previous_block = self.blocks.get_previous_block(v=int(block_num))
+
+            if previous_block is not None:
+                previous_block_number = previous_block.get('number')
+
+                gossip_group = self.network.get_gossip_group()
+
+                missing_blocks = set()
+
+                for peer in gossip_group:
+                    res = await peer.gossip_new_block(block_num=block_num, previous_block_num=previous_block_number)
+                    try:
+                        missing_block = res.get('missing_block')
+                        if missing_block is not None:
+                            missing_blocks.add(str(missing_block))
+
+                    except Exception:
+                        self.log.error(f"Error contacting, peer {peer.server_vk} for gossip.")
+
+                try:
+                    self.missing_blocks_handler.writer.write_missing_blocks(blocks_list=list(missing_blocks))
+                except Exception as err:
+                    self.log.error(err)
 
     def check_upgrade(self, state_changes: list):
         for change in state_changes:

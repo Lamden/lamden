@@ -25,6 +25,7 @@ ACTION_GET_BLOCK = "get_block"
 ACTION_GET_NEXT_BLOCK = "get_next_block"
 ACTION_GET_PREV_BLOCK = "get_previous_block"
 ACTION_GET_NETWORK_MAP = "get_network_map"
+ACTION_GOSSIP_NEW_BLOCK = "gossip_new_block"
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
@@ -86,9 +87,8 @@ class Peer:
             'get_latest_block_info': 15000,
             'get_block': 15000,
             'get_next_block': 15000,
-            'get_network_map': 15000
-
-
+            'get_network_map': 15000,
+            'gossip_new_block': 10000
         }
 
         try:
@@ -431,6 +431,15 @@ class Peer:
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_GET_NETWORK_MAP), attempts=3)
         return msg_json
 
+    async def gossip_new_block(self, block_num: str, previous_block_num: str) -> (dict, None):
+        msg_obj = {
+            'action': ACTION_GOSSIP_NEW_BLOCK,
+            'block_num': int(block_num),
+            'previous_block_num': int(previous_block_num)
+        }
+        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_GOSSIP_NEW_BLOCK), attempts=1)
+        return msg_json
+
     async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):
         if self.request is None:
             raise AttributeError("Request socket not setup.")
@@ -444,8 +453,6 @@ class Peer:
         result = await self.request.send(str_msg=str_msg, timeout=timeout, attempts=attempts)
 
         return self.handle_result(result=result)
-
-
 
     def handle_result(self, result: Result) -> (dict, None):
         if isinstance(result.response, bytes):
