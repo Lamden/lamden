@@ -40,39 +40,43 @@ class MissingBlocksHandler:
         self.network = network
         self.event_writer = event_writer
         self.wallet = wallet
+        self.writer = MissingBlocksWriter(root=self.root, block_storage=self.block_storage)
 
         self.log = get_logger(f'[{self.current_thread.name}][MISSING BLOCKS HANDLER]')
 
-    def _init_missing_blocks_dir(self):
+    def _init_missing_blocks_dir(self) -> None:
         if not os.path.exists(self.missing_blocks_dir):
             os.makedirs(self.missing_blocks_dir)
 
-    def _read_missing_blocks_file(self):
-        missing_blocks_file_path = os.path.join(self.missing_blocks_dir, "missing_blocks.json")
+    def _get_dir_listing(self) -> list:
         try:
-            with open(missing_blocks_file_path, 'r') as f:
-                content = f.read()
-                return json.loads(content)
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
+            dir_listing = os.listdir(self.missing_blocks_dir)
+        except FileNotFoundError:
+            return []
 
-    def _validate_missing_blocks_data(self, data) -> bool:
-        if data is None:
+        return dir_listing
+
+    def _validate_missing_block_filename(self, filename) -> bool:
+        if filename is None:
             return False
 
-        if not isinstance(data, list) or not data:
+        if not isinstance(filename, str) or not filename:
             return False
-
-        for item in data:
-            if not isinstance(item, str):
-                return False
+        try:
+            int(filename)
+        except ValueError:
+            return False
 
         return True
 
-    def _delete_missing_blocks_file(self):
-        missing_blocks_file_path = os.path.join(self.missing_blocks_dir, "missing_blocks.json")
+    def _delete_missing_blocks_files(self, filename_list: list) -> None:
+        for filename in filename_list:
+            self._delete_missing_blocks_file(filename=filename)
+
+    def _delete_missing_blocks_file(self, filename: str) -> None:
+        full_file_path = os.path.join(self.missing_blocks_dir, filename)
         try:
-            os.remove(missing_blocks_file_path)
+            os.remove(full_file_path)
         except FileNotFoundError:
             pass
 
@@ -176,17 +180,18 @@ class MissingBlocksHandler:
 
 
     def get_missing_blocks_list(self) -> list:
-        data = self._read_missing_blocks_file()
-        is_valid = self._validate_missing_blocks_data(data)
+        missing_blocks_list = self._get_dir_listing()
 
-        if not is_valid:
-            self._delete_missing_blocks_file()
-            return []
+        self._delete_missing_blocks_files(filename_list=missing_blocks_list)
 
-        self._delete_missing_blocks_file()
+        valid_missing_blocks_list = list(
+            block_num
+            for block_num in missing_blocks_list
+            if self._validate_missing_block_filename(block_num)
+        )
 
-        data.sort()
-        return data
+        valid_missing_blocks_list.sort()
+        return valid_missing_blocks_list
 
     async def process_missing_blocks(self, missing_block_numbers_list: list = None):
         for block_num in missing_block_numbers_list:
@@ -274,14 +279,14 @@ class MissingBlocksHandler:
 
 
 class MissingBlocksWriter:
-    def __init__(self, root: Optional[str] = None) -> None:
+    def __init__(self, block_storage: storage.BlockStorage, root: Optional[str] = None) -> None:
         if root is None:
-            root = os.path.expanduser(".lamden/missing_blocks")
+            root = os.path.expanduser(".lamden")
 
         self.root = os.path.abspath(root)
         self.missing_blocks_dir = os.path.join(self.root, 'missing_blocks')
-        self.missing_blocks_filename = "missing_blocks.json"
-        self.filename_path = os.path.join(self.missing_blocks_dir, self.missing_blocks_filename)
+
+        self.block_storage = block_storage
 
         if not os.path.exists(self.missing_blocks_dir):
             os.makedirs(self.missing_blocks_dir)
@@ -301,16 +306,19 @@ class MissingBlocksWriter:
             if not isinstance(block_num, str):
                 raise ValueError("The provided list must contain only strings")
 
-    def _check_file_exists(self, path: str) -> None:
-        if os.path.exists(path):
-            raise FileExistsError("missing_blocks.json already exists in the specified directory")
-
-    def write_missing_blocks(self, blocks_list: List[str], force: bool = False) -> None:
+    def write_missing_blocks(self, blocks_list: List[str],) -> None:
         self._validate_blocks_list(blocks_list=blocks_list)
         self._validate_block_strings(blocks_list)
 
-        if not force:
-            self._check_file_exists(self.filename_path)
+        for block_num in blocks_list:
+            if not self.block_storage.block_exists(block_num=block_num):
+                self.write_missing_block(block_num)
 
-        with open(self.filename_path, "w") as f:
-            json.dump(blocks_list, f)
+    def write_missing_block(self, block_num: str) -> None:
+        if block_num is None:
+            return
+
+        full_file_path = os.path.join(self.missing_blocks_dir, str(block_num))
+
+        with open(full_file_path, "w") as f:
+            json.dump("", f)

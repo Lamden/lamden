@@ -148,97 +148,108 @@ class TestMissingBlocksHandler(TestCase):
             self.fail("This should not create an exception.")
 
 
-    def test_PRIVATE_METHOD_read_missing_blocks_file__returns_json_decoded_data_is_list(self):
+    def test_PRIVATE_METHOD_get_dir_listing__returns_list_of_filenames(self):
         self.create_missing_blocks_handler()
 
-        data = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        # Create files
+        filenames = [
+            "1682939321560636160",
+            "8520679865965181957",
+            "2156250479259241801"
+        ]
 
-        # Open a file for writing
-        with open(self.full_filename_path, "w") as outfile:
-            # Write the Python dictionary as a JSON string to the file
-            json.dump(data, outfile)
+        for filename in filenames:
+            full_file_path = os.path.join(self.missing_blocks_dir, filename)
+            with open(full_file_path, "w") as f:
+                json.dump("", f)
 
-        missing_blocks = self.missing_blocks_handler._read_missing_blocks_file()
-        self.assertIsNotNone(missing_blocks)
-        self.assertIsInstance(missing_blocks, list)
-        self.assertEqual(3, len(missing_blocks))
+        # Get listing
+        listing = self.missing_blocks_handler._get_dir_listing()
 
-    def test_PRIVATE_METHOD_read_missing_blocks_file__returns_None_if_not_exists(self):
+        self.assertListEqual(filenames, listing)
+
+    def test_PRIVATE_METHOD_get_dir_listing__returns_empty_list_if_no_files(self):
         self.create_missing_blocks_handler()
 
-        self.assertFalse(os.path.exists(self.full_filename_path))
-        missing_blocks = self.missing_blocks_handler._read_missing_blocks_file()
+        # Get listing
+        listing = self.missing_blocks_handler._get_dir_listing()
 
-        self.assertIsNone(missing_blocks)
+        self.assertListEqual([], listing)
 
-    def test_PRIVATE_METHOD_read_missing_blocks_file__returns_None_if_not_json(self):
+    def test_PRIVATE_METHOD_validate_missing_block_filename__returns_FALSE_if_data_None(self):
         self.create_missing_blocks_handler()
 
-        data = "1682939321560636160, 8520679865965181957, 2156250479259241801"
-
-        # Open a file for writing
-        with open(self.full_filename_path, "w") as outfile:
-            # Write the Python dictionary as a JSON string to the file
-            outfile.write(data)
-
-        self.assertTrue(os.path.exists(self.full_filename_path))
-
-        missing_blocks = self.missing_blocks_handler._read_missing_blocks_file()
-
-        self.assertIsNone(missing_blocks)
-
-    def test_PRIVATE_METHOD_validate_missing_blocks_data__returns_FALSE_if_data_None(self):
-        self.create_missing_blocks_handler()
-
-        is_valid = self.missing_blocks_handler._validate_missing_blocks_data(data=None)
+        is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=None)
 
         self.assertFalse(is_valid)
 
-    def test_PRIVATE_METHOD_validate_missing_blocks_data__returns_FALSE_if_data_not_list(self):
+    def test_PRIVATE_METHOD_validate_missing_block_filename__returns_FALSE_if_not_string(self):
         self.create_missing_blocks_handler()
 
-        is_valid = self.missing_blocks_handler._validate_missing_blocks_data(data={})
+        filename = []
+
+        is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=filename)
 
         self.assertFalse(is_valid)
 
-    def test_PRIVATE_METHOD_validate_missing_blocks_data__returns_FALSE_if_data_is_list_not_string(self):
+    def test_PRIVATE_METHOD_validate_missing_block_filename__returns_FALSE_if_cannot_convert_to_int(self):
         self.create_missing_blocks_handler()
 
-        is_valid = self.missing_blocks_handler._validate_missing_blocks_data(
-            data=[
-                1682939321560636160,
-                "8520679865965181957",
-                2156250479259241801
-            ])
+        filename = "string"
+
+        is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=filename)
 
         self.assertFalse(is_valid)
 
-    def test_PRIVATE_METHOD_validate_missing_blocks_data__returns_TRUE_if_data_is_list_of_strings(self):
+
+    def test_PRIVATE_METHOD_validate_missing_block_filename__returns_TRUE_if_data_is_string_int(self):
         self.create_missing_blocks_handler()
 
-        is_valid = self.missing_blocks_handler._validate_missing_blocks_data(
-            data=[
-                "1682939321560636160",
-                "8520679865965181957",
-                "2156250479259241801"
-            ])
+        filename = "1682939321560636160"
+
+        is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=filename)
 
         self.assertTrue(is_valid)
+
+    def test_PRIVATE_METHOD_delete_missing_blocks_files__deletes_files_in_list(self):
+        self.create_missing_blocks_handler()
+
+        # Create files
+        filenames = [
+            "1682939321560636160",
+            "8520679865965181957",
+            "2156250479259241801"
+        ]
+
+        for filename in filenames:
+            full_file_path = os.path.join(self.missing_blocks_dir, filename)
+            with open(full_file_path, "w") as f:
+                json.dump("", f)
+
+        self.assertEqual(filenames, os.listdir(self.missing_blocks_handler.missing_blocks_dir))
+
+        self.missing_blocks_handler._delete_missing_blocks_files(filename_list=filenames)
+
+        # Files were removed
+        for filename in filenames:
+            full_file_path = os.path.join(self.missing_blocks_dir, filename)
+            self.assertFalse(os.path.exists(full_file_path))
 
     def test_PRIVATE_METHOD_delete_missing_blocks_file__deletes_file_if_exists(self):
         self.create_missing_blocks_handler()
 
-        data = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        filename = "1682939321560636160"
 
+        full_file_path = os.path.join(self.missing_blocks_dir, filename)
         # Open a file for writing
-        with open(self.full_filename_path, "w") as outfile:
+        with open(full_file_path, "w") as outfile:
             # Write the Python dictionary as a JSON string to the file
-            json.dump(data, outfile)
+            json.dump("", outfile)
 
         # assert the file does exist
-        self.assertTrue(os.path.exists(self.full_filename_path))
+        self.assertTrue(os.path.exists(full_file_path))
 
-        self.missing_blocks_handler._delete_missing_blocks_file()
+        self.missing_blocks_handler._delete_missing_blocks_file(filename=filename)
 
         # assert the file was deleted
         self.assertFalse(os.path.exists(self.full_filename_path))
@@ -246,15 +257,19 @@ class TestMissingBlocksHandler(TestCase):
     def test_PRIVATE_METHOD_delete_missing_blocks_file__does_not_error_if_file_not_exist(self):
         self.create_missing_blocks_handler()
 
-        # assert the file does NOT exist
-        self.assertFalse(os.path.exists(self.full_filename_path))
+        filename = "1682939321560636160"
+
+        full_file_path = os.path.join(self.missing_blocks_dir, filename)
+
+        # assert the file does exist
+        self.assertFalse(os.path.exists(full_file_path))
 
         try:
-            self.missing_blocks_handler._delete_missing_blocks_file()
+            self.missing_blocks_handler._delete_missing_blocks_file(filename=filename)
         except FileNotFoundError:
             self.fail("This should not create an exception.")
 
-    def test_METHOD_get_missing_blocks_list__gets_empty_list_if_no_file(self):
+    def test_METHOD_get_missing_blocks_list__gets_empty_list_if_no_files(self):
         self.create_missing_blocks_handler()
 
         missing_blocks = self.missing_blocks_handler.get_missing_blocks_list()
@@ -262,24 +277,32 @@ class TestMissingBlocksHandler(TestCase):
         self.assertIsInstance(missing_blocks, list)
         self.assertEqual(0, len(missing_blocks))
 
-    def test_METHOD_get_missing_blocks_list__returns_file_content_and_removes_file(self):
+    def test_METHOD_get_missing_blocks_list__returns_file_content_and_removes_files(self):
         self.create_missing_blocks_handler()
 
-        data = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
+        # Create files
+        filenames = [
+            "1682939321560636160",
+            "8520679865965181957",
+            "2156250479259241801"
+        ]
 
-        # Open a file for writing
-        with open(self.full_filename_path, "w") as outfile:
-            # Write the Python dictionary as a JSON string to the file
-            json.dump(data, outfile)
-
+        for filename in filenames:
+            full_file_path = os.path.join(self.missing_blocks_dir, filename)
+            with open(full_file_path, "w") as f:
+                json.dump("", f)
+        
         missing_blocks = self.missing_blocks_handler.get_missing_blocks_list()
 
-        # returned list of blocks
+        # Got all blocks
         self.assertIsInstance(missing_blocks, list)
         self.assertEqual(3, len(missing_blocks))
 
-        # deleted file afterwards
-        self.assertFalse(os.path.exists(self.full_filename_path))
+        # Files were removed
+        for filename in filenames:
+            full_file_path = os.path.join(self.missing_blocks_dir, filename)
+            self.assertFalse(os.path.exists(full_file_path))
+
 
     def test_METHOD_process_block__returns_if_block_already_exists(self):
         self.create_missing_blocks_handler()
@@ -542,6 +565,7 @@ class TestMissingBlocksWriter(TestCase):
 
         self.create_directories()
 
+        self.block_storage = BlockStorage(root=self.test_dir)
         self.missing_blocks_writer: MissingBlocksWriter = None
 
     def tearDown(self):
@@ -553,7 +577,8 @@ class TestMissingBlocksWriter(TestCase):
 
     def create_missing_blocks_writer(self):
         self.missing_blocks_writer = MissingBlocksWriter(
-            root=self.test_dir
+            root=self.test_dir,
+            block_storage=self.block_storage
         )
 
     def create_directories(self):
@@ -574,10 +599,12 @@ class TestMissingBlocksWriter(TestCase):
 
         # directories are created as they should
         self.assertEqual(self.missing_blocks_dir, self.missing_blocks_writer.missing_blocks_dir)
-        self.assertEqual(self.full_filename_path, self.missing_blocks_writer.filename_path)
 
         # missing_blocks directory is created
         self.assertTrue(os.path.exists(self.missing_blocks_dir))
+
+        # Blocks Storage
+        self.assertIsInstance(self.block_storage, BlockStorage)
 
     def test_PRIVATE_METHOD_validate_blocks_list__raises_ValueError_if_blocks_list_is_None(self):
         self.create_missing_blocks_writer()
@@ -635,58 +662,69 @@ class TestMissingBlocksWriter(TestCase):
         except Exception:
             self.fail("This should not cause an exception.")
 
-    def test_PRIVATE_METHOD_check_file_exists__raises_FileExistsError_if_file_exists(self):
-        self.create_missing_blocks_writer()
 
-        blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
-
-        with open(self.missing_blocks_writer.filename_path, "w") as f:
-            json.dump(blocks_list, f)
-
-        with self.assertRaises(FileExistsError) as err:
-            self.missing_blocks_writer._check_file_exists(path=self.missing_blocks_writer.filename_path)
-            self.assertEqual("missing_blocks.json already exists in the specified directory", str(err))
-
-    def test_PRIVATE_METHOD_check_file_exists__raises_FileExistsError_if_file_exists(self):
-        self.create_missing_blocks_writer()
-
-        try:
-            self.missing_blocks_writer._check_file_exists(path=self.missing_blocks_writer.filename_path)
-        except FileExistsError:
-            self.fail("This should not cause an exception.")
-
-    def test_METHOD_write_missing_blocks__writes_file(self):
+    def test_METHOD_write_missing_blocks__writes_files(self):
         self.create_missing_blocks_writer()
 
         blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
 
         self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list)
 
-        self.assertTrue(os.path.exists(self.missing_blocks_writer.filename_path))
+        for block_num in blocks_list:
+            file_name_path = os.path.join(self.missing_blocks_writer.missing_blocks_dir, block_num)
+            self.assertTrue(os.path.exists(file_name_path))
 
-    def test_METHOD_write_missing_blocks__force_causes_no_FileExistsError_error(self):
+    def test_METHOD_write_missing_blocks__no_exception_if_files_exist(self):
         self.create_missing_blocks_writer()
 
         blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
 
-        with open(self.missing_blocks_writer.filename_path, "w") as f:
-            json.dump(blocks_list, f)
+        # write files out so they exist when the class tries to write them
+        for block_num in blocks_list:
+            file_name_path = os.path.join(self.missing_blocks_writer.missing_blocks_dir, block_num)
+            with open(file_name_path, "w") as outfile:
+                json.dump("", outfile)
 
         try:
-            self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list, force=True)
-        except FileExistsError:
+            self.missing_blocks_writer._validate_block_strings(blocks_list=blocks_list)
+        except Exception:
             self.fail("This should not cause an exception.")
 
-        self.assertTrue(os.path.exists(self.missing_blocks_writer.filename_path))
+    def test_METHOD_write_missing_blocks__does_not_write_file_if_block_exists(self):
+        self.create_missing_blocks_writer()
 
-    def test_METHOD_write_missing_blocks__raises_FileExistsError_exception_if_no_force_and_file_exists(self):
+
+        block_number = '8520679865965181957'
+        block_hash = 'fcf68695ed53d23939d5f82198cc61d7fbf20837f69c16b963f1dc9e0162a5c2'
+        tx_hash = 'ffe2f8ef7664c12804739a5a4b8ede34aa61a99111eae760c5a114e26774711c'
+
+        block = {
+            'number': block_number,
+            'hash': block_hash,
+            'processed': {
+                'hash': tx_hash
+            }
+        }
+
+        # Store the block
+        self.block_storage.store_block(block=block)
+
+        blocks_list = ["1682939321560636160", block_number, "2156250479259241801"]
+
+        # Write Missing Blocks
+        self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list)
+
+        # Verify it didn't create a file for the block that exited
+        file_name_path = os.path.join(self.missing_blocks_writer.missing_blocks_dir, block_number)
+        self.assertFalse(os.path.exists(file_name_path))
+
+    def test_METHOD_write_missing_block__writes_file(self):
         self.create_missing_blocks_writer()
 
         blocks_list = ["1682939321560636160", "8520679865965181957", "2156250479259241801"]
 
-        with open(self.missing_blocks_writer.filename_path, "w") as f:
-            json.dump(blocks_list, f)
+        for block_num in blocks_list:
+            self.missing_blocks_writer.write_missing_block(block_num=block_num)
 
-        with self.assertRaises(FileExistsError) as err:
-            self.missing_blocks_writer.write_missing_blocks(blocks_list=blocks_list)
-            self.assertEqual("missing_blocks.json already exists in the specified directory", str(err))
+            file_name_path = os.path.join(self.missing_blocks_writer.missing_blocks_dir, block_num)
+            self.assertTrue(os.path.exists(file_name_path))

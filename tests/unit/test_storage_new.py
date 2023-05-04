@@ -175,6 +175,34 @@ class TestBlockStorage(TestCase):
         self.assertEqual(len(os.listdir(self.bs.txs_dir)), 0)
         self.assertEqual(len(os.listdir(self.bs.blocks_alias_dir)), 0)
 
+    def test_METHOD_block_exists__returns_TRUE_if_block_exists(self):
+        prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        block = generate_blocks(
+            number_of_blocks=1,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=prev_block_hlc
+        )[0]
+
+        self.bs.store_block(copy.deepcopy(block))
+
+        block_number = block.get('number')
+
+        self.assertTrue(self.bs.block_exists(block_num=block_number))
+
+    def test_METHOD_block_exists__returns_FALSE_if_block_does_NOT_exist(self):
+        prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
+
+        block = generate_blocks(
+            number_of_blocks=1,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=prev_block_hlc
+        )[0]
+
+        block_number = block.get('number')
+
+        self.assertFalse(self.bs.block_exists(block_num=block_number))
+
     def test_store_block(self):
         prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
 

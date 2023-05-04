@@ -71,11 +71,8 @@ class BlockStorage:
         tx = self.get_tx(tx_hash)
         block['processed'] = tx
 
-    def __is_block_file(self, filename):
-        try:
-            return os.path.isfile(os.path.join(self.blocks_dir, filename)) and isinstance(int(filename), int)
-        except:
-            return False
+    def block_exists(self, block_num: str) -> bool:
+        return self.block_driver.block_exists(block_num=str(block_num))
 
     def is_genesis_block(self, block):
         return block.get('genesis', None) is not None
