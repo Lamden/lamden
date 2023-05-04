@@ -401,6 +401,20 @@ class TestBlockStorage(TestCase):
 
         self.assertEqual(prev_hash, next_block.get('previous'))
 
+    def test_METHOD_get_latest_block__returns_latest_block(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        latest_block = self.bs.get_latest_block()
+        self.assertDictEqual(blocks[5], latest_block)
+
+
 class TestFSBlockDriver(TestCase):
     def setUp(self):
         self.test_dir = './.lamden'
@@ -999,4 +1013,3 @@ class TestFSHashStorageDriver(TestCase):
 
         # root still exists
         self.assertTrue(os.path.exists(check_dir))
-

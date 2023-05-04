@@ -73,8 +73,8 @@ class TestNewNodeCatchup(TestCase):
 
     def test_node_picks_up_missing_block_after_hard_applying(self):
 
-        num_of_masternodes = 3
-        amount_of_transactions = 2
+        num_of_masternodes = 10
+        amount_of_transactions = 5
 
         self.local_node_network = LocalNodeNetwork(
             num_of_masternodes=num_of_masternodes,
@@ -95,7 +95,7 @@ class TestNewNodeCatchup(TestCase):
             masternode_vk=self.local_node_network.masternodes[1].wallet.verifying_key
         )
 
-        self.async_sleep(2)
+        self.async_sleep(10)
 
         missing_block = self.local_node_network.masternodes[1].network.get_latest_block()
         missing_block_number = missing_block.get('number')
@@ -104,19 +104,34 @@ class TestNewNodeCatchup(TestCase):
             peer.subscriber.callback = peer.process_subscription
 
         self.send_transactions_to_network(amount_of_transactions=1)
-        self.async_sleep(2)
+        self.async_sleep(10)
 
         # Node made aware of missing block
         missing_block_file_path = os.path.join(self.local_node_network.masternodes[0].node.missing_blocks_handler.missing_blocks_dir, missing_block_number)
         self.assertTrue(os.path.exists(missing_block_file_path))
         self.assertIsNone(self.local_node_network.masternodes[0].blocks.get_block(v= int(missing_block_number)))
 
+        # Node minted a block that had a bad hash
+        expected_latest_block = self.local_node_network.masternodes[0].node.blocks.get_latest_block()
+
+        for index, node in enumerate(self.local_node_network.masternodes):
+            if index > 0:
+                node_latest_block = node.blocks.get_latest_block()
+                self.assertNotEqual(expected_latest_block.get('hash'), node_latest_block.get('hash'))
+
         # Send another tx
         self.send_transactions_to_network(amount_of_transactions=1)
-        self.async_sleep(2)
+        self.async_sleep(10)
 
         self.assertFalse(os.path.exists(missing_block_file_path))
         self.assertIsNotNone(self.local_node_network.masternodes[0].node.blocks.get_block(v=int(missing_block_number)))
+
+        # Node fixed the hash
+        expected_latest_block = self.local_node_network.masternodes[0].node.blocks.get_latest_block()
+
+        for node in self.local_node_network.masternodes:
+            node_latest_block = node.blocks.get_latest_block()
+            self.assertEqual(expected_latest_block.get('hash'), node_latest_block.get('hash'))
 
 
 

@@ -196,6 +196,17 @@ class BlockStorage:
 
         return block
 
+    def get_latest_block(self):
+        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+
+        if not block:
+            return None
+
+        if not self.is_genesis_block(block=block):
+            self.__fill_block(block)
+
+        return block
+
     def get_tx(self, h):
         tx = self.tx_driver.get_file(hash_str=h)
         return tx
