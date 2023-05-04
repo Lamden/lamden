@@ -369,6 +369,12 @@ class MockBlocks:
         return blocks
 
     @property
+    def block_list_encoded(self):
+        blocks = [json.loads(encode(block)) for block in list(self.blocks.values())]
+        blocks = sorted(blocks, key=lambda x: int(x['number']))
+        return blocks
+
+    @property
     def latest_block_num(self):
         k = list(self.blocks.keys())
         k.sort()
@@ -454,6 +460,19 @@ class MockBlocks:
         block_list = [self.get_block(num=block_num) for block_num in self.blocks.keys()]
         block_list.sort(key=lambda x: x.get('number'))
         return block_list[index]
+
+    def get_previous_block(self, block_num: int, block_list: list = None):
+        if block_list:
+            bl = block_list
+        else:
+            bl = self.block_list
+
+        for index, block in enumerate(bl):
+            if int(block.get('number', '-1')) == int(block_num):
+                if index == 0:
+                    return None
+                else:
+                    return bl[index - 1]
 
     def get_latest_block(self):
         return self.get_block(num=self.current_block_height)

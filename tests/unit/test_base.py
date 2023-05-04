@@ -161,8 +161,6 @@ class TestNode(TestCase):
         self.assertIsNotNone(self.node.node.blocks.get_block(last_hlc_timestamp))
 
 
-
-
     ''' N/A
     def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):
         self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
@@ -404,6 +402,7 @@ class TestNode(TestCase):
 
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))
+
 
 import unittest
 if __name__ == '__main__':

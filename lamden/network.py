@@ -262,8 +262,29 @@ class Network:
         return exiles
 
     def get_gossip_group(self) -> List[Peer]:
-        gossip_size = math.ceil(math.log(1 - 0.99) / math.log(1 - 0.51))
-        return random.sample(self.peer_list, gossip_size)
+        peer_list = self.get_all_connected_peers()
+
+        # Up until 25 nodes you need to gossip with all of them to keep 99% probability of getting a proper answer
+        if len(peer_list) < 26:
+            return peer_list
+
+        # Calculate the adjusted target probability based on the network size
+        adjusted_target_probability = 1 - (1 - 0.99) ** (100 / len(peer_list))
+
+        # If the adjusted target probability is very close to 1, set the gossip group size to the total number of nodes
+        if 1 - adjusted_target_probability < 1e-15:
+            return peer_list
+
+        # Calculate the number of nodes to gossip with for the adjusted target probability
+        k = math.ceil(math.log(1 - adjusted_target_probability) / math.log(1 - 0.51))
+
+        # Make sure k is not greater than the number of nodes
+        k = min(k, len(peer_list))
+
+        # Randomly select k nodes
+        selected_nodes = random.sample(peer_list, k)
+
+        return selected_nodes
 
     async def check_connectivity(self):
         if len(self.peers) == 0:

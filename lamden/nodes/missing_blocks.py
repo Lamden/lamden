@@ -173,9 +173,9 @@ class MissingBlocksHandler:
 
         if len(missing_block_numbers_list) > 0:
             self.log.warning("Processing Missing Blocks.")
-            self.process_missing_blocks(blocks=missing_block_numbers_list)
+            await self.process_missing_blocks(missing_block_numbers_list=missing_block_numbers_list)
 
-            self.recalc_block_hashes(starting_block_num=missing_block_numbers_list[0])
+            await self.recalc_block_hashes(starting_block_number=missing_block_numbers_list[0])
             self.log.warning("Finished Processing Missing Blocks.")
 
 
