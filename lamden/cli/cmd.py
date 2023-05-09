@@ -203,7 +203,7 @@ def main():
     if vars(args).get('command') is None:
         return
     logger.info("Removing all State Locks...")
-    release_all_state_locks()
+    release_all_state_locks(contract_state_path=os.path.join(STORAGE_HOME, 'contract_state'))
 
     logger.info("Checking if Block Storage needs Migration...")
     migrate_storage()
