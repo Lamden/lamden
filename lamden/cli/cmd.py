@@ -14,6 +14,7 @@ import os
 import pathlib
 import requests
 import signal
+import shutil
 
 logger = get_logger('STARTUP')
 
@@ -83,6 +84,21 @@ def resolve_genesis_block(genesis_file_path):
 def setup_node_signal_handler(node, loop):
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda: asyncio.ensure_future(node.stop()))
+
+def release_all_state_locks(contract_state_path: str):
+    contract_state_path = os.path.abspath(contract_state_path)
+
+    for entry in os.listdir(contract_state_path):
+        # Check if the entry ends with "-lock"
+        if entry.endswith("-lock"):
+            # Construct the full path of the directory
+            dir_path = os.path.join(contract_state_path, entry)
+
+            # Check if it's a directory
+            if os.path.isdir(dir_path):
+                # Remove the directory
+                shutil.rmtree(dir_path)
+                print(f"Removed Lock on state: {dir_path}")
 
 def start_node(args):
     sk = bytes.fromhex(os.environ['LAMDEN_SK'])
@@ -186,6 +202,8 @@ def main():
 
     if vars(args).get('command') is None:
         return
+    logger.info("Removing all State Locks...")
+    release_all_state_locks()
 
     logger.info("Checking if Block Storage needs Migration...")
     migrate_storage()

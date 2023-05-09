@@ -25,10 +25,13 @@ class AddBlockNum:
         prev_block = self.block_storage.get_previous_block(v=max_block_num)
 
         while True:
-            if not prev_block:
+            if prev_block is None:
                 break
 
             block_num = prev_block.get('number')
+
+            if block_num == '0':
+                break
 
             if self.block_storage.is_genesis_block(block=prev_block):
                 state_changes = prev_block.get('genesis', [])
