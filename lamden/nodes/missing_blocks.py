@@ -175,7 +175,10 @@ class MissingBlocksHandler:
             self.log.warning("Processing Missing Blocks.")
             await self.process_missing_blocks(missing_block_numbers_list=missing_block_numbers_list)
 
-            await self.recalc_block_hashes(starting_block_number=missing_block_numbers_list[0])
+            starting_block = self.block_storage.get_previous_block(v=int(missing_block_numbers_list[0]))
+            starting_block_number = starting_block.get('number')
+
+            await self.recalc_block_hashes(starting_block_number=starting_block_number)
             self.log.warning("Finished Processing Missing Blocks.")
 
 
@@ -220,19 +223,23 @@ class MissingBlocksHandler:
     async def recalc_block_hashes(self, starting_block_number: str):
         self.log.warning("Starting to recalculate block hashes.")
 
-        starting_block = self.block_storage.get_block(v=starting_block_number)
+        starting_block = self.block_storage.get_block(v=int(starting_block_number))
 
         # start with the block passed in
         current_block = starting_block
 
         while True:
+            # Get the current block's number and hash
             current_block_number = current_block.get('number')
             current_block_hash = current_block.get('hash')
 
+            # Get the next block in sequence
             next_block = self.block_storage.get_next_block(v=int(current_block_number))
 
+            # If there is no next block, we are done
             if next_block is None:
                 break
+
 
             next_block_number = next_block.get('number')
             next_block_previous_hash = next_block.get('previous')
