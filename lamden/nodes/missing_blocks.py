@@ -151,6 +151,8 @@ class MissingBlocksHandler:
 
     def _write_reorg_event(self, block: dict):
         encoded_block = encode(block)
+        encoded_block = json.loads(encoded_block)
+
         e = Event(
             topics=[NEW_BLOCK_REORG_EVENT],
             data=encoded_block
