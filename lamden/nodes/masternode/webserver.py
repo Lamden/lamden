@@ -30,6 +30,17 @@ import os
 
 log = get_logger("MN-WebServer")
 
+import logging
+
+# Set the logging level for socket.io library
+sio_logger = logging.getLogger("engineio.client")
+sio_logger.setLevel(logging.WARNING)
+
+# Set the logging level for sanic library
+sanic_logger = logging.getLogger("sanic")
+sanic_logger.setLevel(logging.WARNING)
+
+
 class NonceEncoder(_json.JSONEncoder):
     def default(self, o, *args, **kwargs):
         if isinstance(o, dict):
@@ -167,6 +178,8 @@ class WebServer:
 
         @self.sio.event
         async def event(data):
+            log.info(f"EVENT: {data}")
+            log.info(f'sending EVENT to {len(self.ws_clients)} clients...')
             for client in self.ws_clients:
                 await client.send(encode(data))
 
