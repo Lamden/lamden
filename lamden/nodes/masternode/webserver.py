@@ -162,13 +162,13 @@ class WebServer:
     def __setup_sio_event_handlers(self):
         @self.sio.event
         async def connect():
-            log.debug("CONNECTED TO EVENT SERVER")
+            log.warning("CONNECTED TO EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('join', {'room': topic})
 
         @self.sio.event
         async def disconnect():
-            log.debug("DISCONNECTED FROM EVENT SERVER")
+            log.warning("DISCONNECTED FROM EVENT SERVER")
             for topic in self.topics:
                 await self.sio.emit('leave', {'room': topic})
 
