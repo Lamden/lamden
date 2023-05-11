@@ -180,8 +180,12 @@ class WebServer:
         async def event(data):
             log.info(f"EVENT: {data}")
             log.info(f'sending EVENT to {len(self.ws_clients)} clients...')
-            for client in self.ws_clients:
-                await client.send(encode(data))
+
+            try:
+                for client in self.ws_clients:
+                    await client.send(encode(data))
+            except Exception as err:
+                log.error(err)
 
     def __register_app_listeners(self):
         @self.app.listener('after_server_start')
