@@ -173,7 +173,7 @@ def setup_lamden_parser(parser):
     join_parser = subparser.add_parser('join')
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
     join_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
-    join_parser.add_argument('-d', '--debug', type=bool, default=False)
+
 
 def migrate_storage():
     blocks_dir = os.path.join(STORAGE_HOME, 'blocks')
