@@ -144,13 +144,16 @@ def join_network(args):
     assert len(bootnodes) > 0, 'Must provide at least one bootnode.'
     logger.info(f'Bootnodes: {bootnodes}')
 
+    genesis_block = resolve_genesis_block(args.genesis_block)
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=bootnodes,
         join=True,
         metering=True,
-        private_network=get_private_network_ip()
+        private_network=get_private_network_ip(),
+        genesis_block=genesis_block
     )
 
     loop = asyncio.get_event_loop()
