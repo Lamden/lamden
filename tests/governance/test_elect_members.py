@@ -4,12 +4,14 @@ from contracting.stdlib.bridge.time import Datetime
 from datetime import datetime as dt, timedelta as td
 from lamden.contracts import sync
 from pathlib import Path
+import os
 from unittest import TestCase
 
 class TestPendingMasters(TestCase):
     def setUp(self):
+        submission_file_path = os.path.join(Path.cwd().parent, 'integration', 'mock', 'submission.py')
         self.contract_driver = ContractDriver(driver=FSDriver(root=Path('/tmp/temp_filebased_state')))
-        self.client = ContractingClient(driver=self.contract_driver)
+        self.client = ContractingClient(driver=self.contract_driver, submission_filename=submission_file_path)
         self.client.flush()
 
         sync.setup_genesis_contracts(initial_masternodes=['stux', 'raghu'], client=self.client)

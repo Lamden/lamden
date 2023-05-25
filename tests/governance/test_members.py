@@ -2,14 +2,19 @@ from contracting.client import ContractingClient
 from contracting.db.driver import ContractDriver, FSDriver
 from contracting.stdlib.bridge.time import Datetime
 from datetime import datetime as dt, timedelta as td
+import math
 from lamden.contracts import sync
 from pathlib import Path
+import os
 from unittest import TestCase
+from lamden.nodes.hlc import HLC_Clock
 
 class TestMembers(TestCase):
     def setUp(self):
+        self.hlc_clock = HLC_Clock()
+        submission_file_path = os.path.join(Path.cwd().parent, 'integration','mock','submission.py')
         self.contract_driver = ContractDriver(driver=FSDriver(root=Path('/tmp/temp_filebased_state')))
-        self.client = ContractingClient(driver=self.contract_driver)
+        self.client = ContractingClient(driver=self.contract_driver, submission_filename=submission_file_path)
         self.client.flush()
 
         f = open(sync.DEFAULT_PATH + '/genesis/currency.s.py')
@@ -34,6 +39,11 @@ class TestMembers(TestCase):
         self.election_house.register_policy(contract='stamp_cost')
         self.elect_members = self.client.get_contract('elect_members')
         self.currency = self.client.get_contract('currency')
+
+        current_hlc = self.hlc_clock.get_new_hlc_timestamp()
+        self.client.raw_driver.soft_apply(hcl=current_hlc)
+        self.client.raw_driver.hard_apply_one(hlc=current_hlc)
+        self.client.raw_driver.commit()
 
     def tearDown(self):
         self.client.flush()
@@ -596,18 +606,30 @@ class TestMembers(TestCase):
         self.assertEqual(mn_contract.quick_read('S', 'nays'), 0)
 
     def test_vote_doesnt_reach_consensus_after_voting_period_fails(self):
+        def get_now_from_nanos(add_time: int = 0):
+            current_hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+            nanos = self.hlc_clock.get_nanos(current_hlc_timestamp)
+            nanos = nanos + add_time
+            return Datetime._from_datetime(
+                dt.utcfromtimestamp(math.ceil(nanos / 1e9))
+            )
+
         self.submit_members(constructor_args={
             'initial_members': ['a' * 64, 'b' * 64, 'c' * 64],
         })
 
         mn_contract = self.client.get_contract('masternodes')
 
-        env = {'now': Datetime._from_datetime(dt.today())}
+        env = {'now': get_now_from_nanos()}
 
         mn_contract.vote(vk='a' * 64, obj=['introduce_motion', 3], environment=env)
 
-        env = {'now': Datetime._from_datetime(dt.today() + td(days=2))}
+        # Vote on the motion
+        mn_contract.vote(vk='a' * 64, obj=['vote_on_motion', True], environment=env)
 
+        env = {'now': get_now_from_nanos(add_time=(2 * 86400 * 1000000000))}
+
+        # Voting again will reset the motion
         mn_contract.vote(vk='a' * 64, obj=['vote_on_motion', True], environment=env)
 
         self.assertEqual(mn_contract.quick_read('S', 'current_motion'), 0)
