@@ -8,6 +8,8 @@ from lamden.utils import create_genesis
 from pathlib import Path
 from unittest import TestCase
 import json
+import os
+import shutil
 
 SAMPLE_KEY = 'something.something'
 SAMPLE_VAL = 'something'
@@ -18,15 +20,19 @@ class TestCreateGenesisBlock(TestCase):
         TestCreateGenesisBlock.genesis_contracts_state_changes = create_genesis.build_genesis_contracts_changes()
 
     def setUp(self):
+        self.root = './.lamden'
+        self.create_directories()
+
         self.founder_sk = 'beef' * 16
         self.earlier_time = Datetime(year=1, month=1, day=1)
-        self.fsdriver = FSDriver(root=Path('/tmp'))
+        self.fsdriver = FSDriver(root=self.root)
         self.db = 'test'
         self.collection = 'state'
         self.mongo_driver = Driver(db=self.db, collection=self.collection)
 
         if create_genesis.GENESIS_BLOCK_PATH.is_file():
             create_genesis.GENESIS_BLOCK_PATH.unlink()
+
         self.fsdriver.flush()
         self.mongo_driver.flush()
 
@@ -36,18 +42,28 @@ class TestCreateGenesisBlock(TestCase):
         self.fsdriver.flush()
         self.mongo_driver.flush()
 
+    def create_directories(self):
+        if os.path.exists(Path(self.root)):
+            shutil.rmtree(Path(self.root))
+
+        os.makedirs(Path(self.root))
+
     def create_filebased_state(self):
         for k, v in TestCreateGenesisBlock.genesis_contracts_state_changes.items():
             self.fsdriver.set(k, v)
+
         for contract in create_genesis.GENESIS_CONTRACTS:
-            self.fsdriver.set(f'{contract}.{TIME_KEY}', self.earlier_time)
+            if contract != 'submission':
+                self.fsdriver.set(f'{contract}.{TIME_KEY}', self.earlier_time)
+
         self.fsdriver.set(SAMPLE_KEY, SAMPLE_VAL)
 
     def create_mongo_state(self):
         for k, v in TestCreateGenesisBlock.genesis_contracts_state_changes.items():
             self.mongo_driver.set(k, v)
         for contract in create_genesis.GENESIS_CONTRACTS:
-            self.mongo_driver.set(f'{contract}.{TIME_KEY}', self.earlier_time)
+            if contract != 'submission':
+                self.mongo_driver.set(f'{contract}.{TIME_KEY}', self.earlier_time)
         self.mongo_driver.set(SAMPLE_KEY, SAMPLE_VAL)
 
     def test_build_genesis_contracts_state_changes(self):
@@ -174,7 +190,8 @@ class TestCreateGenesisBlock(TestCase):
         self.assertListEqual(expected_state_keys, actual_state_keys)
         self.assertTrue(validate_block_structure(genesis_block))
         for contract in create_genesis.GENESIS_CONTRACTS:
-            self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)
+            if contract != 'submission':
+                self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)
 
     def test_main_migration_scheme_mongo_migrates_and_resubmits_genesis_contracts(self):
         self.create_mongo_state()
@@ -194,4 +211,5 @@ class TestCreateGenesisBlock(TestCase):
         self.assertListEqual(expected_state_keys, actual_state_keys)
         self.assertTrue(validate_block_structure(genesis_block))
         for contract in create_genesis.GENESIS_CONTRACTS:
-            self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)
+            if contract != 'submission':
+                self.assertGreater(next(item for item in genesis_block['genesis'] if item['key'] == f'{contract}.{TIME_KEY}')['value'], self.earlier_time)

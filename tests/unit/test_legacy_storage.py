@@ -1,6 +1,9 @@
-from contracting.db.driver import ContractDriver
+from contracting.db.driver import ContractDriver, FSDriver
 from lamden.utils import legacy
 from unittest import TestCase
+import os
+from pathlib import Path
+import shutil
 
 class TestNonce(TestCase):
     def setUp(self):
@@ -93,11 +96,21 @@ class TestNonce(TestCase):
 
 class TestStorage(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
+        self.root = './.lamden'
+        self.create_directories()
+
+        self.raw_driver = FSDriver(root=self.root)
+        self.driver = ContractDriver(driver=self.raw_driver)
         self.driver.flush()
 
     def tearDown(self):
         self.driver.flush()
+
+    def create_directories(self):
+        if os.path.exists(Path(self.root)):
+            shutil.rmtree(Path(self.root))
+
+        os.makedirs(Path(self.root))
 
     def test_get_latest_block_hash_0s_if_none(self):
         h = legacy.get_latest_block_hash(self.driver)
@@ -189,7 +202,11 @@ block = {
 
 class TestUpdatingState(TestCase):
     def setUp(self):
-        self.driver = ContractDriver()
+        self.root = './.lamden'
+        self.create_directories()
+
+        self.raw_driver = FSDriver(root=self.root)
+        self.driver = ContractDriver(driver=self.raw_driver)
         self.nonces = legacy.NonceStorage()
         self.nonces.flush()
         self.driver.flush()
@@ -199,6 +216,12 @@ class TestUpdatingState(TestCase):
         self.nonces.flush()
         self.driver.flush()
         self.driver.clear_pending_state()
+
+    def create_directories(self):
+        if os.path.exists(Path(self.root)):
+            shutil.rmtree(Path(self.root))
+
+        os.makedirs(Path(self.root))
 
     def test_state_updated_to_correct_values_in_tx(self):
         v1 = self.driver.get('hello')

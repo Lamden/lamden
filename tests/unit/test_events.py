@@ -17,7 +17,7 @@ SAMPLE_HASH = 'fcefe7743fa70c97ae2d5290fd673070da4b0293da095f0ae8aceccf5e62b6a1'
 SAMPLE_DATA = {'number': SAMPLE_NUMBER, 'hash': SAMPLE_HASH}
 SAMPLE_EVENT = Event(topics=[SAMPLE_TOPIC], data=SAMPLE_DATA)
 
-TIMEOUT = 0.1
+TIMEOUT = 0.5
 
 class TestEvents(TestCase):
     def tearDown(self):

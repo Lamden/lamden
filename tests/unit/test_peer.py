@@ -912,7 +912,7 @@ class TestPeer(unittest.TestCase):
 
         self.services = {}
         self.services[TOPIC_PEER_SHUTDOWN] = MockService(callback=self.service_callback)
-        data = {}
+        data = {'vk': self.peer.server_vk}
 
         tasks = asyncio.gather(
             self.peer.process_subscription(data=[f'{TOPIC_PEER_SHUTDOWN}'.encode('UTF-8'), json.dumps(data).encode('UTF-8')])
@@ -920,7 +920,7 @@ class TestPeer(unittest.TestCase):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(tasks)
 
-        self.assertEqual(data, {'vk': self.peer.server_vk})
+        self.assertEqual(data, self.service_callback_data)
 
     def test_METHOD_process_subscription__does_nothing_if_service_does_not_exist(self):
         data = {'testing': True}
