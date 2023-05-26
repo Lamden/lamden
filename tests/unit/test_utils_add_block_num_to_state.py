@@ -44,7 +44,7 @@ class TestAddBlockNum(TestCase):
         )
 
         for sc in self.mock_blocks.blocks['0'].get('genesis'):
-            self.proper_block_numbers[sc.get('key')] = 0
+            self.proper_block_numbers[sc.get('key')] = -1
 
         for block_number in self.mock_blocks.block_numbers_list:
             if int(block_number) > 0:
