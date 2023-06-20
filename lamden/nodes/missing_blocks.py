@@ -18,6 +18,7 @@ import threading
 from typing import List, Optional, Union
 
 NEW_BLOCK_REORG_EVENT = 'block_reorg'
+SYNC_BLOCKS_EVENT = 'sync_blocks'
 
 
 class MissingBlocksHandler:
@@ -62,6 +63,11 @@ class MissingBlocksHandler:
 
         if not isinstance(filename, str) or not filename:
             return False
+
+        if filename.startswith('sync_blocks'):
+            self._write_sync_blocks_event(filename=filename)
+            return False
+
         try:
             int(filename)
         except ValueError:
@@ -162,6 +168,31 @@ class MissingBlocksHandler:
             self.log.info(f'Successfully sent {NEW_BLOCK_REORG_EVENT} event: {e.__dict__}')
         except Exception as err:
             self.log.error(f'Failed to write {NEW_BLOCK_REORG_EVENT} event: {err}')
+
+    def _write_sync_blocks_event(self, filename: str):
+        block_info = filename.split('-')
+
+        try:
+            event, start_block, end_block = block_info
+        except ValueError:
+            self.log.error(f'Failed to write {SYNC_BLOCKS_EVENT} event: check format is sync_block-startblock-endblock')
+
+        sync_info = {
+            'start_block': start_block,
+            'end_block': end_block,
+            'node_ips': self.network.get_bootnode_ips()
+        }
+
+        e = Event(
+            topics=[SYNC_BLOCKS_EVENT],
+            data=sync_info
+        )
+
+        try:
+            self.event_writer.write_event(e)
+            self.log.info(f'Successfully sent {SYNC_BLOCKS_EVENT} event: {e.__dict__}')
+        except Exception as err:
+            self.log.error(f'Failed to write {SYNC_BLOCKS_EVENT} event: {err}')
 
     def _get_random_catchup_peer(self, vk_list) -> Peer:
         if len(vk_list) == 0:

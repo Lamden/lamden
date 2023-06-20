@@ -19,6 +19,7 @@ from copy import deepcopy
 class Network:
     def __init__(self):
         self.peers = []
+        self.bootnode_ips = []
 
     def get_all_connected_peers(self):
         return self.peers
@@ -30,6 +31,9 @@ class Network:
         for peer in self.peers:
             if peer.server_vk == vk:
                 return peer
+
+    def get_bootnode_ips(self):
+        return self.bootnode_ips
 
 class MockPeer:
     def __init__(self, blocks={}):
@@ -210,6 +214,20 @@ class TestMissingBlocksHandler(TestCase):
         is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=filename)
 
         self.assertTrue(is_valid)
+
+    def test_PRIVATE_METHOD_validate_missing_block_filename__returns_FALSE_on_sync_block_filename(self):
+        self.create_missing_blocks_handler()
+
+        filename = "sync_blocks-123-456"
+
+        is_valid = self.missing_blocks_handler._validate_missing_block_filename(filename=filename)
+
+        self.assertFalse(is_valid)
+
+        # Creates event
+        events = os.listdir(self.missing_blocks_handler.event_writer.root)
+        self.assertEqual(1, len(events))
+
 
     def test_PRIVATE_METHOD_delete_missing_blocks_files__deletes_files_in_list(self):
         self.create_missing_blocks_handler()
@@ -550,6 +568,32 @@ class TestMissingBlocksHandler(TestCase):
         # events were created
         events = os.listdir(self.missing_blocks_handler.event_writer.root)
         self.assertEqual(3, len(events))
+
+    def test_PRIVATE_METHOD_write_sync_blocks_event__can_write_event(self):
+        self.create_missing_blocks_handler()
+        self.mock_network.bootnode_ips = ['1.2.3.4', '5.6.7.8']
+
+        self.missing_blocks_handler._write_sync_blocks_event(filename='sync_blocks-123-456')
+
+        # event was created
+        events = os.listdir(self.missing_blocks_handler.event_writer.root)
+
+        self.assertEqual(1, len(events))
+
+        # Create a full file path by combining the directory path with the file name
+        event_file_path = os.path.join(self.missing_blocks_handler.event_writer.root, events[0])
+
+        # Open the file and read its content
+        with open(event_file_path, 'r') as file:
+            content = file.read()
+            content = json.loads(content)
+            topics = content.get('topics')
+            self.assertEqual(["sync_blocks"], content.get('topics'))
+
+            data = content.get('data')
+            self.assertEqual('123', data.get('start_block'))
+            self.assertEqual('456', data.get('end_block'))
+            self.assertEqual(self.mock_network.bootnode_ips, data.get('node_ips'))
 
 
 class TestMissingBlocksWriter(TestCase):
