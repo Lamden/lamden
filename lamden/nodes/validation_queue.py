@@ -15,6 +15,8 @@ class ValidationQueue(ProcessingQueue):
 
         # The main dict for storing results from other nodes
         self.validation_results = dict()
+        self.started_checking = dict()
+        self.checking_timeout = 60
 
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
@@ -139,6 +141,11 @@ class ValidationQueue(ProcessingQueue):
         #self.log.debug('[START] process_next')
         if len(self.validation_results) > 0:
             next_hlc_timestamp = self[0]
+
+            # Log when we start checking the next_hlc_timestamp
+            if self.started_checking.get(next_hlc_timestamp, None) is None:
+                self.started_checking[next_hlc_timestamp] = time.time()
+
             #self.log.debug(f'[Process Next] Checking: {next_hlc_timestamp}')
 
             # TODO This shouldn't be possible.
@@ -156,7 +163,20 @@ class ValidationQueue(ProcessingQueue):
                 self.log.info(f'{next_hlc_timestamp} is in consensus, processing. Queue Length is {len(self.validation_results)} ')
                 await self.commit_consensus_block(hlc_timestamp=next_hlc_timestamp)
                 self.log.info(f'Done Processing, Queue Length now {len(self.validation_results)} ')
+
+                # Remove it from started_checking
+                self.started_checking.pop(next_hlc_timestamp, None)
             else:
+                # see if we have been checking this hcl for greater than 1 minute
+                if time.time() - self.started_checking.get(next_hlc_timestamp) > self.checking_timeout:
+                    self.log.error(f'Been checking for too long {time.time() - self.started_checking.get(next_hlc_timestamp)} seconds')
+
+                    # remove this hlc from the queue so we don't check it anymore
+                    # also removes if from started_checking
+                    self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
+
+                # if the other nodes in the network were able to confirm a consensus block then we will pick it up here
+                # or we will get it through gossip on hard apply
                 if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
                     hlcs = list(self.validation_results.keys())
                     hlcs.sort()
@@ -457,7 +477,8 @@ class ValidationQueue(ProcessingQueue):
     def flush_hlc(self, hlc_timestamp):
         # Clear all block results from memory because this block has consensus
         try:
-            self.validation_results.pop(hlc_timestamp)
+            self.validation_results.pop(hlc_timestamp, None)
+            self.started_checking.pop(hlc_timestamp, None)
         except Exception as err:
             self.log.error(f'[flush_hlc] {err}')
 

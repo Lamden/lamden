@@ -983,3 +983,32 @@ class TestValidationQueue(TestCase):
         loop = asyncio.get_event_loop()
         self.async_sleep(2)
         loop.run_until_complete(self.validation_queue.process_next())
+
+    def test_METHOD_process_all__escapes_if_check_time_greater_than_timeout(self):
+        pr = self.add_solution()
+        hlc = pr['hlc_timestamp']
+
+        self.validation_queue.validation_results[hlc]['last_check_info'] = {
+            'has_consensus': False
+        }
+
+        # Run the process_all routine, this should set the time it started checking
+        self.process_next()
+
+        # reduce timeout from 60 to 1 second for testing purposes
+        self.validation_queue.checking_timeout = 1
+
+        # sleep past timeout
+        self.async_sleep(1.5)
+
+        # The validation queue has a solution for this hlc and a time we started checking
+        self.assertIsNotNone(self.validation_queue.validation_results.get(hlc))
+        self.assertIsNotNone(self.validation_queue.started_checking.get(hlc))
+
+        # Run the process_all routine, this should remove the hlc from the queue
+        self.process_next()
+
+        # The hlc was removed due to timeout
+        self.assertIsNone(self.validation_queue.validation_results.get(hlc))
+        self.assertIsNone(self.validation_queue.started_checking.get(hlc))
+
