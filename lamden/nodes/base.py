@@ -253,11 +253,16 @@ class Node:
             # Connect to all nodes
             if not self.join:
                 await self.start_new_network()
+
+                # will till connected to everyone
+                await self.network.connected_to_all_peers()
+
+                self.network.refresh_approved_peers_in_cred_provider()
             else:
                 await self.join_existing_network()
 
-            # will till connected to everyone
-            await self.network.connected_to_all_peers()
+                # will till connected to everyone
+                await self.network.connected_to_all_peers()
 
             # Start all queues and services
             self.start_validation_queue_task()
