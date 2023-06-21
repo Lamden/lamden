@@ -29,7 +29,7 @@ class CatchupHandler:
         self.valid_peers = [
             "11185fe3c6e68d11f89929e2f531de3fb640771de1aee32c606c30c70b6600d2",
             "a04b5891ef8cd27095373a4f75b899ec2bc0883c02e506a6a5b55b491998cc3f",
-            "b09493df6c18d17cc883ebce54fcb1f5afbd507533417fe32c006009a9c3c4a",
+            "5b09493df6c18d17cc883ebce54fcb1f5afbd507533417fe32c006009a9c3c4a",
             "ffd7182fcfd0d84ca68845fb11bafad11abca2f9aca8754a6d9cad7baa39d28b",
             "9d2dbfcc8cd20c8e41b24db367f215e4ac527dc6a2a0acdb4b6008d13d043ef8",
             "e79133b02cd2a84e2ce5d24b2f44433f61f0db7e10acedfc241e94dff06f710a"
