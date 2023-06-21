@@ -153,7 +153,8 @@ def join_network(args):
         join=True,
         metering=True,
         private_network=get_private_network_ip(),
-        genesis_block=genesis_block
+        genesis_block=genesis_block,
+        hardcoded_peers=True
     )
 
     loop = asyncio.get_event_loop()

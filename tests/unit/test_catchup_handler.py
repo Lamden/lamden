@@ -114,12 +114,13 @@ class TestCatchupHandler(TestCase):
         for i in range(amount):
             self.mock_network.add_peer(blocks=blocks)
 
-    def create_catchup_handler(self):
+    def create_catchup_handler(self, hardcoded_peers: bool = False):
         self.catchup_handler = CatchupHandler(
             contract_driver=self.contract_driver,
             block_storage=self.block_storage,
             nonce_storage=self.nonce_storage,
-            network=self.mock_network
+            network=self.mock_network,
+            hardcoded_peers=hardcoded_peers
         )
 
     def test_PROPERTY_latest_block_number__returns_correct_block_height(self):
@@ -461,6 +462,27 @@ class TestCatchupHandler(TestCase):
         self.loop.run_until_complete(tasks)
 
         self.assertEqual(int(latest_block_num), self.catchup_handler.latest_block_number)
+
+    def test_METHOD_run__hardcoded_peers_filters_out_peers(self):
+        num_of_blocks=10
+        mock_blocks = MockBlocks(num_of_blocks=num_of_blocks)
+
+        self.add_peers_to_network(amount=5, blocks=mock_blocks.blocks)
+
+        for block_num in mock_blocks.block_numbers_list[-5:]:
+            mock_blocks.blocks.pop(block_num)
+
+        # Set to only use specific ones
+        self.create_catchup_handler(hardcoded_peers=True)
+        # Set valid ones to peer[0]
+        self.catchup_handler.valid_peers = [self.mock_network.peers[0].server_vk]
+
+        tasks = asyncio.gather(
+            self.catchup_handler.run()
+        )
+        self.loop.run_until_complete(tasks)
+
+        self.assertEqual(1, len(self.catchup_handler.catchup_peers))
 
 
 

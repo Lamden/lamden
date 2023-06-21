@@ -60,7 +60,7 @@ class Node:
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
-                 private_network=False):
+                 private_network=False, hardcoded_peers=False):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -190,7 +190,8 @@ class Node:
             network=self.network,
             contract_driver=self.driver,
             block_storage=self.blocks,
-            nonce_storage=self.nonces
+            nonce_storage=self.nonces,
+            hardcoded_peers=hardcoded_peers
         )
 
         self.missing_blocks_handler: MissingBlocksHandler = MissingBlocksHandler(
