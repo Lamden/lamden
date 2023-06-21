@@ -220,3 +220,49 @@ class TestNodeVoteAndJoin(TestCase):
         self.network.await_all_nodes_done_processing(block_height=self.num_blocks_total)
 
         self.assertTrue(self.network.get_masternode(new_members_wallet.verifying_key).node_started)
+
+class TestJoin(TestCase):
+    def setUp(self):
+        self.network = LocalNodeNetwork(
+            num_of_masternodes=3,
+            network_await_connect_all_timeout=2
+        )
+
+        loop = asyncio.get_event_loop()
+        while not self.network.all_nodes_started:
+            loop.run_until_complete(asyncio.sleep(1))
+
+    def await_async_process(self, process, *args, **kwargs):
+        tasks = asyncio.gather(
+            process(*args, **kwargs)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+    def bad_router_callback(self, domain: str, key: bytes):
+        return False
+
+    def test_can_join_network_if_a_peer_is_unavailable(self):
+        # Prevent one node from communicating
+        self.network.masternodes[1].node.network.router.cred_provider.callback = self.bad_router_callback
+
+        # Join a new node to the network
+        new_node = self.network.add_new_node_to_network(join=True)
+        new_node.node.network.connect_to_all_peers_wait_sec = 1
+
+        # Wait for node to get network map
+        self.await_async_process(asyncio.sleep, 5)
+
+        # Set the timeout for offline nodes lower than the default 120 seconds, for testing
+        for peer in new_node.network.peer_list:
+            peer.peer_verify_timeout = 5
+
+        # Wait for node to connect
+        self.await_async_process(asyncio.sleep, 15)
+
+        # Node should be started
+        self.assertTrue(new_node.node_started)
+
+
+
+
