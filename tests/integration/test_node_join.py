@@ -232,6 +232,12 @@ class TestJoin(TestCase):
         while not self.network.all_nodes_started:
             loop.run_until_complete(asyncio.sleep(1))
 
+    def tearDown(self):
+        task = asyncio.ensure_future(self.network.stop_all_nodes())
+        loop = asyncio.get_event_loop()
+        while not task.done():
+            loop.run_until_complete(asyncio.sleep(0.1))
+
     def await_async_process(self, process, *args, **kwargs):
         tasks = asyncio.gather(
             process(*args, **kwargs)
