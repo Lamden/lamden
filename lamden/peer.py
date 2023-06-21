@@ -13,6 +13,7 @@ from lamden.sockets.publisher import TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTD
 from typing import Callable
 from urllib.parse import urlparse
 import threading
+import time
 
 from contracting.db.encoder import decode, encode
 
@@ -30,7 +31,7 @@ ACTION_GOSSIP_NEW_BLOCK = "gossip_new_block"
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
                  services: Callable = None, connected_callback: Callable = None, socket_ports: dict = None,
-                 ctx: zmq.Context = None, local: bool = False):
+                 ctx: zmq.Context = None, local: bool = False, remove_peer_callback: Callable = None):
 
         self.current_thread = threading.current_thread()
 
@@ -40,6 +41,7 @@ class Peer:
 
         self.get_network_ip = get_network_ip
         self.local = local
+        self.remove_self_from_network = remove_peer_callback
 
         self.protocol = 'tcp://'
 
@@ -63,6 +65,10 @@ class Peer:
         self.running = False
         self.connected = False
         self.verified = False
+        self.timed_out = False
+
+        self.started_verify = False
+        self.peer_verify_timeout = 120
 
         self.reconnecting = False
         self.connected_callback = connected_callback
@@ -249,8 +255,22 @@ class Peer:
 
     async def verify_peer_loop(self) -> None:
         self.verified = False
+        self.started_verify = time.time()
+
         while not self.verified and self.running:
-            await self.verify_peer()
+            if time.time() - self.started_verify > self.peer_verify_timeout:
+                self.log('error', f'Failed to verify peer {self.server_vk[:10]}... @ ({self.request_address} in {self.peer_verify_timeout} seconds.')
+                self.timed_out = True
+
+                if self.remove_self_from_network is not None:
+                    self.log('warning', f'Removing Peer {self.server_vk[:10]}')
+                    self.remove_self_from_network(peer_vk=self.server_vk)
+                break
+            else:
+                self.timed_out = False
+                await self.verify_peer()
+
+        self.started_verify = False
 
     async def verify_peer(self):
         res = await self.hello()
@@ -271,7 +291,7 @@ class Peer:
 
                 self.verified = True
         else:
-            self.log('error', f'Failed to verify {self.server_vk[8:]} @ ({self.request_address})')
+            self.log('error', f'Failed to verify {self.server_vk[:10]}... @ ({self.request_address})')
 
     def store_latest_block_info(self, latest_block_num: int, latest_hlc_timestamp: str) -> None:
         if not isinstance(latest_block_num, int) or not isinstance(latest_hlc_timestamp, str):

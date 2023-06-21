@@ -319,7 +319,8 @@ class Network:
             socket_ports=self.socket_ports,
             connected_callback=self.connected_to_peer_callback,
             ctx=self.ctx,
-            local=self.local
+            local=self.local,
+            remove_peer_callback=self.remove_peer
         )
 
     def add_service(self, name: str, processor: Processor) -> None:
@@ -344,7 +345,8 @@ class Network:
         return list(filter(lambda peer: peer.connected, self.peer_list))
 
     def delete_peer(self, peer_vk: str) -> None:
-        self.peers.pop(peer_vk)
+
+        self.peers.pop(peer_vk, None)
 
     def get_peer_by_ip(self, ip: str) -> [Peer, None]:
         for peer in self.peers.values():
@@ -455,7 +457,7 @@ class Network:
     async def connected_to_all_peers(self) -> bool:
         self.log('info', f'Establishing connection with {self.num_of_peers()} peers...')
 
-        while (self.num_of_peers_connected() < self.num_of_peers()):
+        while self.num_of_peers_connected() < self.num_of_peers():
             if self.stopping:
                 self.log('warning', f'Aborting Connecting to all peers, network shutting down.')
                 return
