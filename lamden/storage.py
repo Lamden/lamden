@@ -514,7 +514,6 @@ class FSBlockDriver(BlockDriver):
         file_path = self.get_file_path(block_num.zfill(64))
         if os.path.exists(file_path):
             os.remove(file_path)
-            self.total_files -= 1
 
         self._remove_empty_dirs(starting_dir=os.path.dirname(file_path))
 

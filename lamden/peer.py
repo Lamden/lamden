@@ -88,7 +88,7 @@ class Peer:
 
         self.timeouts = {
             'ping': 15000,
-            'hello': 10000,
+            'hello': 5000,
             'verify_new_ip': 15000,
             'get_latest_block_info': 15000,
             'get_block': 15000,

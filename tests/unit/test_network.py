@@ -1068,6 +1068,40 @@ class TestNetwork(TestCase):
         self.assertEqual(0, network_1.num_of_peers())
 
 
+    # TODO look at this logic for when we get a diff IP from another node.
+    def test_METHOD_connect_peer__calls_test_connection_if_peer_exists_with_same_ip(self):
+        ###
+        # THIS WILL FAIL!
+        self.fail("THIS FUNCTIONALITY DOESN'T EXIST ANYMORE")
+        ###
+
+        network_1 = self.create_network()
+
+        peer_ip = 'tcp://127.0.0.1:19001'
+        peer_vk = Wallet().verifying_key
+
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
+
+        peer = network_1.get_peer(vk=peer_vk)
+        peer.update_ip = self.mock_peer_update_ip
+        peer.test_connection = self.mock_peer_test_connection
+        peer.running = True
+
+        self.add_vk_to_smartcontract(network=network_1, vk=peer_vk)
+
+        try:
+            network_1.connect_peer(ip='tcp://127.0.0.1:19001', vk=peer_vk)
+        except:
+            self.fail("Calling connect_peer with existing peer vk causes no errors.")
+
+        self.async_sleep(0.1)
+
+        self.assertFalse(self.called_ip_update)
+        self.assertTrue(self.called_test_connection)
+
+        self.assertEqual(1, network_1.num_of_peers())
+
+
     def test_METHOD_connect_peer__calls_update_ip_if_peer_exists_with_different_ip(self):
         ###
         # THIS WILL FAIL!
@@ -1080,8 +1114,7 @@ class TestNetwork(TestCase):
         peer_new_ip = 'tcp://127.0.0.1:19002'
         peer_vk = Wallet().verifying_key
 
-        peer = network_1.create_peer(ip=peer_ip, vk=peer_vk)
-        network_1.peers[peer_vk] = peer
+        network_1.create_peer(ip=peer_ip, vk=peer_vk)
 
         peer = network_1.get_peer(vk=peer_vk)
         peer.update_ip = self.mock_peer_update_ip

@@ -228,12 +228,11 @@ class Network:
             self.log('warning', f'Attempted connection to self "{vk[:8]}".')
             return
 
-        if self.peer_is_voted_in(peer_vk=vk) or self.router.cred_provider.accept_all:
-            peer = self.peers.get(vk, None)
-            if peer is not None:
-                self.log('warning', f'Attempted to add an existing peer, vk: "{vk[:8]}" @ ip: {ip}')
-                return
+        if self.peers.get(vk):
+            self.log('warning', f'Attempted to add an existing peer, vk: "{vk[:8]}" @ ip: {ip}')
+            return
 
+        if self.peer_is_voted_in(peer_vk=vk) or self.router.cred_provider.accept_all:
             self.add_peer(ip=ip, peer_vk=vk)
         else:
             self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
