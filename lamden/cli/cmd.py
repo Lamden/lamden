@@ -146,6 +146,11 @@ def join_network(args):
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
+    rollback_point=args.rollback_point
+
+    if rollback_point == "-1":
+        rollback_point = None
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
@@ -154,7 +159,8 @@ def join_network(args):
         metering=True,
         private_network=get_private_network_ip(),
         genesis_block=genesis_block,
-        hardcoded_peers=True
+        hardcoded_peers=True,
+        rollback_point=rollback_point
     )
 
     loop = asyncio.get_event_loop()
@@ -174,6 +180,7 @@ def setup_lamden_parser(parser):
     join_parser = subparser.add_parser('join')
     join_parser.add_argument('-d', '--debug', type=bool, default=False)
     join_parser.add_argument('-gb', '--genesis_block', type=str, default='~/genesis_block.json')
+    join_parser.add_argument('-rp', '--rollback_point', type=str, default="-1")
 
 
 def migrate_storage():

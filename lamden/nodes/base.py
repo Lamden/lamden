@@ -38,6 +38,7 @@ from lamden.crypto.block_validator import verify_block
 from typing import List
 from lamden.nodes.catchup import CatchupHandler
 from lamden.nodes.missing_blocks import MissingBlocksHandler
+from lamden.nodes.rollback_blocks import RollbackBlocksHandler
 
 from lamden.crypto.transaction import build_transaction
 from datetime import datetime, timedelta
@@ -60,7 +61,7 @@ class Node:
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
-                 private_network=False, hardcoded_peers=False):
+                 private_network=False, hardcoded_peers=False, rollback_point=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -84,6 +85,7 @@ class Node:
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
         self.genesis_block = genesis_block
+        self.rollback_point = rollback_point
 
         self.current_thread = threading.current_thread()
 
@@ -204,6 +206,14 @@ class Node:
             event_writer=self.event_writer
         )
 
+        self.rollback_blocks_handler: RollbackBlocksHandler = RollbackBlocksHandler(
+            contract_driver=self.driver,
+            block_storage=self.blocks,
+            nonce_storage=self.nonces,
+            wallet=self.wallet,
+            event_writer=self.event_writer
+        )
+
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
@@ -235,6 +245,11 @@ class Node:
             # Start the system usage monitor
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
+
+            if self.rollback is not None:
+                self.rollback_blocks_handler.run(rollback_point=self.rollback)
+                self.rollback = None
+
 
             # Start the network and wait till it's up
             self.network.start()
