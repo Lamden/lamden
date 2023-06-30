@@ -232,9 +232,10 @@ class Network:
             self.log('warning', f'Attempted to add an existing peer, vk: "{vk[:8]}" @ ip: {ip}')
             return
 
-        if self.peers.get(vk):
-            self.log('warning', f'Attempted to add an existing peer, vk: "{vk[:8]}" @ ip: {ip}')
-            return
+        if self.peer_is_voted_in(peer_vk=vk) or self.router.cred_provider.accept_all:
+            self.add_peer(ip=ip, peer_vk=vk)
+        else:
+            self.log('warning', f'Attempted to add a peer not voted into network. "{vk}"')
 
     def peer_is_voted_in(self, peer_vk: str) -> bool:
         # Get list of approved nodes from state

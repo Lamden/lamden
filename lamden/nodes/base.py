@@ -661,7 +661,7 @@ class Node:
     def is_known_masternode(self, processor_vk):
         return processor_vk in (self.driver.driver.get('masternodes.S:members') or [])
 
-    async def hard_apply_block(self, processing_results: dict = None, block: dict = None):
+    async def hard_apply_block(self, processing_results: dict = None, block: dict = None, force=False):
         if block is not None:
             hlc_timestamp = block.get('hlc_timestamp')
 
@@ -669,6 +669,15 @@ class Node:
             later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
 
             if len(later_blocks) == 0:
+                if not self.blocks.is_genesis_block(block):
+                    block_previous_hash = block.get('previous')
+                    latest_block = self.blocks.get_latest_block()
+
+                    if latest_block and latest_block.get('hash') != block_previous_hash and not force:
+                        self.log.error(f'Tried to Hard Apply a block {block.get("number")} with invalid previous hash')
+                        self.log.warning(f'was expecting hash {latest_block.get("hash")} and got {block_previous_hash}')
+                        return
+
                 # Apply the state changes from the block to the db
                 self.apply_state_changes_from_block(block)
 
