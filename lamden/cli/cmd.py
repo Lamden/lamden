@@ -113,13 +113,20 @@ def start_node(args):
 
     genesis_block = resolve_genesis_block(args.genesis_block)
 
+    run_catchup = True
+    disable_catchup = os.environ.get('DISABLE_CATCHUP', None)
+    if disable_catchup is not None:
+        if disable_catchup.lower() == "true":
+            run_catchup = False
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
         bootnodes=constitution,
         genesis_block=genesis_block,
         metering=True,
-        private_network=get_private_network_ip()
+        private_network=get_private_network_ip(),
+        run_catchup=run_catchup
     )
 
     loop = asyncio.get_event_loop()
@@ -148,6 +155,12 @@ def join_network(args):
 
     rollback_point=args.rollback_point
 
+    run_catchup = True
+    disable_catchup = os.environ.get('DISABLE_CATCHUP', None)
+    if disable_catchup is not None:
+        if disable_catchup.lower() == "true":
+            run_catchup = False
+
     if rollback_point == "-1":
         rollback_point = None
 
@@ -160,7 +173,8 @@ def join_network(args):
         private_network=get_private_network_ip(),
         genesis_block=genesis_block,
         hardcoded_peers=True,
-        rollback_point=rollback_point
+        rollback_point=rollback_point,
+        run_catchup=run_catchup
     )
 
     loop = asyncio.get_event_loop()
