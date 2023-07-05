@@ -206,14 +206,6 @@ class Node:
             event_writer=self.event_writer
         )
 
-        self.rollback_blocks_handler: RollbackBlocksHandler = RollbackBlocksHandler(
-            contract_driver=self.driver,
-            block_storage=self.blocks,
-            nonce_storage=self.nonces,
-            wallet=self.wallet,
-            event_writer=self.event_writer
-        )
-
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
 
@@ -246,9 +238,15 @@ class Node:
             if self.debug:
                 asyncio.ensure_future(self.system_monitor.start(delay_sec=120))
 
-            if self.rollback is not None:
-                self.rollback_blocks_handler.run(rollback_point=self.rollback)
-                self.rollback = None
+            if self.rollback_point is not None:
+                rollback_blocks_handler: RollbackBlocksHandler = RollbackBlocksHandler(
+                    contract_driver=self.driver,
+                    block_storage=self.blocks,
+                    nonce_storage=self.nonces,
+                    wallet=self.wallet,
+                    event_writer=self.event_writer
+                )
+                rollback_blocks_handler.run(rollback_point=self.rollback_point)
 
 
             # Start the network and wait till it's up
@@ -288,9 +286,12 @@ class Node:
             self.check_for_tx_task = loop.create_task(self.check_tx_queue())
             self.connectivity_check_task = loop.create_task(self.connectivity_check())
 
-            # Run catchup
-            catchup_task = asyncio.ensure_future(self.catchup_handler.run())
-            catchup_task.add_done_callback(self.handle_catchup_result)
+            # Run catchup unless this was a rollback
+            if self.rollback_point is None:
+                catchup_task = asyncio.ensure_future(self.catchup_handler.run())
+                catchup_task.add_done_callback(self.handle_catchup_result)
+            else:
+                self.rollback_point = None
 
             self.started = True
             self.log.info('Node has been successfully started!')
@@ -896,7 +897,10 @@ class Node:
                         self.log.error(f"Error contacting, peer {peer.server_vk} for gossip.")
 
                 try:
-                    self.missing_blocks_handler.writer.write_missing_blocks(blocks_list=list(missing_blocks))
+                    if len(list(missing_blocks)) > 0:
+                        self.log.error("I don't think I'm in sync, missing this previous block potentially.")
+                        self.log.info(list(missing_blocks))
+                        # self.missing_blocks_handler.writer.write_missing_blocks(blocks_list=list(missing_blocks))
                 except Exception as err:
                     self.log.error(err)
 

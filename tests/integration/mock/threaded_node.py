@@ -14,6 +14,8 @@ import os
 import shutil
 import threading
 import unittest
+import socket
+import errno
 
 def create_a_node(index=0, node_wallet=Wallet(), bootnodes=None, genesis_block=None, temp_storage_root=None,
                   metering=False, network_await_connect_all_timeout=None):
@@ -68,7 +70,8 @@ class ThreadedNode(threading.Thread):
                  delay=None,
                  event_writer=None,
                  join=False,
-                 network_await_connect_all_timeout=None):
+                 network_await_connect_all_timeout=None,
+                 rollback_point=None):
 
         threading.Thread.__init__(self)
 
@@ -102,6 +105,7 @@ class ThreadedNode(threading.Thread):
         self.loop = None
         self.node: Node = None
         self.join_network = join
+        self.rollback_point = rollback_point
 
         self.err = None
 
@@ -214,6 +218,7 @@ class ThreadedNode(threading.Thread):
                 join=self.join_network,
                 metering=self.metering,
                 event_writer=self.event_writer,
+                rollback_point=self.rollback_point
             )
 
             self.node.network.set_to_local()
@@ -260,6 +265,22 @@ class ThreadedNode(threading.Thread):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(asyncio.sleep(0.5))
 
+    def check_port_in_use(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        router_socket_port = self.node.network.socket_ports.get('router')
+        network_ip = self.node.network.external_ip
+        try:
+            sock.bind((network_ip, router_socket_port))
+        except socket.error as e:
+            if e.errno == errno.EADDRINUSE:
+                return True
+            else:
+                # something else raised the socket.error exception
+                print(e)
+        finally:
+            sock.close()
+        return False
+
     async def stop(self):
         if not self.node:
             return
@@ -268,7 +289,23 @@ class ThreadedNode(threading.Thread):
         print('NODE STOP EXITED')
 
         self.running = False
+
+        self.check_port_in_use()
+
+        await asyncio.sleep(1)
         print(f'Threaded Node {self.index} Stopped.')
+
+    async def rollback(self, rollback_point: str):
+        await self.node.stop()
+        print(f'Stopped Threaded Node {self.index}')
+
+        self.node.rollback_point = rollback_point
+        self.node.start_node()
+
+        self.running = True
+
+        print(f'Started Threaded Node {self.index}')
+
 
 class TestThreadedNode(unittest.TestCase):
     def setUp(self):

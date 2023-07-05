@@ -1,20 +1,12 @@
 from lamden import storage
-from contracting.db.encoder import convert_dict, encode
-from copy import deepcopy
-from lamden.crypto.block_validator import verify_block
+from contracting.db.encoder import convert_dict
 from lamden.crypto.wallet import Wallet
 from contracting.db.driver import ContractDriver
-from lamden.crypto.canonical import block_hash_from_block
 from lamden.nodes.events import Event, EventWriter
 from lamden.logger.base import get_logger
-from lamden.peer import Peer
 
-from random import choice
-import os
-import json
-import asyncio
+import time
 import threading
-from typing import List, Optional, Union
 
 ROLLBACK_EVENT = 'rollback'
 
@@ -103,15 +95,23 @@ class RollbackBlocksHandler:
 
         return rollback_point
 
-    async def run(self, rollback_point: str = None):
+    def run(self, rollback_point: str = None):
         rollback_point = self._validate_rollback_point(rollback_point=rollback_point)
 
         if rollback_point == False:
             return
+        self.log.warning(f'Rolling back to block {rollback_point}. This could take a while.')
 
+        self.log.info(f'Deleting blocks greater than {rollback_point}...')
         self.delete_greater_blocks(rollback_point=rollback_point)
+
+        self.log.info(f'Purging Current State...')
         self.purge_current_state()
+
+        self.log.info(f'Processing Genesis Block State into Current State...')
         self.process_genesis_block()
+
+        self.log.info(f'Building Current State from block {rollback_point} to 0...')
         self.process_all_blocks()
 
         self.log.warning(f'Rollback to block {rollback_point} complete!')
@@ -136,17 +136,19 @@ class RollbackBlocksHandler:
         if genesis_block is None:
             return
 
-        self.log.warning(f'Processing Genesis Block State...')
-
         self._safe_set_state_changes_and_rewards(block=genesis_block)
 
     def process_all_blocks(self):
-        self.log.warning(f'Processing Block State...')
-
         current_block = self.block_storage.get_latest_block()
+        last_print_time = time.time()
 
         while self.block_storage.is_genesis_block(current_block) is False:
             current_block_num = current_block.get('number')
+
+            # Check if it has been more than 60 seconds since last print
+            if time.time() - last_print_time >= 30:
+                print(f"Still working... currently on block number: {current_block_num}")
+                last_print_time = time.time()  # update last print time
 
             self._safe_set_state_changes_and_rewards(block=current_block)
             self._save_nonce_information(block=current_block)

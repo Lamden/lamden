@@ -255,11 +255,7 @@ class TestRollbackBlocksHandler(TestCase):
         rollback_point = mock_blocks.block_list[3].get('number')
 
         # ROLLBACK
-        tasks = asyncio.gather(
-            self.rollback_blocks_handler.run(rollback_point=rollback_point)
-        )
-        self.loop.run_until_complete(tasks)
-
+        self.rollback_blocks_handler.run(rollback_point=rollback_point)
 
         # Validate state after rollback
         for block in mock_blocks.block_list:
