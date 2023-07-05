@@ -1,3 +1,5 @@
+import gc
+
 from contracting.db.driver import FSDriver, InMemDriver
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.base import Node
@@ -108,6 +110,10 @@ class LocalNodeNetwork:
                 if tn.vk == vk:
                     return tn
 
+        def remove_node(self, vk: str):
+            tn = self.get_node(vk)
+            self.masternodes.remove(tn)
+
         def get_masternode(self, vk: str) -> ThreadedNode:
             for tn in self.masternodes:
                 if tn.vk == vk:
@@ -170,7 +176,7 @@ class LocalNodeNetwork:
 
         def create_node(self, genesis_block: dict=None, index: int = None, node_wallet: Wallet = Wallet(),
                         node: ThreadedNode = None, reconnect_attempts=60, join=False,
-                        network_await_connect_all_timeout=None):
+                        network_await_connect_all_timeout=None, rollback_point=None):
 
             node_dir = Path(f'{self.temp_network_dir}/{node_wallet.verifying_key}')
 
@@ -195,8 +201,8 @@ class LocalNodeNetwork:
                     delay=self.delay,
                     event_writer=event_writer,
                     join=join,
-                    network_await_connect_all_timeout=network_await_connect_all_timeout
-
+                    network_await_connect_all_timeout=network_await_connect_all_timeout,
+                    rollback_point=rollback_point
                 )
 
             self.masternodes.append(node)
@@ -385,6 +391,45 @@ class LocalNodeNetwork:
 
             print("All Nodes Stopped.")
 
+        async def restart_node(self, node, reconnect_attempts=60, rollback_point=None):
+
+            print(f"RESTARTING {node.node.wallet.verifying_key}")
+
+            genesis_block = node.node.blocks.get_block(v=0)
+            node_wallet = node.node.wallet
+
+            node_index = len(self.all_nodes) + 1
+
+            await node.stop()
+            node.network.ctx.term()
+            node.join()
+            self.remove_node(vk=node_wallet.verifying_key)
+            node = None
+
+            gc.collect()
+            await asyncio.sleep(5)
+
+            bootnodes = self.make_bootnode(self.all_nodes[0])
+
+            new_node = self.create_node(
+                index=node_index,
+                node_wallet=node_wallet,
+                reconnect_attempts=reconnect_attempts,
+                genesis_block=genesis_block,
+                join=True,
+                network_await_connect_all_timeout=5,
+                rollback_point=rollback_point
+            )
+
+            new_node.bootnodes = bootnodes
+
+            self.run_threaded_node(new_node)
+
+            return new_node
+
+        async def rollback_node(self, node, rollback_point):
+            await self.restart_node(node=node, rollback_point=rollback_point)
+
         def await_all_nodes_done_processing(self, block_height, timeout=360, nodes=None):
             done = False
             start = time.time()
@@ -400,6 +445,49 @@ class LocalNodeNetwork:
                 loop.run_until_complete(asyncio.sleep(1))
 
             print(f'!!!!! ALL NODES AT BLOCK {block_height} !!!!!')
+
+        def all_nodes_at_same_block(self):
+            blocks = set()
+            for node in self.all_nodes:
+                latest_block = node.node.blocks.get_latest_block()
+                blocks.add(latest_block.get("number"))
+
+            if len(blocks) > 1:
+                return False
+            else:
+                return blocks.pop()
+
+        async def await_all_node_at_same_block(self, confirmations_needed: int = 3, timout: int = 30):
+            done = False
+            start = time.time()
+            confirmations = 0
+            confirming_block = None
+
+            while not done:
+                # Check for timeout
+                if time.time() - start >= timout:
+                    print(f'{__name__} TIMED OUT')
+                    break
+
+                done = self.all_nodes_at_same_block()
+
+                if done:
+                    if done != confirming_block:
+                        confirming_block = done
+                        confirmations = 0
+
+                    else:
+                        confirmations += 1
+
+                    if confirmations < confirmations_needed:
+                        done = False
+
+                    print(f'Now at {confirmations}/{confirmations_needed} confirmations for block {done}: ...')
+
+                    if confirmations >= confirmations_needed:
+                        done = True
+
+                await asyncio.sleep(1)
         
         def get_var_from_one(self, key:str, tn: ThreadedNode):
             return tn.raw_driver.get(key)
@@ -619,3 +707,28 @@ class TestLocalNodeNetwork(unittest.TestCase):
         self.async_sleep(1)
 
         self.assertEqual(1, len(tn.node.tx_queue))
+
+    def test_can_restart_a_node(self):
+        self.network = LocalNodeNetwork()
+
+        self.network.create_new_network(
+            num_of_masternodes=3,
+            network_await_connect_all_timeout=5
+        )
+
+        node = self.network.all_nodes[0]
+
+        tasks = asyncio.gather(
+            self.network.restart_node(node=node)
+        )
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(tasks)
+
+        started_checking = time.time()
+
+        new_node = self.network.get_node(vk=node.wallet.verifying_key)
+        while not new_node.node_started:
+            self.async_sleep(1)
+
+            if time.time() - started_checking > 15:
+                self.fail("Timed out waiting for node to restart")

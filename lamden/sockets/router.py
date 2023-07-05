@@ -219,7 +219,7 @@ class Router():
 
         self.running = True
 
-        self.log('info', f'Started. on {self.address}')
+        self.log('info', f'Started on {self.address}')
 
 
     def run_curve_server(self):
