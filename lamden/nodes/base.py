@@ -61,7 +61,7 @@ class Node:
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
-                 private_network=False, hardcoded_peers=False, rollback_point=None):
+                 private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -69,6 +69,7 @@ class Node:
         self.check_validation_queue_task = None
         self.connectivity_check_task = None
         self.check_for_tx_task = None
+        self.run_catchup = run_catchup
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -288,8 +289,9 @@ class Node:
 
             # Run catchup unless this was a rollback
             if self.rollback_point is None:
-                catchup_task = asyncio.ensure_future(self.catchup_handler.run())
-                catchup_task.add_done_callback(self.handle_catchup_result)
+                if self.run_catchup:
+                    catchup_task = asyncio.ensure_future(self.catchup_handler.run())
+                    catchup_task.add_done_callback(self.handle_catchup_result)
             else:
                 self.rollback_point = None
 
