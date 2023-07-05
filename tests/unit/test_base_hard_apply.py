@@ -237,6 +237,39 @@ class TestBaseNode_HardApply(TestCase):
         expected_amount = 10.5 * 4
         self.assertEqual(expected_amount, receiver_amount)
 
+    def test_hard_apply__rejects_invalid_previous_hash(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
+
+        invalid_block = self.mock_blocks.get_block_by_index(index=4)
+        invalid_block['previous'] = "abc"
+        invalid_block['number'] = str(int(invalid_block['number']) + 1)
+
+        self.assertEqual(3, self.node.blocks.total_blocks())
+
+        loop.run_until_complete(self.node.hard_apply_block(block=invalid_block))
+
+        self.assertEqual(3, self.node.blocks.total_blocks())
+
+    def test_hard_apply__does_not_reject_invalid_previous_hash_if_force_is_true(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
+
+        invalid_block = self.mock_blocks.get_block_by_index(index=4)
+        invalid_block['previous'] = "abc"
+        invalid_block['number'] = str(int(invalid_block['number']) + 1)
+
+        self.assertEqual(3, self.node.blocks.total_blocks())
+
+        loop.run_until_complete(self.node.hard_apply_block(block=invalid_block, force=True))
+
+        self.assertEqual(4, self.node.blocks.total_blocks())
+
+
     def test_hard_apply_has_later_blocks__can_reorder_blocks_when_given_earlier_processing_results(self):
         tx_amount = "10.5"
         tx_message = get_tx_message(
