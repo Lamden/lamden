@@ -69,7 +69,7 @@ class CatchupHandler:
                 return 'not_run'
 
             self.process_block(block=highest_network_block)
-            self.update_block_db(block=highest_network_block)
+            # self.update_block_db(block=highest_network_block)
 
             current_block_number = highest_block_number
             while True:

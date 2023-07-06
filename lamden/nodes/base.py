@@ -851,7 +851,7 @@ class Node:
             self.blocks.store_block(copy.copy(encoded_block))
 
             # Set the current block hash and height
-            self.update_block_db(block=encoded_block)
+            # self.update_block_db(block=encoded_block)
 
             try:
                 # create New Block Event
@@ -1249,17 +1249,18 @@ class Node:
 
     # Put into 'super driver'
     def get_current_height(self):
-        return storage.get_latest_block_height(self.driver)
+        latest_block = self.blocks.get_latest_block()
+        return int(latest_block.get('number'))
 
     # Put into 'super driver'
     def get_current_hash(self):
-        return storage.get_latest_block_hash(self.driver)
+        latest_block = self.blocks.get_latest_block()
+        return latest_block.get('hash')
 
     # Put into 'super driver'
     def get_latest_block(self):
-        latest_block_num = self.get_current_height()
-        block = self.blocks.get_block(v=latest_block_num)
-        return block
+        latest_block = self.blocks.get_latest_block()
+        return latest_block
 
     def get_last_processed_hlc(self):
         return self.main_processing_queue.last_processed_hlc

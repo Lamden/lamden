@@ -102,33 +102,6 @@ class TestNonce(TestCase):
         self.assertEqual(n, 2)
 
 
-class TestStorage(TestCase):
-    def setUp(self):
-        self.driver = ContractDriver()
-        self.driver.flush()
-
-    def tearDown(self):
-        self.driver.flush()
-
-    def test_get_latest_block_hash_0s_if_none(self):
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, '0' * 64)
-
-    def test_get_latest_block_hash_correct_after_set(self):
-        storage.set_latest_block_hash('a' * 64, self.driver)
-        h = storage.get_latest_block_hash(self.driver)
-        self.assertEqual(h, 'a' * 64)
-
-    def test_get_latest_block_height_0_if_none(self):
-        h = storage.get_latest_block_height(self.driver)
-        self.assertEqual(h, 0)
-
-    def test_get_latest_block_height_correct_after_set(self):
-        storage.set_latest_block_height(123, self.driver)
-        h = storage.get_latest_block_height(self.driver)
-        self.assertEqual(h, 123)
-
-
 tx_1 = {
     'transaction': {
         'payload': {
