@@ -78,6 +78,7 @@ class Peer:
 
         self.latest_block_info = dict({
             'number': 0,
+            'hash': '0' * 64,
             'hlc_timestamp': "0"
         })
 
@@ -116,6 +117,10 @@ class Peer:
     @property
     def latest_block_number(self) -> int:
         return self.latest_block_info.get('number')
+
+    @property
+    def latest_block_hash(self) -> str:
+        return self.latest_block_info.get('hash')
 
     @property
     def latest_block_hlc_timestamp(self) -> str:
@@ -221,13 +226,18 @@ class Peer:
         if isinstance(number, int):
             self.latest_block_info['number'] = number
 
+    def set_latest_block_hash(self, hash: str) -> None:
+        if isinstance(hash, str):
+            self.latest_block_info['hash'] = hash
+
     def set_latest_block_hlc_timestamp(self, hlc_timestamp: str) -> None:
         if isinstance(hlc_timestamp, str):
             self.latest_block_info['hlc_timestamp'] = hlc_timestamp
 
-    def set_latest_block_info(self, number: int, hlc_timestamp: str) -> None:
+    def set_latest_block_info(self, number: int, hlc_timestamp: str, hash: str) -> None:
         if isinstance(number, int) and isinstance(hlc_timestamp, str):
             self.set_latest_block_number(number=number)
+            self.set_latest_block_hash(hash=hash)
             self.set_latest_block_hlc_timestamp(hlc_timestamp=hlc_timestamp)
 
     def calc_ports(self) -> None:
@@ -430,8 +440,14 @@ class Peer:
             if msg_json.get('response') == ACTION_GET_LATEST_BLOCK:
                 self.set_latest_block_info(
                     number=int(msg_json.get('latest_block_number')),
+                    hash=msg_json.get('latest_block_hash'),
                     hlc_timestamp=msg_json.get('latest_hlc_timestamp')
                 )
+                msg_json['block_info'] = {
+                    'number': msg_json.get('latest_block_number'),
+                    'hash': msg_json.get('latest_block_hash'),
+                    'hlc_timestamp': msg_json.get('latest_hlc_timestamp')
+                }
         return msg_json
 
     async def get_block(self, block_num: int = None, hlc_timestamp: str = None) -> (dict, None):

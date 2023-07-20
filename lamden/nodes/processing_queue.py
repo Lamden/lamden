@@ -209,13 +209,9 @@ class TxProcessingQueue(ProcessingQueue):
 
         # self.driver.soft_apply_rewards(hcl=hlc_timestamp)
 
-        # Create merkle
-        sign_info = self.sign_tx_results(tx_result=tx_result, hlc_timestamp=hlc_timestamp, rewards=rewards)
-
         # Return a sub block
         return {
             'tx_result': tx_result,
-            'proof': sign_info,
             'hlc_timestamp': hlc_timestamp,
             'rewards': rewards,
             'tx_message': {
@@ -340,20 +336,6 @@ class TxProcessingQueue(ProcessingQueue):
         return self.reward_manager.distribute_rewards(
             master_reward, foundation_reward, developer_mapping, self.client
         )
-
-    def sign_tx_results(self, tx_result, hlc_timestamp, rewards):
-        tx_result_hash = tx_result_hash_from_tx_result_object(
-            tx_result=tx_result,
-            hlc_timestamp=hlc_timestamp,
-            rewards=rewards
-        )
-
-        signature = self.wallet.sign(tx_result_hash)
-
-        return {
-            'signature': signature,
-            'signer': self.wallet.verifying_key
-        }
 
     def get_environment(self, tx):
         nanos = self.get_nanos_from_tx(tx=tx)

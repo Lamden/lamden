@@ -21,11 +21,8 @@ class TestSingleNodeElectionsWithMetering(TestCase):
         self.blocks = MockBlocks(
             num_of_blocks=1,
             founder_wallet=self.node_wallet,
-            initial_members={
-                'masternodes': [
-                    self.node_wallet.verifying_key
-                ]
-            }
+            masternode_wallet=self.node_wallet,
+            initial_members=[]
         )
         self.genesis_block = self.blocks.get_block_by_index(index=0)
 

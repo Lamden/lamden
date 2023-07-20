@@ -177,3 +177,36 @@ def hash_genesis_block_state_changes(state_changes: list) -> str:
     h = hashlib.sha3_256()
     h.update('{}'.format(encode(state_changes).encode()).encode())
     return h.hexdigest()
+
+def hash_members_list(members: list) -> str:
+    members_string = ''.join(members)
+    h = hashlib.sha3_256()
+    h.update('{}'.format(members_string).encode())
+    return h.hexdigest()
+
+def create_proof_message_from_tx_results(tx_result: dict, hlc_timestamp: str, rewards: list, members: list = None, members_list_hash: str = None, num_of_members: int = None) -> str:
+    tx_result_hash = tx_result_hash_from_tx_result_object(
+        tx_result=tx_result,
+        hlc_timestamp=hlc_timestamp,
+        rewards=rewards
+    )
+
+    if members is not None:
+        members_list_hash = hash_members_list(members=members)
+        num_of_members = len(members)
+
+    message = tx_result_hash + members_list_hash + str(num_of_members)
+
+    return {
+        'message': message,
+        'members_list_hash': members_list_hash,
+        'num_of_members': num_of_members,
+    }
+
+def create_proof_message_from_proof(proof: dict, tx_result_hash: str) -> str:
+    members_list_hash = proof.get('members_list_hash')
+    num_of_members = proof.get('num_of_members')
+
+    message = tx_result_hash + members_list_hash + str(num_of_members)
+
+    return message

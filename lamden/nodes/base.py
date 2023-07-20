@@ -31,7 +31,7 @@ from lamden.nodes.processors import work, block_contender
 from lamden.nodes.processors.processor import Processor
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
-from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, create_proof_message_from_tx_results, tx_result_hash_from_tx_result_object, hash_members_list
 from lamden.crypto.transaction import get_nonces
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
@@ -582,18 +582,57 @@ class Node:
                     if my_result_hash != block_result_hash:
                         await self.reprocess(tx=processing_results['tx_result']['transaction'])
                 else:
+                    processing_results = self.add_proof_to_processing_results(processing_results=processing_results)
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
         except Exception as err:
             self.log.error(err)
 
+    def add_proof_to_processing_results(self, processing_results: dict) -> dict:
+        # Create merkle
+        tx_result = processing_results.get('tx_result')
+        hlc_timestamp = processing_results.get('hlc_timestamp')
+        rewards = processing_results.get('rewards')
+        members = self.network.get_node_list() or []
+
+        if not tx_result or not hlc_timestamp or not rewards:
+            raise ValueError('Invalid processing results. Cannot add proof.')
+
+        sign_info = self.sign_tx_results(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards,
+            members=members
+        )
+
+        processing_results['proof'] = sign_info
+
+        return processing_results
+
+    def sign_tx_results(self, tx_result, hlc_timestamp, rewards, members):
+        proof_details = create_proof_message_from_tx_results(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards,
+            members=members
+        )
+
+        signature = self.wallet.sign(proof_details.get('message'))
+
+        return {
+            'signature': signature,
+            'signer': self.wallet.verifying_key,
+            'members_list_hash': proof_details.get('members_list_hash'),
+            'num_of_members': proof_details.get('num_of_members'),
+        }
+
     def store_solution_and_send_to_network(self, processing_results):
         processing_results = json.loads(encode(processing_results))
+        self.send_solution_to_network(processing_results=processing_results)
+
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
         )
-        self.send_solution_to_network(processing_results=processing_results)
-
         self.validation_queue.append(
             processing_results=processing_results
         )
@@ -871,7 +910,7 @@ class Node:
         gc.collect()
 
         # gossip to see if we are missing a block
-        asyncio.ensure_future(self.gossip_about_new_block(block=block))
+        # asyncio.ensure_future(self.gossip_about_new_block(block=block))
 
         # check to see if we need to process any missing blocks.
         asyncio.ensure_future(self.missing_blocks_handler.run())
@@ -1248,14 +1287,12 @@ class Node:
         return True
 
     # Put into 'super driver'
-    def get_current_height(self):
-        latest_block = self.blocks.get_latest_block()
-        return int(latest_block.get('number'))
+    def get_current_height(self) -> int:
+        return self.blocks.get_latest_block_number()
 
     # Put into 'super driver'
-    def get_current_hash(self):
-        latest_block = self.blocks.get_latest_block()
-        return latest_block.get('hash')
+    def get_current_hash(self) -> str:
+        return self.blocks.get_latest_block_hash()
 
     # Put into 'super driver'
     def get_latest_block(self):

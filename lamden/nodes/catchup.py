@@ -39,7 +39,7 @@ class CatchupHandler:
 
     @property
     def latest_block_number(self):
-        return storage.get_latest_block_height(self.contract_driver)
+        return self.block_storage.get_latest_block_number() or 0
 
     async def run(self):
         # Get the current latest block stored and the latest block of the network
@@ -62,16 +62,22 @@ class CatchupHandler:
                 return 'not_run'
 
             highest_block_number = highest_network_block.get('number')
+
             my_current_height = self.latest_block_number
 
             if my_current_height >= int(highest_block_number):
                 self.log.info('At latest block height, catchup not needed.')
                 return 'not_run'
 
-            self.process_block(block=highest_network_block)
-            # self.update_block_db(block=highest_network_block)
+            latest_network_block = await self.source_block_from_peers(
+                fetch_type='specific',
+                block_num=highest_block_number
+            )
 
-            current_block_number = highest_block_number
+            self.process_block(block=latest_network_block)
+
+            current_block_number = latest_network_block.get('number')
+            current_block_previous = latest_network_block.get('previous')
             while True:
                 # get the previous block
                 block = await self.get_previous_block(block_num=current_block_number)
@@ -85,6 +91,10 @@ class CatchupHandler:
                     self.log.info('Genesis Block Reached.')
                     break
 
+                if block.get('hash') != current_block_previous:
+                    self.log.error('Block chain breakdown. Hash mismatch. Exiting catchup.')
+                    break
+
                 if block_num == my_current_height:
                     self.log.info('Caught Up to latest.')
                     break
@@ -92,6 +102,7 @@ class CatchupHandler:
                 self.process_block(block=block)
 
                 current_block_number = block.get('number')
+                current_block_previous = block.get('previous')
 
                 await asyncio.sleep(0.05)
 
@@ -99,46 +110,63 @@ class CatchupHandler:
         self.log.warning('Catchup Complete!')
 
     async def get_highest_network_block(self) -> dict:
-        highest_block_num = self.network.get_highest_peer_block()
-        if highest_block_num > 0:
-            block = await self.source_block_from_peers(block_num=highest_block_num, fetch_type='specific')
-            return block
+        block = await self.source_block_from_peers(fetch_type='latest')
+        if block is None:
+            return {
+                'number': -1
+            }
 
-        return None
+        return block
 
     async def get_previous_block(self, block_num: str) -> dict:
         return await self.source_block_from_peers(block_num=int(block_num), fetch_type='previous')
 
-    async def source_block_from_peers(self, block_num: int, fetch_type: str) -> dict:
-        catch_peers_vk_list = [peer.server_vk for peer in self.catchup_peers]
+    async def source_block_from_peers(self, fetch_type: str, block_num: int = 0) -> dict:
+        block_counts = {}
+        consensus_reached = False
+        consensus_block = None
+        timeout = 5  # Set a reasonable timeout
 
-        while len(catch_peers_vk_list) > 0:
-            random_peer = self.get_random_catchup_peer(vk_list=catch_peers_vk_list)
-            peer_vk = random_peer.server_vk
+        while len(self.catchup_peers) > 0 and not consensus_reached:
+            tasks = []
+            for peer in self.catchup_peers:
+                if fetch_type == 'previous':
+                    task = asyncio.ensure_future(peer.get_previous_block(block_num=block_num))
+                elif fetch_type == 'specific':
+                    task = asyncio.ensure_future(peer.get_block(block_num=block_num))
+                elif fetch_type == 'latest':
+                    task = asyncio.ensure_future(peer.get_latest_block_info())
+                task.__peer__ = peer  # attach the peer directly to the task
+                tasks.append(task)
 
-            if fetch_type == 'previous':
-                res = await random_peer.get_previous_block(block_num=block_num)
-            elif fetch_type == 'specific':
-                res = await random_peer.get_block(block_num=block_num)
+            responses, _ = await asyncio.wait(tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED)
 
-            try:
-                block = res['block_info']
-                block_num = block.get('number')
+            for future in responses:
+                try:
+                    res = future.result()
+                    res_block = res['block_info']
+                    res_block_num = res_block.get('number')
+                    res_block_hash = res_block.get('hash')
 
-                # If this is the genesis block then return it
-                # OR if the block is valid, return it.
-                if int(block_num) == 0 or verify_block(block):
-                    return block
+                    if int(res_block_num) != 0 and fetch_type != 'latest':
+                        verify_block(res_block)
 
-                raise ValueError(f'[{fetch_type}:{block_num}] {block.get("number")} from {peer_vk}')
+                    block_counts[res_block_hash] = block_counts.get(res_block_hash, 0) + 1
+                    if block_counts[res_block_hash] / len(self.catchup_peers) > 0.51:
+                        consensus_reached = True
+                        consensus_block = res_block
+                except Exception as err:
+                    self.log.error(err)
+                    peer = future.__peer__
+                    self.catchup_peers.remove(peer)  # remove the unresponsive peer
 
-            except Exception as err:
-                self.log.error(err)
-                self.log.error(f'[{fetch_type}:{block_num}] Could not get {fetch_type} block {block_num} from peer {peer_vk} during catchup.')
+        if consensus_reached:
+            return consensus_block
+        else:
+            if len(self.catchup_peers) == 0:
+                raise ValueError('No peers available for catchup!')
 
-                catch_peers_vk_list.remove(peer_vk)
-
-        raise ConnectionError("All catchup peers are offline.")
+            return None
 
     def get_random_catchup_peer(self, vk_list) -> Peer:
         if len(vk_list) == 0:
@@ -164,10 +192,6 @@ class CatchupHandler:
         self.block_storage.store_block(block=block)
 
         self.log.info(f'Added block {block_num} from catchup.')
-
-    def update_block_db(self, block: dict) -> None:
-        self.contract_driver.driver.set(storage.LATEST_BLOCK_HASH_KEY, block['hash'])
-        self.contract_driver.driver.set(storage.LATEST_BLOCK_HEIGHT_KEY, block['number'])
 
     def safe_set_state_changes_and_rewards(self, block: dict) -> None:
         state_changes = block['processed'].get('state', [])

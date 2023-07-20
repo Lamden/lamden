@@ -214,7 +214,6 @@ class TestProcessingQueue(TestCase):
 
         # assert the first HLC entered was the one that was processed
         self.assertEqual(hlc_timestamp, first_tx.get('hlc_timestamp'))
-        self.assertIsNotNone(processing_results.get('proof'))
         self.assertIsNotNone(processing_results.get('tx_result'))
         self.assertEqual(self.main_processing_queue.currently_processing_hlc, '')
 
@@ -442,23 +441,6 @@ class TestProcessingQueue(TestCase):
                 except TypeError:
                     pass
                 self.assertListEqual(writes, [{'key': 'currency.balances:{}'.format(transaction['payload']['sender']),'value': new_bal}])
-
-    def test_sign_tx_results(self):
-        timestamp = self.hlc_clock.get_new_hlc_timestamp()
-        result = 'sample result',
-        rewards = [{}, {}]
-
-        self.assertDictEqual(
-            self.main_processing_queue.sign_tx_results(result, timestamp, rewards),
-            {
-                'signature': self.main_processing_queue.wallet.sign(tx_result_hash_from_tx_result_object(
-                    tx_result=result,
-                    hlc_timestamp=timestamp,
-                    rewards=rewards
-                )),
-                'signer': self.main_processing_queue.wallet.verifying_key
-            }
-        )
 
     def test_get_hlc_hash_from_tx(self):
         tx = self.make_tx_message(get_new_tx())

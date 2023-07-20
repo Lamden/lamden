@@ -13,7 +13,7 @@ from lamden.utils.retrieve_ips import IPFetcher
 from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
 
 from lamden.crypto.wallet import Wallet
-from lamden.storage import BlockStorage, get_latest_block_height
+from lamden.storage import BlockStorage, BLOCK_0
 
 from lamden.logger.base import get_logger
 
@@ -355,8 +355,7 @@ class Network:
         return None
 
     def get_latest_block(self) -> dict:
-        latest_block_num = get_latest_block_height(driver=self.driver)
-        latest_block = self.block_storage.get_block(v=latest_block_num)
+        latest_block = self.block_storage.get_latest_block()
 
         if not latest_block:
             latest_block = {}
@@ -367,7 +366,8 @@ class Network:
         latest_block = self.get_latest_block()
 
         return {
-                'number': int(latest_block.get('number', 0)),
+                'number': int(latest_block.get('number', -1)),
+                'hash': latest_block.get('hash', BLOCK_0['hash']),
                 'hlc_timestamp': latest_block.get('hlc_timestamp', '0'),
             }
     def get_highest_peer_block(self) -> int:
@@ -535,6 +535,7 @@ class Network:
         latest_block_info = self.get_latest_block_info()
 
         block_num = latest_block_info.get('number')
+        block_hash = latest_block_info.get('hash')
         hlc_timestamp = latest_block_info.get("hlc_timestamp")
 
         try:
@@ -542,7 +543,7 @@ class Network:
         except:
             challenge_response = ""
 
-        return '{"response":"%s", "challenge_response": "%s","latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, hlc_timestamp)
+        return '{"response":"%s", "challenge_response": "%s","latest_block_number": %d, "latest_block_hash": "%s", "latest_hlc_timestamp": "%s"}' % (ACTION_HELLO, challenge_response, block_num, block_hash, hlc_timestamp)
 
     async def router_callback(self, ident_vk_bytes: bytes, ident_vk_string: str, msg: str) -> None:
         try:
@@ -575,9 +576,10 @@ class Network:
         if action == ACTION_GET_LATEST_BLOCK:
             latest_block_info = self.get_latest_block_info()
             block_num = latest_block_info.get('number')
+            block_hash = latest_block_info.get('hash')
             hlc_timestamp = latest_block_info.get("hlc_timestamp")
 
-            resp_msg = ('{"response": "%s", "latest_block_number": %d, "latest_hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, hlc_timestamp))
+            resp_msg = ('{"response": "%s", "latest_block_number": %d, "latest_block_hash": "%s", "latest_hlc_timestamp": "%s"}' % (ACTION_GET_LATEST_BLOCK, block_num, block_hash, hlc_timestamp))
 
             self.router.send_msg(
                 ident_vk_bytes=ident_vk_bytes,

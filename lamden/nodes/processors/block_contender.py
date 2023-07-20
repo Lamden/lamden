@@ -1,6 +1,6 @@
 from lamden.crypto.wallet import verify
 from lamden.logger.base import get_logger
-from lamden.crypto.canonical import tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, create_proof_message_from_proof
 from lamden.network import Network
 from lamden.nodes.processors.processor import Processor
 
@@ -121,8 +121,12 @@ class Block_Contender(Processor):
         self.validation_queue.append(processing_results=msg)
 
     def validate_message_signature(self, tx_result_hash, proof):
+        msg = create_proof_message_from_proof(
+            tx_result_hash=tx_result_hash,
+            proof=proof
+        )
         try:
-            return verify(vk=proof['signer'], msg=tx_result_hash, signature=proof['signature'])
+            return verify(vk=proof['signer'], msg=msg, signature=proof['signature'])
         except Exception:
             return False
 

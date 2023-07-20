@@ -1,6 +1,6 @@
 DEFAULT_BLOCK = '0000000000000000000000000000000000000000000000000000000000000000'
 from lamden.crypto.transaction import build_transaction
-from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, tx_hash_from_tx, block_from_subblocks
+from lamden.crypto.canonical import tx_result_hash_from_tx_result_object, tx_hash_from_tx, block_from_subblocks, create_proof_message_from_tx_results
 from lamden.crypto.wallet import Wallet
 import json
 import zmq.asyncio
@@ -159,10 +159,17 @@ def get_tx_message(wallet=None, to=None, amount=None, tx=None, node_wallet=None,
     }
 
 def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=None):
+    if node_wallet is None:
+        node_wallet = Wallet()
+
     if tx_message is None:
         tx_message = get_tx_message()
     if node:
         processing_results = node.main_processing_queue.process_tx(tx=tx_message)
+        processing_results = node.add_proof_to_processing_results(processing_results=processing_results)
+        processing_results['proof']['tx_result_hash'] = node.make_result_hash_from_processing_results(
+            processing_results=processing_results
+        )
     else:
         hlc_clock = HLC_Clock()
         class_path = os.path.abspath(inspect.getfile(inspect.currentframe()))
@@ -200,12 +207,33 @@ def get_processing_results(tx_message=None, driver=None, node_wallet=None, node=
         hlc_timestamp = processing_results.get('hlc_timestamp')
         tx_result = processing_results.get('tx_result')
         rewards = processing_results.get('rewards')
-        tx_result_hash = tx_result_hash_from_tx_result_object(
+
+        members = driver.driver.get(item='masternodes.S:members')
+
+        proof_details = create_proof_message_from_tx_results(
             tx_result=tx_result,
             hlc_timestamp=hlc_timestamp,
-            rewards=rewards
+            rewards=rewards,
+            members=members or []
         )
+
+        signature = node_wallet.sign(proof_details.get('message'))
+
+        processing_results['proof'] = {
+            'signature': signature,
+            'signer': node_wallet.verifying_key,
+            'members_list_hash': proof_details.get('members_list_hash'),
+            'num_of_members': proof_details.get('num_of_members'),
+        }
+
+        tx_result_hash = tx_result_hash_from_tx_result_object(
+            tx_result=processing_results['tx_result'],
+            hlc_timestamp=processing_results['hlc_timestamp'],
+            rewards=processing_results['rewards']
+        )
+
         processing_results['proof']['tx_result_hash'] = tx_result_hash
+
     return processing_results
 
 

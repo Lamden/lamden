@@ -139,6 +139,7 @@ class TestBaseGossip(TestCase):
         self.assertFalse(os.listdir(self.node.missing_blocks_handler.missing_blocks_dir))
 
     def test_METHOD_gossip_about_new_block__creates_files_if_block_missing(self):
+        self.fail('Should FAIL, gossip currently disabled.')
         self.create_node()
         mock_blocks = MockBlocks(num_of_blocks=10)
         latest_block = mock_blocks.get_latest_block()

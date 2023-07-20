@@ -535,6 +535,8 @@ class ValidationQueue(ProcessingQueue):
             self.max_hlc_in_consensus = hlc_timestamp
 
     def get_peers_for_consensus(self):
+        members = self.driver.driver.get(f'masternodes.S:members') or []
+        print({'members': members})
         return self.driver.driver.get(f'masternodes.S:members') or []
 
     def get_key_list(self):

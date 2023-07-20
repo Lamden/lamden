@@ -1,12 +1,13 @@
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
 from lamden.nodes.hlc import HLC_Clock
-from lamden.crypto.canonical import tx_hash_from_tx, hash_genesis_block_state_changes, block_hash_from_block, tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import create_proof_message_from_tx_results, tx_hash_from_tx, hash_genesis_block_state_changes, block_hash_from_block, tx_result_hash_from_tx_result_object
 import copy
 import json
 from contracting.stdlib.bridge.decimal import ContractingDecimal
 from contracting.db.encoder import decode, encode
 from lamden.crypto.transaction import build_transaction
+from lamden.crypto.block_validator import verify_block
 from lamden.utils import hlc, create_genesis
 from lamden.crypto.wallet import verify
 from copy import deepcopy
@@ -228,18 +229,21 @@ class MockBlock:
     def __init__(self,
                  hlc_timestamp: str = None,
                  previous: str = 64 * "0",
-                 proofs: list = [],
                  rewards: list = [],
                  internal_state: dict = None,
-                 receiver_wallet: Wallet = None
+                 receiver_wallet: Wallet = None,
+                 member_wallets: list = [],
+                 masternode_wallet: Wallet = Wallet(),
     ):
 
         if not hlc_timestamp:
             self.get_new_hlc()
 
+        if len(member_wallets) == 0:
+            member_wallets = [Wallet(), Wallet(), masternode_wallet]
+
         self.number = str(hlc.nanos_from_hlc_timestamp(hlc_timestamp=self.hlc_timestamp))
         self.previous = previous
-        self.proofs = proofs
 
         block_hash = block_hash_from_block(
             hlc_timestamp=self.hlc_timestamp,
@@ -271,6 +275,13 @@ class MockBlock:
 
         self.processed = mock_processed.as_dict()
 
+        self.proofs = self.create_proofs(
+            tx_result=mock_processed.as_dict(),
+            hlc_timestamp=self.hlc_timestamp,
+            rewards=self.rewards,
+            member_wallets=member_wallets
+        )
+
     def get_new_hlc(self):
         hlc_clock = HLC_Clock()
         self.set_hlc_timestamp(hlc_timestamp=hlc_clock.get_new_hlc_timestamp())
@@ -278,23 +289,31 @@ class MockBlock:
     def set_hlc_timestamp(self, hlc_timestamp):
         self.hlc_timestamp = hlc_timestamp
 
-    def add_proofs(self, amount_to_add: int = 1):
-        if not self.processed:
-            return
+    def create_proofs(self, tx_result, hlc_timestamp, rewards, member_wallets):
+        proofs = list()
 
-        for i in range(amount_to_add):
-            tx_result_hash = tx_result_hash_from_tx_result_object(
-                tx_result=self.processed,
-                hlc_timestamp=self.hlc_timestamp,
-                rewards=self.rewards
+        members_list = [member_wallet.verifying_key for member_wallet in member_wallets]
+
+        for member_wallet in member_wallets:
+            proof_details = create_proof_message_from_tx_results(
+                tx_result=tx_result,
+                hlc_timestamp=hlc_timestamp,
+                rewards=rewards,
+                members=members_list,
             )
 
-            wallet = Wallet()
+            signature = member_wallet.sign(proof_details.get('message'))
+
             proof = {
-                'signer': wallet.verifying_key,
-                'signature': wallet.sign(msg=tx_result_hash)
+                'signature': signature,
+                'signer': member_wallet.verifying_key,
+                'members_list_hash': proof_details.get('members_list_hash'),
+                'num_of_members': proof_details.get('num_of_members'),
             }
-            self.proofs.append(proof)
+
+            proofs.append(proof)
+
+        return proofs
 
     def add_minted_property(self, minted):
         self.minted = minted
@@ -312,28 +331,43 @@ class TestMockBlock(TestCase):
         pass
 
     def test_as_dict(self):
-        block = MockBlock()
-        self.assertIsInstance(block.processed, MockProcessed)
+        masternode_wallet = Wallet()
+        block = MockBlock(masternode_wallet=masternode_wallet)
 
+        signature = masternode_wallet.sign(encode(deepcopy(block.as_dict())))
+        minted = {
+            'minter': masternode_wallet.verifying_key,
+            'signature': signature
+        }
+
+        block.add_minted_property(minted=minted)
         block_dict = block.as_dict()
-        self.assertEqual(8, len(block_dict))
 
-        self.assertEqual(0, block_dict.get('number'))
-        self.assertIsNotNone(block_dict.get('hlc_timestamp'))
-        self.assertIsInstance(block_dict.get('hlc_timestamp'), str)
-        self.assertEqual(64, len(block_dict.get('hash')))
-        self.assertEqual(64 * "0", block_dict.get('previous'))
-        self.assertEqual([], block_dict.get('proofs'))
-        self.assertEqual([], block_dict.get('rewards'))
+        self.assertTrue(verify_block(block=block_dict))
+
+
 
 class MockBlocks:
-    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = {},
+    def __init__(self, num_of_blocks: int = 0, one_wallet: bool = False, initial_members: dict = None,
                  founder_wallet: Wallet = None, masternode_wallet: Wallet = None):
         self.blocks = dict()
         self.internal_state = dict()
         self.founder_wallet = founder_wallet or Wallet()
         self.masternode_wallet = masternode_wallet or Wallet()
-        self.initial_members = initial_members
+
+        self.member_wallets = initial_members
+
+        if self.member_wallets is None:
+            self.member_wallets = [Wallet() for _ in range(3)]
+
+        self.member_wallets.append(self.masternode_wallet)
+
+        self.initial_members = {
+            'masternodes': []
+        }
+
+        for wallet in self.member_wallets:
+            self.initial_members['masternodes'].append(wallet.verifying_key)
 
         self.receiver_wallet = None
         if one_wallet:
@@ -429,14 +463,13 @@ class MockBlocks:
             new_block = copy.deepcopy(MockBlock(
                 previous=previous_block.get("hash"),
                 receiver_wallet=self.receiver_wallet,
-                internal_state=self.internal_state
+                internal_state=self.internal_state,
+                member_wallets=self.member_wallets
             ))
-            new_block.add_proofs(amount_to_add=3)
             new_block.add_minted_property(minted=self.create_minted(block=new_block))
 
             for state_change in new_block.processed.get('state'):
                 self.internal_state[state_change.get('key')] = state_change.get('value')
-
 
         block_dict = self.add_to_blocks_dict(block=new_block)
         return block_dict
@@ -515,3 +548,12 @@ class TestMockBlocks(TestCase):
         blocks.add_blocks(num_of_blocks=5)
 
         self.assertEqual(5, blocks.total_blocks)
+
+    def test_block_passes_verify(self):
+        blocks = MockBlocks()
+        blocks.add_blocks(num_of_blocks=5)
+
+        for block in blocks.block_list:
+            self.assertTrue(verify_block(block=block))
+
+

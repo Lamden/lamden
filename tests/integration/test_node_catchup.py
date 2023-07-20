@@ -59,26 +59,40 @@ class TestNewNodeCatchup(TestCase):
 
 
     def test_new_peer_can_catchup_blocks_to_block_height_of_highest_node_block_height_and_state_is_correct(self):
+        # create network of 5 nodes
         self.network.create_new_network(
-            num_of_masternodes=2,
+            num_of_masternodes=3,
             network_await_connect_all_timeout=2
         )
 
+        # send 5 transactions to network
         for i in range(5):
             self.network.send_tx_to_random_masternode()
-            self.async_sleep(1)
+            self.async_sleep(2)
 
+        network_height = self.network.all_nodes[0].node.get_current_height()
+
+        # Add a new node to the network
         new_node = self.network.add_new_node_to_network(join=True, network_await_connect_all_timeout=2)
-        existing_nodes = self.network.masternodes[:2]
+        existing_nodes = self.network.masternodes[:3]
 
+        # wait new_node to start
         while not new_node.node.started:
             self.async_sleep(1)
 
-        for node in existing_nodes:
-            self.assertEqual(node.node.get_current_height(), new_node.node.get_current_height())
-
         self.assertTrue(new_node.node.started)
 
+        # wait for catchup
+        while new_node.node.get_current_height() < network_height:
+            self.async_sleep(1)
+
+        new_node_height = new_node.node.get_current_height()
+        # ensure new node is at the same block height as the other nodes
+        for node in existing_nodes:
+            node_height = node.node.get_current_height()
+            self.assertEqual(node_height, new_node_height)
+
+        # Validate all nodes are have the same state
         for node in existing_nodes:
             for key in node.raw_driver.keys():
                 expected_value = node.get_smart_contract_value(key=key)

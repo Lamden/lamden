@@ -23,11 +23,7 @@ class TestNode(TestCase):
         self.blocks = MockBlocks(
             num_of_blocks=1,
             founder_wallet=self.founder_wallet,
-            initial_members={
-                'masternodes': [
-                    self.node_wallet.verifying_key
-                ]
-            }
+            initial_members=[self.node_wallet]
         )
         self.genesis_block = self.blocks.get_block_by_index(index=0)
 
@@ -89,6 +85,7 @@ class TestNode(TestCase):
     def test_hard_apply_block(self):
         # Hard Apply will mint a new block, apply state and increment block height
         tn = self.create_and_start_node()
+        tn.node.consensus_percent = 0
 
         stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
 
@@ -115,6 +112,7 @@ class TestNode(TestCase):
     def test_hard_apply_block_multiple_concurrent(self):
         # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions
         tn = self.create_and_start_node()
+        tn.node.consensus_percent = 0
 
         stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
 
@@ -163,6 +161,7 @@ class TestNode(TestCase):
 
     def test_not_enough_stamps(self):
         tn = self.create_and_start_node(metering=True)
+        tn.node.consensus_percent = 0
 
         stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
 

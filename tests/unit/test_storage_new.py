@@ -249,7 +249,7 @@ class TestBlockStorage(TestCase):
         block_2_hlc_timestamp = blocks[1].get('hlc_timestamp')
         block_2 = self.bs.get_block(hlc.nanos_from_hlc_timestamp(hlc_timestamp=block_2_hlc_timestamp))
 
-        self.assertEqual(hlc.nanos_from_hlc_timestamp(hlc_timestamp=block_2_hlc_timestamp), block_2.get('number'))
+        self.assertEqual(hlc.nanos_from_hlc_timestamp(hlc_timestamp=block_2_hlc_timestamp), int(block_2.get('number')))
 
     def test_get_block__by_hcl_timestamp(self):
         prev_block_hlc = self.hlc_clock.get_new_hlc_timestamp()
@@ -324,7 +324,7 @@ class TestBlockStorage(TestCase):
         block_2_num = blocks[1].get('number')
         block_3_num = blocks[2].get('number')
 
-        prev_block = self.bs.get_previous_block(v=block_3_num)
+        prev_block = self.bs.get_previous_block(v=int(block_3_num))
 
         self.assertEqual(prev_block.get('number'), block_2_num)
 
@@ -355,12 +355,12 @@ class TestBlockStorage(TestCase):
         for block in blocks:
             self.bs.store_block(block)
 
-        block_6_num = blocks[5].get('number')
+        block_6_num = int(blocks[5].get('number'))
         high_block_num = block_6_num + 1
 
         prev_block = self.bs.get_previous_block(v=high_block_num)
 
-        self.assertEqual(prev_block.get('number'), block_6_num)
+        self.assertEqual(int(prev_block.get('number')), block_6_num)
 
     def test_get_previous_block__None_returns_None(self):
         prev_block = self.bs.get_previous_block(v=None)
@@ -413,6 +413,36 @@ class TestBlockStorage(TestCase):
 
         latest_block = self.bs.get_latest_block()
         self.assertDictEqual(blocks[5], latest_block)
+
+    def test_METHOD_get_latest_block_number__returns_latest_block_number_as_int(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        expected_result = int(blocks[-1].get('number'))
+
+        latest_block_num = self.bs.get_latest_block_number()
+        self.assertEqual(expected_result, latest_block_num)
+
+    def test_METHOD_get_latest_block_number__returns_latest_block_hash(self):
+        blocks = generate_blocks(
+            number_of_blocks=6,
+            prev_block_hash='0' * 64,
+            prev_block_hlc=self.hlc_clock.get_new_hlc_timestamp()
+        )
+
+        for block in blocks:
+            self.bs.store_block(block)
+
+        expected_result = blocks[-1].get('hash')
+
+        latest_block_hash = self.bs.get_latest_block_hash()
+        self.assertEqual(expected_result, latest_block_hash)
 
 
 class TestFSBlockDriver(TestCase):
