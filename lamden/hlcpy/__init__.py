@@ -39,6 +39,10 @@ def iso8601_to_nanos(s: str) -> int:
     full_str = str(seconds) + decimals_str
     return int(full_str)
 
+def hlc_timestamp_to_nanos(hlc_timestamp: str) -> int:
+    iso8601 = hlc_timestamp.split('_')[0]
+    return iso8601_to_nanos(s=iso8601)
+
 class HLC:
     n_bits = 64
     n_bytes = int(n_bits / 8)

@@ -42,6 +42,7 @@ class MissingBlocksHandler:
         self.event_writer = event_writer
         self.wallet = wallet
         self.writer = MissingBlocksWriter(root=self.root, block_storage=self.block_storage)
+        self.safe_block_num = -1
 
         self.log = get_logger(f'[{self.current_thread.name}][MISSING BLOCKS HANDLER]')
 
@@ -105,7 +106,7 @@ class MissingBlocksHandler:
 
                 # If this is the genesis block then return it
                 # OR if the block is valid, return it.
-                if int(block_num) == 0 or verify_block(block):
+                if int(block_num) == 0 or verify_block(block=block, old_block=int(block_num) <= self.safe_block_num):
                     return block
 
                 raise ValueError(f'{block.get("number")} from {peer_vk}')

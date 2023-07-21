@@ -3,7 +3,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.crypto.canonical import hash_members_list
 from lamden.crypto.block_validator import verify_proof_signature
 from contracting.db.encoder import encode
-from lamden.nodes.base import Node
+from lamden.nodes.base import Node, SAFE_BLOCK_HEIGHT
 from lamden.nodes.events import EventWriter
 from lamden.nodes.hlc import HLC_Clock
 from pathlib import Path
@@ -502,6 +502,24 @@ class TestNode(TestCase):
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))
 
+    def test_METHOD_set_safe_block_num_neg_one_if_None(self):
+        self.node.node.set_safe_block_height()
+
+        safe_block_height = self.node.contract_driver.driver.get(SAFE_BLOCK_HEIGHT)
+
+        self.assertEqual(-1, safe_block_height)
+        self.assertEqual(-1, self.node.node.catchup_handler.safe_block_num)
+        self.assertEqual(-1, self.node.node.missing_blocks_handler.safe_block_num)
+
+    def test_METHOD_set_safe_block_num__set_to_val_of_self(self):
+        self.node.node.safe_block_num = 123456
+        self.node.node.set_safe_block_height()
+
+        safe_block_height = self.node.contract_driver.driver.get(SAFE_BLOCK_HEIGHT)
+
+        self.assertEqual(123456, safe_block_height)
+        self.assertEqual(123456, self.node.node.catchup_handler.safe_block_num)
+        self.assertEqual(123456, self.node.node.missing_blocks_handler.safe_block_num)
 
 import unittest
 if __name__ == '__main__':

@@ -1,9 +1,12 @@
+import asyncio
+
 from lamden.logger.base import get_logger
 from lamden.nodes.queue_base import ProcessingQueue
 from lamden.nodes.determine_consensus import DetermineConsensus
 from lamden.nodes.multiprocess_consensus import MultiProcessConsensus
 from lamden.storage import BlockStorage
 from lamden.crypto.wallet import Wallet
+from lamden.hlcpy import hlc_timestamp_to_nanos
 import time
 
 class ValidationQueue(ProcessingQueue):
@@ -16,7 +19,8 @@ class ValidationQueue(ProcessingQueue):
         # The main dict for storing results from other nodes
         self.validation_results = dict()
         self.started_checking = dict()
-        self.checking_timeout = 60
+        self.last_checked = dict()
+        self.checking_timeout = 30
 
         # Store confirmed solutions that I haven't got to yet
         self.last_hlc_in_consensus = ""
@@ -166,8 +170,15 @@ class ValidationQueue(ProcessingQueue):
 
                 # Remove it from started_checking
                 self.started_checking.pop(next_hlc_timestamp, None)
+                self.last_checked.pop(next_hlc_timestamp, None)
             else:
-                # see if we have been checking this hcl for greater than 1 minute
+                # if we have future blocks that have had consensus that means we are behind and we should just ask the network for this block.
+                if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
+                    await self.get_block_from_network_and_commit(hlc_timestamp=next_hlc_timestamp)
+
+                    return
+
+                # see if we have been checking this hcl for greater than self.checking_timeout
                 if time.time() - self.started_checking.get(next_hlc_timestamp) > self.checking_timeout:
                     self.log.error(f'Been checking for too long {time.time() - self.started_checking.get(next_hlc_timestamp)} seconds')
 
@@ -175,23 +186,9 @@ class ValidationQueue(ProcessingQueue):
                     # also removes if from started_checking
                     self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
 
-                # if the other nodes in the network were able to confirm a consensus block then we will pick it up here
-                # or we will get it through gossip on hard apply
-                if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
-                    hlcs = list(self.validation_results.keys())
-                    hlcs.sort()
-                    for hlc in hlcs:
-                        blocks = await self.get_block_from_network(hlc_timestamp=hlc)
-                        if len(blocks) > 0:
-                            break
-                    try:
-                        block = self.get_consensus_block(blocks=blocks)
-                    except Exception as err:
-                        print(err)
-                    if block and block['hlc_timestamp'] >= next_hlc_timestamp:
-                        await self.commit_consensus_block(block=block)
-                    else:
-                        self.flush_hlc(next_hlc_timestamp)
+                    # attempt to get block from network
+                    await self.get_block_from_network_and_commit(hlc_timestamp=next_hlc_timestamp)
+
 
     def check_one(self, hlc_timestamp):
         #self.log.debug('[START] check_one')
@@ -202,13 +199,26 @@ class ValidationQueue(ProcessingQueue):
             #self.log.debug('[STOP] check_one - results are None')
             return
 
+        # Only log every 5 seconds is waiting for consensus
+        log_it = False
+        if self.last_checked.get(hlc_timestamp) is not None:
+            if time.time() - self.last_checked.get(hlc_timestamp) > 5:
+                log_it = True
+                self.last_checked[hlc_timestamp] = time.time()
+        else:
+            self.last_checked[hlc_timestamp] = time.time()
+
         consensus_result = self.determine_consensus.check_consensus(
             solutions=results.get('solutions'),
             num_of_participants=len(self.get_peers_for_consensus()),
-            last_check_info=results.get('last_check_info')
+            last_check_info=results.get('last_check_info'),
+            log=log_it
         )
 
         if consensus_result is not None:
+            if log_it:
+                self.log.debug({'consensus_result': consensus_result})
+
             self.add_consensus_result(
                 hlc_timestamp=hlc_timestamp,
                 consensus_result=consensus_result
@@ -260,7 +270,6 @@ class ValidationQueue(ProcessingQueue):
         if consensus_result is None:
             #self.log.debug('[STOP] add_consensus_result - consensus_result is None')
             return
-        self.log.debug({'consensus_result': consensus_result})
 
         has_consensus = consensus_result.get('has_consensus')
         if has_consensus is not None and has_consensus:
@@ -321,40 +330,26 @@ class ValidationQueue(ProcessingQueue):
 
         return False
 
-    def get_consensus_block(self, blocks: list) -> dict:
-        tally_results = {}
-        for block in blocks:
-            block_hash = block.get('hash')
-            if tally_results.get(block_hash) is None:
-                tally_results[block_hash] = 1
-            else:
-                tally_results[block_hash] += 1
-
-        winning_hash = None
-        ties = []
-        for block_hash, tally in tally_results.items():
-            winner_obj = {
-                    'block_hash': block_hash,
-                    'tally': tally
-                }
-            if winning_hash is None or tally > winning_hash.get('tally'):
-                winning_hash = winner_obj
-                ties = []
-            else:
-                if tally == winning_hash.get('tally'):
-                    if len(ties) == 0:
-                        ties.append(winning_hash)
-                    ties.append(winner_obj)
-
-        for block in blocks:
-            if block.get('hash') == winning_hash.get('block_hash'):
-                return block
-
     def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
         results = self.validation_results.get(hlc_timestamp)
         if not results:
             return None
         return results['solutions'].get(node_vk)
+
+    async def get_block_from_network_and_commit(self, hlc_timestamp: str = None):
+        if hlc_timestamp is None:
+            return
+
+        # Check if the network was able to mint the block
+        self.log.warning(
+            f"Checking if network achieved consensus on {hlc_timestamp}, potential block number {hlc_timestamp_to_nanos(hlc_timestamp=hlc_timestamp)} ...")
+        block = await self.get_block_from_network(hlc_timestamp=hlc_timestamp)
+
+        if block is not None:
+            self.log.warning(
+                f"Got block block number {hlc_timestamp_to_nanos(hlc_timestamp=hlc_timestamp)} from network, hard applying...")
+            await self.commit_consensus_block(block=block)
+
 
     def is_earliest_hlc(self, hlc_timestamp):
         hlc_list = sorted(self.validation_results.keys())
@@ -479,6 +474,7 @@ class ValidationQueue(ProcessingQueue):
         try:
             self.validation_results.pop(hlc_timestamp, None)
             self.started_checking.pop(hlc_timestamp, None)
+            self.last_checked.pop(hlc_timestamp, None)
         except Exception as err:
             self.log.error(f'[flush_hlc] {err}')
 

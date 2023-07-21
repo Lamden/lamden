@@ -24,6 +24,7 @@ class CatchupHandler:
         self.nonce_storage = nonce_storage
 
         self.hardcoded_peers = hardcoded_peers
+        self.safe_block_num = -1
 
         self.catchup_peers = []
         self.valid_peers = [
@@ -149,7 +150,8 @@ class CatchupHandler:
                     res_block_hash = res_block.get('hash')
 
                     if int(res_block_num) != 0 and fetch_type != 'latest':
-                        verify_block(res_block)
+                        old_block = int(res_block_num) <= self.safe_block_num
+                        verify_block(block=res_block, old_block=old_block)
 
                     block_counts[res_block_hash] = block_counts.get(res_block_hash, 0) + 1
                     if block_counts[res_block_hash] / len(self.catchup_peers) > 0.51:

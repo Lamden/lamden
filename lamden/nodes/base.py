@@ -56,12 +56,15 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
+SAFE_BLOCK_HEIGHT = '__safe_block_height'
+
 class Node:
     def __init__(self, wallet, bootnodes={}, blocks=None,
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
-                 private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True):
+                 private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True,
+                 safe_block_num=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -87,6 +90,8 @@ class Node:
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
         self.genesis_block = genesis_block
         self.rollback_point = rollback_point
+
+        self.safe_block_num = safe_block_num
 
         self.current_thread = threading.current_thread()
 
@@ -249,6 +254,7 @@ class Node:
                 )
                 rollback_blocks_handler.run(rollback_point=self.rollback_point)
 
+            self.set_safe_block_height()
 
             # Start the network and wait till it's up
             self.network.start()
@@ -1238,20 +1244,12 @@ class Node:
 
     # Put into 'super driver'
     async def get_block_from_network(self, hlc_timestamp):
-        blocks = []
-        try:
-            for peer in self.network.peer_list:
-                task = peer.get_block(hlc_timestamp=hlc_timestamp)
-                blocks.append(task)
+        block = await self.catchup_handler.source_block_from_peers(
+            fetch_type='specific',
+            block_num=self.hlc_clock.get_nanos(timestamp=hlc_timestamp)
+        )
 
-            blocks = await asyncio.gather(*blocks)
-        except Exception as err:
-            self.log.error(err)
-
-        return [
-            block.get('block_info') for block in blocks
-            if block and block.get('success') and block.get('block_info') is not None and verify_block(block.get('block_info'))
-        ]
+        return block
 
     # Put into 'super driver'
     def get_block_by_number(self, block_number: str) -> dict:
@@ -1285,6 +1283,20 @@ class Node:
             return False
 
         return True
+
+    # This is the height where the new proofs will start being validated. block below will use old_block validation
+    def set_safe_block_height(self):
+        if self.safe_block_num is not None:
+            self.log.info(f"Setting safe block height to {self.safe_block_num}")
+            self.driver.driver.set('__safe_block_height', self.safe_block_num)
+        else:
+            safe_block_height = self.driver.driver.get('__safe_block_height')
+            if safe_block_height is None:
+                self.log.info(f"Initializing sage_block_height to -1.")
+                self.driver.driver.set('__safe_block_height', -1)
+
+        self.catchup_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
+        self.missing_blocks_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
 
     # Put into 'super driver'
     def get_current_height(self) -> int:
