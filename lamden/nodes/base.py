@@ -31,7 +31,7 @@ from lamden.nodes.processors import work, block_contender
 from lamden.nodes.processors.processor import Processor
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
-from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, tx_result_hash_from_tx_result_object
+from lamden.crypto.canonical import tx_hash_from_tx, block_from_tx_results, recalc_block_info, create_proof_message_from_tx_results, tx_result_hash_from_tx_result_object, hash_members_list
 from lamden.crypto.transaction import get_nonces
 from lamden.nodes.events import Event, EventWriter
 from lamden.crypto.block_validator import verify_block
@@ -56,12 +56,15 @@ NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
 
+SAFE_BLOCK_HEIGHT = '__safe_block_height'
+
 class Node:
     def __init__(self, wallet, bootnodes={}, blocks=None,
                  driver=None, delay=None, client=None, debug=True, testing=False,
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
-                 private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True):
+                 private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True,
+                 safe_block_num=None):
 
         self.main_processing_queue = None
         self.validation_queue = None
@@ -87,6 +90,8 @@ class Node:
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
         self.genesis_block = genesis_block
         self.rollback_point = rollback_point
+
+        self.safe_block_num = safe_block_num
 
         self.current_thread = threading.current_thread()
 
@@ -249,6 +254,7 @@ class Node:
                 )
                 rollback_blocks_handler.run(rollback_point=self.rollback_point)
 
+            self.set_safe_block_height()
 
             # Start the network and wait till it's up
             self.network.start()
@@ -582,18 +588,57 @@ class Node:
                     if my_result_hash != block_result_hash:
                         await self.reprocess(tx=processing_results['tx_result']['transaction'])
                 else:
+                    processing_results = self.add_proof_to_processing_results(processing_results=processing_results)
                     self.store_solution_and_send_to_network(processing_results=processing_results)
 
         except Exception as err:
             self.log.error(err)
 
+    def add_proof_to_processing_results(self, processing_results: dict) -> dict:
+        # Create merkle
+        tx_result = processing_results.get('tx_result')
+        hlc_timestamp = processing_results.get('hlc_timestamp')
+        rewards = processing_results.get('rewards')
+        members = self.network.get_node_list() or []
+
+        if not tx_result or not hlc_timestamp or not rewards:
+            raise ValueError('Invalid processing results. Cannot add proof.')
+
+        sign_info = self.sign_tx_results(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards,
+            members=members
+        )
+
+        processing_results['proof'] = sign_info
+
+        return processing_results
+
+    def sign_tx_results(self, tx_result, hlc_timestamp, rewards, members):
+        proof_details = create_proof_message_from_tx_results(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards,
+            members=members
+        )
+
+        signature = self.wallet.sign(proof_details.get('message'))
+
+        return {
+            'signature': signature,
+            'signer': self.wallet.verifying_key,
+            'members_list_hash': proof_details.get('members_list_hash'),
+            'num_of_members': proof_details.get('num_of_members'),
+        }
+
     def store_solution_and_send_to_network(self, processing_results):
         processing_results = json.loads(encode(processing_results))
+        self.send_solution_to_network(processing_results=processing_results)
+
         processing_results['proof']['tx_result_hash'] = self.make_result_hash_from_processing_results(
             processing_results=processing_results
         )
-        self.send_solution_to_network(processing_results=processing_results)
-
         self.validation_queue.append(
             processing_results=processing_results
         )
@@ -851,7 +896,7 @@ class Node:
             self.blocks.store_block(copy.copy(encoded_block))
 
             # Set the current block hash and height
-            self.update_block_db(block=encoded_block)
+            # self.update_block_db(block=encoded_block)
 
             try:
                 # create New Block Event
@@ -871,7 +916,7 @@ class Node:
         gc.collect()
 
         # gossip to see if we are missing a block
-        asyncio.ensure_future(self.gossip_about_new_block(block=block))
+        # asyncio.ensure_future(self.gossip_about_new_block(block=block))
 
         # check to see if we need to process any missing blocks.
         asyncio.ensure_future(self.missing_blocks_handler.run())
@@ -1199,20 +1244,12 @@ class Node:
 
     # Put into 'super driver'
     async def get_block_from_network(self, hlc_timestamp):
-        blocks = []
-        try:
-            for peer in self.network.peer_list:
-                task = peer.get_block(hlc_timestamp=hlc_timestamp)
-                blocks.append(task)
+        block = await self.catchup_handler.source_block_from_peers(
+            fetch_type='specific',
+            block_num=self.hlc_clock.get_nanos(timestamp=hlc_timestamp)
+        )
 
-            blocks = await asyncio.gather(*blocks)
-        except Exception as err:
-            self.log.error(err)
-
-        return [
-            block.get('block_info') for block in blocks
-            if block and block.get('success') and block.get('block_info') is not None and verify_block(block.get('block_info'))
-        ]
+        return block
 
     # Put into 'super driver'
     def get_block_by_number(self, block_number: str) -> dict:
@@ -1247,19 +1284,32 @@ class Node:
 
         return True
 
-    # Put into 'super driver'
-    def get_current_height(self):
-        return storage.get_latest_block_height(self.driver)
+    # This is the height where the new proofs will start being validated. block below will use old_block validation
+    def set_safe_block_height(self):
+        if self.safe_block_num is not None:
+            self.log.info(f"Setting safe block height to {self.safe_block_num}")
+            self.driver.driver.set('__safe_block_height', self.safe_block_num)
+        else:
+            safe_block_height = self.driver.driver.get('__safe_block_height')
+            if safe_block_height is None:
+                self.log.info(f"Initializing sage_block_height to -1.")
+                self.driver.driver.set('__safe_block_height', -1)
+
+        self.catchup_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
+        self.missing_blocks_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
 
     # Put into 'super driver'
-    def get_current_hash(self):
-        return storage.get_latest_block_hash(self.driver)
+    def get_current_height(self) -> int:
+        return self.blocks.get_latest_block_number()
+
+    # Put into 'super driver'
+    def get_current_hash(self) -> str:
+        return self.blocks.get_latest_block_hash()
 
     # Put into 'super driver'
     def get_latest_block(self):
-        latest_block_num = self.get_current_height()
-        block = self.blocks.get_block(v=latest_block_num)
-        return block
+        latest_block = self.blocks.get_latest_block()
+        return latest_block
 
     def get_last_processed_hlc(self):
         return self.main_processing_queue.last_processed_hlc

@@ -1,5 +1,6 @@
 import math
 from lamden.logger.base import get_logger
+import time
 
 class DetermineConsensus:
     def __init__(self, consensus_percent, my_wallet):
@@ -8,7 +9,7 @@ class DetermineConsensus:
         self.vk = my_wallet.verifying_key
         self.log  = get_logger("Determine Consensus")
 
-    def check_consensus(self, solutions, num_of_participants, last_check_info):
+    def check_consensus(self, solutions, num_of_participants, last_check_info, log: bool=False):
         '''
             Consensus situations:
                 ideal: one solution meets the consensus needed threshold and no more checking is required
@@ -44,11 +45,12 @@ class DetermineConsensus:
                                           failure as more solutions arrive)
         '''
 
-        self.log.debug({
-            'total_solutions_received': total_solutions_received,
-            'consensus_needed': consensus_needed,
-            'num_of_participants': num_of_participants
-        })
+        if log:
+            self.log.debug({
+                'total_solutions_received': total_solutions_received,
+                'consensus_needed': consensus_needed,
+                'num_of_participants': num_of_participants
+            })
 
 
         if total_solutions_received < consensus_needed:
@@ -63,7 +65,9 @@ class DetermineConsensus:
 
         solutions_missing = num_of_participants - total_solutions_received
         tally_info = self.tally_solutions(solutions=solutions)
-        print({'tally_info': tally_info})
+
+        if log:
+            self.log.debug(tally_info)
 
         '''
         self.log.debug({

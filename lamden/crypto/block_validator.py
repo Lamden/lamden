@@ -1,5 +1,5 @@
 from iso8601 import parse_date
-from lamden.crypto.canonical import block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object, hash_genesis_block_state_changes
+from lamden.crypto.canonical import create_proof_message_from_proof, block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object, hash_genesis_block_state_changes
 from contracting.db.encoder import encode
 from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
@@ -23,6 +23,7 @@ EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED = "Block Origin Signature is Malforme
 EXCEPTION_BLOCK_REWARDS_INVALID = "Block Rewards are Invalid."
 EXCEPTION_BLOCK_PROOFS_INVALID = "Block Proofs are Invalid."
 EXCEPTION_BLOCK_PROOF_MALFORMED = "Block Proof is Malformed."
+EXCEPTION_BLOCK_PROOFS_INVALID_CONSENSUS = "Invalid Number of Block Proofs for Consensus."
 EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED = "Block Minter Signature is Malformed."
 EXCEPTION_BLOCK_MINTED_INVALID = "Block Minted is Invalid."
 EXCEPTION_BLOCK_PROCESSED_INVALID = "Block Processed is Invalid."
@@ -44,6 +45,7 @@ BLOCK_EXCEPTIONS = {
     'BlockRewardsInvalid': EXCEPTION_BLOCK_REWARDS_INVALID,
     'BlockProofsInvalid': EXCEPTION_BLOCK_PROOFS_INVALID,
     'BlockProofMalformed': EXCEPTION_BLOCK_PROOF_MALFORMED,
+    'BlockProofsInvalidConsensus': EXCEPTION_BLOCK_PROOFS_INVALID_CONSENSUS,
     'BlockProcessedInvalid': EXCEPTION_BLOCK_PROCESSED_INVALID,
     'BlockKeysInvalidNumber': EXCEPTION_BLOCK_KEYS_INVALID_NUMBER,
     'GenesisBlockNumberInvalid': EXCEPTION_GENESIS_BLOCK_NUMBER_INVALID,
@@ -80,6 +82,9 @@ class BlockProofsInvalid(Exception):
     pass
 
 class BlockProofMalformed(Exception):
+    pass
+
+class BlockProofsInvalidConsensus(Exception):
     pass
 
 class BlockMinterSignatureMalformed(Exception):
@@ -364,7 +369,7 @@ def validate_transaction_structure(transaction: dict) -> bool:
     return True
 
 
-def verify_block(block: dict) -> bool:
+def verify_block(block: dict, old_block: bool = False) -> bool:
     log = get_logger('BLOCK VALIDATOR')
     try:
         validate_block_structure(block=block)
@@ -375,6 +380,11 @@ def verify_block(block: dict) -> bool:
         else:
             validate_all_hashes(block=block)
             validate_all_signatures(block=block)
+            validate_all_proof_signatures(block=block, old_block=old_block)
+
+            if not old_block:
+                validate_block_consensus(block=block)
+
     except Exception as err:
         log.error(err)
         return False
@@ -408,7 +418,7 @@ def verify_processed_transaction_hash(processed_transaction) -> bool:
     return tx_hash == processed_transaction.get('hash')
 
 
-def validate_all_signatures(block: dict) -> bool:
+def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
     processed = block.get('processed')
     transaction = processed.get('transaction')
 
@@ -418,11 +428,14 @@ def validate_all_signatures(block: dict) -> bool:
     if not verify_origin_signature(block=block):
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
-    if not verify_proofs(block=block):
-        raise BlockProofMalformed(EXCEPTION_BLOCK_PROOF_MALFORMED)
-
     if not verify_minter_signature(deepcopy(block)):
         raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
+
+    return True
+
+def validate_all_proof_signatures(block: dict, old_block: bool = False) -> bool:
+    if not verify_proofs(block=block, old_block=old_block):
+        raise BlockProofMalformed(EXCEPTION_BLOCK_PROOF_MALFORMED)
 
     return True
 
@@ -477,14 +490,13 @@ def verify_genesis_origin_signature(block: dict) -> bool:
         message = hash_genesis_block_state_changes(state_changes=genesis_state_changes)
         signature = block['origin'].get('signature')
 
-        valid = verify(vk=sender, msg=message, signature=signature
-        )
+        valid = verify(vk=sender, msg=message, signature=signature)
         return valid
     except Exception as err:
         print(err)
         return False
 
-def verify_proofs(block: dict) -> bool:
+def verify_proofs(block: dict, old_block: bool = False) -> bool:
     tx_result = block.get('processed')
     rewards = block.get('rewards')
     hlc_timestamp = block.get('hlc_timestamp')
@@ -492,12 +504,38 @@ def verify_proofs(block: dict) -> bool:
     proofs = block.get('proofs')
 
     for proof in proofs:
-        if not verify_proof(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
-            return False
+        if old_block:
+            if not verify_proof_signature_old(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
+                return False
+        else:
+            if not verify_proof_signature(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
+                return False
 
     return True
 
-def verify_proof(proof: dict, tx_result: str, rewards: dict, hlc_timestamp: str) -> bool:
+def verify_proof_signature(proof: dict, tx_result: str, rewards=[], hlc_timestamp=str) -> bool:
+    try:
+        signature = proof.get('signature')
+        signer = proof.get('signer')
+
+        tx_result_hash=tx_result_hash_from_tx_result_object(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards
+        )
+
+        message = create_proof_message_from_proof(
+            tx_result_hash=tx_result_hash,
+            proof=proof
+        )
+
+        valid = verify(vk=signer, msg=message, signature=signature)
+        return valid
+    except Exception as err:
+        print(err)
+        return False
+
+def verify_proof_signature_old(proof: dict, tx_result: str, rewards: dict, hlc_timestamp: str) -> bool:
     try:
         signature = proof.get('signature')
         signer = proof.get('signer')
@@ -525,6 +563,21 @@ def validate_genesis_signatures(block: dict):
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
     return True
+
+def validate_block_consensus(block: dict):
+    # This will validate that each proof was created by a node with the proper number of members
+    # Then it will validate that block also has the correct number of proofs for 51% consensus
+    proofs = block.get('proofs')
+    member_list_hashes = [proof['members_list_hash'] for proof in proofs]
+
+    most_common_members_list_hash = max(set(member_list_hashes), key=member_list_hashes.count)
+    consensus_member_string_count = member_list_hashes.count(most_common_members_list_hash)
+    num_of_members = next((proof['num_of_members'] for proof in proofs if proof['members_list_hash'] == most_common_members_list_hash), 0)
+    proofs_needed = num_of_members // 2 + 1
+
+    if consensus_member_string_count < proofs_needed:
+        raise BlockProofsInvalidConsensus(EXCEPTION_BLOCK_PROOFS_INVALID_CONSENSUS)
+
 
 def hash_is_sha256(hash_str: str):
     if not isinstance(hash_str, str):

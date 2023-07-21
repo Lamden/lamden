@@ -116,11 +116,13 @@ class MockRouter(threading.Thread):
                         challenge = msg_obj.get('challenge')
                         if challenge:
                             challenge_response = self.wallet.sign(challenge)
+                            block_hash = '9' * 64
                             resp_msg = json.dumps(
                                 {
                                     'response': ACTION_HELLO,
                                     'challenge_response': challenge_response,
                                     'latest_block_number': 1,
+                                    'latest_block_hash': '9' * 64,
                                     'latest_hlc_timestamp': "1"
                                 }).encode('UTF-8')
                         else:
@@ -130,6 +132,7 @@ class MockRouter(threading.Thread):
                         resp_msg = json.dumps({
                             'response': ACTION_GET_LATEST_BLOCK,
                             'latest_block_number': 100,
+                            'latest_block_hash': '9' * 64,
                             'latest_hlc_timestamp': "1234"
                         }).encode('UTF-8')
 

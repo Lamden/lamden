@@ -89,14 +89,11 @@ class TestValidationQueue(TestCase):
         return self.block
 
     async def get_block_from_network(self, hlc_timestamp):
-        blocks = []
-        for i in range(5):
-            blocks.append({
+        return {
                 'hash': hlc_timestamp,
                 'hlc_timestamp': hlc_timestamp,
                 'number': nanos_from_hlc_timestamp(hlc_timestamp=hlc_timestamp)
-            })
-        return blocks
+            }
 
     async def stop_all_queues(self):
         return
@@ -116,6 +113,8 @@ class TestValidationQueue(TestCase):
     async def hard_apply_block(self, processing_results=None, block=None):
         self.hard_apply_block_called = True
         self.num_times_hard_apply_block_called += 1
+
+        return block
 
     def is_next_block(self, previous_block):
         return previous_block == self.current_block

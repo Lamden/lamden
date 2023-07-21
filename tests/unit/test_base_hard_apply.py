@@ -26,17 +26,13 @@ class TestBaseNode_HardApply(TestCase):
         self.genesis_path = Path(f'{self.current_path.parent}/integration/mock')
         self.temp_storage = Path(f'{self.current_path}/temp_storage')
 
-
-
         if self.temp_storage.is_dir():
             shutil.rmtree(self.temp_storage)
         self.temp_storage.mkdir(exist_ok=True, parents=True)
 
         self.node_wallet = Wallet()
 
-        self.initial_members = {
-            'masternodes': [self.node_wallet.verifying_key]
-        }
+        self.initial_members = [self.node_wallet]
 
         hlc_clock = HLC_Clock()
         self.early_hlc = hlc_clock.get_new_hlc_timestamp()
@@ -357,6 +353,10 @@ class TestBaseNode_HardApply(TestCase):
         self.assertIsInstance(state_changes, list)
         self.assertEqual(0, len(state_changes))
 
+
+    '''
+    No Need for "update_block_db" anymore as we are finding these values directly through the driver
+    
     def test_update_block_db__makes_driver_updates(self):
         block = self.mock_blocks.get_block_by_index(1)
 
@@ -380,3 +380,4 @@ class TestBaseNode_HardApply(TestCase):
 
         self.assertEqual(block_num, self.node.get_current_height())
         self.assertEqual(block_hash, self.node.get_current_hash())
+    '''

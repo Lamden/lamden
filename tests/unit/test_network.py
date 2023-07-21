@@ -504,7 +504,8 @@ class TestNetwork(TestCase):
 
         msg_obj = json.loads(msg_str)
         self.assertEqual(ACTION_HELLO, msg_obj.get("response"))
-        self.assertEqual(0, msg_obj.get("latest_block_number"))
+        self.assertEqual(-1, msg_obj.get("latest_block_number"))
+        self.assertEqual("0" * 64, msg_obj.get("latest_block_hash"))
         self.assertEqual("0", msg_obj.get("latest_hlc_timestamp"))
         self.assertEqual(network_1.wallet.sign(challenge), msg_obj.get("challenge_response"))
 
@@ -559,7 +560,8 @@ class TestNetwork(TestCase):
 
         msg_obj = json.loads(msg)
         self.assertEqual(ACTION_GET_LATEST_BLOCK, msg_obj.get("response"))
-        self.assertEqual(0, msg_obj.get("latest_block_number"))
+        self.assertEqual(-1, msg_obj.get("latest_block_number"))
+        self.assertEqual("0" * 64, msg_obj.get("latest_block_hash"))
         self.assertEqual("0", msg_obj.get("latest_hlc_timestamp"))
 
     def test_METHOD_router_callback__get_block_action_creates_proper_response_if_block_exists(self):
@@ -1163,7 +1165,8 @@ class TestNetwork(TestCase):
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))
-        self.assertEqual(0, hello_obj.get("latest_block_number"))
+        self.assertEqual(-1, hello_obj.get("latest_block_number"))
+        self.assertEqual("0" * 64, hello_obj.get("latest_block_hash"))
         self.assertEqual("0", hello_obj.get("latest_hlc_timestamp"))
         self.assertEqual(network_1.wallet.sign(challenge), hello_obj.get("challenge_response"))
 
@@ -1176,7 +1179,8 @@ class TestNetwork(TestCase):
 
         hello_obj = json.loads(hello_response)
         self.assertEqual(ACTION_HELLO, hello_obj.get("response"))
-        self.assertEqual(0, hello_obj.get("latest_block_number"))
+        self.assertEqual(-1, hello_obj.get("latest_block_number"))
+        self.assertEqual("0" * 64, hello_obj.get("latest_block_hash"))
         self.assertEqual("0", hello_obj.get("latest_hlc_timestamp"))
         self.assertEqual("", hello_obj.get("challenge_response"))
 

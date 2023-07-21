@@ -1,6 +1,9 @@
 from contracting.db.driver import ContractDriver, FSDriver
 from lamden.crypto.wallet import Wallet
-from lamden.nodes.base import Node
+from lamden.crypto.canonical import hash_members_list
+from lamden.crypto.block_validator import verify_proof_signature
+from contracting.db.encoder import encode
+from lamden.nodes.base import Node, SAFE_BLOCK_HEIGHT
 from lamden.nodes.events import EventWriter
 from lamden.nodes.hlc import HLC_Clock
 from pathlib import Path
@@ -160,6 +163,99 @@ class TestNode(TestCase):
         last_hlc_timestamp = self.node.validation_queue.last_hlc_in_consensus
         self.assertIsNotNone(self.node.node.blocks.get_block(last_hlc_timestamp))
 
+    def test_METHOD_sign_tx_results_can_return_proof_details(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+
+        node = self.node.node
+        self.await_async_process(node.pause_main_processing_queue)
+
+        tx = get_new_currency_tx(wallet=node.wallet)
+        tx = node.make_tx_message(tx)
+
+        node.main_processing_queue.append(tx)
+        node.processing_delay_secs = {
+            'base': 0, 'self': 0
+        }
+
+        res = self.await_async_process(node.main_processing_queue.process_next)
+
+        processing_results = res[0]
+
+        tx_result = processing_results.get('tx_result')
+        hlc_timestamp = processing_results.get('hlc_timestamp')
+        rewards = processing_results.get('rewards')
+
+        wallet_1: Wallet = Wallet()
+        wallet_2: Wallet = Wallet()
+
+        members = [wallet_1.verifying_key, wallet_2.verifying_key]
+
+        sign_info = node.sign_tx_results(
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards,
+            members=members
+        )
+
+        self.assertIsNotNone(sign_info.get('signature'))
+
+        self.assertTrue(verify_proof_signature(
+            proof=sign_info,
+            tx_result=tx_result,
+            hlc_timestamp=hlc_timestamp,
+            rewards=rewards
+        ))
+
+        self.assertEqual(node.wallet.verifying_key, sign_info.get('signer'))
+        self.assertEqual(2, sign_info.get('num_of_members'))
+
+        expected_members_list_hash = hash_members_list(members=members)
+
+        self.assertEqual(expected_members_list_hash, sign_info.get('members_list_hash'))
+
+    def test_METHOD_add_proof_to_processing_results__can_add_proof(self):
+        self.node.contract_driver.set_var(contract='currency', variable='balances', arguments=[self.node.wallet.verifying_key], value=1000)
+
+        node = self.node.node
+        self.await_async_process(node.pause_main_processing_queue)
+
+        tx = get_new_currency_tx(wallet=node.wallet)
+        tx = node.make_tx_message(tx)
+
+        node.main_processing_queue.append(tx)
+        node.processing_delay_secs = {
+            'base': 0, 'self': 0
+        }
+
+        res = self.await_async_process(node.main_processing_queue.process_next)
+
+        processing_results = res[0]
+
+        processing_results = json.loads(encode(processing_results))
+
+        processing_results = node.add_proof_to_processing_results(
+            processing_results=processing_results
+        )
+
+        encoded_processing_results = json.loads(encode(processing_results))
+        proof = encoded_processing_results.get('proof')
+        tx_result = encoded_processing_results.get('tx_result')
+
+        self.assertIsNotNone(proof.get('signature'))
+        self.assertIsNotNone(proof.get('signer'))
+        self.assertIsNotNone(proof.get('members_list_hash'))
+        self.assertIsNotNone(proof.get('num_of_members'))
+
+        valid = verify_proof_signature(
+            proof=proof,
+            tx_result=tx_result,
+            hlc_timestamp=processing_results.get('hlc_timestamp'),
+            rewards=processing_results.get('rewards')
+        )
+
+        self.assertTrue(valid)
+
+
 
     ''' N/A
     def test_process_tx_when_later_blocks_exist_inserts_block_inorder(self):
@@ -232,12 +328,15 @@ class TestNode(TestCase):
 
         self.assertIn(hlc, self.node.validation_queue.append_history)
 
+    '''
+    NO LONGER USED
     def test_update_block_db(self):
-        block = {'hash': 'sample_hash', 'number': 1}
+        block = {'hash': 'sample_hash', 'number': "1"}
         self.node.node.update_block_db(block)
-
+        
         self.assertEqual(self.node.node.get_current_hash(), 'sample_hash')
-        self.assertEqual(self.node.node.get_current_height(), 1)
+        self.assertEqual(self.node.node.get_current_height(), "1")
+    '''
 
     def test_get_state_changes_from_block(self):
         block = {'processed': {'state': 'sample_state'}}
@@ -403,6 +502,24 @@ class TestNode(TestCase):
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['solutions'].get(peer_vk, None))
         self.assertIsNone(self.node.validation_queue.validation_results[older_hlc]['proofs'].get(peer_vk, None))
 
+    def test_METHOD_set_safe_block_num_neg_one_if_None(self):
+        self.node.node.set_safe_block_height()
+
+        safe_block_height = self.node.contract_driver.driver.get(SAFE_BLOCK_HEIGHT)
+
+        self.assertEqual(-1, safe_block_height)
+        self.assertEqual(-1, self.node.node.catchup_handler.safe_block_num)
+        self.assertEqual(-1, self.node.node.missing_blocks_handler.safe_block_num)
+
+    def test_METHOD_set_safe_block_num__set_to_val_of_self(self):
+        self.node.node.safe_block_num = 123456
+        self.node.node.set_safe_block_height()
+
+        safe_block_height = self.node.contract_driver.driver.get(SAFE_BLOCK_HEIGHT)
+
+        self.assertEqual(123456, safe_block_height)
+        self.assertEqual(123456, self.node.node.catchup_handler.safe_block_num)
+        self.assertEqual(123456, self.node.node.missing_blocks_handler.safe_block_num)
 
 import unittest
 if __name__ == '__main__':

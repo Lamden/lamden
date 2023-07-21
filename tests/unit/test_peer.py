@@ -249,6 +249,11 @@ class TestPeer(unittest.TestCase):
         self.peer.set_latest_block_number(number=latest_block_number)
         self.assertEqual(latest_block_number, self.peer.latest_block_number)
 
+    def test_PROPERTY_latest_block_hash(self):
+        latest_block_hash = "9" * 64
+        self.peer.set_latest_block_hash(hash=latest_block_hash)
+        self.assertEqual(latest_block_hash, self.peer.latest_block_hash)
+
     def test_PROPERTY_latest_block_hlc_timestamp(self):
         hlc_timestamp = "1234"
         self.peer.set_latest_block_hlc_timestamp(hlc_timestamp=hlc_timestamp)
@@ -301,6 +306,12 @@ class TestPeer(unittest.TestCase):
 
         self.assertEqual(latest_block_number, self.peer.latest_block_info['number'])
 
+    def test_METHOD_set_latest_block_hash(self):
+        latest_block_hash = "9" * 64
+        self.peer.set_latest_block_hash(hash=latest_block_hash)
+
+        self.assertEqual(latest_block_hash, self.peer.latest_block_info['hash'])
+
     def test_METHOD_set_latest_block_hlc_timestamp(self):
         hlc_timestamp = "1234"
         self.peer.set_latest_block_hlc_timestamp(hlc_timestamp=hlc_timestamp)
@@ -347,6 +358,7 @@ class TestPeer(unittest.TestCase):
             'response': ACTION_HELLO,
             'latest_block_number': 1,
             'latest_hlc_timestamp': '1',
+            'latest_block_hash': '9' * 64,
             'success': True,
             'challenge': msg.get('challenge'),
             'challenge_response': self.remote_peer.wallet.sign(challenge)
@@ -367,19 +379,29 @@ class TestPeer(unittest.TestCase):
         self.peer.setup_request()
         msg = self.await_sending_request(self.peer.get_latest_block_info)
 
+        print(msg)
+
         block_num = 100
+        block_hash = "9" * 64
         hlc_timestamp = '1234'
 
         expected_result = {
             'response': ACTION_GET_LATEST_BLOCK,
             'latest_block_number': block_num,
+            'latest_block_hash': block_hash,
             'latest_hlc_timestamp': hlc_timestamp,
+            'block_info': {
+                'number': block_num,
+                'hash': block_hash,
+                'hlc_timestamp': hlc_timestamp
+            },
             'success': True
         }
 
         self.assertDictEqual(expected_result, msg)
 
         self.assertEqual(block_num, self.peer.latest_block_number)
+        self.assertEqual(block_hash, self.peer.latest_block_hash)
         self.assertEqual(hlc_timestamp, self.peer.latest_block_hlc_timestamp)
 
     def test_METHOD_get_latest_block_info__does_not_set_peer_latest_block_info_after_unsuccessful_call(self):
@@ -879,19 +901,27 @@ class TestPeer(unittest.TestCase):
         self.peer.set_latest_block_hlc_timestamp(hlc_timestamp=100)
         self.assertEqual('0', self.peer.latest_block_hlc_timestamp)
 
-    def test_METHOD_set_latest_block_info__sets_when_both_values_correct_type(self):
-        self.peer.set_latest_block_info(number=100, hlc_timestamp='1234')
+    def test_METHOD_set_latest_block_info__sets_when_all_values_correct_type(self):
+        self.peer.set_latest_block_info(number=100, hash='9' * 64, hlc_timestamp='1234')
         self.assertEqual(100, self.peer.latest_block_number)
         self.assertEqual('1234', self.peer.latest_block_hlc_timestamp)
 
     def test_METHOD_set_latest_block_info__does_not_set_either_when_number_not_int(self):
-        self.peer.set_latest_block_info(number='100', hlc_timestamp='1234')
+        self.peer.set_latest_block_info(number='100', hash='9' * 64, hlc_timestamp='1234')
         self.assertEqual(0, self.peer.latest_block_number)
+        self.assertEqual('0' * 64, self.peer.latest_block_hash)
         self.assertEqual('0', self.peer.latest_block_hlc_timestamp)
 
     def test_METHOD_set_latest_block_info__does_not_set_either_when_hlc_timestamp_not_str(self):
-        self.peer.set_latest_block_info(number='100', hlc_timestamp=1234)
+        self.peer.set_latest_block_info(number='100', hash='9' * 64, hlc_timestamp=1234)
         self.assertEqual(0, self.peer.latest_block_number)
+        self.assertEqual('0' * 64, self.peer.latest_block_hash)
+        self.assertEqual('0', self.peer.latest_block_hlc_timestamp)
+
+    def test_METHOD_set_latest_block_info__does_not_set_when_hash_not_str(self):
+        self.peer.set_latest_block_info(number='100', hash=123, hlc_timestamp=1234)
+        self.assertEqual(0, self.peer.latest_block_number)
+        self.assertEqual('0' * 64, self.peer.latest_block_hash)
         self.assertEqual('0', self.peer.latest_block_hlc_timestamp)
 
     def test_METHOD_process_subscription__calls_appropriate_service_based_on_topic(self):

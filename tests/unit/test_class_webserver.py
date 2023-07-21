@@ -31,9 +31,8 @@ class TestClassWebserver(TestCase):
     def setUp(self):
         self.node_wallet = Wallet()
 
-        self.initial_members = {
-            'masternodes': [self.node_wallet.verifying_key]
-        }
+        self.initial_members = [self.node_wallet]
+
 
         self.mock_blocks = MockBlocks(num_of_blocks=2, one_wallet=True,
                                       initial_members=self.initial_members)
@@ -335,6 +334,8 @@ def get():
         _, response = self.ws.app.test_client.get('/latest_block')
         self.assertDictEqual(response.json, blocks[1])
 
+    '''
+    THIS FUNCTIONALITY IS NO LONGER USED:  Now handled in BlockStorage class.
     def test_get_latest_block_num(self):
         storage.set_latest_block_height(1234, self.ws.driver)
         self.ws.driver.commit()
@@ -349,7 +350,7 @@ def get():
         _, response = self.ws.app.test_client.get('/latest_block_hash')
 
         self.assertDictEqual(response.json, {'latest_block_hash': h})
-
+    '''
     def test_get_block_by_num_that_exists(self):
         block = generate_blocks(
             number_of_blocks=1,
@@ -783,9 +784,7 @@ class TestWebserverWebsockets(TestCase):
     def setUp(self):
         self.node_wallet = Wallet()
 
-        self.initial_members = {
-            'masternodes': [self.node_wallet.verifying_key]
-        }
+        self.initial_members =  [self.node_wallet]
 
         self.mock_blocks = MockBlocks(num_of_blocks=2, one_wallet=True,
                                       initial_members=self.initial_members)

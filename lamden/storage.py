@@ -196,7 +196,7 @@ class BlockStorage:
 
         return block
 
-    def get_latest_block(self):
+    def get_latest_block(self) -> dict:
         block = self.block_driver.find_previous_block(block_num='99999999999999999999')
 
         if not block:
@@ -206,6 +206,26 @@ class BlockStorage:
             self.__fill_block(block)
 
         return block
+
+    def get_latest_block_number(self) -> int:
+        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+
+        try:
+            block_num = block.get('number', None)
+            if isinstance(block_num, str):
+                return int(block_num)
+            else:
+                return None
+        except AttributeError:
+            return None
+
+    def get_latest_block_hash(self) -> str:
+        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+
+        try:
+            return block.get('hash', None)
+        except AttributeError:
+            return None
 
     def get_tx(self, h):
         tx = self.tx_driver.get_file(hash_str=h)

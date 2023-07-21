@@ -421,22 +421,21 @@ class WebServer:
     async def get_latest_block(self, request):
         self.driver.clear_pending_state()
 
-        num = storage.get_latest_block_height(self.driver)
-        block = self.blocks.get_block(int(num))
+        block = self.blocks.get_latest_block()
         block = json.loads(encode(block))
         return response.json(block, dumps=encode, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_number(self, request):
-        self.driver.clear_pending_state()
-
-        num = storage.get_latest_block_height(self.driver)
+        latest_block = self.blocks.get_latest_block()
+        num = latest_block.get('number')
 
         return response.json({'latest_block_number': num}, headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_latest_block_hash(self, request):
-        self.driver.clear_pending_state()
+        latest_block = self.blocks.get_latest_block()
+        latest_block_hash = latest_block.get('hash')
 
-        return response.json({'latest_block_hash': storage.get_latest_block_hash(self.driver)},
+        return response.json({'latest_block_hash': latest_block_hash},
                              headers={'Access-Control-Allow-Origin': '*'})
 
     async def get_block(self, request):
@@ -555,15 +554,13 @@ class WebServer:
             self.CACHED_GENESIS_BLOCK = block
 
     def get_latest_block_from_storage(self):
-        self.driver.clear_pending_state()
-
-        # send the connecting socket the latest block
-        num = storage.get_latest_block_height(self.driver)
+        latest_block = self.blocks.get_latest_block()
+        num = latest_block.get('number')
 
         if int(num) == 0 and self.CACHED_GENESIS_BLOCK is not None:
             block = self.CACHED_GENESIS_BLOCK
         else:
-            block = self.blocks.get_block(int(num))
+            block = latest_block
 
         self.cache_genesis_block(block)
 

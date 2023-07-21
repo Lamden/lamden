@@ -152,6 +152,83 @@ BLOCK_V2 = dict({
   }
 })
 
+BLOCK_V3 = {
+  'hlc_timestamp': '2023-07-18T19:20:55.238093056Z_0',
+  'number': '1689708055238093056',
+  'previous': '9efb440eb91cd0c5c0fd35515da2f1e47ea9100b2ba3f117615bb9429c487552',
+  'hash': '5f99c6e55236f67c55ffd254dfca020e0ce5b74b8310a571dd62dfef5c76abdf',
+  'origin': {
+    'sender': '36dd10028a604626bbbfee7cb53f1591e6af9afd05690d30b47368be4e1375b9',
+    'signature': '4bf46a12b20b55e916a2851f090cf0833fe04ef95ac1a0c54ee745e777a5ce99da1c3a46120e19f61501f8be560b3077c1f60a8d7a59cdd92cd75f5e6e01dc08'
+  },
+  'rewards': [
+
+  ],
+  'processed': {
+    'result': 'None',
+    'stamps_used': 0,
+    'state': [
+      {
+        'key': 'currency.balances:ff8e1bef1c59a15b23458a9ab727078f95455320bb8b99067a7072b6e486273a',
+        'value': {
+          '__fixed__': '10.5'
+        }
+      }
+    ],
+    'status': 0,
+    'transaction': {
+      'metadata': {
+        'signature': 'f82041ace705d377d35888e23a84f3ef3bfa3719a30f7e07be8367c944b0049caf4c17976ddaea6a89ae2161f5722b996f42c260a539a464b6669f5195270e08'
+      },
+      'payload': {
+        'contract': 'currency',
+        'function': 'transfer',
+        'kwargs': {
+          'amount': {
+            '__fixed__': '10.5'
+          },
+          'to': 'ff8e1bef1c59a15b23458a9ab727078f95455320bb8b99067a7072b6e486273a'
+        },
+        'nonce': 0,
+        'processor': '36dd10028a604626bbbfee7cb53f1591e6af9afd05690d30b47368be4e1375b9',
+        'sender': '6489a7ed5908d52bfa739bf02a3d77865f992555295cde011f7e7674aa6e368e',
+        'stamps_supplied': 20
+      }
+    },
+    'hash': '876111ec550a6be2794f4c57ea2a1cacc8ad00e556fb3ae7454955d536d344eb'
+  },
+  'proofs': [
+    {
+      'signature': 'b06ff32d674408e71ddd5738b33249bdd7c83e56b9ad17da5fb7b3488fb6819851b5da9e5fbbe7de0f99260577f61cfbb1d8d2915c8173f67c3dd4dd0b1ded01',
+      'signer': '8a2ae298a08a36c6803d61f89cc63c0b1bf8875f86f54e9f655a8d5588e9beee',
+      'members_list_hash': '65171446bbe235545db41b31c2d77cd6bf4bd5adc3bbe9f66a5f02ed6bc3d391',
+      'num_of_members': 4
+    },
+    {
+      'signature': '36976de0135785b8672a304f49f5adb3faab4a6b2e628eb4a5654362b5e4d0e0bfa189ebacb0d2fa41b629473264265d3e7342fae76eb2d7ad6784be4c257e0a',
+      'signer': '684f78e0f2d15a84125b7d9a3880f1cffed6ffe910391db297f7dd8c62a44c01',
+      'members_list_hash': '65171446bbe235545db41b31c2d77cd6bf4bd5adc3bbe9f66a5f02ed6bc3d391',
+      'num_of_members': 4
+    },
+    {
+      'signature': 'f5c9a219d65f6dc7869d0c9c8f3270d9ae9606ad7ca0279ac255600870e115bad4de2cdf4d3e5527277e41faf3b3cbfd880ecc5ff7c580bc11cd3b3be97a2705',
+      'signer': '3dd5edc531118766fcb197ff8f09a959a5c22c33fc1d9d06630fed9139ce6089',
+      'members_list_hash': '65171446bbe235545db41b31c2d77cd6bf4bd5adc3bbe9f66a5f02ed6bc3d391',
+      'num_of_members': 4
+    },
+    {
+      'signature': '0f4c9c3998e8b0fd6301f5f6a1df760d4e0f2ffbfa02c3e950bcbd2a03e4535d5a49a5cacd40e81c03df20ab3d9275efb1788e9c49402116f34e478990d9d700',
+      'signer': 'abb3864825892ebb46c12990b5cf5de7f46e963f9f3c3e0e5f283460cbae8413',
+      'members_list_hash': '65171446bbe235545db41b31c2d77cd6bf4bd5adc3bbe9f66a5f02ed6bc3d391',
+      'num_of_members': 4
+    }
+  ],
+  'minted': {
+    'minter': 'abb3864825892ebb46c12990b5cf5de7f46e963f9f3c3e0e5f283460cbae8413',
+    'signature': 'fd15459f936db3cece94175a9ae3ee0a0b1fa6c8ab82b770c59415b7e18f4d162908f94c73ddd31561e139b32a28c7d9ae2d9b3a10a2749fc271ece110d62e06'
+  }
+}
+
 GENESIS_BLOCK = {
     'hash': '2bb4e112aca11805538842bd993470f18f337797ec3f2f6ab02c47385caf088e',
     'number': "0",
@@ -169,6 +246,7 @@ GENESIS_BLOCK = {
 class TestBlockValidator(TestCase):
     def setUp(self):
         self.block = deepcopy(BLOCK_V2)
+        self.block_v3 = deepcopy(BLOCK_V3)
         self.wallet = Wallet()
         signature = self.wallet.sign(encode(self.block))
         self.block['minted'] = {
@@ -176,15 +254,28 @@ class TestBlockValidator(TestCase):
             'signature': signature
         }
 
-    def test_verify_block__returns_TRUE_if_block_is_valid(self):
+    def test_verify_block__returns_TRUE_if_block_is_valid_OLD_block(self):
         self.assertTrue(block_validator.verify_block(
-            block=self.block
+            block=self.block,
+            old_block=True
         ))
 
-    def test_verify_block__returns_FALSE_if_exception_is_raised(self):
+    def test_verify_block__returns_TRUE_if_block_is_valid_NEW_block(self):
+        self.assertTrue(block_validator.verify_block(
+            block=self.block_v3
+        ))
+
+    def test_verify_block__returns_FALSE_if_exception_is_raised_OLD_block(self):
         del self.block['hash']
         self.assertFalse(block_validator.verify_block(
-            block=self.block
+            block=self.block,
+            old_block=True
+        ))
+
+    def test_verify_block__returns_FALSE_if_exception_is_raised_NEW_block(self):
+        del self.block_v3['hash']
+        self.assertFalse(block_validator.verify_block(
+            block=self.block_v3
         ))
 
     def test_verify_block__returns_FALSE_if_minter_signature_is_malformed(self):
@@ -457,21 +548,37 @@ class TestBlockValidator(TestCase):
     def test_verify_origin_signature__returns_True_if_signature_valid(self):
         self.assertTrue(block_validator.verify_origin_signature(block=self.block))
 
-    def test_verify_proof__returns_True_if_signature_valid(self):
+    def test_verify_proof_signature_old__returns_True_if_signature_valid(self):
         tx_result = self.block.get('processed')
         rewards = self.block.get('rewards')
         hlc_timestamp = self.block.get('hlc_timestamp')
 
         proofs = self.block.get('proofs')
-        self.assertTrue(block_validator.verify_proof(
+        self.assertTrue(block_validator.verify_proof_signature_old(
             proof=proofs[0],
             tx_result=tx_result,
             rewards=rewards,
             hlc_timestamp=hlc_timestamp
         ))
 
-    def test_verify_proofs__returns_True_if_all_signatures_are_valid(self):
-        self.assertTrue(block_validator.verify_proofs(block=self.block))
+    def test_verify_proof_signature__returns_True_if_signature_valid(self):
+        tx_result = self.block_v3.get('processed')
+        rewards = self.block_v3.get('rewards')
+        hlc_timestamp = self.block_v3.get('hlc_timestamp')
+
+        proofs = self.block_v3.get('proofs')
+        self.assertTrue(block_validator.verify_proof_signature(
+            proof=proofs[0],
+            tx_result=tx_result,
+            rewards=rewards,
+            hlc_timestamp=hlc_timestamp
+        ))
+
+    def test_verify_proofs__returns_True_if_all_signatures_are_valid_OLD_block(self):
+        self.assertTrue(block_validator.verify_proofs(block=self.block, old_block=True))
+
+    def test_verify_proofs__returns_True_if_all_signatures_are_valid_NEW_block(self):
+        self.assertTrue(block_validator.verify_proofs(block=self.block_v3, old_block=False))
 
     def test_validate_all_signatures__returns_true_if_all_valid(self):
         self.assertTrue(block_validator.validate_all_signatures(block=self.block))
@@ -489,7 +596,7 @@ class TestBlockValidator(TestCase):
             block_validator.validate_all_signatures(block=self.block)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockOriginSignatureMalformed'], str(err.exception))
 
-    def test_validate_all_signatures__raises_BlockProofMalformed(self):
+    def test_validate_all_proof_signatures__raises_BlockProofMalformed_on_old_block(self):
         bad_proof = {
             'signer': self.wallet.verifying_key,
             'signature': self.wallet.sign(f'TESTING')
@@ -497,7 +604,7 @@ class TestBlockValidator(TestCase):
 
         with self.assertRaises(block_validator.BlockProofMalformed) as err:
             self.block['proofs'].append(bad_proof)
-            block_validator.validate_all_signatures(block=self.block)
+            block_validator.validate_all_proof_signatures(block=self.block, old_block=True)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockProofMalformed'], str(err.exception))
 
 
