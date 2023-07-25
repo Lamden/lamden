@@ -39,6 +39,8 @@ from typing import List
 from lamden.nodes.catchup import CatchupHandler
 from lamden.nodes.missing_blocks import MissingBlocksHandler
 from lamden.nodes.rollback_blocks import RollbackBlocksHandler
+from lamden.nodes.validate_chain import ValidateChainHandler
+from lamden.nodes.member_history import MemberHistoryHandler
 
 from lamden.crypto.transaction import build_transaction
 from datetime import datetime, timedelta
@@ -66,6 +68,8 @@ class Node:
                  private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True,
                  safe_block_num=None):
 
+        self.wallet = wallet
+
         self.main_processing_queue = None
         self.validation_queue = None
         self.check_main_processing_queue_task = None
@@ -88,6 +92,8 @@ class Node:
         self.event_writer = event_writer if event_writer is not None else EventWriter()
 
         self.blocks = blocks if blocks is not None else storage.BlockStorage()
+        self.blocks.member_history.set_secure(wallet=self.wallet)
+
         self.genesis_block = genesis_block
         self.rollback_point = rollback_point
 
@@ -117,7 +123,6 @@ class Node:
         self.last_printed_loop_counter = time.time()
 
         self.log.propagate = debug
-        self.wallet = wallet
         self.hlc_clock = HLC_Clock()
 
         self.system_monitor = system_usage.SystemUsage()
@@ -202,6 +207,11 @@ class Node:
             hardcoded_peers=hardcoded_peers
         )
 
+        self.member_history_handler: MemberHistoryHandler = MemberHistoryHandler(
+            block_storage=self.blocks,
+            network=self.network
+        )
+
         self.missing_blocks_handler: MissingBlocksHandler = MissingBlocksHandler(
             root=self.blocks.root,
             network=self.network,
@@ -210,6 +220,10 @@ class Node:
             nonce_storage=self.nonces,
             wallet=self.wallet,
             event_writer=self.event_writer
+        )
+
+        self.validate_chain_handler: ValidateChainHandler = ValidateChainHandler(
+            block_storage=self.blocks
         )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
@@ -256,6 +270,9 @@ class Node:
 
             self.set_safe_block_height()
 
+            # Validate the chain
+            self.validate_chain_handler.run()
+
             # Start the network and wait till it's up
             self.network.start()
             await self.network.starting()
@@ -296,8 +313,8 @@ class Node:
             # Run catchup unless this was a rollback
             if self.rollback_point is None:
                 if self.run_catchup:
-                    catchup_task = asyncio.ensure_future(self.catchup_handler.run())
-                    catchup_task.add_done_callback(self.handle_catchup_result)
+                    member_history_task = asyncio.ensure_future(self.member_history_handler.catchup())
+                    member_history_task.add_done_callback(self.handle_member_history_result)
             else:
                 self.rollback_point = None
 
@@ -310,6 +327,17 @@ class Node:
 
     def start_node(self):
         asyncio.ensure_future(self.start())
+
+    def handle_member_history_result(self, future):
+        try:
+            future.result()
+
+            catchup_task = asyncio.ensure_future(self.catchup_handler.run())
+            catchup_task.add_done_callback(self.handle_catchup_result)
+
+        except Exception as error:
+            self.log.error(f"An error occurred during member history catchup: {error}")
+            asyncio.ensure_future(self.stop())
 
     def handle_catchup_result(self, future):
         try:
@@ -1295,8 +1323,10 @@ class Node:
                 self.log.info(f"Initializing sage_block_height to -1.")
                 self.driver.driver.set('__safe_block_height', -1)
 
-        self.catchup_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
-        self.missing_blocks_handler.safe_block_num = self.driver.driver.get('__safe_block_height')
+        safe_block_height = self.driver.driver.get('__safe_block_height')
+        self.catchup_handler.safe_block_num = safe_block_height
+        self.missing_blocks_handler.safe_block_num = safe_block_height
+        self.validate_chain_handler.safe_block_num = safe_block_height
 
     # Put into 'super driver'
     def get_current_height(self) -> int:

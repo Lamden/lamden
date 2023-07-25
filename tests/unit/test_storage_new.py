@@ -1,8 +1,9 @@
 from lamden.nodes.hlc import HLC_Clock
 from lamden.utils import hlc
-from lamden.storage import BlockStorage, NonceStorage, FSBlockDriver, FSHashStorageDriver
+from lamden.storage import BlockStorage, NonceStorage, FSBlockDriver, FSHashStorageDriver, FSMemberHistory
 from tests.unit.helpers.mock_blocks import generate_blocks, GENESIS_BLOCK
 from unittest import TestCase
+from lamden.crypto.wallet import Wallet
 
 from pathlib import Path
 import os, copy, time, random, shutil, json
@@ -1043,3 +1044,132 @@ class TestFSHashStorageDriver(TestCase):
 
         # root still exists
         self.assertTrue(os.path.exists(check_dir))
+
+class TestFSMemberHistory(TestCase):
+    def setUp(self):
+        self.test_dir = './.lamden'
+        self.member_history_dir = 'member_history'
+        self.member_history_path = os.path.join(self.test_dir, self.member_history_dir)
+
+        self.wallet = Wallet()
+
+        self.member_history = FSMemberHistory(root=self.member_history_path, wallet=self.wallet)
+
+        self.create_directories()
+
+    def tearDown(self):
+        pass
+
+    def create_directories(self):
+        if os.path.exists(Path(self.test_dir)):
+            shutil.rmtree(Path(self.test_dir))
+
+        os.makedirs(Path(self.test_dir))
+
+    def test_INSTANCE__can_create_instance(self):
+        self.assertIsInstance(self.member_history, FSMemberHistory)
+
+        self.assertEqual(os.path.abspath(self.member_history_path), self.member_history.root)
+        self.assertEqual(self.wallet, self.member_history.wallet)
+
+    def test_METHOD_save_members_list_can_save_list(self):
+        block_num = '1689708055238093056'
+        member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        path_to_file = self.member_history.get_file_path(block_num=block_num.zfill(64))
+
+        f = open(os.path.join(path_to_file))
+        encoded_data = f.read()
+        data = json.loads(encoded_data)
+        f.close()
+
+        self.assertEqual(member_list, data.get('members'))
+        self.assertEqual(block_num, data.get('number'))
+        self.assertIsNotNone(data.get('signature'))
+
+    def test_METHOD_get_members_list__can_return_members_list_from_block_number(self):
+        block_num = '1689708055238093056'
+        member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        member_list_retrieved = self.member_history.get(block_num=int(block_num) + 1)
+
+        self.assertEqual(member_list, member_list_retrieved)
+
+    def test_METHOD_get_members_list__returns_empty_list_if_no_prev_data(self):
+        block_num = '1689708055238093056'
+
+        member_list_retrieved = self.member_history.get(block_num=int(block_num) + 1)
+
+        self.assertEqual([], member_list_retrieved)
+
+    def test_METHOD_verify_member__can_lookup_members_and_verify_vk_is_IN_list(self):
+        block_num = '1689708055238093056'
+        test_member = Wallet().verifying_key
+        member_list = [test_member, Wallet().verifying_key, Wallet().verifying_key]
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        self.assertTrue(self.member_history.verify_member(block_num=int(block_num) + 1, vk=test_member))
+
+    def test_METHOD_verify_member__can_lookup_members_and_verify_vk_is_NOT_in_list(self):
+        block_num = '1689708055238093056'
+        test_member = Wallet().verifying_key
+        member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        self.assertFalse(self.member_history.verify_member(block_num=int(block_num) + 1, vk=test_member))
+
+    def test_METHOD_verify_member__returns_FALSE_if_no_block_num_provided(self):
+        self.assertFalse(self.member_history.verify_member(vk=Wallet().verifying_key))
+
+    def test_METHOD_verify_member__returns_FALSE_if_no_vk_provided(self):
+        self.assertFalse(self.member_history.verify_member(block_num='1689708055238093056'))
+
+    def test_METHOD_verify_member__returns_false_if_not_signed_by_caller(self):
+        block_num = '1689708055238093056'
+        test_member = Wallet().verifying_key
+        member_list = [test_member, Wallet().verifying_key, Wallet().verifying_key]
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        self.member_history.wallet = Wallet()
+
+        self.assertFalse(self.member_history.verify_member(block_num=int(block_num) + 1, vk=test_member))
+
+    def test_METHOD_set_secure__sets_wallet(self):
+        member_history = FSMemberHistory(root=self.member_history_path)
+
+        self.assertIsNone(member_history.wallet)
+
+        wallet = Wallet()
+        member_history.set_secure(wallet=wallet)
+
+        self.assertEqual(wallet, member_history.wallet)
+
+    def test_METHOD_purge__can_purge_history(self):
+        block_nums = ['1689708055238093056', '1689708055238093057', '1689708055238093058']
+
+        member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+
+        # set and assert history is created
+        for block_num in block_nums:
+            self.member_history.set(block_num=block_num, members_list=member_list)
+            self.assertIsNotNone(self.member_history.get(block_num=block_num))
+
+        self.member_history.purge()
+
+        # assert history is gone
+        for block_num in block_nums:
+            self.assertEqual([], self.member_history.get(block_num=block_num))
+
+    def test_METHOD_has_history__returns_TRUE_if_HAS_history(self):
+        block_num = '1689708055238093056'
+        member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+        self.member_history.set(block_num=block_num, members_list=member_list)
+
+        self.assertTrue(self.member_history.has_history())
+
+    def test_METHOD_has_history__returns_TRUE_if_HAS_history(self):
+        self.assertFalse(self.member_history.has_history())

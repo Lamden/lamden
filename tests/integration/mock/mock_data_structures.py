@@ -20,14 +20,18 @@ class MockTransaction:
     def __init__(self,
                  metadata: dict = None,
                  payload: dict = None,
-                 receiver_wallet: Wallet = None
+                 receiver_wallet: Wallet = None,
+                 add_members: bool = False
                  ):
 
         self.metadata = metadata
         self.payload = payload
 
         if self.metadata is None or self.payload is None:
-            self.create_default_transaction(receiver_wallet=receiver_wallet)
+            if add_members:
+                self.create_add_members_transaction()
+            else:
+                self.create_default_transaction(receiver_wallet=receiver_wallet)
 
     def create_default_transaction(self, receiver_wallet: Wallet = None):
         to = Wallet().verifying_key
@@ -41,6 +45,21 @@ class MockTransaction:
             sender_wallet=self.__class__.__sender_wallet,
             contract="currency",
             function="transfer",
+            kwargs=kwargs,
+            nonce=0,
+            processor=self.__class__.__processor_wallet.verifying_key,
+            stamps_supplied=20
+        )
+
+    def create_add_members_transaction(self):
+        kwargs = dict({
+            "policy": "masternodes",
+            "value": ["introduce_motion", 2]
+        })
+        self.create_transaction(
+            sender_wallet=self.__class__.__sender_wallet,
+            contract="election_house",
+            function="vote",
             kwargs=kwargs,
             nonce=0,
             processor=self.__class__.__processor_wallet.verifying_key,
@@ -95,19 +114,27 @@ class MockProcessed:
                  status: int = 0,
                  transaction: dict = dict({}),
                  internal_state: dict = None,
-                 one_wallet: bool = False
+                 one_wallet: bool = False,
+                 members_list: list = None
     ):
 
         self.result = result
         self.stamps_used = stamps_used
         self.state = copy.copy(state)
         self.status = status
+
         self.transaction: MockTransaction
 
-        self.transaction = copy.copy(MockTransaction(
-            payload=transaction.get('payload'),
-            metadata=transaction.get('metadata')
-        ))
+        if members_list is not None:
+            self.transaction = copy.copy(MockTransaction(
+                add_members=True
+            ))
+        else:
+            self.transaction = copy.copy(MockTransaction(
+                payload=transaction.get('payload'),
+                metadata=transaction.get('metadata'),
+                add_members=members_list is not None
+            ))
 
         self.hash = hash or tx_hash_from_tx(self.transaction.as_dict())
 
@@ -140,6 +167,12 @@ class MockProcessed:
                     'key': key,
                     'value': internal_state[key]
                 }]
+
+        if members_list is not None:
+            self.state = [{
+                'key': 'masternodes.S:members',
+                'value': members_list
+            }]
 
     def as_dict(self):
         transaction = dict(self.transaction.__dict__)
@@ -234,6 +267,7 @@ class MockBlock:
                  receiver_wallet: Wallet = None,
                  member_wallets: list = [],
                  masternode_wallet: Wallet = Wallet(),
+                 members_list: list = None
     ):
 
         if not hlc_timestamp:
@@ -263,10 +297,17 @@ class MockBlock:
                 transaction=mock_transaction.as_dict()
             ))
         else:
-            mock_processed = copy.copy(MockProcessed(
-                internal_state=internal_state,
-                hlc_timestamp=self.hlc_timestamp
-            ))
+            if members_list is not None:
+                mock_processed = copy.copy(MockProcessed(
+                    internal_state=internal_state,
+                    hlc_timestamp=self.hlc_timestamp,
+                    members_list=members_list
+                ))
+            else:
+                mock_processed = copy.copy(MockProcessed(
+                    internal_state=internal_state,
+                    hlc_timestamp=self.hlc_timestamp
+                ))
         self.origin = dict(mock_processed.tx_message)
 
         del mock_processed.tx_message
@@ -448,7 +489,17 @@ class MockBlocks:
         except IndexError:
             return None
 
-    def add_block(self):
+    @property
+    def members_list(self):
+        gen_block = self.block_list[0]
+
+        for sc in gen_block.get('genesis'):
+            if sc.get('key') == 'masternodes.S:members':
+                return sc.get('value')
+
+        return []
+
+    def add_block(self, member_wallets: list = None):
         if self.current_block_height == -1:
             new_block =  copy.deepcopy(MockGenesisBlock(
                 founder_wallet=self.founder_wallet,
@@ -460,16 +511,25 @@ class MockBlocks:
                 self.internal_state[state_change.get('key')] = state_change.get('value')
         else:
             previous_block = self.get_block(num=self.current_block_height)
+
+            members_list = None
+            if member_wallets is not None:
+                members_list = [wallet.verifying_key for wallet in member_wallets]
+
             new_block = copy.deepcopy(MockBlock(
                 previous=previous_block.get("hash"),
                 receiver_wallet=self.receiver_wallet,
                 internal_state=self.internal_state,
-                member_wallets=self.member_wallets
+                member_wallets=self.member_wallets,
+                members_list=members_list
             ))
             new_block.add_minted_property(minted=self.create_minted(block=new_block))
 
             for state_change in new_block.processed.get('state'):
                 self.internal_state[state_change.get('key')] = state_change.get('value')
+
+            if member_wallets is not None:
+                self.member_wallets = member_wallets
 
         block_dict = self.add_to_blocks_dict(block=new_block)
         return block_dict
@@ -514,6 +574,9 @@ class MockBlocks:
         blocks = [value for key, value in self.blocks.items()]
         blocks.sort(key=lambda x: x.get('number'))
         return blocks
+
+    def save_members(self, members_list):
+        self.initial_members['masternodes'] = members_list
 
     def create_minted(self, block):
         signature = self.masternode_wallet.sign(encode(deepcopy(block.as_dict())))
