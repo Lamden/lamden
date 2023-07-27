@@ -1072,7 +1072,7 @@ class TestFSMemberHistory(TestCase):
         self.assertEqual(os.path.abspath(self.member_history_path), self.member_history.root)
         self.assertEqual(self.wallet, self.member_history.wallet)
 
-    def test_METHOD_save_members_list_can_save_list(self):
+    def test_METHOD_set__can_save_list_at_block_height(self):
         block_num = '1689708055238093056'
         member_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
 
@@ -1085,7 +1085,7 @@ class TestFSMemberHistory(TestCase):
         data = json.loads(encoded_data)
         f.close()
 
-        self.assertEqual(member_list, data.get('members'))
+        self.assertEqual(member_list, data.get('members_list'))
         self.assertEqual(block_num, data.get('number'))
         self.assertIsNotNone(data.get('signature'))
 

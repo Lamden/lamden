@@ -208,7 +208,7 @@ class TestBaseNode_HardApply(TestCase):
 
     def test_hard_apply_has_later_blocks__can_reorder_blocks_when_given_an_earlier_block(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2), force=True))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
@@ -235,7 +235,7 @@ class TestBaseNode_HardApply(TestCase):
 
     def test_hard_apply__rejects_invalid_previous_hash(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2), force=True))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
@@ -251,7 +251,7 @@ class TestBaseNode_HardApply(TestCase):
 
     def test_hard_apply__does_not_reject_invalid_previous_hash_if_force_is_true(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2), force=True))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 
@@ -284,7 +284,7 @@ class TestBaseNode_HardApply(TestCase):
         processing_results = get_processing_results(tx_message=tx_message, driver=self.node.driver)
 
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2)))
+        loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=2), force=True))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=3)))
         loop.run_until_complete(self.node.hard_apply_block(block=self.mock_blocks.get_block_by_index(index=4)))
 

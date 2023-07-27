@@ -40,7 +40,7 @@ class MockPeer:
     def block_list(self):
         return [self.blocks[key] for key in sorted(self.blocks.keys(), key=int)]
 
-    async def get_member_history_next(self, block_num: int):
+    async def get_next_member_history(self, block_num: int):
         return_info = {'member_history_info': None}
 
         for block in self.block_list:
@@ -208,6 +208,18 @@ class TestMemberHistoryHandler(TestCase):
 
         members_list = self.block_storage.member_history.get(block_num='99999999999999999999')
         self.assertIsNotNone(new_members, members_list)
+
+    def test_METHOD_catchup_history__does_not_raise_exception_if_no_peers(self):
+        self.create_handler()
+
+        try:
+            tasks = asyncio.gather(
+                self.member_history_handler.catchup_history()
+            )
+            self.loop.run_until_complete(tasks)
+        except Exception:
+            self.fail("Should not raise an exception if called with no peers.")
+
 
     def test_METHOD_create_member_history_from_blocks__can_rebuild_from_the_stored_blocks(self):
         self.create_handler()

@@ -6,7 +6,7 @@ from lamden.crypto.wallet import Wallet
 from lamden.crypto.canonical import hash_members_list
 
 from lamden.nodes.validate_chain import ValidateChainHandler
-
+from contracting.db.driver import ContractDriver, FSDriver
 
 import os
 import shutil
@@ -24,6 +24,9 @@ class TestMemberHistoryHandler(TestCase):
         self.create_directories()
 
         self.block_storage = BlockStorage(root=self.test_dir)
+        self.state_driver = FSDriver(root=self.test_dir)
+        self.contract_driver = ContractDriver(driver=self.state_driver)
+
         self.mock_blocks: MockBlocks = None
 
         self.validate_chain_handler: ValidateChainHandler = None
@@ -43,7 +46,8 @@ class TestMemberHistoryHandler(TestCase):
 
     def create_handler(self):
         self.validate_chain_handler = ValidateChainHandler(
-            block_storage=self.block_storage
+            block_storage=self.block_storage,
+            contract_driver=self.contract_driver
         )
 
     def add_blocks_to_storage(self, amount: int = 0):
@@ -60,7 +64,8 @@ class TestMemberHistoryHandler(TestCase):
 
     def test_INSTANCE__can_create_instance(self):
         validate_chain_handler = ValidateChainHandler(
-            block_storage=self.block_storage
+            block_storage=self.block_storage,
+            contract_driver=self.contract_driver
         )
 
         self.assertIsInstance(validate_chain_handler, ValidateChainHandler)
@@ -174,7 +179,7 @@ class TestMemberHistoryHandler(TestCase):
         self.add_member_list_change(member_wallets=new_members_wallets)
 
         try:
-            self.validate_chain_handler.process_all_blocks()
+            self.validate_chain_handler.process_all_blocks(starting_block_num=0)
         except Exception:
             self.fail("This should raise NO exceptions unless the block is invalid.")
 
@@ -219,3 +224,53 @@ class TestMemberHistoryHandler(TestCase):
 
         with self.assertRaises(AssertionError):
             self.validate_chain_handler.validate_consensus(block=last_block)
+
+    def test_METHOD_sets_and_gets_validation_height(self):
+        self.create_handler()
+
+        block_num = "123456789"
+
+        self.validate_chain_handler.set_validation_height(block_num=block_num)
+
+        validation_height = self.validate_chain_handler.get_validation_height()
+
+        self.assertEqual(block_num, validation_height)
+
+
+
+    def test_METHOD_validate_previous_hash__raises_AssertionError_if_wrong_prev_hash(self):
+        self.create_handler()
+
+        block = {
+            'number': '456',
+            'previous': 'def'
+        }
+        previous_block = {
+            'number': '123',
+            'hash': 'abc'
+        }
+
+        with self.assertRaises(AssertionError):
+            self.validate_chain_handler.validate_previous_hash(block=block, previous_block=previous_block)
+
+    def test_METHOD_validate_previous_hash__raises_NO_exceptions_if_matching_hashes(self):
+        self.create_handler()
+
+        block = {
+            'number': '456',
+            'previous': 'abc'
+        }
+        previous_block = {
+            'number': '123',
+            'hash': 'abc'
+        }
+
+        try:
+            self.validate_chain_handler.validate_previous_hash(block=block, previous_block=previous_block)
+        except Exception:
+            self.fail("Should raise NO exceptions.")
+
+    def test_METHOD_get_validate_height__return_neg_one_if_None(self):
+        self.create_handler()
+
+        self.assertEqual(-1, self.validate_chain_handler.get_validation_height())

@@ -66,7 +66,7 @@ class Node:
                  consensus_percent=None, nonces=None, genesis_block=None, metering=False,
                  tx_queue=None, socket_ports=None, reconnect_attempts=5, join=False, event_writer=None,
                  private_network=False, hardcoded_peers=False, rollback_point=None, run_catchup=True,
-                 safe_block_num=None):
+                 safe_block_num=None, run_validation=True):
 
         self.wallet = wallet
 
@@ -77,6 +77,7 @@ class Node:
         self.connectivity_check_task = None
         self.check_for_tx_task = None
         self.run_catchup = run_catchup
+        self.run_validation = run_validation
 
         self.consensus_percent = consensus_percent or 51
         self.processing_delay_secs = delay or {
@@ -223,7 +224,8 @@ class Node:
         )
 
         self.validate_chain_handler: ValidateChainHandler = ValidateChainHandler(
-            block_storage=self.blocks
+            block_storage=self.blocks,
+            contract_driver=self.driver
         )
 
         self.network.add_service(WORK_SERVICE, self.work_validator)
@@ -271,7 +273,8 @@ class Node:
             self.set_safe_block_height()
 
             # Validate the chain
-            self.validate_chain_handler.run()
+            if self.run_validation:
+                self.validate_chain_handler.run()
 
             # Start the network and wait till it's up
             self.network.start()
@@ -313,7 +316,7 @@ class Node:
             # Run catchup unless this was a rollback
             if self.rollback_point is None:
                 if self.run_catchup:
-                    member_history_task = asyncio.ensure_future(self.member_history_handler.catchup())
+                    member_history_task = asyncio.ensure_future(self.member_history_handler.catchup_history())
                     member_history_task.add_done_callback(self.handle_member_history_result)
             else:
                 self.rollback_point = None
@@ -754,28 +757,36 @@ class Node:
 
     async def hard_apply_block(self, processing_results: dict = None, block: dict = None, force=False):
         if block is not None:
+            block_num = block.get("number")
             hlc_timestamp = block.get('hlc_timestamp')
+            latest_block = self.blocks.get_latest_block()
 
-            # Get any blocks that have been commited that are later than this hlc_timestamp
-            later_blocks = self.blocks.get_later_blocks(hlc_timestamp=hlc_timestamp)
+            if not force and int(block_num) > 0:
+                if latest_block.get("hlc_timestamp") >= hlc_timestamp:
+                    self.log.warning(f'Tried to hard apply earlier block.  Block {block.get("number")} ignored.')
+                    return
 
-            if len(later_blocks) == 0:
-                if not self.blocks.is_genesis_block(block):
-                    block_previous_hash = block.get('previous')
-                    latest_block = self.blocks.get_latest_block()
+                block_previous_hash = block.get('previous')
 
-                    if latest_block and latest_block.get('hash') != block_previous_hash and not force:
-                        self.log.error(f'Tried to Hard Apply a block {block.get("number")} with invalid previous hash')
-                        self.log.warning(f'was expecting hash {latest_block.get("hash")} and got {block_previous_hash}')
-                        return
+                # Check if this would be the "next" block by checking previous hash
+                if latest_block and latest_block.get('hash') != block_previous_hash:
 
-                # Apply the state changes from the block to the db
-                self.apply_state_changes_from_block(block)
+                    # If it is not, then we need to do catchup.
+                    self.log.error(f'Tried to Hard Apply a block {block.get("number")} with invalid previous hash')
+                    self.log.warning(f'was expecting hash {latest_block.get("hash")} and got {block_previous_hash}')
 
-                self.hard_apply_store_block(block=block)
-                self.hard_apply_block_finish(block=block)
-            else:
-                self.hard_apply_has_later_blocks(later_blocks=later_blocks, block=block)
+                    if self.catchup_handler.running:
+                        self.log.warning("Attempted to run catchup but it was already running...")
+                    else:
+                        await self.catchup_handler.run()
+
+                    return
+
+            # Apply the state changes from the block to the db
+            self.apply_state_changes_from_block(block)
+
+            self.hard_apply_store_block(block=block)
+            self.hard_apply_block_finish(block=block)
 
             return block
 
@@ -1320,7 +1331,7 @@ class Node:
         else:
             safe_block_height = self.driver.driver.get('__safe_block_height')
             if safe_block_height is None:
-                self.log.info(f"Initializing sage_block_height to -1.")
+                self.log.info(f"Initializing safe_block_height to -1.")
                 self.driver.driver.set('__safe_block_height', -1)
 
         safe_block_height = self.driver.driver.get('__safe_block_height')

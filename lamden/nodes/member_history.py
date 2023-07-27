@@ -21,6 +21,10 @@ class MemberHistoryHandler:
 
         self.peers = self.network.get_all_connected_peers()
 
+        if len(self.peers) == 0:
+            self.log.error('No peers available for member history catchup!')
+            return
+
         member_history = self.block_storage.member_history.find_previous_block(block_num='99999999999999999999')
 
         if member_history is None:
@@ -86,7 +90,7 @@ class MemberHistoryHandler:
             tasks = []
             for peer in self.peers:
                 if fetch_type == 'next':
-                    task = asyncio.ensure_future(peer.get_member_history_next(block_num))
+                    task = asyncio.ensure_future(peer.get_next_member_history(block_num))
                 task.__peer__ = peer  # attach the peer directly to the task
                 tasks.append(task)
 
@@ -96,6 +100,8 @@ class MemberHistoryHandler:
                 try:
                     res = future.result()
                     res_info = res['member_history_info']
+
+                    self.log.info(f'block_num: {block_num}, res_info: {res_info}')
 
                     if res_info is None or self.block_storage.member_history.verify_signature(data=res_info, vk=future.__peer__.server_vk):
 

@@ -25,6 +25,7 @@ ACTION_GET_LATEST_BLOCK = 'get_latest_block'
 ACTION_GET_BLOCK = "get_block"
 ACTION_GET_NEXT_BLOCK = "get_next_block"
 ACTION_GET_PREV_BLOCK = "get_previous_block"
+ACTION_GET_NEXT_MEMBER_HISTORY = "get_next_member_history"
 ACTION_GET_NETWORK_MAP = "get_network_map"
 ACTION_GOSSIP_NEW_BLOCK = "gossip_new_block"
 
@@ -92,6 +93,7 @@ class Peer:
             'hello': 10000,
             'verify_new_ip': 15000,
             'get_latest_block_info': 15000,
+            'get_next_member_history': 15000,
             'get_block': 15000,
             'get_next_block': 15000,
             'get_network_map': 15000,
@@ -463,6 +465,11 @@ class Peer:
     async def get_previous_block(self, block_num: int) -> (dict, None):
         msg_obj = {'action': ACTION_GET_PREV_BLOCK, 'block_num': int(block_num)}
         msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get(ACTION_GET_PREV_BLOCK))
+        return msg_json
+
+    async def get_next_member_history(self, block_num: int) -> (dict, None):
+        msg_obj = {'action': ACTION_GET_NEXT_MEMBER_HISTORY, 'block_num': int(block_num)}
+        msg_json = await self.send_request(msg_obj=msg_obj, attempts=3, timeout=self.timeouts.get(ACTION_GET_NEXT_MEMBER_HISTORY))
         return msg_json
 
     async def get_network_map(self) -> (dict, None):

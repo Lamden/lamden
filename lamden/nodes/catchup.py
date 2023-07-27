@@ -27,6 +27,8 @@ class CatchupHandler:
         self.safe_block_num = -1
 
         self.catchup_peers = []
+        self.temp_block_storage = []
+
         self.valid_peers = [
             "11185fe3c6e68d11f89929e2f531de3fb640771de1aee32c606c30c70b6600d2",
             "a04b5891ef8cd27095373a4f75b899ec2bc0883c02e506a6a5b55b491998cc3f",
@@ -37,12 +39,15 @@ class CatchupHandler:
         ]
 
         self.log = get_logger(f'[{self.current_thread.name}][CATCHUP HANDLER]')
+        
+        self.running = False
 
     @property
     def latest_block_number(self):
         return self.block_storage.get_latest_block_number() or 0
 
     async def run(self):
+        self.running = True
         # Get the current latest block stored and the latest block of the network
         self.log.info('Running catchup.')
 
@@ -60,6 +65,7 @@ class CatchupHandler:
 
             if highest_network_block is None:
                 self.log.info('Network is still at genesis.')
+                self.running = False
                 return 'not_run'
 
             highest_block_number = highest_network_block.get('number')
@@ -68,6 +74,7 @@ class CatchupHandler:
 
             if my_current_height >= int(highest_block_number):
                 self.log.info('At latest block height, catchup not needed.')
+                self.running = False
                 return 'not_run'
 
             latest_network_block = await self.source_block_from_peers(
@@ -109,6 +116,8 @@ class CatchupHandler:
 
         self.network.refresh_approved_peers_in_cred_provider()
         self.log.warning('Catchup Complete!')
+
+        self.running = False
 
     async def get_highest_network_block(self) -> dict:
         block = await self.source_block_from_peers(fetch_type='latest')

@@ -2,7 +2,7 @@ import json
 from unittest import TestCase
 from lamden.crypto.wallet import Wallet
 from lamden.network import Network, EXCEPTION_PORT_NUM_NOT_INT
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK, ACTION_GET_NEXT_MEMBER_HISTORY
 from lamden.sockets.publisher import Publisher
 from lamden.sockets.router import Router
 from lamden.storage import BlockStorage
@@ -832,6 +832,70 @@ class TestNetwork(TestCase):
         self.assertEqual(ACTION_GOSSIP_NEW_BLOCK, msg_obj.get("response"))
         self.assertEqual(int(missing_block), msg_obj.get("missing_block"))
 
+    def test_METHOD_router_callback__returns_request_for_next_member_history_NONE_if_no_next(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        block_num = '1682939321560636160'
+
+        member_history_message = json.dumps({
+            'action': ACTION_GET_NEXT_MEMBER_HISTORY,
+            'block_num': int(block_num)
+        })
+
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(
+            ident_vk_string=peer_vk,
+            ident_vk_bytes=peer_vk.encode(),
+            msg=member_history_message
+        ))
+
+        to_vk, msg = self.router_msg
+        msg_obj = json.loads(msg)
+        self.assertIsNotNone(msg_obj)
+
+        self.assertEqual(ACTION_GET_NEXT_MEMBER_HISTORY, msg_obj.get("response"))
+        self.assertIsNone(msg_obj.get('member_history_info'))
+
+    def test_METHOD_router_callback__returns_next_member_history(self):
+        network_1 = self.create_network()
+        network_1.router.send_msg = self.mock_send_msg
+
+        members_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+        network_1.block_storage.member_history.wallet = network_1.wallet
+        network_1.block_storage.member_history.set(
+            block_num="0",
+            members_list=members_list
+        )
+        block_num = '-1'
+
+        member_history_message = json.dumps({
+            'action': ACTION_GET_NEXT_MEMBER_HISTORY,
+            'block_num': int(block_num)
+        })
+
+        wallet = Wallet()
+        peer_vk = wallet.verifying_key
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(network_1.router_callback(
+            ident_vk_string=peer_vk,
+            ident_vk_bytes=peer_vk.encode(),
+            msg=member_history_message
+        ))
+
+        to_vk, msg = self.router_msg
+        msg_obj = json.loads(msg)
+        self.assertIsNotNone(msg_obj)
+
+        self.assertEqual(ACTION_GET_NEXT_MEMBER_HISTORY, msg_obj.get("response"))
+        self.assertIsNotNone(msg_obj.get('member_history_info'))
+        self.assertEqual(members_list, msg_obj['member_history_info'].get('members_list'))
+        self.assertEqual("0", msg_obj['member_history_info'].get('number'))
+        self.assertIsNotNone(msg_obj['member_history_info'].get('signature'))
 
     def test_METHOD_make_network_map(self):
         network_1 = self.create_network()

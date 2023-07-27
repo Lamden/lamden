@@ -10,7 +10,7 @@ from typing import List
 
 from lamden.utils import hlc
 from lamden.utils.retrieve_ips import IPFetcher
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_PREV_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK, ACTION_GET_NEXT_MEMBER_HISTORY
 
 from lamden.crypto.wallet import Wallet
 from lamden.storage import BlockStorage, BLOCK_0
@@ -618,6 +618,18 @@ class Network:
                     to_vk=ident_vk_string,
                     msg_str=('{"response": "%s", "block_info": %s}' % (action, encoded_block_info))
                 )
+
+        if action == ACTION_GET_NEXT_MEMBER_HISTORY:
+            block_num = str(msg.get('block_num', None))
+
+            member_history_info = self.block_storage.member_history.find_next_block(block_num=block_num)
+            encoded_member_history_info = encode(member_history_info)
+
+            self.router.send_msg(
+                ident_vk_bytes=ident_vk_bytes,
+                to_vk=ident_vk_string,
+                msg_str=('{"response": "%s", "member_history_info": %s}' % (ACTION_GET_NEXT_MEMBER_HISTORY, encoded_member_history_info))
+            )
 
         if action == ACTION_GET_NETWORK_MAP:
             node_list = encode(self.make_network_map())
