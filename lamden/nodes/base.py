@@ -28,6 +28,7 @@ from lamden.nodes import system_usage
 from lamden.nodes.processing_queue  import TxProcessingQueue
 from lamden.nodes.validation_queue  import ValidationQueue
 from lamden.nodes.processors import work, block_contender
+from lamden.nodes.processors.block_consensus import BlockConsensus
 from lamden.nodes.processors.processor import Processor
 from lamden.nodes.filequeue import FileQueue
 from lamden.nodes.hlc import HLC_Clock
@@ -57,6 +58,7 @@ NEW_BLOCK_EVENT = 'new_block'
 NEW_BLOCK_REORG_EVENT = 'block_reorg'
 WORK_SERVICE = 'work'
 CONTENDER_SERVICE = 'contenders'
+CONSENSUS_SERVICE = 'consensus'
 
 SAFE_BLOCK_HEIGHT = '__safe_block_height'
 
@@ -228,8 +230,14 @@ class Node:
             contract_driver=self.driver
         )
 
+        self.block_consensus = BlockConsensus(
+            block_storage=self.blocks,
+            event_writer=self.event_writer
+        )
+
         self.network.add_service(WORK_SERVICE, self.work_validator)
         self.network.add_service(CONTENDER_SERVICE, self.block_contender)
+        self.network.add_service(CONSENSUS_SERVICE, self.block_consensus)
 
         self.running = False
         self.started = False
@@ -919,6 +927,9 @@ class Node:
         self.hard_apply_store_block(block=new_block)
         self.hard_apply_block_finish(block=new_block)
 
+        self.network.publisher.announce_new_block(block=new_block)
+        self.block_consensus.post_minted_block(block=new_block)
+
         return new_block
 
     def hard_apply_store_block(self, block: dict):
@@ -949,46 +960,13 @@ class Node:
     def hard_apply_block_finish(self, block: dict):
         state_changes = self.get_state_changes_from_block(block=block)
         if not self.blocks.is_genesis_block(block=block):
-            self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'))
+            self.check_peers(state_changes=state_changes, hlc_timestamp=block.get('hlc_timestamp'), block_num=block.get('number'))
             self.check_upgrade(state_changes=state_changes)
 
         gc.collect()
 
-        # gossip to see if we are missing a block
-        # asyncio.ensure_future(self.gossip_about_new_block(block=block))
-
         # check to see if we need to process any missing blocks.
         asyncio.ensure_future(self.missing_blocks_handler.run())
-
-    async def gossip_about_new_block(self, block: dict) -> None:
-        block_num = block.get('number')
-        if int(block_num) > 0:
-            previous_block = self.blocks.get_previous_block(v=int(block_num))
-
-            if previous_block is not None:
-                previous_block_number = previous_block.get('number')
-
-                gossip_group = self.network.get_gossip_group()
-
-                missing_blocks = set()
-
-                for peer in gossip_group:
-                    res = await peer.gossip_new_block(block_num=block_num, previous_block_num=previous_block_number)
-                    try:
-                        missing_block = res.get('missing_block')
-                        if missing_block is not None:
-                            missing_blocks.add(str(missing_block))
-
-                    except Exception:
-                        self.log.error(f"Error contacting, peer {peer.server_vk} for gossip.")
-
-                try:
-                    if len(list(missing_blocks)) > 0:
-                        self.log.error("I don't think I'm in sync, missing this previous block potentially.")
-                        self.log.info(list(missing_blocks))
-                        # self.missing_blocks_handler.writer.write_missing_blocks(blocks_list=list(missing_blocks))
-                except Exception as err:
-                    self.log.error(err)
 
     def check_upgrade(self, state_changes: list):
         for change in state_changes:
@@ -1020,7 +998,7 @@ class Node:
         except Exception as err:
             self.log.error(f'Failed to write "upgrade" event: {err}')
 
-    def check_peers(self, hlc_timestamp: str, state_changes: list):
+    def check_peers(self, hlc_timestamp: str, state_changes: list, block_num: str):
         exiled_peers = []
 
         for change in state_changes:

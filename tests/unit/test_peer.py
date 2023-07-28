@@ -1,6 +1,6 @@
 import json
 
-from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK, TOPIC_PEER_SHUTDOWN, ACTION_GET_NEXT_MEMBER_HISTORY
+from lamden.peer import Peer, ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, TOPIC_PEER_SHUTDOWN, ACTION_GET_NEXT_MEMBER_HISTORY
 from lamden.sockets.request import Request, Result
 from lamden.sockets.subscriber import Subscriber
 from lamden.crypto.wallet import Wallet, verify
@@ -1101,17 +1101,3 @@ class TestPeer(unittest.TestCase):
         self.assertFalse(self.peer.connected)
         self.assertTrue(self.peer.reconnecting)
 
-    def test_METHOD_gossip_new_block__returns_None_if_previous_block_is_correct(self):
-        self.peer.setup_request()
-        msg = self.await_sending_request(process=self.peer.gossip_new_block, args={
-            'block_num': 100,
-            'previous_block_num': 50
-        })
-        expected_result = {
-            'action': ACTION_GOSSIP_NEW_BLOCK,
-            'block_num': 100,
-            'previous_block_num': 50,
-            'success': True
-        }
-
-        self.assertDictEqual(expected_result, msg)

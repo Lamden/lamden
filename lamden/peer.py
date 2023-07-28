@@ -27,7 +27,6 @@ ACTION_GET_NEXT_BLOCK = "get_next_block"
 ACTION_GET_PREV_BLOCK = "get_previous_block"
 ACTION_GET_NEXT_MEMBER_HISTORY = "get_next_member_history"
 ACTION_GET_NETWORK_MAP = "get_network_map"
-ACTION_GOSSIP_NEW_BLOCK = "gossip_new_block"
 
 class Peer:
     def __init__(self, ip: str, server_vk: str, local_wallet: Wallet, get_network_ip: Callable,
@@ -475,15 +474,6 @@ class Peer:
     async def get_network_map(self) -> (dict, None):
         msg_obj = {'action': ACTION_GET_NETWORK_MAP}
         msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_GET_NETWORK_MAP), attempts=3)
-        return msg_json
-
-    async def gossip_new_block(self, block_num: str, previous_block_num: str) -> (dict, None):
-        msg_obj = {
-            'action': ACTION_GOSSIP_NEW_BLOCK,
-            'block_num': int(block_num),
-            'previous_block_num': int(previous_block_num)
-        }
-        msg_json = await self.send_request(msg_obj=msg_obj, timeout=self.timeouts.get(ACTION_GOSSIP_NEW_BLOCK), attempts=1)
         return msg_json
 
     async def send_request(self, msg_obj: dict, timeout: int = 200, attempts: int = 3):

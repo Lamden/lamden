@@ -445,6 +445,20 @@ class TestBlockStorage(TestCase):
         latest_block_hash = self.bs.get_latest_block_hash()
         self.assertEqual(expected_result, latest_block_hash)
 
+    def test_METHOD_get_latest_members_list__returns_member_data(self):
+        members_list = [Wallet().verifying_key, Wallet().verifying_key, Wallet().verifying_key]
+        block_num = '123'
+
+        self.bs.member_history.set(
+            block_num=block_num,
+            members_list=members_list
+        )
+
+        data = self.bs.get_latest_members_list()
+
+        self.assertEqual(block_num, data.get('number'))
+        self.assertEqual(members_list, data.get('members_list'))
+
 
 class TestFSBlockDriver(TestCase):
     def setUp(self):
