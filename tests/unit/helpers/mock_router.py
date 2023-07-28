@@ -1,7 +1,7 @@
 import time
 
 from zmq.auth.asyncio import AsyncioAuthenticator
-from lamden.peer import ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GOSSIP_NEW_BLOCK
+from lamden.peer import ACTION_HELLO, ACTION_PING, ACTION_GET_BLOCK, ACTION_GET_LATEST_BLOCK, ACTION_GET_NEXT_BLOCK, ACTION_GET_NETWORK_MAP, ACTION_GET_NEXT_MEMBER_HISTORY
 import json
 import threading
 import zmq
@@ -145,16 +145,6 @@ class MockRouter(threading.Thread):
                                 'hlc_timestamp': str(block_num + 1)
                             }
                         }).encode('UTF-8')
-
-                    if action == ACTION_GOSSIP_NEW_BLOCK:
-                        block_num = msg_obj.get('block_num')
-                        previous_block_num = msg_obj.get('previous_block_num')
-                        resp_msg = json.dumps({
-                            'response': ACTION_GOSSIP_NEW_BLOCK,
-                            'block_num': block_num,
-                            'previous_block_num': previous_block_num
-                        }).encode('UTF-8')
-
 
                     self.send_msg(ident=ident, msg=resp_msg)
 

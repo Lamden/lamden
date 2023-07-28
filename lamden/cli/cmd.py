@@ -119,6 +119,12 @@ def start_node(args):
         if disable_catchup.lower() == "true":
             run_catchup = False
 
+    run_validation = True
+    disable_validation = os.environ.get('DISABLE_VALIDATION', None)
+    if disable_validation is not None:
+        if disable_validation.lower() == "true":
+            run_validation = False
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
@@ -126,7 +132,8 @@ def start_node(args):
         genesis_block=genesis_block,
         metering=True,
         private_network=get_private_network_ip(),
-        run_catchup=run_catchup
+        run_catchup=run_catchup,
+        run_validation=run_validation
     )
 
     loop = asyncio.get_event_loop()
@@ -161,6 +168,12 @@ def join_network(args):
         if disable_catchup.lower() == "true":
             run_catchup = False
 
+    run_validation = True
+    disable_validation = os.environ.get('DISABLE_VALIDATION', None)
+    if disable_validation is not None:
+        if disable_validation.lower() == "true":
+            run_validation = False
+
     if rollback_point == "-1":
         rollback_point = None
 
@@ -174,7 +187,8 @@ def join_network(args):
         genesis_block=genesis_block,
         hardcoded_peers=True,
         rollback_point=rollback_point,
-        run_catchup=run_catchup
+        run_catchup=run_catchup,
+        run_validation=run_validation
     )
 
     loop = asyncio.get_event_loop()

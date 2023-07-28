@@ -210,3 +210,8 @@ def create_proof_message_from_proof(proof: dict, tx_result_hash: str) -> str:
     message = tx_result_hash + members_list_hash + str(num_of_members)
 
     return message
+
+def create_hash_512(string: str):
+    h = hashlib.sha3_512()
+    h.update('{}'.format(string).encode())
+    return h.hexdigest()

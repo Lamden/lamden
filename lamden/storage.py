@@ -2,6 +2,8 @@ from contracting import config
 from contracting.db.driver import ContractDriver, FSDriver
 from contracting.db.encoder import encode, decode
 from contracting.stdlib.bridge.decimal import ContractingDecimal
+from lamden.crypto.canonical import hash_members_list, create_hash_512
+from lamden.crypto.wallet import Wallet, verify
 from lamden.logger.base import get_logger
 from lamden.utils import hlc
 import os
@@ -9,6 +11,7 @@ import pathlib
 import shutil
 import json
 import threading
+from typing import List, Any, Union
 
 LATEST_BLOCK_HASH_KEY = '__latest_block.hash'
 LATEST_BLOCK_HEIGHT_KEY = '__latest_block.height'
@@ -17,6 +20,8 @@ BLOCK_0 = {
     'number': 0,
     'hash': '0' * 64
 }
+
+MAX_BLOCK = '99999999999999999999'
 
 
 class BlockStorage:
@@ -28,12 +33,16 @@ class BlockStorage:
         self.blocks_dir = self.root.joinpath('blocks')
         self.blocks_alias_dir = self.root.joinpath('block_alias')
         self.txs_dir = self.root.joinpath('txs')
+        self.member_history_dir = self.root.joinpath('member_history')
+        self.state_history_dir = self.root.joinpath('state_history')
 
         self.__build_directories()
 
         self.block_driver = block_diver or FSBlockDriver(root=self.blocks_dir)
         self.block_alias_driver = FSHashStorageDriver(root=self.blocks_alias_dir)
         self.tx_driver = FSHashStorageDriver(root=self.txs_dir)
+        self.member_history = FSMemberHistory(root=self.member_history_dir)
+        self.state_history = FSStateHistory(root=self.state_history_dir)
 
 
         self.log.info(f'Initialized block & tx storage at \'{self.root}\', {self.total_blocks()} existing blocks found.')
@@ -43,6 +52,8 @@ class BlockStorage:
         self.blocks_dir.mkdir(exist_ok=True, parents=True)
         self.blocks_alias_dir.mkdir(exist_ok=True, parents=True)
         self.txs_dir.mkdir(exist_ok=True, parents=True)
+        self.member_history_dir.mkdir(exist_ok=True, parents=True)
+        self.state_history_dir.mkdir(exist_ok=True, parents=True)
 
     def __cull_tx(self, block):
         # Pops all transactions from the block and replaces them with the hash only for storage space
@@ -131,7 +142,6 @@ class BlockStorage:
         self.block_alias_driver.remove_symlink(hash_str=block_hash)
         self.tx_driver.delete_file(hash_str=tx_hash)
 
-
     def get_block(self, v=None):
         if v is None:
             return None
@@ -197,7 +207,7 @@ class BlockStorage:
         return block
 
     def get_latest_block(self) -> dict:
-        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+        block = self.block_driver.find_previous_block(block_num=MAX_BLOCK)
 
         if not block:
             return None
@@ -208,7 +218,7 @@ class BlockStorage:
         return block
 
     def get_latest_block_number(self) -> int:
-        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+        block = self.block_driver.find_previous_block(block_num=MAX_BLOCK)
 
         try:
             block_num = block.get('number', None)
@@ -220,7 +230,7 @@ class BlockStorage:
             return None
 
     def get_latest_block_hash(self) -> str:
-        block = self.block_driver.find_previous_block(block_num='99999999999999999999')
+        block = self.block_driver.find_previous_block(block_num=MAX_BLOCK)
 
         try:
             return block.get('hash', None)
@@ -260,6 +270,43 @@ class BlockStorage:
         if not self.block_alias_driver.is_symlink_valid(hash_str=old_previous_hash):
             self.block_alias_driver.remove_symlink(hash_str=old_previous_hash)
 
+    def get_latest_members_list(self):
+        return self.member_history.find_previous_block(block_num=MAX_BLOCK)
+
+    def is_member_at_block_height(self, block_num: int = None, vk: str = None):
+        if block_num is None or vk is None:
+            return False
+
+        return self.member_history.verify_member(block_num=block_num, vk=vk)
+
+    def get_previous_state_value(self, key: str, block_num: str):
+        previous_change = self.state_history.get_previous_change(
+            key=key,
+            block_num=block_num
+        )
+
+        if not previous_change:
+            return None
+
+        block = self.get_block(v=int(block_num))
+        value = None
+
+        if self.is_genesis_block(block):
+            state_changes = block.get('genesis', [])
+            rewards = []
+        else:
+            state_changes = block['processed'].get('state', [])
+            rewards = block.get('rewards', [])
+
+        for state_change in state_changes:
+            if state_change.get('key') == key:
+                value = state_change.get('value')
+
+        for reward in rewards:
+            if reward.get('key') == key:
+                value = reward.get('value')
+
+        return value
 
 # TODO: remove pending nonces if we end up getting rid of them.
 # TODO: move to component responsible for state maintenance.
@@ -407,7 +454,7 @@ class BlockDriver:
 
 class FSBlockDriver(BlockDriver):
 
-    def __init__(self, root: str):
+    def __init__(self, root: str, initialize: bool = True):
         self.root = os.path.abspath(root)
         self.total_files = 0
         self.initialized = False
@@ -417,7 +464,8 @@ class FSBlockDriver(BlockDriver):
         self.day = 86_400_000_000_000
         self.year = 31_536_000_000_000_000
 
-        self._initialize()
+        if initialize:
+            self._initialize()
 
     def _initialize(self):
         self.total_files = self.get_total_blocks()
@@ -440,6 +488,8 @@ class FSBlockDriver(BlockDriver):
                 return json.loads(file.read())
         except FileNotFoundError:
             return None
+        except Exception as err:
+            print(err)
 
     def _iterate_files(self, path: str):
         with os.scandir(path) as entries:
@@ -707,6 +757,156 @@ class FSHashStorageDriver:
 
         link_target = os.readlink(file_path)
         return os.path.exists(link_target)
+
+class FSMemberHistory(FSBlockDriver):
+    def __init__(self, root: str, wallet: Wallet = None):
+        super().__init__(root=root, initialize=False)
+
+        self.wallet = wallet
+
+    def has_history(self):
+        data = self.find_next_block(block_num="-1")
+
+        if data is None:
+            return False
+        else:
+            return True
+
+    def set_secure(self, wallet: Wallet) -> None:
+        if not isinstance(wallet, Wallet):
+            return
+
+        self.wallet = wallet
+
+    def purge(self):
+        try:
+            # Check if the directory exists before attempting to delete it
+            if os.path.exists(self.root):
+                # Remove the entire directory and its contents
+                shutil.rmtree(self.root)
+                # Recreate the directory
+
+            os.makedirs(self.root)
+            print(f"Purge successful. {self.root} directory recreated.")
+
+        except Exception as e:
+            print(f"Error occurred during purge: {e}")
+
+    def set(self, block_num: str, members_list: list = []) -> None:
+        data = {
+            'number': block_num,
+            'members_list': members_list,
+        }
+
+        if self.wallet:
+            msg = f'{hash_members_list(members=members_list)}{block_num}'
+
+            signature = self.wallet.sign(msg=msg)
+            data['signature'] = signature
+
+        self.write_block(block=data)
+
+    def get(self, block_num: str) -> List[str]:
+        data = self.find_previous_block(block_num=block_num)
+
+        if data is None:
+            return  []
+
+        if self.wallet:
+            if not self.verify_signature(data=data):
+                return []
+
+        return data.get('members_list', [])
+
+    def verify_signature(self, data: dict, vk: str = None):
+        try:
+            block_num = data.get('number')
+            signature = data.get('signature')
+            members_list = data.get('members_list')
+
+            if vk is None:
+                vk = self.wallet.verifying_key
+
+            msg = f'{hash_members_list(members=members_list)}{block_num}'
+
+            return verify(
+                vk=vk,
+                msg=msg,
+                signature=signature
+            )
+        except Exception:
+            return False
+
+    def verify_member(self, block_num: str = None, vk: str = None):
+        if block_num is None or vk is None:
+            return False
+
+        member_list = self.get(block_num=block_num)
+
+        return vk in member_list
+
+class FSStateHistory(FSHashStorageDriver):
+    def __init__(self, root: str):
+        super().__init__(root=root)
+
+    def write_file(self, hash_str: str, data: list) -> None:
+        dir_path = self.get_directory(hash_str)
+        os.makedirs(dir_path, exist_ok=True)
+
+        file_path = os.path.join(dir_path, hash_str)
+        with open(file_path, "w") as f:
+            json.dump(data, f)
+
+    def get_file(self, hash_str: str) -> dict:
+        dir_path = self.get_directory(hash_str)
+        file_path = os.path.join(dir_path, hash_str)
+
+        if not os.path.exists(dir_path):
+            return None
+
+        with open(file_path, "r") as f:
+            return json.loads(f.read())
+
+    def save_state_change(self, key: str, block_num: str) -> None:
+        hash_str = create_hash_512(string=key)
+
+        current_history = self.get_file(hash_str=hash_str)
+
+        if current_history:
+            current_history.append(int(block_num))
+            current_history = sorted(current_history, key=int, reverse=True)
+        else:
+            current_history=[int(block_num)]
+
+        self.write_file(hash_str=hash_str, data=current_history)
+
+    def rollback(self, key: str, block_num: str) -> None:
+        hash_str = create_hash_512(string=key)
+
+        current_history = self.get_file(hash_str=hash_str)
+
+        if current_history:
+            current_history = [n for n in current_history if n <= int(block_num)]
+            self.write_file(hash_str=hash_str, data=current_history)
+
+    def get_previous_change(self, key: str, block_num: str) -> Union[int, None]:
+        hash_str = create_hash_512(string=key)
+
+        current_history = self.get_file(hash_str=hash_str)
+
+        if current_history:
+            # Convert block_num to int for comparison
+            block_num_int = int(block_num)
+
+            # Filter the history for blocks less than block_num_int
+            previous_blocks = [n for n in current_history if n < block_num_int]
+
+            if previous_blocks:
+                # If there are any previous blocks, return the maximum one
+                return max(previous_blocks)
+
+        # If there is no history or no previous blocks, return None
+        return None
 
 # TODO: move to component responsible for state maintenance.
 def set_latest_block_height(h, driver: ContractDriver):

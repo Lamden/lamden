@@ -4,7 +4,7 @@ import asyncio
 
 import zmq.asyncio
 
-from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING, TOPIC_PEER_SHUTDOWN
+from lamden.sockets.publisher import Publisher, EXCEPTION_NO_ADDRESS_INFO, EXCEPTION_MSG_NOT_DICT, EXCEPTION_MSG_BYTES_NOT_BYTES, EXCEPTION_TOPIC_BYTES_NOT_BYTES, EXCEPTION_TOPIC_STR_NOT_STRING, TOPIC_PEER_SHUTDOWN, TOPIC_NEW_BLOCK
 from tests.unit.helpers.mock_subscriber import MockSubscriber
 
 import uvloop
@@ -396,6 +396,30 @@ class TestPublisherSocket(unittest.TestCase):
         return_message = json.loads(self.data[1])
         self.assertDictEqual({}, return_message)
 
+    def test_METHOD_announce_new_block__sends_proper_block_info(self):
+        self.create_publisher()
+        self.publisher.set_address(ip="127.0.0.1")
+        self.publisher.start()
+
+        self.start_subscriber()
+
+        block = {
+            'number': '123',
+            'hash': 'abc'
+        }
+        self.publisher.announce_new_block(block=block)
+
+        self.async_sleep(1)
+
+        self.assertIsNotNone(self.data)
+        self.assertEqual(TOPIC_NEW_BLOCK, self.data[0].decode('UTF-8'))
+
+        return_message = json.loads(self.data[1])
+        expected_message = {
+            'block_num': '123',
+            'block_hash': 'abc'
+        }
+        self.assertDictEqual(expected_message, return_message)
 
 
 

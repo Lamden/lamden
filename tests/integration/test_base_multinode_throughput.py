@@ -23,7 +23,7 @@ class TestMultiNode(TestCase):
         
         self.test_tracker = {}
         self.amount_of_transactions = None
-        self.local_node_network = None
+        self.local_node_network: LocalNodeNetwork = None
 
         self.scenarios = {
             "high_nodes_low_tx_amount":{
@@ -132,6 +132,10 @@ class TestMultiNode(TestCase):
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
 
+        # Block consensus validation height same for all nodes
+        all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
+        self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))
+
     '''
         mixed tx test cases
         # These tests create a multi-node network which will process transactions which are sent at once.
@@ -181,6 +185,10 @@ class TestMultiNode(TestCase):
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
+
+        # Block consensus validation height same for all nodes
+        all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
+        self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))
 
     '''
         mixed tx to set group of receivers test cases
@@ -236,3 +244,7 @@ class TestMultiNode(TestCase):
         # All nodes arrived at the same block hash
         all_hashes = [node.current_hash for node in self.local_node_network.all_nodes]
         self.assertTrue(all([block_hash == all_hashes[0] for block_hash in all_hashes]))
+
+        # Block consensus validation height same for all nodes
+        all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
+        self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))

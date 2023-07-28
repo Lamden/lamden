@@ -14,6 +14,7 @@ EXCEPTION_MSG_BYTES_NOT_BYTES = "argument 'msg_bytes' should be type bytes."
 
 TOPIC_NEW_PEER_CONNECTION = "new_peer_connection"
 TOPIC_PEER_SHUTDOWN = "peer_shutdown"
+TOPIC_NEW_BLOCK = "consensus"
 
 class Publisher():
     def __init__(self, ctx: zmq.Context = None, network_ip: str = None):
@@ -137,6 +138,15 @@ class Publisher():
             raise TypeError(EXCEPTION_MSG_BYTES_NOT_BYTES)
 
         self.socket.send_multipart([topic_bytes, msg_bytes])
+
+    def announce_new_block(self, block: dict) -> None:
+        self.publish(
+            topic_str=TOPIC_NEW_BLOCK,
+            msg_dict={
+                'block_num': block.get('number'),
+                'block_hash': block.get('hash')
+            }
+        )
 
     def announce_new_peer_connection(self, vk: str, ip: str) -> None:
         self.publish(

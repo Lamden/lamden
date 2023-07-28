@@ -3,6 +3,7 @@ from pathlib import Path
 from tests.integration.mock.mock_data_structures import MockBlocks
 from tests.integration.mock.threaded_node import create_a_node, ThreadedNode
 from tests.unit.helpers.mock_transactions import get_new_currency_tx
+from lamden.nodes.events import EventListener
 from unittest import TestCase
 import asyncio
 import json
@@ -189,4 +190,118 @@ class TestNode(TestCase):
         self.assertEqual(expected_balance, actual_balance)
         self.assertIsNone(tn.get_cached_smart_contract_value(f'currency.balances:{self.jeff_wallet.verifying_key}'))
         self.assertEqual(2, tn.blocks.total_blocks())
+
+    def test_block_consensus_confirms_block(self):
+        # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions
+        tn: ThreadedNode = self.create_and_start_node()
+        tn.node.consensus_percent = 0
+
+        tn.node.blocks.member_history.set(block_num=0, members_list=[
+            tn.node.wallet.verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key
+        ])
+
+        stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
+
+        tx_amount = 200.1
+        # Send from Stu to Jeff
+        tx_messages = []
+        tx_messages.append(get_new_currency_tx(
+            to=self.jeff_wallet.verifying_key,
+            wallet=self.stu_wallet,
+            amount=tx_amount,
+            processor=tn.wallet.verifying_key,
+            nonce=1
+        ))
+
+        for tx_message in tx_messages:
+            tn.send_tx(json.dumps(tx_message).encode())
+            self.await_async_process(asyncio.sleep, 0.1)
+
+        self.await_node_reaches_height(tn, 2)
+
+        latest_block = tn.node.blocks.get_latest_block()
+
+        msg = {
+            'block_num': latest_block.get('number'),
+            'block_hash': latest_block.get('hash'),
+        }
+
+        # Should be 0
+        self.assertEqual(0, tn.node.block_consensus.validation_height)
+
+        self.loop.run_until_complete(tn.node.block_consensus.process_message(msg=msg))
+        self.loop.run_until_complete(tn.node.block_consensus.process_message(msg=msg))
+
+        # Should be equal to the validated block
+        self.assertEqual(int(latest_block.get('number')), tn.node.block_consensus.validation_height)
+
+        event_listener = EventListener(root=tn.node.event_writer.root)
+        events = event_listener.get_events()
+
+        confirmed_block_events = [event for event in events if "confirmed_block" in event.topics]
+
+        self.assertEqual(1, len(confirmed_block_events))
+
+    def test_block_consensus_identifies_out_of_sync(self):
+        # Hard Apply will mint new blocks, apply state and increment block height after multiple transactions
+        tn: ThreadedNode = self.create_and_start_node()
+        tn.node.consensus_percent = 0
+
+        tn.node.blocks.member_history.set(block_num=0, members_list=[
+            tn.node.wallet.verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key,
+            Wallet().verifying_key
+        ])
+
+        stu_balance_before = tn.get_smart_contract_value(f'currency.balances:{self.stu_wallet.verifying_key}')
+
+        tx_amount = 200.1
+        # Send from Stu to Jeff
+        tx_messages = []
+        tx_messages.append(get_new_currency_tx(
+            to=self.jeff_wallet.verifying_key,
+            wallet=self.stu_wallet,
+            amount=tx_amount,
+            processor=tn.wallet.verifying_key,
+            nonce=1
+        ))
+
+        for tx_message in tx_messages:
+            tn.send_tx(json.dumps(tx_message).encode())
+            self.await_async_process(asyncio.sleep, 0.1)
+
+        self.await_node_reaches_height(tn, 2)
+
+        latest_block = tn.node.blocks.get_latest_block()
+
+        msg = {
+            'block_num': latest_block.get('number'),
+            'block_hash': 'abc',
+        }
+
+        # Should be 0
+        self.assertEqual(0, tn.node.block_consensus.validation_height)
+
+        self.loop.run_until_complete(tn.node.block_consensus.process_message(msg=msg))
+        self.loop.run_until_complete(tn.node.block_consensus.process_message(msg=msg))
+        self.loop.run_until_complete(tn.node.block_consensus.process_message(msg=msg))
+
+        # Should still be 0
+        self.assertEqual(0, tn.node.block_consensus.validation_height)
+
+        # created out_of_sync event
+        event_listener = EventListener(root=tn.node.event_writer.root)
+        events = event_listener.get_events()
+
+        confirmed_block_events = [event for event in events if "out_of_sync" in event.topics]
+        self.assertEqual(1, len(confirmed_block_events))
+
+
+
 
