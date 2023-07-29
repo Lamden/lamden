@@ -159,7 +159,7 @@ class CatchupHandler:
                     res_block_hash = res_block.get('hash')
 
                     if int(res_block_num) != 0 and fetch_type != 'latest':
-                        old_block = int(res_block_num) <= int(self.safe_block_num)
+                        old_block = int(res_block_num) <= self.safe_block_num
                         verify_block(block=res_block, old_block=old_block)
 
                     block_counts[res_block_hash] = block_counts.get(res_block_hash, 0) + 1

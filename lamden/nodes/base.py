@@ -1304,15 +1304,16 @@ class Node:
     # This is the height where the new proofs will start being validated. block below will use old_block validation
     def set_safe_block_height(self):
         if self.safe_block_num is not None:
-            self.log.info(f"Setting safe block height to {int(self.safe_block_num)}")
-            self.driver.driver.set('__safe_block_height', int(self.safe_block_num))
+            self.safe_block_num = int(self.safe_block_num)
+            self.log.info(f"Setting safe block height to {self.safe_block_num}")
+            self.driver.driver.set('__safe_block_height', self.safe_block_num)
         else:
             safe_block_height = self.driver.driver.get('__safe_block_height')
             if safe_block_height is None:
                 self.log.info(f"Initializing safe_block_height to -1.")
                 self.driver.driver.set('__safe_block_height', -1)
 
-        safe_block_height = self.driver.driver.get('__safe_block_height')
+        safe_block_height = int(self.driver.driver.get('__safe_block_height'))
         self.catchup_handler.safe_block_num = safe_block_height
         self.missing_blocks_handler.safe_block_num = safe_block_height
         self.validate_chain_handler.safe_block_num = safe_block_height
