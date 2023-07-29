@@ -106,7 +106,7 @@ class MissingBlocksHandler:
 
                 # If this is the genesis block then return it
                 # OR if the block is valid, return it.
-                if int(block_num) == 0 or verify_block(block=block, old_block=int(block_num) <= self.safe_block_num):
+                if int(block_num) == 0 or verify_block(block=block, old_block=int(block_num) <= int(self.safe_block_num)):
                     return block
 
                 raise ValueError(f'{block.get("number")} from {peer_vk}')

@@ -82,7 +82,7 @@ class ValidateChainHandler:
 
     def validate_block(self, block: dict) -> None:
         block_num = block.get("number")
-        old_block = int(block_num) <= self.safe_block_num
+        old_block = int(block_num) <= int(self.safe_block_num)
 
         valid = verify_block(block=block, old_block=old_block)
 
