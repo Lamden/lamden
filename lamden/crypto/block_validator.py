@@ -371,6 +371,7 @@ def validate_transaction_structure(transaction: dict) -> bool:
 
 def verify_block(block: dict, old_block: bool = False) -> bool:
     log = get_logger('BLOCK VALIDATOR')
+
     try:
         validate_block_structure(block=block)
         is_genesis_block = block.get('genesis') is not None

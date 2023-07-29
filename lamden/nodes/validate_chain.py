@@ -51,7 +51,7 @@ class ValidateChainHandler:
         block = self.block_storage.get_block(v=0)
 
         if block is not None:
-            self.validate_block(block=block)
+            # self.validate_block(block=block)
             self.save_member_history(block=block)
 
     def process_all_blocks(self, starting_block_num: int):
