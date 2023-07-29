@@ -125,6 +125,10 @@ def start_node(args):
         if disable_validation.lower() == "true":
             run_validation = False
 
+    safe_block_num = os.environ.get('SAFE_BLOCK_NUM', None)
+    if safe_block_num is not None:
+        safe_block_num = int(safe_block_num)
+
     n = Node(
         debug=args.debug,
         wallet=wallet,
@@ -133,7 +137,8 @@ def start_node(args):
         metering=True,
         private_network=get_private_network_ip(),
         run_catchup=run_catchup,
-        run_validation=run_validation
+        run_validation=run_validation,
+        safe_block_num=safe_block_num
     )
 
     loop = asyncio.get_event_loop()
@@ -174,6 +179,10 @@ def join_network(args):
         if disable_validation.lower() == "true":
             run_validation = False
 
+    safe_block_num = os.environ.get('SAFE_BLOCK_NUM', None)
+    if safe_block_num is not None:
+        safe_block_num = int(safe_block_num)
+
     if rollback_point == "-1":
         rollback_point = None
 
@@ -188,7 +197,8 @@ def join_network(args):
         hardcoded_peers=True,
         rollback_point=rollback_point,
         run_catchup=run_catchup,
-        run_validation=run_validation
+        run_validation=run_validation,
+        safe_block_num=safe_block_num
     )
 
     loop = asyncio.get_event_loop()
