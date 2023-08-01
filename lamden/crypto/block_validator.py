@@ -380,7 +380,7 @@ def verify_block(block: dict, old_block: bool = False) -> bool:
             validate_genesis_signatures(block=block)
         else:
             validate_all_hashes(block=block)
-            validate_all_signatures(block=block)
+            validate_all_signatures(block=block, old_block=old_block)
             validate_all_proof_signatures(block=block, old_block=old_block)
 
             if not old_block:
