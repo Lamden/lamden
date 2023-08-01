@@ -282,7 +282,10 @@ class Node:
 
             # Validate the chain
             if self.run_validation:
+                self.log.warning("1")
                 self.validate_chain_handler.run()
+
+            self.log.warning("2")
 
             # Start the network and wait till it's up
             self.network.start()

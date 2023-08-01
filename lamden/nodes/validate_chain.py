@@ -36,7 +36,8 @@ class ValidateChainHandler:
         # Run validate, check previous hash
         # Log history
 
-        current_validation_height = self.get_validation_height()
+        self.log.warning("Starting Block Validation...")
+        current_validation_height = int(self.get_validation_height())
 
         if current_validation_height < 0:
             # Purge history as we will recreate it
@@ -45,6 +46,7 @@ class ValidateChainHandler:
             self.set_validation_height(block_num=0)
             current_validation_height = 0
 
+        self.log.warning("Block Validation complete!")
         self.process_all_blocks(starting_block_num=current_validation_height)
 
     def process_genesis_block(self):
