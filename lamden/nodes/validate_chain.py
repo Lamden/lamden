@@ -39,6 +39,8 @@ class ValidateChainHandler:
         self.log.warning("Starting Block Validation...")
         current_validation_height = int(self.get_validation_height())
 
+        self.log.error(f"current_validation_height: {current_validation_height}")
+
         if current_validation_height < 0:
             # Purge history as we will recreate it
             self.block_storage.member_history.purge()
@@ -46,8 +48,9 @@ class ValidateChainHandler:
             self.set_validation_height(block_num=0)
             current_validation_height = 0
 
-        self.log.warning("Block Validation complete!")
         self.process_all_blocks(starting_block_num=current_validation_height)
+
+        self.log.warning("Block Validation complete!")
 
     def process_genesis_block(self):
         block = self.block_storage.get_block(v=0)
@@ -84,7 +87,10 @@ class ValidateChainHandler:
 
     def validate_block(self, block: dict) -> None:
         block_num = block.get("number")
+
         old_block = int(block_num) <= self.safe_block_num
+
+        self.log.error(f"block_num: {block_num}, safe_block_num: {self.safe_block_num}, old_block: {old_block}")
 
         valid = verify_block(block=block, old_block=old_block)
 
