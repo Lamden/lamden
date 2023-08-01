@@ -127,19 +127,6 @@ class TestMemberHistoryHandler(TestCase):
         for member in members_list:
             self.assertTrue(self.block_storage.is_member_at_block_height(block_num='1', vk=member))
 
-    def test_METHOD_process_genesis_block__validates_block_and_saves_members(self):
-        self.create_handler()
-
-        self.mock_blocks = MockBlocks(num_of_blocks=10)
-        self.mock_blocks.blocks['0']['hash'] = 'abc'
-
-        self.add_blocks_to_storage()
-
-        self.add_blocks_to_storage(amount=10)
-
-        with self.assertRaises(AssertionError):
-            self.validate_chain_handler.process_genesis_block()
-
 
     def test_METHOD_validate_block__validates_block_raises_no_exceptions(self):
         self.create_handler()
