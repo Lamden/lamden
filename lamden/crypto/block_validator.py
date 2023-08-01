@@ -441,6 +441,8 @@ def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
 
 def validate_all_proof_signatures(block: dict, old_block: bool = False) -> bool:
     if not verify_proofs(block=block, old_block=old_block):
+        log = get_logger("validate_all_proof_signatures")
+        log.debug(block)
         raise BlockProofMalformed(EXCEPTION_BLOCK_PROOF_MALFORMED)
 
     return True
