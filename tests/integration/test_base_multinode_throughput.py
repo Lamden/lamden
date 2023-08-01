@@ -136,6 +136,11 @@ class TestMultiNode(TestCase):
         all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
         self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))
 
+        # Validate each chain
+        for tn in self.local_node_network.all_nodes:
+            tn.node.driver.driver.set('__validation_height', -1)
+            tn.node.validate_chain_handler.run()
+
     '''
         mixed tx test cases
         # These tests create a multi-node network which will process transactions which are sent at once.
@@ -189,6 +194,11 @@ class TestMultiNode(TestCase):
         # Block consensus validation height same for all nodes
         all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
         self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))
+
+        # Validate each chain
+        for tn in self.local_node_network.all_nodes:
+            tn.node.driver.driver.set('__validation_height', -1)
+            tn.node.validate_chain_handler.run()
 
     '''
         mixed tx to set group of receivers test cases
@@ -248,3 +258,8 @@ class TestMultiNode(TestCase):
         # Block consensus validation height same for all nodes
         all_consensus_heights = [node.node.block_consensus.validation_height for node in self.local_node_network.all_nodes]
         self.assertTrue(all([validation_height == all_consensus_heights[0] for validation_height in all_consensus_heights]))
+
+        # Validate each chain
+        for tn in self.local_node_network.all_nodes:
+            tn.node.driver.driver.set('__validation_height', -1)
+            tn.node.validate_chain_handler.run()

@@ -429,8 +429,9 @@ def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
     if not verify_origin_signature(block=block):
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
-    if not verify_minter_signature(deepcopy(block)):
-        raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
+    if not old_block:
+        if not verify_minter_signature(deepcopy(block)):
+            raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
 
     return True
 
