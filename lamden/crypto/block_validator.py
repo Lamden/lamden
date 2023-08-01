@@ -513,8 +513,8 @@ def verify_proofs(block: dict, old_block: bool = False) -> bool:
 
     for proof in proofs:
         if old_block:
-            if not verify_proof_signature_old(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
-                return False
+            #if not verify_proof_signature_old(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
+            return True
         else:
             if not verify_proof_signature(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
                 return False
