@@ -430,19 +430,14 @@ def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
     if not old_block:
-        log = get_logger("validate_all_signatures")
         block_num = block.get('number')
-        log.warning(f"Verifying Minter for {block_num}, old_block: {old_block} ")
         if not verify_minter_signature(deepcopy(block)):
-            log.error(f"Verifying Minter for {block_num}, FAILED ")
             raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
 
     return True
 
 def validate_all_proof_signatures(block: dict, old_block: bool = False) -> bool:
     if not verify_proofs(block=block, old_block=old_block):
-        log = get_logger("validate_all_proof_signatures")
-        log.debug(block)
         raise BlockProofMalformed(EXCEPTION_BLOCK_PROOF_MALFORMED)
 
     return True

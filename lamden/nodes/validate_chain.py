@@ -89,9 +89,6 @@ class ValidateChainHandler:
         block_num = block.get("number")
 
         old_block = int(block_num) <= self.safe_block_num
-
-        self.log.error(f"block_num: {block_num}, safe_block_num: {self.safe_block_num}, old_block: {old_block}")
-
         valid = verify_block(block=block, old_block=old_block)
 
         assert valid, f"block number {block_num} did not pass block validation."
