@@ -43,11 +43,16 @@ class BlockConsensus:
             self.member_counts[block_num] = len(members_list)
 
     def _validate_block(self, block_num: int, block_hash: str):
+        self.log.debug(self.pending_blocks)
+        self.log.debug(self.minted_blocks)
+        self.log.debug(self.member_counts)
+
         if block_num <= self.validation_height:
             # return is for testing
             return 'earlier'
 
         if self.pending_blocks[block_num].count(block_hash) >= self._get_required_consensus(block_num):
+            self.log.warning("Attempting Consensus Check")
             if block_hash != self.minted_blocks.get(block_num):
                 self.log.error(f"Block {block_num} failed to validate, possible node out of sync")
                 self._cleanup()
@@ -80,6 +85,7 @@ class BlockConsensus:
             self.event_writer.write_event(event)
 
     async def process_message(self, msg: dict) -> None:
+        self.log.debug(msg)
         block_num = int(msg.get('block_num'))
         block_hash = msg.get('block_hash')
 
