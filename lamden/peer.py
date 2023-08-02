@@ -17,7 +17,7 @@ import time
 
 from contracting.db.encoder import decode, encode
 
-SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTDOWN, "contenders", "health"]
+SUBSCRIPTIONS = ["work", TOPIC_NEW_PEER_CONNECTION, TOPIC_PEER_SHUTDOWN, "contenders", "health", "consensus"]
 
 ACTION_PING = "ping"
 ACTION_HELLO = "hello"
