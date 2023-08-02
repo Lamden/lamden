@@ -126,8 +126,10 @@ def start_node(args):
             run_validation = False
 
     safe_block_num = os.environ.get('SAFE_BLOCK_NUM', None)
-    if safe_block_num is not None:
+    try:
         safe_block_num = int(safe_block_num)
+    except Exception:
+        safe_block_num = None
 
     n = Node(
         debug=args.debug,
@@ -180,8 +182,10 @@ def join_network(args):
             run_validation = False
 
     safe_block_num = os.environ.get('SAFE_BLOCK_NUM', None)
-    if safe_block_num is not None:
+    try:
         safe_block_num = int(safe_block_num)
+    except Exception:
+        safe_block_num = None
 
     if rollback_point == "-1":
         rollback_point = None
