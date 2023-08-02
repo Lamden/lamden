@@ -85,7 +85,7 @@ class BlockConsensus:
             self.event_writer.write_event(event)
 
     async def process_message(self, msg: dict) -> None:
-        self.log.debug(msg)
+        self.log.debug(f'process_message: {msg}')
         block_num = int(msg.get('block_num'))
         block_hash = msg.get('block_hash')
 
@@ -99,6 +99,7 @@ class BlockConsensus:
         self._validate_block(block_num, block_hash)
 
     def post_minted_block(self, block: dict) -> None:
+        self.log.debug(f'post_minted_block: {block}')
         block_num = int(block.get('number'))
         block_hash = block.get('hash')
 
