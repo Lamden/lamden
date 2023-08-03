@@ -597,6 +597,8 @@ class TestBlockValidator(TestCase):
         self.assertEqual(BLOCK_EXCEPTIONS['BlockOriginSignatureMalformed'], str(err.exception))
 
     def test_validate_all_proof_signatures__raises_BlockProofMalformed_on_old_block(self):
+        # not checking proofs on old blocks
+        # This will fail
         bad_proof = {
             'signer': self.wallet.verifying_key,
             'signature': self.wallet.sign(f'TESTING')

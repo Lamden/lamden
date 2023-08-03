@@ -62,6 +62,8 @@ CONSENSUS_SERVICE = 'consensus'
 
 SAFE_BLOCK_HEIGHT = '__safe_block_height'
 
+HARDCODE_NETWORK_START = '2023-08-05T03:59:00.000000000Z_0'
+
 class Node:
     def __init__(self, wallet, bootnodes={}, blocks=None,
                  driver=None, delay=None, client=None, debug=True, testing=False,
@@ -522,6 +524,10 @@ class Node:
                 if tx_from_file is not None:
                     tx_message = self.make_tx_message(tx=tx_from_file)
 
+                    #if tx_message.get('hlc_timestamp') < HARDCODE_NETWORK_START:
+                    #    self.log.warning("Received tx before network start date.")
+                    #    return
+
                     # send the tx to the rest of the network
                     asyncio.ensure_future(self.network.publisher.async_publish(topic_str=WORK_SERVICE, msg_dict=tx_message))
 
@@ -702,6 +708,7 @@ class Node:
 
     def make_tx_message(self, tx):
         hlc_timestamp = self.hlc_clock.get_new_hlc_timestamp()
+
         tx_hash = tx_hash_from_tx(tx=tx)
 
         signature = self.wallet.sign(f'{tx_hash}{hlc_timestamp}')

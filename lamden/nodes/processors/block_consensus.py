@@ -15,7 +15,6 @@ class BlockConsensus:
         self.pending_blocks = defaultdict(list)  # Block data received from the network
         self.minted_blocks = {}  # Block data minted by our node
 
-
         self.current_thread = threading.current_thread()
         self.log = get_logger(f'[{self.current_thread.name}][BLOCK CONSENSUS]')
 
@@ -48,6 +47,7 @@ class BlockConsensus:
             return 'earlier'
 
         if self.pending_blocks[block_num].count(block_hash) >= self._get_required_consensus(block_num):
+            self.log.warning("Attempting Consensus Check")
             if block_hash != self.minted_blocks.get(block_num):
                 self.log.error(f"Block {block_num} failed to validate, possible node out of sync")
                 self._cleanup()

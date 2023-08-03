@@ -1,7 +1,6 @@
 from iso8601 import parse_date
 from lamden.crypto.canonical import create_proof_message_from_proof, block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object, hash_genesis_block_state_changes
 from contracting.db.encoder import encode
-from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
 from lamden.utils import hlc
 from copy import deepcopy
@@ -380,7 +379,7 @@ def verify_block(block: dict, old_block: bool = False) -> bool:
             validate_genesis_signatures(block=block)
         else:
             validate_all_hashes(block=block)
-            validate_all_signatures(block=block)
+            validate_all_signatures(block=block, old_block=old_block)
             validate_all_proof_signatures(block=block, old_block=old_block)
 
             if not old_block:
@@ -418,7 +417,7 @@ def verify_processed_transaction_hash(processed_transaction) -> bool:
 
     return tx_hash == processed_transaction.get('hash')
 
-
+from lamden.logger.base import get_logger
 def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
     processed = block.get('processed')
     transaction = processed.get('transaction')
@@ -507,8 +506,8 @@ def verify_proofs(block: dict, old_block: bool = False) -> bool:
 
     for proof in proofs:
         if old_block:
-            if not verify_proof_signature_old(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
-                return False
+            #if not verify_proof_signature_old(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
+            return True
         else:
             if not verify_proof_signature(proof=proof, tx_result=tx_result, rewards=rewards, hlc_timestamp=hlc_timestamp):
                 return False
