@@ -533,7 +533,7 @@ class TestFSBlockDriver(TestCase):
             'number': block_num
         })
 
-        block_number_filled = str(1683749172980698880).zfill(64)
+        block_number_filled = str(block_num).zfill(64)
         file_path = self.block_driver.get_file_path(block_num=block_number_filled)
 
         # should not error

@@ -39,8 +39,6 @@ class ValidateChainHandler:
         self.log.warning("Starting Block Validation...")
         current_validation_height = int(self.get_validation_height())
 
-        self.log.error(f"current_validation_height: {current_validation_height}")
-
         if current_validation_height < 0:
             # Purge history as we will recreate it
             self.block_storage.member_history.purge()

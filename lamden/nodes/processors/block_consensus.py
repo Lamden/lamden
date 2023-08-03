@@ -15,7 +15,6 @@ class BlockConsensus:
         self.pending_blocks = defaultdict(list)  # Block data received from the network
         self.minted_blocks = {}  # Block data minted by our node
 
-
         self.current_thread = threading.current_thread()
         self.log = get_logger(f'[{self.current_thread.name}][BLOCK CONSENSUS]')
 
@@ -43,10 +42,6 @@ class BlockConsensus:
             self.member_counts[block_num] = len(members_list)
 
     def _validate_block(self, block_num: int, block_hash: str):
-        self.log.debug(self.pending_blocks)
-        self.log.debug(self.minted_blocks)
-        self.log.debug(self.member_counts)
-
         if block_num <= self.validation_height:
             # return is for testing
             return 'earlier'
@@ -85,7 +80,6 @@ class BlockConsensus:
             self.event_writer.write_event(event)
 
     async def process_message(self, msg: dict) -> None:
-        self.log.debug(f'process_message: {msg}')
         block_num = int(msg.get('block_num'))
         block_hash = msg.get('block_hash')
 
@@ -99,7 +93,6 @@ class BlockConsensus:
         self._validate_block(block_num, block_hash)
 
     def post_minted_block(self, block: dict) -> None:
-        self.log.debug(f'post_minted_block: {block}')
         block_num = int(block.get('number'))
         block_hash = block.get('hash')
 

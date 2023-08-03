@@ -1,7 +1,6 @@
 from iso8601 import parse_date
 from lamden.crypto.canonical import create_proof_message_from_proof, block_hash_from_block, tx_hash_from_tx, format_dictionary, tx_result_hash_from_tx_result_object, hash_genesis_block_state_changes
 from contracting.db.encoder import encode
-from lamden.logger.base import get_logger
 from lamden.crypto.wallet import verify
 from lamden.utils import hlc
 from copy import deepcopy
@@ -430,7 +429,6 @@ def validate_all_signatures(block: dict, old_block: bool = False) -> bool:
         raise BlockOriginSignatureMalformed(EXCEPTION_BLOCK_ORIGIN_SIGNATURE_MALFORMED)
 
     if not old_block:
-        block_num = block.get('number')
         if not verify_minter_signature(deepcopy(block)):
             raise BlockMinterSignatureMalformed(EXCEPTION_BLOCK_MINTER_SIGNATURE_MALFORMED)
 
