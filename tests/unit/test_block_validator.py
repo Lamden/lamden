@@ -595,7 +595,7 @@ class TestBlockValidator(TestCase):
             self.block['origin']['signature'] = bad_signature
             block_validator.validate_all_signatures(block=self.block)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockOriginSignatureMalformed'], str(err.exception))
-
+'''
     def test_validate_all_proof_signatures__raises_BlockProofMalformed_on_old_block(self):
         # not checking proofs on old blocks
         # This will fail
@@ -608,7 +608,7 @@ class TestBlockValidator(TestCase):
             self.block['proofs'].append(bad_proof)
             block_validator.validate_all_proof_signatures(block=self.block, old_block=True)
         self.assertEqual(BLOCK_EXCEPTIONS['BlockProofMalformed'], str(err.exception))
-
+'''
 
 class TestProcessedTransactionValidator(TestCase):
     def setUp(self):

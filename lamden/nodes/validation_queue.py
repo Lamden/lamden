@@ -8,9 +8,11 @@ from lamden.storage import BlockStorage
 from lamden.crypto.wallet import Wallet
 from lamden.hlcpy import hlc_timestamp_to_nanos
 import time
+from contracting.db.driver import ContractDriver
+
 
 class ValidationQueue(ProcessingQueue):
-    def __init__(self, driver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc,
+    def __init__(self, driver: ContractDriver, consensus_percent, wallet, hard_apply_block, stop_node, get_block_by_hlc,
                  get_block_from_network, blocks, testing=False, debug=False):
         super().__init__()
 
@@ -44,7 +46,7 @@ class ValidationQueue(ProcessingQueue):
 
         self.consensus_history = {}
 
-        self.driver = driver
+        self.driver: ContractDriver = driver
         self.wallet: Wallet = wallet
         self.blocks: BlockStorage = blocks
 
@@ -174,8 +176,8 @@ class ValidationQueue(ProcessingQueue):
             else:
                 # if we have future blocks that have had consensus that means we are behind and we should just ask the network for this block.
                 if self.later_consensus_exists(hlc_timestamp=next_hlc_timestamp):
+                    self.driver.rollback()
                     await self.get_block_from_network_and_commit(hlc_timestamp=next_hlc_timestamp)
-
                     return
 
                 # see if we have been checking this hcl for greater than self.checking_timeout
@@ -185,6 +187,7 @@ class ValidationQueue(ProcessingQueue):
                     # remove this hlc from the queue so we don't check it anymore
                     # also removes if from started_checking
                     self.flush_hlc(hlc_timestamp=next_hlc_timestamp)
+                    self.driver.rollback()
 
                     # attempt to get block from network
                     await self.get_block_from_network_and_commit(hlc_timestamp=next_hlc_timestamp)
@@ -324,10 +327,12 @@ class ValidationQueue(ProcessingQueue):
         hlc_list = list(filter(lambda x: x != hlc_timestamp, hlc_list))
         hlc_list.sort()
 
-        for hlc_timestamp in hlc_list:
-            if self.hlc_has_consensus(hlc_timestamp):
+        for hlc in hlc_list:
+            if self.hlc_has_consensus(hlc_timestamp=hlc):
+                self.log.warning(f'Later consensus than hlc_timestamp {hlc_timestamp} exists.  hlc_timestamp {hlc} is in consensus.')
                 return True
 
+        self.log.info(f'No later consensus than {hlc_timestamp} exists.')
         return False
 
     def get_result_hash_for_vk(self, hlc_timestamp, node_vk):
@@ -337,6 +342,7 @@ class ValidationQueue(ProcessingQueue):
         return results['solutions'].get(node_vk)
 
     async def get_block_from_network_and_commit(self, hlc_timestamp: str = None):
+        self.log.info(f'Attempting to get hlc_timestamp {hlc_timestamp} from network...')
         if hlc_timestamp is None:
             return
 
@@ -532,7 +538,6 @@ class ValidationQueue(ProcessingQueue):
 
     def get_peers_for_consensus(self):
         members = self.driver.driver.get(f'masternodes.S:members') or []
-        print({'members': members})
         return self.driver.driver.get(f'masternodes.S:members') or []
 
     def get_key_list(self):

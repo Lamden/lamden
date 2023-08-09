@@ -167,10 +167,12 @@ class CatchupHandler:
                         consensus_reached = True
                         consensus_block = res_block
                 except Exception as err:
-                    self.log.error(err)
                     peer = future.__peer__
+                    self.log.info(f'Error while processing block from {peer.server_vk} {err}')
                     self.catchup_peers.remove(peer)  # remove the unresponsive peer
+                    self.log.info(f'removed {peer.server_vk} from catchup list. peers left {len(self.catchup_peers)}')
 
+        self.log.info(f'Done sourcing block... Block found {consensus_block is not None}.')
         if consensus_reached:
             return consensus_block
         else:
