@@ -24,7 +24,7 @@ setup(
         "sanic==20.6.3",
         "coloredlogs==15.0.1",
         "pyzmq==23.1.0",
-        "requests==2.25.1",
+        "requests==2.31.0",
         "checksumdir==1.2.0",
         "pynacl==1.5.0",
         "stdlib_list==0.8.0",
