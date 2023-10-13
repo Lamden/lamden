@@ -13,7 +13,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "chardet==3.0.4",
-        "ujson==1.35",  # locking dep for websockets
+        "ujson==5.4.0",  # locking dep for websockets
         "idna==2.10",  # locking dep for sanic
         "typing_extensions==3.10.0.0",  # locking dep for pyzmq
         "bidict==0.21.4",  # locking deb for socketio
