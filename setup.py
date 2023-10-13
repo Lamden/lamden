@@ -21,7 +21,7 @@ setup(
         "yarl==1.4.2", # locking dep for python-socketio
         "uvloop==0.14.0",
         "aiofiles==22.1.0",
-        "sanic==20.6.3",
+        "sanic==20.12.7",
         "coloredlogs==15.0.1",
         "pyzmq==23.1.0",
         "requests==2.25.1",
